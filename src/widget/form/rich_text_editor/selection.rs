@@ -38,7 +38,7 @@ impl RichTextEditor {
             let end_col = if block_idx == end.0 {
                 end.1
             } else {
-                text.len()
+                text.chars().count()
             };
 
             if block_idx > start.0 {

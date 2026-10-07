@@ -2,6 +2,7 @@
 //!
 //! These tests verify that TextArea handles edge cases without panicking.
 
+use revue::event::Key;
 use revue::widget::TextArea;
 
 #[test]
@@ -96,4 +97,34 @@ fn test_replace_multiline() {
     // Should replace all without panic
     ta.replace_all();
     assert!(ta.get_content().contains("Row"));
+}
+
+// Found by tests/event_sequences.rs: the shrunk sequence was
+// `<set content> Enter PageUp <add cursor below> Delete` - edits move only
+// the primary cursor, so when Delete merged the line below into the
+// current one, the cursor added on that line was left past the text.
+#[test]
+fn test_secondary_cursors_stay_in_the_text_after_an_edit() {
+    let mut ta = TextArea::new().content("x").focused(true);
+    ta.handle_key(&Key::Enter);
+    ta.handle_key(&Key::PageUp);
+    ta.add_cursor_below();
+    assert_eq!(ta.cursor_count(), 2);
+    ta.handle_key(&Key::Delete);
+    assert_eq!(ta.get_content(), "x");
+    for (line, col) in ta.cursor_positions() {
+        assert_eq!(line, 0);
+        assert!(col <= 1);
+    }
+
+    // Backspace joining a line removes the line a secondary cursor was on
+    let mut ta = TextArea::new().content("ab\ncd").focused(true);
+    ta.set_cursor(1, 0);
+    ta.add_cursor_at(1, 2);
+    ta.handle_key(&Key::Backspace);
+    assert_eq!(ta.get_content(), "abcd");
+    for (line, col) in ta.cursor_positions() {
+        assert_eq!(line, 0);
+        assert!(col <= 4);
+    }
 }

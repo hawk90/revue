@@ -75,7 +75,7 @@ impl RichTextEditor {
     /// Delete character at cursor
     pub fn delete_char_at(&mut self) {
         let block = &self.blocks[self.cursor.0];
-        if self.cursor.1 < block.len() {
+        if self.cursor.1 < block.char_count() {
             let text = block.text();
             let chars: Vec<char> = text.chars().collect();
             let deleted = chars[self.cursor.1];
@@ -129,7 +129,7 @@ impl RichTextEditor {
             return;
         }
 
-        let prev_len = self.blocks[self.cursor.0 - 1].len();
+        let prev_len = self.blocks[self.cursor.0 - 1].char_count();
         let current_text = self.blocks[self.cursor.0].text();
 
         // Record for undo

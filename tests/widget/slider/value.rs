@@ -81,3 +81,16 @@ fn test_slider_increment_stops_at_bounds() {
     s.decrement();
     assert_eq!(s.get_value(), 0.0);
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was `<set NaN>` -
+// NaN clamps to NaN, so the value left the range for good (stepping from
+// NaN gives NaN again).
+#[test]
+fn test_set_value_nan_keeps_the_value() {
+    let mut s = slider_range(-10.0, 10.0).step(3.0).value(2.0);
+    let before = s.get_value();
+    s.set_value(f64::NAN);
+    assert_eq!(s.get_value(), before);
+    s.increment();
+    assert!((-10.0..=10.0).contains(&s.get_value()));
+}

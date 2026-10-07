@@ -75,7 +75,7 @@ impl Pagination {
 
     /// Set current page
     pub fn current(mut self, page: u16) -> Self {
-        self.current = page.max(1).min(self.total);
+        self.current = page.min(self.total).max(1);
         self
     }
 
@@ -166,12 +166,13 @@ impl Pagination {
 
     /// Go to last page
     pub fn last(&mut self) {
-        self.current = self.total;
+        // Pages count from 1; with no pages, stay on page 1 like `new(0)`
+        self.current = self.total.max(1);
     }
 
     /// Go to specific page
     pub fn goto(&mut self, page: u16) {
-        self.current = page.max(1).min(self.total);
+        self.current = page.min(self.total).max(1);
     }
 
     /// Get current page

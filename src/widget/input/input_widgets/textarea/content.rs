@@ -206,6 +206,24 @@ impl TextArea {
         let line = line.min(self.lines.len().saturating_sub(1));
         let col = col.min(self.line_len(line));
         self.cursors.set_primary(CursorPos::new(line, col));
+        self.clamp_cursors();
+    }
+
+    /// Keep every cursor (and selection anchor) inside the text.
+    ///
+    /// Edits move only the primary cursor; when they remove text, the other
+    /// cursors would otherwise be left past the end of a line or the text.
+    pub(super) fn clamp_cursors(&mut self) {
+        let last_line = self.lines.len().saturating_sub(1);
+        let clamp = |pos: CursorPos, lines: &[String]| {
+            let line = pos.line.min(last_line);
+            let len = lines.get(line).map_or(0, |l| l.chars().count());
+            CursorPos::new(line, pos.col.min(len))
+        };
+        for cursor in self.cursors.all_mut() {
+            cursor.pos = clamp(cursor.pos, &self.lines);
+            cursor.anchor = cursor.anchor.map(|a| clamp(a, &self.lines));
+        }
     }
 }
 

@@ -270,7 +270,11 @@ impl MenuBar {
             if i == self.selected_menu {
                 break;
             }
-            menu_x += display_width(&m.title) as u16 + 2;
+            menu_x = menu_x.saturating_add(display_width(&m.title) as u16 + 2);
+        }
+        // The menu's title starts past the right edge: no room for its dropdown
+        if menu_x >= ctx.area.width {
+            return;
         }
 
         // Calculate max width

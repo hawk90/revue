@@ -117,9 +117,16 @@ impl Block {
         self.spans = vec![FormattedSpan::new(text)];
     }
 
-    /// Get text length
+    /// Get text length in bytes
+    ///
+    /// The editor's cursor columns count characters, not bytes.
     pub fn len(&self) -> usize {
         self.spans.iter().map(|s| s.text.len()).sum()
+    }
+
+    /// Text length in characters - the unit of the editor's cursor column
+    pub(crate) fn char_count(&self) -> usize {
+        self.spans.iter().map(|s| s.text.chars().count()).sum()
     }
 
     /// Check if empty

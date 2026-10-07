@@ -137,7 +137,7 @@ impl RichTextEditor {
             }
 
             // Render cursor at end of line
-            let text_len = block.len();
+            let text_len = block.char_count();
             if self.focused
                 && block_idx == self.cursor.0
                 && self.cursor.1 >= text_len

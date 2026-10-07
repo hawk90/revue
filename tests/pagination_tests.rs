@@ -216,3 +216,18 @@ fn test_pagination_navigation_sequence() {
     p.last();
     assert_eq!(p.get_current(), 10);
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was
+// `<total 0> End` - with no pages, last() moved to page 0 although pages
+// count from 1 and set_total(0) keeps page 1.
+#[test]
+fn test_no_pages_stays_on_page_one() {
+    let mut p = Pagination::new(5).current(3);
+    p.set_total(0);
+    assert_eq!(p.get_current(), 1);
+    p.last();
+    assert_eq!(p.get_current(), 1);
+    p.goto(4);
+    assert_eq!(p.get_current(), 1);
+    assert_eq!(Pagination::new(0).current(2).get_current(), 1);
+}

@@ -305,7 +305,7 @@ impl RichTextEditor {
     /// Set cursor position
     pub fn set_cursor(&mut self, block: usize, col: usize) {
         let block = block.min(self.blocks.len().saturating_sub(1));
-        let col = col.min(self.blocks[block].len());
+        let col = col.min(self.blocks[block].char_count());
         self.cursor = (block, col);
         self.ensure_cursor_visible();
     }

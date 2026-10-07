@@ -87,7 +87,9 @@ impl SortableList {
     /// End drag and perform reorder
     pub fn end_drag(&mut self) {
         if let (Some(from), Some(to)) = (self.dragging, self.drop_target) {
-            if from != to {
+            // Indices taken before the items changed (`items_mut`) are not
+            // moved
+            if from != to && from < self.items.len() && to <= self.items.len() {
                 let item = self.items.remove(from);
                 let insert_idx = if to > from { to - 1 } else { to };
                 self.items.insert(insert_idx, item);
@@ -144,6 +146,8 @@ impl SortableList {
     /// Remove an item by index
     pub fn remove(&mut self, index: usize) -> Option<super::types::SortableItem> {
         if index < self.items.len() {
+            // A drag in progress holds indices into the old list
+            self.cancel_drag();
             let item = self.items.remove(index);
             if let Some(sel) = self.selected {
                 if sel >= self.items.len() {

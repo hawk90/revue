@@ -303,6 +303,7 @@ impl LogViewer {
         self.scroll = 0;
         self.selected = 0;
         self.search_matches.clear();
+        self.search_index = 0;
     }
 
     /// Get total entry count

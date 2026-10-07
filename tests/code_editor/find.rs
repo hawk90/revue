@@ -55,3 +55,24 @@ fn test_close_find() {
     editor.close_find();
     assert!(!editor.is_find_active());
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was
+// `<find 'n'> Backspace 'n' <set content> Enter` - the find matches were
+// positions in the old text, so Enter jumped the cursor past the end of
+// the new one.
+#[test]
+fn test_set_content_refreshes_the_find_matches() {
+    use revue::event::Key;
+    let mut editor = CodeEditor::new().content("fn main() {}");
+    editor.open_find();
+    editor.set_find_query("n");
+    assert_eq!(editor.find_match_count(), 2);
+
+    editor.set_content("x");
+    assert_eq!(editor.find_match_count(), 0);
+    editor.handle_key(&Key::Enter);
+    assert_eq!(editor.cursor_position(), (0, 0));
+
+    editor.set_content("a n b n");
+    assert_eq!(editor.find_match_count(), 2);
+}

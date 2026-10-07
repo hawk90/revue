@@ -512,3 +512,39 @@ fn test_csv_get_header_no_header_mode() {
     viewer.parse(csv);
     assert_eq!(viewer.get_header(0), None);
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was
+// `Ctrl+End <parse empty>` - parse() replaced the rows but kept the
+// selection (and the search matches) of the old ones.
+#[test]
+fn test_parse_resets_the_selection_and_the_search() {
+    let mut viewer = CsvViewer::from_content("a,b\n1,2\n3,4\n5,6");
+    viewer.search("5");
+    viewer.select_last_row();
+    viewer.select_right();
+    assert_eq!((viewer.selected_row(), viewer.selected_col()), (2, 1));
+
+    viewer.parse("a,b\n7,8");
+    assert_eq!((viewer.selected_row(), viewer.selected_col()), (0, 0));
+    assert_eq!(viewer.match_count(), 0);
+
+    viewer.parse("a,b\n5,9");
+    assert_eq!(viewer.match_count(), 1);
+
+    viewer.parse("");
+    assert_eq!(viewer.row_count(), 0);
+    assert_eq!(viewer.selected_row(), 0);
+}
+
+// Found by tests/event_sequences.rs: the shrunk sequence was
+// `<search '1'> 'n'` - a ragged row's extra cell (never drawn) matched, and
+// next_match() selected a column the viewer does not have.
+#[test]
+fn test_search_skips_cells_past_the_shown_columns() {
+    let mut viewer = CsvViewer::from_content("a,b,c\n7,8,9,10\n1,2,3");
+    assert_eq!(viewer.column_count(), 3);
+    viewer.search("1");
+    assert_eq!(viewer.match_count(), 1);
+    viewer.next_match();
+    assert_eq!((viewer.selected_row(), viewer.selected_col()), (1, 0));
+}

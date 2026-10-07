@@ -41,3 +41,20 @@ fn test_dialog_open_close() {
     editor.close_dialog();
     assert!(!editor.is_dialog_open());
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was
+// `[2x1] <link dialog>` - an open dialog in an area too narrow for it.
+#[test]
+fn test_dialog_in_a_tiny_area() {
+    for (w, h) in [(0, 0), (1, 1), (2, 1), (4, 3), (5, 2), (6, 8)] {
+        let mut editor = RichTextEditor::new().content("text");
+        editor.open_link_dialog();
+        let mut buffer = Buffer::new(w.max(1), h.max(1));
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+        editor.render(&mut ctx);
+        editor.close_dialog();
+        editor.open_image_dialog();
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+        editor.render(&mut ctx);
+    }
+}
