@@ -110,7 +110,12 @@ fn read_css(path: &Path) -> Option<String> {
             return None;
         }
     }
-    match fs::read_to_string(path) {
+    // Capped: the metadata length is not the read length for a FIFO or a
+    // file still being written.
+    match crate::utils::read_capped(path, MAX_CSS_FILE_SIZE).and_then(|bytes| {
+        String::from_utf8(bytes)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+    }) {
         Ok(text) => Some(text),
         Err(e) => {
             crate::log_warn!("Hot reload: failed to read {:?}: {}", path, e);

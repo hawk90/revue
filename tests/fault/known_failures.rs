@@ -16,11 +16,6 @@ pub const KNOWN: &[Known] = &[
     // ── resources ──
     Known {
         layer: "resources",
-        reason: "file loaders check the size in the metadata, then read without a bound",
-        cases: &["config stream"],
-    },
-    Known {
-        layer: "resources",
         reason: "FilePicker::navigate_to enters a directory it cannot list and shows it empty",
         cases: &["picker denied"],
     },

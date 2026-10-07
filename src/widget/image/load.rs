@@ -12,6 +12,17 @@ const MAX_IMAGE_DIMENSION: u32 = 8192;
 /// Maximum total pixels (width * height) to prevent memory exhaustion
 const MAX_IMAGE_PIXELS: u64 = 67_108_864; // 8192 * 8192
 
+/// Read up to one byte past [`MAX_IMAGE_FILE_SIZE`]: enough for
+/// [`Image::from_png`] to see the data is too large, never more.
+fn read_image(path: &std::path::Path) -> std::io::Result<Vec<u8>> {
+    use std::io::Read;
+    let mut data = Vec::new();
+    std::fs::File::open(path)?
+        .take(MAX_IMAGE_FILE_SIZE as u64 + 1)
+        .read_to_end(&mut data)?;
+    Ok(data)
+}
+
 impl Image {
     /// Create an image from raw PNG data
     ///
@@ -125,7 +136,9 @@ impl Image {
             });
         }
 
-        let data = std::fs::read(path_ref).map_err(|e| ImageError::FileRead {
+        // Capped: the metadata length is not the read length for a FIFO or a
+        // file still being written. Past the limit, `from_png` refuses it.
+        let data = read_image(path_ref).map_err(|e| ImageError::FileRead {
             path: path_ref.to_path_buf(),
             message: e.to_string(),
         })?;

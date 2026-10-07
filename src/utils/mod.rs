@@ -374,9 +374,41 @@ pub use overlay::{draw_separator_overlay, draw_text_overlay};
 // Terminal detection
 pub use terminal::{is_sixel_capable, terminal_type, TerminalType};
 
+/// Read a file, refusing one longer than `limit` bytes.
+///
+/// A size check on the file's metadata is not enough: a FIFO, a character
+/// device or a file still being written reports a length that has nothing to
+/// do with what a read returns. This stops reading one byte past `limit`, so
+/// nothing past it is ever held in memory, and fails with `InvalidData`.
+pub(crate) fn read_capped(path: &std::path::Path, limit: u64) -> std::io::Result<Vec<u8>> {
+    use std::io::Read;
+    let mut data = Vec::new();
+    std::fs::File::open(path)?
+        .take(limit.saturating_add(1))
+        .read_to_end(&mut data)?;
+    if data.len() as u64 > limit {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("more than {limit} bytes"),
+        ));
+    }
+    Ok(data)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn read_capped_reads_up_to_the_limit_and_refuses_more() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("f");
+        std::fs::write(&path, b"12345").unwrap();
+        assert_eq!(read_capped(&path, 5).unwrap(), b"12345");
+        let err = read_capped(&path, 4).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(read_capped(&dir.path().join("missing"), 5).is_err());
+    }
 
     // =========================================================================
     // Module Export Tests

@@ -175,7 +175,13 @@ pub trait AppConfig: Sized + DeserializeOwned {
             ));
         }
 
-        let contents = fs::read_to_string(path)
+        // The metadata length is not the read length for a FIFO or a file
+        // still being written: the read is capped too.
+        let contents = crate::utils::read_capped(path, MAX_CONFIG_FILE_SIZE)
+            .and_then(|bytes| {
+                String::from_utf8(bytes)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+            })
             .map_err(|e| ConfigError::ReadError(path.to_path_buf(), e.to_string()))?;
 
         toml::from_str(&contents).map_err(|e| ConfigError::ParseError(e.to_string()))
@@ -531,5 +537,41 @@ mod tests {
         // Clean up
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_dir(path.parent().unwrap());
+    }
+
+    /// A FIFO reports 0 bytes in its metadata; what streams through it past
+    /// the size limit must still be refused, not read into memory and parsed.
+    #[cfg(unix)]
+    #[test]
+    fn a_stream_past_the_size_limit_is_refused() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let fifo = dir.path().join("config.toml");
+        let made = std::process::Command::new("mkfifo").arg(&fifo).status();
+        if !made.is_ok_and(|s| s.success()) {
+            return;
+        }
+        let writer_path = fifo.clone();
+        let writer = std::thread::spawn(move || {
+            let mut f = std::fs::OpenOptions::new()
+                .write(true)
+                .open(writer_path)
+                .unwrap();
+            // A valid config once it ends: one long string value.
+            let _ = f.write_all(b"name = \"");
+            let chunk = vec![b'a'; 64 * 1024];
+            for _ in 0..(MAX_CONFIG_FILE_SIZE / chunk.len() as u64 + 2) {
+                if f.write_all(&chunk).is_err() {
+                    return;
+                }
+            }
+            let _ = f.write_all(b"\"\nvalue = 1\n");
+        });
+        let result = TestConfig::load_from(&fifo);
+        assert!(
+            matches!(result, Err(ConfigError::ReadError(..))),
+            "a stream past the limit was loaded"
+        );
+        let _ = writer.join();
     }
 }
