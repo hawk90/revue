@@ -237,12 +237,15 @@ impl Inspector {
         }
 
         let area = ctx.area;
-        let panel_x = area.x + area.width.saturating_sub(self.panel_width);
+        let panel_x = area
+            .x
+            .saturating_add(area.width.saturating_sub(self.panel_width));
         let panel_width = self.panel_width.min(area.width);
+        let bottom = area.y.saturating_add(area.height);
 
         // Draw background
-        for y in area.y..area.y + area.height {
-            for x in panel_x..panel_x + panel_width {
+        for y in area.y..bottom {
+            for x in panel_x..panel_x.saturating_add(panel_width) {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(self.bg_color);
                 ctx.buffer.set(x, y, cell);
@@ -250,7 +253,7 @@ impl Inspector {
         }
 
         // Draw border
-        for y in area.y..area.y + area.height {
+        for y in area.y..bottom {
             let mut cell = Cell::new('│');
             cell.fg = Some(Color::WHITE);
             cell.bg = Some(self.bg_color);
@@ -259,31 +262,40 @@ impl Inspector {
 
         // Draw title
         let title = " Inspector ";
-        let title_x = panel_x + 2;
+        let title_x = panel_x.saturating_add(2);
         for (i, ch) in title.chars().enumerate() {
+            let Some(x) = title_x.checked_add(i as u16) else {
+                break;
+            };
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::CYAN);
             cell.bg = Some(self.bg_color);
             cell.modifier |= crate::render::Modifier::BOLD;
-            ctx.buffer.set(title_x + i as u16, area.y, cell);
+            ctx.buffer.set(x, area.y, cell);
         }
 
         // Draw widget tree
         if let Some(ref root) = self.root {
             let mut state = TreeRenderState {
-                x: panel_x + 2,
-                y: area.y + 2,
+                x: panel_x.saturating_add(2),
+                y: area.y.saturating_add(2),
                 depth: 0,
                 index: 0,
-                max_width: panel_width - 3,
+                max_width: panel_width.saturating_sub(3),
             };
             self.render_widget_tree(ctx, root, &mut state);
         }
 
         // Draw selected widget properties
         if let Some(widget) = self.selected_widget() {
-            let props_y = area.y + area.height / 2;
-            self.render_properties(ctx, widget, panel_x + 2, props_y, panel_width - 3);
+            let props_y = area.y.saturating_add(area.height / 2);
+            self.render_properties(
+                ctx,
+                widget,
+                panel_x.saturating_add(2),
+                props_y,
+                panel_width.saturating_sub(3),
+            );
         }
 
         // Draw bounds overlay on main content
@@ -300,7 +312,7 @@ impl Inspector {
         widget: &WidgetInfo,
         state: &mut TreeRenderState,
     ) -> usize {
-        if state.y >= ctx.area.y + ctx.area.height / 2 {
+        if state.y >= ctx.area.y.saturating_add(ctx.area.height / 2) {
             return state.index;
         }
 
@@ -323,17 +335,19 @@ impl Inspector {
             let mut cell = Cell::new(ch);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.buffer.set(state.x + i as u16, state.y, cell);
+            ctx.buffer
+                .set(state.x.saturating_add(i as u16), state.y, cell);
         }
 
         // Fill rest of line with background
         for i in text.len()..(state.max_width as usize) {
             let mut cell = Cell::new(' ');
             cell.bg = bg;
-            ctx.buffer.set(state.x + i as u16, state.y, cell);
+            ctx.buffer
+                .set(state.x.saturating_add(i as u16), state.y, cell);
         }
 
-        state.y += 1;
+        state.y = state.y.saturating_add(1);
         state.index += 1;
         state.depth += 1;
 
@@ -358,9 +372,9 @@ impl Inspector {
             let mut cell = Cell::new('─');
             cell.fg = Some(DARK_GRAY);
             cell.bg = Some(self.bg_color);
-            ctx.buffer.set(x + dx, y, cell);
+            ctx.buffer.set(x.saturating_add(dx), y, cell);
         }
-        y += 1;
+        y = y.saturating_add(1);
 
         // Draw "Properties" label
         let label = "Properties";
@@ -369,9 +383,9 @@ impl Inspector {
             cell.fg = Some(Color::YELLOW);
             cell.bg = Some(self.bg_color);
             cell.modifier |= crate::render::Modifier::BOLD;
-            ctx.buffer.set(x + i as u16, y, cell);
+            ctx.buffer.set(x.saturating_add(i as u16), y, cell);
         }
-        y += 2;
+        y = y.saturating_add(2);
 
         // Draw bounds
         let bounds_text = format!(
@@ -382,13 +396,13 @@ impl Inspector {
             let mut cell = Cell::new(ch);
             cell.fg = Some(MUTED_TEXT);
             cell.bg = Some(self.bg_color);
-            ctx.buffer.set(x + i as u16, y, cell);
+            ctx.buffer.set(x.saturating_add(i as u16), y, cell);
         }
-        y += 1;
+        y = y.saturating_add(1);
 
         // Draw custom properties
         for (key, value) in &widget.properties {
-            if y >= ctx.area.y + ctx.area.height - 1 {
+            if y >= (ctx.area.y.saturating_add(ctx.area.height)).saturating_sub(1) {
                 break;
             }
 
@@ -397,9 +411,9 @@ impl Inspector {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(MUTED_TEXT);
                 cell.bg = Some(self.bg_color);
-                ctx.buffer.set(x + i as u16, y, cell);
+                ctx.buffer.set(x.saturating_add(i as u16), y, cell);
             }
-            y += 1;
+            y = y.saturating_add(1);
         }
     }
 
@@ -796,5 +810,38 @@ mod tests {
         let insp = inspector();
         assert!(!insp.is_visible());
         assert_eq!(insp.panel_width, 40);
+    }
+
+    fn shown_with_tree() -> Inspector {
+        let mut insp = Inspector::new();
+        insp.set_root(
+            WidgetInfo::new("Root", Rect::new(0, 0, 10, 3))
+                .property("id", "main")
+                .child(WidgetInfo::new("Child", Rect::new(1, 1, 4, 1))),
+        );
+        insp.show();
+        insp
+    }
+
+    // The panel is laid out from the area's width; narrower than its frame
+    // (3 columns) it used to underflow, and against the end of the
+    // coordinate space its title and rows used to overflow.
+    #[test]
+    fn test_inspector_render_in_tiny_areas_and_at_the_coordinate_edge() {
+        let insp = shown_with_tree();
+        for area in [
+            Rect::new(0, 0, 0, 0),
+            Rect::new(2, 1, 1, 1),
+            Rect::new(2, 1, 2, 1),
+            Rect::new(2, 1, 1, 2),
+            Rect::new(2, 1, 1, 1000),
+            Rect::new(u16::MAX - 5, 1, 5, 2),
+            Rect::new(1, u16::MAX - 5, 2, 5),
+            Rect::new(u16::MAX - 5, u16::MAX - 5, 5, 5),
+        ] {
+            let mut buffer = Buffer::new(16, 16);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            insp.render(&mut ctx);
+        }
     }
 }
