@@ -101,7 +101,15 @@ impl View for CodeEditor {
             0
         };
         let text_width = area.width.saturating_sub(line_num_width + minimap_width);
-        let visible_lines = area.height as usize;
+        // The find and go-to-line boxes take row 0 while open; lines start
+        // below them so the box never covers the cursor's line.
+        let top: u16 = if (self.find_mode || self.goto_line_mode) && area.height > 1 {
+            1
+        } else {
+            0
+        };
+        let visible_lines = (area.height - top) as usize;
+        self.page_height.set(visible_lines);
 
         // Find matching bracket
         let bracket_match = self.find_matching_bracket();
@@ -140,7 +148,7 @@ impl View for CodeEditor {
         let end_line = (start_line + visible_lines).min(self.lines.len());
 
         for (view_row, line_idx) in (start_line..end_line).enumerate() {
-            let y = view_row as u16;
+            let y = top + view_row as u16;
             let line = &self.lines[line_idx];
             let is_current_line = line_idx == self.cursor.0;
 

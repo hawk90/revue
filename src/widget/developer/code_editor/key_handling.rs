@@ -66,11 +66,11 @@ impl super::CodeEditor {
                 true
             }
             Key::PageUp => {
-                self.page_up(20);
+                self.page_up(self.page_height.get().max(1));
                 true
             }
             Key::PageDown => {
-                self.page_down(20);
+                self.page_down(self.page_height.get().max(1));
                 true
             }
             _ => false,
