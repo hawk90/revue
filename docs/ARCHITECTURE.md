@@ -148,7 +148,7 @@ src/widget/
     ├── sortable/          # Sortable list
     ├── form/              # Form container
     ├── qrcode.rs          # QR code
-    ├── image.rs           # Kitty image protocol
+    ├── image/             # Kitty image protocol
     ├── link.rs            # Clickable links
     ├── pagination.rs      # Pagination
     ├── slides.rs          # Slide widget

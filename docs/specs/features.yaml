@@ -974,8 +974,8 @@ items:
       - scale modes
       - image is displayed via the Kitty protocol
     evidence:
-      - src/widget/image.rs::image_from_file
-      - src/widget/image.rs::kitty_escape
+      - src/widget/image/mod.rs::image_from_file
+      - src/widget/image/kitty.rs::kitty_escape
       - tests/image_tests.rs
     source:
       - FEATURES.md §4 Widgets / Content Widgets / Image (Kitty Protocol)
