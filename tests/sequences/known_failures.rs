@@ -47,12 +47,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "MultiSelect",
-        sequence: "<select all> Escape Left <clear selection>",
-        reason: "the tag cursor is not clamped when the selection shrinks",
-    },
-    Known {
-        layer: "keys",
         widget: "Pagination",
         sequence: "<total 0> End",
         reason: "last()/goto() set page 0 when there are no pages (set_total keeps 1)",
