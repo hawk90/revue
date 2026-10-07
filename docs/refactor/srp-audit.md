@@ -116,17 +116,17 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `widget/data/chart/candlechart.rs` | 630 | 3 | 630줄, 위젯 한 파일 | todo | |
-| `widget/data/chart/helper.rs` | 898 | 1 | 898줄, 위젯 한 파일 | todo | |
-| `widget/data/chart/histogram/mod.rs` | 623 | 1 | 623줄, 위젯 한 파일 | todo | |
-| `widget/data/chart/piechart.rs` | 442 | 4 | 위젯 한 파일 | todo | |
-| `widget/data/chart/timeseries/types.rs` | 197 | 7 | 타입 모음, 공개 타입 7 | todo | |
-| `widget/data/chart/waveline.rs` | 544 | 3 | 위젯 한 파일 | todo | |
-| `widget/data/datagrid/render.rs` | 603 | 0 | 603줄, 위젯 한 파일 | todo | |
-| `widget/data/json_viewer/view.rs` | 656 | 1 | 656줄, 위젯 한 파일 | todo | |
-| `widget/data/log_viewer/view.rs` | 908 | 1 | 908줄, 위젯 한 파일 | todo | |
-| `widget/data/timeline.rs` | 556 | 5 | 공개 타입 5, 위젯 한 파일 | todo | |
-| `widget/data/timer/mod.rs` | 692 | 4 | 692줄, 위젯 한 파일 | todo | |
+| `widget/data/chart/candlechart.rs` | 630 | 3 | 630줄, 위젯 한 파일 | split | `Candle`·`ChartStyle` 데이터 타입, 빌더, 가격 축척·캔들 열 그리기·Heikin-Ashi 변환과 `View`가 섞임 → candlechart/{mod,types,render}.rs (테스트는 각 코드와 함께 옮김). 버그 의심: `scroll(offset)`이 데이터 길이보다 크면 `visible_candles`(와 Heikin-Ashi 경로)의 `data[start..end]`가 `start > end`로 패닉함. 참고: Heikin-Ashi 모드도 축 범위는 원본 캔들의 고저가로 잡음(변환된 캔들은 잘릴 수 있음) |
+| `widget/data/chart/helper.rs` | 898 | 1 | 898줄, 위젯 한 파일 | split | 파일 이름과 달리 `Chart` 위젯 전체: 빌더, 범위·축 라벨·선 그리기와 `View`, 범용 선분 클리핑(Liang-Barsky)·래스터화(Bresenham)가 섞임 → helper/{mod,render,geometry}.rs. geometry의 타입 별칭·함수 6개는 render.rs가 쓰므로 `pub(super)`(helper 안으로만). `LineSegment`의 `pub(super)`는 render.rs로 옮겨 helper 안으로 좁아짐(밖에서 쓰는 곳 없음) |
+| `widget/data/chart/histogram/mod.rs` | 623 | 1 | 623줄, 위젯 한 파일 | split | 빌더·통계 접근자와 막대·통계선·축 그리기(`View`)가 섞임 → histogram/{mod,render}.rs (boxplot과 같은 모양). `max_value`·`bin_value`는 그리기에서만 쓰여 render.rs로. 렌더 테스트도 render.rs로 옮기며 `BinConfig`·`ChartGrid` import를 테스트 모듈에 추가 |
+| `widget/data/chart/piechart.rs` | 442 | 4 | 위젯 한 파일 | split | 경계선: 442줄이지만 슬라이스·스타일 타입(약 55줄), 빌더(약 115줄), 원 그리기·라벨·범례(`View`, 약 210줄)가 각각 수십 줄을 넘음 → piechart/{mod,types,render}.rs (heatmap과 같은 모양) |
+| `widget/data/chart/timeseries/types.rs` | 197 | 7 | 타입 모음, 공개 타입 7 | keep | 시계열 데이터 타입만 모음(점·계열·선 스타일·시간 형식·범위·마커·마커 스타일). impl은 생성자와 빌더 몇 줄뿐이고 위젯 본체·그리기는 이미 mod.rs·view.rs |
+| `widget/data/chart/waveline.rs` | 544 | 3 | 위젯 한 파일 | split | 스타일·보간 타입, 빌더, 색 그라데이션·보간과 `View`(약 265줄), 위젯과 무관한 데모용 파형 데이터 생성 함수가 섞임 → waveline/{mod,types,render,generators}.rs (사전 설정 생성 함수 `audio_waveform` 등은 mod.rs) |
+| `widget/data/datagrid/render.rs` | 603 | 0 | 603줄, 위젯 한 파일 | split | 이미 나뉜 위젯의 render.rs지만 셀 그리기와 열 배치 계산(표시 순서·행 번호 여백·고정/가로 스크롤 열 슬롯, 약 140줄)이 섞임. 열 배치는 mouse.rs·reorder.rs·width.rs도 씀 → datagrid/layout.rs로 옮김(이미 `pub(super)`라 가시성 그대로) |
+| `widget/data/json_viewer/view.rs` | 656 | 1 | 656줄, 위젯 한 파일 | split | `JsonViewer` 구조체·빌더·조회, 선택 이동·펼침/접기, `Search` 구현, 그리기(`View`, 약 225줄)가 섞임 → json_viewer/view/{mod,navigation,search_impl,render}.rs. 새 파일은 view의 자식이라 private 필드·`get_visible_nodes`를 그대로 봄(가시성 변경 없음). `parse`가 부르는 `clear_search` 때문에 mod.rs에 `Search` import 유지. 참고: `ensure_visible`은 빈 함수("Handled during render") |
+| `widget/data/log_viewer/view.rs` | 908 | 1 | 908줄, 위젯 한 파일 | split | `LogViewer` 구조체·적재·빌더·조회·내보내기, 검색, 북마크·점프·스크롤·선택, 키 처리, 그리기(`View`, 약 220줄)가 섞임 → log_viewer/view/{mod,search,navigation,handler,render}.rs (자식 모듈이라 private 필드를 그대로 봄; 공용 `filtered_entries`·`ensure_visible`은 mod.rs). `update_search`는 mod.rs의 `load`/`push`도 부르므로 `pub(super)`(view 안으로만). 버그 의심: `update_search`가 찾은 위치 다음 바이트(`actual_start + 1`)부터 다시 잘라 `msg_lower[start..]`가 멀티바이트 문자(예: 한글) 경계가 아니면 패닉함, 일치 끝을 원래 질의의 바이트 길이로 잡아 소문자 변환으로 길이가 바뀌면 범위가 어긋남 |
+| `widget/data/timeline.rs` | 556 | 5 | 공개 타입 5, 위젯 한 파일 | split | 이벤트·이벤트 종류·방향·스타일 타입(약 145줄), 빌더·선택 상태, 세로·가로 그리기(`View`, 약 220줄)가 섞임 → timeline/{mod,types,render}.rs. 렌더 테스트는 render.rs로(테스트 모듈에 `TimelineEvent` import 추가), `test_clear`와 모듈 밖 `#[test] test_timeline_render_private`는 mod.rs에 둠(mod.rs 테스트의 쓰지 않게 된 `Rect`·`Buffer` import는 뺌). 참고: `test_timeline_render_private`는 `#[cfg(test)]` 모듈 밖에 있고 아무것도 검사하지 않음 |
+| `widget/data/timer/mod.rs` | 692 | 4 | 692줄, 위젯 한 파일 | defer | 위젯별 분할(`countdown`, `stopwatch`)은 순수 이동인데, `widgets_read_css_ratchet`이 파일당 첫 `impl_view_meta!`만 봐서 가려져 있던 "Stopwatch가 CSS를 읽지 않음"이 드러난다. Stopwatch를 CSS에 연결하고(동작 변경) 스캐너를 고친 뒤 나눈다. 비고: `Timer::format_remaining`이 `format_ms`와 출력이 다르고 Precise에서 분을 빠뜨린다(65.5s → "05.500"). |
 
 ### 6. widget: developer (7)
 
@@ -144,17 +144,17 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `widget/display/avatar.rs` | 543 | 3 | 위젯 한 파일 | todo | |
-| `widget/display/empty_state.rs` | 469 | 3 | 위젯 한 파일 | todo | |
-| `widget/display/gauge.rs` | 684 | 3 | 684줄, 위젯 한 파일 | todo | |
-| `widget/display/richlog.rs` | 623 | 4 | 623줄, 위젯 한 파일 | todo | |
-| `widget/display/richtext.rs` | 540 | 3 | 위젯 한 파일 | todo | |
-| `widget/display/status_indicator.rs` | 518 | 4 | 위젯 한 파일 | todo | |
-| `widget/feedback/alert.rs` | 570 | 3 | 위젯 한 파일 | todo | |
-| `widget/feedback/modal/mod.rs` | 618 | 3 | 618줄, 위젯 한 파일 | todo | |
-| `widget/feedback/statusbar.rs` | 570 | 5 | 공개 타입 5, 위젯 한 파일 | todo | |
-| `widget/feedback/toast_queue.rs` | 607 | 4 | 607줄, 위젯 한 파일 | todo | |
-| `widget/feedback/tooltip.rs` | 644 | 4 | 644줄, 위젯 한 파일 | todo | |
+| `widget/display/avatar.rs` | 543 | 3 | 위젯 한 파일 | split | 크기·모양 타입, 구조체·생성자·빌더(약 150줄), 크기·모양별 그리기(약 250줄)가 섞임 → avatar/{mod,types,render}.rs (이니셜·이름 기반 배경색을 구하는 `get_initials`·`get_bg_color`는 그리기만 쓰므로 render.rs). 버그 의심: `get_bg_color`의 `(hash % 360) as u8`이 256 이상인 색상값을 잘라 hue가 0..=255에 머물러 자홍 계열(h≥5)은 나오지 않음. 참고: Large인데 높이가 3 미만이면 주석("Fall back to medium")과 달리 굵게 하지 않은 한 글자만 그림 |
+| `widget/display/empty_state.rs` | 469 | 3 | 위젯 한 파일 | split | 상황·변형 타입(상황별 아이콘·강조색), 구조체·생성자·빌더와 높이 계산, 변형별 그리기(약 215줄)가 섞임 → empty_state/{mod,types,render}.rs (`height()`는 `measure`와 `render_full`이 함께 쓰므로 mod.rs, 그리기만 쓰는 `get_icon`은 render.rs). 참고: `EmptyStateVariant::Full` 문서는 "with border"라 하지만 테두리를 그리지 않음, Full의 아이콘은 `area.width / 2`에 놓여 두 칸짜리 이모지는 가운데보다 한 칸 오른쪽에 섬 |
+| `widget/display/gauge.rs` | 684 | 3 | 684줄, 위젯 한 파일 | split | 스타일·라벨 위치 타입, 구조체·빌더·값 설정, 8가지 스타일 그리기(약 350줄)가 섞임 → gauge/{mod,types,render}.rs (그리기만 쓰는 `current_color`·`get_label`과 렌더 smoke 테스트는 render.rs, 빌더 테스트는 mod.rs). 버그 의심: `battery()`는 `thresholds(0.5, 0.2)`를 주지만 `thresholds`가 둘을 바꿔 warning 0.2·critical 0.5로 만들고 값이 "이상"일 때 색을 바꾸므로, 가득 찬 배터리(80%)가 빨강이고 낮은 배터리는 경고되지 않음; `Arc`는 `progress <= value`라 값이 0이어도 첫 칸이 채워짐. 참고: `label_position`은 `Inside`만 쓰여 Left·Right·Above·Below는 아무것도 그리지 않음, `border()`가 정하는 `border_color`는 어디서도 읽지 않음 |
+| `widget/display/richlog.rs` | 623 | 4 | 623줄, 위젯 한 파일 | split | 레벨·항목·형식 타입(약 170줄), 구조체·빌더·기록, 스크롤·선택·키 처리, 그리기가 섞임 → richlog/{mod,types,navigation,render}.rs (`visible_entries`는 선택과 그리기가 함께 쓰므로 mod.rs, `LogEntry` 테스트는 types.rs). 버그 의심: `scroll`은 첫 줄로 보일 항목 번호인데 `scroll_to_bottom`(자동 스크롤 포함)이 `len - 1`로 두어, 자동 스크롤 중에는 마지막 항목 한 줄만 보임; 선택 번호는 `visible_entries` 기준이지만 `toggle_selected`는 `entries`에서 찾음. 참고: `format()`·`wrap()`은 저장만 되고 읽히지 않음, `show_labels`를 켤 빌더가 없음, `LogEntry`의 `details`·`expanded`는 그리지 않음, 테스트 주석의 `tests/widget/display/richlog.rs`는 실제로 `tests/widget/richlog.rs` |
+| `widget/display/richtext.rs` | 540 | 3 | 위젯 한 파일 | split | 스팬 스타일·스팬 타입(약 195줄), 구조체·빌더, 마크업 파서(약 85줄), 그리기가 섞임 → richtext/{mod,types,parse,render}.rs (`RichText::markup`은 private `parse_markup`과 함께 parse.rs, 그리기만 쓰는 `Style::to_modifier`는 render.rs, 생성 함수 넷은 mod.rs). 버그 의심: `[`를 escape할 방법이 없어 글자 그대로의 `[`는 태그로 먹히고, 닫히지 않은 `[`는 남은 글 전체를 삼킴. 참고: `markup` 문서의 태그 목록에 `reverse`·`black`·`on_*` 배경색이 빠짐, 모르는 태그는 조용히 버려짐 |
+| `widget/display/status_indicator.rs` | 518 | 4 | 위젯 한 파일 | split | 상태·크기·표시 방식 타입(약 105줄), 구조체·생성자·빌더·펄스 프레임, 표시 방식별 그리기(약 155줄)가 섞임 → status_indicator/{mod,types,render}.rs (`get_label`은 `width()`와 그리기가 함께 쓰므로 mod.rs, 그리기만 쓰는 `is_visible`은 render.rs). 참고: Large `Dot`은 펄스로 점이 숨는 프레임에도 둘째 칸의 상태색 배경을 그대로 그림, `Badge`는 크기와 상관없이 늘 `●`을 씀 |
+| `widget/feedback/alert.rs` | 570 | 3 | 위젯 한 파일 | split | 레벨·변형 타입(레벨별 아이콘·색), 구조체·생성자·빌더·닫기 상태·키 처리, 변형별 그리기(약 280줄)가 섞임 → alert/{mod,types,render}.rs (`height`·`handle_key`는 닫기 상태와 함께 mod.rs, 그리기만 쓰는 `get_icon`은 render.rs). 버그 의심: 닫을 수 있는 alert는 제목·메시지를 `×` 자리 앞에서 자르지 않아 긴 글이 `×`에 덮이거나 `×`가 글자를 덮음. 참고: `render_outlined`는 받은 `border_color`(`_border_color`)를 쓰지 않음 |
+| `widget/feedback/modal/mod.rs` | 618 | 3 | 618줄, 위젯 한 파일 | split | 버튼 설정 타입, 구조체·빌더·보이기·포커스 트랩·프리셋, 버튼 선택·키 처리(약 80줄), 그리기(약 165줄)와 테스트 약 640줄이 한 파일에 섞임 → modal/{mod,types,key_handling,render}.rs (`required_height`와 테스트용 getter는 mod.rs; 테스트는 대상 코드를 따라 types·key_handling·render로 나누고 빌더·보이기·포커스 트랩 테스트는 mod.rs). 버그 의심: 내용 줄이 있고 영역 높이가 2 이하면 `modal_height`가 0이 되어 `y + modal_height - 2`가 넘침(debug에서 panic; 기존 작은 영역 테스트는 내용이 없어 닿지 않음), 버튼 폭을 `label.len()`(바이트)로 재서 비ASCII 이름의 버튼 줄이 가운데에서 어긋남. 참고: `buttons()`로 버튼을 바꿔도 `selected_button`을 범위 안으로 되돌리지 않음 |
+| `widget/feedback/statusbar.rs` | 570 | 5 | 공개 타입 5, 위젯 한 파일 | split | 위치·정렬·구역·키 힌트 타입(약 105줄), 구조체·빌더·구역 갱신·테스트용 getter(약 230줄), 구역·키 힌트 그리기(약 195줄)가 섞임 → statusbar/{mod,types,render}.rs (`render_y`는 그리기와 `get_render_y`가 함께 쓰므로 mod.rs). 버그 의심: 오른쪽 구역이 영역보다 넓으면 `area.width - right_width`가, 한 줄 키 힌트에서는 `area.width - right_width - 2`가 넘침(debug에서 panic). 참고: `separator()`의 문자는 그리지 않고 한 칸 띄우기만 함, `SectionAlign`과 `StatusSection::priority`는 어디서도 읽지 않음 |
+| `widget/feedback/toast_queue.rs` | 607 | 4 | 607줄, 위젯 한 파일 | split | 쌓는 방향·우선순위·항목 타입, 구조체·빌더, 큐 동작(넣기·중복 제거·tick·일시정지·마우스·닫기, 약 160줄), 배치·그리기(약 165줄)가 섞임 → toast_queue/{mod,types,queue,render}.rs (`tick`만 쓰는 `ToastEntry::is_expired`는 queue.rs, 그리기만 쓰는 `toast_height`·`calculate_base_position`은 render.rs). 버그 의심: `StackDirection::Up`은 기준 y에서 빼므로 위쪽 위치에서는 모든 토스트가 y=0에 겹치고, 아래쪽 위치에서는 전체 높이를 비워 둔 자리 위로 올라가 화면 밖으로 밀림. 참고: `ToastPriority::Critical`의 "cannot be dismissed"와 `High`의 "shows immediately"는 구현되지 않음(닫기는 `dismissible`만 봄, 우선순위는 큐 순서만 바꿈), 모듈 문서 예제의 `QueuePosition`은 없는 타입(실제는 `ToastPosition`) |
+| `widget/feedback/tooltip.rs` | 644 | 4 | 644줄, 위젯 한 파일 | split | 위치·화살표·스타일 타입, 구조체·빌더·보이기·지연·테스트용 getter, 크기·위치 계산(줄바꿈·치수·anchor 배치, 약 150줄), 오버레이 그리기(약 150줄)가 섞임 → tooltip/{mod,types,render}.rs. 크기·위치 계산(`wrap_text`·`calculate_dimensions`·`calculate_position`)은 그리기도 쓰므로 따로 떼지 않고 그 테스트와 함께 mod.rs에 둠(따로 두려면 `pub(super)`가 필요), 같은 이유로 `TooltipStyle`의 `colors`·`border_chars`도 mod.rs; 그리기만 쓰는 `TooltipArrow::chars`는 render.rs. 참고: `wrap_text`는 `max_width`보다 긴 한 낱말을 자르지 않아 상자가 `max_width`보다 넓어질 수 있음 |
 
 ### 8. widget: input, form, layout, traits, datetime_picker (12)
 
@@ -177,11 +177,11 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `widget/canvas/braille/shapes.rs` | 515 | 10 | 공개 타입 10 | todo | |
-| `widget/debug_overlay/mod.rs` | 495 | 3 | 위젯 한 파일 | todo | |
-| `widget/image.rs` | 476 | 4 | 위젯 한 파일 | todo | |
-| `widget/markdown/mod.rs` | 898 | 2 | 898줄, 위젯 한 파일 | todo | |
-| `widget/markdown/types.rs` | 163 | 5 | 타입 모음, 공개 타입 5 | todo | |
-| `widget/mermaid/types.rs` | 175 | 7 | 타입 모음, 공개 타입 7 | todo | |
-| `widget/option_list.rs` | 724 | 4 | 724줄, 위젯 한 파일 | todo | |
-| `widget/qrcode.rs` | 438 | 3 | 위젯 한 파일 | todo | |
+| `widget/canvas/braille/shapes.rs` | 515 | 10 | 공개 타입 10 | keep | `Shape` 트레이트 하나와 그것을 구현하는 도형 타입들(선·원·호·다각형·사각형·점)만 모음. 각 타입은 생성자와 `draw` 정도(채운 다각형만 내부 판정 도우미가 하나 더)이고 서로 독립적이라 같은 이유로 바뀜 |
+| `widget/debug_overlay/mod.rs` | 495 | 3 | 위젯 한 파일 | split | 패널 위치·설정 타입, 오버레이 구조체·빌더, 약 250줄의 패널 그리기(위치 계산, 지표·위젯 트리·이벤트, 테두리)가 섞임 → debug_overlay/{mod,types,render}.rs (전역 디버그 플래그는 25줄이라 mod.rs). 참고: `DebugConfig::show_styles`(스타일 검사기)와 `opacity`는 저장만 되고 읽히지 않음, 전역 `is_debug_enabled()`는 크레이트 안 어디서도 읽지 않음 |
+| `widget/image.rs` | 476 | 4 | 위젯 한 파일 | split | 오류·크기 모드·픽셀 형식 타입, PNG·파일 디코딩과 원시 픽셀 생성(크기 제한 검사 포함, 약 180줄), Kitty 이스케이프 인코딩, 크기 계산·렌더가 섞임 → image/{mod,types,load,kitty}.rs (`rand_id`는 mod.rs). 버그 의심: `from_png`는 `with_guessed_format`으로 JPEG 등도 받지만 형식을 `Png`로 적어 Kitty에 `f=100`으로 보냄, 너비나 높이가 0이면(`from_rgb`로 가능) Fit/Fill 계산이 0으로 나눠 NaN·inf가 됨. 참고: `ImageFormat`은 `pub`이고 `get_format()`이 돌려주지만 밖으로 다시 내보내지 않음 |
+| `widget/markdown/mod.rs` | 898 | 2 | 898줄, 위젯 한 파일 | split | 설정·구조체·생성·빌더 옆에 pulldown-cmark 이벤트 처리(이벤트 루프, 태그 시작·끝, 텍스트·코드·HTML·각주 참조, 약 380줄)와 통째로 짜는 블록 배치(목차, FIGlet 제목, 코드 블록, 표, 약 200줄)가 섞임 → markdown/{mod,events,blocks}.rs (`extract_toc`는 `new`만 부르므로 mod.rs). mod.rs가 부르는 `parse_with_options`와 events.rs가 부르는 `render_toc`·`render_figlet_heading`·`render_code_block`·`render_table`은 `pub(super)`(실제 보이는 범위는 전과 같음). 참고: `Tag::Strikethrough` 시작은 아무것도 켜지 않는데 끝에서 `CROSSED_OUT`을 끔 |
+| `widget/markdown/types.rs` | 163 | 5 | 타입 모음, 공개 타입 5 | keep | 렌더된 줄 데이터 타입만 모음(`StyledText`·`Line`·`TocEntry`·`FootnoteDefinition`)과 콜아웃 종류 `AdmonitionType`. impl은 생성자·표식 해석·아이콘/색/이름 표 정도로 작음. 참고: `AdmonitionType` 테스트는 markdown/mod.rs에 있음 |
+| `widget/mermaid/types.rs` | 175 | 7 | 타입 모음, 공개 타입 7 | keep | 다이어그램 데이터 모델만 모음(종류·방향·노드 모양·화살표·노드·간선·색). impl은 생성자·빌더·Default뿐 |
+| `widget/option_list.rs` | 724 | 4 | 724줄, 위젯 한 파일 | split | 항목·옵션·구분선 타입(약 85줄), 구조체·빌더, 조회·선택·하이라이트 이동(약 155줄), 약 125줄의 렌더, 테스트용 getter가 한 파일에 섞임 → option_list/{mod,types,navigation,render}.rs (`separator_char`는 렌더와 테스트 getter가 함께 쓰므로 mod.rs). 버그 의심: 옵션이 없을 때 `highlight_first`는 `option_count() - 1`이 넘침(디버그 빌드는 패닉), 스크롤은 옵션만 건너뛰어 앞쪽 구분선·그룹 제목은 계속 그려짐, 힌트 정렬이 `len()`(바이트)이라 한글·아이콘이 있으면 어긋남. 참고: 모듈 문서는 키보드 탐색을 말하지만 키 처리기가 없고, 예제가 없는 `Option`을 import함 |
+| `widget/qrcode.rs` | 438 | 3 | 위젯 한 파일 | split | 표시 방식·오류 정정 타입, 구조체·빌더·getter·QR 행렬 생성 옆에 네 가지 방식(반 블록·전체 블록·ASCII·점자)으로 그리는 약 200줄의 렌더가 섞임 → qrcode/{mod,types,render}.rs (`ErrorCorrection::to_ec_level`은 `get_matrix`만 쓰므로 mod.rs). 버그 의심: `inverted`는 `get_matrix`에서 모듈을 뒤집는데 반 블록·전체 블록 렌더는 전경·배경색도 맞바꿔 두 번 뒤집혀 효과가 사라짐(ASCII·점자는 한 번만 뒤집힘). 참고: 구조체 문서 예제가 `QrCodeWidget` 대신 `QrCode::new`를 씀 |

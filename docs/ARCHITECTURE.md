@@ -86,41 +86,41 @@ src/widget/
 │   ├── filetree/          #   File tree
 │   ├── datagrid/          #   Data grid
 │   ├── calendar/          #   Calendar
-│   ├── timeline.rs        #   Timeline
+│   ├── timeline/          #   Timeline
 │   └── chart/             #   Charts
 │       ├── barchart.rs    #     Bar chart
-│       ├── piechart.rs    #     Pie/donut chart
+│       ├── piechart/      #     Pie/donut chart
 │       ├── scatterchart.rs#     Scatter/bubble chart
 │       ├── histogram/     #     Histogram
 │       ├── boxplot/       #     Box-and-whisker plot
-│       ├── candlechart.rs #     Candlestick chart
+│       ├── candlechart/   #     Candlestick chart
 │       ├── heatmap/       #     Heat map
 │       ├── sparkline.rs   #     Sparkline
 │       └── timeseries/    #     Time series
 │
 ├── display/               # Static/decorative display
 │   ├── text.rs            #   Text display
-│   ├── richtext.rs        #   Styled text
+│   ├── richtext/          #   Styled text
 │   ├── bigtext.rs         #   Large ASCII text
 │   ├── badge.rs           #   Badge
 │   ├── tag.rs             #   Tag/chip
-│   ├── avatar.rs          #   Avatar
+│   ├── avatar/            #   Avatar
 │   ├── progress.rs        #   Progress bar
 │   ├── spinner.rs         #   Loading spinner
 │   ├── skeleton.rs        #   Skeleton loader
-│   ├── gauge.rs           #   Gauge/meter
+│   ├── gauge/             #   Gauge/meter
 │   └── divider.rs         #   Divider
 │
 ├── feedback/              # Overlays & notifications
 │   ├── modal/             #   Modal dialog
 │   ├── toast.rs           #   Toast notifications
 │   ├── notification/      #   Notification center
-│   ├── alert.rs           #   Alert box
+│   ├── alert/             #   Alert box
 │   ├── callout/           #   Callout/admonition
-│   ├── tooltip.rs         #   Tooltip
+│   ├── tooltip/           #   Tooltip
 │   ├── popover/           #   Popover
 │   ├── menu/              #   Menu
-│   └── statusbar.rs       #   Status bar
+│   └── statusbar/         #   Status bar
 │
 ├── developer/             # Developer-facing widgets
 │   ├── terminal/          #   Embedded terminal
@@ -132,7 +132,7 @@ src/widget/
 │   ├── vim/               #   Vim mode
 │   └── tree_sitter_highlight.rs # Syntax highlighting
 │
-├── markdown/              # Markdown renderer (parser, types, helpers)
+├── markdown/              # Markdown renderer (events, blocks, parser, types, helpers)
 │
 └── # Additional top-level widgets & categories
     ├── syntax/            # Syntax highlighting support
@@ -147,8 +147,8 @@ src/widget/
     ├── dropzone/          # Drag-and-drop zone
     ├── sortable/          # Sortable list
     ├── form/              # Form container
-    ├── qrcode.rs          # QR code
-    ├── image.rs           # Kitty image protocol
+    ├── qrcode/            # QR code
+    ├── image/             # Kitty image protocol
     ├── link.rs            # Clickable links
     ├── pagination.rs      # Pagination
     ├── slides.rs          # Slide widget
