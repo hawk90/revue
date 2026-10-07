@@ -111,10 +111,4 @@ pub const KNOWN: &[Known] = &[
         sequence: "ScrollDown@(start,start) ScrollDown@(start,start) ScrollDown@(start,start) ScrollDown@(start,start) [7x40]",
         reason: "the offset is clamped only against the viewport of the last scroll call, not the one rendered",
     },
-    Known {
-        layer: "keys",
-        widget: "RichTextEditor",
-        sequence: "[2x1] <link dialog>",
-        reason: "the link/image dialog subtracts its border from a dialog size that can be 0 or 1",
-    },
 ];
