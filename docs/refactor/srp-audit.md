@@ -123,7 +123,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `widget/data/chart/timeseries/types.rs` | 197 | 7 | 타입 모음, 공개 타입 7 | todo | |
 | `widget/data/chart/waveline.rs` | 544 | 3 | 위젯 한 파일 | split | 스타일·보간 타입, 빌더, 색 그라데이션·보간과 `View`(약 265줄), 위젯과 무관한 데모용 파형 데이터 생성 함수가 섞임 → waveline/{mod,types,render,generators}.rs (사전 설정 생성 함수 `audio_waveform` 등은 mod.rs) |
 | `widget/data/datagrid/render.rs` | 603 | 0 | 603줄, 위젯 한 파일 | split | 이미 나뉜 위젯의 render.rs지만 셀 그리기와 열 배치 계산(표시 순서·행 번호 여백·고정/가로 스크롤 열 슬롯, 약 140줄)이 섞임. 열 배치는 mouse.rs·reorder.rs·width.rs도 씀 → datagrid/layout.rs로 옮김(이미 `pub(super)`라 가시성 그대로) |
-| `widget/data/json_viewer/view.rs` | 656 | 1 | 656줄, 위젯 한 파일 | todo | |
+| `widget/data/json_viewer/view.rs` | 656 | 1 | 656줄, 위젯 한 파일 | split | `JsonViewer` 구조체·빌더·조회, 선택 이동·펼침/접기, `Search` 구현, 그리기(`View`, 약 225줄)가 섞임 → json_viewer/view/{mod,navigation,search_impl,render}.rs. 새 파일은 view의 자식이라 private 필드·`get_visible_nodes`를 그대로 봄(가시성 변경 없음). `parse`가 부르는 `clear_search` 때문에 mod.rs에 `Search` import 유지. 참고: `ensure_visible`은 빈 함수("Handled during render") |
 | `widget/data/log_viewer/view.rs` | 908 | 1 | 908줄, 위젯 한 파일 | todo | |
 | `widget/data/timeline.rs` | 556 | 5 | 공개 타입 5, 위젯 한 파일 | todo | |
 | `widget/data/timer/mod.rs` | 692 | 4 | 692줄, 위젯 한 파일 | todo | |
