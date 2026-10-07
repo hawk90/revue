@@ -165,9 +165,11 @@ type ContextValue = Arc<dyn Any + Send + Sync>;
 thread_local! {
     /// Stack of context scopes for nested providers
     ///
-    /// Each scope is a HashMap of ContextId -> ContextValue.
-    /// Scopes are pushed/popped by [`ContextScope`] for automatic cleanup.
-    static CONTEXT_STACK: RefCell<Vec<HashMap<ContextId, ContextValue>>> = RefCell::new(Vec::new());
+    /// Each scope is its [`ContextScope`]'s id and a HashMap of
+    /// ContextId -> ContextValue. Scopes are pushed by [`ContextScope::new`]
+    /// and removed by its drop, by id, so scopes dropped out of order remove
+    /// their own entry rather than the innermost one.
+    static CONTEXT_STACK: RefCell<Vec<(u64, HashMap<ContextId, ContextValue>)>> = RefCell::new(Vec::new());
 
     /// Global context store for root-level providers
     ///
@@ -294,7 +296,7 @@ pub fn use_context<T: Clone + Send + Sync + 'static>(context: &Context<T>) -> Op
     let from_stack = CONTEXT_STACK.with(|stack| {
         let stack = stack.borrow();
         // Search from innermost to outermost scope
-        for scope in stack.iter().rev() {
+        for (_, scope) in stack.iter().rev() {
             if let Some(value) = scope.get(&context.id) {
                 if let Some(signal) = value.downcast_ref::<Signal<T>>() {
                     return Some(signal.get());
@@ -353,7 +355,7 @@ pub fn use_context_signal<T: Clone + Send + Sync + 'static>(
     // First check the context stack
     let from_stack = CONTEXT_STACK.with(|stack| {
         let stack = stack.borrow();
-        for scope in stack.iter().rev() {
+        for (_, scope) in stack.iter().rev() {
             if let Some(value) = scope.get(&context.id) {
                 if let Some(signal) = value.downcast_ref::<Signal<T>>() {
                     return Some(signal.clone());
@@ -384,7 +386,7 @@ pub fn has_context<T: Clone + Send + Sync + 'static>(context: &Context<T>) -> bo
     // Check stack
     let in_stack = CONTEXT_STACK.with(|stack| {
         let stack = stack.borrow();
-        for scope in stack.iter().rev() {
+        for (_, scope) in stack.iter().rev() {
             if scope.contains_key(&context.id) {
                 return true;
             }
@@ -441,18 +443,31 @@ pub fn clear_all_contexts() {
 
 /// A scope for providing context values to a specific subtree
 ///
-/// When the scope is dropped, the context values are removed.
+/// When the scope is dropped, the context values it provided are removed,
+/// even if scopes created after it are still alive.
 pub struct ContextScope {
-    _private: (),
+    id: u64,
 }
 
 impl ContextScope {
     /// Create a new context scope
     pub fn new() -> Self {
+        static NEXT_SCOPE_ID: AtomicU64 = AtomicU64::new(0);
+        let id = NEXT_SCOPE_ID.fetch_add(1, Ordering::Relaxed);
         CONTEXT_STACK.with(|stack| {
-            stack.borrow_mut().push(HashMap::new());
+            stack.borrow_mut().push((id, HashMap::new()));
         });
-        Self { _private: () }
+        Self { id }
+    }
+
+    /// Insert a value into this scope's entry on the stack
+    fn insert(&self, context_id: ContextId, value: ContextValue) {
+        CONTEXT_STACK.with(|stack| {
+            let mut stack = stack.borrow_mut();
+            if let Some((_, scope)) = stack.iter_mut().rev().find(|(id, _)| *id == self.id) {
+                scope.insert(context_id, value);
+            }
+        });
     }
 
     /// Provide a value within this scope
@@ -460,12 +475,7 @@ impl ContextScope {
         let signal = Signal::new(value);
         let boxed: ContextValue = Arc::new(signal);
 
-        CONTEXT_STACK.with(|stack| {
-            let mut stack = stack.borrow_mut();
-            if let Some(scope) = stack.last_mut() {
-                scope.insert(context.id, boxed);
-            }
-        });
+        self.insert(context.id, boxed);
     }
 
     /// Provide a signal within this scope
@@ -477,12 +487,7 @@ impl ContextScope {
         let signal = Signal::new(value);
         let boxed: ContextValue = Arc::new(signal.clone());
 
-        CONTEXT_STACK.with(|stack| {
-            let mut stack = stack.borrow_mut();
-            if let Some(scope) = stack.last_mut() {
-                scope.insert(context.id, boxed);
-            }
-        });
+        self.insert(context.id, boxed);
 
         signal
     }
@@ -497,7 +502,10 @@ impl Default for ContextScope {
 impl Drop for ContextScope {
     fn drop(&mut self) {
         CONTEXT_STACK.with(|stack| {
-            stack.borrow_mut().pop();
+            let mut stack = stack.borrow_mut();
+            if let Some(pos) = stack.iter().rposition(|(id, _)| *id == self.id) {
+                stack.remove(pos);
+            }
         });
     }
 }
