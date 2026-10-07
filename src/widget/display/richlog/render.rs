@@ -31,7 +31,12 @@ impl View for RichLog {
 
         // Calculate visible range
         let visible_height = area.height as usize;
-        let start = self.scroll;
+        // `scroll` is the first entry to show, but the scroll methods do not
+        // know the viewport height (`scroll_to_bottom` puts it on the last
+        // entry), so keep the last page full here.
+        let start = self
+            .scroll
+            .min(entries.len().saturating_sub(visible_height));
 
         for (i, entry) in entries.iter().enumerate().skip(start).take(visible_height) {
             let y = (i - start) as u16;
@@ -140,7 +145,7 @@ impl View for RichLog {
             let scroll_pos = if entries.len() <= visible_height {
                 0
             } else {
-                (self.scroll * (area.height as usize - 1)) / (entries.len() - visible_height)
+                (start * (area.height as usize - 1)) / (entries.len() - visible_height)
             };
 
             let indicator_y = scroll_pos as u16;
@@ -150,5 +155,41 @@ impl View for RichLog {
                 ctx.set(area.width - 1, indicator_y, cell);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    fn rows(log: &RichLog, w: u16, h: u16) -> Vec<String> {
+        let mut buf = Buffer::new(w, h);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, w, h));
+        log.render(&mut ctx);
+        (0..h)
+            .map(|y| {
+                (0..w)
+                    .map(|x| buf.get(x, y).map(|c| c.symbol).unwrap_or(' '))
+                    .collect::<String>()
+                    .trim_end()
+                    .to_string()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn auto_scroll_fills_the_last_page() {
+        let mut log = RichLog::new().timestamps(false).sources(false).icons(false);
+        for i in 0..10 {
+            log.info(format!("m{i}"));
+        }
+        // The indicator column sits at the right edge; the messages are short.
+        let rows: Vec<String> = rows(&log, 10, 4)
+            .into_iter()
+            .map(|r| r.trim_end_matches('█').trim_end().to_string())
+            .collect();
+        assert_eq!(rows, ["m6", "m7", "m8", "m9"]);
     }
 }
