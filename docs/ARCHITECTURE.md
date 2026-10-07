@@ -52,7 +52,7 @@ src/widget/
 ├── macros.rs              # Widget builder macros
 │
 ├── layout/                # Containers & structure
-│   ├── stack.rs           #   VStack, HStack
+│   ├── stack/             #   VStack, HStack
 │   ├── grid/              #   Grid layout
 │   ├── card/              #   Card container
 │   ├── border.rs          #   Border decoration
