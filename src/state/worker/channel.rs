@@ -1,7 +1,7 @@
 //! Worker channel for communication between workers and UI
 
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::utils::lock as lock_util;
@@ -19,6 +19,9 @@ struct ChannelInner<T> {
     message_count: Arc<AtomicUsize>,
     /// Atomic counter for lock-free command count reads
     command_count: Arc<AtomicUsize>,
+    /// Set by the first `Cancel` and never cleared: cancellation must not
+    /// depend on room in the command queue, nor end once the command is read.
+    cancelled: Arc<AtomicBool>,
 }
 
 impl<T: Clone> Clone for ChannelInner<T> {
@@ -29,6 +32,7 @@ impl<T: Clone> Clone for ChannelInner<T> {
             capacity: self.capacity,
             message_count: Arc::clone(&self.message_count),
             command_count: Arc::clone(&self.command_count),
+            cancelled: Arc::clone(&self.cancelled),
         }
     }
 }
@@ -36,6 +40,11 @@ impl<T: Clone> Clone for ChannelInner<T> {
 impl<T> ChannelInner<T> {
     /// Queue a command for the worker unless the queue is at capacity
     fn send_command(&self, cmd: WorkerCommand) -> bool {
+        // A cancel always gets through, queue full or not.
+        let cancel = matches!(cmd, WorkerCommand::Cancel);
+        if cancel {
+            self.cancelled.store(true, Ordering::Release);
+        }
         let mut queue = lock_util::lock_or_recover(&self.to_worker);
         if queue.len() < self.capacity {
             queue.push_back(cmd);
@@ -47,7 +56,7 @@ impl<T> ChannelInner<T> {
                 cmd,
                 self.capacity
             );
-            false
+            cancel
         }
     }
 }
@@ -89,6 +98,7 @@ impl<T: Clone> WorkerChannel<T> {
                 capacity,
                 message_count: Arc::new(AtomicUsize::new(0)),
                 command_count: Arc::new(AtomicUsize::new(0)),
+                cancelled: Arc::new(AtomicBool::new(false)),
             },
         }
     }
@@ -242,13 +252,12 @@ impl<T: Clone> WorkerSender<T> {
         cmd
     }
 
-    /// Check if cancelled (lock-free check for command count, full check for Cancel command)
+    /// Check if cancelled (lock-free)
+    ///
+    /// True once a `Cancel` was sent - even when the command queue was full,
+    /// and still after the worker has read the command.
     pub fn is_cancelled(&self) -> bool {
-        if self.inner.command_count.load(Ordering::Acquire) == 0 {
-            return false;
-        }
-        let queue = lock_util::lock_or_recover(&self.inner.to_worker);
-        queue.iter().any(|cmd| matches!(cmd, WorkerCommand::Cancel))
+        self.inner.cancelled.load(Ordering::Acquire)
     }
 }
 
@@ -291,7 +300,8 @@ impl<T: Clone> WorkerReceiver<T> {
     /// Send command to worker
     ///
     /// Returns false, dropping the command, when the command queue already
-    /// holds the channel's capacity.
+    /// holds the channel's capacity - except `Cancel`, which always takes
+    /// effect (see [`WorkerSender::is_cancelled`]).
     pub fn send_command(&self, cmd: WorkerCommand) -> bool {
         self.inner.send_command(cmd)
     }
@@ -751,5 +761,25 @@ mod tests {
         assert!(
             matches!(channel.recv(), Some(WorkerMessage::Progress(p)) if (p - 0.3).abs() < 0.01)
         );
+    }
+
+    #[test]
+    fn cancel_gets_through_a_full_queue_and_stays() {
+        let channel: WorkerChannel<u32> = WorkerChannel::with_capacity(1);
+        let (worker, ui) = channel.split();
+        assert!(ui.pause());
+        assert!(!ui.resume(), "the queue is full");
+        assert!(ui.cancel(), "cancel must not be dropped");
+        assert!(worker.is_cancelled());
+        while worker.check_command().is_some() {}
+        assert!(
+            worker.is_cancelled(),
+            "reading the commands undid the cancel"
+        );
+
+        let zero: WorkerChannel<u32> = WorkerChannel::with_capacity(0);
+        let (worker, ui) = zero.split();
+        ui.cancel();
+        assert!(worker.is_cancelled());
     }
 }

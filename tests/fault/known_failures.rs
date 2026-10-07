@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "WorkerChannel cancel is a queued command: refused when the queue is full, gone once read",
-        cases: &["channel cancel-full-queue", "channel cancel-zero-capacity", "channel cancel-consumed"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "SignalVec calls diff subscribers while holding the subscriber mutex",
         cases: &[
             "reactive vec-drop-subscription-in-callback",
