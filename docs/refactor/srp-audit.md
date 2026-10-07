@@ -106,7 +106,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `state/worker/channel.rs` | 324 | 5 | 공개 타입 5 | todo | |
 | `text/bidi/types.rs` | 444 | 8 | 타입 모음, 공개 타입 8 | todo | |
 | `utils/border/mod.rs` | 568 | 5 | 공개 타입 5 | split | 테두리 문자·스타일·그리기와 테두리 제목(위치·변·제목 타입과 그리기)이 섞임 → border/{mod,title}.rs. 참고: 왼쪽·오른쪽 변 제목은 표시 폭이 아닌 `chars().count()`로 길이를 잼(위·아래 변은 표시 폭), `offset` 적용은 `i16`으로 바꿔 더해 32767을 넘는 좌표에서 넘침 |
-| `utils/clipboard.rs` | 503 | 6 | 공개 타입 6 | todo | |
+| `utils/clipboard.rs` | 503 | 6 | 공개 타입 6 | split | 오류·백엔드 트레이트·`Clipboard`와 플랫폼 명령을 찾아 실행하는 시스템 백엔드, 메모리 백엔드, 앱 안 복사 기록(`ClipboardHistory`)이 섞임 → clipboard/{mod,system,memory,history}.rs. 참고: `SystemClipboard::set`은 내용을 정리(ANSI·제어 문자 제거)하지만 `MemoryClipboard::set`은 그대로 저장함 |
 | `utils/diff.rs` | 456 | 3 |  | todo | |
 | `utils/i18n.rs` | 427 | 4 |  | todo | |
 | `utils/keymap.rs` | 469 | 4 |  | todo | |
