@@ -71,7 +71,7 @@ impl TextArea {
     }
 
     /// Visual rows logical line `idx` takes: one, or one per wrapped segment.
-    fn line_rows(&self, idx: usize, text_width: u16) -> Vec<(usize, usize)> {
+    pub(super) fn line_rows(&self, idx: usize, text_width: u16) -> Vec<(usize, usize)> {
         let line = self.lines.get(idx).map_or("", String::as_str);
         if self.wrap && text_width > 0 {
             let chars: Vec<char> = line.chars().collect();
@@ -84,19 +84,13 @@ impl TextArea {
     /// The first visible line that keeps the primary cursor's visual row in a
     /// view `visible_lines` rows high, moving the current scroll as little as
     /// possible: the vertical counterpart of `scroll_to_cursor`.
-    fn scroll_to_cursor_row(&self, text_width: u16, visible_lines: usize) -> usize {
+    pub(super) fn scroll_to_cursor_row(&self, text_width: u16, visible_lines: usize) -> usize {
         let pos = self.cursors.primary().pos;
         let cursor_line = pos.line.min(self.lines.len().saturating_sub(1));
         let scroll = self.scroll.get().min(cursor_line);
 
-        // Rows from the top of the cursor's line down to the cursor's row. A
-        // cursor at a wrap point is drawn at the start of the next segment.
-        let segments = self.line_rows(cursor_line, text_width);
-        let cursor_row = segments
-            .iter()
-            .position(|&(_, end)| pos.col < end)
-            .unwrap_or(segments.len() - 1);
-        let mut rows = cursor_row + 1;
+        // Rows from the top of the cursor's line down to the cursor's row.
+        let mut rows = self.cursor_segment(text_width).0 + 1;
 
         // Walk up from the cursor's line while the lines above still fit,
         // stopping at the current scroll so a cursor in view does not move it.
@@ -110,6 +104,20 @@ impl TextArea {
             top -= 1;
         }
         top
+    }
+
+    /// The primary cursor's wrapped segment: its index within the cursor's
+    /// line and its `[start, end)` chars. A cursor at a wrap point is drawn
+    /// at the start of the next segment.
+    pub(super) fn cursor_segment(&self, text_width: u16) -> (usize, (usize, usize)) {
+        let pos = self.cursors.primary().pos;
+        let cursor_line = pos.line.min(self.lines.len().saturating_sub(1));
+        let segments = self.line_rows(cursor_line, text_width);
+        let idx = segments
+            .iter()
+            .position(|&(_, end)| pos.col < end)
+            .unwrap_or(segments.len() - 1);
+        (idx, segments[idx])
     }
 
     /// Build the list of visual rows to render, starting from the vertical scroll offset.
@@ -170,6 +178,7 @@ impl View for TextArea {
         let text_width = area.width.saturating_sub(line_num_width);
         let visible_lines = area.height as usize;
         self.last_viewport_height.set(visible_lines);
+        self.last_text_width.set(text_width);
 
         // Draw background
         if let Some(bg) = self.bg {

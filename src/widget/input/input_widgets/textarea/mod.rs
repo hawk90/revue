@@ -67,8 +67,11 @@ pub(super) const MAX_UNDO_HISTORY: usize = 100;
 /// | `Down` | Move cursor down one line (clears selection) |
 /// | `Home` | Move cursor to start of line (clears selection) |
 /// | `End` | Move cursor to end of line (clears selection) |
-/// | `PageUp` | Move cursor up 10 lines |
-/// | `PageDown` | Move cursor down 10 lines |
+/// | `PageUp` | Scroll the view up a page, moving the cursor with it (to the first line at the top) |
+/// | `PageDown` | Scroll the view down a page, moving the cursor with it (to the last line at the end) |
+///
+/// A page is the height of the view at the last render (10 rows before the
+/// first render). With wrapping on, pages are counted in screen rows.
 pub struct TextArea {
     /// Lines of text
     pub(super) lines: Vec<String>,
@@ -122,6 +125,9 @@ pub struct TextArea {
     pub(super) props: WidgetProps,
     /// Last known viewport height (lines visible), updated during render
     pub(super) last_viewport_height: std::cell::Cell<usize>,
+    /// Last known text width in columns, updated during render: where lines
+    /// wrap when paging (0 before the first render: no wrapping)
+    pub(super) last_text_width: std::cell::Cell<u16>,
 }
 
 impl TextArea {
@@ -153,6 +159,7 @@ impl TextArea {
             current_match_bg: None,
             props: WidgetProps::new(),
             last_viewport_height: std::cell::Cell::new(10),
+            last_text_width: std::cell::Cell::new(0),
         }
     }
 
