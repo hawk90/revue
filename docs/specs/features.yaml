@@ -1072,7 +1072,7 @@ items:
     acceptance:
       - process list with sort and update interval
     evidence:
-      - src/widget/developer/procmon.rs::process_monitor
+      - src/widget/developer/procmon/mod.rs::process_monitor
       - tests/widget/procmon.rs
     source:
       - FEATURES.md §Advanced Widgets / Process Monitor
