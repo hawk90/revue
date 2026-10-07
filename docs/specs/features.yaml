@@ -852,7 +852,7 @@ items:
       - Filled/Outlined/Minimal variants
       - dismissible, icon toggle, custom icon, title
     evidence:
-      - src/widget/feedback/alert.rs::alert
+      - src/widget/feedback/alert/mod.rs::alert
       - tests/alert_tests.rs
       - examples/alert.rs
     source:

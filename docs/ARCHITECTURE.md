@@ -115,7 +115,7 @@ src/widget/
 │   ├── modal/             #   Modal dialog
 │   ├── toast.rs           #   Toast notifications
 │   ├── notification/      #   Notification center
-│   ├── alert.rs           #   Alert box
+│   ├── alert/             #   Alert box
 │   ├── callout/           #   Callout/admonition
 │   ├── tooltip.rs         #   Tooltip
 │   ├── popover/           #   Popover
