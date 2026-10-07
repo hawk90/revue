@@ -19,7 +19,14 @@ pub enum DragState {
 }
 
 impl DragState {
-    /// Check if a drag is active (Dragging or OverTarget)
+    /// Check if a drag is active (Pending, Dragging or OverTarget)
+    ///
+    /// A pending drag, started but not yet past the movement threshold,
+    /// counts as active: [`DragContext::is_dragging`] is true for it, and
+    /// [`DragContext::end_drag`] still drops it.
+    ///
+    /// [`DragContext::is_dragging`]: super::DragContext::is_dragging
+    /// [`DragContext::end_drag`]: super::DragContext::end_drag
     pub fn is_active(&self) -> bool {
         matches!(self, Self::Dragging | Self::OverTarget | Self::Pending)
     }
