@@ -301,7 +301,9 @@ impl FilePicker {
     /// # Security
     ///
     /// The path is validated to prevent path traversal attacks.
-    /// Returns error if the path contains traversal patterns or is outside allowed directory.
+    /// Returns error if the path contains traversal patterns or is outside allowed directory,
+    /// and `FilePickerError::IoError` if the directory cannot be listed (permission denied):
+    /// the picker then stays where it is.
     pub fn navigate_to(&mut self, path: &Path) -> Result<(), FilePickerError> {
         // Always validate for path traversal, even if path doesn't exist
         validate_path_no_traversal(path)?;
@@ -311,6 +313,9 @@ impl FilePicker {
         }
 
         let validated = validate_and_canonicalize(path, &self.current_dir)?;
+        // A directory that cannot be listed is reported, not entered and
+        // shown as if it were empty.
+        fs::read_dir(&validated)?;
         self.visit(validated);
         Ok(())
     }
@@ -835,5 +840,26 @@ mod tests {
             }
             _ => panic!("Expected Multiple with preserved paths"),
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn navigate_to_an_unreadable_directory_is_an_error_and_stays_put() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let locked = dir.path().join("locked");
+        std::fs::create_dir(&locked).unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+        if std::fs::read_dir(&locked).is_ok() {
+            // Running as root: nothing is denied.
+            std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+            return;
+        }
+        let mut picker = FilePicker::new().start_dir(dir.path());
+        let before = picker.current_dir().to_path_buf();
+        let result = picker.navigate_to(&locked);
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(matches!(result, Err(FilePickerError::IoError(_))));
+        assert_eq!(picker.current_dir(), before);
     }
 }

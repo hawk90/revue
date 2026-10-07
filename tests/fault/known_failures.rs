@@ -16,11 +16,6 @@ pub const KNOWN: &[Known] = &[
     // ── resources ──
     Known {
         layer: "resources",
-        reason: "FilePicker::navigate_to enters a directory it cannot list and shows it empty",
-        cases: &["picker denied"],
-    },
-    Known {
-        layer: "resources",
         reason: "HotReload::poll drops an event inside the debounce window instead of deferring it",
         cases: &["watch rapid-saves"],
     },
