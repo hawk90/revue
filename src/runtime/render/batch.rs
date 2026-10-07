@@ -248,17 +248,21 @@ impl RenderBatch {
     }
 
     /// Optimize the batch by merging/reordering operations
+    ///
+    /// Drawing operations are sorted by position and adjacent cells merged,
+    /// but only within a run between `Clear` and cursor operations: those
+    /// are ordering barriers and keep their place relative to the writes
+    /// before and after them.
     pub fn optimize(&mut self) {
         if !self.optimize || self.ops.len() < 2 {
             return;
         }
 
-        // Sort by position to improve cache locality
-        self.ops.sort_by(|a, b| {
-            let pos_a = Self::op_position(a);
-            let pos_b = Self::op_position(b);
-            pos_a.cmp(&pos_b)
-        });
+        // Sort each run of drawing ops between barriers by position to
+        // improve cache locality (stable, so equal positions keep order)
+        for run in self.ops.split_mut(Self::is_barrier) {
+            run.sort_by_key(Self::op_position);
+        }
 
         // Merge consecutive SetCell operations at same Y into Text ops
         let mut optimized = Vec::with_capacity(self.ops.len());
@@ -348,6 +352,15 @@ impl RenderBatch {
         }
 
         pending_cells.clear();
+    }
+
+    /// Whether `op` must keep its place in the queue: drawing ops on either
+    /// side of it must not move across it
+    fn is_barrier(op: &RenderOp) -> bool {
+        matches!(
+            op,
+            RenderOp::Clear | RenderOp::MoveCursor { .. } | RenderOp::ShowCursor(_)
+        )
     }
 
     /// Get operation position for sorting

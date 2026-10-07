@@ -99,3 +99,39 @@ fn test_batch_take() {
     assert_eq!(ops.len(), 2);
     assert!(batch.is_empty());
 }
+
+/// `optimize` may reorder cell writes, but never across a Clear: a cell
+/// written before `clear_screen()` is cleared, not drawn after it.
+#[test]
+fn test_batch_optimize_keeps_clear_after_earlier_writes() {
+    let mut batch = RenderBatch::new();
+    batch.set_cell(5, 5, 'X', None, None);
+    batch.clear_screen();
+    batch.set_cell(2, 2, 'Y', None, None);
+    batch.optimize();
+
+    let mut buffer = Buffer::new(10, 10);
+    batch.apply_to_buffer(&mut buffer);
+    assert_eq!(buffer.get(5, 5).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(2, 2).unwrap().symbol, 'Y');
+}
+
+/// Cursor ops stay where they were queued relative to the writes around them,
+/// while the writes between barriers are still sorted and merged.
+#[test]
+fn test_batch_optimize_keeps_cursor_ops_in_place() {
+    let mut batch = RenderBatch::new();
+    batch.set_cell(1, 3, 'b', None, None);
+    batch.set_cell(0, 3, 'a', None, None);
+    batch.move_cursor(9, 0);
+    batch.show_cursor(true);
+    batch.set_cell(0, 0, 'z', None, None);
+    batch.optimize();
+
+    let ops: Vec<&RenderOp> = batch.iter().collect();
+    assert_eq!(ops.len(), 4, "{ops:?}");
+    assert!(matches!(ops[0], RenderOp::Text { x: 0, y: 3, text, .. } if text == "ab"));
+    assert!(matches!(ops[1], RenderOp::MoveCursor { x: 9, y: 0 }));
+    assert!(matches!(ops[2], RenderOp::ShowCursor(true)));
+    assert!(matches!(ops[3], RenderOp::SetCell { x: 0, y: 0, .. }));
+}
