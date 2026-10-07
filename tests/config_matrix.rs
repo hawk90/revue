@@ -37,7 +37,7 @@
 //!
 //! The ratchet: the test fails on a failure not listed in [`KNOWN`], and on a
 //! listed failure that no longer happens. The list only shrinks. See
-//! `docs/refactor/findings-config-matrix.md`.
+//! `docs/refactor/findings-fault-injection.md`, "빌드·설정 조합".
 
 #[path = "matrix/sentinel.rs"]
 #[allow(dead_code)]
