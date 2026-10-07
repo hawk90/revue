@@ -83,12 +83,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "RichTextEditor",
-        sequence: "<empty content> '한' Ctrl+Right Tab",
-        reason: "Block::len() counts bytes but the cursor column counts chars",
-    },
-    Known {
-        layer: "keys",
         widget: "ScrollView",
         sequence: "Ctrl+End [80x24]",
         reason: "the offset is clamped only against the viewport of the last scroll call, not the one rendered",
@@ -116,5 +110,11 @@ pub const KNOWN: &[Known] = &[
         widget: "ScrollView",
         sequence: "ScrollDown@(start,start) ScrollDown@(start,start) ScrollDown@(start,start) ScrollDown@(start,start) [7x40]",
         reason: "the offset is clamped only against the viewport of the last scroll call, not the one rendered",
+    },
+    Known {
+        layer: "keys",
+        widget: "RichTextEditor",
+        sequence: "[2x1] <link dialog>",
+        reason: "the link/image dialog subtracts its border from a dialog size that can be 0 or 1",
     },
 ];

@@ -11,7 +11,7 @@ impl RichTextEditor {
             self.cursor.1 -= 1;
         } else if self.cursor.0 > 0 {
             self.cursor.0 -= 1;
-            self.cursor.1 = self.blocks[self.cursor.0].len();
+            self.cursor.1 = self.blocks[self.cursor.0].char_count();
         }
         self.clear_selection();
         self.ensure_cursor_visible();
@@ -19,7 +19,7 @@ impl RichTextEditor {
 
     /// Move cursor right
     pub fn move_right(&mut self) {
-        let block_len = self.blocks[self.cursor.0].len();
+        let block_len = self.blocks[self.cursor.0].char_count();
         if self.cursor.1 < block_len {
             self.cursor.1 += 1;
         } else if self.cursor.0 + 1 < self.blocks.len() {
@@ -34,7 +34,7 @@ impl RichTextEditor {
     pub fn move_up(&mut self) {
         if self.cursor.0 > 0 {
             self.cursor.0 -= 1;
-            self.cursor.1 = self.cursor.1.min(self.blocks[self.cursor.0].len());
+            self.cursor.1 = self.cursor.1.min(self.blocks[self.cursor.0].char_count());
         }
         self.clear_selection();
         self.ensure_cursor_visible();
@@ -44,7 +44,7 @@ impl RichTextEditor {
     pub fn move_down(&mut self) {
         if self.cursor.0 + 1 < self.blocks.len() {
             self.cursor.0 += 1;
-            self.cursor.1 = self.cursor.1.min(self.blocks[self.cursor.0].len());
+            self.cursor.1 = self.cursor.1.min(self.blocks[self.cursor.0].char_count());
         }
         self.clear_selection();
         self.ensure_cursor_visible();
@@ -59,7 +59,7 @@ impl RichTextEditor {
 
     /// Move to end of line
     pub fn move_end(&mut self) {
-        self.cursor.1 = self.blocks[self.cursor.0].len();
+        self.cursor.1 = self.blocks[self.cursor.0].char_count();
         self.clear_selection();
         self.ensure_cursor_visible();
     }
@@ -74,7 +74,7 @@ impl RichTextEditor {
     /// Move to document end
     pub fn move_document_end(&mut self) {
         let last_block = self.blocks.len().saturating_sub(1);
-        self.cursor = (last_block, self.blocks[last_block].len());
+        self.cursor = (last_block, self.blocks[last_block].char_count());
         self.clear_selection();
         self.ensure_cursor_visible();
     }
