@@ -884,8 +884,8 @@ items:
       - Dot/DotWithLabel/Badge styles, sizes, custom label
       - pulsing animation, driven by the app (tick() on a kept widget, or frame(n) on one rebuilt every render)
     evidence:
-      - src/widget/display/status_indicator.rs::status_indicator
-      - src/widget/display/status_indicator.rs::frame
+      - src/widget/display/status_indicator/mod.rs::status_indicator
+      - src/widget/display/status_indicator/mod.rs::frame
       - tests/widget/display/status_indicator.rs
       - tests/status_indicator_pulse.rs
       - examples/status_indicator.rs
