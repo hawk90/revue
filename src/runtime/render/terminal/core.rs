@@ -226,9 +226,12 @@ impl<W: Write> Drop for Terminal<W> {
 #[cfg(test)]
 mod restore_tests {
     use super::*;
-    use crate::render::terminal::panic_hook::{claim_restore, install_panic_hook};
+    use crate::render::terminal::panic_hook::{
+        claim_restore, install_panic_hook, restores_performed,
+    };
     use serial_test::serial;
 
+    #[cfg(not(windows))]
     const LEAVE_ALT_SCREEN: &str = "\x1b[?1049l";
 
     /// A terminal in the state `init_with_mouse` leaves it, minus the parts
@@ -241,6 +244,7 @@ mod restore_tests {
         terminal
     }
 
+    #[cfg(not(windows))]
     fn leaves(terminal: &Terminal<Vec<u8>>) -> usize {
         String::from_utf8_lossy(terminal.writer())
             .matches(LEAVE_ALT_SCREEN)
@@ -251,12 +255,17 @@ mod restore_tests {
     #[serial]
     fn restore_leaves_the_alternate_screen_once() {
         let mut terminal = live_terminal();
+        let before = restores_performed();
 
-        // Raw mode is only faked here; Windows refuses to leave it, so the
-        // result is not the point - the bytes written are.
+        // Raw mode is only faked here, and Windows refuses to leave a raw mode
+        // that was never entered, so the result is not what is under test.
         let _ = terminal.restore();
         let _ = terminal.restore();
 
+        assert_eq!(restores_performed() - before, 1);
+        // Where crossterm speaks ANSI, the bytes agree. On Windows it drives
+        // the console through WinAPI and writes nothing to count.
+        #[cfg(not(windows))]
         assert_eq!(leaves(&terminal), 1);
     }
 
@@ -270,11 +279,14 @@ mod restore_tests {
 
         // What the panic hook does before it writes the restore sequence.
         assert!(claim_restore());
+        let before = restores_performed();
 
-        // Raw mode is only faked here; Windows refuses to leave it, so the
-        // result is not the point - the bytes written are.
+        // Raw mode is only faked here, and Windows refuses to leave a raw mode
+        // that was never entered, so the result is not what is under test.
         let _ = terminal.restore();
 
+        assert_eq!(restores_performed() - before, 0);
+        #[cfg(not(windows))]
         assert_eq!(leaves(&terminal), 0, "{:?}", terminal.writer());
         assert!(!terminal.raw_mode);
     }

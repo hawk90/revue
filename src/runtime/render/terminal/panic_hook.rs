@@ -102,7 +102,28 @@ pub fn install_panic_hook() {
 /// After this, a later panic does not emit restore sequences either - the
 /// process may be doing ordinary stdout work by then.
 pub(crate) fn claim_restore() -> bool {
-    ARMED.swap(false, Ordering::SeqCst)
+    let claimed = ARMED.swap(false, Ordering::SeqCst);
+    #[cfg(test)]
+    if claimed {
+        CLAIMS.with(|c| c.set(c.get() + 1));
+    }
+    claimed
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Successful claims made on this thread. Every restorer writes the restore
+    /// sequence exactly when its claim succeeds, so this counts the restores
+    /// actually performed - on every platform, including Windows, where
+    /// crossterm drives the console through WinAPI and writes no escape bytes a
+    /// test could count.
+    static CLAIMS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// How many restores this thread has performed so far.
+#[cfg(test)]
+pub(crate) fn restores_performed() -> usize {
+    CLAIMS.with(|c| c.get())
 }
 
 /// Is the panic hook currently armed?

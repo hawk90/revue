@@ -267,6 +267,7 @@ fn to_crossterm_color(color: Color) -> CrosstermColor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::runtime::render::terminal::panic_hook::restores_performed;
 
     struct MockWriter {
         buffer: Vec<u8>,
@@ -299,6 +300,7 @@ mod tests {
         backend
     }
 
+    #[cfg(not(windows))]
     fn leaves_alt_screen(backend: &CrosstermBackend<MockWriter>) -> usize {
         String::from_utf8_lossy(&backend.writer().buffer)
             .matches("\x1b[?1049l")
@@ -309,12 +311,17 @@ mod tests {
     #[serial_test::serial]
     fn restore_leaves_the_alternate_screen_once() {
         let mut backend = live_backend();
+        let before = restores_performed();
 
-        // Raw mode is only faked here; Windows refuses to leave it, so the
-        // result is not the point - the bytes written are.
+        // Raw mode is only faked here, and Windows refuses to leave a raw mode
+        // that was never entered, so the result is not what is under test.
         let _ = backend.restore();
         let _ = backend.restore();
 
+        assert_eq!(restores_performed() - before, 1);
+        // Where crossterm speaks ANSI, the bytes agree. On Windows it drives
+        // the console through WinAPI and writes nothing to count.
+        #[cfg(not(windows))]
         assert_eq!(leaves_alt_screen(&backend), 1);
     }
 
@@ -326,11 +333,16 @@ mod tests {
         let mut backend = live_backend();
 
         assert!(crate::runtime::render::terminal::panic_hook::claim_restore());
-        // Raw mode is only faked here; Windows refuses to leave it, so the
-        // result is not the point - the bytes written are.
+        let before = restores_performed();
+
+        // Raw mode is only faked here, and Windows refuses to leave a raw mode
+        // that was never entered, so the result is not what is under test.
         let _ = backend.restore();
 
+        assert_eq!(restores_performed() - before, 0);
+        #[cfg(not(windows))]
         assert_eq!(leaves_alt_screen(&backend), 0);
+        assert!(!backend.raw_mode);
     }
 
     #[test]
