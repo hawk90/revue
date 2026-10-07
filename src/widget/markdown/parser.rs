@@ -30,6 +30,9 @@ pub struct ParserContext<'a> {
     pub heading_level: u8,
     pub heading_text: String,
     pub in_heading: bool,
+    /// The current heading is drawn as FIGlet big text at its end, so its
+    /// inline content is collected rather than drawn as it arrives
+    pub heading_is_figlet: bool,
     pub list_depth: usize,
     pub ordered_list_num: Option<u64>,
     pub item_needs_bullet: bool,
@@ -76,6 +79,7 @@ impl<'a> ParserContext<'a> {
             heading_level: 1,
             heading_text: String::new(),
             in_heading: false,
+            heading_is_figlet: false,
             list_depth: 0,
             ordered_list_num: None,
             item_needs_bullet: false,
