@@ -552,8 +552,7 @@ fn test_complex_navigation_scenario() {
         .end_group()
         .build();
 
-    // Navigate through buttons - HashMap iteration order may vary
-    // Just verify that focus_next moves through the buttons
+    // Navigate through buttons in document order
     let button_ids = ["btn1", "btn2", "btn3"];
     tree.set_focus(&button_ids[0].to_string());
     assert!(tree
@@ -563,12 +562,12 @@ fn test_complex_navigation_scenario() {
 
     // Move to next button - should be a different button
     let second_id = tree.focus_next().unwrap().id.clone();
-    assert_ne!(second_id, button_ids[0]);
+    assert_eq!(second_id, button_ids[1]);
     assert!(button_ids.contains(&second_id.as_str()));
 
     // Move to next button - should be the third button
     let third_id = tree.focus_next().unwrap().id.clone();
-    assert_ne!(third_id, second_id);
+    assert_eq!(third_id, button_ids[2]);
     assert_ne!(third_id, button_ids[0]);
     assert!(button_ids.contains(&third_id.as_str()));
 
@@ -590,4 +589,87 @@ fn test_focus_updates_node_state() {
     tree.set_focus(&"btn2".to_string());
     assert!(!tree.get(&"btn1".to_string()).unwrap().state.focused);
     assert!(tree.get(&"btn2".to_string()).unwrap().state.focused);
+}
+
+// =============================================================================
+// Document order
+// =============================================================================
+
+fn focus_ids_forward(tree: &mut AccessibilityTree, steps: usize) -> Vec<String> {
+    (0..steps)
+        .map(|_| tree.focus_next().unwrap().id.clone())
+        .collect()
+}
+
+fn focus_ids_backward(tree: &mut AccessibilityTree, steps: usize) -> Vec<String> {
+    (0..steps)
+        .map(|_| tree.focus_prev().unwrap().id.clone())
+        .collect()
+}
+
+#[test]
+fn test_focus_next_follows_insertion_order() {
+    let mut tree = AccessibilityTree::new();
+    let ids: Vec<String> = (0..16).map(|i| format!("btn{i:02}")).collect();
+    for id in &ids {
+        tree.add_node(TreeNode::new(id.clone(), Role::Button));
+    }
+
+    // From no focus, Tab starts at the first element
+    assert_eq!(focus_ids_forward(&mut tree, 16), ids);
+    // And wraps to the first again
+    assert_eq!(tree.focus_next().unwrap().id, "btn00");
+}
+
+#[test]
+fn test_focus_prev_follows_reverse_insertion_order() {
+    let mut tree = AccessibilityTree::new();
+    let ids: Vec<String> = (0..16).map(|i| format!("btn{i:02}")).collect();
+    for id in &ids {
+        tree.add_node(TreeNode::new(id.clone(), Role::Button));
+    }
+
+    // From no focus, Shift+Tab starts at the last element
+    let mut expected = ids.clone();
+    expected.reverse();
+    assert_eq!(focus_ids_backward(&mut tree, 16), expected);
+}
+
+#[test]
+fn test_focus_next_follows_tree_order() {
+    // Children are added after their later siblings, so insertion order
+    // differs from document (pre-order) order
+    let mut tree = AccessibilityTree::with_root(TreeNode::new("app", Role::Main));
+    let app = "app".to_string();
+    tree.add_child(&app, TreeNode::new("toolbar", Role::Group));
+    tree.add_child(&app, TreeNode::new("submit", Role::Button));
+    let toolbar = "toolbar".to_string();
+    tree.add_child(&toolbar, TreeNode::new("save", Role::Button));
+    tree.add_child(&toolbar, TreeNode::new("load", Role::Button));
+    tree.add_child(&toolbar, TreeNode::new("export", Role::Button));
+
+    let order = ["save", "load", "export", "submit"];
+    assert_eq!(focus_ids_forward(&mut tree, 4), order);
+
+    let focusable: Vec<&str> = tree
+        .focusable_nodes()
+        .iter()
+        .map(|n| n.id.as_str())
+        .collect();
+    assert_eq!(focusable, order);
+}
+
+#[test]
+fn test_remove_root_clears_root() {
+    let mut tree = AccessibilityTree::with_root(TreeNode::new("app", Role::Main));
+    tree.add_child(&"app".to_string(), TreeNode::new("btn", Role::Button));
+
+    tree.remove_node(&"app".to_string());
+    assert!(tree.is_empty());
+    assert!(tree.root().is_none());
+
+    // A later node that reuses the id must not silently become the root
+    tree.add_node(TreeNode::new("app", Role::Button));
+    assert!(tree.root().is_none());
+    assert_eq!(tree.debug_string(), "");
 }

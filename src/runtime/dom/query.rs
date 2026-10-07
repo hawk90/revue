@@ -70,10 +70,10 @@ impl<'a> IntoIterator for QueryResult<'a> {
 
 /// DOM query interface
 pub trait Query {
-    /// Query for a single element
+    /// Query for the first matching element, in document order
     fn query_one(&self, selector: &str) -> Option<&DomNode>;
 
-    /// Query for all matching elements
+    /// Query for all matching elements, in document order
     fn query_all(&self, selector: &str) -> QueryResult<'_>;
 
     /// Get element by ID
@@ -342,10 +342,19 @@ impl DomTree {
                 return;
             };
 
-        // Remove from parent
+        // Remove from parent, and renumber the siblings left behind so their
+        // `:first-child` / `:last-child` / `:nth-child` state stays right
         if let Some(parent_id) = parent_id {
-            if let Some(parent) = self.nodes.get_mut(&parent_id) {
-                parent.remove_child(id);
+            let remaining = self.nodes.get(&parent_id).map(|parent| {
+                parent
+                    .children
+                    .iter()
+                    .copied()
+                    .filter(|&child| child != id)
+                    .collect::<Vec<_>>()
+            });
+            if let Some(remaining) = remaining {
+                self.set_children(parent_id, remaining);
             }
         }
 
@@ -372,12 +381,20 @@ impl DomTree {
             }
         }
 
-        // Remove children recursively
+        // Remove children recursively. Detach them first so each removal does
+        // not renumber the siblings of a node that is going away anyway.
+        if let Some(node) = self.nodes.get_mut(&id) {
+            node.children.clear();
+        }
         for child_id in children {
             self.remove(child_id);
         }
 
         self.nodes.remove(&id);
+
+        if self.root == Some(id) {
+            self.root = None;
+        }
     }
 
     /// Get a node by DomId
@@ -584,6 +601,65 @@ impl DomTree {
         chain
     }
 
+    /// Every node in document order: a pre-order walk from the root, then any
+    /// subtrees outside it (detached, or an earlier root) in creation order.
+    fn document_order(&self) -> Vec<&DomNode> {
+        let mut out = Vec::with_capacity(self.nodes.len());
+        let mut visited = std::collections::HashSet::with_capacity(self.nodes.len());
+
+        if let Some(root) = self.root {
+            self.walk_preorder(root, &mut visited, &mut out);
+        }
+
+        if out.len() < self.nodes.len() {
+            let mut rest: Vec<DomId> = self
+                .nodes
+                .keys()
+                .copied()
+                .filter(|id| !visited.contains(id))
+                .collect();
+            rest.sort_by_key(|id| id.0);
+            for id in rest {
+                if visited.contains(&id) {
+                    continue;
+                }
+                // Start from the topmost ancestor not yet walked
+                let mut top = id;
+                let mut seen = std::collections::HashSet::new();
+                while let Some(parent) = self.nodes.get(&top).and_then(|n| n.parent) {
+                    if !self.nodes.contains_key(&parent)
+                        || visited.contains(&parent)
+                        || !seen.insert(parent)
+                    {
+                        break;
+                    }
+                    top = parent;
+                }
+                self.walk_preorder(top, &mut visited, &mut out);
+            }
+        }
+        out
+    }
+
+    fn walk_preorder<'a>(
+        &'a self,
+        start: DomId,
+        visited: &mut std::collections::HashSet<DomId>,
+        out: &mut Vec<&'a DomNode>,
+    ) {
+        let mut stack = vec![start];
+        while let Some(id) = stack.pop() {
+            let Some(node) = self.nodes.get(&id) else {
+                continue;
+            };
+            if !visited.insert(id) {
+                continue;
+            }
+            out.push(node);
+            stack.extend(node.children.iter().rev().copied());
+        }
+    }
+
     /// Internal matcher for selectors with full combinator support.
     ///
     /// Delegates to the shared matcher - see
@@ -631,8 +707,8 @@ impl DomTree {
 impl Query for DomTree {
     fn query_one(&self, selector_str: &str) -> Option<&DomNode> {
         let selector = self.get_or_parse_selector(selector_str)?;
-        self.nodes
-            .values()
+        self.document_order()
+            .into_iter()
             .find(|node| self.matches_selector(node, &selector))
     }
 
@@ -643,8 +719,8 @@ impl Query for DomTree {
         };
 
         let nodes: Vec<_> = self
-            .nodes
-            .values()
+            .document_order()
+            .into_iter()
             .filter(|node| self.matches_selector(node, &selector))
             .collect();
 
@@ -926,5 +1002,64 @@ mod tests {
 
         // Verify removed
         assert!(tree.get(content_id).is_none());
+    }
+
+    #[test]
+    fn test_query_one_returns_first_match_in_document_order() {
+        let mut tree = DomTree::new();
+        let root = tree.create_root(WidgetMeta::new("App"));
+        // A nested match comes before its parent's later siblings
+        let group = tree.add_child(root, WidgetMeta::new("Container"));
+        let mut expected = Vec::new();
+        expected.push(tree.add_child(group, WidgetMeta::new("Button")));
+        for _ in 0..15 {
+            expected.push(tree.add_child(root, WidgetMeta::new("Button")));
+        }
+
+        assert_eq!(tree.query_one("Button").map(|n| n.id), Some(expected[0]));
+
+        let all: Vec<DomId> = tree.query_all("Button").iter().map(|n| n.id).collect();
+        assert_eq!(all, expected);
+        assert_eq!(
+            tree.query_all("Button").first().map(|n| n.id),
+            Some(expected[0])
+        );
+    }
+
+    #[test]
+    fn test_remove_root_clears_root() {
+        let mut tree = create_test_tree();
+        let root = tree.root_id().unwrap();
+
+        tree.remove(root);
+
+        assert!(tree.is_empty());
+        assert_eq!(tree.root_id(), None);
+        assert!(tree.root().is_none());
+        assert!(tree.focusable_in_order().is_empty());
+    }
+
+    #[test]
+    fn test_remove_updates_sibling_positions() {
+        let mut tree = DomTree::new();
+        let root = tree.create_root(WidgetMeta::new("App"));
+        let a = tree.add_child(root, WidgetMeta::new("Item").id("a"));
+        let b = tree.add_child(root, WidgetMeta::new("Item").id("b"));
+        let c = tree.add_child(root, WidgetMeta::new("Item").id("c"));
+        tree.clear_dirty_flags();
+
+        tree.remove(c);
+        let state = &tree.get(b).unwrap().state;
+        assert_eq!((state.child_index, state.sibling_count), (1, 2));
+        assert!(state.last_child);
+        // Its structural pseudo-classes changed, so its style is stale
+        assert!(state.dirty);
+        assert_eq!(tree.query_one("Item:last-child").map(|n| n.id), Some(b));
+
+        tree.remove(a);
+        let state = &tree.get(b).unwrap().state;
+        assert_eq!((state.child_index, state.sibling_count), (0, 1));
+        assert!(state.first_child && state.last_child && state.only_child);
+        assert_eq!(tree.query_one("Item:first-child").map(|n| n.id), Some(b));
     }
 }
