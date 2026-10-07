@@ -163,6 +163,10 @@ pub struct AccessibilityTree {
     root: Option<TreeNodeId>,
     /// Currently focused node ID
     focus: Option<TreeNodeId>,
+    /// When each node was first inserted, for nodes outside the root's subtree
+    inserted: HashMap<TreeNodeId, u64>,
+    /// Next insertion sequence number
+    next_seq: u64,
 }
 
 impl AccessibilityTree {
@@ -192,12 +196,21 @@ impl AccessibilityTree {
 
     /// Add a node to the tree
     pub fn add_node(&mut self, node: TreeNode) {
+        self.record_insertion(&node.id);
         self.nodes.insert(node.id.clone(), node);
+    }
+
+    fn record_insertion(&mut self, id: &TreeNodeId) {
+        if !self.inserted.contains_key(id) {
+            self.inserted.insert(id.clone(), self.next_seq);
+            self.next_seq += 1;
+        }
     }
 
     /// Remove a node and its descendants
     pub fn remove_node(&mut self, id: &TreeNodeId) -> Option<TreeNode> {
         if let Some(node) = self.nodes.remove(id) {
+            self.inserted.remove(id);
             // Remove from parent's children
             if let Some(parent_id) = &node.parent {
                 if let Some(parent) = self.nodes.get_mut(parent_id) {
@@ -213,6 +226,11 @@ impl AccessibilityTree {
             // Clear focus if focused node was removed
             if self.focus.as_ref() == Some(id) {
                 self.focus = None;
+            }
+
+            // Clear the root if the root was removed
+            if self.root.as_ref() == Some(id) {
+                self.root = None;
             }
 
             Some(node)
@@ -236,6 +254,7 @@ impl AccessibilityTree {
         child.parent = Some(parent_id.clone());
         let child_id = child.id.clone();
 
+        self.record_insertion(&child_id);
         self.nodes.insert(child_id.clone(), child);
 
         if let Some(parent) = self.nodes.get_mut(parent_id) {
@@ -276,12 +295,26 @@ impl AccessibilityTree {
         self.focus.as_ref()
     }
 
-    /// Move focus to next focusable element
+    /// Move focus to next focusable element, in document order
+    ///
+    /// With nothing focused, focuses the first focusable element. Wraps
+    /// around at the end.
     pub fn focus_next(&mut self) -> Option<&TreeNode> {
+        self.move_focus(true)
+    }
+
+    /// Move focus to previous focusable element, in document order
+    ///
+    /// With nothing focused, focuses the last focusable element. Wraps
+    /// around at the start.
+    pub fn focus_prev(&mut self) -> Option<&TreeNode> {
+        self.move_focus(false)
+    }
+
+    fn move_focus(&mut self, forward: bool) -> Option<&TreeNode> {
         let focusable: Vec<TreeNodeId> = self
-            .nodes
-            .values()
-            .filter(|n| n.is_focusable())
+            .focusable_nodes()
+            .into_iter()
             .map(|n| n.id.clone())
             .collect();
 
@@ -289,47 +322,69 @@ impl AccessibilityTree {
             return None;
         }
 
-        let current_idx = self
+        let len = focusable.len();
+        let current = self
             .focus
             .as_ref()
-            .and_then(|id| focusable.iter().position(|fid| fid == id))
-            .unwrap_or(0);
+            .and_then(|id| focusable.iter().position(|fid| fid == id));
+        let target = match (current, forward) {
+            (Some(i), true) => (i + 1) % len,
+            (Some(i), false) => (i + len - 1) % len,
+            (None, true) => 0,
+            (None, false) => len - 1,
+        };
 
-        let next_idx = (current_idx + 1) % focusable.len();
-        let next_id = focusable[next_idx].clone();
-
-        self.set_focus(&next_id);
+        let target_id = focusable[target].clone();
+        self.set_focus(&target_id);
         self.focused()
     }
 
-    /// Move focus to previous focusable element
-    pub fn focus_prev(&mut self) -> Option<&TreeNode> {
-        let focusable: Vec<TreeNodeId> = self
-            .nodes
-            .values()
-            .filter(|n| n.is_focusable())
-            .map(|n| n.id.clone())
-            .collect();
+    /// Node ids in document order: a pre-order walk from the root, then the
+    /// subtrees outside it in the order their top nodes were inserted
+    fn document_order(&self) -> Vec<&TreeNodeId> {
+        let mut out = Vec::with_capacity(self.nodes.len());
+        let mut visited = std::collections::HashSet::with_capacity(self.nodes.len());
 
-        if focusable.is_empty() {
-            return None;
+        if let Some(root) = &self.root {
+            self.walk_preorder(root, &mut visited, &mut out);
         }
 
-        let current_idx = self
-            .focus
-            .as_ref()
-            .and_then(|id| focusable.iter().position(|fid| fid == id))
-            .unwrap_or(0);
+        let mut rest: Vec<&TreeNodeId> = self.nodes.keys().collect();
+        rest.sort_by_key(|id| self.inserted.get(*id).copied().unwrap_or(u64::MAX));
+        for id in rest {
+            if visited.contains(id) {
+                continue;
+            }
+            // Start from the topmost ancestor not yet walked
+            let mut top = id;
+            let mut seen = std::collections::HashSet::new();
+            while let Some(parent) = self.nodes[top].parent.as_ref() {
+                match self.nodes.get_key_value(parent) {
+                    Some((pid, _)) if !visited.contains(pid) && seen.insert(pid) => top = pid,
+                    _ => break,
+                }
+            }
+            self.walk_preorder(top, &mut visited, &mut out);
+        }
+        out
+    }
 
-        let prev_idx = if current_idx == 0 {
-            focusable.len() - 1
-        } else {
-            current_idx - 1
+    fn walk_preorder<'a>(
+        &'a self,
+        id: &TreeNodeId,
+        visited: &mut std::collections::HashSet<&'a TreeNodeId>,
+        out: &mut Vec<&'a TreeNodeId>,
+    ) {
+        let Some((key, node)) = self.nodes.get_key_value(id) else {
+            return;
         };
-
-        let prev_id = focusable[prev_idx].clone();
-        self.set_focus(&prev_id);
-        self.focused()
+        if !visited.insert(key) {
+            return;
+        }
+        out.push(key);
+        for child in &node.children {
+            self.walk_preorder(child, visited, out);
+        }
     }
 
     /// Get all nodes
@@ -337,9 +392,13 @@ impl AccessibilityTree {
         self.nodes.values()
     }
 
-    /// Get all focusable nodes
+    /// Get all focusable nodes, in document order
     pub fn focusable_nodes(&self) -> Vec<&TreeNode> {
-        self.nodes.values().filter(|n| n.is_focusable()).collect()
+        self.document_order()
+            .into_iter()
+            .map(|id| &self.nodes[id])
+            .filter(|n| n.is_focusable())
+            .collect()
     }
 
     /// Get all landmark nodes
@@ -403,6 +462,7 @@ impl AccessibilityTree {
         self.nodes.clear();
         self.root = None;
         self.focus = None;
+        self.inserted.clear();
     }
 
     /// Get node count

@@ -71,6 +71,8 @@ pub struct FocusManager {
     saved_focus: Option<WidgetId>,
     /// Stack of nested traps (for nested modals)
     trap_stack: Vec<TrapState>,
+    /// Whether Tab wraps around at the ends of the active trap
+    trap_loops: bool,
 }
 
 /// Saved state for a focus trap
@@ -82,6 +84,8 @@ struct TrapState {
     trapped_ids: Vec<WidgetId>,
     /// Focus before this trap was activated
     previous_focus: Option<WidgetId>,
+    /// Whether the trap wraps around at its ends
+    loop_focus: bool,
 }
 
 impl FocusManager {
@@ -94,7 +98,18 @@ impl FocusManager {
             trapped_ids: Vec::new(),
             saved_focus: None,
             trap_stack: Vec::new(),
+            trap_loops: true,
         }
+    }
+
+    /// Whether Tab may wrap from the last focusable widget to the first
+    fn wraps(&self) -> bool {
+        self.trap_loops || self.trap.is_none() || self.trapped_ids.is_empty()
+    }
+
+    /// Set whether the active trap wraps around at its ends
+    pub(crate) fn set_trap_loop(&mut self, loop_focus: bool) {
+        self.trap_loops = loop_focus;
     }
 
     /// Get the list of focusable IDs (considering trap)
@@ -191,6 +206,7 @@ impl FocusManager {
         let current_idx = current_id.and_then(|id| ids.iter().position(|&i| i == id));
 
         let next_id = match current_idx {
+            Some(idx) if idx + 1 == ids.len() && !self.wraps() => ids[idx],
             Some(idx) => ids[(idx + 1) % ids.len()],
             None => ids[0],
         };
@@ -209,6 +225,7 @@ impl FocusManager {
         let current_idx = current_id.and_then(|id| ids.iter().position(|&i| i == id));
 
         let prev_id = match current_idx {
+            Some(0) if !self.wraps() => ids[0],
             Some(0) => ids[ids.len() - 1],
             Some(idx) => ids[idx - 1],
             None => ids[ids.len() - 1],
@@ -306,6 +323,7 @@ impl FocusManager {
         self.saved_focus = self.current();
         self.trap = Some(container_id);
         self.trapped_ids.clear();
+        self.trap_loops = true;
     }
 
     /// Start trapping focus with initial focus target
@@ -325,6 +343,7 @@ impl FocusManager {
     pub fn release_trap(&mut self) {
         self.trap = None;
         self.trapped_ids.clear();
+        self.trap_loops = true;
     }
 
     /// Release focus trap and restore previous focus
@@ -362,12 +381,14 @@ impl FocusManager {
             container_id: self.trap,
             trapped_ids: self.trapped_ids.clone(),
             previous_focus: self.current(),
+            loop_focus: self.trap_loops,
         };
         self.trap_stack.push(state);
 
         // Set new trap
         self.trap = Some(container_id);
         self.trapped_ids = children.to_vec();
+        self.trap_loops = true;
 
         // Focus first child if any
         if let Some(&first) = children.first() {
@@ -381,6 +402,7 @@ impl FocusManager {
             // Restore previous trap state
             self.trap = state.container_id;
             self.trapped_ids = state.trapped_ids;
+            self.trap_loops = state.loop_focus;
 
             // Restore focus
             if let Some(id) = state.previous_focus {
@@ -416,7 +438,8 @@ pub struct FocusTrapConfig {
     pub restore_on_release: bool,
     /// Initial focus target (None = first child)
     pub initial_focus: Option<WidgetId>,
-    /// Whether to loop focus at boundaries
+    /// Whether Tab wraps from the last child to the first (and Shift+Tab
+    /// from the first to the last); when false, focus stops at the ends
     pub loop_focus: bool,
 }
 
@@ -503,6 +526,7 @@ impl FocusTrap {
         }
 
         fm.push_trap(self.container_id, &self.children);
+        fm.set_trap_loop(self.config.loop_focus);
 
         // Set initial focus
         if let Some(initial) = self.config.initial_focus {
