@@ -25,7 +25,7 @@
 | 4a 출력 | `tests/fault/output.rs` | 2,504(PTY) + 2,394(TTY 없이) | 0.6초 + 0.2초 |
 | 4b 이벤트 | `tests/fault/events.rs` | 98 | 1.1초 |
 | 4c 파서 | `tests/fault/parsers.rs` | 대상 16개 × 4(기본 기능은 15개) | 1.9초 |
-| 4d 외부 자원 | `tests/fault/resources.rs` | 64(모든 기능), 49(기본), 40(기능 없이) | 10초 |
+| 4d 외부 자원 | `tests/fault/resources.rs` | 65(모든 기능), 50(기본), 41(기능 없이) | 10초 |
 | 4e 동시성 | `tests/fault/concurrency.rs` | 51 | 4초 |
 
 층들이 병렬로 돌기 때문에 타깃 전체가 약 10초에 끝난다(빌드 제외). 가장 긴 것은
@@ -260,8 +260,8 @@ test와 nextest 어느 쪽에서도 같게 동작한다.
   - 크기 한계와 제어 문자를 받는 `MemoryClipboard`, 8 스레드 동시 사용.
   - 시스템 백엔드(unix): 자식 프로세스에서 `PATH`를 가짜 `pbcopy`/`pbpaste`/`xclip`/
     `xsel`/`wl-copy`/`wl-paste`만 있는 디렉터리로 바꾼다. 가짜 도구는 실패하거나,
-    멈추거나, UTF-8이 아닌 것이나 20 MB를 출력하거나, 입력을 읽지 않고 끝나거나, 아예
-    없다.
+    멈추거나, 곧 끝나면서 출력을 쥔 자식을 남기거나, UTF-8이 아닌 것이나 20 MB를
+    출력하거나, 입력을 읽지 않고 끝나거나, 아예 없다.
 - **HTTP:** `HttpBackend` 구현이 돌려준 것을 앱처럼 `HttpClient`에 넣고, 보기 셋
   (본문·헤더·원본)을 위아래 끝까지 스크롤하며 그린다.
   - 백엔드 에러.
@@ -286,11 +286,13 @@ test와 nextest 어느 쪽에서도 같게 동작한다.
 ### 발견하고 고친 것
 
 처음 돌렸을 때 5 케이스가 실패했다. macOS에서는 만들 수 없는 케이스 하나가 Linux에서
-더 실패했을 것이다. 원인은 5개였다.
+더 실패했을 것이다. 원인은 5개였다. 클립보드 수정에는 Linux CI가 찾은 후속 수정이 하나
+더 있다(표의 둘째 줄).
 
 | 실패한 케이스 | 원인 | 고친 방법 | 회귀 테스트 |
 |---|---|---|---|
 | `clipboard get hangs`, `clipboard set hangs` | `SystemClipboard`가 클립보드 도구를 제한 없이 기다렸다. 멈춘 붙여넣기 도구, 그리고 입력을 읽지 않는 복사 도구(쓰기가 꽉 찬 파이프에서 막힌다)가 호출한 쪽을 영원히 붙잡았다 | 입력 쓰기와 출력 읽기를 각자의 스레드에서 하고, 10초가 지나면 도구를 죽여 `CommandFailed`를 돌려준다. 출력은 `MAX_CLIPBOARD_SIZE`+1바이트까지만 보관하고 나머지는 읽어 버린다 | `utils::clipboard::system::tests::a_tool_that_hangs_is_killed_at_the_timeout` 외 3개 |
+| `clipboard get forked-hangs`(후속) | 제한 시간이 도구 프로세스만 덮었다. 도구가 끝나거나 죽은 뒤에는 파이프를 읽고 쓰는 스레드를 제한 없이 join했다. 도구가 시작한 프로세스가 파이프를 쥐고 있으면(명령을 fork하는 셸 — Linux CI의 dash가 그랬다 — 이나 데몬이 되는 도구) 그 프로세스가 끝날 때까지 호출이 붙잡혔다. 첫 수정의 단위 테스트가 Linux CI에서 30초 걸려 드러났다 | 도구가 끝나고 *파이프도 닫힐 때까지*를 모두 제한 시간 안에서 기다린다. 넘으면 (필요하면 도구를 죽이고) 스레드는 스스로 끝나게 둔다. 이 케이스를 4d에 더했다 | 같은 단위 테스트들. 이제 `sh -c 'sleep 30; :'`로 모든 플랫폼에서 셸이 fork한다 |
 | `config stream` | 로더들이 메타데이터로 크기를 본 뒤 파일 전체를 읽었다. FIFO나 문자 장치, 쓰이는 중인 파일은 메타데이터 크기가 읽히는 양과 무관하다. FIFO로 흘린 2 MiB 설정이 1 MiB 한계를 넘어 읽혔고, `/dev/zero`라면 메모리가 바닥날 때까지 읽었을 것이다. CSS는 파서가 크기를 다시 봐서 케이스는 통과했지만 같은 길이었다 | `read_capped`: 한계+1바이트에서 읽기를 멈추고 그보다 길면 거부한다. 설정, `AppBuilder::style`, 핫 리로드, `Image::from_file`(한계까지 읽고 `from_png`가 거부)에 쓴다 | `utils::tests::read_capped_reads_up_to_the_limit_and_refuses_more`, `state::patterns::config::tests::a_stream_past_the_size_limit_is_refused` |
 | `picker denied` | `FilePicker::navigate_to`가 읽을 수 없는 디렉터리로 들어가 빈 디렉터리처럼 보여 주었다 | `FilePickerError::IoError`를 돌려주고 제자리에 머문다 | `widget::filepicker::tests::navigate_to_an_unreadable_directory_is_an_error_and_stays_put` |
 | `watch rapid-saves` | `HotReload::poll`이 디바운스 창 안에 온 이벤트를 버렸다. 빠른 두 번 저장에서 첫 이벤트의 리로드가 두 번째 저장 전에 파일을 읽으면, 마지막 변경은 파일이 다시 바뀔 때까지 반영되지 않았다 | 창 안의 반복은 키마다 가장 최근 것 하나를 붙잡아 두었다가 창이 지나면 `poll`이 돌려준다 | `core::app::hot_reload::tests::test_poll_defers_a_repeat_until_the_window_has_passed` |
