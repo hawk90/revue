@@ -1335,6 +1335,29 @@ fn test_clip_set_fg_bg() {
     assert_eq!(buffer.get(0, 0).unwrap().bg, None);
 }
 
+/// `get_mut` honors the clip like `set`: widgets that restyle cells in place
+/// (`Resizable` handles, `DropZone` borders, focus rings) must not reach
+/// outside an `overflow: hidden` box through it.
+#[test]
+fn test_clip_get_mut() {
+    let mut buffer = test_buffer();
+    let area = Rect::new(0, 0, 20, 10);
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area).with_clip(Rect::new(5, 5, 3, 3));
+        assert!(ctx.get_mut(0, 0).is_none());
+        assert!(ctx.get_mut(8, 5).is_none());
+        assert!(ctx.get_mut(5, 8).is_none());
+        if let Some(cell) = ctx.get_mut(0, 0) {
+            cell.fg = Some(Color::BLUE);
+        }
+        ctx.get_mut(5, 5).expect("inside the clip").fg = Some(Color::RED);
+        ctx.get_mut(7, 7).expect("inside the clip").fg = Some(Color::GREEN);
+    }
+    assert_eq!(buffer.get(0, 0).unwrap().fg, None);
+    assert_eq!(buffer.get(5, 5).unwrap().fg, Some(Color::RED));
+    assert_eq!(buffer.get(7, 7).unwrap().fg, Some(Color::GREEN));
+}
+
 /// Every text primitive honors the clip, not just `set` and `put_str`: a
 /// `Button` label (`draw_text_bg`) given an area below an `overflow: hidden`
 /// box used to paint outside it (`tests/config_matrix.rs`).

@@ -261,3 +261,83 @@ fn test_has_selection() {
     // After starting selection, still has selection state
     let _selection = textarea.has_selection();
 }
+
+// Undo and redo work in characters, like the edits they replay: with
+// multibyte text a byte count would land the cursor (and the edit) in the
+// wrong place, or off a char boundary
+
+#[test]
+fn test_undo_redo_delete_multibyte_restores_cursor_by_chars() {
+    let mut textarea = create_textarea_with_content("héllo");
+    textarea.set_cursor(0, 2);
+    textarea.delete_char_before(); // deletes 'é' (2 bytes)
+    assert_eq!(textarea.get_content(), "hllo");
+    assert_eq!(textarea.cursor_position(), (0, 1));
+
+    textarea.undo();
+    assert_eq!(textarea.get_content(), "héllo");
+    assert_eq!(textarea.cursor_position(), (0, 2));
+
+    textarea.redo();
+    assert_eq!(textarea.get_content(), "hllo");
+    assert_eq!(textarea.cursor_position(), (0, 1));
+}
+
+#[test]
+fn test_undo_redo_insert_after_multibyte_text() {
+    let mut textarea = create_textarea_with_content("한글");
+    textarea.set_cursor(0, 2);
+    textarea.insert_str("자");
+    assert_eq!(textarea.get_content(), "한글자");
+    assert_eq!(textarea.cursor_position(), (0, 3));
+
+    textarea.undo();
+    assert_eq!(textarea.get_content(), "한글");
+    assert_eq!(textarea.cursor_position(), (0, 2));
+
+    textarea.redo();
+    assert_eq!(textarea.get_content(), "한글자");
+    assert_eq!(textarea.cursor_position(), (0, 3));
+}
+
+#[test]
+fn test_undo_redo_delete_at_after_multibyte_text() {
+    let mut textarea = create_textarea_with_content("日本語x");
+    textarea.set_cursor(0, 1);
+    textarea.delete_char_at(); // deletes '本'
+    assert_eq!(textarea.get_content(), "日語x");
+
+    textarea.undo();
+    assert_eq!(textarea.get_content(), "日本語x");
+    assert_eq!(textarea.cursor_position(), (0, 2));
+
+    textarea.redo();
+    assert_eq!(textarea.get_content(), "日語x");
+    assert_eq!(textarea.cursor_position(), (0, 1));
+}
+
+#[test]
+fn test_undo_redo_split_and_merge_after_multibyte_text() {
+    let mut textarea = create_textarea_with_content("äbc");
+    textarea.set_cursor(0, 1);
+    textarea.insert_char('\n');
+    assert_eq!(textarea.get_content(), "ä\nbc");
+
+    textarea.undo();
+    assert_eq!(textarea.get_content(), "äbc");
+    assert_eq!(textarea.cursor_position(), (0, 1));
+
+    textarea.redo();
+    assert_eq!(textarea.get_content(), "ä\nbc");
+    assert_eq!(textarea.cursor_position(), (1, 0));
+
+    // Merge the lines back with backspace, then undo/redo the merge
+    textarea.delete_char_before();
+    assert_eq!(textarea.get_content(), "äbc");
+    textarea.undo();
+    assert_eq!(textarea.get_content(), "ä\nbc");
+    assert_eq!(textarea.cursor_position(), (1, 0));
+    textarea.redo();
+    assert_eq!(textarea.get_content(), "äbc");
+    assert_eq!(textarea.cursor_position(), (0, 1));
+}

@@ -87,9 +87,15 @@ impl Slider {
     }
 
     /// Set range
+    ///
+    /// The bounds may be given in either order: a range given high to low
+    /// (`min > max`) is swapped. A NaN bound is ignored and the current
+    /// bound kept.
     pub fn range(mut self, min: f64, max: f64) -> Self {
-        self.min = min;
-        self.max = max;
+        let min = if min.is_nan() { self.min } else { min };
+        let max = if max.is_nan() { self.max } else { max };
+        self.min = min.min(max);
+        self.max = min.max(max);
         self.value = self.clamp_value(self.value);
         self
     }

@@ -94,3 +94,29 @@ fn test_set_value_nan_keeps_the_value() {
     s.increment();
     assert!((-10.0..=10.0).contains(&s.get_value()));
 }
+
+#[test]
+fn test_slider_range_given_high_to_low_is_normalized() {
+    // A range given high to low used to panic in `f64::clamp`; the bounds
+    // are swapped instead
+    let mut s = slider().value(80.0).range(50.0, 0.0);
+    assert_eq!(s.get_value(), 50.0);
+    s.set_value(-5.0);
+    assert_eq!(s.get_value(), 0.0);
+    s.set_value(25.0);
+    assert_eq!(s.get_value(), 25.0);
+
+    let s = slider_range(20.0, 10.0);
+    assert_eq!(s.get_value(), 10.0);
+}
+
+#[test]
+fn test_slider_range_with_nan_bound_keeps_the_old_bound() {
+    let mut s = slider().value(80.0).range(f64::NAN, 50.0);
+    assert_eq!(s.get_value(), 50.0);
+    s.set_value(-5.0);
+    assert_eq!(s.get_value(), 0.0);
+
+    let s = slider_range(10.0, f64::NAN).value(500.0);
+    assert_eq!(s.get_value(), 100.0);
+}
