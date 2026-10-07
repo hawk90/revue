@@ -166,14 +166,13 @@ impl Gauge {
         tl.fg = Some(color);
         ctx.set(0, 0, tl);
 
+        // The arc has `width - 2` cells between its corners; fill as many as
+        // the value covers, so 0 fills none and 1 fills all.
+        let filled = (self.value * (width - 2) as f64).round() as u16;
         for x in 1..width - 1 {
-            let progress = (x - 1) as f64 / (width - 3) as f64;
-            let ch = if progress <= self.value { '━' } else { '─' };
-            let fg = if progress <= self.value {
-                color
-            } else {
-                self.empty_color
-            };
+            let is_filled = x - 1 < filled;
+            let ch = if is_filled { '━' } else { '─' };
+            let fg = if is_filled { color } else { self.empty_color };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
             ctx.set(x, 0, cell);
@@ -434,5 +433,17 @@ mod tests {
             Some(Color::RED),
             "an almost empty battery is not critical"
         );
+    }
+
+    #[test]
+    fn arc_fills_nothing_at_zero_and_everything_at_one() {
+        let top = |value: f64| -> String {
+            let g = Gauge::new().style(GaugeStyle::Arc).width(12).value(value);
+            let buf = render(&g, 12, 3);
+            (1..11).map(|x| buf.get(x, 0).unwrap().symbol).collect()
+        };
+        assert_eq!(top(0.0), "──────────");
+        assert_eq!(top(0.5), "━━━━━─────");
+        assert_eq!(top(1.0), "━━━━━━━━━━");
     }
 }
