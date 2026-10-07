@@ -3,6 +3,9 @@
 use crate::event::{Key, KeyBinding};
 
 /// Parse a single key binding string
+///
+/// Modifier prefixes are `ctrl-`/`c-`, `alt-`/`m-` and `shift-`/`s-`.
+/// `s-tab` (like `backtab`) names the BackTab key rather than Shift + Tab.
 pub fn parse_key_binding(s: &str) -> Option<KeyBinding> {
     let s = s.trim();
     if s.is_empty() {
@@ -17,7 +20,10 @@ pub fn parse_key_binding(s: &str) -> Option<KeyBinding> {
     // Parse modifiers
     loop {
         let lower = key_part.to_lowercase();
-        if lower.starts_with("ctrl-") || lower.starts_with("c-") {
+        // `s-tab` is a key name (BackTab), not the `s-` modifier on Tab
+        if lower == "s-tab" {
+            break;
+        } else if lower.starts_with("ctrl-") || lower.starts_with("c-") {
             ctrl = true;
             key_part = if lower.starts_with("ctrl-") {
                 &key_part[5..]

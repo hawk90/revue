@@ -134,3 +134,21 @@ fn test_global_bindings() {
     let result = keymap.lookup(ctrl_c);
     assert_eq!(result, LookupResult::Action("quit".to_string()));
 }
+
+#[test]
+fn test_parse_s_tab_alias_is_backtab() {
+    // "s-tab" is a documented alias for BackTab, not Shift + Tab
+    for s in ["s-tab", "S-Tab", "backtab"] {
+        let binding = parse_key_binding(s).unwrap();
+        assert_eq!(binding.key, Key::BackTab, "{s}");
+        assert!(!binding.shift, "{s}");
+    }
+    // Modifiers in front still apply
+    let binding = parse_key_binding("Ctrl-s-tab").unwrap();
+    assert_eq!(binding.key, Key::BackTab);
+    assert!(binding.ctrl);
+    // Other s- keys are still Shift
+    let binding = parse_key_binding("s-x").unwrap();
+    assert_eq!(binding.key, Key::Char('x'));
+    assert!(binding.shift);
+}
