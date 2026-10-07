@@ -370,6 +370,7 @@ impl TextArea {
                 self.lines.insert(start.line + i, new_line);
             }
         }
+        self.clamp_cursors();
     }
 }
 

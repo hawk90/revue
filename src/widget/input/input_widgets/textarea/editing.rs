@@ -191,6 +191,7 @@ impl TextArea {
                 self.push_undo(EditOperation::MergeLines { line, col });
             }
         }
+        self.clamp_cursors();
     }
 
     /// Delete the current line

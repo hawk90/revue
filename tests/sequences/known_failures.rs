@@ -39,10 +39,4 @@ pub const KNOWN: &[Known] = &[
         sequence: "BackTab <start after end> <start after end> BackTab Up",
         reason: "navigation moves the stored start/end with the cursor and only a selection swaps them, so start can pass end - design decision",
     },
-    Known {
-        layer: "keys",
-        widget: "TextArea",
-        sequence: "<set content> Enter PageUp <add cursor below> Delete",
-        reason: "edits move only the primary cursor; secondary cursors are left past the text",
-    },
 ];
