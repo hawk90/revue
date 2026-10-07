@@ -378,6 +378,10 @@ impl DomTree {
         }
 
         self.nodes.remove(&id);
+
+        if self.root == Some(id) {
+            self.root = None;
+        }
     }
 
     /// Get a node by DomId
@@ -1007,5 +1011,18 @@ mod tests {
             tree.query_all("Button").first().map(|n| n.id),
             Some(expected[0])
         );
+    }
+
+    #[test]
+    fn test_remove_root_clears_root() {
+        let mut tree = create_test_tree();
+        let root = tree.root_id().unwrap();
+
+        tree.remove(root);
+
+        assert!(tree.is_empty());
+        assert_eq!(tree.root_id(), None);
+        assert!(tree.root().is_none());
+        assert!(tree.focusable_in_order().is_empty());
     }
 }

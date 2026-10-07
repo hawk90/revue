@@ -65,7 +65,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 |---|---:|---:|---|---|---|
 | `runtime/dom/node/mod.rs` | 383 | 5 | 공개 타입 5 | keep | DOM 노드 데이터 모델 하나: `WidgetKey`·`WidgetMeta`·`NodeState`·`DomId`는 모두 `DomNode`의 필드이고 impl은 생성자·빌더·조회 정도로 작음 |
 | `runtime/dom/pool/mod.rs` | 578 | 8 | 공개 타입 8 | split | 범용 객체·Vec 풀, 렌더 버퍼 전용 풀, 문자열 인터닝이 섞임 → pool/{mod,object,buffer,string,vec}.rs (`PoolStats`와 생성 함수는 mod.rs) |
-| `runtime/dom/query.rs` | 683 | 3 | 683줄 | keep | 파일 이름과 달리 대부분 `DomTree` 하나: 노드 맵과 id·타입·클래스 색인을 추가·삭제·재조정하면서 함께 유지하고, `Query` 구현과 상태 갱신도 같은 맵·색인을 씀. 나누면 private 필드를 넘나들어야 함. 버그 의심: `remove()`는 루트를 지워도 `root`를 그대로 두고, 남은 형제의 위치 상태(`first_child` 등)를 갱신하지 않음. 참고: `query_one`은 HashMap 순회라 여러 개가 맞으면 문서 순서가 아닌 임의의 노드를 돌려줌 (→ 고침) |
+| `runtime/dom/query.rs` | 683 | 3 | 683줄 | keep | 파일 이름과 달리 대부분 `DomTree` 하나: 노드 맵과 id·타입·클래스 색인을 추가·삭제·재조정하면서 함께 유지하고, `Query` 구현과 상태 갱신도 같은 맵·색인을 씀. 나누면 private 필드를 넘나들어야 함. 버그 의심: `remove()`는 루트를 지워도 `root`를 그대로 두고 (→ 고침), 남은 형제의 위치 상태(`first_child` 등)를 갱신하지 않음. 참고: `query_one`은 HashMap 순회라 여러 개가 맞으면 문서 순서가 아닌 임의의 노드를 돌려줌 (→ 고침) |
 | `runtime/dom/selector/types.rs` | 382 | 8 | 타입 모음, 공개 타입 8 | keep | 셀렉터 AST 타입만 모음. impl은 생성자·명시도·Display로 작음 |
 | `runtime/event/custom/types.rs` | 212 | 6 | 타입 모음, 공개 타입 6 | keep | 사용자 이벤트의 트레이트·ID·우선순위·메타데이터·봉투 타입만 모음. impl은 생성자와 전파 플래그 정도 |
 | `runtime/event/drag.rs` | 580 | 5 | 공개 타입 5 | split | 끌어 옮길 데이터, 상태·결과, 놓을 곳, 상태 기계, 전역 싱글턴이 섞임 → drag/{mod,data,state,target,context,global}.rs (`DragId`는 mod.rs). 버그 의심: `clear_targets()`는 `hovered_target`만 비우고 상태를 `OverTarget`으로 남김(`unregister_target`은 `Dragging`으로 되돌림), `DragState::is_active` 문서는 Dragging·OverTarget이라 하지만 `Pending`도 포함 |
