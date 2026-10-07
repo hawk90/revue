@@ -351,15 +351,29 @@ impl I18n {
     }
 
     /// Translate with plural form
+    ///
+    /// The form is chosen by the plural rule of the locale whose text is
+    /// used: the current locale's, or the fallback locale's for fallback text.
     pub fn t_plural<'a>(&'a self, key: &'a str, n: usize) -> &'a str {
-        let form = self
-            .current_locale()
-            .map(|l| l.get_plural_form(n))
-            .unwrap_or(if n == 1 { 0 } else { 1 });
+        self.get_translation_with_form(
+            key,
+            &self.current_locale,
+            self.plural_form(&self.current_locale, n),
+        )
+        .or_else(|| {
+            let form = self.plural_form(&self.fallback_locale, n);
+            self.get_translation_with_form(key, &self.fallback_locale, form)
+        })
+        .unwrap_or(key)
+    }
 
-        self.get_translation_with_form(key, &self.current_locale, form)
-            .or_else(|| self.get_translation_with_form(key, &self.fallback_locale, form))
-            .unwrap_or(key)
+    /// Plural form index for `n` under `locale`'s rule (English-style
+    /// one/other if the locale is unknown)
+    fn plural_form(&self, locale: &str, n: usize) -> usize {
+        self.locales
+            .get(locale)
+            .map(|l| l.get_plural_form(n))
+            .unwrap_or(if n == 1 { 0 } else { 1 })
     }
 
     /// Translate with plural and arguments
