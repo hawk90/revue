@@ -1025,7 +1025,7 @@ items:
     evidence:
       - src/state/patterns/form/state.rs
       - src/state/patterns/form/field.rs
-      - src/widget/form/form.rs::on_submit
+      - src/widget/form/form/mod.rs::on_submit
       - tests/widget/form_tests.rs
       - examples/form_validation.rs
     source:

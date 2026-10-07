@@ -161,7 +161,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
 | `widget/datetime_picker/types.rs` | 129 | 5 | 타입 모음, 공개 타입 5 | todo | |
-| `widget/form/form.rs` | 655 | 4 | 655줄, 위젯 한 파일 | todo | |
+| `widget/form/form.rs` | 655 | 4 | 655줄, 위젯 한 파일 | split | `Form`·`FormFieldWidget` 두 위젯의 타입·구조체·빌더·제출과 그리기(`Form`의 테두리·제목·필드 행·상태 줄 약 190줄, `FormFieldWidget` 약 160줄)가 섞임 → form/{mod,render}.rs (두 위젯의 타입·구조체·빌더·`Default`·생성 함수는 mod.rs, 그리기만 쓰는 `put_text`와 두 `View`는 render.rs; `Form`의 `View`를 먼저 두어 CSS ratchet이 보는 위젯은 그대로). 옮기며 render.rs의 `impl FormFieldWidget`에 원래 블록의 `#[allow(dead_code)]`를 한 줄 더 붙임. 버그 의심: `FormFieldWidget`은 `FormState`를 갖지 않아 값·오류를 그리지 않고(이름·placeholder·도움말만), 그것을 그리는 `render_label`·`render_value`·`render_helper_text`·`render_errors`는 `#[allow(dead_code)]`에 가려진 채 아무도 부르지 않음. 참고: `FormField`의 `View`는 CSS를 읽지 않지만 ratchet은 파일의 첫 `impl_view_meta!`(`Form`)만 보아 놓침; 모듈 문서 예제의 `Form::child`·`FormField::new(..).placeholder`와 form/mod.rs 문서의 `ErrorDisplayStyle::Tooltip`·`InputType::Tel`·`form().label(..)`은 없음, 제목은 늘 "Form" |
 | `widget/form/masked_input.rs` | 787 | 3 | 787줄, 위젯 한 파일 | todo | |
 | `widget/input/input_widgets/radio.rs` | 402 | 3 | 위젯 한 파일 | todo | |
 | `widget/input/input_widgets/selection_list.rs` | 563 | 3 | 위젯 한 파일 | todo | |
