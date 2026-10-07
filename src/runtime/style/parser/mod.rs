@@ -1,9 +1,11 @@
 //! CSS parser for TUI styling
 
+mod animation;
 mod apply;
 mod parse;
 mod types;
 mod value_parsers;
+mod vars;
 
 pub use apply::apply_declaration;
 pub use parse::parse;
