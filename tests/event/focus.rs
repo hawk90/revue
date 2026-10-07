@@ -374,3 +374,23 @@ fn test_focus_trap_config() {
     assert!(config.loop_focus);
     assert!(config.initial_focus.is_none());
 }
+
+#[test]
+fn test_focus_trap_without_restore_keeps_focus_on_release() {
+    let mut fm = FocusManager::new();
+    fm.register(1);
+    fm.register(2);
+    fm.register(3);
+    fm.focus(1);
+
+    let mut trap = FocusTrap::new(100)
+        .with_children(&[2, 3])
+        .initial_focus(3)
+        .restore_focus_on_release(false);
+    trap.activate(&mut fm);
+    assert_eq!(fm.current(), Some(3));
+
+    trap.deactivate(&mut fm);
+    assert!(!fm.is_trapped());
+    assert_eq!(fm.current(), Some(3)); // Not restored to 1
+}
