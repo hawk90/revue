@@ -166,7 +166,8 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
     /// The task will be queued and executed by an available worker thread.
     /// If a task with the same ID is already pending, this is a no-op.
     ///
-    /// If the task queue is full, the task will be rejected (not spawned).
+    /// If the task queue is full, the task will be rejected (not spawned):
+    /// [`is_pending`](Self::is_pending) is then false for its id.
     ///
     /// # Arguments
     ///
@@ -185,13 +186,16 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
             return; // Task already running
         }
 
-        self.pending.insert(id.clone(), ());
-
-        let work_item = WorkItem { id, task };
-
-        // Submit to pool (non-blocking)
-        // If queue is full, silently reject the task to prevent blocking
-        let _ = self.work_tx.try_send(work_item);
+        // Submit to pool (non-blocking). If the queue is full the task is
+        // rejected to prevent blocking - and is not pending, or it would stay
+        // pending forever and block its id.
+        let work_item = WorkItem {
+            id: id.clone(),
+            task,
+        };
+        if self.work_tx.try_send(work_item).is_ok() {
+            self.pending.insert(id, ());
+        }
     }
 
     /// Spawn a task that returns Result
@@ -463,5 +467,35 @@ mod tests {
         });
         let r = poll_within(&mut runner, Duration::from_secs(5));
         assert_eq!(r.result, Err("Task panicked: the disk is gone".to_string()));
+    }
+
+    #[test]
+    fn a_task_the_full_queue_refuses_is_not_pending() {
+        let (release_tx, release_rx) = std::sync::mpsc::channel::<()>();
+        let release_rx = Arc::new(std::sync::Mutex::new(release_rx));
+        let mut runner: PooledTaskRunner<usize> = PooledTaskRunner::new(1);
+        let total = MAX_TASK_QUEUE_SIZE + 5;
+        for i in 0..total {
+            let rx = release_rx.clone();
+            runner.spawn(format!("t{i}"), move || {
+                let _ = rx.lock().unwrap().recv_timeout(Duration::from_secs(5));
+                i
+            });
+        }
+        let accepted = runner.pending_count();
+        assert!(accepted < total, "a full queue accepted every task");
+        assert!(!runner.is_pending(&format!("t{}", total - 1)));
+        drop(release_tx);
+
+        let mut got = 0;
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        while runner.has_pending() && std::time::Instant::now() < deadline {
+            while runner.poll().is_some() {
+                got += 1;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(got, accepted);
+        assert_eq!(runner.pending_count(), 0);
     }
 }

@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "PooledTaskRunner marks a task pending before the full queue refuses it",
-        cases: &["pooled full-queue"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "WorkerHandle::spawn does not catch a panicking future",
         cases: &["handle tokio-panic", "handle polling-panic"],
     },
