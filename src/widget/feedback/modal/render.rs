@@ -69,7 +69,7 @@ impl View for Modal {
             let total_button_width: usize = self
                 .buttons
                 .iter()
-                .map(|b| b.label.len() + 4) // [ label ]
+                .map(|b| crate::utils::display_width(&b.label) + 4) // [ label ]
                 .sum::<usize>()
                 + (self.buttons.len() - 1) * 2; // spacing
 
@@ -325,5 +325,22 @@ mod tests {
         let mut m = Modal::new().title("X").width(2).height(4);
         m.show();
         m.render(&mut ctx); // Should not panic
+    }
+
+    #[test]
+    fn buttons_center_by_display_width() {
+        // A 20-wide modal in a 24-wide area starts at x = 2; the 8-column
+        // button "[ 확인 ]" centers at 2 + (20 - 8) / 2 = 8.
+        let mut m = Modal::new()
+            .width(20)
+            .buttons(vec![super::super::ModalButton::new("확인")]);
+        m.show();
+        let mut buffer = Buffer::new(24, 10);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 24, 10));
+        m.render(&mut ctx);
+        let start = (0..10)
+            .find_map(|y| (0..24).find(|&x| buffer.get(x, y).unwrap().symbol == '['))
+            .expect("no button drawn");
+        assert_eq!(start, 8);
     }
 }
