@@ -284,6 +284,11 @@ impl DataGrid {
     /// Recompute the filtered rows cache (called on mutation)
     pub fn recompute_cache(&mut self) {
         self.filtered_cache = self.compute_filtered_indices();
+        // Fewer rows than before (rows removed, an edit that no longer
+        // matches the filter): keep the selection and scroll on a row
+        let last = self.filtered_cache.len().saturating_sub(1);
+        self.selected_row = self.selected_row.min(last);
+        self.scroll_row = self.scroll_row.min(last);
     }
 
     /// Add a column

@@ -661,3 +661,38 @@ fn test_keyboard_reorder_callback_reports_display_positions() {
     assert_eq!(header_titles(&grid), "ADC");
     assert_eq!(*moved.borrow(), Some((2, 1)));
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was
+// `Ctrl+End <drop rows>` - after the rows shrank, recompute_cache() left the
+// selection on a row that no longer existed.
+#[test]
+fn test_recompute_cache_keeps_the_selection_on_a_row() {
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("name", "Name"))
+        .data((0..10).map(|i| vec![format!("row {i}")]).collect());
+    grid.select_last();
+    assert_eq!(grid.selected_row, 9);
+    grid.rows.truncate(2);
+    grid.recompute_cache();
+    assert_eq!(grid.selected_row, 1);
+    assert!(grid.scroll_row <= 1);
+
+    // An edit that takes the selected row out of the filter
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("name", "Name").editable(true))
+        .data(vec![
+            vec!["a1".into()],
+            vec!["a2".into()],
+            vec!["a3".into()],
+        ]);
+    grid.set_filter("a");
+    grid.select_last();
+    assert!(grid.start_edit());
+    for _ in 0..2 {
+        grid.handle_key(&revue::event::Key::Backspace);
+    }
+    grid.handle_key(&revue::event::Key::Char('b'));
+    assert!(grid.commit_edit());
+    assert_eq!(grid.filtered_count(), 2);
+    assert!(grid.selected_row < 2);
+}

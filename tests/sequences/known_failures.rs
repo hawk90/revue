@@ -17,12 +17,6 @@ pub struct Known {
 pub const KNOWN: &[Known] = &[
     Known {
         layer: "keys",
-        widget: "DataGrid",
-        sequence: "Ctrl+End <drop rows>",
-        reason: "recompute_cache() does not clamp the selection/scroll after the rows shrink",
-    },
-    Known {
-        layer: "keys",
         widget: "DateTimePicker",
         sequence: "'j'",
         reason: "month navigation keeps the selected day, so Jan 31 becomes Feb 31",
@@ -68,12 +62,6 @@ pub const KNOWN: &[Known] = &[
         widget: "TextArea",
         sequence: "<set content> Enter PageUp <add cursor below> Delete",
         reason: "edits move only the primary cursor; secondary cursors are left past the text",
-    },
-    Known {
-        layer: "mouse",
-        widget: "DataGrid",
-        sequence: "Ctrl+End <drop rows>",
-        reason: "recompute_cache() does not clamp the selection/scroll after the rows shrink",
     },
     Known {
         layer: "mouse",
