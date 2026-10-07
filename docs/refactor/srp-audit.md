@@ -83,17 +83,17 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 |---|---:|---:|---|---|---|
 | `core/app/hot_reload.rs` | 428 | 5 | 공개 타입 5 | split | 파일 감시·디바운스와 감시 경로 보안 검사(경로 탈출·null 바이트)가 섞임 → hot_reload/{mod,path}.rs. 버그 의심: 현재 디렉터리 검사가 문자열 접두어 비교라 `/proj`일 때 `/proj-evil`도 통과, `Error` 이벤트 키가 `now.elapsed()`(항상 0)라 오류끼리 디바운스됨, `poll`/`wait`/`wait_timeout`이 키 계산을 세 번 복사 |
 | `core/app/mod.rs` | 1038 | 1 | 1038줄 | split | `App` 상태·접근자, 이벤트 루프(실행·디스패치·hover/focus 추적·핫 리로드 확인), 그리기 파이프라인(DOM·레이아웃 트리·버퍼·터미널)이 섞임 → app/{mod,event_loop,draw}.rs. `handle_event`·`get_buffer_size`는 mod.rs 테스트가 부르므로 `pub(super)`. 테스트는 공통 픽스처(`create_test_app`) 때문에 mod.rs에 둠 |
-| `core/app/profiler.rs` | 582 | 10 | 공개 타입 10 | todo | |
-| `core/app/router.rs` | 556 | 5 | 공개 타입 5 | todo | |
-| `core/app/screen/types.rs` | 240 | 7 | 타입 모음, 공개 타입 7 | todo | |
+| `core/app/profiler.rs` | 582 | 10 | 공개 타입 10 | keep | 프로파일링 하나: 샘플→통계→리포트·스냅샷 비교. 나누면 `Snapshot`이 `Profiler`의 private `metrics`를, 리포트가 `Stats::format_duration`을 넘나들어야 함. 참고: 프로파일러가 `core::app::profiler`, `devtools::profiler`, `utils::profiler` 셋(prelude의 `Profiler`·`Stats`는 utils 쪽). `FpsCounter::fps()`는 프레임 수를 창 길이로 나눠 창이 차기 전에는 낮게 나옴 |
+| `core/app/router.rs` | 556 | 5 | 공개 타입 5 | keep | 경로 매칭과 history 탐색 하나. `Route`·`HistoryEntry`·`NavigationEvent`는 `Router`가 다루는 데이터, 질의 문자열 파싱은 작은 private 함수. 버그 의심: `*` 와일드카드는 문서("matches rest")와 달리 세그먼트 하나만 맞음(세그먼트 수가 같아야 함), `go()`는 가드·리스너를 거치지 않음. 참고: `declarative_router`, `patterns::NavigationState`와 라우팅 개념이 겹침 |
+| `core/app/screen/types.rs` | 240 | 7 | 타입 모음, 공개 타입 7 | keep | 화면 데이터 타입(`ScreenId`·`Transition`·`ScreenMode`·`ScreenEvent`·`ScreenResult`·`ScreenConfig`)과 `Screen` 트레이트만 모음. 디렉터리가 이미 core/state/types로 나뉨 |
 | `devtools/mod.rs` | 527 | 4 |  | split | 모듈 선언·재노출에 패널 설정 타입(위치·설정·탭), `DevTools` 상태·영역 계산, 패널 그리기가 함께 있음 → devtools/{mod,types,render}.rs (`DevTools`는 테스트가 private `config`를 보므로 mod.rs에 둠). 버그 의심: 패널 폭이 2 미만이거나 높이가 0이면(`size` 0, 아주 작은 화면) `render_panel`의 `area.width - 2`와 `draw_border`의 `area.height - 1`이 넘침 |
-| `devtools/profiler/types.rs` | 233 | 5 | 타입 모음, 공개 타입 5 | todo | |
+| `devtools/profiler/types.rs` | 233 | 5 | 타입 모음, 공개 타입 5 | keep | 렌더 프로파일러의 데이터 타입만 모음. impl은 라벨·생성자·누적 정도로 작음 |
 | `devtools/time_travel/debugger.rs` | 615 | 1 | 615줄 | split | 기록·탐색·diff·내보내기 상태와 탭 그리기(타임라인·diff·액션·상태 뷰)가 섞임 → debugger/{mod,render}.rs (render는 자식 모듈이라 private 필드를 그대로 봄). 버그 의심: `export()`가 label·action 이름의 따옴표를 escape하지 않아 JSON이 깨질 수 있음, `import()`는 "exported data"라 하지만 `export()` 문자열이 아닌 `Vec<StateSnapshot>`를 받음 |
-| `devtools/time_travel/types.rs` | 302 | 6 | 타입 모음, 공개 타입 6 | todo | |
+| `devtools/time_travel/types.rs` | 302 | 6 | 타입 모음, 공개 타입 6 | keep | 스냅샷·값·diff·액션·뷰·설정 타입만 모음. 가장 큰 impl은 `StateSnapshot::diff` 하나 |
 | `lib.rs` | 855 | 1 | 855줄 | split | 크레이트 루트(문서·모듈 선언·`Error`)와 prelude 재노출 목록(위젯·API가 늘 때마다 바뀜)이 섞임 → prelude 본문을 `src/prelude.rs`로. `revue::prelude` 경로와 문서는 그대로(문서는 lib.rs의 `pub mod prelude;` 선언에 남김; 생성된 rustdoc 페이지는 Source 링크만 다름). 버그 의심: "Error Handling Guidelines" `///` 블록이 아무 항목에도 붙지 않고 prelude 문서 앞에 이어 붙어, `revue::prelude` 문서가 오류 처리 지침으로 시작함 |
-| `query/mod.rs` | 489 | 7 | 공개 타입 7 | todo | |
-| `testing/assertions.rs` | 261 | 7 | 공개 타입 7 | todo | |
-| `testing/visual/types.rs` | 273 | 6 | 타입 모음, 공개 타입 6 | todo | |
+| `query/mod.rs` | 489 | 7 | 공개 타입 7 | keep | 질의 모델과 평가 하나(값 비교→필터→정렬·페이지), 파서는 이미 parser.rs. 나누면 `Filter`·`Query`·`QueryValue`가 서로를 계속 부름. 버그 의심: `Query::is_empty()`는 `offset`을 보지 않음, 문자열 `Eq`·`Contains`는 대소문자를 무시하지만 `Gt`·`Lt`와 정렬은 구분함 |
+| `testing/assertions.rs` | 261 | 7 | 공개 타입 7 | keep | 버퍼 단언 하나. 공개 타입 7 중 `AssertionResult`·`Assertion` 외 다섯은 `#[cfg(test)]` 전용 |
+| `testing/visual/types.rs` | 273 | 6 | 타입 모음, 공개 타입 6 | keep | 시각 회귀 테스트의 설정·결과·캡처·diff 타입만 모음. impl은 빌더, 셀 비교, diff 요약 정도 |
 
 ### 4. state, utils, text, a11y (12)
 
