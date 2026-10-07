@@ -295,6 +295,22 @@ pub fn notify_dependents(signal_id: SignalId) {
     }
 }
 
+/// Run `f` with `subscriber` as the current subscriber, and stop tracking
+/// afterwards - also when `f` panics. A panic between `start_tracking` and
+/// `stop_tracking` would leave the subscriber on the stack: every later read
+/// on the thread would be recorded as its dependency, and re-run it.
+pub(crate) fn run_tracked<R>(subscriber: Subscriber, f: impl FnOnce() -> R) -> R {
+    struct StopOnDrop;
+    impl Drop for StopOnDrop {
+        fn drop(&mut self) {
+            stop_tracking();
+        }
+    }
+    start_tracking(subscriber);
+    let _stop = StopOnDrop;
+    f()
+}
+
 /// Dispose a subscriber (called when effect is dropped)
 pub fn dispose_subscriber(subscriber_id: SubscriberId) {
     with_tracker(|t| t.dispose_subscriber(subscriber_id));

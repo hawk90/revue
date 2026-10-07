@@ -2,7 +2,7 @@
 //!
 //! Thread-safe computed values using Arc and atomic operations.
 
-use super::tracker::{dispose_subscriber, start_tracking, stop_tracking, Subscriber, SubscriberId};
+use super::tracker::{dispose_subscriber, run_tracked, Subscriber, SubscriberId};
 use crate::utils::lock::{lock_or_recover, read_or_recover, write_or_recover};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
@@ -101,9 +101,7 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
         };
 
         // Track dependencies during computation
-        start_tracking(subscriber);
-        let value = (self.compute)();
-        stop_tracking();
+        let value = run_tracked(subscriber, || (self.compute)());
 
         // Cache the result and mark as clean
         *write_or_recover(&self.cached) = Some(value.clone());
@@ -359,5 +357,16 @@ mod tests {
         // This test just verifies that Computed implements Send and Sync
         fn is_send_sync<T: Send + Sync>() {}
         is_send_sync::<Computed<i32>>();
+    }
+
+    #[test]
+    fn a_panicking_compute_stops_tracking() {
+        use crate::reactive::is_tracking;
+        let c = Computed::new(|| -> i32 { panic!("compute boom") });
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.get())).is_err());
+        assert!(
+            !is_tracking(),
+            "the panicked computed is still the current subscriber"
+        );
     }
 }

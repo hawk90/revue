@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "Effect and Computed leave the dependency tracker tracking when their function panics",
-        cases: &["reactive effect-panics", "reactive effect-loop"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "Signal subscribers are notified outside the update-depth guard: a loop overflows the stack",
         cases: &["reactive subscriber-loop"],
     },

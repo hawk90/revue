@@ -3,7 +3,7 @@
 //! Effects automatically track their dependencies and re-run when those
 //! dependencies change.
 
-use super::tracker::{dispose_subscriber, start_tracking, stop_tracking, Subscriber, SubscriberId};
+use super::tracker::{dispose_subscriber, run_tracked, Subscriber, SubscriberId};
 use crate::utils::lock::{read_or_recover, write_or_recover};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
@@ -146,9 +146,7 @@ impl Effect {
                 callback: self_callback,
             };
 
-            start_tracking(subscriber);
-            effect_fn();
-            stop_tracking();
+            run_tracked(subscriber, || effect_fn());
         });
 
         // Store callback in cell so it can reference itself
@@ -157,9 +155,7 @@ impl Effect {
         // Initial run with tracking
         let subscriber = Subscriber { id, callback };
 
-        start_tracking(subscriber);
-        (self.effect_fn)();
-        stop_tracking();
+        run_tracked(subscriber, || (self.effect_fn)());
     }
 
     /// Run the effect if active (manual run, also tracks dependencies)
@@ -374,5 +370,32 @@ mod tests {
 
         // Just verify that dropping doesn't panic
         assert!(!executed.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn a_panicking_effect_stops_tracking() {
+        use crate::reactive::{is_tracking, signal};
+        let s = signal(0);
+        let runs = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let (s2, r) = (s.clone(), runs.clone());
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+            Effect::new(move || {
+                r.fetch_add(1, Ordering::SeqCst);
+                let _ = s2.get();
+                panic!("effect boom");
+            })
+        }));
+        assert!(result.is_err());
+        assert!(
+            !is_tracking(),
+            "the panicked effect is still the current subscriber"
+        );
+
+        // A signal read outside any effect is not a dependency of the dead one.
+        let other = signal(0);
+        let _ = other.get();
+        let before = runs.load(Ordering::SeqCst);
+        other.set(1);
+        assert_eq!(runs.load(Ordering::SeqCst), before);
     }
 }
