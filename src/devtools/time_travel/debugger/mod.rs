@@ -256,10 +256,13 @@ impl TimeTravelDebugger {
             json.push_str("    {\n");
             json.push_str(&format!("      \"id\": {},\n", snapshot.id));
             if let Some(label) = &snapshot.label {
-                json.push_str(&format!("      \"label\": \"{}\",\n", label));
+                json.push_str(&format!("      \"label\": {},\n", json_string(label)));
             }
             if let Some(action) = &snapshot.action {
-                json.push_str(&format!("      \"action\": \"{}\",\n", action.name));
+                json.push_str(&format!(
+                    "      \"action\": {},\n",
+                    json_string(&action.name)
+                ));
             }
             json.push_str(&format!("      \"state_keys\": {}\n", snapshot.state.len()));
             json.push_str("    }");
@@ -338,4 +341,28 @@ impl Default for TimeTravelDebugger {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// `s` as a quoted JSON string: quotes, backslashes and control characters
+/// are escaped, so a label or action name cannot break the exported JSON
+fn json_string(s: &str) -> String {
+    use std::fmt::Write;
+
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => {
+                let _ = write!(out, "\\u{:04x}", c as u32);
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }

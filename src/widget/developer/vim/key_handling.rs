@@ -6,9 +6,10 @@ use crate::event::{Key, KeyEvent};
 impl VimState {
     /// Handle key event in normal mode
     fn handle_normal(&mut self, key: &KeyEvent) -> VimAction {
-        // Handle digits for count
+        // Handle digits for count. A leading `0` is not a count digit: as in
+        // vim, it moves to the line start unless a count is already being typed.
         if let Key::Char(ch) = key.key {
-            if let Some(digit) = ch.to_digit(10) {
+            if let Some(digit) = ch.to_digit(10).filter(|&d| d != 0 || self.count.is_some()) {
                 let digit = digit as usize;
                 self.count = Some(self.count.unwrap_or(0) * 10 + digit);
                 return VimAction::None;

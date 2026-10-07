@@ -27,6 +27,12 @@
 //! // Using helper
 //! let pwd = password_input("Password");
 //! ```
+//!
+//! # Keys
+//!
+//! [`MaskedInput::handle_key`] types printable characters, deletes with
+//! `Backspace`/`Delete` and moves the cursor with `Left`, `Right`, `Home` and
+//! `End`, like [`Input::handle_key`](crate::widget::Input::handle_key).
 
 mod editing;
 mod render;
@@ -165,9 +171,12 @@ impl MaskedInput {
         self
     }
 
-    /// Set maximum length
+    /// Set maximum length in chars (0 = unlimited)
+    ///
+    /// A value already longer than `len` is cut to `len` chars.
     pub fn max_length(mut self, len: usize) -> Self {
         self.max_length = len;
+        self.clamp_to_max_length();
         self
     }
 
@@ -219,9 +228,10 @@ impl MaskedInput {
         self
     }
 
-    /// Set initial value
+    /// Set initial value (cut to `max_length` chars when that is set)
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
+        self.clamp_to_max_length();
         self.cursor = self.char_count();
         self
     }
@@ -331,10 +341,19 @@ impl MaskedInput {
         &self.validation
     }
 
-    /// Set value programmatically
+    /// Set value programmatically (cut to `max_length` chars when that is set)
     pub fn set_value(&mut self, value: impl Into<String>) {
         self.value = value.into();
+        self.clamp_to_max_length();
         self.cursor = self.cursor.min(self.char_count());
+    }
+
+    /// Cut the value to `max_length` chars (0 = unlimited), as typing does
+    fn clamp_to_max_length(&mut self) {
+        if self.max_length > 0 && self.char_count() > self.max_length {
+            self.value.truncate(self.byte_at(self.max_length));
+            self.cursor = self.cursor.min(self.max_length);
+        }
     }
 
     /// Clear the input

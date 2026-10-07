@@ -121,13 +121,16 @@ impl Transition {
         let mut duration = Duration::from_millis(300);
         let mut delay = Duration::ZERO;
         let mut easing = Easing::EaseInOut;
+        // As in CSS, the first time is the duration and the second the delay
+        let mut duration_seen = false;
 
-        for (i, part) in parts.iter().enumerate().skip(1) {
+        for part in parts.iter().skip(1) {
             if let Some(dur) = parse_duration(part) {
-                if i == 1 || duration == Duration::from_millis(300) {
-                    duration = dur;
-                } else {
+                if duration_seen {
                     delay = dur;
+                } else {
+                    duration = dur;
+                    duration_seen = true;
                 }
             } else if let Some(e) = Easing::parse(part) {
                 easing = e;

@@ -122,14 +122,23 @@ impl View for MaskedInput {
 
         // Render input box
         let mut input_text = if self.focused && !self.disabled {
+            // A focused empty field still shows its placeholder in grey
+            let around_cursor = |s: String| {
+                let text = Text::new(s);
+                if is_placeholder {
+                    text.fg(PLACEHOLDER_FG)
+                } else {
+                    text
+                }
+            };
             hstack()
-                .child(Text::new(display_with_cursor.0))
+                .child(around_cursor(display_with_cursor.0))
                 .child(
                     Text::new(display_with_cursor.1.to_string())
                         .bg(Color::WHITE)
                         .fg(Color::BLACK),
                 )
-                .child(Text::new(display_with_cursor.2))
+                .child(around_cursor(display_with_cursor.2))
         } else {
             let mut text = Text::new(&padded);
             if is_placeholder {

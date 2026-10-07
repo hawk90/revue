@@ -214,6 +214,27 @@ mod tests {
     }
 
     #[test]
+    fn test_export_escapes_strings() {
+        let mut tt = TimeTravelDebugger::new();
+        tt.config.record_interval = Duration::ZERO;
+
+        tt.record(
+            StateSnapshot::new(0)
+                .with_label("say \"hi\"\\now\nnext\ttab\u{1}")
+                .with_action(Action::new("set \"x\"")),
+        );
+
+        let json = tt.export();
+        assert!(
+            json.contains(r#""label": "say \"hi\"\\now\nnext\ttab\u0001","#),
+            "{json}"
+        );
+        assert!(json.contains(r#""action": "set \"x\"","#), "{json}");
+        // No raw control characters inside the strings
+        assert!(!json.contains('\t') && !json.contains('\u{1}'), "{json}");
+    }
+
+    #[test]
     fn test_clear() {
         let mut tt = TimeTravelDebugger::new();
         tt.config.record_interval = Duration::ZERO;

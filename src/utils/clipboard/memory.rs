@@ -1,9 +1,12 @@
 //! In-memory clipboard backend
 
-use super::{ClipboardBackend, ClipboardResult};
+use super::{prepare_content, ClipboardBackend, ClipboardResult};
 use crate::utils::lock::lock_or_recover;
 
 /// In-memory clipboard for testing or sandboxed environments
+///
+/// It accepts and stores content as the system clipboard does: oversized
+/// content is refused, and ANSI escapes and control characters are stripped.
 #[derive(Clone, Debug, Default)]
 pub struct MemoryClipboard {
     content: std::sync::Arc<std::sync::Mutex<String>>,
@@ -20,8 +23,9 @@ impl MemoryClipboard {
 
 impl ClipboardBackend for MemoryClipboard {
     fn set(&self, content: &str) -> ClipboardResult<()> {
+        let content = prepare_content(content)?;
         let mut guard = lock_or_recover(&self.content);
-        *guard = content.to_string();
+        *guard = content;
         Ok(())
     }
 

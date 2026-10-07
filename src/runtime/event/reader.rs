@@ -205,6 +205,47 @@ mod tests {
         assert_eq!(reader.tick_rate, Duration::from_millis(50));
     }
 
+    /// A real Shift+Tab press: crossterm sends BackTab with SHIFT set. It must
+    /// match bindings written as `s-tab` or `backtab`, and be Shift+Tab.
+    #[test]
+    fn test_shift_tab_from_crossterm_matches_backtab_bindings() {
+        use crate::event::KeyMap;
+        use crate::utils::keymap::{parse_key_binding, KeymapConfig, LookupResult, Mode};
+
+        let pressed = convert_key_event(CrosstermKeyEvent::new(
+            KeyCode::BackTab,
+            KeyModifiers::SHIFT,
+        ));
+        assert!(pressed.is_shift_tab());
+        assert!(!pressed.is_tab());
+
+        for spelling in ["s-tab", "S-Tab", "backtab", "shift-backtab"] {
+            let mut keymap = KeymapConfig::new();
+            keymap.bind(Mode::Normal, spelling, "focus_prev");
+            assert_eq!(
+                keymap.lookup(pressed.to_binding()),
+                LookupResult::Action("focus_prev".to_string()),
+                "{spelling}"
+            );
+
+            let mut map = KeyMap::new();
+            map.bind(parse_key_binding(spelling).unwrap(), "focus_prev");
+            assert_eq!(
+                map.get(&pressed.to_binding()),
+                Some(&"focus_prev"),
+                "{spelling}"
+            );
+        }
+
+        // A BackTab without the SHIFT flag (some terminals) is the same key
+        let plain = convert_key_event(CrosstermKeyEvent::new(
+            KeyCode::BackTab,
+            KeyModifiers::empty(),
+        ));
+        assert!(plain.is_shift_tab());
+        assert_eq!(plain.to_binding(), pressed.to_binding());
+    }
+
     #[test]
     fn test_convert_key_event_char() {
         let ct_key = CrosstermKeyEvent::new(KeyCode::Char('a'), KeyModifiers::empty());

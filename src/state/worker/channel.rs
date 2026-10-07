@@ -33,6 +33,25 @@ impl<T: Clone> Clone for ChannelInner<T> {
     }
 }
 
+impl<T> ChannelInner<T> {
+    /// Queue a command for the worker unless the queue is at capacity
+    fn send_command(&self, cmd: WorkerCommand) -> bool {
+        let mut queue = lock_util::lock_or_recover(&self.to_worker);
+        if queue.len() < self.capacity {
+            queue.push_back(cmd);
+            self.command_count.fetch_add(1, Ordering::Release);
+            true
+        } else {
+            log_warn!(
+                "Worker channel overflow: command {:?} dropped (queue full at {} items)",
+                cmd,
+                self.capacity
+            );
+            false
+        }
+    }
+}
+
 /// Message types for worker communication
 #[derive(Debug, Clone)]
 pub enum WorkerMessage<T> {
@@ -114,19 +133,7 @@ impl<T: Clone> WorkerChannel<T> {
 
     /// Send command from UI to worker
     pub fn send_command(&self, cmd: WorkerCommand) -> bool {
-        let mut queue = lock_util::lock_or_recover(&self.inner.to_worker);
-        if queue.len() < self.inner.capacity {
-            queue.push_back(cmd);
-            self.inner.command_count.fetch_add(1, Ordering::Release);
-            true
-        } else {
-            log_warn!(
-                "Worker channel overflow: command {:?} dropped (queue full at {} items)",
-                cmd,
-                self.inner.capacity
-            );
-            false
-        }
+        self.inner.send_command(cmd)
     }
 
     /// Receive command on worker side
@@ -282,11 +289,11 @@ impl<T: Clone> WorkerReceiver<T> {
     }
 
     /// Send command to worker
+    ///
+    /// Returns false, dropping the command, when the command queue already
+    /// holds the channel's capacity.
     pub fn send_command(&self, cmd: WorkerCommand) -> bool {
-        let mut queue = lock_util::lock_or_recover(&self.inner.to_worker);
-        queue.push_back(cmd);
-        self.inner.command_count.fetch_add(1, Ordering::Release);
-        true
+        self.inner.send_command(cmd)
     }
 
     /// Send cancel command

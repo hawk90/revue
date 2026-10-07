@@ -74,3 +74,19 @@ fn test_clipboard_history_no_duplicate_at_top() {
 
     assert_eq!(history.len(), 1);
 }
+
+/// The memory backend accepts and stores the same content the system backend
+/// would: ANSI escapes and control characters other than tab and line breaks
+/// are stripped, and oversized content is refused.
+#[test]
+fn test_memory_clipboard_sanitizes_like_the_system_one() {
+    let clipboard = MemoryClipboard::new();
+    clipboard
+        .set("\x1b[31mred\x1b[0m\ttab\r\nnext\x07\x00")
+        .unwrap();
+    assert_eq!(clipboard.get().unwrap(), "red\ttab\r\nnext");
+
+    let too_large = "x".repeat(revue::constants::MAX_CLIPBOARD_SIZE + 1);
+    assert!(clipboard.set(&too_large).is_err());
+    assert_eq!(clipboard.get().unwrap(), "red\ttab\r\nnext");
+}

@@ -59,24 +59,41 @@ impl Route {
     }
 
     /// Check if path matches this route and extract params
+    ///
+    /// `:name` matches one segment. `*name` (or `*`, captured as `wildcard`)
+    /// as the last segment matches the rest of the path, one or more
+    /// segments joined with `/`; elsewhere in the pattern it matches one.
     pub fn matches(&self, path: &str) -> Option<RouteParams> {
         let pattern_parts: Vec<&str> = self.pattern.trim_matches('/').split('/').collect();
         let path_parts: Vec<&str> = path.trim_matches('/').split('/').collect();
 
-        if pattern_parts.len() != path_parts.len() {
+        let rest_wildcard = pattern_parts.last().is_some_and(|p| p.starts_with('*'));
+        let lengths_match = if rest_wildcard {
+            path_parts.len() >= pattern_parts.len()
+        } else {
+            path_parts.len() == pattern_parts.len()
+        };
+        if !lengths_match {
             return None;
         }
 
         let mut params = HashMap::new();
 
-        for (pattern_part, path_part) in pattern_parts.iter().zip(path_parts.iter()) {
+        for (i, (pattern_part, path_part)) in
+            pattern_parts.iter().zip(path_parts.iter()).enumerate()
+        {
             if let Some(param_name) = pattern_part.strip_prefix(':') {
                 // Parameter
                 params.insert(param_name.to_string(), path_part.to_string());
             } else if let Some(rest) = pattern_part.strip_prefix('*') {
-                // Wildcard (matches rest)
+                // Wildcard: the rest of the path when last, else one segment
                 let param_name = if rest.is_empty() { "wildcard" } else { rest };
-                params.insert(param_name.to_string(), path_part.to_string());
+                let value = if i == pattern_parts.len() - 1 {
+                    path_parts[i..].join("/")
+                } else {
+                    path_part.to_string()
+                };
+                params.insert(param_name.to_string(), value);
             } else if *pattern_part != *path_part {
                 return None;
             }
@@ -384,14 +401,34 @@ impl Router {
     }
 
     /// Go to specific position in history
+    ///
+    /// Moves `delta` entries back (negative) or forward (positive). Like
+    /// [`back`](Self::back) and [`forward`](Self::forward), listeners get a
+    /// `Back` or `Forward` event; `go(0)` stays put and sends none.
     pub fn go(&mut self, delta: isize) -> bool {
-        let new_pos = (self.position as isize + delta) as usize;
-        if new_pos < self.history.len() {
-            self.position = new_pos;
-            true
-        } else {
-            false
+        let Some(new_pos) = self
+            .position
+            .checked_add_signed(delta)
+            .filter(|&p| p < self.history.len())
+        else {
+            return false;
+        };
+        if new_pos == self.position {
+            return true;
         }
+
+        let from = self.current_path().to_string();
+        self.position = new_pos;
+        let to = self.current_path().to_string();
+
+        let event = if delta < 0 {
+            NavigationEvent::Back { from, to }
+        } else {
+            NavigationEvent::Forward { from, to }
+        };
+        self.notify(&event);
+
+        true
     }
 
     /// Check if can go back
@@ -767,7 +804,6 @@ mod tests {
     #[test]
     fn test_route_matches_wildcard() {
         let route = Route::new("/files/*", "files");
-        // Wildcard only matches a single segment
         let params = route.matches("/files/document.pdf").unwrap();
         assert_eq!(params.get("wildcard"), Some(&"document.pdf".to_string()));
     }
@@ -775,9 +811,33 @@ mod tests {
     #[test]
     fn test_route_matches_named_wildcard() {
         let route = Route::new("/files/*path", "files");
-        // Named wildcard only matches a single segment
         let params = route.matches("/files/readme.txt").unwrap();
         assert_eq!(params.get("path"), Some(&"readme.txt".to_string()));
+    }
+
+    #[test]
+    fn test_route_wildcard_matches_the_rest_of_the_path() {
+        let route = Route::new("/files/*path", "files");
+        let params = route.matches("/files/docs/2024/report.pdf").unwrap();
+        assert_eq!(
+            params.get("path").map(String::as_str),
+            Some("docs/2024/report.pdf")
+        );
+
+        let route = Route::new("/files/*", "files");
+        let params = route.matches("/files/a/b").unwrap();
+        assert_eq!(params.get("wildcard").map(String::as_str), Some("a/b"));
+
+        // The rest is at least one segment, and the prefix still has to match
+        assert!(route.matches("/files").is_none());
+        assert!(route.matches("/other/a/b").is_none());
+    }
+
+    #[test]
+    fn test_route_wildcard_in_the_middle_matches_one_segment() {
+        let route = Route::new("/a/*/c", "mid");
+        assert!(route.matches("/a/b/c").is_some());
+        assert!(route.matches("/a/b/x/c").is_none());
     }
 
     #[test]
@@ -875,6 +935,40 @@ mod tests {
         router.push("/a");
         router.go(1);
         assert_eq!(router.current_path(), "/a");
+    }
+
+    #[test]
+    fn test_router_go_notifies_like_back_and_forward() {
+        use std::sync::{Arc, Mutex};
+
+        let mut router = Router::new()
+            .route("/", "home")
+            .route("/a", "a")
+            .route("/b", "b");
+        router.push("/a");
+        router.push("/b");
+
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let seen = Arc::clone(&events);
+        router.on_navigate(move |e| seen.lock().unwrap().push(e.clone()));
+
+        assert!(router.go(-2));
+        assert!(router.go(1));
+        assert!(router.go(0));
+        assert!(!router.go(5));
+        assert_eq!(
+            *events.lock().unwrap(),
+            vec![
+                NavigationEvent::Back {
+                    from: "/b".into(),
+                    to: "/".into()
+                },
+                NavigationEvent::Forward {
+                    from: "/".into(),
+                    to: "/a".into()
+                },
+            ]
+        );
     }
 
     #[test]

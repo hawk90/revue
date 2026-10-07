@@ -539,12 +539,20 @@ impl FocusTrap {
     }
 
     /// Deactivate the focus trap
+    ///
+    /// Focus returns to where it was before [`activate`](Self::activate)
+    /// unless [`restore_focus_on_release(false)`](Self::restore_focus_on_release)
+    /// was set, in which case it stays where it is.
     pub fn deactivate(&mut self, fm: &mut FocusManager) {
         if !self.active {
             return;
         }
 
+        let current = fm.current;
         fm.pop_trap();
+        if !self.config.restore_on_release {
+            fm.current = current;
+        }
         self.active = false;
     }
 }

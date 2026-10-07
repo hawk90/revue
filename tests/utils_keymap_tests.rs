@@ -134,3 +134,39 @@ fn test_global_bindings() {
     let result = keymap.lookup(ctrl_c);
     assert_eq!(result, LookupResult::Action("quit".to_string()));
 }
+
+#[test]
+fn test_parse_s_tab_alias_is_backtab() {
+    // "s-tab" is a documented alias for BackTab, not Shift + Tab
+    for s in ["s-tab", "S-Tab", "backtab"] {
+        let binding = parse_key_binding(s).unwrap();
+        assert_eq!(binding.key, Key::BackTab, "{s}");
+        assert!(!binding.shift, "{s}");
+    }
+    // Modifiers in front still apply
+    let binding = parse_key_binding("Ctrl-s-tab").unwrap();
+    assert_eq!(binding.key, Key::BackTab);
+    assert!(binding.ctrl);
+    // Other s- keys are still Shift
+    let binding = parse_key_binding("s-x").unwrap();
+    assert_eq!(binding.key, Key::Char('x'));
+    assert!(binding.shift);
+}
+
+#[test]
+fn test_multi_key_global_binding() {
+    let mut keymap = KeymapConfig::new();
+    keymap.bind_global("Ctrl-x Ctrl-c", "quit");
+
+    for mode in [Mode::Normal, Mode::Insert] {
+        keymap.set_mode(mode);
+        let ctrl_x = parse_key_binding("Ctrl-x").unwrap();
+        let ctrl_c = parse_key_binding("Ctrl-c").unwrap();
+        assert_eq!(keymap.lookup(ctrl_x), LookupResult::Pending);
+        assert_eq!(
+            keymap.lookup(ctrl_c),
+            LookupResult::Action("quit".to_string())
+        );
+        assert!(!keymap.has_pending());
+    }
+}

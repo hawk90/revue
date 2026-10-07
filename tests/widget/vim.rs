@@ -292,11 +292,18 @@ fn test_motion_word_end() {
 #[test]
 fn test_motion_line_start() {
     let mut vim = VimState::new();
-    // 0은 카운트로 먼저 처리되므로 모션으로 동작하지 않음
-    // 이는 구현의 제한사항
+    // 카운트를 입력 중이 아니면 0은 줄 처음으로 가는 모션 (Vim과 같음)
     let action = vim.handle_key(&KeyEvent::new(Key::Char('0')));
-    assert_eq!(action, VimAction::None);
-    assert_eq!(vim.count(), 0);
+    assert_eq!(action, VimAction::Move(VimMotion::LineStart));
+    assert_eq!(vim.count(), 1);
+}
+
+#[test]
+fn test_delete_to_line_start_d0() {
+    let mut vim = VimState::new();
+    vim.handle_key(&KeyEvent::new(Key::Char('d')));
+    let action = vim.handle_key(&KeyEvent::new(Key::Char('0')));
+    assert_eq!(action, VimAction::Delete(Some(VimMotion::LineStart)));
 }
 
 #[test]
@@ -538,11 +545,11 @@ fn test_count_reset_after_action() {
 }
 
 #[test]
-fn test_count_zero_sets_zero() {
+fn test_count_leading_zero_is_not_a_count() {
     let mut vim = VimState::new();
-    // 0은 카운트로 처리됨 (실제 Vim과는 다르지만 구현상 동작)
+    // 맨 앞의 0은 카운트가 아니라 LineStart 모션
     vim.handle_key(&KeyEvent::new(Key::Char('0')));
-    assert_eq!(vim.count(), 0);
+    assert_eq!(vim.count(), 1);
 }
 
 #[test]

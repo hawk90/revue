@@ -101,3 +101,26 @@ fn test_available_locales() {
     let locales = i18n.available_locales();
     assert_eq!(locales.len(), 3); // en, ko, ja
 }
+
+/// Fallback text is pluralized by the fallback locale's rule, not the
+/// current one's (Korean has one form, Russian three, English two)
+#[test]
+fn test_plural_fallback_uses_fallback_locale_rule() {
+    let mut i18n = I18n::new();
+    i18n.add_locale(Locale::korean());
+    i18n.add_locale(Locale::russian());
+    i18n.add_translation(
+        "en",
+        "items",
+        Translation::with_plural("1 item", "{n} items"),
+    );
+
+    i18n.set_locale("ko");
+    assert_eq!(i18n.t_plural("items", 1), "1 item");
+    assert_eq!(i18n.t_plural("items", 5), "{n} items");
+
+    i18n.set_locale("ru");
+    assert_eq!(i18n.t_plural("items", 1), "1 item");
+    assert_eq!(i18n.t_plural("items", 2), "{n} items");
+    assert_eq!(i18n.t_plural("items", 5), "{n} items");
+}
