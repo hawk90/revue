@@ -420,7 +420,7 @@ src/core/app/
 ├── router.rs              # Screen routing
 ├── declarative_router/    # Declarative routing
 ├── screen/                # Screen management
-├── hot_reload.rs          # CSS hot reload
+├── hot_reload/            # CSS hot reload (watcher, path checks)
 ├── inspector.rs           # Widget inspector
 ├── profiler.rs            # Performance profiler
 └── snapshot.rs            # State snapshots

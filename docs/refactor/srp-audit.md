@@ -81,7 +81,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `core/app/hot_reload.rs` | 428 | 5 | 공개 타입 5 | todo | |
+| `core/app/hot_reload.rs` | 428 | 5 | 공개 타입 5 | split | 파일 감시·디바운스와 감시 경로 보안 검사(경로 탈출·null 바이트)가 섞임 → hot_reload/{mod,path}.rs. 버그 의심: 현재 디렉터리 검사가 문자열 접두어 비교라 `/proj`일 때 `/proj-evil`도 통과, `Error` 이벤트 키가 `now.elapsed()`(항상 0)라 오류끼리 디바운스됨, `poll`/`wait`/`wait_timeout`이 키 계산을 세 번 복사 |
 | `core/app/mod.rs` | 1038 | 1 | 1038줄 | todo | |
 | `core/app/profiler.rs` | 582 | 10 | 공개 타입 10 | todo | |
 | `core/app/router.rs` | 556 | 5 | 공개 타입 5 | todo | |

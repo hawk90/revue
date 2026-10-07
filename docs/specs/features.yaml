@@ -1530,7 +1530,7 @@ items:
     evidence:
       - src/core/app/builder.rs::hot_reload
       - src/core/app/builder.rs::test_env_requests_hot_reload
-      - src/core/app/hot_reload.rs::HotReload
+      - src/core/app/hot_reload/mod.rs::HotReload
       - src/core/app/style_sources.rs::reload_drops_a_deleted_declaration
       - examples/text_editor.rs
     source:
