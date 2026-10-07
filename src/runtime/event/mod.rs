@@ -333,11 +333,17 @@ impl KeyEvent {
     }
 
     /// Check if this is Shift+Tab
+    ///
+    /// Most terminals send Shift+Tab as `BackTab` (crossterm with the Shift
+    /// flag set too); some send `Tab` with the Shift flag. Both count.
     pub fn is_shift_tab(&self) -> bool {
-        self.key == Key::Tab && self.shift
+        self.key == Key::BackTab || (self.key == Key::Tab && self.shift)
     }
 
     /// Convert to KeyBinding for keymap lookup
+    ///
+    /// A `BackTab` binding drops the Shift flag (see `is_shift_tab`), so a
+    /// real Shift+Tab press matches bindings parsed from `s-tab`/`backtab`.
     pub fn to_binding(&self) -> KeyBinding {
         KeyBinding {
             key: self.key,
@@ -345,6 +351,7 @@ impl KeyEvent {
             alt: self.alt,
             shift: self.shift,
         }
+        .normalized()
     }
 }
 

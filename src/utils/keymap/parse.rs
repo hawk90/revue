@@ -6,6 +6,9 @@ use crate::event::{Key, KeyBinding};
 ///
 /// Modifier prefixes are `ctrl-`/`c-`, `alt-`/`m-` and `shift-`/`s-`.
 /// `s-tab` (like `backtab`) names the BackTab key rather than Shift + Tab.
+/// A BackTab binding never carries Shift, since BackTab already is
+/// Shift+Tab; this matches what [`KeyEvent::to_binding`](crate::event::KeyEvent::to_binding)
+/// gives for a real Shift+Tab press.
 pub fn parse_key_binding(s: &str) -> Option<KeyBinding> {
     let s = s.trim();
     if s.is_empty() {
@@ -51,12 +54,15 @@ pub fn parse_key_binding(s: &str) -> Option<KeyBinding> {
 
     let key = parse_key(key_part)?;
 
-    Some(KeyBinding {
-        key,
-        ctrl,
-        alt,
-        shift,
-    })
+    Some(
+        KeyBinding {
+            key,
+            ctrl,
+            alt,
+            shift,
+        }
+        .normalized(),
+    )
 }
 
 /// Parse key name to Key enum

@@ -156,7 +156,7 @@ impl KeymapConfig {
 
     /// Look up action for a key
     pub fn lookup(&mut self, key: KeyBinding) -> LookupResult {
-        self.pending.push(key);
+        self.pending.push(key.normalized());
 
         let chord = KeyChord {
             keys: self.pending.clone(),

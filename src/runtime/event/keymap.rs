@@ -78,6 +78,20 @@ pub struct KeyBinding {
     pub shift: bool,
 }
 
+impl KeyBinding {
+    /// The canonical form used to compare bindings
+    ///
+    /// `BackTab` already means Shift+Tab, and terminals differ on whether
+    /// they also report the Shift flag with it (crossterm does), so a
+    /// BackTab binding never carries `shift`.
+    pub(crate) fn normalized(mut self) -> Self {
+        if self.key == Key::BackTab {
+            self.shift = false;
+        }
+        self
+    }
+}
+
 /// Keymap for mapping keys to actions
 pub struct KeyMap<A> {
     bindings: std::collections::HashMap<KeyBinding, A>,
@@ -93,12 +107,12 @@ impl<A: Clone> KeyMap<A> {
 
     /// Bind a key to an action
     pub fn bind(&mut self, binding: KeyBinding, action: A) {
-        self.bindings.insert(binding, action);
+        self.bindings.insert(binding.normalized(), action);
     }
 
     /// Get the action for a key binding
     pub fn get(&self, binding: &KeyBinding) -> Option<&A> {
-        self.bindings.get(binding)
+        self.bindings.get(&binding.clone().normalized())
     }
 }
 
