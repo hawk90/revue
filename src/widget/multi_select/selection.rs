@@ -96,6 +96,7 @@ impl MultiSelect {
     /// Deselect an option by index
     pub fn deselect_option(&mut self, index: usize) {
         self.selected.retain(|&i| i != index);
+        self.clamp_tag_cursor();
     }
 
     /// Toggle selection of an option
@@ -110,6 +111,7 @@ impl MultiSelect {
     /// Clear all selections
     pub fn clear_selection(&mut self) {
         self.selected.clear();
+        self.clamp_tag_cursor();
     }
 
     /// Select all options
@@ -125,6 +127,16 @@ impl MultiSelect {
     /// Remove the last selected tag
     pub fn remove_last_tag(&mut self) {
         self.selected.pop();
+        self.clamp_tag_cursor();
+    }
+
+    /// Keep the tag cursor on a tag after the selection shrinks
+    fn clamp_tag_cursor(&mut self) {
+        self.tag_cursor = match self.tag_cursor {
+            Some(_) if self.selected.is_empty() => None,
+            Some(c) => Some(c.min(self.selected.len() - 1)),
+            None => None,
+        };
     }
 
     /// Remove tag at cursor position

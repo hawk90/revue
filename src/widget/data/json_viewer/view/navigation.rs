@@ -94,6 +94,10 @@ impl JsonViewer {
         if let Some(root) = self.root.clone() {
             self.collapse_recursive(&root);
         }
+        // Rows below the root are gone: keep the selection on a visible one
+        let max = self.get_visible_nodes().len().saturating_sub(1);
+        self.selected = self.selected.min(max);
+        self.scroll = self.scroll.min(self.selected);
     }
 
     fn collapse_recursive(&mut self, node: &JsonNode) {

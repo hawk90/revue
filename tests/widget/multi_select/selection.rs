@@ -547,3 +547,22 @@ fn test_remove_tag_at_cursor_no_cursor() {
     // Assert
     assert_eq!(select.selection_count(), 2);
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was
+// `<select all> Escape Left <clear selection>` - the tag cursor kept
+// pointing at a tag that clear_selection() had removed.
+#[test]
+fn test_tag_cursor_follows_a_shrinking_selection() {
+    use revue::event::Key;
+    let mut s = MultiSelect::new().options(vec!["a", "b", "c", "d"]);
+    s.select_all();
+    s.handle_key(&Key::Left);
+    assert_eq!(s.get_tag_cursor(), Some(3));
+
+    s.remove_last_tag();
+    assert_eq!(s.get_tag_cursor(), Some(2));
+    s.deselect_option(2);
+    assert_eq!(s.get_tag_cursor(), Some(1));
+    s.clear_selection();
+    assert_eq!(s.get_tag_cursor(), None);
+}

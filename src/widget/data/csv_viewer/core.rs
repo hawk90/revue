@@ -126,6 +126,7 @@ impl CsvViewer {
         self.data = self.parse_csv(content, delimiter);
         self.calculate_column_widths();
         self.reset_sort();
+        self.reset_view();
     }
 
     /// Set CSV data directly
@@ -133,7 +134,19 @@ impl CsvViewer {
         self.data = data;
         self.calculate_column_widths();
         self.reset_sort();
+        self.reset_view();
         self
+    }
+
+    /// New data: move the selection and scroll back to the first cell and
+    /// look for the search query in the new rows.
+    fn reset_view(&mut self) {
+        self.selected_row = 0;
+        self.selected_col = 0;
+        self.scroll_row = 0;
+        self.scroll_col = 0;
+        let query = std::mem::take(&mut self.search_query);
+        self.search(&query);
     }
 
     /// Set whether first row is header
@@ -405,8 +418,10 @@ impl CsvViewer {
         }
 
         let start = if self.has_header { 1 } else { 0 };
+        // Only the shown columns: a ragged row's extra cells are never drawn
+        let columns = self.column_count();
         for (row_idx, row) in self.data.iter().enumerate().skip(start) {
-            for (col_idx, cell) in row.iter().enumerate() {
+            for (col_idx, cell) in row.iter().enumerate().take(columns) {
                 if cell.to_lowercase().contains(&self.search_query) {
                     self.search_matches.push((row_idx - start, col_idx));
                 }

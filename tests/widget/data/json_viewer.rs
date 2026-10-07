@@ -283,3 +283,17 @@ fn test_parse_json_complex() {
     assert!(viewer.has_data());
     assert_eq!(viewer.root_type(), Some(&JsonType::Object));
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was `Ctrl+End 'x'`
+// (select the last row, then collapse everything) - the selection stayed on
+// a row that no longer existed.
+#[test]
+fn test_collapse_all_keeps_the_selection_visible() {
+    let mut viewer = JsonViewer::from_content(r#"{"a":[1,2,3],"b":{"c":true}}"#);
+    viewer.select_last();
+    assert!(viewer.selected_index() > 0);
+    viewer.collapse_all();
+    assert_eq!(viewer.visible_count(), 1);
+    assert_eq!(viewer.selected_index(), 0);
+    assert!(viewer.selected_path().is_some());
+}

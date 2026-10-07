@@ -187,6 +187,11 @@ impl Slider {
 
     /// Clamp value to range and step
     fn clamp_value(&self, value: f64) -> f64 {
+        // NaN is no position on the track (and clamps to NaN): keep the
+        // current value
+        if value.is_nan() {
+            return self.value;
+        }
         let clamped = value.clamp(self.min, self.max);
         if self.step > 0.0 {
             let steps = ((clamped - self.min) / self.step).round();

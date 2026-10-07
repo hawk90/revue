@@ -90,6 +90,9 @@ impl Input {
                 if self.has_selection() {
                     self.delete_selection_with_undo()
                 } else if self.cursor > 0 {
+                    // An empty selection (anchor at the cursor) must not
+                    // outlive the edit and turn into a stale range
+                    self.clear_selection();
                     self.cursor -= 1;
                     // Get the character to be deleted for undo
                     let deleted = self.substring(self.cursor, self.cursor + 1).to_string();
@@ -107,6 +110,7 @@ impl Input {
                 if self.has_selection() {
                     self.delete_selection_with_undo()
                 } else if self.cursor < char_len {
+                    self.clear_selection();
                     // Get the character to be deleted for undo
                     let deleted = self.substring(self.cursor, self.cursor + 1).to_string();
                     self.push_undo(EditOperation::Delete {

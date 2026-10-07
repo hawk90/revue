@@ -65,7 +65,7 @@ impl RichTextEditor {
                     let mut char_idx = 0;
                     for span in &mut block_ref.spans {
                         let span_start = char_idx;
-                        let span_end = char_idx + span.text.len();
+                        let span_end = char_idx + span.text.chars().count();
                         // Check if this span overlaps with the format range
                         if span_end > start && span_start < end {
                             span.format = old;
@@ -168,7 +168,7 @@ impl RichTextEditor {
                     let mut char_idx = 0;
                     for span in &mut block_ref.spans {
                         let span_start = char_idx;
-                        let span_end = char_idx + span.text.len();
+                        let span_end = char_idx + span.text.chars().count();
                         // Check if this span overlaps with the format range
                         if span_end > start && span_start < end {
                             span.format = new;

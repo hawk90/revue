@@ -80,9 +80,10 @@ pub trait Navigation {
             date.month = 12;
             date.year -= 1;
         }
-        // Clamp cursor day to valid range
+        // Clamp the cursor day and the stored day to the new month
         let max_day = days_in_month(date.year, date.month);
         self.set_cursor_day(self.cursor_day().min(max_day));
+        date.day = date.day.min(max_day);
         self.set_date(date);
     }
 
@@ -95,9 +96,10 @@ pub trait Navigation {
             date.month = 1;
             date.year += 1;
         }
-        // Clamp cursor day to valid range
+        // Clamp the cursor day and the stored day to the new month
         let max_day = days_in_month(date.year, date.month);
         self.set_cursor_day(self.cursor_day().min(max_day));
+        date.day = date.day.min(max_day);
         self.set_date(date);
     }
 
@@ -108,6 +110,7 @@ pub trait Navigation {
         // Handle Feb 29 in non-leap years
         let max_day = days_in_month(date.year, date.month);
         self.set_cursor_day(self.cursor_day().min(max_day));
+        date.day = date.day.min(max_day);
         self.set_date(date);
     }
 
@@ -118,6 +121,7 @@ pub trait Navigation {
         // Handle Feb 29 in non-leap years
         let max_day = days_in_month(date.year, date.month);
         self.set_cursor_day(self.cursor_day().min(max_day));
+        date.day = date.day.min(max_day);
         self.set_date(date);
     }
 

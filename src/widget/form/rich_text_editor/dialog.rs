@@ -39,6 +39,10 @@ impl RichTextEditor {
         // Calculate dialog position (centered)
         let dialog_width = 40.min(width.saturating_sub(4));
         let dialog_height = 7;
+        // No room for even the two border columns
+        if dialog_width < 2 {
+            return;
+        }
         let dialog_x = x + (width.saturating_sub(dialog_width)) / 2;
         let dialog_y = y + (height.saturating_sub(dialog_height)) / 2;
 

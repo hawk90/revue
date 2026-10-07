@@ -34,7 +34,7 @@ mod state_tests;
 
 use crate::event::Key;
 use crate::style::Color;
-use crate::widget::data::calendar::{Date, FirstDayOfWeek};
+use crate::widget::data::calendar::{days_in_month, Date, FirstDayOfWeek};
 use crate::widget::datetime_picker::render::Rendering;
 use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
@@ -270,7 +270,38 @@ impl DateTimePicker {
 
     /// Handle keyboard input (delegates to input module)
     pub fn handle_key(&mut self, key: &Key) -> bool {
-        <Self as input::Input>::handle_key(self, key)
+        let handled = <Self as input::Input>::handle_key(self, key);
+        if handled && self.mode == DateTimeMode::Date {
+            self.keep_cursor_in_limits();
+        }
+        handled
+    }
+
+    /// Keep the calendar cursor, and the date it navigates, within
+    /// `min_date`/`max_date`, as `RangePicker` does.
+    ///
+    /// Day, week, month and year navigation move the stored date along with
+    /// the cursor, so both are clamped: navigation stops at a limit instead
+    /// of leaving the allowed range.
+    fn keep_cursor_in_limits(&mut self) {
+        let (min, max) = (self.min_date, self.max_date);
+        if min.is_none() && max.is_none() {
+            return;
+        }
+        let clamp = |d: Date| {
+            let d = min.map_or(d, |min| d.max(min));
+            max.map_or(d, |max| d.min(max))
+        };
+        let at_cursor = Date::new(self.date.year, self.date.month, self.cursor_day);
+        let clamped = clamp(at_cursor);
+        if clamped != at_cursor {
+            self.date.year = clamped.year;
+            self.date.month = clamped.month;
+            self.cursor_day = clamped.day;
+            let max_day = days_in_month(self.date.year, self.date.month);
+            self.date.day = self.date.day.min(max_day);
+        }
+        self.date = clamp(self.date);
     }
 }
 

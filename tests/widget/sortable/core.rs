@@ -159,3 +159,35 @@ fn test_sortable_list_single_item() {
     assert_eq!(list.items()[0].label, "Only Item");
     assert_eq!(list.items()[0].original_index, 0);
 }
+
+// Found by tests/event_sequences.rs (a deeper run): the shrunk sequence was
+// `Down(Left)@(+0,start) Drag(Left)@(start,mid) <remove 0>
+// Up(Left)@(start,start)` - an item removed during a drag left the drag's
+// indices pointing into the old list, and dropping inserted out of range.
+#[test]
+fn test_remove_during_a_drag_cancels_it() {
+    use revue::event::{MouseButton, MouseEvent, MouseEventKind};
+    use revue::widget::traits::Interactive;
+
+    let area = Rect::new(2, 1, 40, 10);
+    let mut list = SortableList::new(["a", "b", "c", "d"]);
+    let at = |x, y, kind| MouseEvent::new(x, y, kind);
+    list.handle_mouse(&at(2, 1, MouseEventKind::Down(MouseButton::Left)), area);
+    assert!(list.is_dragging());
+    list.handle_mouse(&at(2, 6, MouseEventKind::Drag(MouseButton::Left)), area);
+    list.remove(0);
+    assert!(!list.is_dragging());
+    list.handle_mouse(&at(2, 1, MouseEventKind::Up(MouseButton::Left)), area);
+    let labels: Vec<&str> = list.items().iter().map(|i| i.label.as_str()).collect();
+    assert_eq!(labels, ["b", "c", "d"]);
+
+    // A drag whose indices went stale through items_mut() is dropped
+    let mut list = SortableList::new(["a", "b", "c", "d"]);
+    list.set_selected(Some(3));
+    list.start_drag();
+    list.update_drop_target(5, 0);
+    list.items_mut().truncate(2);
+    list.end_drag();
+    assert_eq!(list.items().len(), 2);
+    assert!(!list.is_dragging());
+}

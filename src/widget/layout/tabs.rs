@@ -230,7 +230,8 @@ impl Tabs {
                 self.select_last();
                 old != self.selection.index
             }
-            Key::Char(c) if c.is_ascii_digit() => {
+            // '1'..='9' pick a tab; '0' is not a tab number
+            Key::Char(c @ '1'..='9') => {
                 let index = (*c as usize) - ('1' as usize);
                 if index < self.tabs.len() {
                     let old = self.selection.index;
@@ -474,5 +475,13 @@ mod tests {
     fn test_tabs_helper_fn() {
         let t = tabs().tab("A");
         assert_eq!(t.len(), 1);
+    }
+
+    // Found by tests/event_sequences.rs: the shrunk sequence was `'0'`.
+    #[test]
+    fn test_tabs_zero_key_is_ignored() {
+        let mut t = Tabs::new().tabs(vec!["One", "Two"]).selected(1);
+        assert!(!t.handle_key(&crate::event::Key::Char('0')));
+        assert_eq!(t.selected_index(), 1);
     }
 }
