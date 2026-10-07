@@ -5,7 +5,7 @@
 
 #![allow(clippy::type_complexity)]
 use super::signal::{Signal, Subscription};
-use super::tracker::notify_dependents;
+use super::tracker::{enter_notify, notify_dependents};
 use super::SignalId;
 use crate::utils::lock::lock_or_recover;
 use std::sync::Arc;
@@ -267,6 +267,7 @@ impl<T: Send + Sync + Clone + 'static> SignalVec<T> {
         // Emit to all diff subscribers - outside the lock, so a subscriber
         // can drop a subscription, subscribe, or change this vector, and one
         // that panics does not poison the list for everyone after it.
+        let _depth = enter_notify();
         let callbacks: Vec<_> = lock_or_recover(&self.diff_subscribers).clone();
         for callback in callbacks {
             callback(diff.clone());
@@ -478,5 +479,18 @@ mod tests {
         let vec2 = vec1.clone();
         vec1.push(4);
         assert_eq!(vec2.get(), vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn a_diff_subscriber_loop_ends_in_the_depth_panic() {
+        let outcome = std::thread::spawn(|| {
+            let v = SignalVec::new(vec![0]);
+            let v2 = v.clone();
+            let _sub = v.subscribe_diff(move |_| v2.push(1));
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| v.push(1))).is_err()
+        })
+        .join()
+        .expect("the thread died");
+        assert!(outcome);
     }
 }

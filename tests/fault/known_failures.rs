@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "Signal subscribers are notified outside the update-depth guard: a loop overflows the stack",
-        cases: &["reactive subscriber-loop"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "Computed::get re-entered on one thread deadlocks on its recompute lock",
         cases: &["reactive computed-cycle", "reactive computed-self"],
     },
@@ -58,6 +53,11 @@ pub const KNOWN: &[Known] = &[
     Known {
         layer: "concurrency",
         reason: "a panicking plugin hook unwinds out of the registry (design: crash or isolate?)",
-        cases: &["plugin init-panic", "plugin mount-panic", "plugin tick-panic", "plugin unmount-panic"],
+        cases: &[
+            "plugin init-panic",
+            "plugin mount-panic",
+            "plugin tick-panic",
+            "plugin unmount-panic",
+        ],
     },
 ];

@@ -3,7 +3,7 @@
 //! Signals use `Arc<RwLock<T>>` internally, making them `Send + Sync`.
 //! This allows async operations to update signals from background threads.
 
-use super::tracker::{notify_dependents, track_read};
+use super::tracker::{enter_notify, notify_dependents, track_read};
 use super::SignalId;
 use crate::utils::lock::{read_or_recover, write_or_recover};
 use std::collections::HashMap;
@@ -246,6 +246,10 @@ impl<T: 'static> Signal<T> {
     ///
     /// count.set(2);  // No callback called
     /// ```
+    ///
+    /// A callback may set the signal again. One that does so without end
+    /// makes the setter panic with "Maximum reactive update depth", as a
+    /// circular dependency between effects does.
     pub fn subscribe(&self, callback: impl Fn() + Send + Sync + 'static) -> Subscription {
         let id = SubscriptionId::new();
         {
@@ -274,6 +278,11 @@ impl<T: 'static> Signal<T> {
     /// during callback execution. This prevents deadlock when callbacks
     /// drop their own Subscription handles.
     fn notify(&self) {
+        // A subscriber that sets this signal again nests here: count it like
+        // any notification, so a loop ends in the depth panic, not a stack
+        // overflow.
+        let _depth = enter_notify();
+
         // Clone callbacks while holding read lock
         let callbacks: Vec<_> = {
             let subs = read_or_recover(&self.subscribers);
@@ -466,5 +475,21 @@ mod tests {
 
         signal.with_mut(|v| v.push(4));
         assert_eq!(*signal.read(), vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn a_subscriber_loop_ends_in_the_depth_panic_not_a_stack_overflow() {
+        // A thread with the default 2 MiB stack: the loop used to overflow it.
+        let outcome = std::thread::spawn(|| {
+            let s = Signal::new(0u64);
+            let s2 = s.clone();
+            let _sub = s.subscribe(move || s2.set(s2.get() + 1));
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| s.set(1)))
+                .err()
+                .and_then(|p| p.downcast_ref::<String>().cloned())
+        })
+        .join()
+        .expect("the thread died");
+        assert!(outcome.is_some_and(|m| m.contains("Maximum reactive update depth")));
     }
 }
