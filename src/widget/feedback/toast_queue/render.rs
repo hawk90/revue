@@ -157,16 +157,66 @@ impl View for ToastQueue {
         let area = ctx.area;
         let (base_x, base_y) = self.calculate_base_position(area.width, area.height);
 
+        // The stack fills the same block below `base_y` either way; `Up` only
+        // reverses the order, so the newest (last) toast is on top.
+        let count = self.visible.len();
         for (i, entry) in self.visible.iter().enumerate() {
-            let offset = (i as u16) * (self.toast_height() + self.gap);
-            let y = match self.stack_direction {
-                StackDirection::Down => base_y + offset,
-                StackDirection::Up => base_y.saturating_sub(offset),
+            let slot = match self.stack_direction {
+                StackDirection::Down => i,
+                StackDirection::Up => count - 1 - i,
             };
+            let y = base_y.saturating_add((slot as u16) * (self.toast_height() + self.gap));
 
             if y < area.height {
                 self.render_toast(ctx, entry, base_x, y);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    /// The row each toast's message is drawn on, oldest first.
+    fn message_rows(position: ToastPosition, direction: StackDirection) -> Vec<Option<u16>> {
+        let mut queue = ToastQueue::new()
+            .position(position)
+            .stack_direction(direction)
+            .toast_width(12);
+        queue.info("A");
+        queue.info("B");
+        queue.tick();
+        let mut buf = Buffer::new(14, 12);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, 14, 12));
+        queue.render(&mut ctx);
+        // The message starts 4 cells into a toast at x = 1 (the margin).
+        ['A', 'B']
+            .iter()
+            .map(|&m| (0..12).find(|&y| buf.get(5, y).unwrap().symbol == m))
+            .collect()
+    }
+
+    #[test]
+    fn stacking_up_puts_the_newest_toast_on_top_within_the_area() {
+        // Toasts are 3 rows with a 1-row gap; the margin is 1.
+        assert_eq!(
+            message_rows(ToastPosition::TopLeft, StackDirection::Down),
+            [Some(2), Some(6)]
+        );
+        assert_eq!(
+            message_rows(ToastPosition::TopLeft, StackDirection::Up),
+            [Some(6), Some(2)]
+        );
+        assert_eq!(
+            message_rows(ToastPosition::BottomLeft, StackDirection::Down),
+            [Some(4), Some(8)]
+        );
+        assert_eq!(
+            message_rows(ToastPosition::BottomLeft, StackDirection::Up),
+            [Some(8), Some(4)]
+        );
     }
 }
