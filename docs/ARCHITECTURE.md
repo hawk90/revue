@@ -100,27 +100,27 @@ src/widget/
 │
 ├── display/               # Static/decorative display
 │   ├── text.rs            #   Text display
-│   ├── richtext.rs        #   Styled text
+│   ├── richtext/          #   Styled text
 │   ├── bigtext.rs         #   Large ASCII text
 │   ├── badge.rs           #   Badge
 │   ├── tag.rs             #   Tag/chip
-│   ├── avatar.rs          #   Avatar
+│   ├── avatar/            #   Avatar
 │   ├── progress.rs        #   Progress bar
 │   ├── spinner.rs         #   Loading spinner
 │   ├── skeleton.rs        #   Skeleton loader
-│   ├── gauge.rs           #   Gauge/meter
+│   ├── gauge/             #   Gauge/meter
 │   └── divider.rs         #   Divider
 │
 ├── feedback/              # Overlays & notifications
 │   ├── modal/             #   Modal dialog
 │   ├── toast.rs           #   Toast notifications
 │   ├── notification/      #   Notification center
-│   ├── alert.rs           #   Alert box
+│   ├── alert/             #   Alert box
 │   ├── callout/           #   Callout/admonition
-│   ├── tooltip.rs         #   Tooltip
+│   ├── tooltip/           #   Tooltip
 │   ├── popover/           #   Popover
 │   ├── menu/              #   Menu
-│   └── statusbar.rs       #   Status bar
+│   └── statusbar/         #   Status bar
 │
 ├── developer/             # Developer-facing widgets
 │   ├── terminal/          #   Embedded terminal
