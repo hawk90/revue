@@ -225,13 +225,15 @@ items:
     acceptance:
       - overflow hidden clips a child to the container box
       - every RenderContext drawing primitive honors the clip, text and single characters included
+      - widgets writing to ctx.buffer directly (canvases, Alert border, GradientBox, user widgets) are clipped too
     evidence:
       - tests/css_card_and_overflow.rs::overflow_hidden_clips_a_child_to_its_container
       - src/widget/traits/render_context/tests.rs::test_clip_text_primitives
+      - tests/overflow_clips_direct_writers.rs::a_widget_writing_to_the_buffer_is_clipped
       - tests/config_matrix.rs::every_screen_survives_every_combination_of_switches
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
-    notes: scroll/auto parse but behave like visible/hidden; no CSS-driven scrolling.
+    notes: scroll/auto parse but behave like visible/hidden; no CSS-driven scrolling. The default stays visible (CSS), so a box sized past its slot paints over its neighbors unless a container says overflow hidden.
   - id: CSS-014
     title: Box properties via css_layout (display, width, height, margin, min/max)
     area: css

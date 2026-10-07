@@ -544,8 +544,19 @@ cargo test --no-default-features --test config_matrix  # 기능 없이
 깨서 되돌렸다. 대신 매트릭스는 **넘친 것이 모두 `overflow: hidden` 상자 안에 갇히는지**를
 본다. 그래서 세 번째 스타일시트 값이 있다. 위의 버그 하나를 고친 뒤 그 검사는 전부 통과한다.
 
-남는 질문은 이것이다. 터미널에서는 넘친 칸이 갈 곳 없이 이웃을 덮어쓴다. 그런데도 기본값이
-`visible`이어야 하는가? 바꾸면 동작이 바뀌는 일이라 여기서는 결정하지 않는다.
+남았던 질문은 이것이었다. 터미널에서는 넘친 칸이 갈 곳 없이 이웃을 덮어쓴다. 그런데도
+기본값이 `visible`이어야 하는가?
+
+**F 단계에서 정했다. 기본값은 CSS대로 `visible`로 둔다.** 바꾸면 동작이 바뀌고,
+`overflow: hidden`이 관찰할 수 있는 이유도 사라진다. 대신 `overflow: hidden`이 빈틈없이
+잘라내게 했다. 그 전에는 `RenderContext`의 메서드만 클립을 봤고, `ctx.buffer`에 직접 쓰는
+위젯(`Canvas`, `BrailleCanvas`, `Alert`의 테두리, `GradientBox`, 사용자 위젯)은 상자 밖에도
+썼다. 이제 `Buffer`가 렌더 중의 클립을 들고 있어서 `set`·`get_mut`·`fill`·`put_str`·
+`put_sequence`가 모두 클립 밖 칸을 건드리지 않는다. 클립이 반으로 자를 넓은 문자와 OSC 66
+시퀀스는 아예 쓰지 않는다. 클립된 하위 트리 안의 패닉이 클립 복원을 건너뛰어도
+`ErrorBoundary`가 복원한 뒤 대체 화면을 그린다. 오버레이(드롭다운, 툴팁, 토스트)는 트리
+다음에 그리므로 잘리지 않는다. 테스트는 `tests/overflow_clips_direct_writers.rs`와
+`render::buffer::clip_tests`다.
 
 #### 견딘 것
 
