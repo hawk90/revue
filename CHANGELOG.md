@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2](https://github.com/hawk90/revue/compare/v3.2.1...v3.2.2) (2026-10-07)
+
+
+### Bug Fixes
+
+* **command-palette:** fit the palette into very small areas ([f05ea36](https://github.com/hawk90/revue/commit/f05ea36135e5177038c9b888127d9f8e68c78d5d))
+* **devtools:** clip long tab rows at the panel's right edge ([f05ea36](https://github.com/hawk90/revue/commit/f05ea36135e5177038c9b888127d9f8e68c78d5d))
+* **devtools:** cut event details by display width, not by byte ([f05ea36](https://github.com/hawk90/revue/commit/f05ea36135e5177038c9b888127d9f8e68c78d5d))
+* **devtools:** stop the tab row cursors at the bottom of the coordinate space ([f05ea36](https://github.com/hawk90/revue/commit/f05ea36135e5177038c9b888127d9f8e68c78d5d))
+* **inspector:** keep the panel and the bounds highlight inside its area ([f05ea36](https://github.com/hawk90/revue/commit/f05ea36135e5177038c9b888127d9f8e68c78d5d))
+* **inspector:** lay out the panel in tiny areas and at the coordinate edge ([f05ea36](https://github.com/hawk90/revue/commit/f05ea36135e5177038c9b888127d9f8e68c78d5d))
+* **log-viewer:** detect timestamps without slicing inside a character ([f05ea36](https://github.com/hawk90/revue/commit/f05ea36135e5177038c9b888127d9f8e68c78d5d))
+* **render:** clamp Buffer::resize to the limits Buffer::new enforces ([8e2ded4](https://github.com/hawk90/revue/commit/8e2ded41c9dfaa9a5bcc53e95c31a9d0c6daf35b))
+* **render:** stop wide-character text at the edge of the coordinate space ([f05ea36](https://github.com/hawk90/revue/commit/f05ea36135e5177038c9b888127d9f8e68c78d5d))
+* **render:** undo a mouse mode the backend failed to finish enabling ([8e2ded4](https://github.com/hawk90/revue/commit/8e2ded41c9dfaa9a5bcc53e95c31a9d0c6daf35b))
+* **richlog:** render in zero-height areas ([f05ea36](https://github.com/hawk90/revue/commit/f05ea36135e5177038c9b888127d9f8e68c78d5d))
+* **splitter:** place panes without coordinate overflow ([f05ea36](https://github.com/hawk90/revue/commit/f05ea36135e5177038c9b888127d9f8e68c78d5d))
+* **style:** bound how far a var() value may expand ([8e2ded4](https://github.com/hawk90/revue/commit/8e2ded41c9dfaa9a5bcc53e95c31a9d0c6daf35b))
+* **style:** reject transition seconds a Duration cannot hold ([8e2ded4](https://github.com/hawk90/revue/commit/8e2ded41c9dfaa9a5bcc53e95c31a9d0c6daf35b))
+* **utils:** slice highlighted lines at byte offsets, not char indices ([8e2ded4](https://github.com/hawk90/revue/commit/8e2ded41c9dfaa9a5bcc53e95c31a9d0c6daf35b))
+* **widget:** end a terminal tab at the right edge ([8e2ded4](https://github.com/hawk90/revue/commit/8e2ded41c9dfaa9a5bcc53e95c31a9d0c6daf35b))
+* **widget:** look for a diagram label's closing bracket after its opening one ([8e2ded4](https://github.com/hawk90/revue/commit/8e2ded41c9dfaa9a5bcc53e95c31a9d0c6daf35b))
+
 ## [3.2.1](https://github.com/hawk90/revue/compare/v3.2.0...v3.2.1) (2026-10-07)
 
 
