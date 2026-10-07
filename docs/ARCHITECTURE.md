@@ -108,7 +108,7 @@ src/widget/
 │   ├── progress.rs        #   Progress bar
 │   ├── spinner.rs         #   Loading spinner
 │   ├── skeleton.rs        #   Skeleton loader
-│   ├── gauge.rs           #   Gauge/meter
+│   ├── gauge/             #   Gauge/meter
 │   └── divider.rs         #   Divider
 │
 ├── feedback/              # Overlays & notifications
