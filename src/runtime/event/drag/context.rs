@@ -230,6 +230,9 @@ impl DragContext {
     pub fn clear_targets(&mut self) {
         self.targets.clear();
         self.hovered_target = None;
+        if self.state == DragState::OverTarget {
+            self.state = DragState::Dragging;
+        }
     }
 
     /// Get a target by ID
@@ -408,6 +411,20 @@ mod tests {
         ctx.register_target(DropTarget::new(1, rect));
         ctx.clear_targets();
         assert!(ctx.get_target(1).is_none());
+    }
+
+    #[test]
+    fn test_drag_context_clear_targets_leaves_over_target() {
+        let mut ctx = DragContext::new();
+        ctx.register_target(DropTarget::new(1, Rect::new(0, 0, 100, 100)).accepts_all());
+        ctx.start_drag(DragData::text("test"), 10, 10);
+        ctx.update_position(20, 10);
+        assert_eq!(ctx.state(), DragState::OverTarget);
+
+        ctx.clear_targets();
+        assert_eq!(ctx.state(), DragState::Dragging);
+        assert!(!ctx.is_over_target());
+        assert!(ctx.is_dragging());
     }
 
     #[test]
