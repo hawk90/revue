@@ -255,6 +255,25 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
+    /// Poll until a result arrives, failing after `timeout`. A fixed sleep
+    /// before a single poll races the worker on a slow machine.
+    fn poll_within<T: Send + 'static>(
+        runner: &mut PooledTaskRunner<T>,
+        timeout: Duration,
+    ) -> TaskResult<T> {
+        let deadline = std::time::Instant::now() + timeout;
+        loop {
+            if let Some(result) = runner.poll() {
+                return result;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "no task result within {timeout:?}"
+            );
+            thread::sleep(Duration::from_millis(5));
+        }
+    }
+
     #[test]
     fn test_pooled_runner_basic() {
         let mut runner = PooledTaskRunner::new(2);
@@ -315,14 +334,11 @@ mod tests {
         runner.spawn("duplicate", || 1);
         runner.spawn("duplicate", || 2); // Should be ignored
 
-        thread::sleep(Duration::from_millis(100));
-
-        let mut count = 0;
-        while let Some(_result) = runner.poll() {
-            count += 1;
-        }
-
-        assert_eq!(count, 1); // Only one task should have run
+        let result = poll_within(&mut runner, Duration::from_secs(5));
+        assert_eq!(result.result, Ok(1));
+        // The second spawn was never queued, so nothing is left to arrive
+        assert!(!runner.has_pending());
+        assert!(runner.poll().is_none());
     }
 
     #[test]
@@ -333,14 +349,8 @@ mod tests {
             panic!("Test panic");
         });
 
-        thread::sleep(Duration::from_millis(100));
-
-        if let Some(result) = runner.poll() {
-            assert!(result.result.is_err());
-            assert!(result.result.unwrap_err().contains("panicked"));
-        } else {
-            panic!("Should have received error result");
-        }
+        let result = poll_within(&mut runner, Duration::from_secs(5));
+        assert!(result.result.unwrap_err().contains("panicked"));
     }
 
     #[test]
