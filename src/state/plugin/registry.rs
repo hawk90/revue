@@ -13,8 +13,14 @@ pub struct PluginRegistry {
     context: PluginContext,
     /// Whether plugins have been initialized
     initialized: bool,
+    /// How many plugins (in order) `on_init` has succeeded for: a retry after
+    /// a failure goes on from the one that failed
+    init_done: usize,
     /// Whether plugins have been mounted
     mounted: bool,
+    /// How many plugins (in order) are mounted: after a failed `mount` these
+    /// are still mounted, and `unmount` must unmount them
+    mount_done: usize,
 }
 
 impl PluginRegistry {
@@ -24,7 +30,9 @@ impl PluginRegistry {
             plugins: Vec::new(),
             context: PluginContext::new(),
             initialized: false,
+            init_done: 0,
             mounted: false,
+            mount_done: 0,
         }
     }
 
@@ -92,18 +100,25 @@ impl PluginRegistry {
     /// Initialize all plugins
     ///
     /// Called once when the app is being built.
+    ///
+    /// Stops at the first plugin whose `on_init` fails and returns its error;
+    /// calling `init` again goes on from that plugin, so none is initialized
+    /// twice.
     pub fn init(&mut self) -> crate::Result<()> {
         if self.initialized {
             return Ok(());
         }
 
-        for plugin in &mut self.plugins {
+        for plugin in self.plugins.iter_mut().skip(self.init_done) {
             self.context.set_current_plugin(plugin.name());
-            if let Err(e) = plugin.on_init(&mut self.context) {
+            let result = plugin.on_init(&mut self.context);
+            if let Err(e) = result {
                 self.context.error(&format!("Init failed: {}", e));
+                self.context.clear_current_plugin();
                 return Err(e);
             }
             self.context.clear_current_plugin();
+            self.init_done += 1;
         }
 
         self.initialized = true;
@@ -113,6 +128,10 @@ impl PluginRegistry {
     /// Mount all plugins
     ///
     /// Called when the app starts running.
+    ///
+    /// Stops at the first plugin whose `on_mount` fails and returns its
+    /// error. The plugins mounted before it stay mounted: [`unmount`](Self::unmount)
+    /// unmounts them, and calling `mount` again goes on from the one that failed.
     pub fn mount(&mut self) -> crate::Result<()> {
         if self.mounted {
             return Ok(());
@@ -120,13 +139,16 @@ impl PluginRegistry {
 
         self.context.set_running(true);
 
-        for plugin in &mut self.plugins {
+        for plugin in self.plugins.iter_mut().skip(self.mount_done) {
             self.context.set_current_plugin(plugin.name());
-            if let Err(e) = plugin.on_mount(&mut self.context) {
+            let result = plugin.on_mount(&mut self.context);
+            if let Err(e) = result {
                 self.context.error(&format!("Mount failed: {}", e));
+                self.context.clear_current_plugin();
                 return Err(e);
             }
             self.context.clear_current_plugin();
+            self.mount_done += 1;
         }
 
         self.mounted = true;
@@ -151,16 +173,20 @@ impl PluginRegistry {
     /// Unmount all plugins
     ///
     /// Called when the app is shutting down.
-    /// Plugins are unmounted in reverse order (lowest priority first).
+    /// Plugins are unmounted in reverse order (lowest priority first). Only
+    /// mounted plugins are unmounted - after a failed [`mount`](Self::mount),
+    /// those before the one that failed.
     pub fn unmount(&mut self) -> crate::Result<()> {
-        if !self.mounted {
+        // Not mounted - and no plugins left mounted by a mount that failed
+        if !self.mounted && self.mount_done == 0 {
             return Ok(());
         }
 
         self.context.set_running(false);
 
-        // Unmount in reverse order
-        for plugin in self.plugins.iter_mut().rev() {
+        // Unmount in reverse order - only the plugins that were mounted
+        let mounted = self.mount_done.min(self.plugins.len());
+        for plugin in self.plugins[..mounted].iter_mut().rev() {
             self.context.set_current_plugin(plugin.name());
             if let Err(e) = plugin.on_unmount(&mut self.context) {
                 self.context.error(&format!("Unmount failed: {}", e));
@@ -170,6 +196,7 @@ impl PluginRegistry {
         }
 
         self.mounted = false;
+        self.mount_done = 0;
         Ok(())
     }
 
@@ -591,5 +618,84 @@ mod tests {
         // Unmount should continue even if one plugin fails
         let result = registry.unmount();
         assert!(result.is_ok());
+    }
+
+    /// Records its hooks; fails `fail_in` if it names one.
+    struct Recorder {
+        name: &'static str,
+        priority: i32,
+        fail_in: &'static str,
+        log: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+    }
+
+    impl Recorder {
+        fn hook(&self, hook: &str) -> crate::Result<()> {
+            self.log
+                .lock()
+                .unwrap()
+                .push(format!("{}:{hook}", self.name));
+            if hook == self.fail_in {
+                return Err(crate::Error::Render(format!("{hook} failed")));
+            }
+            Ok(())
+        }
+    }
+
+    impl Plugin for Recorder {
+        fn name(&self) -> &str {
+            self.name
+        }
+        fn priority(&self) -> i32 {
+            self.priority
+        }
+        fn on_init(&mut self, _: &mut PluginContext) -> crate::Result<()> {
+            self.hook("init")
+        }
+        fn on_mount(&mut self, _: &mut PluginContext) -> crate::Result<()> {
+            self.hook("mount")
+        }
+        fn on_unmount(&mut self, _: &mut PluginContext) -> crate::Result<()> {
+            self.hook("unmount")
+        }
+    }
+
+    fn recorded(
+        fail_in: &'static str,
+    ) -> (
+        PluginRegistry,
+        std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+    ) {
+        let log = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let mut registry = PluginRegistry::new();
+        for (name, priority, fails) in [("first", 10, ""), ("second", 0, fail_in)] {
+            registry.register(Recorder {
+                name,
+                priority,
+                fail_in: fails,
+                log: log.clone(),
+            });
+        }
+        (registry, log)
+    }
+
+    #[test]
+    fn a_failed_mount_leaves_the_mounted_plugins_to_unmount() {
+        let (mut registry, log) = recorded("mount");
+        registry.init().unwrap();
+        assert!(registry.mount().is_err());
+        registry.unmount().unwrap();
+        let log = log.lock().unwrap().clone();
+        assert!(log.contains(&"first:unmount".to_string()), "{log:?}");
+        assert!(!log.contains(&"second:unmount".to_string()), "{log:?}");
+    }
+
+    #[test]
+    fn a_retried_init_does_not_initialize_a_plugin_twice() {
+        let (mut registry, log) = recorded("init");
+        assert!(registry.init().is_err());
+        assert!(registry.init().is_err());
+        let log = log.lock().unwrap();
+        assert_eq!(log.iter().filter(|e| *e == "first:init").count(), 1);
+        assert_eq!(log.iter().filter(|e| *e == "second:init").count(), 2);
     }
 }

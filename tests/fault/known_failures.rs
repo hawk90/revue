@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "PluginRegistry forgets which plugins a failed init or mount already ran",
-        cases: &["plugin init-error", "plugin mount-error"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "a panicking plugin hook unwinds out of the registry (design: crash or isolate?)",
         cases: &[
             "plugin init-panic",
