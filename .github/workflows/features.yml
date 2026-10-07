@@ -1,0 +1,76 @@
+name: Features
+
+# Builds revue with every cargo feature on its own (and, weekly, every pair of
+# features), so a feature that silently needs another one, or a `cfg` gate
+# that only compiles with the default set, is caught. CI's Feature
+# Combinations job only checks `--all-features` and `--no-default-features`.
+#
+# Informational: this workflow is not part of the required CI Gate. A full
+# `--each-feature` pass is ~21 builds of the crate, too slow for every PR.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "Cargo.toml"
+      - ".github/workflows/features.yml"
+  schedule:
+    - cron: "0 3 * * 1"  # Weekly on Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  each-feature:
+    name: Each Feature
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          components: clippy
+          cache: false
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "features"
+      - uses: taiki-e/install-action@cargo-hack
+      # `--no-default-features --features X` for every X, plus the default
+      # set, no features and all features. `--keep-going` reports every
+      # failing feature, not just the first.
+      - name: check (each feature)
+        run: cargo hack check --each-feature --no-dev-deps --keep-going
+      - name: clippy (each feature)
+        run: cargo hack clippy --each-feature --no-dev-deps --keep-going -- -D warnings
+
+  feature-pairs:
+    name: Feature Pairs
+    # ~100 builds: weekly and on demand only.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "features"
+      - uses: taiki-e/install-action@cargo-hack
+      # Presets (`full`, `std`, `gui`, `all-gui`, `default`) are unions of the
+      # leaf features, so pairs of leaves cover them.
+      - name: check (every pair of features)
+        run: >-
+          cargo hack check --feature-powerset --depth 2
+          --exclude-features full,std,gui,all-gui,default
+          --no-dev-deps --keep-going
