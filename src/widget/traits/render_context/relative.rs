@@ -85,10 +85,18 @@ impl super::RenderContext<'_> {
     }
 
     /// Get a mutable cell at relative position
+    ///
+    /// Respects the clipping region set by `overflow: hidden` like
+    /// [`Self::set`]: a cell outside the clip is `None`, so it cannot be
+    /// modified through this context.
     pub fn get_mut(&mut self, x: u16, y: u16) -> Option<&mut Cell> {
         if x < self.area.width && y < self.area.height {
-            self.buffer
-                .get_mut(self.area.x.saturating_add(x), self.area.y.saturating_add(y))
+            let abs_x = self.area.x.saturating_add(x);
+            let abs_y = self.area.y.saturating_add(y);
+            if self.is_clipped(abs_x, abs_y) {
+                return None;
+            }
+            self.buffer.get_mut(abs_x, abs_y)
         } else {
             None
         }
