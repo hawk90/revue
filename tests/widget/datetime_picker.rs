@@ -1005,3 +1005,35 @@ fn test_month_navigation_keeps_a_real_date() {
     picker.handle_key(&Key::Char('['));
     assert_eq!(picker.get_date(), Date::new(2024, 2, 29));
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was `Up` from
+// Oct 7 with the range Oct 1..=Oct 20 - navigation moved the stored date
+// to September, outside the range. It stops at the limit now, as in
+// RangePicker.
+#[test]
+fn test_navigation_stops_at_the_date_range() {
+    let min = Date::new(2026, 10, 1);
+    let max = Date::new(2026, 10, 20);
+    let mut picker = DateTimePicker::new()
+        .selected_date(Date::new(2026, 10, 7))
+        .date_range(min, max);
+    for key in [Key::Up, Key::Up, Key::Char('['), Key::Char('{'), Key::Left] {
+        picker.handle_key(&key);
+        let d = picker.get_date();
+        assert!(d.is_valid() && d >= min && d <= max, "{key:?}: {d:?}");
+    }
+    for key in [
+        Key::Down,
+        Key::Down,
+        Key::Down,
+        Key::Char(']'),
+        Key::Char('}'),
+    ] {
+        picker.handle_key(&key);
+        let d = picker.get_date();
+        assert!(d.is_valid() && d >= min && d <= max, "{key:?}: {d:?}");
+    }
+    // The cursor stops at the limit, so Enter selects a day in range
+    picker.handle_key(&Key::Enter);
+    assert_eq!(picker.get_date(), max);
+}

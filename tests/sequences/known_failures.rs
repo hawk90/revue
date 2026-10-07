@@ -17,12 +17,6 @@ pub struct Known {
 pub const KNOWN: &[Known] = &[
     Known {
         layer: "keys",
-        widget: "DateTimePicker(range)",
-        sequence: "Up",
-        reason: "week/month navigation moves the stored date past min/max (RangePicker clamps, DateTimePicker does not)",
-    },
-    Known {
-        layer: "keys",
         widget: "RangePicker",
         sequence: "'j'",
         reason: "month navigation keeps the stored day, so Jan 31 becomes Feb 31",
