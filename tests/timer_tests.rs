@@ -54,8 +54,9 @@ fn test_timer_format_compact() {
 
 #[test]
 fn test_timer_format_precise() {
+    // 65 s is a minute and five seconds; the minute used to be dropped.
     let timer = Timer::countdown(65).format(TimerFormat::Precise);
-    assert_eq!(timer.format_remaining(), "05.000");
+    assert_eq!(timer.format_remaining(), "01:05.000");
 }
 
 #[test]

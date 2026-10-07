@@ -165,7 +165,7 @@ pub fn dir_picker() -> FilePicker {
 ```
 
 A preset can also be an associated function rather than a free one, which is
-what `Timer` does - `src/widget/data/timer/mod.rs`:
+what `Timer` does - `src/widget/data/timer/countdown.rs`:
 
 ```rust
 pub fn pomodoro() -> Self {
