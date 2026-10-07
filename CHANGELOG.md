@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1](https://github.com/hawk90/revue/compare/v3.2.0...v3.2.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* **border:** place titles without an i16 overflow ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+* **candlechart:** clamp scrolling past the end of the data ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+* **devtools:** keep the panel inside its area and size it without overflow ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+* **devtools:** render the panel in tiny areas ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+* **hot-reload:** check watched paths by component, not string prefix ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+* **log-viewer:** search by characters so multibyte text cannot panic ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+* **modal:** draw in areas too short for the frame ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+* **option-list:** navigate an empty list without underflow ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+* **profiler:** truncate names on a character boundary ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+* **render:** avoid overflow placing batched text ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+* **statusbar:** handle right sections wider than the area ([d30ca3f](https://github.com/hawk90/revue/commit/d30ca3f966098019a618b91439a8b63e6a1608b2))
+
 ## [3.2.0](https://github.com/hawk90/revue/compare/v3.1.2...v3.2.0) (2026-10-07)
 
 
