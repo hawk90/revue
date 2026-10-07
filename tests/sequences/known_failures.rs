@@ -47,12 +47,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "Slider",
-        sequence: "<set NaN>",
-        reason: "set_value(NaN) stores NaN, outside the range for good",
-    },
-    Known {
-        layer: "keys",
         widget: "TextArea",
         sequence: "<set content> Enter PageUp <add cursor below> Delete",
         reason: "edits move only the primary cursor; secondary cursors are left past the text",
