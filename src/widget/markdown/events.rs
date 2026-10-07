@@ -140,7 +140,7 @@ impl Markdown {
                 ctx.current_modifier |= Modifier::ITALIC;
             }
             Tag::Strikethrough => {
-                // Strikethrough not supported by terminal modifier
+                ctx.current_modifier |= Modifier::CROSSED_OUT;
             }
             Tag::Link { .. } => {
                 ctx.current_fg = Some(ctx.link_fg);
@@ -389,5 +389,28 @@ impl Markdown {
             return;
         }
         ctx.add_text(&format!("[^{}]", num));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+    use crate::widget::traits::{RenderContext, View};
+
+    #[test]
+    fn strikethrough_crosses_out_only_its_text() {
+        let md = Markdown::new("a ~~b~~ c");
+        let mut buf = Buffer::new(10, 1);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, 10, 1));
+        md.render(&mut ctx);
+        let crossed = |x: u16| {
+            let cell = buf.get(x, 0).unwrap();
+            (cell.symbol, cell.modifier.contains(Modifier::CROSSED_OUT))
+        };
+        assert_eq!(crossed(0), ('a', false));
+        assert_eq!(crossed(2), ('b', true));
+        assert_eq!(crossed(4), ('c', false));
     }
 }
