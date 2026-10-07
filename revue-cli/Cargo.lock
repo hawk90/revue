@@ -930,6 +930,7 @@ dependencies = [
  "handlebars",
  "include_dir",
  "indicatif",
+ "libc",
  "notify",
  "serde",
  "serde_json",

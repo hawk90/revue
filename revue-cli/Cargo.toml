@@ -27,6 +27,9 @@ handlebars = "6.4.4"
 ureq = { version = "3.4.2", features = ["json"] }
 urlencoding = "2.1.3"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.190"
+
 [workspace]
 
 [dev-dependencies]

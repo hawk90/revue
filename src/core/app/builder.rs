@@ -5,10 +5,12 @@ use crate::constants::MAX_CSS_FILE_SIZE;
 use crate::plugin::{Plugin, PluginRegistry};
 use crate::style::{parse_css, StyleSheet};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[cfg(feature = "hot-reload")]
-use super::HotReload;
+use super::style_sources::StyleSources;
+#[cfg(feature = "hot-reload")]
+use super::{HotReload, HotReloadConfig};
 
 /// Builder for configuring and creating an App
 pub struct AppBuilder {
@@ -16,6 +18,9 @@ pub struct AppBuilder {
     // To keep track of file paths for hot reload
     style_paths: Vec<PathBuf>,
     hot_reload: bool,
+    /// What `stylesheet` was built from, in order, so hot reload can rebuild it
+    #[cfg(feature = "hot-reload")]
+    style_sources: StyleSources,
     devtools: bool,
     mouse_capture: bool,
     plugins: PluginRegistry,
@@ -36,6 +41,8 @@ impl AppBuilder {
             stylesheet: StyleSheet::new(),
             style_paths: Vec::new(),
             hot_reload: false,
+            #[cfg(feature = "hot-reload")]
+            style_sources: StyleSources::default(),
             devtools: cfg!(feature = "devtools"),
             mouse_capture: true,
             plugins: PluginRegistry::new(),
@@ -204,38 +211,12 @@ impl AppBuilder {
         let path = path.into();
         self.style_paths.push(path.clone());
 
-        // Check file size to prevent DoS
-        match fs::metadata(&path) {
-            Ok(metadata) => {
-                if metadata.len() > MAX_CSS_FILE_SIZE {
-                    log_warn!(
-                        "CSS file too large ({} bytes, max {}): {:?}",
-                        metadata.len(),
-                        MAX_CSS_FILE_SIZE,
-                        path
-                    );
-                    return self;
-                }
-            }
-            Err(e) => {
-                log_warn!("Failed to read CSS file metadata {:?}: {}", path, e);
-                return self;
-            }
+        let loaded = load_css_file(&path);
+        if let Some((_, sheet)) = &loaded {
+            self.stylesheet.merge(sheet.clone());
         }
-
-        // Read and parse CSS file
-        let content = match fs::read_to_string(&path) {
-            Ok(c) => c,
-            Err(e) => {
-                log_warn!("Failed to read CSS file {:?}: {}", path, e);
-                return self;
-            }
-        };
-
-        match parse_css(&content) {
-            Ok(sheet) => self.stylesheet.merge(sheet),
-            Err(e) => log_warn!("Failed to parse CSS from {:?}: {}", path, e),
-        }
+        #[cfg(feature = "hot-reload")]
+        self.style_sources.push_file(path, loaded);
 
         self
     }
@@ -244,13 +225,25 @@ impl AppBuilder {
     pub fn css(mut self, css: impl Into<String>) -> Self {
         let css = css.into();
         match parse_css(&css) {
-            Ok(sheet) => self.stylesheet.merge(sheet),
+            Ok(sheet) => {
+                #[cfg(feature = "hot-reload")]
+                self.style_sources.push_fixed(sheet.clone());
+                self.stylesheet.merge(sheet);
+            }
             Err(e) => log_warn!("Failed to parse inline CSS: {}", e),
         }
         self
     }
 
-    /// Enable hot reload for CSS files
+    /// Reload the stylesheet files added with [`style`](Self::style) when
+    /// they change on disk, without restarting the app.
+    ///
+    /// Needs the `hot-reload` cargo feature; without it this is a no-op, so a
+    /// production build carries no file watcher. With the feature compiled
+    /// in, setting the `REVUE_HOT_RELOAD` environment variable (to anything
+    /// but empty, `0`, `false`, `no` or `off`) turns hot reload on even when
+    /// this was not called - that is how `revue dev` enables it for an app
+    /// it runs. Inline [`css`](Self::css) is not watched.
     pub fn hot_reload(mut self, enabled: bool) -> Self {
         self.hot_reload = enabled;
         self
@@ -283,6 +276,8 @@ impl AppBuilder {
         let plugin_css = self.plugins.collect_styles();
         if !plugin_css.is_empty() {
             if let Ok(sheet) = parse_css(&plugin_css) {
+                #[cfg(feature = "hot-reload")]
+                self.style_sources.push_fixed(sheet.clone());
                 self.stylesheet.merge(sheet);
             }
         }
@@ -292,15 +287,35 @@ impl AppBuilder {
             log_warn!("Plugin initialization failed: {}", e);
         }
 
-        // Set up hot reload if enabled and there are style paths
+        // Set up hot reload if enabled (by the builder or by `REVUE_HOT_RELOAD`)
+        // and there are style paths
         #[cfg(feature = "hot-reload")]
-        let hot_reload = if self.hot_reload && !self.style_paths.is_empty() {
-            match HotReload::new() {
+        let hot_reload_on =
+            self.hot_reload || env_requests_hot_reload(std::env::var_os(HOT_RELOAD_ENV).as_deref());
+        #[cfg(feature = "hot-reload")]
+        let hot_reload = if hot_reload_on && !self.style_paths.is_empty() {
+            // Watch each file's directory rather than the file: an editor that
+            // saves by writing a new file and renaming it over the old one
+            // replaces the inode a file watch is attached to.
+            let config = HotReloadConfig {
+                recursive: false,
+                ..HotReloadConfig::default()
+            };
+            match HotReload::with_config(config) {
                 Ok(mut hr) => {
+                    let mut dirs: Vec<PathBuf> = Vec::new();
                     for path in &self.style_paths {
-                        if let Err(e) = hr.watch(path) {
-                            log_warn!("Failed to watch {:?} for hot reload: {}", path, e);
+                        let dir = match path.parent() {
+                            Some(parent) if !parent.as_os_str().is_empty() => parent.to_path_buf(),
+                            _ => PathBuf::from("."),
+                        };
+                        if dirs.contains(&dir) {
+                            continue;
                         }
+                        if let Err(e) = hr.watch(&dir) {
+                            log_warn!("Failed to watch {:?} for hot reload: {}", &dir, e);
+                        }
+                        dirs.push(dir);
                     }
                     Some(hr)
                 }
@@ -326,7 +341,7 @@ impl AppBuilder {
             self.plugins,
             self.devtools,
             hot_reload,
-            self.style_paths,
+            self.style_sources,
         );
 
         #[cfg(not(feature = "hot-reload"))]
@@ -344,6 +359,66 @@ impl AppBuilder {
         app.set_css_layout(css_layout);
         app
     }
+}
+
+/// Read and parse a stylesheet file, logging (not failing) on a file that is
+/// missing, too large or invalid. Returns the text with what it parsed to.
+fn load_css_file(path: &Path) -> Option<(String, StyleSheet)> {
+    // Check file size to prevent DoS
+    match fs::metadata(path) {
+        Ok(metadata) if metadata.len() > MAX_CSS_FILE_SIZE => {
+            log_warn!(
+                "CSS file too large ({} bytes, max {}): {:?}",
+                metadata.len(),
+                MAX_CSS_FILE_SIZE,
+                path
+            );
+            return None;
+        }
+        Ok(_) => {}
+        Err(e) => {
+            log_warn!("Failed to read CSS file metadata {:?}: {}", path, e);
+            return None;
+        }
+    }
+
+    let content = match fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(e) => {
+            log_warn!("Failed to read CSS file {:?}: {}", path, e);
+            return None;
+        }
+    };
+
+    match parse_css(&content) {
+        Ok(sheet) => Some((content, sheet)),
+        Err(e) => {
+            log_warn!("Failed to parse CSS from {:?}: {}", path, e);
+            None
+        }
+    }
+}
+
+/// Environment variable that turns stylesheet hot reload on without code
+/// changes (see [`AppBuilder::hot_reload`]). `revue dev` sets it.
+#[cfg(feature = "hot-reload")]
+const HOT_RELOAD_ENV: &str = "REVUE_HOT_RELOAD";
+
+/// Does this value of `REVUE_HOT_RELOAD` ask for hot reload?
+///
+/// Unset, empty, `0`, `false`, `no` and `off` (any case) mean no.
+#[cfg(feature = "hot-reload")]
+fn env_requests_hot_reload(value: Option<&std::ffi::OsStr>) -> bool {
+    let Some(value) = value.and_then(|v| v.to_str()) else {
+        // Unset; a value that is not UTF-8 is still "set".
+        return value.is_some();
+    };
+    let value = value.trim();
+    !(value.is_empty()
+        || value == "0"
+        || ["false", "no", "off"]
+            .iter()
+            .any(|off| value.eq_ignore_ascii_case(off)))
 }
 
 impl Default for AppBuilder {
@@ -548,6 +623,26 @@ mod tests {
             app.hot_reload.is_none(),
             "hot_reload should be None when disabled"
         );
+    }
+
+    #[test]
+    #[cfg(feature = "hot-reload")]
+    fn test_env_requests_hot_reload() {
+        use std::ffi::OsStr;
+
+        assert!(!env_requests_hot_reload(None));
+        for off in ["", " ", "0", "false", "FALSE", "no", "Off"] {
+            assert!(
+                !env_requests_hot_reload(Some(OsStr::new(off))),
+                "{off:?} should not enable hot reload"
+            );
+        }
+        for on in ["1", "true", "yes", "on", "anything"] {
+            assert!(
+                env_requests_hot_reload(Some(OsStr::new(on))),
+                "{on:?} should enable hot reload"
+            );
+        }
     }
 
     #[test]

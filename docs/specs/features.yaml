@@ -1525,26 +1525,39 @@ items:
       - App::builder().style(..).hot_reload(true) reloads CSS on file change without restart
     evidence:
       - src/core/app/builder.rs::hot_reload
+      - src/core/app/builder.rs::test_env_requests_hot_reload
       - src/core/app/hot_reload.rs::HotReload
+      - src/core/app/style_sources.rs::reload_drops_a_deleted_declaration
       - examples/text_editor.rs
     source:
       - FEATURES.md §7 Developer Experience / Hot Reload
-    notes: Needs `hot-reload` feature; no automated test.
+    notes: Needs `hot-reload` feature. Also turned on by the REVUE_HOT_RELOAD env var (what `revue dev` sets). Watches the
+      .style() files' directories and rebuilds the stylesheet from its sources, so deleted declarations revert (before,
+      a reload merged the file on top and only ever added rules). The file watcher itself is not under automated test;
+      verified by hand with `revue dev`.
   - id: DX-002
     title: '`revue dev` CLI with file watching'
     area: dx
     priority: P2
     priority_inferred: true
-    status: partial
+    status: done
     acceptance:
       - revue dev watches src/ and styles/ and rebuilds/restarts on change
       - CSS changes apply without restart
     evidence:
-      - revue-cli/src/commands.rs::dev_server
+      - revue-cli/src/dev.rs::run
+      - revue-cli/tests/dev_test.rs::stylesheets_are_css
+      - revue-cli/tests/dev_test.rs::a_burst_is_due_once_quiet
+      - revue-cli/tests/dev_test.rs::hot_reload_when_revue_honors_the_env_var
+      - revue-cli/src/main.rs::dev_watch_is_a_repeatable_path
     source:
       - FEATURES.md §7 Developer Experience / Hot Reload
-    notes: 'BUG: dev_server prints "Dev server: http://localhost:PORT" and "Watching for changes…" but starts no server and
-      no watcher: it runs cargo build + cargo run once. --watch takes extra paths (not a boolean flag as the doc implies).'
+    notes: Watches src/, styles/, Cargo.toml, build.rs and --watch paths with notify (debounced); a Rust change stops the
+      app (SIGTERM, then kill), restores the terminal, rebuilds and restarts; build errors leave it waiting. CSS reloads
+      in place via `--features revue/hot-reload` + REVUE_HOT_RELOAD=1 (DX-001); with a revue that predates the variable
+      (3.0.1 and earlier, detected from the resolved source) CSS changes restart the app instead. The fake "Dev server
+      http://localhost" output and the unused --port flag are gone. End-to-end checked by hand in tmux; the watch loop
+      itself has no automated test.
   - id: DX-003
     title: Devtools (inspector, style debugger, event logger, profiler)
     area: dx

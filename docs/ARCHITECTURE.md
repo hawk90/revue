@@ -521,11 +521,11 @@ loop {
 ### 3. Hot Reload (CSS)
 
 ```
-1. notify::watch() detects file change
-2. Re-parse CSS file
-3. Invalidate style cache
-4. Recompute styles
-5. Re-layout if needed
+1. notify watches the directories of the .style() files
+2. Re-read the files; skip if no text changed
+3. Re-parse them (a file that fails keeps its last good sheet)
+4. Rebuild the stylesheet from all sources in order (inline, files, plugins)
+5. Replace it, invalidating the selector and style caches
 6. Re-render
 ```
 

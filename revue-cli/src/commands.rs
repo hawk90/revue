@@ -95,55 +95,10 @@ pub fn new_project(name: &str, template: &str, init_git: bool) -> Result<()> {
     println!();
     println!(
         "  {} {}",
-        "Or start dev server:".dimmed(),
+        "Or run it with live reload:".dimmed(),
         "revue dev".cyan()
     );
     println!();
-
-    Ok(())
-}
-
-/// Start development server with hot reload
-pub fn dev_server(port: u16, watch_paths: &[String]) -> Result<()> {
-    println!("{}", "🔥 Starting Revue dev server...".cyan().bold());
-    println!();
-    println!("  {} http://localhost:{}", "Dev server:".green(), port);
-    println!("  {} Ctrl+C", "Stop:".yellow());
-    println!();
-
-    // Check if we're in a Revue project
-    if !Path::new("Cargo.toml").exists() {
-        return Err("Not in a Cargo project. Run 'revue new <name>' first.".into());
-    }
-
-    // Default watch paths
-    let mut paths_to_watch = vec!["src".to_string(), "styles".to_string()];
-    paths_to_watch.extend(watch_paths.iter().cloned());
-
-    println!("{}", "Watching for changes...".dimmed());
-    for path in &paths_to_watch {
-        println!("  {} {}", "📁".dimmed(), path.dimmed());
-    }
-    println!();
-
-    // Initial build
-    println!("{}", "Building...".yellow());
-    let status = Command::new("cargo").args(["build"]).status()?;
-
-    if !status.success() {
-        println!("{}", "❌ Build failed".red());
-        return Ok(());
-    }
-
-    println!("{}", "✅ Build successful".green());
-    println!();
-
-    // Run the app
-    println!("{}", "Running app...".cyan());
-    let mut child = Command::new("cargo").args(["run"]).spawn()?;
-
-    // Wait for Ctrl+C or process exit
-    let _ = child.wait();
 
     Ok(())
 }

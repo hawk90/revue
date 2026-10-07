@@ -88,13 +88,25 @@ App::builder()
 ```
 
 **How it works:**
-- Watches all CSS files added via `.style()`
-- Automatically reloads when file changes are detected
+- Watches the directories of the CSS files added via `.style()` (so editors
+  that save by renaming a temp file over the original are seen too)
+- On a change, rebuilds the whole stylesheet from its sources in the order
+  they were added: edited, added *and deleted* declarations take effect
+- A file that does not parse keeps its last good version and logs a warning
 - No application restart required
 
 **Requirements:**
-- `hot-reload` feature must be enabled (default)
-- At least one CSS file must be specified via `.style()`
+- The `hot-reload` cargo feature (not on by default; without it this is a
+  no-op, so release builds carry no file watcher)
+- At least one CSS file must be specified via `.style()`; inline `.css()` is
+  not watched
+
+**`REVUE_HOT_RELOAD`:** with the feature compiled in, setting this environment
+variable (to anything but empty, `0`, `false`, `no` or `off`) turns hot reload
+on even without `.hot_reload(true)`. [`revue dev`](cli.md#revue-dev) uses it:
+it builds with `--features revue/hot-reload` and runs the app with
+`REVUE_HOT_RELOAD=1`, so a generated project reloads CSS without code
+changes.
 
 ### devtools(enabled)
 
