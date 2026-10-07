@@ -1294,7 +1294,7 @@ items:
       - barchart
       - sparkline
     evidence:
-      - src/widget/data/chart/helper.rs::line_chart
+      - src/widget/data/chart/helper/mod.rs::line_chart
       - src/widget/data/chart/barchart.rs::barchart
       - src/widget/data/chart/sparkline.rs::sparkline
     source:
