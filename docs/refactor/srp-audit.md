@@ -132,7 +132,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `widget/developer/aistream.rs` | 481 | 4 | 위젯 한 파일 | todo | |
+| `widget/developer/aistream.rs` | 481 | 4 | 위젯 한 파일 | split | 설정 타입, 구조체·빌더, 스트리밍 상태 변경(추가·완료·일시정지·타이핑 애니메이션 `tick`), 렌더가 한 파일에 섞임 → aistream/{mod,types,stream,render}.rs (구조체·빌더·생성 함수는 mod.rs). 참고: `markdown()`이 켜는 `render_markdown`은 어디서도 읽지 않아, 모듈 문서의 "markdown rendering, code block syntax highlighting"이 구현되지 않음 |
 | `widget/developer/code_editor/types.rs` | 108 | 5 | 타입 모음, 공개 타입 5 | todo | |
 | `widget/developer/diff.rs` | 567 | 5 | 공개 타입 5, 위젯 한 파일 | todo | |
 | `widget/developer/httpclient/types.rs` | 139 | 5 | 타입 모음, 공개 타입 5 | todo | |

@@ -126,7 +126,7 @@ src/widget/
 │   ├── terminal/          #   Embedded terminal
 │   ├── code_editor/       #   Code editor
 │   ├── httpclient/        #   HTTP client widget
-│   ├── aistream.rs        #   AI streaming widget
+│   ├── aistream/          #   AI streaming widget
 │   ├── diff.rs            #   Diff viewer
 │   ├── procmon.rs         #   Process monitor
 │   ├── vim.rs             #   Vim mode
