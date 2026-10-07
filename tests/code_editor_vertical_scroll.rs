@@ -84,19 +84,133 @@ fn moving_up_past_the_top_scrolls_up() {
 }
 
 #[test]
-fn page_down_and_page_up_keep_the_cursor_in_view() {
+fn page_down_and_page_up_scroll_the_view_by_a_page() {
     let mut ed = numbered();
     rows(&ed, 5, 4);
 
     press(&mut ed, Key::PageDown, 1);
-    let (line, _) = ed.cursor_position();
-    assert!(line >= 4, "PageDown moved past the first page");
-    let expected: Vec<String> = (line - 3..=line).map(|i| format!("l{i:02}")).collect();
-    assert_eq!(rows(&ed, 5, 4), expected);
+    assert_eq!(ed.cursor_position(), (4, 0));
+    assert_eq!(rows(&ed, 5, 4), ["l04", "l05", "l06", "l07"]);
 
     press(&mut ed, Key::PageUp, 1);
     assert_eq!(ed.cursor_position(), (0, 0));
     assert_eq!(rows(&ed, 5, 4), ["l00", "l01", "l02", "l03"]);
+}
+
+#[test]
+fn page_down_from_the_top_row_scrolls_a_full_page_and_keeps_the_cursor_row() {
+    let mut ed = numbered();
+    ed.set_cursor(2, 0);
+    assert_eq!(rows(&ed, 5, 4), ["l00", "l01", "l02", "l03"]);
+
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.cursor_position(), (6, 0));
+    assert_eq!(rows(&ed, 5, 4), ["l04", "l05", "l06", "l07"]);
+}
+
+#[test]
+fn repeated_page_down_reaches_the_end_then_lands_on_the_last_line() {
+    let mut ed = numbered();
+    ed.set_cursor(3, 0);
+    rows(&ed, 5, 8);
+
+    for (line, top) in [(11, 8), (19, 16), (27, 24), (35, 32)] {
+        press(&mut ed, Key::PageDown, 1);
+        assert_eq!(ed.cursor_position(), (line, 0));
+        assert_eq!(rows(&ed, 5, 8)[0], format!("l{top:02}"));
+    }
+
+    // The last line is on the bottom row (the view never scrolls past it),
+    // so the cursor goes to the last line.
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.cursor_position(), (39, 0));
+    assert_eq!(rows(&ed, 5, 8)[0], "l32");
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.cursor_position(), (39, 0));
+}
+
+#[test]
+fn repeated_page_up_reaches_the_top_then_lands_on_the_first_line() {
+    let mut ed = numbered();
+    ed.set_cursor(36, 0);
+    assert_eq!(rows(&ed, 5, 8)[0], "l29");
+
+    for (line, top) in [(28, 21), (20, 13), (12, 5), (7, 0)] {
+        press(&mut ed, Key::PageUp, 1);
+        assert_eq!(ed.cursor_position(), (line, 0));
+        assert_eq!(rows(&ed, 5, 8)[0], format!("l{top:02}"));
+    }
+
+    press(&mut ed, Key::PageUp, 1);
+    assert_eq!(ed.cursor_position(), (0, 0));
+    assert_eq!(rows(&ed, 5, 8)[0], "l00");
+}
+
+#[test]
+fn page_keys_keep_the_screen_column() {
+    // Line 4 starts with wide glyphs: column 2 is the second one.
+    let mut text: Vec<String> = (0..12).map(|i| format!("l{i:02}x")).collect();
+    text[4] = "日本語".to_string();
+    let mut ed = editor(&text.join("\n"));
+    ed.set_cursor(0, 2);
+    rows(&ed, 8, 4);
+
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.cursor_position(), (4, 1));
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.cursor_position(), (8, 2));
+    press(&mut ed, Key::PageUp, 1);
+    assert_eq!(ed.cursor_position(), (4, 1));
+}
+
+#[test]
+fn page_keys_extend_a_selection_in_selection_mode() {
+    let mut ed = numbered();
+    rows(&ed, 5, 4);
+    ed.start_selection();
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.get_selection().as_deref(), Some("l00\nl01\nl02\nl03\n"));
+    press(&mut ed, Key::PageUp, 1);
+    assert_eq!(ed.cursor_position(), (0, 0));
+}
+
+#[test]
+fn paging_never_hides_the_cursor_under_the_find_box() {
+    let mut ed = long();
+    // Learn the full 4-row page, then page so the cursor is on the bottom row.
+    ed.set_cursor(3, 0);
+    rows(&ed, 30, 4);
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.cursor_position(), (7, 0));
+
+    // The box takes row 0 and the view shrinks to 3 rows.
+    ed.open_find();
+    let shown = rows(&ed, 30, 4);
+    assert!(shown[0].starts_with("Find:"), "{shown:?}");
+    assert!(shown[1..].contains(&"l07".to_string()), "{shown:?}");
+
+    // Paging while the box is open, by the full or the shrunk page.
+    for page in [4, 3, 4, 3] {
+        ed.page_down(page);
+        let line = format!("l{:02}", ed.cursor_position().0);
+        let shown = rows(&ed, 30, 4);
+        assert!(shown[1..].contains(&line), "{line}: {shown:?}");
+    }
+    for page in [4, 3, 4, 3] {
+        ed.page_up(page);
+        let line = format!("l{:02}", ed.cursor_position().0);
+        let shown = rows(&ed, 30, 4);
+        assert!(shown[1..].contains(&line), "{line}: {shown:?}");
+    }
+
+    // Closed again, the page learned with the box open (3 rows) still
+    // keeps the cursor in view.
+    ed.handle_key(&Key::Escape);
+    for _ in 0..3 {
+        press(&mut ed, Key::PageDown, 1);
+        let line = format!("l{:02}", ed.cursor_position().0);
+        assert!(rows(&ed, 30, 4).contains(&line), "{line}");
+    }
 }
 
 #[test]

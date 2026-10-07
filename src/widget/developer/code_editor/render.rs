@@ -135,12 +135,7 @@ impl View for CodeEditor {
 
         // Scroll vertically to keep the cursor's line in view, moving the
         // first visible line as little as possible.
-        let cursor_line = self.cursor.0.min(self.lines.len().saturating_sub(1));
-        let scroll = self
-            .scroll
-            .get()
-            .min(cursor_line)
-            .max((cursor_line + 1).saturating_sub(visible_lines));
+        let scroll = self.scroll_for_cursor(visible_lines);
         self.scroll.set(scroll);
 
         // Render visible lines

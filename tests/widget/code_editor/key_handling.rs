@@ -109,7 +109,9 @@ fn test_handle_key_page_up() {
     editor.set_cursor(24, 0);
     let handled = editor.handle_key(&Key::PageUp);
     assert!(handled);
-    assert_eq!(editor.cursor_position(), (4, 0));
+    // The default 20-row page shows lines 5-24 with the cursor on the bottom
+    // row; the view scrolls up 5 lines to the top and the cursor with it.
+    assert_eq!(editor.cursor_position(), (19, 0));
 }
 
 #[test]
@@ -119,7 +121,9 @@ fn test_handle_key_page_down() {
     );
     let handled = editor.handle_key(&Key::PageDown);
     assert!(handled);
-    assert_eq!(editor.cursor_position(), (20, 0));
+    // The default 20-row page can scroll only 5 lines before the last line
+    // reaches the bottom row; the cursor moves the same 5.
+    assert_eq!(editor.cursor_position(), (5, 0));
 }
 
 #[test]

@@ -25,8 +25,8 @@ use crate::{impl_props_builders, impl_styled_view};
 // Public exports
 pub use types::{BracketMatch, BracketPair, EditOp, EditorConfig, IndentStyle};
 
-/// Lines PageUp and PageDown move before the editor has been rendered and
-/// so knows how many rows it shows
+/// Lines PageUp and PageDown scroll the view (and move the cursor) before
+/// the editor has been rendered and so knows how many rows it shows
 const DEFAULT_PAGE_HEIGHT: usize = 20;
 
 /// Code editor widget
