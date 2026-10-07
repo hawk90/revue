@@ -431,3 +431,24 @@ fn test_channel_send_command_full() {
         channel.send(WorkerMessage::Progress(0.5));
     }
 }
+
+#[test]
+fn test_receiver_send_command_respects_capacity() {
+    let channel: WorkerChannel<i32> = WorkerChannel::with_capacity(2);
+    let (sender, receiver) = channel.split();
+
+    assert!(receiver.send_command(WorkerCommand::Pause));
+    assert!(receiver.cancel());
+    // Full: the command is refused, as the channel's own send_command does
+    assert!(!receiver.resume());
+
+    assert!(matches!(sender.check_command(), Some(WorkerCommand::Pause)));
+    assert!(matches!(
+        sender.check_command(),
+        Some(WorkerCommand::Cancel)
+    ));
+    assert!(sender.check_command().is_none());
+
+    // Room again after the worker took them
+    assert!(receiver.resume());
+}
