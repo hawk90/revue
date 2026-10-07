@@ -168,6 +168,8 @@ impl CodeEditor {
         self.scroll_x.set(0);
         self.undo_stack.clear();
         self.redo_stack.clear();
+        // Matches of the find query are positions in the old text
+        self.refresh_find_matches();
     }
 
     /// Get content
