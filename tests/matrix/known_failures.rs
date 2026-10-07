@@ -23,46 +23,28 @@ pub const KNOWN: &[Known] = &[
         widget: "DevToolsProfiler",
         kind: Kind::OutOfArea,
         reason: "long text rows are not clipped to the panel's right edge [not covered by #767]",
-        cases: &[
-            "40x10 long plain direct",
-            "40x10 items200 plain direct",
-        ],
+        cases: &["40x10 long plain direct", "40x10 items200 plain direct"],
     },
     Known {
         layer: "contents",
         widget: "DevToolsStyles",
         kind: Kind::OutOfArea,
         reason: "long text rows are not clipped to the panel's right edge [not covered by #767]",
-        cases: &[
-            "40x10 long plain direct",
-        ],
+        cases: &["40x10 long plain direct"],
     },
     // ── pairwise ──
-    Known {
-        layer: "pairwise",
-        widget: "DevToolsEvents",
-        kind: Kind::Panic,
-        reason: "src/devtools/events/core.rs:333: event details truncated by bytes (`&details[..n]`) panic inside a multibyte char [not covered by #767]",
-        cases: &[
-            "80x24 emoji plain direct",
-        ],
-    },
     Known {
         layer: "pairwise",
         widget: "DevToolsProfiler",
         kind: Kind::OutOfArea,
         reason: "long text rows are not clipped to the panel's right edge [not covered by #767]",
-        cases: &[
-            "80x24 long plain direct",
-        ],
+        cases: &["80x24 long plain direct"],
     },
     Known {
         layer: "pairwise",
         widget: "DevToolsStyles",
         kind: Kind::OutOfArea,
         reason: "long text rows are not clipped to the panel's right edge [not covered by #767]",
-        cases: &[
-            "80x24 long plain direct",
-        ],
+        cases: &["80x24 long plain direct"],
     },
 ];

@@ -6,6 +6,7 @@ use super::types::{EventFilter, EventType, LoggedEvent};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
+use crate::utils::truncate_with_suffix;
 use std::collections::VecDeque;
 use std::time::Instant;
 
@@ -329,11 +330,9 @@ impl EventLogger {
 
         // Truncate details if needed
         let max_details = (ctx.width as usize).saturating_sub(20);
-        let details = if event.details.len() > max_details {
-            format!("{}...", &event.details[..max_details.saturating_sub(3)])
-        } else {
-            event.details.clone()
-        };
+        // By display width, never by byte index (which can fall inside a
+        // multibyte character).
+        let details = truncate_with_suffix(&event.details, max_details, "...");
 
         let line = format!("{} {} {} {}", icon, handled_mark, details, age);
 
@@ -381,6 +380,20 @@ impl EventLogger {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Details longer than the row are cut to fit; the cut used to be a byte
+    // index and panicked inside a multibyte character.
+    #[test]
+    fn test_render_truncates_details_inside_multibyte_chars() {
+        let mut logger = EventLogger::new();
+        logger.log(EventType::KeyPress, "👩‍👩‍👧‍👦 가족 ".repeat(20));
+        logger.log(EventType::KeyPress, "é".repeat(100));
+        let config = DevToolsConfig::default();
+        for width in 0..=80 {
+            let mut buffer = Buffer::new(82, 10);
+            logger.render_content(&mut buffer, Rect::new(1, 1, width, 8), &config);
+        }
+    }
 
     #[test]
     fn test_event_type_label() {
