@@ -57,7 +57,7 @@ src/widget/
 │   ├── card/              #   Card container
 │   ├── border.rs          #   Border decoration
 │   ├── scroll.rs          #   Scrollable container
-│   ├── splitter.rs        #   Split panes
+│   ├── splitter/          #   Split panes
 │   ├── tabs.rs            #   Tab container
 │   ├── accordion/         #   Accordion
 │   ├── sidebar/           #   Sidebar
