@@ -145,15 +145,6 @@ pub const KNOWN: &[Known] = &[
             "40x10 items200 plain direct",
         ],
     },
-    Known {
-        layer: "contents",
-        widget: "LogViewer",
-        kind: Kind::Panic,
-        reason: "src/widget/data/log_viewer/parser.rs:292: timestamp sniffing slices `&s[..8]` by bytes and panics inside a multibyte char (in `load`, before any render) [not covered by #767]",
-        cases: &[
-            "40x10 hangul plain direct",
-        ],
-    },
     // ── pairwise ──
     Known {
         layer: "pairwise",
@@ -229,21 +220,6 @@ pub const KNOWN: &[Known] = &[
             "2x1 emoji plain direct",
             "2x1 long plain direct",
             "1x2 empty plain direct",
-            "1x2 hangul plain direct",
-        ],
-    },
-    Known {
-        layer: "pairwise",
-        widget: "LogViewer",
-        kind: Kind::Panic,
-        reason: "src/widget/data/log_viewer/parser.rs:292: timestamp sniffing slices `&s[..8]` by bytes and panics inside a multibyte char (in `load`, before any render) [not covered by #767]",
-        cases: &[
-            "0x0 hangul focus app",
-            "2x1 hangul plain direct",
-            "3x3 hangul focus app",
-            "80x24 hangul focus app",
-            "5x2@65530,1 hangul focus direct",
-            "1x1 hangul plain direct",
             "1x2 hangul plain direct",
         ],
     },
