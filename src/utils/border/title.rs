@@ -202,29 +202,31 @@ pub fn draw_border_title(ctx: &mut RenderContext, area: Rect, title: &BorderTitl
                 TitlePosition::Center => area.x + 1 + (available.saturating_sub(total_width)) / 2,
                 TitlePosition::End => area.x + area.width - 1 - total_width,
             };
-            let x = (base_x as i16 + title.offset).max(area.x as i16 + 1) as u16;
+            let x = base_x
+                .saturating_add_signed(title.offset)
+                .max(area.x.saturating_add(1));
 
             // Draw padding (spaces to clear border chars)
             for dx in 0..title.pad_start {
                 let mut cell = Cell::new(' ');
                 cell.fg = title.fg;
                 cell.bg = title.bg;
-                ctx.buffer.set(x + dx, y, cell);
+                ctx.buffer.set(x.saturating_add(dx), y, cell);
             }
 
             // Draw text by column: a wide glyph takes two cells, a
             // zero-width one (e.g. VS16) none, matching `text_width`.
-            let text_x = x + title.pad_start;
+            let text_x = x.saturating_add(title.pad_start);
             ctx.buffer
                 .put_str_styled(text_x, y, &title.text, title.fg, title.bg);
 
             // Draw end padding
-            let end_x = text_x + text_width;
+            let end_x = text_x.saturating_add(text_width);
             for dx in 0..title.pad_end {
                 let mut cell = Cell::new(' ');
                 cell.fg = title.fg;
                 cell.bg = title.bg;
-                ctx.buffer.set(end_x + dx, y, cell);
+                ctx.buffer.set(end_x.saturating_add(dx), y, cell);
             }
         }
         BorderEdge::Left | BorderEdge::Right => {
@@ -248,32 +250,34 @@ pub fn draw_border_title(ctx: &mut RenderContext, area: Rect, title: &BorderTitl
                 TitlePosition::Center => area.y + 1 + (available.saturating_sub(total_height)) / 2,
                 TitlePosition::End => area.y + area.height - 1 - total_height,
             };
-            let y = (base_y as i16 + title.offset).max(area.y as i16 + 1) as u16;
+            let y = base_y
+                .saturating_add_signed(title.offset)
+                .max(area.y.saturating_add(1));
 
             // Draw padding (spaces)
             for dy in 0..title.pad_start {
                 let mut cell = Cell::new(' ');
                 cell.fg = title.fg;
                 cell.bg = title.bg;
-                ctx.buffer.set(x, y + dy, cell);
+                ctx.buffer.set(x, y.saturating_add(dy), cell);
             }
 
             // Draw text (vertically)
-            let text_y = y + title.pad_start;
+            let text_y = y.saturating_add(title.pad_start);
             for (i, ch) in title.text.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = title.fg;
                 cell.bg = title.bg;
-                ctx.buffer.set(x, text_y + i as u16, cell);
+                ctx.buffer.set(x, text_y.saturating_add(i as u16), cell);
             }
 
             // Draw end padding
-            let end_y = text_y + text_len;
+            let end_y = text_y.saturating_add(text_len);
             for dy in 0..title.pad_end {
                 let mut cell = Cell::new(' ');
                 cell.fg = title.fg;
                 cell.bg = title.bg;
-                ctx.buffer.set(x, end_y + dy, cell);
+                ctx.buffer.set(x, end_y.saturating_add(dy), cell);
             }
         }
     }
@@ -466,5 +470,88 @@ mod tests {
 
         assert_eq!(buffer.get(2, 0).unwrap().symbol, 'T');
         assert_eq!(buffer.get(2, 0).unwrap().fg, Some(Color::BLUE));
+    }
+
+    fn draw_on(buffer: &mut Buffer, area: Rect, title: BorderTitle) {
+        let mut ctx = RenderContext::new(buffer, area);
+        draw_border_title(&mut ctx, area, &title);
+    }
+
+    #[test]
+    fn test_draw_title_with_large_positive_offset() {
+        // 11 + i16::MAX overflowed the old i16 sum
+        let mut buffer = Buffer::new(30, 30);
+        draw_on(
+            &mut buffer,
+            Rect::new(10, 0, 20, 3),
+            BorderTitle::new("T").offset(i16::MAX),
+        );
+        draw_on(
+            &mut buffer,
+            Rect::new(0, 10, 3, 20),
+            BorderTitle::new("T")
+                .edge(BorderEdge::Left)
+                .offset(i16::MAX),
+        );
+        // Pushed off the buffer, so nothing is drawn
+        for y in 0..30 {
+            for x in 0..30 {
+                assert_ne!(buffer.get(x, y).unwrap().symbol, 'T');
+            }
+        }
+
+        // An offset that still lands inside the border is honored
+        let mut buffer = Buffer::new(30, 3);
+        draw_on(
+            &mut buffer,
+            Rect::new(10, 0, 20, 3),
+            BorderTitle::new("T").offset(5),
+        );
+        assert_eq!(buffer.get(17, 0).unwrap().symbol, 'T');
+    }
+
+    #[test]
+    fn test_draw_title_with_large_negative_offset() {
+        // Clamped to just after the corner
+        let mut buffer = Buffer::new(30, 30);
+        draw_on(
+            &mut buffer,
+            Rect::new(10, 0, 20, 3),
+            BorderTitle::new("T").offset(i16::MIN),
+        );
+        assert_eq!(buffer.get(12, 0).unwrap().symbol, 'T');
+        draw_on(
+            &mut buffer,
+            Rect::new(0, 10, 3, 20),
+            BorderTitle::new("T")
+                .edge(BorderEdge::Left)
+                .offset(i16::MIN),
+        );
+        assert_eq!(buffer.get(0, 12).unwrap().symbol, 'T');
+    }
+
+    #[test]
+    fn test_draw_title_on_area_past_i16_max() {
+        // Off any buffer, but placing the title must not overflow
+        let mut buffer = Buffer::new(10, 10);
+        for (x, y) in [
+            (32_767, 0),
+            (32_760, 0),
+            (65_500, 0),
+            (0, 32_767),
+            (0, 65_500),
+        ] {
+            for edge in [
+                BorderEdge::Top,
+                BorderEdge::Bottom,
+                BorderEdge::Left,
+                BorderEdge::Right,
+            ] {
+                for offset in [0, 10, i16::MAX, i16::MIN] {
+                    let title = BorderTitle::new("T").edge(edge).end().offset(offset);
+                    draw_on(&mut buffer, Rect::new(x, y, 30, 30), title);
+                }
+            }
+        }
     }
 }
