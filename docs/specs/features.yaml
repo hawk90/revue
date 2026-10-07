@@ -806,7 +806,7 @@ items:
       - handle_key returns the activated button index
     evidence:
       - src/widget/feedback/modal/mod.rs::modal
-      - src/widget/feedback/modal/mod.rs::handle_key
+      - src/widget/feedback/modal/key_handling.rs::handle_key
       - tests/rendering_overlap_tests.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / Modal
@@ -821,7 +821,7 @@ items:
       - auto-dismiss duration
     evidence:
       - src/widget/feedback/toast.rs::toast
-      - src/widget/feedback/toast_queue.rs::ToastQueue
+      - src/widget/feedback/toast_queue/mod.rs::ToastQueue
       - tests/widget/feedback/toast.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / Toast
@@ -852,7 +852,7 @@ items:
       - Filled/Outlined/Minimal variants
       - dismissible, icon toggle, custom icon, title
     evidence:
-      - src/widget/feedback/alert.rs::alert
+      - src/widget/feedback/alert/mod.rs::alert
       - tests/alert_tests.rs
       - examples/alert.rs
     source:
@@ -884,8 +884,8 @@ items:
       - Dot/DotWithLabel/Badge styles, sizes, custom label
       - pulsing animation, driven by the app (tick() on a kept widget, or frame(n) on one rebuilt every render)
     evidence:
-      - src/widget/display/status_indicator.rs::status_indicator
-      - src/widget/display/status_indicator.rs::frame
+      - src/widget/display/status_indicator/mod.rs::status_indicator
+      - src/widget/display/status_indicator/mod.rs::frame
       - tests/widget/display/status_indicator.rs
       - tests/status_indicator_pulse.rs
       - examples/status_indicator.rs
@@ -905,7 +905,7 @@ items:
       - no_results/error/first_use presets
       - Full/Compact/Minimal variants, custom icon
     evidence:
-      - src/widget/display/empty_state.rs::empty_state
+      - src/widget/display/empty_state/mod.rs::empty_state
       - tests/widget/empty_state.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / EmptyState
@@ -1294,7 +1294,7 @@ items:
       - barchart
       - sparkline
     evidence:
-      - src/widget/data/chart/helper.rs::line_chart
+      - src/widget/data/chart/helper/mod.rs::line_chart
       - src/widget/data/chart/barchart.rs::barchart
       - src/widget/data/chart/sparkline.rs::sparkline
     source:
@@ -1311,8 +1311,8 @@ items:
       - donut with hole ratio
       - explode a slice
     evidence:
-      - src/widget/data/chart/piechart.rs::pie_chart
-      - src/widget/data/chart/piechart.rs::donut_chart
+      - src/widget/data/chart/piechart/mod.rs::pie_chart
+      - src/widget/data/chart/piechart/mod.rs::donut_chart
       - tests/widget/data/chart/piechart.rs
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / PieChart
@@ -1396,7 +1396,7 @@ items:
     acceptance:
       - candle_chart(data) with title
     evidence:
-      - src/widget/data/chart/candlechart.rs::candle_chart
+      - src/widget/data/chart/candlechart/mod.rs::candle_chart
       - tests/widget/candlechart.rs
     source:
       - FEATURES.md §Advanced Widgets / Advanced Charts

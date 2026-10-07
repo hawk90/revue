@@ -1,0 +1,472 @@
+//! Tooltip widget for displaying contextual information
+//!
+//! Provides hover-style tooltips and help text displays.
+
+mod render;
+mod types;
+
+pub use types::{TooltipArrow, TooltipPosition, TooltipStyle};
+
+use crate::style::Color;
+use crate::utils::border::BorderChars;
+use crate::utils::unicode::display_width;
+use crate::widget::theme::{DARK_BG, EDITOR_BG};
+use crate::widget::traits::WidgetProps;
+use crate::{impl_props_builders, impl_styled_view};
+
+impl TooltipStyle {
+    fn colors(&self) -> (Color, Color) {
+        match self {
+            TooltipStyle::Plain => (Color::WHITE, DARK_BG),
+            TooltipStyle::Bordered => (Color::WHITE, EDITOR_BG),
+            TooltipStyle::Rounded => (Color::WHITE, EDITOR_BG),
+            TooltipStyle::Info => (Color::WHITE, Color::rgb(30, 80, 100)),
+            TooltipStyle::Warning => (Color::BLACK, Color::rgb(180, 150, 0)),
+            TooltipStyle::Error => (Color::WHITE, Color::rgb(150, 30, 30)),
+            TooltipStyle::Success => (Color::WHITE, Color::rgb(30, 100, 50)),
+        }
+    }
+
+    fn border_chars(&self) -> Option<BorderChars> {
+        match self {
+            TooltipStyle::Plain => None,
+            TooltipStyle::Bordered
+            | TooltipStyle::Info
+            | TooltipStyle::Warning
+            | TooltipStyle::Error
+            | TooltipStyle::Success => Some(BorderChars::SINGLE),
+            TooltipStyle::Rounded => Some(BorderChars::ROUNDED),
+        }
+    }
+}
+
+/// Tooltip widget
+#[derive(Clone)]
+pub struct Tooltip {
+    /// Tooltip text (supports multiple lines)
+    text: String,
+    /// Position relative to anchor
+    position: TooltipPosition,
+    /// Anchor point (x, y)
+    anchor: (u16, u16),
+    /// Visual style
+    style: TooltipStyle,
+    /// Arrow style
+    arrow: TooltipArrow,
+    /// Max width (0 = auto)
+    max_width: u16,
+    /// Visible
+    visible: bool,
+    /// Custom colors
+    fg: Option<Color>,
+    bg: Option<Color>,
+    /// Title (optional)
+    title: Option<String>,
+    /// Show delay in frames (for animated appearance)
+    delay: u16,
+    /// Current delay counter
+    delay_counter: u16,
+    /// Widget properties
+    props: WidgetProps,
+}
+
+impl Tooltip {
+    /// Create a new tooltip
+    pub fn new(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            position: TooltipPosition::Top,
+            anchor: (0, 0),
+            style: TooltipStyle::Bordered,
+            arrow: TooltipArrow::Unicode,
+            max_width: 40,
+            visible: true,
+            fg: None,
+            bg: None,
+            title: None,
+            delay: 0,
+            delay_counter: 0,
+            props: WidgetProps::new(),
+        }
+    }
+
+    /// Set tooltip text
+    pub fn text(mut self, text: impl Into<String>) -> Self {
+        self.text = text.into();
+        self
+    }
+
+    /// Set position
+    pub fn position(mut self, position: TooltipPosition) -> Self {
+        self.position = position;
+        self
+    }
+
+    /// Set anchor point
+    pub fn anchor(mut self, x: u16, y: u16) -> Self {
+        self.anchor = (x, y);
+        self
+    }
+
+    /// Set style
+    pub fn style(mut self, style: TooltipStyle) -> Self {
+        self.style = style;
+        self
+    }
+
+    /// Set arrow style
+    pub fn arrow(mut self, arrow: TooltipArrow) -> Self {
+        self.arrow = arrow;
+        self
+    }
+
+    /// Set max width
+    pub fn max_width(mut self, width: u16) -> Self {
+        self.max_width = width;
+        self
+    }
+
+    /// Set visibility
+    pub fn visible(mut self, visible: bool) -> Self {
+        self.visible = visible;
+        self
+    }
+
+    /// Set foreground color
+    pub fn fg(mut self, color: Color) -> Self {
+        self.fg = Some(color);
+        self
+    }
+
+    /// Set background color
+    pub fn bg(mut self, color: Color) -> Self {
+        self.bg = Some(color);
+        self
+    }
+
+    /// Set title
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = Some(title.into());
+        self
+    }
+
+    /// Set show delay
+    pub fn delay(mut self, frames: u16) -> Self {
+        self.delay = frames;
+        self
+    }
+
+    // Preset styles
+
+    /// Create info tooltip
+    pub fn info(text: impl Into<String>) -> Self {
+        Self::new(text).style(TooltipStyle::Info)
+    }
+
+    /// Create warning tooltip
+    pub fn warning(text: impl Into<String>) -> Self {
+        Self::new(text).style(TooltipStyle::Warning)
+    }
+
+    /// Create error tooltip
+    pub fn error(text: impl Into<String>) -> Self {
+        Self::new(text).style(TooltipStyle::Error)
+    }
+
+    /// Create success tooltip
+    pub fn success(text: impl Into<String>) -> Self {
+        Self::new(text).style(TooltipStyle::Success)
+    }
+
+    /// Show the tooltip
+    pub fn show(&mut self) {
+        self.visible = true;
+        self.delay_counter = 0;
+    }
+
+    /// Hide the tooltip
+    pub fn hide(&mut self) {
+        self.visible = false;
+    }
+
+    /// Toggle visibility
+    pub fn toggle(&mut self) {
+        self.visible = !self.visible;
+    }
+
+    /// Check if visible
+    pub fn is_visible(&self) -> bool {
+        self.visible && self.delay_counter >= self.delay
+    }
+
+    /// Tick for delay animation
+    pub fn tick(&mut self) {
+        if self.delay_counter < self.delay {
+            self.delay_counter += 1;
+        }
+    }
+
+    /// Set anchor position
+    pub fn set_anchor(&mut self, x: u16, y: u16) {
+        self.anchor = (x, y);
+    }
+
+    // Getters for testing
+    #[doc(hidden)]
+    pub fn get_text(&self) -> &str {
+        &self.text
+    }
+
+    #[doc(hidden)]
+    pub fn get_position(&self) -> TooltipPosition {
+        self.position
+    }
+
+    #[doc(hidden)]
+    pub fn get_anchor(&self) -> (u16, u16) {
+        self.anchor
+    }
+
+    #[doc(hidden)]
+    pub fn get_style(&self) -> TooltipStyle {
+        self.style
+    }
+
+    #[doc(hidden)]
+    pub fn get_arrow(&self) -> TooltipArrow {
+        self.arrow
+    }
+
+    #[doc(hidden)]
+    pub fn get_max_width(&self) -> u16 {
+        self.max_width
+    }
+
+    #[doc(hidden)]
+    pub fn get_delay(&self) -> u16 {
+        self.delay
+    }
+
+    #[doc(hidden)]
+    pub fn get_delay_counter(&self) -> u16 {
+        self.delay_counter
+    }
+
+    #[doc(hidden)]
+    pub fn get_title(&self) -> Option<&str> {
+        self.title.as_deref()
+    }
+
+    /// Word wrap text
+    fn wrap_text(&self) -> Vec<String> {
+        let max_width = if self.max_width > 0 {
+            self.max_width as usize
+        } else {
+            40
+        };
+
+        let mut lines = Vec::new();
+        // Widths are terminal columns, the unit the box is sized in.
+        for line in self.text.lines() {
+            if display_width(line) <= max_width {
+                lines.push(line.to_string());
+            } else {
+                // Simple word wrap
+                let mut current_line = String::new();
+                for word in line.split_whitespace() {
+                    if current_line.is_empty() {
+                        current_line = word.to_string();
+                    } else if display_width(&current_line) + 1 + display_width(word) <= max_width {
+                        current_line.push(' ');
+                        current_line.push_str(word);
+                    } else {
+                        lines.push(current_line);
+                        current_line = word.to_string();
+                    }
+                }
+                if !current_line.is_empty() {
+                    lines.push(current_line);
+                }
+            }
+        }
+
+        if lines.is_empty() {
+            lines.push(String::new());
+        }
+
+        lines
+    }
+
+    /// Calculate tooltip dimensions
+    fn calculate_dimensions(&self) -> (u16, u16) {
+        let lines = self.wrap_text();
+        let has_border = self.style.border_chars().is_some();
+        let has_title = self.title.is_some();
+
+        let content_width = lines.iter().map(|l| display_width(l)).max().unwrap_or(0) as u16;
+        let title_width = self
+            .title
+            .as_ref()
+            .map(|t| display_width(t) as u16 + 2)
+            .unwrap_or(0);
+        let text_width = content_width.max(title_width);
+
+        let width = text_width + if has_border { 4 } else { 2 }; // padding + border
+        let height = lines.len() as u16
+            + if has_border { 2 } else { 0 }
+            + if has_title && has_border { 1 } else { 0 };
+
+        (width, height)
+    }
+
+    /// Calculate position based on anchor and available space
+    fn calculate_position(&self, area_width: u16, area_height: u16) -> (u16, u16, TooltipPosition) {
+        let (tooltip_w, tooltip_h) = self.calculate_dimensions();
+        let (anchor_x, anchor_y) = self.anchor;
+        let arrow_offset: u16 = if matches!(self.arrow, TooltipArrow::None) {
+            0
+        } else {
+            1
+        };
+
+        let (x, y, position) = match self.position {
+            TooltipPosition::Auto => {
+                // Auto-detect best position based on available space
+                let space_above = anchor_y;
+                let space_below = area_height.saturating_sub(anchor_y + 1);
+                let space_left = anchor_x;
+                let space_right = area_width.saturating_sub(anchor_x + 1);
+
+                let pos = if space_above >= tooltip_h + arrow_offset {
+                    TooltipPosition::Top
+                } else if space_below >= tooltip_h + arrow_offset {
+                    TooltipPosition::Bottom
+                } else if space_right >= tooltip_w + arrow_offset {
+                    TooltipPosition::Right
+                } else if space_left >= tooltip_w + arrow_offset {
+                    TooltipPosition::Left
+                } else {
+                    TooltipPosition::Top // Default fallback
+                };
+
+                // Calculate position for the auto-detected position
+                // Note: pos is guaranteed to be Top/Bottom/Left/Right (never Auto)
+                // because Auto was resolved to a concrete position above
+                let (x, y) = match pos {
+                    TooltipPosition::Top => {
+                        let x = anchor_x.saturating_sub(tooltip_w / 2);
+                        let y = anchor_y.saturating_sub(tooltip_h + arrow_offset);
+                        (x, y)
+                    }
+                    TooltipPosition::Bottom => {
+                        let x = anchor_x.saturating_sub(tooltip_w / 2);
+                        let y = anchor_y + 1 + arrow_offset;
+                        (x, y)
+                    }
+                    TooltipPosition::Left => {
+                        let x = anchor_x.saturating_sub(tooltip_w + arrow_offset);
+                        let y = anchor_y.saturating_sub(tooltip_h / 2);
+                        (x, y)
+                    }
+                    TooltipPosition::Right => {
+                        let x = anchor_x + 1 + arrow_offset;
+                        let y = anchor_y.saturating_sub(tooltip_h / 2);
+                        (x, y)
+                    }
+                    // Auto is handled above and never reaches here
+                    TooltipPosition::Auto => {
+                        unreachable!("Auto position resolved to concrete position above")
+                    }
+                };
+                (x, y, pos)
+            }
+            TooltipPosition::Top => {
+                let x = anchor_x.saturating_sub(tooltip_w / 2);
+                let y = anchor_y.saturating_sub(tooltip_h + arrow_offset);
+                (x, y, TooltipPosition::Top)
+            }
+            TooltipPosition::Bottom => {
+                let x = anchor_x.saturating_sub(tooltip_w / 2);
+                let y = anchor_y + 1 + arrow_offset;
+                (x, y, TooltipPosition::Bottom)
+            }
+            TooltipPosition::Left => {
+                let x = anchor_x.saturating_sub(tooltip_w + arrow_offset);
+                let y = anchor_y.saturating_sub(tooltip_h / 2);
+                (x, y, TooltipPosition::Left)
+            }
+            TooltipPosition::Right => {
+                let x = anchor_x + 1 + arrow_offset;
+                let y = anchor_y.saturating_sub(tooltip_h / 2);
+                (x, y, TooltipPosition::Right)
+            }
+        };
+
+        // Clamp to screen bounds
+        let x = x.min(area_width.saturating_sub(tooltip_w));
+        let y = y.min(area_height.saturating_sub(tooltip_h));
+
+        (x, y, position)
+    }
+}
+
+impl Default for Tooltip {
+    fn default() -> Self {
+        Self::new("")
+    }
+}
+
+impl_styled_view!(Tooltip);
+impl_props_builders!(Tooltip);
+
+/// Helper to create a tooltip
+pub fn tooltip(text: impl Into<String>) -> Tooltip {
+    Tooltip::new(text)
+}
+
+// KEEP HERE - accesses private fields
+// Tests for private methods that cannot be extracted
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // These tests access private methods and must stay inline
+
+    #[test]
+    fn test_tooltip_wrap_text() {
+        let t = Tooltip::new("This is a very long text that should be wrapped").max_width(20);
+        let lines = t.wrap_text();
+        assert!(lines.len() > 1);
+        assert!(lines.iter().all(|l| l.len() <= 20));
+    }
+
+    #[test]
+    fn test_tooltip_calculate_dimensions() {
+        let t = Tooltip::new("Short").style(TooltipStyle::Bordered);
+        let (w, h) = t.calculate_dimensions();
+        assert!(w > 5);
+        assert!(h >= 3); // At least border + 1 line
+    }
+
+    #[test]
+    fn test_tooltip_with_title() {
+        let t = Tooltip::new("Content")
+            .title("Title")
+            .style(TooltipStyle::Bordered);
+
+        let (_, h) = t.calculate_dimensions();
+        assert!(h >= 4); // border + title + content
+    }
+
+    #[test]
+    fn test_tooltip_auto_position() {
+        let t = Tooltip::new("Test")
+            .position(TooltipPosition::Auto)
+            .anchor(5, 5);
+
+        let (_, _, pos) = t.calculate_position(40, 20);
+        // Should choose a valid position
+        assert!(!matches!(pos, TooltipPosition::Auto));
+    }
+}
