@@ -33,7 +33,7 @@
 3. 공개 경로를 지킨다. 옮긴 타입은 원래 모듈에서 `pub use`한다.
 4. 검사: `cargo fmt --check`, `typos`, clippy(all features, all targets, `-D warnings`),
    `--no-default-features` 빌드, `RUSTFLAGS="-D warnings" cargo test --all-features`,
-   docsrs 문서 빌드, 그리고 **`cargo semver-checks`**(crates.io의 최신 릴리스와
+   docsrs 문서 빌드(`--document-private-items` 포함; pre-push hook과 같은 플래그), 그리고 **`cargo semver-checks`**(crates.io의 최신 릴리스와
    비교)로 공개 API가 그대로인지 확인한다.
 5. 커밋: `refactor(<scope>): split <file> by responsibility`. 파일 하나에 커밋 하나.
 6. 이 표에 결과를 적는다. keep도 이유와 함께 기록한다.

@@ -154,7 +154,7 @@ impl App {
 
     /// Recursively build the layout tree from the DOM tree.
     ///
-    /// **Post-order.** [`LayoutEngine::create_node_with_children`] links only
+    /// **Post-order.** [`LayoutEngine::create_node_with_children`](crate::layout::LayoutEngine::create_node_with_children) links only
     /// the children that already exist, so a parent built first ends up with no
     /// children at all - and a layout tree with no edges computes a rect for
     /// the root and leaves every other node at 0x0. That is what this used to
