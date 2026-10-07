@@ -83,41 +83,48 @@ CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다.
 
 ## 발견한 실패
 
-16개 위젯, 285 케이스. `[진행 중]`은 다른 브랜치에서 지금 고치고 있는 패닉과
-겹치는 것이다.
+처음 돌렸을 때 16개 위젯에서 285 케이스가 실패했다. #767(패닉 수정)이 들어온 뒤
+**12개 위젯, 80 케이스**가 남았다. 아래 표의 위쪽이 남은 실패, 아래쪽이 #767로
+사라진 실패다.
+
+### 남은 실패
 
 | 위젯 | 종류 | 층 | 예시 케이스 | 원인 추정 |
 |---|---|---|---|---|
-| `StatusBar` [진행 중] | 패닉 ×25 | 크기·내용·쌍 | `contents: 40x10 long plain direct` | `statusbar/render.rs:66` `area.width - right_width`가 오른쪽 섹션이 영역보다 넓으면 underflow |
-| `StatusBar` [진행 중] | 패닉 ×3 | 쌍 | `pairwise: 2x1 empty focus app` | `statusbar/render.rs:80` `area.width - right_width - 2`가 키 힌트 자리가 없으면 underflow |
-| `Modal` [진행 중] | 패닉 ×21 | 크기·쌍 | `pairwise: 0x0 hangul focus app` | `modal/render.rs:59` `y + modal_height - 2`가 영역이 모달 테두리보다 작으면 underflow |
-| `LogViewer` [진행 중과 관련] | 패닉 ×8 | 내용·쌍 | `contents: 40x10 hangul plain direct` | `log_viewer/parser.rs:292` 타임스탬프를 찾으며 `&s[..8]`을 바이트로 자름. 8바이트째가 멀티바이트 문자 안이면 패닉. 그리기 전 `load`에서 난다 |
-| `LogViewer` | 패닉 ×4 | 크기·쌍 | `pairwise: 0x0 empty plain direct` | `log_viewer/view/render.rs:203` 스크롤바 `area.height - 1`이 높이 0에서 underflow |
+| `LogViewer` | 패닉 ×8 | 내용·쌍 | `contents: 40x10 hangul plain direct` | `log_viewer/parser.rs:292` 타임스탬프를 찾으며 `&s[..8]`을 바이트로 자름. 8바이트째가 멀티바이트 문자 안이면 패닉. 그리기 전 `load`에서 난다. #767은 검색 쪽만 고쳤다 |
 | `RichLog` | 패닉 ×4 | 크기·쌍 | `sizes: 0x0 hello plain direct` | `richlog/render.rs:141` 스크롤바 `area.height as usize - 1`이 높이 0에서 underflow |
 | `CommandPalette` | 패닉 ×1 | 크기 | `sizes: 1x1000 hello plain direct` | `command_palette/view.rs:72` 제목 자르기 `x + width - 2`가 폭 2 미만에서 underflow |
 | `Splitter` | 패닉 ×5 | 크기·쌍 | `pairwise: 5x2@65530,1 empty plain direct` | `splitter/mod.rs:151` `pane_areas`의 `area.x + offset`이 u16 끝에서 overflow |
-| `Button`, `Layers`, `ScreenStack` | 패닉 ×2씩 | 쌍 | `pairwise: 5x2@65530,1 hangul focus direct` | `render_context/text.rs:33` **공용 `draw_text`**: 넓은 문자의 이어지는 칸 `cx + i`가 u16 끝에서 overflow. 위젯 문제가 아니라 그 자리에 넓은 문자를 그리는 모든 위젯에 해당 |
+| `Button`, `Layers`, `ScreenStack` | 패닉 ×2씩 | 쌍 | `pairwise: 5x2@65530,1 hangul focus direct` | `render_context/text.rs:33` **공용 `draw_text`**: 넓은 문자의 이어지는 칸 `cx + i`가 u16 끝에서 overflow. 그 자리에 넓은 문자를 그리는 모든 위젯에 해당 |
 | `Inspector`(`core::app`) | 패닉 ×22 | 크기·쌍 | `pairwise: 0x0 empty plain direct` | `inspector.rs:278` `panel_width - 3`이 패널 폭 3 미만에서 underflow |
 | `Inspector` | 패닉 ×5 | 크기·쌍 | `pairwise: 5x2@65530,1 empty plain direct` | `inspector.rs:268` 제목 `title_x + i`가 u16 끝에서 overflow |
 | `Inspector` | 영역 밖 ×20 | 크기·내용·쌍 | `contents: 40x10 empty plain direct` | 살펴보는 위젯의 절대 좌표(0,0,10,3)에 강조를 칠한다. 오버레이라 의도된 것일 수 있지만 자기 영역으로 잘리지 않는다 |
-| `DevTools*` 6개 탭 [진행 중] | 패닉 ×16씩 | 크기·쌍 | `pairwise: 0x0 empty plain direct` | `devtools/render.rs:31` 패널 테두리 계산 `area.width - 2`가 패널이 테두리보다 좁으면 underflow |
-| `DevTools*` 6개 탭 [진행 중] | 패닉 ×5씩 | 크기·쌍 | `pairwise: 5x2@65530,1 empty plain direct` | `devtools/render.rs:91` 탭 막대 `x += 1`이 u16 끝에서 overflow |
-| `DevToolsEvents`·`Styles`·`TimeTravel` [진행 중] | 패닉 ×1씩 | 크기 | `sizes: 2x5@1,65530 hello plain direct` | `events/core.rs:289`, `style/view.rs:39`, `time_travel/debugger/render.rs:31` 행 커서 `y += n`이 y축 끝에서 overflow |
-| `DevToolsEvents` [진행 중] | 패닉 ×1 | 쌍 | `pairwise: 80x24 emoji plain direct` | `events/core.rs:324` 이벤트 설명을 `&details[..n]` 바이트로 잘라 멀티바이트 문자 안에서 패닉 |
-| `DevTools*` 6개 탭 [진행 중] | 영역 밖 ×1–8 | 크기·내용·쌍 | `sizes: 3x3 hello plain direct` | 탭 막대와 내용 행을 패널에 맞춰 자르지 않는다. 낮은 패널에서는 아래로, 긴 텍스트는 오른쪽 테두리 밖으로 나간다 |
+| `DevToolsEvents`·`Styles`·`TimeTravel` | 패닉 ×1씩 | 크기 | `sizes: 2x5@1,65530 hello plain direct` | `events/core.rs:289`, `style/view.rs:39`, `time_travel/debugger/render.rs:31` 행 커서 `y += n`이 y축 끝에서 overflow |
+| `DevToolsEvents` | 패닉 ×1 | 쌍 | `pairwise: 80x24 emoji plain direct` | `events/core.rs:324` 이벤트 설명을 `&details[..n]` 바이트로 잘라 멀티바이트 문자 안에서 패닉 |
+| `DevToolsProfiler` | 영역 밖 ×3 | 내용·쌍 | `contents: 40x10 long plain direct` | 긴 텍스트 행을 패널 오른쪽 끝에서 자르지 않는다 |
+| `DevToolsStyles` | 영역 밖 ×2 | 내용·쌍 | `contents: 40x10 long plain direct` | 같은 원인 |
+
+### #767로 사라진 실패 (205 케이스)
+
+| 위젯 | 종류 | 케이스 | 원래 위치 |
+|---|---|---|---|
+| `StatusBar` | 패닉 | 28 | `statusbar/render.rs:66`, `:80` 폭 underflow |
+| `Modal` | 패닉 | 21 | `modal/render.rs:59` 높이 underflow |
+| `LogViewer` | 패닉 | 4 | `log_viewer/view/render.rs:203` 높이 0 스크롤바 |
+| `DevTools*` 6개 탭 | 패닉 | 126 | `devtools/render.rs:31` 패널 테두리 underflow, `:91` 탭 막대 overflow |
+| `DevTools*` 6개 탭 | 영역 밖 | 26 | 탭 막대·내용이 낮은 패널 아래로 나감(긴 텍스트의 오른쪽 넘침 5건은 남음) |
 
 ### 눈여겨볼 것
 
 - **앱 경로에서만 나는 실패는 없었다.** 앱 경로의 실패(`Modal`, `StatusBar`)는
-  직접 경로에서도 같은 위치에서 난다. 파이프라인이 위젯에 넘기는 영역이 직접
-  경로와 다른 새 경계를 만들지는 않았다.
+  직접 경로에서도 같은 위치에서 났고, #767로 함께 사라졌다.
 - **한 위치가 여러 위젯을 깨뜨린다.** `draw_text`의 넓은 문자 처리 하나가
   `Button`·`Layers`·`ScreenStack`을 한꺼번에 깨뜨린다. 고치면 세 항목이 함께
   사라진다.
-- **매트릭스로 재현되지 않은 진행 중 수정.** `CandleChart` 스크롤, `OptionList`
+- **매트릭스로 재현되지 않은 #767 수정.** `CandleChart` 스크롤, `OptionList`
   underflow, `RenderBatch`/테두리 overflow, 프로파일러 문자열 자르기,
-  `hot_reload` 경로 검사는 이 매트릭스에서 나타나지 않았다. 모두 특정 상태(스크롤
-  위치, 검색어, 배치 입력)나 렌더 밖의 경로가 필요해서 크기·내용·포커스 축으로는
-  닿지 않는다.
-- 그 밖의 위젯 115개(기본 기능 109개)는 6,419 케이스 전부에서 두 불변식을
+  `hot_reload` 경로 검사는 처음부터 이 매트릭스에서 나타나지 않았다. 특정
+  상태(스크롤 위치, 검색어, 배치 입력)나 렌더 밖의 경로가 필요해서 크기·내용·
+  포커스 축으로는 닿지 않는다.
+- 그 밖의 위젯 119개(기본 기능 113개)는 6,419 케이스 전부에서 두 불변식을
   지켰다.
