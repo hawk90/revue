@@ -29,12 +29,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "Pagination",
-        sequence: "<total 0> End",
-        reason: "last()/goto() set page 0 when there are no pages (set_total keeps 1)",
-    },
-    Known {
-        layer: "keys",
         widget: "RangePicker",
         sequence: "'j'",
         reason: "month navigation keeps the stored day, so Jan 31 becomes Feb 31",
