@@ -5,6 +5,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0](https://github.com/hawk90/revue/compare/v3.2.2...v3.3.0) (2026-10-07)
+
+
+### Features
+
+* **masked-input:** handle typing, deleting and cursor keys ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **selection-list:** handle the keys its help line lists ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+
+
+### Bug Fixes
+
+* **a11y:** clear the root when the root node is removed ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **a11y:** move focus in document order ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **alert:** keep the dismiss button's columns free of text ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **avatar:** keep the name-derived hue in the full 0..360 range ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **bidi:** compute directional runs ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **border:** give zero-width chars no row in left and right titles ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **candlechart:** fit the price axis to the Heikin-Ashi candles ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **clipboard:** sanitize and size-check MemoryClipboard content like the system one ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **context:** make a ContextScope drop and provide into its own scope ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **context:** register a Provider's value so use_context sees it ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **devtools:** escape labels and action names in the time-travel export ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **diff:** keep large-input matches in order so the diff is correct ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **dock:** render the real dock areas instead of tab-less clones ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **dom:** clear the root when the root node is removed ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **dom:** renumber the siblings left behind by remove ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **dom:** return query matches in document order ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **drag:** leave OverTarget when clear_targets drops the hovered target ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **event:** match Shift+Tab bindings against the BackTab crossterm sends ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **examples:** pass battery levels as percentages ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **focus:** honor restore_focus_on_release(false) when a FocusTrap is released ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **focus:** stop at the trap's ends when loop_focus is off ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **form:** let form fields read their colors from the stylesheet ([63a3a36](https://github.com/hawk90/revue/commit/63a3a36df84e7b4dcfed6545c47c42967f14c824))
+* **gauge:** flag a low battery instead of a full one ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **gauge:** leave the Arc gauge empty at zero ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **hot-reload:** key watcher errors by message so they do not debounce each other ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **i18n:** pluralize fallback text by the fallback locale's rule ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **image:** give Kitty the pixel size of raw RGB/RGBA data ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **image:** load non-PNG images as RGBA instead of mislabelling them ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **image:** reject non-PNG data in from_png ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **image:** scale a zero-sized image to nothing ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **ime:** go back to Composing when the candidate list is cleared ([ec9276c](https://github.com/hawk90/revue/commit/ec9276c60486cf0a08d7495ff583a5b778347a63))
+* **keymap:** parse s-tab as BackTab, not Shift + Tab ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **keymap:** wait for more keys on a multi-key global binding ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **markdown:** cross out ~~strikethrough~~ text ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **masked-input:** cut a set value to max_length ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **masked-input:** draw a focused field's placeholder in grey ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **modal:** center buttons by display width, not bytes ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **option_list:** leave out separators and groups outside the scroll window ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **option_list:** pad hints by display width, not bytes ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **presentation:** count no slides shown on the title slide ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **qrcode:** invert the code exactly once in every style ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **query:** count an offset in Query::is_empty ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **render:** keep Clear and cursor ops in order in RenderBatch::optimize ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **richlog:** keep the last page full when scrolled to the bottom ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **richlog:** toggle the selected visible entry, not the raw index ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **richtext:** show an unclosed [ as text instead of dropping the rest ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **router:** let a trailing * wildcard match the rest of the path ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **router:** notify navigation listeners from go() ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **selection-list:** keep the initial selection in range, sorted and capped ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **splitter:** number dividers the same way for resizing and drawing ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **stepper:** number steps by the same rule in both orientations ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **style:** parse the second transition time as the delay ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **timer:** let the stopwatch read its color from the stylesheet ([63a3a36](https://github.com/hawk90/revue/commit/63a3a36df84e7b4dcfed6545c47c42967f14c824))
+* **timer:** show minutes in precise remaining time ([63a3a36](https://github.com/hawk90/revue/commit/63a3a36df84e7b4dcfed6545c47c42967f14c824))
+* **toast_queue:** stack upward toasts inside the area ([1036190](https://github.com/hawk90/revue/commit/10361900ff9b7e41cbe05daf23fb35bf90cfbc69))
+* **vim:** treat a leading 0 as LineStart, not a count digit ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+* **worker:** apply the channel capacity to WorkerReceiver::send_command ([718f963](https://github.com/hawk90/revue/commit/718f9638fbbaf5d9523aae2246ea31afb9634986))
+
 ## [3.2.2](https://github.com/hawk90/revue/compare/v3.2.1...v3.2.2) (2026-10-07)
 
 
