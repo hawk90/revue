@@ -157,16 +157,6 @@ pub const KNOWN: &[Known] = &[
     // ── pairwise ──
     Known {
         layer: "pairwise",
-        widget: "Button",
-        kind: Kind::Panic,
-        reason: "src/widget/traits/render_context/text.rs:33: RenderContext::draw_text: `cx + i` for a wide char's continuation cells overflows u16 when the area ends at the far right edge (shared code)",
-        cases: &[
-            "5x2@65530,1 hangul focus direct",
-            "5x2@65530,1 emoji plain direct",
-        ],
-    },
-    Known {
-        layer: "pairwise",
         widget: "DevToolsEvents",
         kind: Kind::Panic,
         reason: "src/devtools/events/core.rs:324: event details truncated by bytes (`&details[..n]`) panic inside a multibyte char [not covered by #767]",
@@ -244,16 +234,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "pairwise",
-        widget: "Layers",
-        kind: Kind::Panic,
-        reason: "src/widget/traits/render_context/text.rs:33: RenderContext::draw_text: `cx + i` for a wide char's continuation cells overflows u16 when the area ends at the far right edge (shared code)",
-        cases: &[
-            "5x2@65530,1 hangul focus direct",
-            "5x2@65530,1 emoji plain direct",
-        ],
-    },
-    Known {
-        layer: "pairwise",
         widget: "LogViewer",
         kind: Kind::Panic,
         reason: "src/widget/data/log_viewer/parser.rs:292: timestamp sniffing slices `&s[..8]` by bytes and panics inside a multibyte char (in `load`, before any render) [not covered by #767]",
@@ -276,16 +256,6 @@ pub const KNOWN: &[Known] = &[
             "0x0 empty plain direct",
             "0x0 emoji plain direct",
             "0x0 long plain direct",
-        ],
-    },
-    Known {
-        layer: "pairwise",
-        widget: "ScreenStack",
-        kind: Kind::Panic,
-        reason: "src/widget/traits/render_context/text.rs:33: RenderContext::draw_text: `cx + i` for a wide char's continuation cells overflows u16 when the area ends at the far right edge (shared code)",
-        cases: &[
-            "5x2@65530,1 hangul focus direct",
-            "5x2@65530,1 emoji plain direct",
         ],
     },
     Known {
