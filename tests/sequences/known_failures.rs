@@ -17,12 +17,6 @@ pub struct Known {
 pub const KNOWN: &[Known] = &[
     Known {
         layer: "keys",
-        widget: "CsvViewer",
-        sequence: "Ctrl+End <parse empty>",
-        reason: "parse() keeps the selection, scroll and search matches of the previous data",
-    },
-    Known {
-        layer: "keys",
         widget: "DataGrid",
         sequence: "Ctrl+End <drop rows>",
         reason: "recompute_cache() does not clamp the selection/scroll after the rows shrink",
@@ -86,5 +80,11 @@ pub const KNOWN: &[Known] = &[
         widget: "ScrollView",
         sequence: "ScrollDown@(start,start) ScrollDown@(start,start) ScrollDown@(start,start) ScrollDown@(start,start) [7x40]",
         reason: "the offset is clamped only against the viewport of the last scroll call, not the one rendered",
+    },
+    Known {
+        layer: "keys",
+        widget: "CsvViewer",
+        sequence: "<search '1'> 'n'",
+        reason: "search matches cells of a ragged row past the shown columns and selects a column that is not there",
     },
 ];
