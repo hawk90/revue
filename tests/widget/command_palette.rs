@@ -1276,3 +1276,29 @@ fn test_command_palette_matches_with_empty_query() {
     let cmd = Command::new("test", "Test");
     assert!(cmd.matches("")); // Empty query matches everything
 }
+
+// Every width from 0 up: the frame, title, label, shortcut and result count
+// positions are all computed from the palette's width and must not underflow
+// when it is narrower than they are.
+#[test]
+fn test_command_palette_render_fits_very_narrow_areas() {
+    for w in 0..=24 {
+        let mut palette = CommandPalette::new().title("Commands").commands(vec![
+            Command::new("save", "Save File").shortcut("Ctrl+Shift+S"),
+            Command::new("open", "Open File").shortcut("Ctrl+O"),
+        ]);
+        palette.show();
+        let mut buffer = Buffer::new(w + 4, 14);
+        let area = Rect::new(2, 1, w, 12);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        palette.render(&mut ctx);
+        for (x, y, cell) in buffer.iter_cells() {
+            let inside = (2..2 + w).contains(&x) && (1..13).contains(&y);
+            assert!(
+                inside || cell.symbol == ' ',
+                "width {w}: wrote {:?} outside the area at ({x},{y})",
+                cell.symbol
+            );
+        }
+    }
+}

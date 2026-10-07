@@ -29,6 +29,12 @@ impl View for CommandPalette {
             return;
         }
 
+        // Right border column, end of the text columns and end of the label
+        // column, saturating for a palette narrower than its frame.
+        let right_x = (x + width).saturating_sub(1);
+        let text_end = (x + width).saturating_sub(2);
+        let label_end = (x + width).saturating_sub(15);
+
         // Draw background
         for dy in 0..height {
             for dx in 0..width {
@@ -47,7 +53,7 @@ impl View for CommandPalette {
         tl.fg = Some(self.border_color);
         ctx.set(x, current_y, tl);
 
-        for dx in 1..width - 1 {
+        for dx in 1..width.saturating_sub(1) {
             let mut h = Cell::new(border_chars[4]);
             h.fg = Some(self.border_color);
             ctx.set(x + dx, current_y, h);
@@ -55,7 +61,7 @@ impl View for CommandPalette {
 
         let mut tr = Cell::new(border_chars[1]);
         tr.fg = Some(self.border_color);
-        ctx.set(x + width - 1, current_y, tr);
+        ctx.set(right_x, current_y, tr);
 
         current_y += 1;
 
@@ -69,7 +75,7 @@ impl View for CommandPalette {
             let mut dx: u16 = 0;
             for ch in title.chars() {
                 let cw = char_width(ch) as u16;
-                if title_x + dx >= x + width - 2 {
+                if title_x + dx >= text_end {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -82,7 +88,7 @@ impl View for CommandPalette {
 
             let mut right = Cell::new(border_chars[5]);
             right.fg = Some(self.border_color);
-            ctx.set(x + width - 1, current_y, right);
+            ctx.set(right_x, current_y, right);
 
             current_y += 1;
         }
@@ -113,7 +119,7 @@ impl View for CommandPalette {
         let mut dx: u16 = 0;
         for ch in display_text.chars() {
             let cw = char_width(ch) as u16;
-            if input_x + dx >= x + width - 2 {
+            if input_x + dx >= text_end {
                 break;
             }
             let mut cell = Cell::new(ch);
@@ -126,7 +132,7 @@ impl View for CommandPalette {
         // Cursor
         if !self.query.is_empty() || display_text == &self.placeholder {
             let cursor_x = input_x + display_width(&self.query) as u16;
-            if cursor_x < x + width - 2 {
+            if cursor_x < text_end {
                 let mut cursor = Cell::new('▏');
                 cursor.fg = Some(Color::WHITE);
                 cursor.bg = Some(self.bg_color);
@@ -136,7 +142,7 @@ impl View for CommandPalette {
 
         let mut right = Cell::new(border_chars[5]);
         right.fg = Some(self.border_color);
-        ctx.set(x + width - 1, current_y, right);
+        ctx.set(right_x, current_y, right);
 
         current_y += 1;
 
@@ -145,7 +151,7 @@ impl View for CommandPalette {
         sl.fg = Some(self.border_color);
         ctx.set(x, current_y, sl);
 
-        for dx in 1..width - 1 {
+        for dx in 1..width.saturating_sub(1) {
             let mut h = Cell::new('─');
             h.fg = Some(self.border_color);
             ctx.set(x + dx, current_y, h);
@@ -153,7 +159,7 @@ impl View for CommandPalette {
 
         let mut sr = Cell::new('┤');
         sr.fg = Some(self.border_color);
-        ctx.set(x + width - 1, current_y, sr);
+        ctx.set(right_x, current_y, sr);
 
         current_y += 1;
 
@@ -182,7 +188,7 @@ impl View for CommandPalette {
             } else {
                 self.bg_color
             };
-            for dx in 1..width - 1 {
+            for dx in 1..width.saturating_sub(1) {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(row_bg);
                 ctx.set(x + dx, item_y, cell);
@@ -204,7 +210,7 @@ impl View for CommandPalette {
             // Label with highlighting
             let highlighted = self.highlight_match(&cmd.label);
             for (ch, is_match) in highlighted {
-                if content_x >= x + width - 15 {
+                if content_x >= label_end {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -224,7 +230,7 @@ impl View for CommandPalette {
             // Shortcut (right-aligned)
             if self.show_shortcuts {
                 if let Some(ref shortcut) = cmd.shortcut {
-                    let shortcut_x = x + width - 2 - display_width(shortcut) as u16;
+                    let shortcut_x = text_end.saturating_sub(display_width(shortcut) as u16);
                     let mut dx: u16 = 0;
                     for ch in shortcut.chars() {
                         let cw = char_width(ch) as u16;
@@ -240,7 +246,7 @@ impl View for CommandPalette {
             // Right border
             let mut right = Cell::new(border_chars[5]);
             right.fg = Some(self.border_color);
-            ctx.set(x + width - 1, item_y, right);
+            ctx.set(right_x, item_y, right);
         }
 
         // Fill remaining space if fewer items than max_visible
@@ -256,7 +262,7 @@ impl View for CommandPalette {
 
             let mut right = Cell::new(border_chars[5]);
             right.fg = Some(self.border_color);
-            ctx.set(x + width - 1, item_y, right);
+            ctx.set(right_x, item_y, right);
         }
 
         // Bottom border
@@ -265,7 +271,7 @@ impl View for CommandPalette {
         bl.fg = Some(self.border_color);
         ctx.set(x, bottom_y, bl);
 
-        for dx in 1..width - 1 {
+        for dx in 1..width.saturating_sub(1) {
             let mut h = Cell::new(border_chars[4]);
             h.fg = Some(self.border_color);
             ctx.set(x + dx, bottom_y, h);
@@ -273,11 +279,11 @@ impl View for CommandPalette {
 
         let mut br = Cell::new(border_chars[3]);
         br.fg = Some(self.border_color);
-        ctx.set(x + width - 1, bottom_y, br);
+        ctx.set(right_x, bottom_y, br);
 
         // Results count
         let count_str = format!("{}/{}", self.filtered.len(), self.commands.len());
-        let count_x = x + width - 2 - display_width(&count_str) as u16;
+        let count_x = text_end.saturating_sub(display_width(&count_str) as u16);
         let mut dx: u16 = 0;
         for ch in count_str.chars() {
             let cw = char_width(ch) as u16;

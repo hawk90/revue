@@ -20,15 +20,6 @@ pub const KNOWN: &[Known] = &[
     // ── sizes ──
     Known {
         layer: "sizes",
-        widget: "CommandPalette",
-        kind: Kind::Panic,
-        reason: "src/widget/command_palette/view.rs:72: title clipping `x + width - 2` underflows when the palette is narrower than 2 columns",
-        cases: &[
-            "1x1000 hello plain direct",
-        ],
-    },
-    Known {
-        layer: "sizes",
         widget: "DevToolsEvents",
         kind: Kind::Panic,
         reason: "src/devtools/events/core.rs:289: row cursor `y += 2` overflows at the far-y offset [not covered by #767]",
