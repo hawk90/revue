@@ -41,7 +41,6 @@ use std::sync::Once;
 use crossterm::{
     cursor::Show,
     event::{DisableBracketedPaste, DisableFocusChange, DisableMouseCapture},
-    execute,
     style::ResetColor,
     terminal::{disable_raw_mode, LeaveAlternateScreen},
 };
@@ -102,28 +101,54 @@ pub fn install_panic_hook() {
 /// After this, a later panic does not emit restore sequences either - the
 /// process may be doing ordinary stdout work by then.
 pub(crate) fn claim_restore() -> bool {
-    let claimed = ARMED.swap(false, Ordering::SeqCst);
+    ARMED.swap(false, Ordering::SeqCst)
+}
+
+/// Issue each restore command on its own and report the first error.
+///
+/// Chaining them through one `execute!` aborts the rest at the first failure,
+/// and on a Windows console without VT processing crossterm dispatches to
+/// WinAPI, where a command such as `DisableBracketedPaste` has no counterpart
+/// and errors. A restore that stops there leaves the cursor hidden and the
+/// alternate screen up - and since a session is restored once, nothing tries
+/// again.
+macro_rules! restore_each {
+    ($writer:expr, $($command:expr),+ $(,)?) => {{
+        $crate::runtime::render::terminal::panic_hook::note_restore_written();
+        let mut first: ::std::io::Result<()> = Ok(());
+        $(
+            if let Err(error) = ::crossterm::execute!($writer, $command) {
+                if first.is_ok() {
+                    first = Err(error);
+                }
+            }
+        )+
+        first
+    }};
+}
+pub(crate) use restore_each;
+
+/// Record that a restore sequence is being written. Test builds count these per
+/// thread; release builds compile it away.
+#[inline]
+pub(crate) fn note_restore_written() {
     #[cfg(test)]
-    if claimed {
-        CLAIMS.with(|c| c.set(c.get() + 1));
-    }
-    claimed
+    WRITES.with(|c| c.set(c.get() + 1));
 }
 
 #[cfg(test)]
 thread_local! {
-    /// Successful claims made on this thread. Every restorer writes the restore
-    /// sequence exactly when its claim succeeds, so this counts the restores
-    /// actually performed - on every platform, including Windows, where
-    /// crossterm drives the console through WinAPI and writes no escape bytes a
-    /// test could count.
-    static CLAIMS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// Restore sequences written on this thread. Counting them, rather than
+    /// the escape bytes in a writer, works on every platform: on Windows
+    /// crossterm drives the console through WinAPI and writes no bytes a test
+    /// could count.
+    static WRITES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
-/// How many restores this thread has performed so far.
+/// How many restore sequences this thread has written so far.
 #[cfg(test)]
 pub(crate) fn restores_performed() -> usize {
-    CLAIMS.with(|c| c.get())
+    WRITES.with(|c| c.get())
 }
 
 /// Is the panic hook currently armed?
@@ -155,18 +180,16 @@ pub fn restore_terminal() {
 fn write_restore_sequence() {
     let mut out = std::io::stdout();
 
-    // Each command is issued on its own and its error dropped. Chaining them
-    // through one `execute!` would abort the rest of the restore at the first
-    // failure - and on a Windows console without VT processing, crossterm
-    // dispatches to WinAPI, where `DisableBracketedPaste` has no counterpart
-    // and errors. Leaving the cursor hidden because an unrelated command was
-    // unsupported is exactly the outcome this function exists to prevent.
-    let _ = execute!(out, DisableMouseCapture);
-    let _ = execute!(out, DisableBracketedPaste);
-    let _ = execute!(out, DisableFocusChange);
-    let _ = execute!(out, ResetColor);
-    let _ = execute!(out, Show);
-    let _ = execute!(out, LeaveAlternateScreen);
+    // Errors are dropped: this runs on the way out, with nowhere to report them.
+    let _ = restore_each!(
+        out,
+        DisableMouseCapture,
+        DisableBracketedPaste,
+        DisableFocusChange,
+        ResetColor,
+        Show,
+        LeaveAlternateScreen,
+    );
 
     let _ = out.flush();
     let _ = disable_raw_mode();

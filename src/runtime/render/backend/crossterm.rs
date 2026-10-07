@@ -2,6 +2,7 @@
 //!
 //! This backend uses the crossterm library for cross-platform terminal I/O.
 
+use crate::runtime::render::terminal::panic_hook::restore_each;
 use crossterm::{
     cursor::{Hide, MoveTo, Show},
     event::{
@@ -122,23 +123,23 @@ impl<W: Write> Backend for CrosstermBackend<W> {
                 return Ok(());
             }
             let written = if mouse_enabled {
-                execute!(
+                restore_each!(
                     self.writer,
                     DisableMouseCapture,
                     DisableBracketedPaste,
                     DisableFocusChange,
                     ResetColor,
                     Show,
-                    LeaveAlternateScreen
+                    LeaveAlternateScreen,
                 )
             } else {
-                execute!(
+                restore_each!(
                     self.writer,
                     DisableBracketedPaste,
                     DisableFocusChange,
                     ResetColor,
                     Show,
-                    LeaveAlternateScreen
+                    LeaveAlternateScreen,
                 )
             };
             // There is no second attempt, so leave raw mode even if the

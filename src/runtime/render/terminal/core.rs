@@ -89,15 +89,20 @@ impl<W: Write> Terminal<W> {
                 return Ok(());
             }
             let written = if self.mouse_capture {
-                execute!(
+                super::panic_hook::restore_each!(
                     self.writer,
                     DisableMouseCapture,
                     ResetColor,
                     Show,
-                    LeaveAlternateScreen
+                    LeaveAlternateScreen,
                 )
             } else {
-                execute!(self.writer, ResetColor, Show, LeaveAlternateScreen)
+                super::panic_hook::restore_each!(
+                    self.writer,
+                    ResetColor,
+                    Show,
+                    LeaveAlternateScreen
+                )
             };
             // There is no second attempt, so leave raw mode even if the
             // writer refused the sequence.
