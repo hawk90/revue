@@ -166,10 +166,13 @@ struct Loader {
     /// Content of the right kind that does not parse.
     corrupt: Vec<u8>,
     /// Written once at the start of the stream, before the units.
+    #[cfg_attr(not(unix), allow(dead_code))] // only the unix FIFO stream reads it
     head: Vec<u8>,
     /// One unit of content, repeated to stream past the limit.
+    #[cfg_attr(not(unix), allow(dead_code))] // only the unix FIFO stream reads it
     unit: Vec<u8>,
     /// Written once at the end, so the whole stream is valid content.
+    #[cfg_attr(not(unix), allow(dead_code))] // only the unix FIFO stream reads it
     tail: Vec<u8>,
     /// `None` if the loader refused the file, `Some(what it loaded)` if not.
     load: fn(&Path) -> Option<String>,
