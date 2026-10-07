@@ -248,7 +248,7 @@ impl Inspector {
             for x in panel_x..panel_x.saturating_add(panel_width) {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(self.bg_color);
-                ctx.buffer.set(x, y, cell);
+                put(ctx, x, y, cell);
             }
         }
 
@@ -257,7 +257,7 @@ impl Inspector {
             let mut cell = Cell::new('│');
             cell.fg = Some(Color::WHITE);
             cell.bg = Some(self.bg_color);
-            ctx.buffer.set(panel_x, y, cell);
+            put(ctx, panel_x, y, cell);
         }
 
         // Draw title
@@ -271,7 +271,7 @@ impl Inspector {
             cell.fg = Some(Color::CYAN);
             cell.bg = Some(self.bg_color);
             cell.modifier |= crate::render::Modifier::BOLD;
-            ctx.buffer.set(x, area.y, cell);
+            put(ctx, x, area.y, cell);
         }
 
         // Draw widget tree
@@ -335,16 +335,14 @@ impl Inspector {
             let mut cell = Cell::new(ch);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.buffer
-                .set(state.x.saturating_add(i as u16), state.y, cell);
+            put(ctx, state.x.saturating_add(i as u16), state.y, cell);
         }
 
         // Fill rest of line with background
         for i in text.len()..(state.max_width as usize) {
             let mut cell = Cell::new(' ');
             cell.bg = bg;
-            ctx.buffer
-                .set(state.x.saturating_add(i as u16), state.y, cell);
+            put(ctx, state.x.saturating_add(i as u16), state.y, cell);
         }
 
         state.y = state.y.saturating_add(1);
@@ -372,7 +370,7 @@ impl Inspector {
             let mut cell = Cell::new('─');
             cell.fg = Some(DARK_GRAY);
             cell.bg = Some(self.bg_color);
-            ctx.buffer.set(x.saturating_add(dx), y, cell);
+            put(ctx, x.saturating_add(dx), y, cell);
         }
         y = y.saturating_add(1);
 
@@ -383,7 +381,7 @@ impl Inspector {
             cell.fg = Some(Color::YELLOW);
             cell.bg = Some(self.bg_color);
             cell.modifier |= crate::render::Modifier::BOLD;
-            ctx.buffer.set(x.saturating_add(i as u16), y, cell);
+            put(ctx, x.saturating_add(i as u16), y, cell);
         }
         y = y.saturating_add(2);
 
@@ -396,7 +394,7 @@ impl Inspector {
             let mut cell = Cell::new(ch);
             cell.fg = Some(MUTED_TEXT);
             cell.bg = Some(self.bg_color);
-            ctx.buffer.set(x.saturating_add(i as u16), y, cell);
+            put(ctx, x.saturating_add(i as u16), y, cell);
         }
         y = y.saturating_add(1);
 
@@ -411,47 +409,56 @@ impl Inspector {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(MUTED_TEXT);
                 cell.bg = Some(self.bg_color);
-                ctx.buffer.set(x.saturating_add(i as u16), y, cell);
+                put(ctx, x.saturating_add(i as u16), y, cell);
             }
             y = y.saturating_add(1);
         }
     }
 
     fn render_bounds_overlay(&self, ctx: &mut RenderContext, bounds: &Rect, panel_x: u16) {
-        // Don't draw over the inspector panel
+        // The highlight is clipped to the inspector's own area, left of the
+        // panel (and its one-column gap). Given the whole screen, as
+        // intended, that is everything a widget can occupy.
         let max_x = panel_x.saturating_sub(1);
-
-        // Top and bottom borders
-        for x in bounds.x..bounds.x + bounds.width {
-            if x < max_x {
-                // Top
-                if let Some(cell) = ctx.buffer.get_mut(x, bounds.y) {
+        let right = bounds.x.saturating_add(bounds.width);
+        let bottom = bounds.y.saturating_add(bounds.height);
+        let mut highlight = |x: u16, y: u16| {
+            if x < max_x && in_area(ctx, x, y) {
+                if let Some(cell) = ctx.buffer.get_mut(x, y) {
                     cell.fg = Some(self.highlight_color);
                 }
-                // Bottom
-                if bounds.height > 1 {
-                    if let Some(cell) = ctx.buffer.get_mut(x, bounds.y + bounds.height - 1) {
-                        cell.fg = Some(self.highlight_color);
-                    }
-                }
+            }
+        };
+
+        // Top and bottom borders
+        for x in bounds.x..right {
+            highlight(x, bounds.y);
+            if bounds.height > 1 {
+                highlight(x, bottom - 1);
             }
         }
 
         // Left and right borders
-        for y in bounds.y..bounds.y + bounds.height {
-            // Left
-            if bounds.x < max_x {
-                if let Some(cell) = ctx.buffer.get_mut(bounds.x, y) {
-                    cell.fg = Some(self.highlight_color);
-                }
-            }
-            // Right
-            if bounds.width > 1 && bounds.x + bounds.width - 1 < max_x {
-                if let Some(cell) = ctx.buffer.get_mut(bounds.x + bounds.width - 1, y) {
-                    cell.fg = Some(self.highlight_color);
-                }
+        for y in bounds.y..bottom {
+            highlight(bounds.x, y);
+            if bounds.width > 1 {
+                highlight(right - 1, y);
             }
         }
+    }
+}
+
+/// Whether absolute `(x, y)` is inside the context's area and not clipped.
+fn in_area(ctx: &RenderContext, x: u16, y: u16) -> bool {
+    ctx.area.contains(x, y) && !ctx.is_clipped(x, y)
+}
+
+/// Set the cell at absolute `(x, y)` if it is inside the context's area -
+/// the panel's rows are laid out in absolute coordinates and may run past
+/// the area (a narrow panel, a long type name).
+fn put(ctx: &mut RenderContext, x: u16, y: u16, cell: Cell) {
+    if in_area(ctx, x, y) {
+        ctx.buffer.set(x, y, cell);
     }
 }
 
@@ -843,5 +850,47 @@ mod tests {
             let mut ctx = RenderContext::new(&mut buffer, area);
             insp.render(&mut ctx);
         }
+    }
+
+    // Every write - the panel and the highlight of the selected widget's
+    // bounds - stays inside the area the inspector was given, even when the
+    // widget's bounds (absolute) reach outside it.
+    #[test]
+    fn test_inspector_render_stays_inside_its_area() {
+        let insp = shown_with_tree();
+        for area in [
+            Rect::new(2, 1, 40, 10),
+            Rect::new(2, 1, 3, 3),
+            Rect::new(2, 1, 1000, 1),
+            Rect::new(2, 1, 0, 0),
+        ] {
+            let (bw, bh) = (area.width.min(60) + 4, area.height + 2);
+            let mut buffer = Buffer::new(bw, bh);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            insp.render(&mut ctx);
+            for y in 0..bh {
+                for x in 0..bw {
+                    if !area.contains(x, y) {
+                        assert_eq!(
+                            buffer.get(x, y),
+                            Some(&Cell::default()),
+                            "{area:?}: touched ({x},{y})"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    // Given the whole screen, as intended, the highlight is still drawn.
+    #[test]
+    fn test_inspector_highlights_the_selected_widget_on_the_whole_screen() {
+        let insp = shown_with_tree();
+        let mut buffer = Buffer::new(80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 80, 24));
+        insp.render(&mut ctx);
+        assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::CYAN));
+        assert_eq!(buffer.get(9, 2).unwrap().fg, Some(Color::CYAN));
+        assert_eq!(buffer.get(10, 0).unwrap().fg, None);
     }
 }
