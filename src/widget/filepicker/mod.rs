@@ -862,4 +862,15 @@ mod tests {
         assert!(matches!(result, Err(FilePickerError::IoError(_))));
         assert_eq!(picker.current_dir(), before);
     }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_entry_whose_name_is_not_utf8_is_listed() {
+        use std::os::unix::ffi::OsStrExt;
+        // No file needed: the name alone used to make from_path give up.
+        let path = Path::new("/nowhere").join(std::ffi::OsStr::from_bytes(b"bad-\xff-name.txt"));
+        let entry = PickerEntry::from_path(&path).expect("entry left out of the listing");
+        assert_eq!(entry.name, "bad-\u{fffd}-name.txt");
+        assert_eq!(entry.path, path);
+    }
 }
