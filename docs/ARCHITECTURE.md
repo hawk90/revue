@@ -73,7 +73,7 @@ src/widget/
 │       ├── radio/         #   Radio buttons
 │       ├── switch.rs      #   Toggle switch
 │       ├── select/        #   Dropdown select
-│       ├── slider.rs      #   Slider control
+│       ├── slider/        #   Slider control
 │       ├── color_picker/  #   Color picker
 │       ├── autocomplete/  #   Autocomplete input
 │       └── stepper.rs     #   Step indicator
