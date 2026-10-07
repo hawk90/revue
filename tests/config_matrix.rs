@@ -405,14 +405,7 @@ struct Known {
     cases: &'static [&'static str],
 }
 
-const KNOWN: &[Known] = &[Known {
-    kind: Kind::OutOfArea,
-    reason: "RenderContext's draw_text*/draw_char* ignore the overflow: hidden clip",
-    cases: &[
-        "hidden 1x1 dom+ layout+ sized- tab- css+clip",
-        "hidden 1x1 dom+ layout+ sized- tab+ css+clip",
-    ],
-}];
+const KNOWN: &[Known] = &[];
 
 /// The cells of the three frames a case paints.
 type Frames = Vec<Vec<Cell>>;

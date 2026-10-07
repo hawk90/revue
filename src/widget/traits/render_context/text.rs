@@ -82,7 +82,14 @@ impl RenderContext<'_> {
     /// Put a character at `cx` and continuation cells after it; the caller
     /// has checked (via [`text_cell_x`](Self::text_cell_x)) that all
     /// `width` cells are addressable.
+    ///
+    /// Respects the clipping region set by `overflow: hidden`: a glyph with
+    /// any of its cells outside the clip is not drawn at all, so a wide glyph
+    /// on the clip's edge leaves no orphaned half.
     fn put_text_char(&mut self, cx: u16, abs_y: u16, width: u16, cell: Cell) {
+        if (0..width).any(|i| self.is_clipped(cx.saturating_add(i), abs_y)) {
+            return;
+        }
         self.buffer.set(cx, abs_y, cell);
         for i in 1..width {
             self.buffer
@@ -90,42 +97,36 @@ impl RenderContext<'_> {
         }
     }
 
-    /// Draw a single character at relative position (0,0 = area top-left)
+    /// Draw a single character at relative position (0,0 = area top-left).
+    ///
+    /// Like every drawing method here, respects the clipping region set by
+    /// `overflow: hidden`.
     #[inline]
     pub fn draw_char(&mut self, x: u16, y: u16, ch: char, fg: Color) {
-        if x < self.area.width && y < self.area.height {
+        let (abs_x, abs_y) = (self.area.x.saturating_add(x), self.area.y.saturating_add(y));
+        if x < self.area.width && y < self.area.height && !self.is_clipped(abs_x, abs_y) {
             let cell = Cell::new(ch).fg(fg);
-            self.buffer.set(
-                self.area.x.saturating_add(x),
-                self.area.y.saturating_add(y),
-                cell,
-            );
+            self.buffer.set(abs_x, abs_y, cell);
         }
     }
 
     /// Draw a character with background color at relative position
     #[inline]
     pub fn draw_char_bg(&mut self, x: u16, y: u16, ch: char, fg: Color, bg: Color) {
-        if x < self.area.width && y < self.area.height {
+        let (abs_x, abs_y) = (self.area.x.saturating_add(x), self.area.y.saturating_add(y));
+        if x < self.area.width && y < self.area.height && !self.is_clipped(abs_x, abs_y) {
             let cell = Cell::new(ch).fg(fg).bg(bg);
-            self.buffer.set(
-                self.area.x.saturating_add(x),
-                self.area.y.saturating_add(y),
-                cell,
-            );
+            self.buffer.set(abs_x, abs_y, cell);
         }
     }
 
     /// Draw a bold character at relative position
     #[inline]
     pub fn draw_char_bold(&mut self, x: u16, y: u16, ch: char, fg: Color) {
-        if x < self.area.width && y < self.area.height {
+        let (abs_x, abs_y) = (self.area.x.saturating_add(x), self.area.y.saturating_add(y));
+        if x < self.area.width && y < self.area.height && !self.is_clipped(abs_x, abs_y) {
             let cell = Cell::new(ch).fg(fg).bold();
-            self.buffer.set(
-                self.area.x.saturating_add(x),
-                self.area.y.saturating_add(y),
-                cell,
-            );
+            self.buffer.set(abs_x, abs_y, cell);
         }
     }
 
