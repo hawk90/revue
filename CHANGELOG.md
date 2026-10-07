@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.2](https://github.com/hawk90/revue/compare/v3.3.1...v3.3.2) (2026-10-07)
+
+
+### Bug Fixes
+
+* **render:** give Kitty the pixel size of raw image data ([4d14323](https://github.com/hawk90/revue/commit/4d14323a355ddd93c816ca26f47fc298f85ac853))
+* **render:** honor the overflow clip in RenderContext::get_mut ([4d14323](https://github.com/hawk90/revue/commit/4d14323a355ddd93c816ca26f47fc298f85ac853))
+* **render:** honor the overflow: hidden clip in the text drawing primitives ([1738c52](https://github.com/hawk90/revue/commit/1738c52d94297a752315521656fea10f4dd2f26b))
+* **slider:** accept a range given high to low ([4d14323](https://github.com/hawk90/revue/commit/4d14323a355ddd93c816ca26f47fc298f85ac853))
+* **textarea:** restore the cursor by characters on undo ([4d14323](https://github.com/hawk90/revue/commit/4d14323a355ddd93c816ca26f47fc298f85ac853))
+
 ## [3.3.1](https://github.com/hawk90/revue/compare/v3.3.0...v3.3.1) (2026-10-07)
 
 
