@@ -1,6 +1,6 @@
 //! Countdown timer widget
 
-use super::{render_large_time, TimerFormat, TimerState};
+use super::{format_ms, render_large_time, TimerFormat, TimerState};
 use crate::style::Color;
 use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::WidgetProps;
@@ -243,24 +243,17 @@ impl Timer {
     }
 
     /// Format remaining time as string
+    ///
+    /// The same text a [`Stopwatch`](super::Stopwatch) shows for the same
+    /// time, except [`TimerFormat::Compact`], which a countdown keeps coarser
+    /// ("1h 23m").
     pub fn format_remaining(&self) -> String {
-        let total_secs = self.remaining_ms / 1000;
-        let ms = self.remaining_ms % 1000;
-        let secs = total_secs % 60;
-        let mins = (total_secs / 60) % 60;
-        let hours = total_secs / 3600;
-
         match self.format {
-            TimerFormat::Full => format!("{:02}:{:02}:{:02}", hours, mins, secs),
-            TimerFormat::Short => {
-                if hours > 0 {
-                    format!("{:02}:{:02}:{:02}", hours, mins, secs)
-                } else {
-                    format!("{:02}:{:02}", mins, secs)
-                }
-            }
-            TimerFormat::Precise => format!("{:02}.{:03}", secs, ms),
             TimerFormat::Compact => {
+                let total_secs = self.remaining_ms / 1000;
+                let secs = total_secs % 60;
+                let mins = (total_secs / 60) % 60;
+                let hours = total_secs / 3600;
                 if hours > 0 {
                     format!("{}h {}m", hours, mins)
                 } else if mins > 0 {
@@ -269,6 +262,7 @@ impl Timer {
                     format!("{}s", secs)
                 }
             }
+            format => format_ms(self.remaining_ms, format),
         }
     }
 
@@ -447,5 +441,31 @@ mod tests {
     fn test_timer_auto_restart() {
         let timer = Timer::countdown(60).auto_restart(true);
         assert!(timer.auto_restart);
+    }
+
+    // KEEP HERE: accesses private field remaining_ms
+    #[test]
+    fn test_timer_precise_keeps_the_minutes() {
+        let mut timer = Timer::countdown(120).format(TimerFormat::Precise);
+        timer.remaining_ms = 65_500;
+        assert_eq!(timer.format_remaining(), "01:05.500");
+    }
+
+    // KEEP HERE: accesses private field remaining_ms, calls private format_ms
+    #[test]
+    fn test_timer_formats_as_the_stopwatch_does() {
+        // Compact is left out on purpose: a countdown's "1h 23m" is coarser
+        // than a stopwatch's "1h 23m 5s", as `TimerFormat::Compact` documents.
+        for format in [TimerFormat::Full, TimerFormat::Short, TimerFormat::Precise] {
+            let mut timer = Timer::countdown(10_000).format(format);
+            for ms in [0, 5_500, 65_500, 3_661_250] {
+                timer.remaining_ms = ms;
+                assert_eq!(
+                    timer.format_remaining(),
+                    format_ms(ms, format),
+                    "{format:?} at {ms} ms"
+                );
+            }
+        }
     }
 }

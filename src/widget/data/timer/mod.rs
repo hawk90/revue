@@ -45,7 +45,7 @@ pub enum TimerFormat {
     Full,
     /// MM:SS
     Short,
-    /// SS.ms
+    /// MM:SS.mmm
     Precise,
     /// Compact (1h 23m)
     Compact,
