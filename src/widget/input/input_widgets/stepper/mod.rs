@@ -118,6 +118,10 @@ impl Stepper {
     }
 
     /// Show/hide step numbers
+    ///
+    /// Numbers replace the status icons only in the
+    /// [`Numbered`](StepperStyle::Numbered) style; `numbers(false)` keeps the
+    /// icons there too.
     pub fn numbers(mut self, show: bool) -> Self {
         self.show_numbers = show;
         self

@@ -60,6 +60,13 @@ impl View for Stepper {
 }
 
 impl Stepper {
+    /// Whether the step indicators are numbers rather than status icons -
+    /// the same rule in both orientations: the `Numbered` style, unless
+    /// numbers are turned off with [`numbers`](Stepper::numbers).
+    fn shows_numbers(&self) -> bool {
+        self.style == StepperStyle::Numbered && self.show_numbers
+    }
+
     fn render_horizontal(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let step_count = self.steps.len();
@@ -75,26 +82,23 @@ impl Stepper {
             let color = self.step_color(ctx, step);
 
             // Step indicator
-            match self.style {
-                StepperStyle::Numbered => {
-                    let num = format!("{}", i + 1);
-                    for (j, ch) in num.chars().enumerate() {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(color);
-                        if step.status == StepStatus::Active {
-                            cell.modifier |= Modifier::BOLD;
-                        }
-                        ctx.set(x + j as u16, y, cell);
-                    }
-                }
-                _ => {
-                    let mut cell = Cell::new(step.display_icon());
+            if self.shows_numbers() {
+                let num = format!("{}", i + 1);
+                for (j, ch) in num.chars().enumerate() {
+                    let mut cell = Cell::new(ch);
                     cell.fg = Some(color);
                     if step.status == StepStatus::Active {
                         cell.modifier |= Modifier::BOLD;
                     }
-                    ctx.set(x, y, cell);
+                    ctx.set(x + j as u16, y, cell);
                 }
+            } else {
+                let mut cell = Cell::new(step.display_icon());
+                cell.fg = Some(color);
+                if step.status == StepStatus::Active {
+                    cell.modifier |= Modifier::BOLD;
+                }
+                ctx.set(x, y, cell);
             }
 
             // Connector (except last)
@@ -162,7 +166,7 @@ impl Stepper {
             let x: u16 = 0;
 
             // Step indicator
-            let indicator = if self.show_numbers {
+            let indicator = if self.shows_numbers() {
                 format!("{}", i + 1)
             } else {
                 step.display_icon().to_string()
@@ -218,5 +222,47 @@ impl Stepper {
                 y += 1;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    /// The two indicator cells: steps 0 and 1 (vertical rows, or the start
+    /// of each horizontal half).
+    fn indicators(stepper: Stepper) -> [char; 2] {
+        let vertical = stepper.orientation == StepperOrientation::Vertical;
+        let stepper = stepper.add_step("A").add_step("B").current(0);
+        let mut buf = Buffer::new(20, 6);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, 20, 6));
+        stepper.render(&mut ctx);
+        let second = if vertical {
+            // Each vertical step takes a row plus a connector row.
+            (0..6)
+                .skip(1)
+                .map(|y| buf.get(0, y).unwrap().symbol)
+                .find(|c| !matches!(c, ' ' | '│'))
+                .unwrap()
+        } else {
+            buf.get(10, 0).unwrap().symbol
+        };
+        [buf.get(0, 0).unwrap().symbol, second]
+    }
+
+    #[test]
+    fn both_orientations_number_steps_by_the_same_rule() {
+        let numbered = || Stepper::new().style(StepperStyle::Numbered);
+        // The default (Dots) style shows status icons either way.
+        assert_eq!(indicators(Stepper::new()), ['●', '○']);
+        assert_eq!(indicators(Stepper::new().vertical()), ['●', '○']);
+        // The Numbered style shows numbers either way...
+        assert_eq!(indicators(numbered()), ['1', '2']);
+        assert_eq!(indicators(numbered().vertical()), ['1', '2']);
+        // ...unless numbers are turned off.
+        assert_eq!(indicators(numbered().numbers(false)), ['●', '○']);
+        assert_eq!(indicators(numbered().vertical().numbers(false)), ['●', '○']);
     }
 }
