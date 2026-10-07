@@ -112,8 +112,8 @@ impl Splitter {
             return areas;
         }
 
-        let total_splitter_width =
-            (visible_panes.len().saturating_sub(1)) as u16 * self.splitter_width;
+        let dividers = u16::try_from(visible_panes.len().saturating_sub(1)).unwrap_or(u16::MAX);
+        let total_splitter_width = dividers.saturating_mul(self.splitter_width);
         let extent = match self.orientation {
             SplitOrientation::Horizontal => area.width,
             SplitOrientation::Vertical => area.height,
@@ -142,19 +142,29 @@ impl Splitter {
             // Last pane takes the remaining space. `offset` already counts
             // the dividers placed so far, so measure it against the whole
             // extent, not against `available` (which has them taken out).
+            // Panes whose minimum sizes overrun the extent are cut at its end
+            // (and later ones get no room), so no pane leaves the area and
+            // no coordinate runs past `u16::MAX`.
+            let remaining = extent.saturating_sub(offset);
             if i == visible_panes.len() - 1 {
-                size = extent.saturating_sub(offset);
+                size = remaining;
             }
+            size = size.min(remaining);
+            let start = offset.min(extent);
 
             let pane_area = match self.orientation {
                 SplitOrientation::Horizontal => {
-                    Rect::new(area.x + offset, area.y, size, area.height)
+                    Rect::new(area.x.saturating_add(start), area.y, size, area.height)
                 }
-                SplitOrientation::Vertical => Rect::new(area.x, area.y + offset, area.width, size),
+                SplitOrientation::Vertical => {
+                    Rect::new(area.x, area.y.saturating_add(start), area.width, size)
+                }
             };
 
             areas.push((pane.id.clone(), pane_area));
-            offset += size + self.splitter_width;
+            offset = offset
+                .saturating_add(size)
+                .saturating_add(self.splitter_width);
         }
 
         areas
@@ -212,7 +222,7 @@ impl Splitter {
     /// Resize by delta
     pub fn resize(&mut self, delta: i16) {
         if let Some(divider) = self.active_divider {
-            if divider < self.panes.len() - 1 {
+            if divider + 1 < self.panes.len() {
                 let current_ratio = self.panes[divider].ratio;
                 let next_ratio = self.panes[divider + 1].ratio;
 
@@ -333,6 +343,36 @@ mod tests {
         // Both should have roughly equal width
         assert!(areas[0].1.width > 0);
         assert!(areas[1].1.width > 0);
+    }
+
+    fn inside(inner: &Rect, outer: &Rect) -> bool {
+        let end = |p: u16, len: u16| u32::from(p) + u32::from(len);
+        inner.x >= outer.x
+            && inner.y >= outer.y
+            && end(inner.x, inner.width) <= end(outer.x, outer.width)
+            && end(inner.y, inner.height) <= end(outer.y, outer.height)
+    }
+
+    // Default panes have `min_size` 5, so a few of them overrun a narrow
+    // area; against the end of the coordinate space that used to overflow.
+    #[test]
+    fn test_splitter_pane_areas_stay_inside_an_area_at_the_coordinate_edge() {
+        for orientation in [SplitOrientation::Horizontal, SplitOrientation::Vertical] {
+            let mut s =
+                Splitter::new().panes((0..20).map(|i| Pane::new(format!("p{i}"))).collect());
+            s.orientation = orientation;
+            for area in [
+                Rect::new(u16::MAX - 5, 1, 5, 2),
+                Rect::new(1, u16::MAX - 5, 2, 5),
+                Rect::new(0, 0, 7, 3),
+            ] {
+                let areas = s.pane_areas(area);
+                assert_eq!(areas.len(), 20);
+                for (id, pane) in &areas {
+                    assert!(inside(pane, &area), "{id} {pane:?} leaves {area:?}");
+                }
+            }
+        }
     }
 
     #[test]

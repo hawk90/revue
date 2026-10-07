@@ -1,11 +1,12 @@
 //! Profiler core implementation
 
-use super::super::helpers::draw_text_overlay;
+use super::super::helpers::draw_text_overlay_clipped;
 use super::super::DevToolsConfig;
 use super::types::{ComponentStats, Frame, ProfilerView, RenderEvent};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
+use crate::utils::{display_width, truncate_with_suffix};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -208,7 +209,7 @@ impl Profiler {
             self.frames.len(),
             self.avg_frame_time().as_secs_f64() * 1000.0
         );
-        self.render_text(buffer, area.x, area.y, &header, config.fg_color);
+        self.render_text(buffer, area, area.x, area.y, &header, config.fg_color);
 
         // Get the selected frame or last frame
         let frame = self
@@ -217,7 +218,7 @@ impl Profiler {
             .or_else(|| self.frames.last());
 
         if let Some(frame) = frame {
-            let content_y = area.y + 2;
+            let content_y = area.y.saturating_add(2);
             let content_height = area.height.saturating_sub(3);
 
             // Group events by depth for flamegraph rows
@@ -229,8 +230,9 @@ impl Profiler {
             };
 
             for event in &frame.events {
-                let y = content_y + (event.depth * row_height) as u16;
-                if y >= area.y + area.height {
+                let row = u16::try_from(event.depth * row_height).unwrap_or(u16::MAX);
+                let y = content_y.saturating_add(row);
+                if y >= area.y.saturating_add(area.height) {
                     continue;
                 }
 
@@ -246,7 +248,7 @@ impl Profiler {
 
                 // Draw bar
                 let color = event.reason.color();
-                for x in area.x..area.x + width {
+                for x in area.x..area.x.saturating_add(width) {
                     if let Some(cell) = buffer.get_mut(x, y) {
                         cell.bg = Some(color);
                     }
@@ -258,7 +260,7 @@ impl Profiler {
                     event.component,
                     event.duration.as_secs_f64() * 1000.0
                 );
-                self.render_text(buffer, area.x, y, &label, config.bg_color);
+                self.render_text(buffer, area, area.x, y, &label, config.bg_color);
             }
         }
     }
@@ -271,9 +273,9 @@ impl Profiler {
 
         // Header
         let header = format!("Timeline - {} frames", self.frames.len());
-        self.render_text(buffer, area.x, area.y, &header, config.fg_color);
+        self.render_text(buffer, area, area.x, area.y, &header, config.fg_color);
 
-        let content_y = area.y + 2;
+        let content_y = area.y.saturating_add(2);
         let content_height = area.height.saturating_sub(3) as usize;
 
         // Find max frame time for scaling
@@ -297,12 +299,12 @@ impl Profiler {
             .take(visible_frames)
             .enumerate()
         {
-            let x = area.x + i as u16;
+            let x = area.x.saturating_add(i as u16);
             let height = ((frame.duration.as_nanos() as f64 / max_time.as_nanos() as f64)
                 * content_height as f64) as u16;
             let height = height.max(1);
 
-            let bar_y = content_y + (content_height as u16).saturating_sub(height);
+            let bar_y = content_y.saturating_add((content_height as u16).saturating_sub(height));
 
             // Color based on frame time (green = fast, red = slow)
             let color = if frame.duration < Duration::from_millis(8) {
@@ -316,7 +318,7 @@ impl Profiler {
             };
 
             // Draw bar
-            for y in bar_y..content_y + content_height as u16 {
+            for y in bar_y..content_y.saturating_add(content_height as u16) {
                 if let Some(cell) = buffer.get_mut(x, y) {
                     cell.bg = Some(color);
                     cell.symbol = ' ';
@@ -343,8 +345,9 @@ impl Profiler {
                 );
                 self.render_text(
                     buffer,
+                    area,
                     area.x,
-                    area.y + area.height - 1,
+                    area.y.saturating_add(area.height).saturating_sub(1),
                     &info,
                     config.accent_color,
                 );
@@ -360,9 +363,9 @@ impl Profiler {
 
         // Header
         let header = "Ranked by Total Time";
-        self.render_text(buffer, area.x, area.y, header, config.fg_color);
+        self.render_text(buffer, area, area.x, area.y, header, config.fg_color);
 
-        let content_y = area.y + 2;
+        let content_y = area.y.saturating_add(2);
         let content_height = area.height.saturating_sub(3) as usize;
 
         let stats = self.stats_by_time();
@@ -373,14 +376,10 @@ impl Profiler {
             .take(content_height)
             .enumerate()
         {
-            let y = content_y + i as u16;
+            let y = content_y.saturating_add(i as u16);
 
             // Component name
-            let name = if stat.name.len() > 20 {
-                format!("{}...", &stat.name[..17])
-            } else {
-                stat.name.clone()
-            };
+            let name = truncate_with_suffix(&stat.name, 20, "...");
 
             // Stats
             let line = format!(
@@ -391,10 +390,12 @@ impl Profiler {
                 stat.render_count
             );
 
-            self.render_text(buffer, area.x, y, &line, config.fg_color);
+            self.render_text(buffer, area, area.x, y, &line, config.fg_color);
 
             // Color indicator for render reason
-            if let Some(cell) = buffer.get_mut(area.x + area.width - 2, y) {
+            if let Some(cell) =
+                buffer.get_mut(area.x.saturating_add(area.width.saturating_sub(2)), y)
+            {
                 cell.bg = Some(stat.last_reason.color());
             }
         }
@@ -408,9 +409,9 @@ impl Profiler {
 
         // Header
         let header = "Ranked by Render Count";
-        self.render_text(buffer, area.x, area.y, header, config.fg_color);
+        self.render_text(buffer, area, area.x, area.y, header, config.fg_color);
 
-        let content_y = area.y + 2;
+        let content_y = area.y.saturating_add(2);
         let content_height = area.height.saturating_sub(3) as usize;
 
         let stats = self.stats_by_count();
@@ -422,14 +423,10 @@ impl Profiler {
             .take(content_height)
             .enumerate()
         {
-            let y = content_y + i as u16;
+            let y = content_y.saturating_add(i as u16);
 
             // Component name
-            let name = if stat.name.len() > 20 {
-                format!("{}...", &stat.name[..17])
-            } else {
-                stat.name.clone()
-            };
+            let name = truncate_with_suffix(&stat.name, 20, "...");
 
             // Bar width based on count
             let bar_width =
@@ -438,12 +435,12 @@ impl Profiler {
 
             // Draw name and count
             let count_str = format!("{:<20} {:>6}", name, stat.render_count);
-            self.render_text(buffer, area.x, y, &count_str, config.fg_color);
+            self.render_text(buffer, area, area.x, y, &count_str, config.fg_color);
 
             // Draw bar
-            let bar_start = area.x + 28;
-            for x in bar_start..bar_start + bar_width {
-                if x < area.x + area.width {
+            let bar_start = area.x.saturating_add(28);
+            for x in bar_start..bar_start.saturating_add(bar_width) {
+                if x < area.x.saturating_add(area.width) {
                     if let Some(cell) = buffer.get_mut(x, y) {
                         cell.bg = Some(config.accent_color);
                         cell.symbol = ' ';
@@ -454,13 +451,25 @@ impl Profiler {
     }
 
     fn render_empty(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig, msg: &str) {
-        let x = area.x + (area.width.saturating_sub(msg.len() as u16)) / 2;
-        let y = area.y + area.height / 2;
-        self.render_text(buffer, x, y, msg, config.fg_color);
+        let x = area
+            .x
+            .saturating_add(area.width.saturating_sub(display_width(msg) as u16) / 2);
+        let y = area.y.saturating_add(area.height / 2);
+        self.render_text(buffer, area, x, y, msg, config.fg_color);
     }
 
-    fn render_text(&self, buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
-        draw_text_overlay(buffer, x, y, text, color);
+    /// Draw `text` at `(x, y)`, cut by display width at `area`'s right edge.
+    fn render_text(
+        &self,
+        buffer: &mut Buffer,
+        area: Rect,
+        x: u16,
+        y: u16,
+        text: &str,
+        color: Color,
+    ) {
+        let max_x = area.x.saturating_add(area.width);
+        draw_text_overlay_clipped(buffer, x, y, max_x, text, color, None);
     }
 }
 

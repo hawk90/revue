@@ -261,9 +261,9 @@ impl LogParser {
             }
         }
 
-        // Check for ISO timestamp
-        if s.len() >= 19 {
-            let prefix = &s[..19];
+        // Check for ISO timestamp. `get` returns `None` when byte 19 falls
+        // inside a multibyte character - such a prefix is no timestamp anyway.
+        if let Some(prefix) = s.get(..19) {
             if prefix.chars().filter(|c| *c == '-').count() >= 2
                 && prefix.chars().filter(|c| *c == ':').count() >= 2
             {
@@ -287,9 +287,8 @@ impl LogParser {
             }
         }
 
-        // Check for time only HH:MM:SS
-        if s.len() >= 8 {
-            let prefix = &s[..8];
+        // Check for time only HH:MM:SS (see above for `get`)
+        if let Some(prefix) = s.get(..8) {
             let chars: Vec<char> = prefix.chars().collect();
             if chars.len() == 8
                 && chars[2] == ':'

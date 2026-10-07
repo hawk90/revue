@@ -1,7 +1,7 @@
 //! Drawing the time-travel tab: header, view tabs, timeline, diff, actions and state
 
 use super::TimeTravelDebugger;
-use crate::devtools::helpers::draw_text_overlay;
+use crate::devtools::helpers::draw_text_overlay_clipped;
 use crate::devtools::time_travel::TimeTravelView;
 use crate::devtools::DevToolsConfig;
 use crate::layout::Rect;
@@ -11,8 +11,14 @@ use crate::style::Color;
 impl TimeTravelDebugger {
     /// Render time travel debugger content
     pub fn render_content(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
+        // The row cursors saturate and every row is drawn only above `max_y`,
+        // so a panel at the bottom of the coordinate space cannot overflow
+        // them.
         let mut y = area.y;
-        let max_y = area.y + area.height;
+        let max_y = area.y.saturating_add(area.height);
+        if y >= max_y {
+            return;
+        }
 
         // Header with status
         let status = if self.paused { "⏸ PAUSED" } else { "● REC" };
@@ -23,12 +29,15 @@ impl TimeTravelDebugger {
             self.position + 1,
             self.snapshots.len()
         );
-        Self::draw_text(buffer, area.x, y, &header, config.accent_color);
-        y += 1;
+        Self::draw_text(buffer, area, area.x, y, &header, config.accent_color);
+        y = y.saturating_add(1);
+        if y >= max_y {
+            return;
+        }
 
         // View tabs
         self.render_view_tabs(buffer, area.x, y, area.width, config);
-        y += 2;
+        y = y.saturating_add(2);
 
         if y >= max_y {
             return;
@@ -65,25 +74,32 @@ impl TimeTravelDebugger {
             };
 
             for ch in label.chars() {
-                if px < x + width {
+                if px < x.saturating_add(width) {
                     if let Some(cell) = buffer.get_mut(px, y) {
                         cell.symbol = ch;
                         cell.fg = Some(fg);
                         cell.bg = Some(bg);
                     }
-                    px += 1;
+                    px = px.saturating_add(1);
                 }
             }
-            px += 1;
+            px = px.saturating_add(1);
         }
     }
 
     fn render_timeline(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
         let mut y = area.y;
-        let max_y = area.y + area.height;
+        let max_y = area.y.saturating_add(area.height);
 
         if self.snapshots.is_empty() {
-            Self::draw_text(buffer, area.x, y, "No snapshots recorded", config.fg_color);
+            Self::draw_text(
+                buffer,
+                area,
+                area.x,
+                y,
+                "No snapshots recorded",
+                config.fg_color,
+            );
             return;
         }
 
@@ -93,7 +109,7 @@ impl TimeTravelDebugger {
             let progress = self.position as f32 / (self.snapshots.len() - 1) as f32;
             let filled = (slider_width as f32 * progress) as u16;
 
-            Self::draw_text(buffer, area.x, y, "[", config.fg_color);
+            Self::draw_text(buffer, area, area.x, y, "[", config.fg_color);
             for i in 0..slider_width {
                 let ch = if i == filled { '●' } else { '─' };
                 let color = if i <= filled {
@@ -101,13 +117,14 @@ impl TimeTravelDebugger {
                 } else {
                     config.fg_color
                 };
-                if let Some(cell) = buffer.get_mut(area.x + 1 + i, y) {
+                if let Some(cell) = buffer.get_mut(area.x.saturating_add(1 + i), y) {
                     cell.symbol = ch;
                     cell.fg = Some(color);
                 }
             }
-            Self::draw_text(buffer, area.x + 1 + slider_width, y, "]", config.fg_color);
-            y += 2;
+            let end_x = area.x.saturating_add(1 + slider_width);
+            Self::draw_text(buffer, area, end_x, y, "]", config.fg_color);
+            y = y.saturating_add(2);
         }
 
         // List recent snapshots
@@ -137,20 +154,21 @@ impl TimeTravelDebugger {
             } else {
                 config.fg_color
             };
-            Self::draw_text(buffer, area.x, y, &line, color);
-            y += 1;
+            Self::draw_text(buffer, area, area.x, y, &line, color);
+            y = y.saturating_add(1);
         }
     }
 
     fn render_diff(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
         let mut y = area.y;
-        let max_y = area.y + area.height;
+        let max_y = area.y.saturating_add(area.height);
 
         let diff = match self.current_diff() {
             Some(d) => d,
             None => {
                 Self::draw_text(
                     buffer,
+                    area,
                     area.x,
                     y,
                     "No previous snapshot to compare",
@@ -161,7 +179,7 @@ impl TimeTravelDebugger {
         };
 
         if diff.is_empty() {
-            Self::draw_text(buffer, area.x, y, "No changes", config.fg_color);
+            Self::draw_text(buffer, area, area.x, y, "No changes", config.fg_color);
             return;
         }
 
@@ -172,8 +190,8 @@ impl TimeTravelDebugger {
                 break;
             }
             let line = format!("+ {}: {}", key, value.display());
-            Self::draw_text(buffer, area.x, y, &line, added_color);
-            y += 1;
+            Self::draw_text(buffer, area, area.x, y, &line, added_color);
+            y = y.saturating_add(1);
         }
 
         // Removed
@@ -183,8 +201,8 @@ impl TimeTravelDebugger {
                 break;
             }
             let line = format!("- {}: {}", key, value.display());
-            Self::draw_text(buffer, area.x, y, &line, removed_color);
-            y += 1;
+            Self::draw_text(buffer, area, area.x, y, &line, removed_color);
+            y = y.saturating_add(1);
         }
 
         // Changed
@@ -194,14 +212,14 @@ impl TimeTravelDebugger {
                 break;
             }
             let line = format!("~ {}: {} → {}", key, old.display(), new.display());
-            Self::draw_text(buffer, area.x, y, &line, changed_color);
-            y += 1;
+            Self::draw_text(buffer, area, area.x, y, &line, changed_color);
+            y = y.saturating_add(1);
         }
     }
 
     fn render_actions(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
         let y_start = area.y;
-        let max_y = area.y + area.height;
+        let max_y = area.y.saturating_add(area.height);
 
         let actions: Vec<_> = self
             .snapshots
@@ -212,6 +230,7 @@ impl TimeTravelDebugger {
         if actions.is_empty() {
             Self::draw_text(
                 buffer,
+                area,
                 area.x,
                 y_start,
                 "No actions recorded",
@@ -220,11 +239,8 @@ impl TimeTravelDebugger {
             return;
         }
 
-        for (y, (id, action)) in (y_start..).zip(actions.iter().skip(self.scroll)) {
-            if y >= max_y {
-                break;
-            }
-
+        // A bounded range: `y_start..` would overflow stepping past u16::MAX.
+        for (y, (id, action)) in (y_start..max_y).zip(actions.iter().skip(self.scroll)) {
             let source = action.source.as_deref().unwrap_or("");
             let line = if source.is_empty() {
                 format!("#{}: {}", id, action.name)
@@ -232,19 +248,20 @@ impl TimeTravelDebugger {
                 format!("#{}: {} ({})", id, action.name, source)
             };
 
-            Self::draw_text(buffer, area.x, y, &line, config.fg_color);
+            Self::draw_text(buffer, area, area.x, y, &line, config.fg_color);
         }
     }
 
     fn render_state(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
         let y_start = area.y;
-        let max_y = area.y + area.height;
+        let max_y = area.y.saturating_add(area.height);
 
         let snapshot = match self.current() {
             Some(s) => s,
             None => {
                 Self::draw_text(
                     buffer,
+                    area,
                     area.x,
                     y_start,
                     "No snapshot selected",
@@ -255,24 +272,29 @@ impl TimeTravelDebugger {
         };
 
         if snapshot.state.is_empty() {
-            Self::draw_text(buffer, area.x, y_start, "Empty state", config.fg_color);
+            Self::draw_text(
+                buffer,
+                area,
+                area.x,
+                y_start,
+                "Empty state",
+                config.fg_color,
+            );
             return;
         }
 
         let mut entries: Vec<_> = snapshot.state.iter().collect();
         entries.sort_by_key(|a| a.0);
 
-        for (y, (key, value)) in (y_start..).zip(entries.iter().skip(self.scroll)) {
-            if y >= max_y {
-                break;
-            }
-
+        for (y, (key, value)) in (y_start..max_y).zip(entries.iter().skip(self.scroll)) {
             let line = format!("{}: {} ({})", key, value.display(), value.type_name());
-            Self::draw_text(buffer, area.x, y, &line, config.fg_color);
+            Self::draw_text(buffer, area, area.x, y, &line, config.fg_color);
         }
     }
 
-    fn draw_text(buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
-        draw_text_overlay(buffer, x, y, text, color);
+    /// Draw `text` at `(x, y)`, cut by display width at `area`'s right edge.
+    fn draw_text(buffer: &mut Buffer, area: Rect, x: u16, y: u16, text: &str, color: Color) {
+        let max_x = area.x.saturating_add(area.width);
+        draw_text_overlay_clipped(buffer, x, y, max_x, text, color, None);
     }
 }

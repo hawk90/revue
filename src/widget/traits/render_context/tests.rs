@@ -1347,3 +1347,43 @@ fn test_is_clipped() {
     assert!(ctx.is_clipped(8, 5));
     assert!(ctx.is_clipped(5, 8));
 }
+
+// =========================================================================
+// Wide characters at the edge of the coordinate space
+// =========================================================================
+
+/// An area pressed against `u16::MAX` on the x axis, lying outside a small
+/// buffer (as the widget matrix places it).
+fn far_x_area() -> Rect {
+    Rect::new(u16::MAX - 5, 0, 5, 1)
+}
+
+#[test]
+fn test_draw_text_wide_chars_stop_at_the_edge_of_the_coordinate_space() {
+    let mut buffer = Buffer::new(16, 2);
+    let mut ctx = RenderContext::new(&mut buffer, far_x_area());
+    // Offsets 0, 2, 4, 6...: the later characters start past u16::MAX.
+    ctx.draw_text(0, 0, "한한한한한", Color::WHITE);
+    ctx.draw_text(4, 0, "한", Color::WHITE);
+    ctx.draw_text(u16::MAX, 0, "한", Color::WHITE);
+}
+
+#[test]
+fn test_draw_text_clipped_wide_chars_stop_at_the_edge_of_the_coordinate_space() {
+    let mut buffer = Buffer::new(16, 2);
+    let mut ctx = RenderContext::new(&mut buffer, far_x_area());
+    ctx.draw_text_clipped(0, 0, "한한한한한", Color::WHITE, u16::MAX);
+    ctx.draw_text_centered(u16::MAX - 1, 0, 10, "한", Color::WHITE);
+    ctx.draw_text_right(u16::MAX - 1, 0, 10, "한", Color::WHITE);
+}
+
+#[test]
+fn test_draw_text_wide_char_straddling_the_area_edge_is_not_drawn() {
+    let mut buffer = Buffer::new(10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 3, 1));
+    ctx.draw_text(0, 0, "한한", Color::WHITE);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '한');
+    // The second '한' would need cells 2 and 3; cell 3 is outside the area.
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(3, 0).unwrap().symbol, ' ');
+}

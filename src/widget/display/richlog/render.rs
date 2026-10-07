@@ -14,7 +14,9 @@ impl View for RichLog {
         let area = ctx.area;
         let entries = self.visible_entries();
 
-        if entries.is_empty() {
+        // Nothing fits in a zero-sized area, and the scroll indicator's math
+        // below needs at least one row and one column.
+        if entries.is_empty() || area.width == 0 || area.height == 0 {
             return;
         }
 

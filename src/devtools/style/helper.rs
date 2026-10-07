@@ -23,9 +23,11 @@ impl<'a> RenderCtx<'a> {
         }
     }
 
+    /// Draw `text` at row `y`, cut at the right edge of the panel.
     pub fn draw_text(&mut self, y: u16, text: &str, color: Color) {
-        use crate::devtools::helpers::draw_text_overlay;
-        draw_text_overlay(self.buffer, self.x, y, text, color);
+        use crate::devtools::helpers::draw_text_overlay_clipped;
+        let max_x = self.x.saturating_add(self.width);
+        draw_text_overlay_clipped(self.buffer, self.x, y, max_x, text, color, None);
     }
 }
 

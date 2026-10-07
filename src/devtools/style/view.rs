@@ -3,6 +3,7 @@
 use super::core::StyleInspector;
 use super::helper::RenderCtx;
 use super::types::StyleCategory;
+use crate::devtools::helpers::draw_text_overlay_clipped;
 use crate::devtools::DevToolsConfig;
 use crate::layout::Rect;
 use crate::render::Buffer;
@@ -13,8 +14,14 @@ impl StyleInspector {
     /// Render style inspector content
     pub fn render_content(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
         let mut ctx = RenderCtx::new(buffer, area.x, area.width, config);
+        // The row cursor saturates and every row is drawn only above
+        // `max_y`, so a panel at the bottom of the coordinate space cannot
+        // overflow it.
         let mut y = area.y;
-        let max_y = area.y + area.height;
+        let max_y = area.y.saturating_add(area.height);
+        if y >= max_y {
+            return;
+        }
 
         // Widget info header
         if !self.widget_type.is_empty() {
@@ -23,10 +30,10 @@ impl StyleInspector {
                 header.push_str(&format!("#{}", id));
             }
             ctx.draw_text(y, &header, config.accent_color);
-            y += 1;
+            y = y.saturating_add(1);
 
             // Classes
-            if !self.classes.is_empty() {
+            if !self.classes.is_empty() && y < max_y {
                 let classes_str = self
                     .classes
                     .iter()
@@ -34,15 +41,17 @@ impl StyleInspector {
                     .collect::<Vec<_>>()
                     .join(" ");
                 ctx.draw_text(y, &classes_str, config.fg_color);
-                y += 1;
+                y = y.saturating_add(1);
             }
-            y += 1;
+            y = y.saturating_add(1);
         }
 
         // Properties by category
         let filtered = self.filtered();
         if filtered.is_empty() {
-            ctx.draw_text(y, "No styles to display", config.fg_color);
+            if y < max_y {
+                ctx.draw_text(y, "No styles to display", config.fg_color);
+            }
             return;
         }
 
@@ -69,7 +78,7 @@ impl StyleInspector {
                 let indicator = if expanded { "▼" } else { "▶" };
                 let header = format!("{} {} ({})", indicator, category.label(), props.len());
                 ctx.draw_text(y, &header, config.accent_color);
-                y += 1;
+                y = y.saturating_add(1);
 
                 if expanded {
                     for prop in props {
@@ -79,14 +88,14 @@ impl StyleInspector {
 
                         let is_selected = self.selected == Some(prop_idx);
                         Self::render_property(&mut ctx, 2, y, prop, is_selected);
-                        y += 1;
+                        y = y.saturating_add(1);
                         prop_idx += 1;
                     }
                 } else {
                     prop_idx += props.len();
                 }
 
-                y += 1; // Gap between categories
+                y = y.saturating_add(1); // Gap between categories
             }
         }
     }
@@ -115,19 +124,10 @@ impl StyleInspector {
             None
         };
 
-        let x = ctx.x + indent;
-        let width = ctx.width.saturating_sub(indent);
-        for (i, ch) in line.chars().enumerate() {
-            if (i as u16) < width {
-                if let Some(cell) = ctx.buffer.get_mut(x + i as u16, y) {
-                    cell.symbol = ch;
-                    cell.fg = Some(fg);
-                    if let Some(b) = bg {
-                        cell.bg = Some(b);
-                    }
-                }
-            }
-        }
+        // Cut by display width at the panel's right edge.
+        let x = ctx.x.saturating_add(indent);
+        let max_x = ctx.x.saturating_add(ctx.width);
+        draw_text_overlay_clipped(ctx.buffer, x, y, max_x, &line, fg, bg);
     }
 }
 

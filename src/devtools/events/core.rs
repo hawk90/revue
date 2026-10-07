@@ -1,11 +1,12 @@
 //! Event logger implementation
 
-use super::super::helpers::{draw_separator, draw_text_overlay};
+use super::super::helpers::{draw_separator, draw_text_overlay_clipped};
 use super::super::DevToolsConfig;
 use super::types::{EventFilter, EventType, LoggedEvent};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
+use crate::utils::truncate_with_suffix;
 use std::collections::VecDeque;
 use std::time::Instant;
 
@@ -27,8 +28,10 @@ impl<'a> RenderCtx<'a> {
         }
     }
 
+    /// Draw `text` at row `y`, cut at the right edge of the panel.
     fn draw_text(&mut self, y: u16, text: &str, color: Color) {
-        draw_text_overlay(self.buffer, self.x, y, text, color);
+        let max_x = self.x.saturating_add(self.width);
+        draw_text_overlay_clipped(self.buffer, self.x, y, max_x, text, color, None);
     }
 
     fn draw_separator(&mut self, y: u16) {
@@ -257,8 +260,14 @@ impl EventLogger {
     /// Render event logger content
     pub fn render_content(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
         let mut ctx = RenderCtx::new(buffer, area.x, area.width, config);
+        // The row cursor saturates and every row is drawn only above
+        // `max_y`, so a panel at the bottom of the coordinate space cannot
+        // overflow it.
         let mut y = area.y;
-        let max_y = area.y + area.height;
+        let max_y = area.y.saturating_add(area.height);
+        if y >= max_y {
+            return;
+        }
 
         // Header
         let status = if self.paused {
@@ -268,7 +277,10 @@ impl EventLogger {
         };
         let header = format!("{} | {} events", status, self.filtered_count());
         ctx.draw_text(y, &header, config.accent_color);
-        y += 1;
+        y = y.saturating_add(1);
+        if y >= max_y {
+            return;
+        }
 
         // Filter info
         let mut filters = Vec::new();
@@ -286,24 +298,24 @@ impl EventLogger {
         }
         let filter_str = format!("Showing: {}", filters.join(", "));
         ctx.draw_text(y, &filter_str, config.fg_color);
-        y += 2;
+        y = y.saturating_add(2);
 
         // Events list (newest first)
         let filtered: Vec<_> = self.filtered().into_iter().rev().collect();
         for (i, event) in filtered.iter().enumerate().skip(self.scroll) {
-            if y >= max_y - 2 {
+            if y.saturating_add(2) >= max_y {
                 break;
             }
 
             let is_selected = self.selected == Some(i);
             Self::render_event(&mut ctx, y, event, is_selected);
-            y += 1;
+            y = y.saturating_add(1);
         }
 
         // Selected event details
         if let Some(idx) = self.selected {
             if let Some(event) = filtered.get(idx) {
-                if y + 2 < max_y {
+                if y.saturating_add(2) < max_y {
                     y = max_y - 3;
                     ctx.draw_separator(y);
                     y += 1;
@@ -320,11 +332,9 @@ impl EventLogger {
 
         // Truncate details if needed
         let max_details = (ctx.width as usize).saturating_sub(20);
-        let details = if event.details.len() > max_details {
-            format!("{}...", &event.details[..max_details.saturating_sub(3)])
-        } else {
-            event.details.clone()
-        };
+        // By display width, never by byte index (which can fall inside a
+        // multibyte character).
+        let details = truncate_with_suffix(&event.details, max_details, "...");
 
         let line = format!("{} {} {} {}", icon, handled_mark, details, age);
 
@@ -339,17 +349,9 @@ impl EventLogger {
             None
         };
 
-        for (i, ch) in line.chars().enumerate() {
-            if (i as u16) < ctx.width {
-                if let Some(cell) = ctx.buffer.get_mut(ctx.x + i as u16, y) {
-                    cell.symbol = ch;
-                    cell.fg = Some(fg);
-                    if let Some(b) = bg {
-                        cell.bg = Some(b);
-                    }
-                }
-            }
-        }
+        // Cut by display width (the icons and emoji are wide).
+        let max_x = ctx.x.saturating_add(ctx.width);
+        draw_text_overlay_clipped(ctx.buffer, ctx.x, y, max_x, &line, fg, bg);
     }
 
     fn render_details(ctx: &mut RenderCtx<'_>, y: u16, event: &LoggedEvent) {
@@ -372,6 +374,20 @@ impl EventLogger {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Details longer than the row are cut to fit; the cut used to be a byte
+    // index and panicked inside a multibyte character.
+    #[test]
+    fn test_render_truncates_details_inside_multibyte_chars() {
+        let mut logger = EventLogger::new();
+        logger.log(EventType::KeyPress, "👩‍👩‍👧‍👦 가족 ".repeat(20));
+        logger.log(EventType::KeyPress, "é".repeat(100));
+        let config = DevToolsConfig::default();
+        for width in 0..=80 {
+            let mut buffer = Buffer::new(82, 10);
+            logger.render_content(&mut buffer, Rect::new(1, 1, width, 8), &config);
+        }
+    }
 
     #[test]
     fn test_event_type_label() {

@@ -15,23 +15,17 @@ impl RenderContext<'_> {
         if y >= self.area.height {
             return;
         }
-        let abs_x = self.area.x.saturating_add(x);
         let abs_y = self.area.y.saturating_add(y);
-        let max_x = self.area.x.saturating_add(self.area.width);
         let mut offset = 0u16;
         for ch in text.chars() {
             let width = char_width(ch) as u16;
             if width == 0 {
                 continue;
             }
-            let cx = abs_x.saturating_add(offset);
-            if cx.saturating_add(width) > max_x {
+            let Some(cx) = self.text_cell_x(x, offset, width) else {
                 break;
-            }
-            self.buffer.set(cx, abs_y, make_cell(ch));
-            for i in 1..width {
-                self.buffer.set(cx + i, abs_y, Cell::continuation());
-            }
+            };
+            self.put_text_char(cx, abs_y, width, make_cell(ch));
             offset = offset.saturating_add(width);
         }
     }
@@ -52,9 +46,7 @@ impl RenderContext<'_> {
         if y >= self.area.height {
             return;
         }
-        let abs_x = self.area.x.saturating_add(x);
         let abs_y = self.area.y.saturating_add(y);
-        let max_x = self.area.x.saturating_add(self.area.width);
         let mut offset = 0u16;
         for ch in text.chars() {
             let width = char_width(ch) as u16;
@@ -64,15 +56,37 @@ impl RenderContext<'_> {
             if offset.saturating_add(width) > max_width {
                 break;
             }
-            let cx = abs_x.saturating_add(offset);
-            if cx.saturating_add(width) > max_x {
+            let Some(cx) = self.text_cell_x(x, offset, width) else {
                 break;
-            }
-            self.buffer.set(cx, abs_y, make_cell(ch));
-            for i in 1..width {
-                self.buffer.set(cx + i, abs_y, Cell::continuation());
-            }
+            };
+            self.put_text_char(cx, abs_y, width, make_cell(ch));
             offset = offset.saturating_add(width);
+        }
+    }
+
+    /// Absolute x of a `width`-cell character drawn `offset` cells after
+    /// relative `x`, or `None` when any of its cells would fall past the
+    /// area's right edge or past the end of the `u16` coordinate space.
+    ///
+    /// Computed in `u32` so nothing saturates into a false "fits".
+    fn text_cell_x(&self, x: u16, offset: u16, width: u16) -> Option<u16> {
+        let start = u32::from(self.area.x) + u32::from(x) + u32::from(offset);
+        let area_end = u32::from(self.area.x) + u32::from(self.area.width);
+        let end = area_end.min(u32::from(u16::MAX) + 1);
+        if start + u32::from(width) > end {
+            return None;
+        }
+        u16::try_from(start).ok()
+    }
+
+    /// Put a character at `cx` and continuation cells after it; the caller
+    /// has checked (via [`text_cell_x`](Self::text_cell_x)) that all
+    /// `width` cells are addressable.
+    fn put_text_char(&mut self, cx: u16, abs_y: u16, width: u16, cell: Cell) {
+        self.buffer.set(cx, abs_y, cell);
+        for i in 1..width {
+            self.buffer
+                .set(cx.saturating_add(i), abs_y, Cell::continuation());
         }
     }
 
@@ -201,7 +215,7 @@ impl RenderContext<'_> {
         let start_x = if text_width >= width {
             x
         } else {
-            x + (width - text_width) / 2
+            x.saturating_add((width - text_width) / 2)
         };
         self.draw_text_clipped(start_x, y, text, fg, width);
     }
@@ -212,7 +226,7 @@ impl RenderContext<'_> {
         let start_x = if text_width >= width {
             x
         } else {
-            x + width - text_width
+            x.saturating_add(width - text_width)
         };
         self.draw_text_clipped(start_x, y, text, fg, width);
     }
