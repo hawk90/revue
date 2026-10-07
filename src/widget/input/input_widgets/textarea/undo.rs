@@ -1,6 +1,17 @@
 //! Undo/redo methods for TextArea
 
 use super::edit::EditOperation;
+use crate::utils::text::char_to_byte_index;
+
+// Edit operations record their columns in characters (as the cursor does),
+// so undo/redo turn them into byte offsets before touching the line
+
+/// Remove `count` characters of `line` starting at character `col`
+fn remove_chars(line: &mut String, col: usize, count: usize) {
+    let start = char_to_byte_index(line, col);
+    let end = start + char_to_byte_index(&line[start..], count);
+    line.drain(start..end);
+}
 
 impl TextArea {
     /// Undo the last operation
@@ -9,16 +20,15 @@ impl TextArea {
             match &op {
                 EditOperation::Insert { line, col, text } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        let end = (*col + text.len()).min(l.len());
-                        l.drain(*col..end);
+                        remove_chars(l, *col, text.chars().count());
                     }
                     self.set_primary_cursor(*line, *col);
                 }
                 EditOperation::Delete { line, col, text } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        l.insert_str(*col, text);
+                        l.insert_str(char_to_byte_index(l, *col), text);
                     }
-                    self.set_primary_cursor(*line, *col + text.len());
+                    self.set_primary_cursor(*line, *col + text.chars().count());
                 }
                 EditOperation::InsertLine { line, .. } => {
                     if *line < self.lines.len() {
@@ -43,7 +53,7 @@ impl TextArea {
                 EditOperation::MergeLines { line, col } => {
                     // Split line again
                     if let Some(l) = self.lines.get_mut(*line) {
-                        let rest: String = l.drain(*col..).collect();
+                        let rest = l.split_off(char_to_byte_index(l, *col));
                         self.lines.insert(*line + 1, rest);
                     }
                     self.set_primary_cursor(*line + 1, 0);
@@ -59,14 +69,13 @@ impl TextArea {
             match &op {
                 EditOperation::Insert { line, col, text } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        l.insert_str(*col, text);
+                        l.insert_str(char_to_byte_index(l, *col), text);
                     }
-                    self.set_primary_cursor(*line, *col + text.len());
+                    self.set_primary_cursor(*line, *col + text.chars().count());
                 }
                 EditOperation::Delete { line, col, text } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        let end = (*col + text.len()).min(l.len());
-                        l.drain(*col..end);
+                        remove_chars(l, *col, text.chars().count());
                     }
                     self.set_primary_cursor(*line, *col);
                 }
@@ -83,7 +92,7 @@ impl TextArea {
                 }
                 EditOperation::SplitLine { line, col } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        let rest: String = l.drain(*col..).collect();
+                        let rest = l.split_off(char_to_byte_index(l, *col));
                         self.lines.insert(*line + 1, rest);
                     }
                     self.set_primary_cursor(*line + 1, 0);
