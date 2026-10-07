@@ -401,14 +401,34 @@ impl Router {
     }
 
     /// Go to specific position in history
+    ///
+    /// Moves `delta` entries back (negative) or forward (positive). Like
+    /// [`back`](Self::back) and [`forward`](Self::forward), listeners get a
+    /// `Back` or `Forward` event; `go(0)` stays put and sends none.
     pub fn go(&mut self, delta: isize) -> bool {
-        let new_pos = (self.position as isize + delta) as usize;
-        if new_pos < self.history.len() {
-            self.position = new_pos;
-            true
-        } else {
-            false
+        let Some(new_pos) = self
+            .position
+            .checked_add_signed(delta)
+            .filter(|&p| p < self.history.len())
+        else {
+            return false;
+        };
+        if new_pos == self.position {
+            return true;
         }
+
+        let from = self.current_path().to_string();
+        self.position = new_pos;
+        let to = self.current_path().to_string();
+
+        let event = if delta < 0 {
+            NavigationEvent::Back { from, to }
+        } else {
+            NavigationEvent::Forward { from, to }
+        };
+        self.notify(&event);
+
+        true
     }
 
     /// Check if can go back
@@ -915,6 +935,40 @@ mod tests {
         router.push("/a");
         router.go(1);
         assert_eq!(router.current_path(), "/a");
+    }
+
+    #[test]
+    fn test_router_go_notifies_like_back_and_forward() {
+        use std::sync::{Arc, Mutex};
+
+        let mut router = Router::new()
+            .route("/", "home")
+            .route("/a", "a")
+            .route("/b", "b");
+        router.push("/a");
+        router.push("/b");
+
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let seen = Arc::clone(&events);
+        router.on_navigate(move |e| seen.lock().unwrap().push(e.clone()));
+
+        assert!(router.go(-2));
+        assert!(router.go(1));
+        assert!(router.go(0));
+        assert!(!router.go(5));
+        assert_eq!(
+            *events.lock().unwrap(),
+            vec![
+                NavigationEvent::Back {
+                    from: "/b".into(),
+                    to: "/".into()
+                },
+                NavigationEvent::Forward {
+                    from: "/".into(),
+                    to: "/a".into()
+                },
+            ]
+        );
     }
 
     #[test]
