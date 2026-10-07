@@ -12,4 +12,121 @@ pub struct Known {
     pub cases: &'static [&'static str],
 }
 
-pub const KNOWN: &[Known] = &[];
+pub const KNOWN: &[Known] = &[
+    // ── resources ──
+    Known {
+        layer: "resources",
+        reason: "SystemClipboard waits on the clipboard tool with no timeout",
+        cases: &["clipboard get hangs", "clipboard set hangs"],
+    },
+    Known {
+        layer: "resources",
+        reason: "file loaders check the size in the metadata, then read without a bound",
+        cases: &["config stream"],
+    },
+    Known {
+        layer: "resources",
+        reason: "FilePicker::navigate_to enters a directory it cannot list and shows it empty",
+        cases: &["picker denied"],
+    },
+    Known {
+        layer: "resources",
+        reason: "HotReload::poll drops an event inside the debounce window instead of deferring it",
+        cases: &["watch rapid-saves"],
+    },
+    // ── concurrency ──
+    Known {
+        layer: "concurrency",
+        reason: "task runners format a panic payload with {:?}, and PooledTaskRunner sends errors as panics",
+        cases: &["runner panic-message", "pooled panic-message", "pooled error-message"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "TaskRunner::cancel forgets the id, but the old run's result is still delivered under it",
+        cases: &["runner cancelled-result", "runner cancel-then-respawn"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "TaskRunner and WorkerPool join running tasks on drop (design: wait or detach?)",
+        cases: &["runner drop-running", "pool drop-running"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "PooledTaskRunner marks a task pending before the full queue refuses it",
+        cases: &["pooled full-queue"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "WorkerHandle::spawn does not catch a panicking future",
+        cases: &["handle tokio-panic", "handle polling-panic"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "WorkerHandle::spawn on tokio never looks at the cancel flag",
+        cases: &["handle tokio-cancel"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "a WorkerPool worker does not catch a panicking task and dies",
+        cases: &["pool task-panic"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "WorkerChannel cancel is a queued command: refused when the queue is full, gone once read",
+        cases: &["channel cancel-full-queue", "channel cancel-zero-capacity", "channel cancel-consumed"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "SignalVec calls diff subscribers while holding the subscriber mutex",
+        cases: &[
+            "reactive vec-drop-subscription-in-callback",
+            "reactive vec-push-from-subscriber",
+            "lock signal-vec-subscriber-panics",
+        ],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "Effect and Computed leave the dependency tracker tracking when their function panics",
+        cases: &["reactive effect-panics", "reactive effect-loop"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "Signal subscribers are notified outside the update-depth guard: a loop overflows the stack",
+        cases: &["reactive subscriber-loop"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "Computed::get re-entered on one thread deadlocks on its recompute lock",
+        cases: &["reactive computed-cycle", "reactive computed-self"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "end_batch flushes while holding the batch-depth RefCell borrow",
+        cases: &["reactive batch-queue-in-flush"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "batch() does not end the batch when its closure panics",
+        cases: &["reactive batch-panics"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "use_async lets a superseded run overwrite a newer result",
+        cases: &["reactive use-async-stale"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "EventDispatcher calls handlers while holding the handler read lock",
+        cases: &["dispatch on-in-handler"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "PluginRegistry forgets which plugins a failed init or mount already ran",
+        cases: &["plugin init-error", "plugin mount-error"],
+    },
+    Known {
+        layer: "concurrency",
+        reason: "a panicking plugin hook unwinds out of the registry (design: crash or isolate?)",
+        cases: &["plugin init-panic", "plugin mount-panic", "plugin tick-panic", "plugin unmount-panic"],
+    },
+];
