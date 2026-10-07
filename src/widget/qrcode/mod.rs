@@ -106,6 +106,9 @@ impl QrCodeWidget {
     }
 
     /// Invert colors
+    ///
+    /// Every module, the quiet zone included, swaps between the foreground
+    /// and background color - once, in every [`QrStyle`].
     pub fn inverted(mut self, inverted: bool) -> Self {
         self.inverted = inverted;
         self
@@ -160,12 +163,14 @@ impl QrCodeWidget {
         let quiet = self.quiet_zone as usize;
         let total_size = size + quiet * 2;
 
-        let mut matrix = vec![vec![false; total_size]; total_size];
+        // The quiet zone is light; inverting flips it along with the code,
+        // so an inverted code keeps the contrast around its finder patterns.
+        let mut matrix = vec![vec![self.inverted; total_size]; total_size];
 
         for y in 0..size {
             for x in 0..size {
                 let dark = code[(x, y)] == qrcode::Color::Dark;
-                matrix[y + quiet][x + quiet] = if self.inverted { !dark } else { dark };
+                matrix[y + quiet][x + quiet] = dark != self.inverted;
             }
         }
 
