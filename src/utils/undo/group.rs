@@ -8,17 +8,25 @@ use super::types::UndoHistory;
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::undo::GroupedUndoHistory;
+///
+/// let mut history = GroupedUndoHistory::new();
+///
 /// // Start a group
 /// history.begin_group();
 ///
 /// // Multiple operations...
-/// history.push(op1);
-/// history.push(op2);
-/// history.push(op3);
+/// history.push("op1");
+/// history.push("op2");
+/// history.push("op3");
 ///
 /// // End group - all ops become one undo unit
 /// history.end_group();
+///
+/// let group = history.undo().unwrap();
+/// assert_eq!(group.operations, ["op1", "op2", "op3"]);
+/// assert!(!history.can_undo());
 /// ```
 #[derive(Clone, Debug)]
 pub struct UndoGroup<T> {

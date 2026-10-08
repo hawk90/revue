@@ -3,7 +3,7 @@
 //! Platform-aware utilities for opening URLs and files in the system browser/application.
 //!
 //! # Example
-//! ```ignore
+//! ```
 //! use revue::utils::browser::open_browser;
 //!
 //! // Open URL in default browser

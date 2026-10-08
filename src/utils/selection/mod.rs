@@ -3,7 +3,10 @@
 //! Provides wrap-around navigation for lists with automatic viewport management.
 //!
 //! # Example
-//! ```ignore
+//! ```
+//! use revue::utils::selection::Selection;
+//! # fn render_item(_index: usize, _selected: bool) {}
+//!
 //! let mut sel = Selection::new(100); // 100 items
 //! sel.set_visible(10); // 10 visible rows
 //!

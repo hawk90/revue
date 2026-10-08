@@ -4,19 +4,15 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! use revue::utils::validation::{Validator, required, min_length, email, all_of};
+//! ```
+//! use revue::utils::validation::{all_of, email, min_length, required};
 //!
 //! // Simple validation
 //! let result = required()("hello");
 //! assert!(result.is_ok());
 //!
 //! // Chained validators
-//! let email_validator = all_of(&[
-//!     required(),
-//!     min_length(5),
-//!     email(),
-//! ]);
+//! let email_validator = all_of(vec![required(), min_length(5), email()]);
 //!
 //! assert!(email_validator("user@example.com").is_ok());
 //! assert!(email_validator("").is_err());

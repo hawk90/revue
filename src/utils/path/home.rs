@@ -34,9 +34,13 @@ pub fn home_dir() -> Option<PathBuf> {
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// let path = home_relative("/Users/john/Documents/file.txt");
-/// // Returns "~/Documents/file.txt" if home is /Users/john
+/// ```
+/// use revue::utils::path::{home_dir, home_relative};
+///
+/// if let Some(home) = home_dir() {
+///     let shown = home_relative(home.join("Documents").join("file.txt"));
+///     assert!(shown.starts_with("~/") && shown.ends_with("file.txt"));
+/// }
 /// ```
 pub fn home_relative(path: impl AsRef<Path>) -> String {
     let path = path.as_ref();
@@ -61,12 +65,16 @@ pub fn home_relative(path: impl AsRef<Path>) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// // Use with proper error handling:
-/// let path = expand_home(user_input)?;
+/// ```
+/// use revue::utils::path::expand_home;
 ///
-/// // For hardcoded safe paths, use unwrap():
-/// let path = expand_home("~/Documents").unwrap();
+/// // A path that climbs out of the home directory is refused
+/// assert!(expand_home("~/../../etc/passwd").is_err());
+///
+/// // A path under it expands (when the home directory is known)
+/// if let Ok(path) = expand_home("~/Documents") {
+///     assert!(path.ends_with("Documents"));
+/// }
 /// ```
 pub fn expand_home(path: impl AsRef<Path>) -> Result<PathBuf, PathError> {
     let path = path.as_ref();
