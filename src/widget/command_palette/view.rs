@@ -227,10 +227,35 @@ impl View for CommandPalette {
                 content_x += 1;
             }
 
+            // Where the right-aligned shortcut starts, if one is drawn.
+            let shortcut_x = cmd
+                .shortcut
+                .as_ref()
+                .filter(|_| self.show_shortcuts)
+                .map(|shortcut| text_end.saturating_sub(display_width(shortcut) as u16));
+
+            // Description, dimmed, after the label and clear of the shortcut
+            if self.show_descriptions {
+                if let Some(ref desc) = cmd.description {
+                    let desc_end = shortcut_x.map_or(text_end, |sx| sx.saturating_sub(1));
+                    let mut dx = content_x + 2;
+                    for ch in desc.chars() {
+                        let cw = char_width(ch) as u16;
+                        if dx + cw > desc_end {
+                            break;
+                        }
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(SUBTLE_GRAY);
+                        cell.bg = Some(row_bg);
+                        ctx.set(dx, item_y, cell);
+                        dx += cw;
+                    }
+                }
+            }
+
             // Shortcut (right-aligned)
-            if self.show_shortcuts {
+            if let Some(shortcut_x) = shortcut_x {
                 if let Some(ref shortcut) = cmd.shortcut {
-                    let shortcut_x = text_end.saturating_sub(display_width(shortcut) as u16);
                     let mut dx: u16 = 0;
                     for ch in shortcut.chars() {
                         let cw = char_width(ch) as u16;
