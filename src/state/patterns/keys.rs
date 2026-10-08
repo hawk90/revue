@@ -13,32 +13,40 @@
 //!
 //! # Example
 //!
-//! ```ignore
-//! use revue::patterns::KeyHandler;
+//! ```
 //! use crossterm::event::KeyCode;
+//! use revue::patterns::keys::KeyHandler;
+//! use revue::patterns::{ConfirmAction, ConfirmState};
+//!
+//! #[derive(PartialEq, Debug)]
+//! enum ViewMode {
+//!     Main,
+//!     Help,
+//! }
 //!
 //! struct App {
 //!     view_mode: ViewMode,
 //!     confirm: ConfirmState,
-//!     popup_active: bool,
-//!     quit: bool,
+//!     search_active: bool,
+//!     items: Vec<&'static str>,
+//!     selected: usize,
 //! }
 //!
 //! impl KeyHandler for App {
 //!     fn should_quit(&self, key: &KeyCode) -> bool {
-//!         matches!(key, KeyCode::Char('q')) && !self.confirm.is_active()
+//!         matches!(key, KeyCode::Char('q')) && !self.confirm.is_active() && !self.in_modal()
 //!     }
 //!
+//!     // Modals are full-screen overlays like help screens or forms
 //!     fn in_modal(&self) -> bool {
-//!         matches!(self.view_mode, ViewMode::Help | ViewMode::Form)
+//!         self.view_mode == ViewMode::Help
 //!     }
 //!
 //!     fn handle_modal_key(&mut self, key: &KeyCode) -> bool {
-//!         match self.view_mode {
-//!             ViewMode::Help => self.handle_help_key(key),
-//!             ViewMode::Form => self.handle_form_key(key),
-//!             _ => true,
+//!         if matches!(key, KeyCode::Esc) {
+//!             self.view_mode = ViewMode::Main;
 //!         }
+//!         true
 //!     }
 //!
 //!     fn has_confirm(&self) -> bool {
@@ -48,21 +56,63 @@
 //!     fn handle_confirm_key(&mut self, key: &KeyCode) -> bool {
 //!         match key {
 //!             KeyCode::Char('y') | KeyCode::Enter => {
-//!                 self.confirm.execute(|action| self.do_action(action));
+//!                 let (items, selected) = (&mut self.items, self.selected);
+//!                 self.confirm.execute(|action| {
+//!                     if action == ConfirmAction::Delete {
+//!                         items.remove(selected);
+//!                     }
+//!                 });
 //!             }
 //!             _ => self.confirm.cancel(),
 //!         }
 //!         true
 //!     }
 //!
-//!     fn handle_view_key(&mut self, key: &KeyCode) -> bool {
-//!         match self.view_mode {
-//!             ViewMode::Main => self.handle_main_key(key),
-//!             ViewMode::Detail => self.handle_detail_key(key),
-//!             _ => true,
+//!     // Popups are temporary overlays like search or filter palettes
+//!     fn has_popup(&self) -> bool {
+//!         self.search_active
+//!     }
+//!
+//!     fn handle_popup_key(&mut self, key: &KeyCode) -> bool {
+//!         if matches!(key, KeyCode::Esc) {
+//!             self.search_active = false;
 //!         }
+//!         true
+//!     }
+//!
+//!     // Main navigation and actions
+//!     fn handle_view_key(&mut self, key: &KeyCode) -> bool {
+//!         match key {
+//!             KeyCode::Char('j') => self.selected = (self.selected + 1).min(self.items.len() - 1),
+//!             KeyCode::Char('k') => self.selected = self.selected.saturating_sub(1),
+//!             KeyCode::Char('d') => self.confirm.request(ConfirmAction::Delete),
+//!             KeyCode::Char('/') => self.search_active = true,
+//!             KeyCode::Char('?') => self.view_mode = ViewMode::Help,
+//!             _ => {}
+//!         }
+//!         true
 //!     }
 //! }
+//!
+//! let mut app = App {
+//!     view_mode: ViewMode::Main,
+//!     confirm: ConfirmState::new(),
+//!     search_active: false,
+//!     items: vec!["a", "b", "c"],
+//!     selected: 0,
+//! };
+//!
+//! app.handle_key(&KeyCode::Char('j'));
+//! app.handle_key(&KeyCode::Char('d'));
+//! // The confirm layer gets the key before the view
+//! assert!(app.handle_key(&KeyCode::Char('y')));
+//! assert_eq!(app.items, ["a", "c"]);
+//!
+//! // In the help modal, 'q' does not quit
+//! app.handle_key(&KeyCode::Char('?'));
+//! assert!(app.handle_key(&KeyCode::Char('q')));
+//! app.handle_key(&KeyCode::Esc);
+//! assert!(!app.handle_key(&KeyCode::Char('q')), "q quits from the main view");
 //! ```
 
 use crossterm::event::KeyCode;
@@ -110,80 +160,26 @@ pub trait KeyHandler {
     }
 
     /// Check if app should quit
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// fn should_quit(&self, key: &KeyCode) -> bool {
-    ///     matches!(key, KeyCode::Char('q'))
-    ///         && !self.confirm.is_active()
-    ///         && !self.in_modal()
-    /// }
-    /// ```
     fn should_quit(&self, key: &KeyCode) -> bool;
 
     /// Check if in modal/dialog mode
     ///
     /// Modals are full-screen overlays like help screens or forms.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// fn in_modal(&self) -> bool {
-    ///     matches!(self.view_mode, ViewMode::Help | ViewMode::Form)
-    /// }
-    /// ```
     fn in_modal(&self) -> bool {
         false
     }
 
     /// Handle key in modal mode
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// fn handle_modal_key(&mut self, key: &KeyCode) -> bool {
-    ///     match key {
-    ///         KeyCode::Esc => {
-    ///             self.view_mode = ViewMode::Main;
-    ///         }
-    ///         // ... modal-specific keys ...
-    ///     }
-    ///     true
-    /// }
-    /// ```
     fn handle_modal_key(&mut self, _key: &KeyCode) -> bool {
         true
     }
 
     /// Check if confirmation dialog is active
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// fn has_confirm(&self) -> bool {
-    ///     self.confirm.is_active()
-    /// }
-    /// ```
     fn has_confirm(&self) -> bool {
         false
     }
 
     /// Handle key in confirmation mode
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// fn handle_confirm_key(&mut self, key: &KeyCode) -> bool {
-    ///     match key {
-    ///         KeyCode::Char('y') | KeyCode::Enter => {
-    ///             self.confirm.execute(|action| self.do_action(action));
-    ///         }
-    ///         _ => self.confirm.cancel(),
-    ///     }
-    ///     true
-    /// }
-    /// ```
     fn handle_confirm_key(&mut self, _key: &KeyCode) -> bool {
         true
     }
@@ -191,56 +187,19 @@ pub trait KeyHandler {
     /// Check if popup is active
     ///
     /// Popups are temporary overlays like search or filter palettes.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// fn has_popup(&self) -> bool {
-    ///     self.search_active || self.filter_active
-    /// }
-    /// ```
     fn has_popup(&self) -> bool {
         false
     }
 
     /// Handle key in popup mode
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// fn handle_popup_key(&mut self, key: &KeyCode) -> bool {
-    ///     if self.search_active {
-    ///         return self.handle_search_key(key);
-    ///     }
-    ///     true
-    /// }
-    /// ```
     fn handle_popup_key(&mut self, _key: &KeyCode) -> bool {
         true
     }
 
     /// Handle key in normal view mode
     ///
-    /// This is where main navigation and actions happen.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// fn handle_view_key(&mut self, key: &KeyCode) -> bool {
-    ///     match self.view_mode {
-    ///         ViewMode::Main => match key {
-    ///             KeyCode::Char('j') => self.next(),
-    ///             KeyCode::Char('k') => self.prev(),
-    ///             KeyCode::Enter => self.open_detail(),
-    ///             // ...
-    ///         }
-    ///         ViewMode::Detail => {
-    ///             // ... detail keys ...
-    ///         }
-    ///     }
-    ///     true
-    /// }
-    /// ```
+    /// This is where main navigation and actions happen. The
+    /// [module example](crate::patterns::keys) implements every layer.
     fn handle_view_key(&mut self, key: &KeyCode) -> bool;
 }
 
