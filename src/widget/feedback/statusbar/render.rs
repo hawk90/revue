@@ -38,20 +38,23 @@ impl View for StatusBar {
             }
         }
 
+        // Leave out the least important sections that do not fit
+        let [left, center, right] = self.visible_sections(area.width);
+
         // Calculate section widths
-        let left_width: u16 = self.left.iter().map(|s| s.width() + 1).sum();
-        let center_width: u16 = self.center.iter().map(|s| s.width() + 1).sum();
-        let right_width: u16 = self.right.iter().map(|s| s.width() + 1).sum();
+        let left_width = group_width(&left);
+        let center_width = group_width(&center);
+        let right_width = group_width(&right);
 
         // Render left sections
-        let x = self.render_group(ctx, &self.left, 0, y);
+        let x = self.render_group(ctx, &left, 0, y);
 
         // Render center sections
         let center_start = (area.width.saturating_sub(center_width)) / 2;
-        self.render_group(ctx, &self.center, center_start.max(x + 1), y);
+        self.render_group(ctx, &center, center_start.max(x + 1), y);
 
         // Render right sections
-        self.render_group(ctx, &self.right, area.width.saturating_sub(right_width), y);
+        self.render_group(ctx, &right, area.width.saturating_sub(right_width), y);
 
         // Render key hints on second row if height > 1
         if self.height > 1 && !self.key_hints.is_empty() {
@@ -67,13 +70,67 @@ impl View for StatusBar {
     }
 }
 
+/// Columns a group takes: each section plus the gap after it.
+fn group_width(sections: &[&StatusSection]) -> u16 {
+    sections.iter().map(|s| s.width() + 1).sum()
+}
+
 impl StatusBar {
+    /// The left, center and right sections to draw in `width` columns.
+    ///
+    /// While the sections do not fit, the one with the lowest priority is
+    /// left out; among equal priorities, the later one (left, then center,
+    /// then right). Sections at the highest priority present are always
+    /// kept, so a bar whose sections share one priority draws them all.
+    fn visible_sections(&self, width: u16) -> [Vec<&StatusSection>; 3] {
+        let groups = [&self.left, &self.center, &self.right];
+        let mut shown: Vec<Vec<bool>> = groups.iter().map(|g| vec![true; g.len()]).collect();
+        let top = groups
+            .iter()
+            .flat_map(|g| g.iter().map(|s| s.priority))
+            .max()
+            .unwrap_or(0);
+        let needed = |shown: &[Vec<bool>]| -> u32 {
+            groups
+                .iter()
+                .zip(shown)
+                .flat_map(|(g, keep)| g.iter().zip(keep))
+                .filter(|(_, keep)| **keep)
+                .map(|(s, _)| u32::from(s.width()) + 1)
+                .sum()
+        };
+
+        while needed(&shown) > u32::from(width) {
+            let least = groups
+                .iter()
+                .enumerate()
+                .flat_map(|(g, sections)| sections.iter().enumerate().map(move |(i, s)| (g, i, s)))
+                .filter(|&(g, i, s)| shown[g][i] && s.priority < top)
+                // lowest priority; among ties, the latest position
+                .min_by_key(|&(g, i, s)| (s.priority, std::cmp::Reverse((g, i))));
+            match least {
+                Some((g, i, _)) => shown[g][i] = false,
+                None => break,
+            }
+        }
+
+        let pick = |g: usize| -> Vec<&StatusSection> {
+            groups[g]
+                .iter()
+                .zip(&shown[g])
+                .filter(|(_, keep)| **keep)
+                .map(|(s, _)| s)
+                .collect()
+        };
+        [pick(0), pick(1), pick(2)]
+    }
+
     /// Draw one group of sections from `x`, with the separator, if any, in
     /// the column between two sections. Returns the column after the group.
     fn render_group(
         &self,
         ctx: &mut RenderContext,
-        sections: &[StatusSection],
+        sections: &[&StatusSection],
         mut x: u16,
         y: u16,
     ) -> u16 {

@@ -151,54 +151,108 @@ pub fn render_options(
     reserve_right: u16,
 ) {
     let text_width = label_width(width, reserve_right);
-
     for (row, opt) in options.iter().enumerate() {
+        render_option_row(entry, row as u16, opt, width, text_width, colors);
+    }
+}
+
+/// One row of a dropdown list: an option, or the header of a group.
+pub enum DropdownRow<'a> {
+    /// A selectable option
+    Option(DropdownOption<'a>),
+    /// A group name, drawn above the group's options
+    Header(&'a str),
+}
+
+/// Render options and group headers, one per row, into an overlay entry.
+///
+/// Options are drawn as by [`render_options`]. A header starts at
+/// [`INDICATOR_COL`], bold, in the disabled color, so it reads as a label
+/// for the options under it.
+pub fn render_rows(
+    entry: &mut OverlayEntry,
+    rows: &[DropdownRow<'_>],
+    width: u16,
+    colors: &DropdownColors,
+    reserve_right: u16,
+) {
+    let text_width = label_width(width, reserve_right);
+    for (row, item) in rows.iter().enumerate() {
         let y = row as u16;
-
-        let (fg, bg) = if opt.is_highlighted {
-            (colors.selected_fg, colors.selected_bg)
-        } else {
-            (colors.fg, colors.bg)
-        };
-
-        let fg = if opt.is_disabled {
-            colors.disabled_fg
-        } else {
-            fg
-        };
-
-        // Background
-        for x in 0..width {
-            let mut cell = Cell::new(' ');
-            cell.fg = fg;
-            cell.bg = bg;
-            entry.push(x, y, cell);
+        match item {
+            DropdownRow::Option(opt) => render_option_row(entry, y, opt, width, text_width, colors),
+            DropdownRow::Header(name) => {
+                for x in 0..width {
+                    let mut cell = Cell::new(' ');
+                    cell.bg = colors.bg;
+                    entry.push(x, y, cell);
+                }
+                let header_width = text_width + usize::from(LABEL_COL - INDICATOR_COL);
+                let truncated = crate::utils::truncate_to_width(name, header_width);
+                let mut cx = INDICATOR_COL;
+                for ch in truncated.chars() {
+                    let mut cell = Cell::new(ch).bold();
+                    cell.fg = colors.disabled_fg;
+                    cell.bg = colors.bg;
+                    entry.push(cx, y, cell);
+                    cx += crate::utils::char_width(ch) as u16;
+                }
+            }
         }
+    }
+}
 
-        // Indicator
-        let mut cell = Cell::new(opt.indicator);
+fn render_option_row(
+    entry: &mut OverlayEntry,
+    y: u16,
+    opt: &DropdownOption<'_>,
+    width: u16,
+    text_width: usize,
+    colors: &DropdownColors,
+) {
+    let (fg, bg) = if opt.is_highlighted {
+        (colors.selected_fg, colors.selected_bg)
+    } else {
+        (colors.fg, colors.bg)
+    };
+
+    let fg = if opt.is_disabled {
+        colors.disabled_fg
+    } else {
+        fg
+    };
+
+    // Background
+    for x in 0..width {
+        let mut cell = Cell::new(' ');
         cell.fg = fg;
         cell.bg = bg;
-        entry.push(INDICATOR_COL, y, cell);
+        entry.push(x, y, cell);
+    }
 
-        // Label with match highlighting
-        let truncated = crate::utils::truncate_to_width(opt.label, text_width);
-        let mut cx = LABEL_COL;
-        for (j, ch) in truncated.chars().enumerate() {
-            let mut cell = Cell::new(ch);
-            cell.bg = bg;
+    // Indicator
+    let mut cell = Cell::new(opt.indicator);
+    cell.fg = fg;
+    cell.bg = bg;
+    entry.push(INDICATOR_COL, y, cell);
 
-            if opt.is_disabled {
-                cell.fg = colors.disabled_fg;
-            } else if opt.match_indices.contains(&j) {
-                cell.fg = colors.highlight_fg;
-            } else {
-                cell.fg = fg;
-            }
+    // Label with match highlighting
+    let truncated = crate::utils::truncate_to_width(opt.label, text_width);
+    let mut cx = LABEL_COL;
+    for (j, ch) in truncated.chars().enumerate() {
+        let mut cell = Cell::new(ch);
+        cell.bg = bg;
 
-            entry.push(cx, y, cell);
-            cx += crate::utils::char_width(ch) as u16;
+        if opt.is_disabled {
+            cell.fg = colors.disabled_fg;
+        } else if opt.match_indices.contains(&j) {
+            cell.fg = colors.highlight_fg;
+        } else {
+            cell.fg = fg;
         }
+
+        entry.push(cx, y, cell);
+        cx += crate::utils::char_width(ch) as u16;
     }
 }
 

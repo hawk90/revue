@@ -83,7 +83,12 @@ impl StatusSection {
         self
     }
 
-    /// Set priority
+    /// Set priority (higher = more important; default 0)
+    ///
+    /// When the bar is too narrow for every section, it leaves out the
+    /// lowest-priority section first (among equal priorities, the later one:
+    /// left, then center, then right) until the rest fit. Sections at the
+    /// highest priority in the bar are always drawn.
     pub fn priority(mut self, priority: u8) -> Self {
         self.priority = priority;
         self
