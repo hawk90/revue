@@ -66,18 +66,76 @@ fn test_theme_picker_compact() {
     picker.render(&mut ctx);
 }
 
+fn rendered_row(picker: &ThemePicker, width: u16, y: u16) -> String {
+    let mut buffer = Buffer::new(width, 6);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, 6));
+    picker.render(&mut ctx);
+    (0..width)
+        .map(|x| buffer.get(x, y).map(|c| c.symbol).unwrap_or(' '))
+        .collect()
+}
+
+/// Columns whose background is one of `theme`'s swatch colors.
+fn swatch_cells(picker: &ThemePicker, width: u16, y: u16, theme: &revue::style::Theme) -> usize {
+    let mut buffer = Buffer::new(width, 6);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, 6));
+    picker.render(&mut ctx);
+    let swatch = [
+        theme.colors.background,
+        theme.palette.primary,
+        theme.palette.success,
+        theme.palette.error,
+    ];
+    (0..width)
+        .filter(|&x| {
+            buffer
+                .get(x, y)
+                .and_then(|c| c.bg)
+                .is_some_and(|bg| swatch.contains(&bg))
+        })
+        .count()
+}
+
 #[test]
-fn test_theme_picker_show_preview() {
-    // show_preview affects rendering, test that it can be set
-    let picker = ThemePicker::new().show_preview(true);
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+fn test_theme_picker_header_shows_the_swatch_by_default() {
+    let current = revue::style::use_theme().get();
+    let picker = ThemePicker::new();
+    assert!(picker_shows_preview(&picker, &current));
+}
 
-    picker.render(&mut ctx);
-
+#[test]
+fn test_theme_picker_without_preview_leaves_the_swatch_out_of_the_header() {
+    let current = revue::style::use_theme().get();
     let picker = ThemePicker::new().show_preview(false);
-    picker.render(&mut ctx);
+    assert!(!picker_shows_preview(&picker, &current));
+    assert!(
+        rendered_row(&picker, 40, 0).starts_with(&format!("Theme: {} ▼", current.name)),
+        "the name should be followed by the dropdown arrow: {:?}",
+        rendered_row(&picker, 40, 0)
+    );
+}
+
+#[test]
+fn test_theme_picker_without_preview_lists_names_only() {
+    let nord = revue::style::get_theme("nord").unwrap();
+    let mut picker = ThemePicker::new().themes(["nord"]).show_preview(false);
+    picker.open();
+
+    // Row 1 is the dropdown's top border, row 2 the first theme
+    assert!(
+        rendered_row(&picker, 30, 2).starts_with(&format!("│▶ {}", nord.name)),
+        "{:?}",
+        rendered_row(&picker, 30, 2)
+    );
+    assert_eq!(swatch_cells(&picker, 30, 2, &nord), 0);
+
+    let mut with_preview = ThemePicker::new().themes(["nord"]);
+    with_preview.open();
+    assert_eq!(swatch_cells(&with_preview, 30, 2, &nord), 4);
+}
+
+fn picker_shows_preview(picker: &ThemePicker, theme: &revue::style::Theme) -> bool {
+    swatch_cells(picker, 40, 0, theme) == 4
 }
 
 #[test]
