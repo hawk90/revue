@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.1](https://github.com/hawk90/revue/compare/v3.6.0...v3.6.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **reactive:** a computed value notifies what reads it when its inputs change ([#816](https://github.com/hawk90/revue/issues/816)) ([cedf9d0](https://github.com/hawk90/revue/commit/cedf9d0c8e13a2faaf525250a80393d75650e43e))
+* **reactive:** batch defers effects and subscriptions until it ends ([b95c7aa](https://github.com/hawk90/revue/commit/b95c7aaf0334870c9b02cdaacaed60c37e76a100))
+* **utils:** shorten_path keeps the separator between the components it keeps ([f29f974](https://github.com/hawk90/revue/commit/f29f9748b7852706f13812d46e2d16b52803e2be))
+
 ## [3.6.0](https://github.com/hawk90/revue/compare/v3.5.0...v3.6.0) (2026-10-08)
 
 
