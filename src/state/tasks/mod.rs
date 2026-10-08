@@ -10,7 +10,7 @@
 //! | [`TaskRunner`] | Spawns OS thread per task | Few concurrent tasks |
 //! | [`PooledTaskRunner`] | Fixed thread pool | Many concurrent tasks |
 //! | [`Timer`] | Delayed callbacks | Debouncing, intervals |
-//! | [`EventBus`] | Pub/sub messaging | Component communication |
+//! | [`EventBus`] | Event queue | Component communication |
 //!
 //! # Quick Start
 //!
@@ -21,9 +21,13 @@
 //!
 //! ## Basic Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::tasks::{PooledTaskRunner, Timer};
 //! use std::time::Duration;
+//!
+//! fn fetch_data(i: usize) -> String {
+//!     format!("item {}", i)
+//! }
 //!
 //! struct MyApp {
 //!     tasks: PooledTaskRunner<String>,
@@ -67,14 +71,26 @@
 //!
 //!         updated
 //!     }
+//!
+//!     fn handle_result(&mut self, id: String, result: Result<String, String>) {
+//!         println!("{}: {:?}", id, result);
+//!     }
+//!
+//!     fn handle_timer(&mut self, id: &str) {
+//!         println!("timer {} fired", id);
+//!     }
 //! }
+//!
+//! let mut app = MyApp::new();
+//! app.mount();
+//! app.poll();
 //! ```
 //!
 //! # TaskRunner
 //!
 //! Simple API for spawning tasks:
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::tasks::TaskRunner;
 //!
 //! let mut tasks = TaskRunner::new();
@@ -95,8 +111,10 @@
 //!
 //! Thread pool for many concurrent tasks:
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::tasks::PooledTaskRunner;
+//! # fn process_item(i: usize) -> usize { i }
+//! # fn handle_result(_id: String, _result: Result<usize, String>) {}
 //!
 //! // Create pool with max 8 threads
 //! let mut tasks = PooledTaskRunner::new(8);
@@ -118,9 +136,11 @@
 //!
 //! Schedule delayed callbacks:
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::tasks::Timer;
 //! use std::time::Duration;
+//! # fn handle_debounce() {}
+//! # fn handle_tick() {}
 //!
 //! let mut timer = Timer::new();
 //!
@@ -142,23 +162,24 @@
 //!
 //! # EventBus
 //!
-//! Publish/subscribe for component communication:
+//! A queue of typed events for component communication, read in the tick loop:
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::tasks::EventBus;
 //!
 //! let mut bus = EventBus::new();
 //!
-//! // Subscribe to events
-//! let sub = bus.subscribe("user_login", |data| {
-//!     println!("User logged in: {:?}", data);
-//! });
+//! // Emit events with any `Send` payload
+//! bus.emit("user_login", String::from("Alice"));
 //!
-//! // Publish events
-//! bus.publish("user_login", json!({"user": "Alice"}));
-//!
-//! // Unsubscribe when done
-//! bus.unsubscribe(sub);
+//! // Poll them in the tick handler
+//! while let Some(event) = bus.poll() {
+//!     if event.id == "user_login" {
+//!         if let Some(user) = event.data::<String>() {
+//!             println!("User logged in: {}", user);
+//!         }
+//!     }
+//! }
 //! ```
 
 mod event_bus;

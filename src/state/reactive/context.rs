@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::reactive::{create_context, provide, use_context};
 //!
 //! // Define a context
@@ -193,7 +193,7 @@ thread_local! {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::reactive::create_context;
 ///
 /// let theme_context = create_context::<String>();
@@ -206,7 +206,7 @@ pub fn create_context<T>() -> Context<T> {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::reactive::create_context_with_default;
 ///
 /// let theme_context = create_context_with_default("light".to_string());
@@ -227,7 +227,7 @@ pub fn create_context_with_default<T>(default: T) -> Context<T> {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::reactive::{create_context, provide};
 ///
 /// let theme = create_context::<String>();
@@ -254,7 +254,7 @@ pub fn provide<T: Clone + Send + Sync + 'static>(context: &Context<T>, value: T)
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::reactive::{create_context, provide_signal};
 ///
 /// let theme = create_context::<String>();
@@ -283,7 +283,7 @@ pub fn provide_signal<T: Clone + Send + Sync + 'static>(
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::reactive::{create_context, provide, use_context};
 ///
 /// let theme = create_context::<String>();
@@ -336,7 +336,7 @@ pub fn use_context<T: Clone + Send + Sync + 'static>(context: &Context<T>) -> Op
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::reactive::{create_context, provide, use_context_signal, effect};
 ///
 /// let theme = create_context::<String>();
@@ -410,7 +410,7 @@ pub fn has_context<T: Clone + Send + Sync + 'static>(context: &Context<T>) -> bo
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::reactive::{create_context, provide, clear_context};
 ///
 /// let theme = create_context::<String>();
@@ -531,7 +531,7 @@ impl Drop for ContextScope {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::reactive::{create_context, with_context_scope, use_context};
 ///
 /// let theme = create_context::<String>();

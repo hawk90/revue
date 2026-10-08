@@ -1,40 +1,39 @@
 //! Plugin system for extending Revue applications
 //!
 //! Plugins provide a modular way to extend app functionality with lifecycle hooks,
-//! custom styles, and shared state.
+//! custom styles, and shared data.
 //!
 //! # Features
 //!
 //! | Feature | Description |
 //!|---------|-------------|
-//! | **Lifecycle Hooks** | Init, tick, event, shutdown callbacks |
-//! | **Shared State** | Global state accessible to all plugins |
+//! | **Lifecycle Hooks** | Init, mount, tick and unmount callbacks |
+//! | **Shared Data** | Per-plugin data that other plugins can read |
 //! | **Custom Styles** | Add CSS variables and rules |
-//! | **Event Handling** | Subscribe to and emit events |
-//! | **Async Support** | Async lifecycle operations |
 //!
 //! # Quick Start
 //!
 //! ## Create a Plugin
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::plugin::{Plugin, PluginContext};
 //! use std::time::Duration;
 //!
-//! struct LoggerPlugin {
-//!     event_count: usize,
+//! struct TickCounter {
+//!     ticks: usize,
 //! }
 //!
-//! impl Plugin for LoggerPlugin {
-//!     fn name(&self) -> &str { "logger" }
+//! impl Plugin for TickCounter {
+//!     fn name(&self) -> &str { "tick-counter" }
 //!
 //!     fn on_init(&mut self, ctx: &mut PluginContext) -> revue::Result<()> {
-//!         println!("[{}] Plugin initialized", self.name());
+//!         ctx.log("initialized");
 //!         Ok(())
 //!     }
 //!
-//!     fn on_tick(&mut self, _ctx: &mut PluginContext, delta: Duration) -> revue::Result<()> {
-//!         self.event_count += 1;
+//!     fn on_tick(&mut self, ctx: &mut PluginContext, _delta: Duration) -> revue::Result<()> {
+//!         self.ticks += 1;
+//!         ctx.set_data("ticks", self.ticks);
 //!         Ok(())
 //!     }
 //! }
@@ -42,12 +41,16 @@
 //!
 //! ## Register a Plugin
 //!
-//! ```rust,ignore
-//! use revue::App;
+//! ```
+//! # use revue::plugin::Plugin;
+//! # struct TickCounter { ticks: usize }
+//! # impl Plugin for TickCounter { fn name(&self) -> &str { "tick-counter" } }
+//! use revue::prelude::App;
 //!
 //! let app = App::builder()
-//!     .plugin(LoggerPlugin { event_count: 0 })
+//!     .plugin(TickCounter { ticks: 0 })
 //!     .build();
+//! assert!(app.plugins().has_plugin("tick-counter"));
 //! ```
 //!
 //! # Lifecycle Hooks
@@ -55,42 +58,38 @@
 //! | Hook | When Called | Use Case |
 //!|------|-------------|----------|
 //! | `on_init` | After app creation | Setup, initialization |
-//! | `on_mount` | When view is mounted | UI setup, subscriptions |
+//! | `on_mount` | When the app starts running | UI setup, subscriptions |
 //! | `on_tick` | Every frame | Update logic, animation |
-//! | `on_event` | On input event | Event handling |
-//! | `on_shutdown` | Before app exit | Cleanup, saving |
+//! | `on_unmount` | When the app stops | Cleanup, saving |
 //!
 //! # Plugin Context
 //!
-//! The [`PluginContext`] provides access to:
+//! The [`PluginContext`] passed to each hook gives access to the terminal
+//! size, whether the app is running, logging, and data storage. Data a plugin
+//! stores is kept under its name, and other plugins can read it:
 //!
-//! ```rust,ignore
-//! impl Plugin for MyPlugin {
-//!     fn on_init(&mut self, ctx: &mut PluginContext) -> Result<()> {
-//!         // Access app state
-//!         let state = ctx.state();
+//! ```
+//! use revue::plugin::{PerformancePlugin, PluginRegistry};
 //!
-//!         // Emit events
-//!         ctx.emit("my_event", data);
+//! let mut registry = PluginRegistry::new();
+//! registry.register(PerformancePlugin::new());
+//! registry.init()?;
 //!
-//!         // Subscribe to events
-//!         ctx.subscribe("other_event", |data| {
-//!             println!("Got event: {:?}", data);
-//!         });
-//!
-//!         Ok(())
-//!     }
-//! }
+//! // The data PerformancePlugin stored, read from outside it
+//! let fps = registry.context().get_plugin_data::<f64>("performance", "fps");
+//! assert_eq!(fps, Some(&0.0));
+//! # Ok::<(), revue::Error>(())
 //! ```
 //!
 //! # Built-in Plugins
 //!
 //! ## LoggerPlugin
 //!
-//! Logs app lifecycle events and errors:
+//! Logs app lifecycle events:
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::plugin::LoggerPlugin;
+//! use revue::prelude::App;
 //!
 //! let app = App::builder()
 //!     .plugin(LoggerPlugin::new())
@@ -99,10 +98,11 @@
 //!
 //! ## PerformancePlugin
 //!
-//! Tracks FPS, frame time, and memory usage:
+//! Tracks FPS and frame time:
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::plugin::PerformancePlugin;
+//! use revue::prelude::App;
 //!
 //! let app = App::builder()
 //!     .plugin(PerformancePlugin::new())
@@ -111,17 +111,19 @@
 //!
 //! # Plugin Registry
 //!
-//! Access and manage plugins:
+//! The app keeps its plugins in a [`PluginRegistry`]:
 //!
-//! ```rust,ignore
-//! use revue::plugin::PluginRegistry;
+//! ```
+//! use revue::plugin::{LoggerPlugin, PerformancePlugin};
+//! use revue::prelude::App;
 //!
-//! // Get plugin by name
-//! if let Some(logger) = registry.get("logger") {
-//!     // Use plugin...
-//! }
+//! let app = App::builder()
+//!     .plugin(LoggerPlugin::new())
+//!     .plugin(PerformancePlugin::new())
+//!     .build();
 //!
-//! // List all plugins
+//! let registry = app.plugins();
+//! assert!(registry.has_plugin("logger"));
 //! for name in registry.plugin_names() {
 //!     println!("{}", name);
 //! }

@@ -92,24 +92,31 @@ impl Worker {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use revue::tasks::PooledTaskRunner;
+///
+/// fn fetch_data(i: usize) -> usize {
+///     i * 2 // Expensive network/IO operation
+/// }
 ///
 /// // Create a pool with 4 worker threads
 /// let mut tasks = PooledTaskRunner::new(4);
 ///
 /// // Spawn multiple tasks (won't create 100 threads!)
 /// for i in 0..100 {
-///     tasks.spawn(format!("task_{}", i), move || {
-///         // Expensive network/IO operation
-///         fetch_data(i)
-///     });
+///     tasks.spawn(format!("task_{}", i), move || fetch_data(i));
 /// }
 ///
 /// // In your tick loop, poll for results
-/// while let Some(result) = tasks.poll() {
-///     println!("Task {} completed: {:?}", result.id, result.result);
+/// let mut done = 0;
+/// while tasks.has_pending() {
+///     while let Some(result) = tasks.poll() {
+///         println!("Task {} completed: {:?}", result.id, result.result);
+///         done += 1;
+///     }
+/// #   std::thread::sleep(std::time::Duration::from_millis(1));
 /// }
+/// assert_eq!(done, 100);
 /// ```
 pub struct PooledTaskRunner<T: Send + 'static> {
     /// Channel for submitting work to the pool

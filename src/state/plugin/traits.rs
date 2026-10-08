@@ -17,7 +17,7 @@ use std::time::Duration;
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::plugin::{Plugin, PluginContext};
 ///
 /// struct MyPlugin;
