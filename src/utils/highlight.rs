@@ -5,7 +5,9 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
+//! use revue::utils::highlight::highlight_substring;
+//!
 //! use revue::utils::{highlight_matches, HighlightSpan};
 //!
 //! // Highlight fuzzy match
@@ -60,7 +62,7 @@ impl HighlightSpan {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::highlight_matches;
 ///
 /// let spans = highlight_matches("CommandPalette", &[0, 7]);
@@ -134,7 +136,7 @@ pub fn highlight_matches(text: &str, indices: &[usize]) -> Vec<HighlightSpan> {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::highlight_substring;
 ///
 /// let spans = highlight_substring("Hello World, Hello!", "hello");

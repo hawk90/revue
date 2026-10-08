@@ -5,7 +5,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::{display_width, truncate_to_width};
 //!
 //! assert_eq!(display_width("hello"), 5);
@@ -181,7 +181,7 @@ fn is_wide_char(c: char) -> bool {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::display_width;
 ///
 /// assert_eq!(display_width("hello"), 5);
@@ -203,7 +203,7 @@ pub fn display_width(s: &str) -> usize {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::truncate_to_width;
 ///
 /// assert_eq!(truncate_to_width("Hello, World!", 5), "Hello");
@@ -249,7 +249,7 @@ pub fn truncate_to_width(s: &str, max_width: usize) -> &str {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::truncate_with_ellipsis;
 ///
 /// assert_eq!(truncate_with_ellipsis("Hello, World!", 8), "Hello, …");

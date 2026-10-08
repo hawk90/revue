@@ -66,7 +66,7 @@
 //!
 //! ## Color Manipulation
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::color::{darken, lighten, blend};
 //! use revue::style::Color;
 //!
@@ -78,7 +78,7 @@
 //!
 //! ## Fuzzy Search
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::fuzzy::fuzzy_match;
 //!
 //! let matches = fuzzy_match("hello", "hallo"); // High score
@@ -87,12 +87,12 @@
 //!
 //! ## Natural Sorting
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::sort::natural_cmp;
 //!
-//! let files = vec!["file10.txt", "file2.txt"];
+//! let mut files = vec!["file10.txt", "file2.txt"];
 //! files.sort_by(|a, b| natural_cmp(a, b));
-//! // Result: file2.txt, file10.txt
+//! assert_eq!(files, ["file2.txt", "file10.txt"]);
 //! ```
 
 pub mod accessibility;

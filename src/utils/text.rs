@@ -19,7 +19,9 @@
 /// The byte index corresponding to the character index, or string length if out of bounds
 ///
 /// # Example
-/// ```ignore
+/// ```
+/// use revue::utils::text::char_to_byte_index;
+///
 /// let s = "héllo";
 /// assert_eq!(char_to_byte_index(s, 0), 0); // 'h'
 /// assert_eq!(char_to_byte_index(s, 1), 1); // 'é' starts at byte 1
@@ -196,9 +198,11 @@ pub fn remove_char_range(s: &mut String, start: usize, end: usize) {
 /// Truncated string with ellipsis if truncation occurred
 ///
 /// # Example
-/// ```ignore
+/// ```
+/// use revue::utils::text::truncate;
+///
 /// let short = truncate("Hello World", 8);
-/// assert_eq!(short, "Hello…");
+/// assert_eq!(short, "Hello W…"); // 8 columns, the ellipsis included
 /// ```
 pub fn truncate(text: &str, max_width: usize) -> String {
     crate::utils::unicode::truncate_with_ellipsis(text, max_width)
@@ -207,9 +211,11 @@ pub fn truncate(text: &str, max_width: usize) -> String {
 /// Truncate text from the start, adding ellipsis at beginning
 ///
 /// # Example
-/// ```ignore
+/// ```
+/// use revue::utils::text::truncate_start;
+///
 /// let short = truncate_start("/home/user/documents/file.txt", 20);
-/// assert_eq!(short, "…ments/file.txt");
+/// assert_eq!(short, "…/documents/file.txt"); // 20 columns
 /// ```
 pub fn truncate_start(text: &str, max_width: usize) -> String {
     use crate::utils::unicode::display_width as dw;

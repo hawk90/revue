@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::fuzzy_match;
 //!
 //! let result = fuzzy_match("fzf", "fuzzy finder");
@@ -13,7 +13,7 @@
 //!
 //! // Get matched indices for highlighting
 //! let result = fuzzy_match("cmd", "CommandPalette").unwrap();
-//! assert_eq!(result.indices, vec![0, 3, 7]); // C, m, d
+//! assert_eq!(result.indices, vec![0, 2, 6]); // C, the first m, d
 //! ```
 
 /// Result of a fuzzy match
@@ -47,7 +47,7 @@ impl FuzzyMatch {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::fuzzy_match;
 ///
 /// // Matches "fzf" in "fuzzy finder"
@@ -136,7 +136,7 @@ pub fn fuzzy_matches(pattern: &str, target: &str) -> bool {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::fuzzy_filter;
 ///
 /// let items = vec!["apple", "application", "banana", "appetite"];
