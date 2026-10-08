@@ -292,8 +292,8 @@ macro_rules! impl_widget_builders {
 /// Generate View trait id(), classes(), key(), and meta() methods for widgets
 /// with props.
 ///
-/// This macro generates the id(), classes(), key(), and meta() methods for the
-/// View trait that delegate to WidgetProps.
+/// This macro generates the id(), classes(), key(), inline_style() and meta()
+/// methods for the View trait that delegate to WidgetProps.
 ///
 /// # Example
 /// ```rust,ignore
@@ -349,6 +349,10 @@ macro_rules! impl_view_meta {
 
         fn key(&self) -> Option<$crate::dom::WidgetKey> {
             self.props.key.clone()
+        }
+
+        fn inline_style(&self) -> Option<$crate::style::Style> {
+            self.props.inline_style.clone()
         }
     };
 }

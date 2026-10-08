@@ -1,6 +1,7 @@
 //! The View trait every widget implements, and Fill
 
 use crate::dom::{WidgetKey, WidgetMeta};
+use crate::style::Style;
 
 use super::render_context::{RenderContext, StyledSubtree};
 
@@ -326,6 +327,18 @@ pub trait View {
         None
     }
 
+    /// Inline style - the widget's own style, applied after every stylesheet
+    /// rule, as an HTML `style` attribute is.
+    ///
+    /// Returns `None` by default. Widgets that keep a
+    /// [`WidgetProps`](crate::widget::WidgetProps) and use
+    /// [`impl_view_meta!`](crate::impl_view_meta) return what
+    /// [`WidgetProps::style`](crate::widget::WidgetProps::style) set. The
+    /// renderer copies it onto the widget's DOM node each frame.
+    fn inline_style(&self) -> Option<Style> {
+        None
+    }
+
     /// Get widget metadata for DOM
     ///
     /// This method combines `widget_type()`, `id()`, `classes()` and `key()`
@@ -389,6 +402,10 @@ impl View for Box<dyn View> {
 
     fn key(&self) -> Option<WidgetKey> {
         (**self).key()
+    }
+
+    fn inline_style(&self) -> Option<Style> {
+        (**self).inline_style()
     }
 
     fn meta(&self) -> WidgetMeta {
