@@ -12,6 +12,15 @@ fn test_shorten_path() {
 }
 
 #[test]
+fn shorten_path_keeps_the_separator_between_kept_components() {
+    assert_eq!(
+        shorten_path("/very/long/path/to/file.txt", 20),
+        ".../path/to/file.txt"
+    );
+    assert_eq!(shorten_path("/a/b/c/d/e/file.txt", 15), ".../e/file.txt");
+}
+
+#[test]
 fn test_shorten_path_fits() {
     let path = "/short/path.txt";
     let short = shorten_path(path, 30);
