@@ -54,8 +54,14 @@ impl View for RichText {
         // A span that names its own color keeps it - that is the whole point of
         // a rich text run. Spans that name none had no color at all until now,
         // which is exactly the base a `color` rule should reach.
-        let base_fg = ctx.css_color_if_set();
-        let base_bg = ctx.css_background_if_set();
+        // `default_style` sits between the two: it fills in what a span
+        // leaves unset, and an explicit builder beats a stylesheet rule.
+        let base_fg = self.default_style.fg.or_else(|| ctx.css_color_if_set());
+        let base_bg = self
+            .default_style
+            .bg
+            .or_else(|| ctx.css_background_if_set());
+        let base_modifier = self.default_style.to_modifier();
 
         // A `\n` in any span starts a new row at the left edge of the area;
         // the text after it keeps its span's style. Rows past the area's
@@ -71,7 +77,7 @@ impl View for RichText {
                 .as_ref()
                 .map(|url| ctx.buffer.register_hyperlink(url));
 
-            let modifier = span.style.to_modifier();
+            let modifier = span.style.to_modifier() | base_modifier;
 
             for ch in span.text.chars() {
                 if ch == '\n' {
@@ -107,5 +113,33 @@ impl View for RichText {
                 x += char_width;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+    use crate::style::Color;
+
+    #[test]
+    fn default_style_fills_in_what_a_span_leaves_unset() {
+        let text = RichText::new()
+            .text("a")
+            .push("b", Style::new().fg(Color::RED))
+            .default_style(Style::new().fg(Color::CYAN).bg(Color::BLUE).bold());
+        let mut buf = Buffer::new(4, 1);
+        text.render(&mut RenderContext::new(&mut buf, Rect::new(0, 0, 4, 1)));
+
+        let plain = buf.get(0, 0).unwrap();
+        assert_eq!(plain.fg, Some(Color::CYAN));
+        assert_eq!(plain.bg, Some(Color::BLUE));
+        assert!(plain.modifier.contains(Modifier::BOLD));
+
+        let styled = buf.get(1, 0).unwrap();
+        assert_eq!(styled.fg, Some(Color::RED), "the span's own color wins");
+        assert_eq!(styled.bg, Some(Color::BLUE));
+        assert!(styled.modifier.contains(Modifier::BOLD));
     }
 }
