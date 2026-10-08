@@ -5,7 +5,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::prelude::*;
 //! use revue::reactive::store::{Store, StoreExt};
 //!
@@ -27,11 +27,16 @@
 //!     }
 //!
 //!     fn double(&self) -> Computed<i32> {
-//!         computed(move || {
-//!             self.count.get() * 2
-//!         })
+//!         let count = self.count.clone();
+//!         computed(move || count.get() * 2)
 //!     }
 //! }
+//!
+//! let store = CounterStore::new();
+//! let double = store.double();
+//! store.increment();
+//! assert_eq!(double.get(), 2);
+//! assert_eq!(store.name(), "CounterStore");
 //! ```
 
 pub mod usage;

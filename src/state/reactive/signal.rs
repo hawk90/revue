@@ -32,7 +32,9 @@ type Subscribers = Arc<RwLock<HashMap<SubscriptionId, SubscriberCallback>>>;
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
+/// use revue::reactive::signal;
+///
 /// let count = signal(0);
 ///
 /// // Subscription is active while `sub` is in scope
@@ -65,7 +67,9 @@ impl Drop for Subscription {
 /// # Zero-Copy Access
 ///
 /// Use `read()` or `with()` for zero-copy read access:
-/// ```ignore
+/// ```
+/// use revue::reactive::Signal;
+///
 /// let items = Signal::new(vec![1, 2, 3]);
 ///
 /// // Zero-copy: read returns a RwLockReadGuard
@@ -80,7 +84,9 @@ impl Drop for Subscription {
 /// # Thread Safety
 ///
 /// Signals can be cloned and sent to other threads:
-/// ```ignore
+/// ```
+/// use revue::reactive::signal;
+///
 /// let count = signal(0);
 /// let count_clone = count.clone();
 ///
@@ -157,8 +163,12 @@ impl<T: 'static> Signal<T> {
     /// Access the value with a closure (zero-copy)
     ///
     /// This is the most ergonomic way to read without cloning:
-    /// ```ignore
-    /// let count = signal.with(|v| *v);
+    /// ```
+    /// use revue::reactive::signal;
+    ///
+    /// let names = signal(vec!["a".to_string(), "b".to_string()]);
+    /// let len = names.with(|v| v.len()); // no clone of the Vec
+    /// assert_eq!(len, 2);
     /// ```
     /// Automatically registers dependency if called within an effect/computed.
     #[inline]
@@ -234,7 +244,9 @@ impl<T: 'static> Signal<T> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
+    /// use revue::reactive::signal;
+    ///
     /// let count = signal(0);
     ///
     /// // Manual: always called when count changes

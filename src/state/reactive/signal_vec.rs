@@ -87,7 +87,9 @@ impl<T> VecDiff<T> {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
+/// use revue::reactive::{VecDiff, signal_vec};
+///
 /// let items = signal_vec(vec![1, 2, 3]);
 ///
 /// // Subscribe to granular changes

@@ -14,30 +14,42 @@
 //!
 //! # Quick Start
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::prelude::*;
 //!
 //! // Create reactive state
 //! let count = signal(0);
 //!
-//! // Derived value (auto-updates when count changes)
-//! let doubled = computed(move || count.get() * 2);
+//! // Derived value (auto-updates when count changes).
+//! // Signals are cheap handles: clone one into each closure.
+//! let doubled = computed({
+//!     let count = count.clone();
+//!     move || count.get() * 2
+//! });
 //!
-//! // Side effect (runs when dependencies change)
-//! effect(move || {
-//!     println!("Count is now: {}", count.get());
+//! // Side effect (runs when dependencies change). It stays active only
+//! // while the returned handle is alive, so keep it.
+//! let last_seen = signal(0);
+//! let _logger = effect({
+//!     let (count, last_seen) = (count.clone(), last_seen.clone());
+//!     move || {
+//!         println!("Count is now: {}", count.get());
+//!         last_seen.set(count.get());
+//!     }
 //! });
 //!
 //! count.set(5);
-//! // Output: "Count is now: 5"
-//! // doubled.get() returns 10
+//! assert_eq!(doubled.get(), 10);
+//! assert_eq!(last_seen.get(), 5); // the effect ran again
 //! ```
 //!
 //! # Signal
 //!
 //! A [`Signal`] holds a reactive value that can be read and written:
 //!
-//! ```rust,ignore
+//! ```
+//! use revue::reactive::signal;
+//!
 //! let name = signal(String::from("World"));
 //!
 //! // Read the value
@@ -54,34 +66,48 @@
 //!
 //! A [`Computed`] value automatically recalculates when its dependencies change:
 //!
-//! ```rust,ignore
+//! ```
+//! use revue::reactive::{computed, signal};
+//!
 //! let items = signal(vec![1, 2, 3, 4, 5]);
 //!
-//! let sum = computed(move || items.get().iter().sum::<i32>());
-//! let avg = computed(move || {
-//!     let v = items.get();
-//!     v.iter().sum::<i32>() as f64 / v.len() as f64
+//! let sum = computed({
+//!     let items = items.clone();
+//!     move || items.get().iter().sum::<i32>()
+//! });
+//! let avg = computed({
+//!     let items = items.clone();
+//!     move || {
+//!         let v = items.get();
+//!         v.iter().sum::<i32>() as f64 / v.len() as f64
+//!     }
 //! });
 //!
-//! println!("Sum: {}, Avg: {}", sum.get(), avg.get()); // 15, 3.0
+//! assert_eq!((sum.get(), avg.get()), (15, 3.0));
 //!
 //! items.update(|v| v.push(10));
-//! println!("Sum: {}, Avg: {}", sum.get(), avg.get()); // 25, ~4.17
+//! assert_eq!(sum.get(), 25); // avg is now 25 / 6
 //! ```
 //!
 //! # Effect
 //!
 //! An [`Effect`] runs a callback whenever its dependencies change:
 //!
-//! ```rust,ignore
+//! ```
+//! use revue::reactive::{effect, signal};
+//!
 //! let theme = signal("dark");
+//! let applied = signal("");
 //!
-//! effect(move || {
-//!     let current = theme.get();
-//!     apply_theme(current);
+//! // Keep the handle: dropping it stops the effect
+//! let _apply = effect({
+//!     let (theme, applied) = (theme.clone(), applied.clone());
+//!     move || applied.set(theme.get()) // e.g. apply the theme
 //! });
+//! assert_eq!(applied.get(), "dark"); // an effect runs once right away
 //!
-//! theme.set("light"); // apply_theme("light") is called
+//! theme.set("light");
+//! assert_eq!(applied.get(), "light");
 //! ```
 //!
 //! # Best Practices
@@ -179,7 +205,9 @@ pub fn effect(f: impl Fn() + Send + Sync + 'static) -> Effect {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::reactive::signal_vec;
+///
 /// let items = signal_vec(vec![1, 2, 3]);
 ///
 /// // Each operation emits a granular change

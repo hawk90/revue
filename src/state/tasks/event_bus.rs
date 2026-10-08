@@ -42,7 +42,13 @@ impl Event {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
+/// use revue::tasks::EventBus;
+///
+/// struct MountResult {
+///     success: bool,
+/// }
+///
 /// let mut bus = EventBus::new();
 ///
 /// // Emit events
@@ -59,7 +65,7 @@ impl Event {
 ///         }
 ///         "mount:complete" => {
 ///             if let Some(result) = event.data::<MountResult>() {
-///                 handle_mount(result);
+///                 assert!(result.success);
 ///             }
 ///         }
 ///         _ => {}

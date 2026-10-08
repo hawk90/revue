@@ -10,17 +10,25 @@ use std::collections::HashMap;
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// fn on_init(&mut self, ctx: &mut PluginContext) -> revue::Result<()> {
-///     // Store plugin-specific data
-///     ctx.set_data("counter", 0i32);
+/// ```
+/// use revue::plugin::{Plugin, PluginContext};
 ///
-///     // Read data
-///     if let Some(counter) = ctx.get_data::<i32>("counter") {
-///         // Use counter...
+/// struct Counter;
+///
+/// impl Plugin for Counter {
+///     fn name(&self) -> &str { "counter" }
+///
+///     fn on_init(&mut self, ctx: &mut PluginContext) -> revue::Result<()> {
+///         // Store plugin-specific data
+///         ctx.set_data("counter", 0i32);
+///
+///         // Read data
+///         if let Some(counter) = ctx.get_data::<i32>("counter") {
+///             ctx.log(&format!("counter = {}", counter));
+///         }
+///
+///         Ok(())
 ///     }
-///
-///     Ok(())
 /// }
 /// ```
 pub struct PluginContext {
