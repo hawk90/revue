@@ -25,6 +25,12 @@ where
     false
 }
 
+/// How long to wait for a task to reach a state it is expected to reach.
+/// `poll_until` returns as soon as it does, so this only matters on a slow
+/// runner, where a panicking task (which captures a backtrace) can take most
+/// of a second to finish.
+const WAIT_MS: u64 = 5000;
+
 // =============================================================================
 // Blocking Tasks Tests
 // =============================================================================
@@ -72,7 +78,7 @@ fn test_spawn_blocking_immediate() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
 
     // Wait for task to finish (may already be finished on fast machines)
-    poll_until(|| handle.is_finished(), 500);
+    poll_until(|| handle.is_finished(), WAIT_MS);
 
     assert!(handle.is_finished());
     assert_eq!(handle.join().unwrap(), 42);
@@ -97,7 +103,7 @@ fn test_state_transitions() {
     ));
 
     // Wait for completion
-    poll_until(|| matches!(handle.state(), WorkerState::Completed), 500);
+    poll_until(|| matches!(handle.state(), WorkerState::Completed), WAIT_MS);
 
     assert!(matches!(handle.state(), WorkerState::Completed));
 }
@@ -111,7 +117,7 @@ fn test_is_finished_success() {
 
     assert!(!handle.is_finished());
 
-    poll_until(|| handle.is_finished(), 500);
+    poll_until(|| handle.is_finished(), WAIT_MS);
 
     assert!(handle.is_finished());
     assert!(handle.is_success());
@@ -126,7 +132,7 @@ fn test_is_finished_failure() {
 
     assert!(!handle.is_finished());
 
-    poll_until(|| handle.is_finished(), 500);
+    poll_until(|| handle.is_finished(), WAIT_MS);
 
     assert!(handle.is_finished());
     assert!(!handle.is_success());
@@ -143,11 +149,11 @@ fn test_is_running() {
     let _initial_state = handle.state();
 
     // Wait a bit then check running state
-    poll_until(|| handle.is_running(), 200);
+    poll_until(|| handle.is_running(), WAIT_MS);
     assert!(handle.is_running());
 
     // Wait for completion
-    poll_until(|| !handle.is_running(), 500);
+    poll_until(|| !handle.is_running(), WAIT_MS);
     assert!(!handle.is_running());
     assert!(handle.is_finished());
 }
@@ -209,7 +215,7 @@ fn test_try_join_ready() {
 
     // Wait for task to complete - use is_finished() instead of try_join()
     // because try_join() consumes the result, leaving nothing for the assertion
-    poll_until(|| handle.is_finished(), 500);
+    poll_until(|| handle.is_finished(), WAIT_MS);
 
     let result = handle.try_join();
     assert!(result.is_some(), "Task should be ready by now");
@@ -319,7 +325,7 @@ fn test_poll_returns_state() {
     // Wait for completion with timeout
     let completed = poll_until(
         || matches!(handle.poll(), Some(WorkerState::Completed)),
-        500,
+        WAIT_MS,
     );
     assert!(completed, "Worker did not complete in time");
 }
@@ -398,7 +404,7 @@ fn test_state_after_completion() {
 
     // Wait for the task to finish rather than sleeping a fixed 50 ms: on a
     // loaded CI runner the thread may not have been scheduled yet.
-    assert!(poll_until(|| handle.is_finished(), 2000));
+    assert!(poll_until(|| handle.is_finished(), WAIT_MS));
 
     // State should be Completed
     assert_eq!(handle.state(), WorkerState::Completed);
@@ -411,7 +417,7 @@ fn test_state_after_panic() {
         panic!("test");
     });
 
-    assert!(poll_until(|| handle.is_finished(), 2000));
+    assert!(poll_until(|| handle.is_finished(), WAIT_MS));
 
     // State should be Failed
     assert_eq!(handle.state(), WorkerState::Failed);
@@ -443,7 +449,7 @@ fn test_spawn_convenience() {
 fn test_try_join_consumes() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
 
-    assert!(poll_until(|| handle.is_finished(), 2000));
+    assert!(poll_until(|| handle.is_finished(), WAIT_MS));
 
     let mut handle_ref = handle;
     let result1 = handle_ref.try_join();
