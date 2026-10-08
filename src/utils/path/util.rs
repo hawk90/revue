@@ -19,12 +19,14 @@ pub fn normalize_separators(path: &str) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// // Use with proper error handling:
-/// let path = join_paths(base, &parts)?;
+/// ```
+/// use revue::utils::path::join_paths;
 ///
-/// // For hardcoded safe paths, use unwrap():
-/// let path = join_paths(Path::new("/home/user"), &["documents", "file.txt"]).unwrap();
+/// let path = join_paths("/home/user", &["documents", "file.txt"]).unwrap();
+/// assert!(path.ends_with("documents/file.txt"));
+///
+/// // A part that climbs out of the base is refused
+/// assert!(join_paths("/home/user", &["..", "etc"]).is_err());
 /// ```
 pub fn join_paths(base: impl AsRef<Path>, parts: &[&str]) -> Result<PathBuf, PathError> {
     let mut result = base.as_ref().to_path_buf();

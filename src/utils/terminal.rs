@@ -28,7 +28,9 @@ static TERMINAL_TYPE: OnceLock<TerminalType> = OnceLock::new();
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::terminal::TerminalType;
+///
 /// use revue::utils::terminal::terminal_type;
 ///
 /// match terminal_type() {

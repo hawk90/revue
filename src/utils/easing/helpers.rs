@@ -6,7 +6,7 @@ use crate::utils::easing::{types::Easing, EasingFn};
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::easing::{lerp, Easing};
 ///
 /// let value = lerp(0.0, 100.0, 0.5, Easing::OutQuad);

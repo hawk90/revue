@@ -3,19 +3,34 @@
 //! Provides layout calculation for boxes with borders, headers, and footers.
 //!
 //! # Example
-//! ```ignore
+//! ```
+//! use revue::layout::Rect;
+//! use revue::render::Buffer;
+//! use revue::style::Color;
+//! use revue::utils::border::render_border;
+//! use revue::utils::layout::BoxLayout;
+//! use revue::widget::RenderContext;
+//!
+//! let items = ["one", "two", "three", "four"];
+//! let mut buffer = Buffer::new(12, 6);
+//! let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 12, 6));
+//!
+//! // A bordered box filling the area, with one footer line below it
 //! let area = ctx.area;
 //! let bx = BoxLayout::fill(area.x, area.y, area.width, area.height, 1);
+//! render_border(&mut ctx, Rect::new(bx.x, bx.y, bx.width, bx.height), Color::WHITE);
 //!
-//! // Draw border
-//! ctx.draw_box(bx.x, bx.y, bx.width, bx.height);
-//!
-//! // Render content rows
+//! // Content rows inside the border, as many as fit
 //! for (i, item) in items.iter().enumerate() {
 //!     let y = bx.row_y(i as u16);
-//!     if y >= bx.bottom_y() { break; }
-//!     ctx.draw_text(bx.content_x(), y, item);
+//!     if y >= bx.bottom_y() {
+//!         break;
+//!     }
+//!     ctx.draw_text(bx.content_x(), y, item, Color::WHITE);
 //! }
+//! // The box is 5 rows tall, so 3 rows fit between the borders
+//! assert_eq!(buffer.get(1, 3).map(|c| c.symbol), Some('t')); // "three"
+//! assert_eq!(buffer.get(0, 4).map(|c| c.symbol), Some('└')); // bottom border
 //! ```
 
 /// Layout calculator for bordered boxes with header/footer

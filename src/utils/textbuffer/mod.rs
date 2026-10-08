@@ -8,7 +8,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::TextBuffer;
 //!
 //! let mut buffer = TextBuffer::new();

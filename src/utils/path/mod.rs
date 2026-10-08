@@ -5,12 +5,13 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! use revue::utils::path::{shorten_path, home_relative, abbreviate_path};
+//! ```
+//! use revue::utils::path::{abbreviate_path, home_dir, home_relative, shorten_path};
 //!
-//! // Replace home directory with ~
-//! let path = home_relative("/Users/john/Documents/file.txt");
-//! assert_eq!(path, "~/Documents/file.txt");
+//! // Replace the home directory with ~
+//! if let Some(home) = home_dir() {
+//!     assert!(home_relative(home.join("file.txt")).starts_with("~/"));
+//! }
 //!
 //! // Shorten to fit width
 //! let short = shorten_path("/very/long/path/to/file.txt", 20);
@@ -18,7 +19,7 @@
 //!
 //! // Abbreviate middle directories
 //! let abbr = abbreviate_path("/Users/john/Documents/Projects/rust/src/main.rs");
-//! assert_eq!(abbr, "/U/j/D/P/rust/src/main.rs");
+//! assert_eq!(abbr, "/U/j/D/P/r/src/main.rs"); // the last two stay whole
 //! ```
 
 mod component;

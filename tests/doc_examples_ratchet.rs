@@ -9,7 +9,7 @@
 use std::path::Path;
 
 /// The number of `ignore` doc examples under `src/` that are allowed.
-const CEILING: usize = 432;
+const CEILING: usize = 398;
 
 /// Count the doc-comment lines that open an `ignore` code block.
 fn count(dir: &Path, found: &mut Vec<String>) {

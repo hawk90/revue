@@ -8,7 +8,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::accessibility::{AccessibleNode, Role, announce};
 //!
 //! let node = AccessibleNode::new(Role::Button)
