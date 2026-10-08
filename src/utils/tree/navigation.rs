@@ -12,7 +12,9 @@ use crate::utils::tree::types::TreeItem;
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
+/// use revue::utils::tree::{TreeItem, TreeNav};
+///
 /// let mut nav = TreeNav::new();
 /// nav.add_item(TreeItem::new(0).collapsible());  // Section
 /// nav.add_item(TreeItem::new(1).with_parent(0)); // Child

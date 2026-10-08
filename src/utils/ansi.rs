@@ -5,7 +5,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::ansi::{parse_ansi, AnsiSpan};
 //!
 //! let text = "\x1b[31mRed\x1b[0m Normal";
@@ -100,7 +100,8 @@ impl AnsiState {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::render::Modifier;
 /// use revue::utils::ansi::parse_ansi;
 ///
 /// let spans = parse_ansi("\x1b[1;31mBold Red\x1b[0m");

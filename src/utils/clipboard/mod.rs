@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::clipboard::{copy, paste, Clipboard};
 //!
 //! // Simple copy/paste
