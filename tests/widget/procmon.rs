@@ -55,6 +55,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)] // ProcessView::Tree
     fn test_process_view_clone() {
         let view = ProcessView::Tree;
         assert_eq!(view, view.clone());
@@ -69,6 +70,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)] // ProcessView::Tree
     fn test_process_view_equality() {
         assert_eq!(ProcessView::All, ProcessView::All);
         assert_eq!(ProcessView::User, ProcessView::User);
@@ -76,6 +78,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)] // ProcessView::Tree
     fn test_process_view_debug() {
         let debug_str = format!("{:?}", ProcessView::Tree);
         assert!(debug_str.contains("Tree"));
@@ -211,6 +214,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)] // ProcessView::Tree
     fn test_view() {
         let monitor = ProcessMonitor::new().view(ProcessView::Tree);
         let _ = monitor.process_count();

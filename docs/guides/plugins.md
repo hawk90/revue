@@ -338,7 +338,7 @@ description = "A Revue plugin for my feature"
 keywords = ["tui", "revue", "plugin"]
 
 [dependencies]
-revue = "2.71"
+revue = "3"
 ```
 
 ### lib.rs

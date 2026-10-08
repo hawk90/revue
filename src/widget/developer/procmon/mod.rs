@@ -49,6 +49,8 @@ pub struct ProcessMonitor {
     scroll: usize,
     /// View mode
     view: ProcessView,
+    /// User ID of this process's owner, for the `User` view
+    current_user: Option<String>,
     /// Colors
     colors: ProcColors,
     /// Show command line
@@ -76,6 +78,7 @@ impl ProcessMonitor {
             selected: 0,
             scroll: 0,
             view: ProcessView::default(),
+            current_user: None,
             colors: ProcColors::default(),
             show_cmd: false,
             update_interval: 1000,
@@ -97,6 +100,9 @@ impl ProcessMonitor {
     }
 
     /// Set view mode
+    ///
+    /// `User` lists only the processes owned by the user running this
+    /// program (all of them when that user is unknown).
     pub fn view(mut self, view: ProcessView) -> Self {
         self.view = view;
         self
@@ -108,7 +114,8 @@ impl ProcessMonitor {
         self
     }
 
-    /// Show/hide command line
+    /// Show/hide the command line column (after the status column; needs a
+    /// wide enough area)
     pub fn show_cmd(mut self, show: bool) -> Self {
         self.show_cmd = show;
         self
