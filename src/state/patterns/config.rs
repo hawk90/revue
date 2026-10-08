@@ -5,8 +5,8 @@
 //!
 //! # Example
 //!
-//! ```ignore
-//! use revue::patterns::{AppConfig, ConfigError};
+//! ```no_run
+//! use revue::patterns::AppConfig;
 //! use serde::Deserialize;
 //!
 //! #[derive(Deserialize)]
@@ -109,7 +109,7 @@ pub trait AppConfig: Sized + DeserializeOwned {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
     /// fn config_dir() -> &'static str {
     ///     "myapp"  // -> ~/.config/myapp/
     /// }
@@ -120,7 +120,7 @@ pub trait AppConfig: Sized + DeserializeOwned {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
     /// fn config_file() -> &'static str {
     ///     "config.toml"
     /// }
@@ -191,8 +191,25 @@ pub trait AppConfig: Sized + DeserializeOwned {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
+    /// use revue::patterns::AppConfig;
+    /// use serde::Deserialize;
+    ///
+    /// #[derive(Deserialize, Default)]
+    /// struct MyAppConfig {
+    ///     #[serde(default)]
+    ///     theme: String,
+    /// }
+    ///
+    /// impl AppConfig for MyAppConfig {
+    ///     fn config_dir() -> &'static str {
+    ///         "revue-doc-example-never-created"
+    ///     }
+    /// }
+    ///
+    /// // No config file there: the defaults are used
     /// let config = MyAppConfig::load_or_default();
+    /// assert_eq!(config.theme, "");
     /// ```
     fn load_or_default() -> Self
     where
@@ -207,10 +224,24 @@ pub trait AppConfig: Sized + DeserializeOwned {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```no_run
+    /// use revue::patterns::AppConfig;
+    /// use serde::Deserialize;
+    ///
+    /// #[derive(Deserialize)]
+    /// struct MyAppConfig {
+    ///     server_url: String,
+    /// }
+    ///
+    /// impl AppConfig for MyAppConfig {
+    ///     fn config_dir() -> &'static str {
+    ///         "myapp"
+    ///     }
+    /// }
+    ///
     /// fn main() {
     ///     let config = MyAppConfig::load_or_exit();
-    ///     // ...
+    ///     println!("{}", config.server_url);
     /// }
     /// ```
     fn load_or_exit() -> Self {
@@ -227,19 +258,37 @@ pub trait AppConfig: Sized + DeserializeOwned {
 
     /// Validate configuration
     ///
-    /// Override to add custom validation logic.
+    /// Override to add custom validation logic. [`load`](Self::load) does not
+    /// call it: call it on the loaded config.
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// fn validate(&self) -> Result<(), ConfigError> {
-    ///     if self.api_token.is_empty() {
-    ///         return Err(ConfigError::ValidationError(
-    ///             "api_token cannot be empty".to_string()
-    ///         ));
-    ///     }
-    ///     Ok(())
+    /// ```
+    /// use revue::patterns::{AppConfig, ConfigError};
+    /// use serde::Deserialize;
+    ///
+    /// #[derive(Deserialize)]
+    /// struct MyAppConfig {
+    ///     api_token: String,
     /// }
+    ///
+    /// impl AppConfig for MyAppConfig {
+    ///     fn config_dir() -> &'static str {
+    ///         "myapp"
+    ///     }
+    ///
+    ///     fn validate(&self) -> Result<(), ConfigError> {
+    ///         if self.api_token.is_empty() {
+    ///             return Err(ConfigError::ValidationError(
+    ///                 "api_token cannot be empty".to_string()
+    ///             ));
+    ///         }
+    ///         Ok(())
+    ///     }
+    /// }
+    ///
+    /// let config = MyAppConfig { api_token: String::new() };
+    /// assert!(config.validate().is_err());
     /// ```
     fn validate(&self) -> Result<(), ConfigError> {
         Ok(())
@@ -257,8 +306,12 @@ pub trait AppConfig: Sized + DeserializeOwned {
 ///
 /// # Example
 ///
-/// ```ignore
-/// ensure_config_dir("myapp")?;
+/// ```no_run
+/// use revue::patterns::config::ensure_config_dir;
+///
+/// // Creates ~/.config/myapp/ if it is missing
+/// let dir = ensure_config_dir("myapp")?;
+/// # Ok::<(), revue::patterns::ConfigError>(())
 /// ```
 pub fn ensure_config_dir(app_name: &str) -> Result<PathBuf, ConfigError> {
     let home = dirs::home_dir().ok_or(ConfigError::NoHome)?;
@@ -276,8 +329,14 @@ pub fn ensure_config_dir(app_name: &str) -> Result<PathBuf, ConfigError> {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```no_run
+/// use revue::patterns::config::write_default_config;
+///
+/// const DEFAULT_CONFIG_TOML: &str = "server_url = \"http://localhost\"\n";
+///
+/// // Fails if ~/.config/myapp/config.toml already exists
 /// write_default_config("myapp", "config.toml", DEFAULT_CONFIG_TOML)?;
+/// # Ok::<(), revue::patterns::ConfigError>(())
 /// ```
 pub fn write_default_config(
     app_name: &str,

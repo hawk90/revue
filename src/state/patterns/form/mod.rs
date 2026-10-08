@@ -17,7 +17,7 @@
 //!
 //! ## Create a Form
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::prelude::*;
 //!
 //! let form = FormState::new()
@@ -31,80 +31,74 @@
 //!     .build();
 //! ```
 //!
-//! ## Set Values
+//! ## Set Values, Check Validity, Get Errors
 //!
-//! ```rust,ignore
-//! form.set_value("username", "john");
+//! ```
+//! use revue::patterns::FormState;
+//!
+//! let form = FormState::new()
+//!     .field("username", |f| f.label("Username").required().min_length(3))
+//!     .field("email", |f| f.email().required())
+//!     .field("age", |f| f.number().min(0.0).max(150.0))
+//!     .build();
+//!
+//! // Setting a value validates it
+//! form.set_value("username", "jo");
 //! form.set_value("email", "john@example.com");
 //! form.set_value("age", "25");
-//! ```
 //!
-//! ## Check Validity
+//! // Check an individual field
+//! let username = form.get("username").unwrap();
+//! assert!(!username.is_valid());
+//! assert!(username.first_error().is_some());
 //!
-//! ```rust,ignore
-//! // Check individual field
-//! if form.is_field_valid("username") {
-//!     println!("Username is valid");
-//! }
+//! // Every field's first error, as (field, message)
+//! assert_eq!(form.errors().len(), 1);
 //!
-//! // Check entire form
+//! // Check the entire form
+//! form.set_value("username", "john");
 //! if form.is_valid() {
-//!     println!("Form is valid!");
-//!     let data = form.get_values();
+//!     let data = form.values();
+//!     assert_eq!(data["username"], "john");
 //!     // Submit form...
-//! }
-//! ```
-//!
-//! ## Get Errors
-//!
-//! ```rust,ignore
-//! // Get all errors
-//! let errors = form.get_errors();
-//!
-//! // Get field-specific errors
-//! if let Some(field_errors) = form.get_field_errors("email") {
-//!     for error in field_errors {
-//!         println!("{}", error.message);
-//!     }
 //! }
 //! ```
 //!
 //! # Built-in Validators
 //!
-//! | Validator | Description | Parameters |
-//!|-----------|-------------|------------|
+//! | Builder method | Description | Parameters |
+//!|----------------|-------------|------------|
 //! | `required()` | Value must be present | - |
 //! | `min_length()` | Minimum string length | `usize` |
 //! | `max_length()` | Maximum string length | `usize` |
 //! | `min()` | Minimum numeric value | `f64` |
 //! | `max()` | Maximum numeric value | `f64` |
-//! | `pattern()` | Regex pattern match | `&str` |
-//! | `email()` | Email format validation | - |
-//! | `url()` | URL format validation | - |
-//! | `custom()` | Custom validator | `ValidatorFn` |
+//! | `email()` | Email field, validates the format | - |
+//! | `number()` / `integer()` | Numeric field, validates the number | - |
+//! | `matches()` | Must equal another field (password confirmation) | field name |
+//! | `validator()` | Any [`ValidatorFn`], e.g. from [`Validators`] | `ValidatorFn` |
 //!
 //! # Custom Validators
 //!
-//! ```rust,ignore
-//! use revue::patterns::form::{ValidatorFn, ValidationError};
+//! ```
+//! use revue::patterns::form::{FormState, ValidationError, Validators};
 //!
-//! let password_validator: ValidatorFn = |value| {
-//!     let s = value.as_string().unwrap_or_default();
-//!     if s.len() < 8 {
-//!         return Err(vec![ValidationError {
-//!             message: "Password must be at least 8 characters".to_string(),
-//!             code: "min_length".to_string(),
-//!         }]);
+//! let password_validator = Validators::custom(|value| {
+//!     if value.len() < 8 {
+//!         return Err(ValidationError::new("Password must be at least 8 characters"));
 //!     }
 //!     Ok(())
-//! };
+//! });
 //!
 //! let form = FormState::new()
 //!     .field("password", |f| f
 //!         .label("Password")
 //!         .required()
-//!         .custom(password_validator))
+//!         .validator(password_validator))
 //!     .build();
+//!
+//! form.set_value("password", "short");
+//! assert!(!form.is_valid());
 //! ```
 
 mod field;

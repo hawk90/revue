@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```ignore
+//! ```
 //! use revue::patterns::UndoStack;
 //!
 //! let mut stack = UndoStack::new(100);
@@ -23,7 +23,7 @@
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::patterns::UndoStack;
 ///
 /// let mut stack = UndoStack::new(100);

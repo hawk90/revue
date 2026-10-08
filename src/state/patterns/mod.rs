@@ -57,7 +57,7 @@
 //!
 //! ## Message with Auto-Timeout
 //!
-//! ```ignore
+//! ```
 //! use revue::patterns::MessageState;
 //!
 //! struct App {
@@ -77,46 +77,54 @@
 //!
 //! ## Async Task with Spinner
 //!
-//! ```ignore
-//! use revue::patterns::{AsyncTask, spinner_char};
+//! ```
+//! use revue::patterns::{spinner_char, AsyncTask};
+//!
+//! fn fetch_items() -> Vec<String> {
+//!     vec!["one".into()] // Expensive operation
+//! }
 //!
 //! struct App {
-//!     task: Option<AsyncTask<Vec<Item>>>,
+//!     items: Vec<String>,
+//!     task: Option<AsyncTask<Vec<String>>>,
+//!     frame: usize,
 //! }
 //!
 //! impl App {
 //!     fn start_loading(&mut self) {
-//!         self.task = Some(AsyncTask::new(async {
-//!             // Expensive operation
-//!             fetch_items().await
-//!         }));
+//!         self.task = Some(AsyncTask::spawn(fetch_items));
 //!     }
 //!
 //!     fn poll(&mut self) -> bool {
-//!         if let Some(task) = &mut self.task {
-//!             match task.try_recv() {
-//!                 Some(result) => {
-//!                     self.items = result;
-//!                     self.task = None;
-//!                     true
-//!                 }
-//!                 None => {
-//!                     // Show spinner
-//!                     let frame = spinner_char();
-//!                     self.draw_spinner(frame);
-//!                     false
-//!                 }
+//!         let Some(task) = &mut self.task else { return false };
+//!         match task.try_recv() {
+//!             Some(result) => {
+//!                 self.items = result;
+//!                 self.task = None;
 //!             }
-//!         } else {
-//!             false
+//!             // Still loading: advance the spinner
+//!             None => self.frame += 1,
 //!         }
+//!         true
+//!     }
+//!
+//!     fn status(&self) -> &str {
+//!         if self.task.is_some() { spinner_char(self.frame) } else { "✓" }
 //!     }
 //! }
+//!
+//! let mut app = App { items: Vec::new(), task: None, frame: 0 };
+//! app.start_loading();
+//! while app.task.is_some() {
+//!     app.poll();
+//! #   std::thread::sleep(std::time::Duration::from_millis(1));
+//! }
+//! assert_eq!(app.status(), "✓");
 //! ```
 //!
 //! ## Form with Validation
 //!
-//! ```ignore
+//! ```
 //! use revue::patterns::FormState;
 //!
 //! struct App {
@@ -127,16 +135,22 @@
 //!     fn new() -> Self {
 //!         Self {
 //!             form: FormState::new()
-//!                 .field("username", FieldType::Text)
-//!                 .field("password", FieldType::Password)
-//!                 .field("remember", FieldType::Checkbox),
+//!                 .field("username", |f| f.label("Username").required())
+//!                 .field("password", |f| f.password().required().min_length(8))
+//!                 .build(),
 //!         }
 //!     }
 //!
-//!     fn submit(&self) -> Result<(), Vec<ValidationError>> {
-//!         self.form.validate()
+//!     /// The first error of each invalid field, as (field, message)
+//!     fn submit(&self) -> Result<(), Vec<(String, String)>> {
+//!         if self.form.submit() { Ok(()) } else { Err(self.form.errors()) }
 //!     }
 //! }
+//!
+//! let app = App::new();
+//! app.form.set_value("username", "alice");
+//! app.form.set_value("password", "short");
+//! assert_eq!(app.submit().unwrap_err().len(), 1);
 //! ```
 
 pub mod async_ops;

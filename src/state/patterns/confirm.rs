@@ -5,12 +5,13 @@
 //!
 //! # Example
 //!
-//! ```ignore
+//! ```
+//! use revue::event::Key;
 //! use revue::patterns::{ConfirmAction, ConfirmState};
 //!
 //! struct App {
 //!     confirm: ConfirmState,
-//!     items: Vec<Item>,
+//!     items: Vec<String>,
 //! }
 //!
 //! impl App {
@@ -19,11 +20,14 @@
 //!         if self.confirm.is_active() {
 //!             match key {
 //!                 Key::Char('y') | Key::Enter => {
-//!                     self.confirm.execute(|action| {
-//!                         match action {
-//!                             ConfirmAction::Delete => self.delete_item(),
-//!                             ConfirmAction::Custom(msg) => self.custom_action(msg),
+//!                     // The closure may use the app's other fields
+//!                     let items = &mut self.items;
+//!                     self.confirm.execute(|action| match action {
+//!                         ConfirmAction::Delete => {
+//!                             items.pop();
 //!                         }
+//!                         ConfirmAction::Custom(msg) => println!("{}", msg),
+//!                         _ => {}
 //!                     });
 //!                 }
 //!                 _ => self.confirm.cancel(),
@@ -33,22 +37,24 @@
 //!
 //!         // Normal key handling
 //!         match key {
-//!             Key::Char('d') => {
-//!                 self.confirm.request(ConfirmAction::Delete);
-//!             }
-//!             // ...
+//!             Key::Char('d') => self.confirm.request(ConfirmAction::Delete),
+//!             _ => return false,
 //!         }
 //!         true
 //!     }
 //!
-//!     fn render_footer(&self, ctx: &mut RenderContext) {
-//!         if let Some(msg) = self.confirm.message() {
-//!             ctx.draw_text(0, 0, msg, YELLOW);
-//!             return;
-//!         }
-//!         // ... render normal footer ...
+//!     fn footer(&self) -> &str {
+//!         // The question replaces the normal footer while it is pending
+//!         self.confirm.message().unwrap_or("d: delete")
 //!     }
 //! }
+//!
+//! let mut app = App { confirm: ConfirmState::new(), items: vec!["a".into(), "b".into()] };
+//! app.handle_key(&Key::Char('d'));
+//! assert_eq!(app.footer(), "Delete? (y/n)");
+//! app.handle_key(&Key::Char('y'));
+//! assert_eq!(app.items, ["a"]);
+//! assert_eq!(app.footer(), "d: delete");
 //! ```
 
 /// Common confirmation actions
@@ -73,7 +79,9 @@ impl ConfirmAction {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
+    /// use revue::patterns::ConfirmAction;
+    ///
     /// let action = ConfirmAction::Delete;
     /// assert_eq!(action.message(), "Delete? (y/n)");
     /// ```
@@ -106,8 +114,12 @@ impl ConfirmState {
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// app.confirm.request(ConfirmAction::Delete);
+    /// ```
+    /// use revue::patterns::{ConfirmAction, ConfirmState};
+    ///
+    /// let mut confirm = ConfirmState::new();
+    /// confirm.request(ConfirmAction::Delete);
+    /// assert_eq!(confirm.message(), Some("Delete? (y/n)"));
     /// ```
     pub fn request(&mut self, action: ConfirmAction) {
         self.action = Some(action);
@@ -132,11 +144,19 @@ impl ConfirmState {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
+    /// use revue::event::Key;
+    /// use revue::patterns::{ConfirmAction, ConfirmState};
+    ///
+    /// let mut confirm = ConfirmState::new();
+    /// confirm.request(ConfirmAction::Delete);
+    ///
+    /// let key = Key::Escape;
     /// match key {
-    ///     Key::Char('n') | Key::Esc => app.confirm.cancel(),
-    ///     // ...
+    ///     Key::Char('n') | Key::Escape => confirm.cancel(),
+    ///     _ => {}
     /// }
+    /// assert!(!confirm.is_active());
     /// ```
     pub fn cancel(&mut self) {
         self.action = None;
@@ -149,14 +169,20 @@ impl ConfirmState {
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// self.confirm.execute(|action| {
-    ///     match action {
-    ///         ConfirmAction::Delete => self.delete_item(),
-    ///         ConfirmAction::OpenBrowser => self.open_browser(),
-    ///         ConfirmAction::Custom(msg) => println!("{}", msg),
-    ///     }
+    /// ```
+    /// use revue::patterns::{ConfirmAction, ConfirmState};
+    ///
+    /// let mut confirm = ConfirmState::new();
+    /// confirm.request(ConfirmAction::Restart);
+    ///
+    /// let mut restarted = false;
+    /// confirm.execute(|action| match action {
+    ///     ConfirmAction::Restart => restarted = true,
+    ///     ConfirmAction::Custom(msg) => println!("{}", msg),
+    ///     _ => {}
     /// });
+    /// assert!(restarted);
+    /// assert!(!confirm.is_active());
     /// ```
     pub fn execute<F>(&mut self, f: F)
     where
@@ -174,18 +200,20 @@ impl ConfirmState {
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// self.confirm.execute_if(|action| {
-    ///     if let ConfirmAction::Delete = action {
-    ///         // Pre-check passed
-    ///         true
-    ///     } else {
-    ///         false
-    ///     }
-    /// }, |action| {
-    ///     // Actually execute
-    ///     self.handle_action(action);
-    /// });
+    /// ```
+    /// use revue::patterns::{ConfirmAction, ConfirmState};
+    ///
+    /// let mut confirm = ConfirmState::new();
+    /// confirm.request(ConfirmAction::Abort);
+    ///
+    /// let mut deleted = false;
+    /// confirm.execute_if(
+    ///     |action| matches!(action, ConfirmAction::Delete),
+    ///     |_| deleted = true,
+    /// );
+    /// // The check failed: nothing ran, and the question is still pending
+    /// assert!(!deleted);
+    /// assert!(confirm.is_active());
     /// ```
     pub fn execute_if<P, F>(&mut self, predicate: P, f: F)
     where
