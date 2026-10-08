@@ -362,8 +362,10 @@ thread_local! {
     /// they were first notified.
     static DEFERRED_SUBSCRIBERS: RefCell<(Vec<SubscriberId>, HashSet<SubscriberId>)> =
         RefCell::new((Vec::new(), HashSet::new()));
-    /// `Signal::subscribe` callbacks to call then, each once.
-    static DEFERRED_CALLBACKS: RefCell<Vec<SubscriberCallback>> = const { RefCell::new(Vec::new()) };
+    /// `Signal::subscribe` subscriptions to call then, each once, keyed by
+    /// (signal id, subscription id) - both unique for the process' lifetime.
+    static DEFERRED_CALLBACKS: RefCell<Vec<((u64, u64), SubscriberCallback)>> =
+        const { RefCell::new(Vec::new()) };
 }
 
 fn defer_subscriber(id: SubscriberId) {
@@ -375,12 +377,14 @@ fn defer_subscriber(id: SubscriberId) {
     });
 }
 
-/// Hold a `Signal::subscribe` callback until the batch ends (once per batch).
-pub(crate) fn defer_callback(callback: SubscriberCallback) {
+/// Hold a `Signal::subscribe` subscription until the batch ends (once per
+/// batch, by `key`). `run` looks the subscription up when it is called, so
+/// one dropped in the meantime is skipped.
+pub(crate) fn defer_callback(key: (u64, u64), run: SubscriberCallback) {
     DEFERRED_CALLBACKS.with(|d| {
         let mut d = d.borrow_mut();
-        if !d.iter().any(|c| Arc::ptr_eq(c, &callback)) {
-            d.push(callback);
+        if !d.iter().any(|(k, _)| *k == key) {
+            d.push((key, run));
         }
     });
 }
@@ -405,7 +409,7 @@ pub(crate) fn run_deferred() {
             callback();
         }
     }
-    for callback in callbacks {
+    for (_, callback) in callbacks {
         callback();
     }
 }

@@ -206,3 +206,18 @@ fn a_queued_update_that_panics_still_closes_the_batch() {
         "a later change was still deferred"
     );
 }
+
+#[test]
+fn a_subscription_dropped_during_the_batch_is_not_called_after_it() {
+    let x = signal(0);
+    let calls = signal(0);
+    let sub = x.subscribe({
+        let calls = calls.clone();
+        move || calls.update(|n| *n += 1)
+    });
+    batch(|| {
+        x.set(1);
+        drop(sub);
+    });
+    assert_eq!(calls.get(), 0, "a dropped subscription was called");
+}
