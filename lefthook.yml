@@ -30,6 +30,9 @@ commit-msg:
         # and the description must not start with a capital letter.
         # Only the first line counts - a matching line in the body is no excuse.
         SUBJECT=$(head -n 1 {1})
+        # git's own merge commits (`git pull`, `git merge`) keep their message;
+        # they never reach main, where every PR is squash-merged.
+        case "$SUBJECT" in Merge\ *) exit 0 ;; esac
         if ! printf '%s\n' "$SUBJECT" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: [^A-Z].*$"; then
           echo "Commit subject does not follow Conventional Commits format:"
           echo "  $SUBJECT"
