@@ -5,7 +5,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::prelude::*;
 //!
 //! // Announce a message
@@ -42,7 +42,9 @@ fn get_accessibility() -> &'static Arc<RwLock<AccessibilityManager>> {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::accessibility_signal::announce;
+///
 /// announce("5 items loaded");
 /// announce("Selection changed to item 3");
 /// ```
@@ -61,7 +63,9 @@ pub fn announce(message: impl Into<String>) {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::accessibility_signal::announce_now;
+///
 /// announce_now("Error: Form validation failed");
 /// announce_now("Alert: Connection lost");
 /// ```
@@ -114,14 +118,17 @@ pub fn set_reduced_motion(enabled: bool) {
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// if prefers_reduced_motion() {
-///     // Use instant transition
-///     progress.set_instant(true);
+/// ```
+/// use revue::utils::accessibility_signal::prefers_reduced_motion;
+/// use std::time::Duration;
+///
+/// // Skip the animation when the user asked for less motion
+/// let transition = if prefers_reduced_motion() {
+///     Duration::ZERO
 /// } else {
-///     // Use animated transition
-///     progress.set_animated(true);
-/// }
+///     Duration::from_millis(200)
+/// };
+/// # let _ = transition;
 /// ```
 pub fn prefers_reduced_motion() -> bool {
     let manager = get_accessibility().read().unwrap_or_else(|e| {
@@ -149,7 +156,10 @@ pub fn set_high_contrast(enabled: bool) {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::style::set_theme_by_id;
+/// use revue::utils::accessibility_signal::is_high_contrast;
+///
 /// if is_high_contrast() {
 ///     // Use high-contrast-dark or high-contrast-light theme
 ///     set_theme_by_id("high-contrast-dark");

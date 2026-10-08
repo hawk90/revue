@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::natural_cmp;
 //!
 //! let mut files = vec!["file10.txt", "file2.txt", "file1.txt"];
@@ -104,7 +104,7 @@ fn parse_segments(s: &str) -> Vec<Segment<'_>> {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::natural_cmp;
 /// use std::cmp::Ordering;
 ///
@@ -153,7 +153,7 @@ pub fn natural_cmp_case_sensitive(a: &str, b: &str) -> Ordering {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::natural_sort;
 ///
 /// let mut items = vec!["z2", "z10", "z1"];
@@ -176,7 +176,7 @@ pub fn natural_sort_case_sensitive<T: AsRef<str>>(slice: &mut [T]) {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::NaturalKey;
 ///
 /// struct File { name: String }
