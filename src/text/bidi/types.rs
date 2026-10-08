@@ -383,6 +383,10 @@ impl BidiInfo {
 }
 
 /// Configuration for BiDi text handling
+#[deprecated(
+    since = "3.7.0",
+    note = "no function takes a BidiConfig; pass the direction to `BidiInfo::new(text, direction)`"
+)]
 #[derive(Clone, Debug)]
 pub struct BidiConfig {
     /// Default text direction
@@ -393,6 +397,7 @@ pub struct BidiConfig {
     pub enable_mirroring: bool,
 }
 
+#[allow(deprecated)]
 impl Default for BidiConfig {
     fn default() -> Self {
         Self {
