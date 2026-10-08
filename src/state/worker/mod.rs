@@ -208,9 +208,14 @@ pub struct WorkerConfig {
     /// Task queue capacity
     pub queue_capacity: usize,
     /// Default timeout in milliseconds
+    #[deprecated(
+        since = "3.7.0",
+        note = "never read: a running task cannot be stopped; wait with a deadline using `WorkerHandle::join_timeout` or `WorkerPool::join_timeout`"
+    )]
     pub default_timeout_ms: Option<u64>,
 }
 
+#[allow(deprecated)] // `default_timeout_ms` is still initialized
 impl Default for WorkerConfig {
     fn default() -> Self {
         Self {
@@ -296,7 +301,6 @@ mod tests {
         let config = WorkerConfig::default();
         assert!(config.threads >= 1);
         assert_eq!(config.queue_capacity, 1000);
-        assert!(config.default_timeout_ms.is_none());
     }
 
     #[test]
