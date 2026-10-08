@@ -69,7 +69,6 @@ fn test_form_new_defaults() {
     let form = Form::new(FormState::new().build());
     assert!(form.is_valid());
     assert_eq!(form.error_count(), 0);
-    assert!(form.get_submit_text().is_none());
     assert!(form.get_show_errors());
     assert_eq!(form.get_error_style(), ErrorDisplayStyle::Inline);
     assert!(form.form_state().values().is_empty());
@@ -82,7 +81,6 @@ fn test_form_default_matches_new() {
     let form = Form::default();
     assert!(form.is_valid());
     assert_eq!(form.error_count(), 0);
-    assert!(form.get_submit_text().is_none());
     assert!(form.get_show_errors());
     assert_eq!(form.get_error_style(), ErrorDisplayStyle::Inline);
 }
@@ -91,17 +89,14 @@ fn test_form_default_matches_new() {
 fn test_form_helper_fn() {
     let form = form(email_form());
     assert_eq!(form.form_state().field_names(), ["email".to_string()]);
-    assert!(form.get_submit_text().is_none());
 }
 
 #[test]
 fn test_form_builder() {
     let form = Form::new(FormState::new().build())
-        .submit_text("Send")
         .show_errors(false)
         .error_style(ErrorDisplayStyle::Summary);
 
-    assert_eq!(form.get_submit_text(), Some(&"Send".to_string()));
     assert!(!form.get_show_errors());
     assert_eq!(form.get_error_style(), ErrorDisplayStyle::Summary);
 
@@ -276,7 +271,6 @@ fn test_form_full_builder_chain_with_props() {
         .element_id("login-form")
         .class("form-container")
         .classes(vec!["large", "animated"])
-        .submit_text("Login")
         .error_style(ErrorDisplayStyle::Both);
 
     assert_eq!(form.id(), Some("login-form"));
@@ -284,7 +278,6 @@ fn test_form_full_builder_chain_with_props() {
         View::classes(&form),
         strings(&["form-container", "large", "animated"])
     );
-    assert_eq!(form.get_submit_text(), Some(&"Login".to_string()));
     assert_eq!(form.get_error_style(), ErrorDisplayStyle::Both);
 }
 
