@@ -100,7 +100,6 @@ fn test_zen_mode_new_defaults() {
     // Nothing named a color, so the stylesheet can reach it; the dark default
     // is applied where the fill is painted.
     assert_eq!(z.get_bg_color(), None);
-    assert_eq!(z.get_dim_opacity(), 0.0);
     assert!(!z.get_center_vertical());
 }
 
@@ -108,24 +107,6 @@ fn test_zen_mode_new_defaults() {
 fn test_zen_bg() {
     let z = ZenMode::new(Text::new("Test")).bg(Color::RED);
     assert_eq!(z.get_bg_color(), Some(Color::RED));
-}
-
-#[test]
-fn test_zen_dim_clamps_low() {
-    let z = ZenMode::new(Text::new("Test")).dim(-0.5);
-    assert_eq!(z.get_dim_opacity(), 0.0);
-}
-
-#[test]
-fn test_zen_dim_clamps_high() {
-    let z = ZenMode::new(Text::new("Test")).dim(1.5);
-    assert_eq!(z.get_dim_opacity(), 1.0);
-}
-
-#[test]
-fn test_zen_dim() {
-    let z = ZenMode::new(Text::new("Test")).dim(0.5);
-    assert_eq!(z.get_dim_opacity(), 0.5);
 }
 
 #[test]
@@ -139,13 +120,11 @@ fn test_zen_builder_chain() {
     let z = ZenMode::new(Text::new("Test"))
         .padding(6)
         .bg(Color::CYAN)
-        .dim(0.3)
         .center();
 
     assert_eq!(z.get_padding_x(), 6);
     assert_eq!(z.get_padding_y(), 6);
     assert_eq!(z.get_bg_color(), Some(Color::CYAN));
-    assert_eq!(z.get_dim_opacity(), 0.3);
     assert!(z.get_center_vertical());
 }
 
