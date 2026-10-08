@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.3](https://github.com/hawk90/revue/compare/v3.6.2...v3.6.3) (2026-10-08)
+
+
+### Bug Fixes
+
+* **patterns:** make MessageState::set_with_duration a one-time override ([#832](https://github.com/hawk90/revue/issues/832)) ([d563d9f](https://github.com/hawk90/revue/commit/d563d9f567c75981bb3a35f50820c97c462892bc))
+* **patterns:** stop AsyncTask::is_running from taking the result ([#831](https://github.com/hawk90/revue/issues/831)) ([1d5b962](https://github.com/hawk90/revue/commit/1d5b96200e781af4d45b98fae8c644c16a912e46))
+* **reactive:** warn when an Effect handle is dropped right away ([#833](https://github.com/hawk90/revue/issues/833)) ([7e65788](https://github.com/hawk90/revue/commit/7e657882777704f56dad349c372825f6e92f1b6f))
+
 ## [3.6.2](https://github.com/hawk90/revue/compare/v3.6.1...v3.6.2) (2026-10-08)
 
 
