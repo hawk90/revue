@@ -27,6 +27,10 @@ pub struct DebugConfig {
     /// Show event log
     pub show_events: bool,
     /// Show style inspector
+    #[deprecated(
+        since = "3.7.0",
+        note = "the overlay has no style panel and never reads this; inspect styles with `revue::devtools::StyleInspector`"
+    )]
     pub show_styles: bool,
     /// Panel position
     pub position: DebugPosition,
@@ -48,7 +52,7 @@ pub struct DebugConfig {
     pub accent_color: Color,
 }
 
-#[allow(deprecated)] // `opacity` is still initialized
+#[allow(deprecated)] // `opacity` and `show_styles` are still initialized
 impl Default for DebugConfig {
     fn default() -> Self {
         Self {

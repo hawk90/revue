@@ -25,17 +25,17 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.actor != 'github-actions[bot]'
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
           cache: false
           build-warnings: allow
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           shared-key: "security"
       # `rustsec/audit-check` runs on Node 20, which GitHub is retiring, and
       # the action has no Node 24 release. Install the binary and run it.
-      - uses: taiki-e/install-action@cargo-audit
+      - uses: taiki-e/install-action@031bfc83e95968e35021f0e138651dba756b815e # cargo-audit
       - run: cargo audit
 
   deny:
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.actor != 'github-actions[bot]'
     steps:
-      - uses: actions/checkout@v7
-      - uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2
         with:
           command: check all

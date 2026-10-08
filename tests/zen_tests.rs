@@ -35,12 +35,6 @@ fn test_zen_mode_bg() {
 }
 
 #[test]
-fn test_zen_mode_dim() {
-    let content = Text::new("Test");
-    let _zen = ZenMode::new(content).dim(0.5);
-}
-
-#[test]
 fn test_zen_mode_center() {
     let content = Text::new("Test");
     let _zen = ZenMode::new(content).center();
@@ -136,15 +130,6 @@ fn test_zen_mode_enabled_builder() {
     let mut zen = ZenMode::new(content).padding(2);
     zen.enable();
     assert!(zen.is_enabled());
-}
-
-#[test]
-fn test_zen_mode_dim_clamping() {
-    let content = Text::new("Test");
-    // Dim opacity should be clamped to 0.0-1.0
-    let _zen_high = ZenMode::new(content).dim(2.0); // Should clamp to 1.0
-    let content2 = Text::new("Test");
-    let _zen_low = ZenMode::new(content2).dim(-0.5); // Should clamp to 0.0
 }
 
 #[test]

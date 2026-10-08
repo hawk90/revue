@@ -35,15 +35,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
           components: clippy
           cache: false
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           shared-key: "features"
-      - uses: taiki-e/install-action@cargo-hack
+      - uses: taiki-e/install-action@3ba07337ea315bc9340c308d30d4d10093baa59e # cargo-hack
       # `--no-default-features --features X` for every X, plus the default
       # set, no features and all features. `--keep-going` reports every
       # failing feature, not just the first.
@@ -59,14 +59,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
           cache: false
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           shared-key: "features"
-      - uses: taiki-e/install-action@cargo-hack
+      - uses: taiki-e/install-action@3ba07337ea315bc9340c308d30d4d10093baa59e # cargo-hack
       # Presets (`full`, `std`, `gui`, `all-gui`, `default`) are unions of the
       # leaf features, so pairs of leaves cover them.
       - name: check (every pair of features)
