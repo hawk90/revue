@@ -1037,3 +1037,96 @@ fn test_navigation_stops_at_the_date_range() {
     picker.handle_key(&Key::Enter);
     assert_eq!(picker.get_date(), max);
 }
+
+// =============================================================================
+// use_24h / min_time / max_time (#799)
+// =============================================================================
+
+/// The text of a time-only picker's field row.
+fn time_row(picker: &DateTimePicker) -> String {
+    let mut buffer = Buffer::new(30, 6);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 30, 6));
+    picker.render(&mut ctx);
+    (0..30)
+        .map(|x| buffer.get(x, 1).map_or(' ', |c| c.symbol))
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+#[test]
+fn test_time_picker_12h_shows_am_pm() {
+    let pm = time_picker()
+        .selected_time(Time::new(14, 5, 0))
+        .use_24h(false);
+    assert_eq!(time_row(&pm), "02:05 PM");
+
+    let midnight = time_picker()
+        .selected_time(Time::new(0, 30, 0))
+        .use_24h(false);
+    assert_eq!(time_row(&midnight), "12:30 AM");
+
+    let noon = time_picker()
+        .selected_time(Time::new(12, 0, 0))
+        .use_24h(false);
+    assert_eq!(time_row(&noon), "12:00 PM");
+
+    let secs = time_picker()
+        .selected_time(Time::new(23, 59, 7))
+        .show_seconds(true)
+        .use_24h(false);
+    assert_eq!(time_row(&secs), "11:59:07 PM");
+}
+
+#[test]
+fn test_time_picker_24h_by_default() {
+    let picker = time_picker().selected_time(Time::new(14, 5, 0));
+    assert_eq!(time_row(&picker), "14:05");
+}
+
+#[test]
+fn test_time_picker_stops_at_max_time() {
+    let mut picker = time_picker()
+        .selected_time(Time::new(17, 30, 0))
+        .max_time(Time::new(18, 0, 0));
+    picker.handle_key(&Key::Up); // hour 17 -> 18:30, past the limit
+    assert_eq!(time_row(&picker), "18:00");
+    picker.handle_key(&Key::Up);
+    assert_eq!(time_row(&picker), "18:00");
+}
+
+#[test]
+fn test_time_picker_stops_at_min_time() {
+    let mut picker = time_picker()
+        .selected_time(Time::new(9, 30, 0))
+        .min_time(Time::new(9, 0, 0));
+    picker.handle_key(&Key::Down); // hour 9 -> 08:30
+    assert_eq!(time_row(&picker), "09:00");
+    picker.handle_key(&Key::Down);
+    assert_eq!(time_row(&picker), "09:00");
+}
+
+#[test]
+fn test_time_picker_does_not_wrap_past_a_limit() {
+    // Without a limit, hour 0 decrements to 23. With max_time 18:00, 23:00 is
+    // out of range, and jumping to 18:00 would skip the whole evening - so the
+    // picker stays put.
+    let mut picker = time_picker()
+        .selected_time(Time::new(0, 0, 0))
+        .max_time(Time::new(18, 0, 0));
+    picker.handle_key(&Key::Down);
+    assert_eq!(time_row(&picker), "00:00");
+}
+
+#[test]
+fn test_time_picker_starts_within_limits() {
+    let early = time_picker()
+        .selected_time(Time::new(6, 0, 0))
+        .min_time(Time::new(9, 0, 0));
+    assert_eq!(time_row(&early), "09:00");
+
+    let late = time_picker()
+        .max_time(Time::new(18, 0, 0))
+        .selected_time(Time::new(20, 0, 0));
+    assert_eq!(time_row(&late), "18:00");
+}

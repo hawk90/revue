@@ -31,7 +31,7 @@ impl DomRenderer {
         // one, and widgets must see a real area or they would take different
         // branches than the paint pass.
         let mut sink = crate::dom::CollectSink::new();
-        sink.push_root(root.meta());
+        sink.push_styled(root.meta(), root.inline_style(), None);
         {
             let mut discard = crate::widget::OverlayQueue::new();
             let mut ctx = RenderContext::new(buffer, area);

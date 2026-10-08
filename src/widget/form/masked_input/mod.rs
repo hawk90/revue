@@ -204,7 +204,7 @@ impl MaskedInput {
         self
     }
 
-    /// Set background color
+    /// Set the background color of the input field (inside the brackets)
     pub fn bg(mut self, color: Color) -> Self {
         self.bg = Some(color);
         self

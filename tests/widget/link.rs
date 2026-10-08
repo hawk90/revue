@@ -175,6 +175,7 @@ fn test_link_focus_handlers() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_link_tooltip() {
     let link = Link::new("https://example.com").tooltip("Click to visit");
     assert_eq!(link.get_tooltip(), &Some("Click to visit".to_string()));
@@ -346,7 +347,6 @@ fn test_link_builder_chain() {
         .bg(Color::BLACK)
         .focused(true)
         .disabled(false)
-        .tooltip("Hover me")
         .osc8(true);
 
     assert_eq!(link.url(), "https://example.com");
@@ -356,7 +356,6 @@ fn test_link_builder_chain() {
     assert_eq!(link.get_bg(), Some(Color::BLACK));
     assert!(link.is_focused());
     assert!(!link.is_disabled());
-    assert_eq!(link.get_tooltip(), &Some("Hover me".to_string()));
 }
 
 #[test]

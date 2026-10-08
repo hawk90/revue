@@ -15,7 +15,7 @@ use super::{
 ///
 /// For backward compatibility, individual properties can still be accessed
 /// directly (e.g., `style.display` instead of `style.layout.display`).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Style {
     /// Layout properties (display, flex, grid)
     pub layout: LayoutStyle,

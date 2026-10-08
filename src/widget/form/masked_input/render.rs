@@ -124,12 +124,14 @@ impl View for MaskedInput {
         let mut input_text = if self.focused && !self.disabled {
             // A focused empty field still shows its placeholder in grey
             let around_cursor = |s: String| {
-                let text = Text::new(s);
+                let mut text = Text::new(s);
                 if is_placeholder {
-                    text.fg(PLACEHOLDER_FG)
-                } else {
-                    text
+                    text = text.fg(PLACEHOLDER_FG);
                 }
+                if let Some(bg) = self.bg {
+                    text = text.bg(bg);
+                }
+                text
             };
             hstack()
                 .child(around_cursor(display_with_cursor.0))
@@ -150,6 +152,9 @@ impl View for MaskedInput {
                 // grey and the strength scale keep theirs - the scale in
                 // particular runs red to green, and one `color` cannot say that.
                 text = text.fg(fg);
+            }
+            if let Some(bg) = self.bg {
+                text = text.bg(bg);
             }
             hstack().child(text)
         };

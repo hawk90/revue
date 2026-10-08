@@ -327,6 +327,16 @@ Text::new("Colored")
     .bold()
 ```
 
+A custom widget that keeps a `WidgetProps` and uses `impl_view_meta!` can take
+a whole `Style` through `WidgetProps::style`. It reaches the widget's DOM node as
+an inline style: the cascade applies it after every stylesheet rule, so it wins
+over `#id` and class rules, and the widget reads it back through `ctx.css_color`
+and friends.
+
+```rust
+let props = WidgetProps::new().id("swatch").style(my_style);
+```
+
 ## Example: Complete Stylesheet
 
 ```css

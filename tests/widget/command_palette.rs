@@ -1302,3 +1302,46 @@ fn test_command_palette_render_fits_very_narrow_areas() {
         }
     }
 }
+
+/// Paint `palette` and return its rows as text.
+fn palette_text(palette: &CommandPalette) -> String {
+    let mut buffer = Buffer::new(70, 14);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 70, 14));
+    palette.render(&mut ctx);
+    (0..14)
+        .map(|y| {
+            (0..70)
+                .map(|x| buffer.get(x, y).map_or(' ', |c| c.symbol))
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// #799: `show_descriptions` was stored and the descriptions never drawn.
+#[test]
+fn test_command_palette_draws_descriptions() {
+    let make = |show: bool| {
+        let mut p = CommandPalette::new()
+            .width(60)
+            .command(
+                Command::new("save", "Save")
+                    .description("Write to disk")
+                    .shortcut("Ctrl+S"),
+            )
+            .command(Command::new("quit", "Quit"))
+            .show_descriptions(show);
+        p.show();
+        p
+    };
+
+    let shown = palette_text(&make(true));
+    assert!(shown.contains("Write to disk"), "{shown}");
+    assert!(
+        shown.contains("Ctrl+S"),
+        "the shortcut lost its place:\n{shown}"
+    );
+
+    let hidden = palette_text(&make(false));
+    assert!(!hidden.contains("Write to disk"), "{hidden}");
+}

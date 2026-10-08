@@ -149,21 +149,37 @@ use std::sync::atomic::{AtomicBool, Ordering};
 static DEBUG_ENABLED: AtomicBool = AtomicBool::new(false);
 
 /// Enable global debug mode
+#[deprecated(
+    since = "3.5.0",
+    note = "nothing reads the global debug flag; show or hide a `DebugOverlay` with its `visible` builder"
+)]
 pub fn enable_debug() {
     DEBUG_ENABLED.store(true, Ordering::Relaxed);
 }
 
 /// Disable global debug mode
+#[deprecated(
+    since = "3.5.0",
+    note = "nothing reads the global debug flag; show or hide a `DebugOverlay` with its `visible` builder"
+)]
 pub fn disable_debug() {
     DEBUG_ENABLED.store(false, Ordering::Relaxed);
 }
 
 /// Check if debug mode is enabled
+#[deprecated(
+    since = "3.5.0",
+    note = "nothing reads the global debug flag; show or hide a `DebugOverlay` with its `visible` builder"
+)]
 pub fn is_debug_enabled() -> bool {
     DEBUG_ENABLED.load(Ordering::Relaxed)
 }
 
 /// Toggle debug mode
+#[deprecated(
+    since = "3.5.0",
+    note = "nothing reads the global debug flag; show or hide a `DebugOverlay` with its `visible` builder"
+)]
 pub fn toggle_debug() -> bool {
     let was_enabled = DEBUG_ENABLED.fetch_xor(true, Ordering::Relaxed);
     !was_enabled
@@ -195,6 +211,7 @@ mod tests {
 
     #[test]
     #[serial]
+    #[allow(deprecated)]
     fn test_global_debug_state() {
         disable_debug();
         assert!(!is_debug_enabled());
@@ -341,6 +358,7 @@ mod tests {
 
     #[test]
     #[serial]
+    #[allow(deprecated)]
     fn test_enable_debug() {
         disable_debug();
         enable_debug();
@@ -349,6 +367,7 @@ mod tests {
 
     #[test]
     #[serial]
+    #[allow(deprecated)]
     fn test_disable_debug() {
         enable_debug();
         disable_debug();
@@ -357,6 +376,7 @@ mod tests {
 
     #[test]
     #[serial]
+    #[allow(deprecated)]
     fn test_toggle_debug_returns_new_state() {
         disable_debug();
         let enabled = toggle_debug();

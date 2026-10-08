@@ -6,9 +6,10 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
+#[allow(deprecated)] // the global debug flag is deprecated (#799)
+use revue::widget::{disable_debug, enable_debug, is_debug_enabled};
 use revue::widget::{
-    disable_debug, enable_debug, is_debug_enabled, DebugConfig, DebugEvent, DebugOverlay,
-    DebugPosition, EventLog, PerfMetrics, Text, WidgetInfo,
+    DebugConfig, DebugEvent, DebugOverlay, DebugPosition, EventLog, PerfMetrics, Text, WidgetInfo,
 };
 use serial_test::serial;
 use std::time::Duration;
@@ -478,6 +479,7 @@ fn test_perf_metrics_metrics_mut() {
 // =============================================================================
 
 #[test]
+#[allow(deprecated)]
 fn test_debug_config_default() {
     let config = DebugConfig::default();
 
@@ -729,6 +731,7 @@ fn test_widget_info_all_attributes() {
 
 #[test]
 #[serial]
+#[allow(deprecated)]
 fn test_global_debug_multiple_enables() {
     disable_debug();
     enable_debug();
@@ -740,6 +743,7 @@ fn test_global_debug_multiple_enables() {
 
 #[test]
 #[serial]
+#[allow(deprecated)]
 fn test_global_debug_multiple_disables() {
     enable_debug();
     disable_debug();

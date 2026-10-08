@@ -18,8 +18,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::event::drag::{DragData, DragId, DropTarget};
-use crate::impl_view_meta;
 use crate::layout::Rect;
+use crate::render::Modifier;
 use crate::style::Color;
 use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{Draggable, RenderContext, View, WidgetProps, WidgetState};
@@ -204,8 +204,29 @@ where
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let height = area.height.max(self.min_height);
-        let color = self.current_border_color(ctx);
-        let resting_text = ctx.css_color(LIGHT_GRAY);
+        let disabled = self.state.disabled;
+        // Disabled, the zone is greyed out at rest; a drag over it still gets
+        // the reject color, which says why nothing happens.
+        let color = if disabled && !self.hovered {
+            DISABLED_FG
+        } else {
+            self.current_border_color(ctx)
+        };
+        let resting_text = if disabled {
+            DISABLED_FG
+        } else {
+            self.state.fg.unwrap_or_else(|| ctx.css_color(LIGHT_GRAY))
+        };
+
+        if let Some(bg) = self.state.bg {
+            for y in 0..height {
+                for x in 0..area.width {
+                    if let Some(cell) = ctx.get_mut(x, y) {
+                        cell.bg = Some(bg);
+                    }
+                }
+            }
+        }
 
         match self.style {
             DropZoneStyle::Solid | DropZoneStyle::Dashed => {
@@ -316,10 +337,46 @@ where
 
         let text_color = if self.hovered { color } else { resting_text };
 
-        ctx.draw_text_clipped(text_x, text_y, display_text, text_color, max_len as u16);
+        let highlighted = self.hovered && self.style == DropZoneStyle::Highlight;
+        match self.state.bg {
+            Some(bg) if !highlighted => ctx.draw_text_clipped_bg(
+                text_x,
+                text_y,
+                display_text,
+                text_color,
+                bg,
+                max_len as u16,
+            ),
+            _ => ctx.draw_text_clipped(text_x, text_y, display_text, text_color, max_len as u16),
+        }
+
+        // Focused, the frame (or the minimal indicator) is drawn bold.
+        if self.state.focused && !disabled {
+            let bottom_y = height.saturating_sub(1);
+            let right_x = area.width.saturating_sub(1);
+            let framed = matches!(self.style, DropZoneStyle::Solid | DropZoneStyle::Dashed);
+            for y in 0..height {
+                for x in 0..area.width {
+                    let on_frame = if framed {
+                        y == 0 || y == bottom_y || x == 0 || x == right_x
+                    } else {
+                        self.style == DropZoneStyle::Minimal && x == 0
+                    };
+                    if on_frame {
+                        if let Some(cell) = ctx.get_mut(x, y) {
+                            cell.modifier |= Modifier::BOLD;
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    impl_view_meta!("DropZone");
+    crate::impl_view_meta!(@common);
+    fn meta(&self) -> crate::dom::WidgetMeta {
+        self.props
+            .build_meta("DropZone", false, self.state.disabled)
+    }
 }
 
 // Builder methods (manually implemented due to generic type parameter)
@@ -417,7 +474,7 @@ where
     F: FnMut(DragData) -> bool,
 {
     fn can_drop(&self) -> bool {
-        true
+        !self.state.disabled
     }
 
     fn accepted_types(&self) -> &[&'static str] {
@@ -426,7 +483,7 @@ where
 
     fn on_drag_enter(&mut self, data: &DragData) {
         self.hovered = true;
-        self.can_accept_current = self.can_accept(data);
+        self.can_accept_current = !self.state.disabled && self.can_accept(data);
     }
 
     fn on_drag_leave(&mut self) {
@@ -438,6 +495,9 @@ where
         self.hovered = false;
         self.can_accept_current = false;
 
+        if self.state.disabled {
+            return false;
+        }
         if let Some(ref mut handler) = self.on_drop {
             handler(data)
         } else {

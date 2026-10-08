@@ -40,6 +40,8 @@ impl DomRenderer {
             return;
         }
 
+        self.apply_inline_style(root_id, &root.inline_style());
+
         // Recursively update children
         update_children_internal(self, root_id, root.children());
     }
@@ -255,6 +257,7 @@ fn update_children_internal(
             }
         };
 
+        renderer.apply_inline_style(child_id, &child_view.inline_style());
         new_child_ids.push(child_id);
     }
 

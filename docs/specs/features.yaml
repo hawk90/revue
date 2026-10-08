@@ -673,11 +673,15 @@ items:
       - calendar month view
       - time fields with optional seconds
       - min/max date
+      - min/max time, clamped; the arrow keys stop at a limit
+      - 24-hour or 12-hour (AM/PM) display
       - 'keys: arrows/hjkl, [ ] month, { } year, Tab mode switch, Enter select'
     evidence:
       - src/widget/datetime_picker/helpers.rs::datetime_picker
       - src/widget/datetime_picker/input.rs
       - tests/widget/datetime_picker.rs
+      - tests/widget/datetime_picker.rs::test_time_picker_stops_at_max_time
+      - tests/widget/datetime_picker.rs::test_time_picker_12h_shows_am_pm
       - examples/datetime_picker.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / DateTimePicker

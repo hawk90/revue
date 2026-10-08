@@ -458,3 +458,35 @@ fn test_pagination_large_total() {
     assert_eq!(p.get_current(), 500);
     assert_eq!(p.get_total(), 1000);
 }
+
+/// The symbols painted underlined.
+fn underlined(p: &Pagination) -> String {
+    use revue::render::Modifier;
+    let mut buffer = Buffer::new(40, 1);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 40, 1));
+    p.render(&mut ctx);
+    (0..40)
+        .filter_map(|x| buffer.get(x, 0))
+        .filter(|c| c.modifier.contains(Modifier::UNDERLINE))
+        .map(|c| c.symbol)
+        .collect()
+}
+
+/// #799: `focused()` was stored and only read back by a getter. Focused, the
+/// current page is underlined in every style.
+#[test]
+fn test_pagination_focused_underlines_the_current_page() {
+    let styles = [
+        (PaginationStyle::Full, "3"),
+        (PaginationStyle::Simple, "Page 3 of 5"),
+        (PaginationStyle::Compact, "3/5"),
+        (PaginationStyle::Dots, "●"),
+    ];
+    for (style, want) in styles {
+        let mut p = Pagination::new(5).style(style);
+        p.goto(3);
+        assert_eq!(underlined(&p), "", "{style:?} unfocused");
+        let p = p.focused();
+        assert_eq!(underlined(&p), want, "{style:?} focused");
+    }
+}

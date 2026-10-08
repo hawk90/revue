@@ -31,10 +31,13 @@ use std::collections::HashMap;
 
 use super::types::DomRenderer;
 use crate::dom::{DomId, WidgetMeta};
+use crate::style::Style;
 
 /// One widget seen by the collect pass.
 pub(crate) struct CollectedNode {
     pub(crate) meta: WidgetMeta,
+    /// What [`View::inline_style`](crate::widget::View::inline_style) returned.
+    pub(crate) inline_style: Option<Style>,
     /// Index of the parent in [`CollectSink::nodes`]; `None` for the root.
     pub(crate) parent: Option<usize>,
 }
@@ -58,7 +61,21 @@ impl CollectSink {
 
     /// Record a widget and return its index.
     pub fn push(&mut self, meta: WidgetMeta, parent: Option<usize>) -> usize {
-        self.nodes.push(CollectedNode { meta, parent });
+        self.push_styled(meta, None, parent)
+    }
+
+    /// Record a widget along with its inline style and return its index.
+    pub(crate) fn push_styled(
+        &mut self,
+        meta: WidgetMeta,
+        inline_style: Option<Style>,
+        parent: Option<usize>,
+    ) -> usize {
+        self.nodes.push(CollectedNode {
+            meta,
+            inline_style,
+            parent,
+        });
         self.nodes.len() - 1
     }
 
@@ -172,6 +189,27 @@ impl DomRenderer {
             }
         }
 
-        (0..sink.nodes.len()).map(|i| ids[&i]).collect()
+        let order: Vec<DomId> = (0..sink.nodes.len()).map(|i| ids[&i]).collect();
+        for (node, &id) in sink.nodes.iter().zip(&order) {
+            self.apply_inline_style(id, &node.inline_style);
+        }
+        order
+    }
+
+    /// Copy a widget's inline style onto its node, invalidating the node's
+    /// computed style when it changed.
+    pub(crate) fn apply_inline_style(&mut self, id: DomId, inline: &Option<Style>) {
+        let Some(node) = self.tree.get_mut(id) else {
+            return;
+        };
+        if node.inline_style == *inline {
+            return;
+        }
+        node.inline_style = inline.clone();
+        node.state.dirty = true;
+        self.styles.remove(&id);
+        // The style walk turns back at settled nodes, so an unchanged ancestor
+        // would hide this one.
+        self.tree.mark_subtree_dirty(id);
     }
 }

@@ -157,6 +157,11 @@ impl Rating {
     }
 
     /// Set read-only mode
+    ///
+    /// A read-only rating ignores [`increment`](Self::increment),
+    /// [`decrement`](Self::decrement), [`clear`](Self::clear) and hover
+    /// previews. [`set_value`](Self::set_value) still works, so the
+    /// application can update what it shows.
     pub fn readonly(mut self, readonly: bool) -> Self {
         self.readonly = readonly;
         self
@@ -204,23 +209,35 @@ impl Rating {
 
     /// Set hover preview
     pub fn set_hover(&mut self, value: Option<f32>) {
+        if self.readonly {
+            return;
+        }
         self.hover_value = value.map(|v| v.clamp(0.0, self.max_value as f32));
     }
 
     /// Increment rating
     pub fn increment(&mut self) {
+        if self.readonly {
+            return;
+        }
         let step = if self.half_stars { 0.5 } else { 1.0 };
         self.value = (self.value + step).min(self.max_value as f32);
     }
 
     /// Decrement rating
     pub fn decrement(&mut self) {
+        if self.readonly {
+            return;
+        }
         let step = if self.half_stars { 0.5 } else { 1.0 };
         self.value = (self.value - step).max(0.0);
     }
 
     /// Clear rating
     pub fn clear(&mut self) {
+        if self.readonly {
+            return;
+        }
         self.value = 0.0;
     }
 

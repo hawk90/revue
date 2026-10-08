@@ -13,6 +13,11 @@ pub enum StatusBarPosition {
 }
 
 /// Section alignment
+#[deprecated(
+    since = "3.5.0",
+    note = "never read: a section is placed by the builder that adds it - `StatusBar::left`, `center` or `right`"
+)]
+#[allow(deprecated)] // the derives name the enum
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SectionAlign {
     /// Left-aligned section (default)

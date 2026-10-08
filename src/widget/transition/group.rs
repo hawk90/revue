@@ -38,24 +38,40 @@ impl TransitionGroup {
     }
 
     /// Set enter animation for items
+    #[deprecated(
+        since = "3.5.0",
+        note = "TransitionGroup draws its items without animating them; wrap each item in a `Transition` for enter/leave animations"
+    )]
     pub fn enter(mut self, animation: Animation) -> Self {
         self.enter_animation = Some(animation);
         self
     }
 
     /// Set leave animation for items
+    #[deprecated(
+        since = "3.5.0",
+        note = "TransitionGroup draws its items without animating them; wrap each item in a `Transition` for enter/leave animations"
+    )]
     pub fn leave(mut self, animation: Animation) -> Self {
         self.leave_animation = Some(animation);
         self
     }
 
     /// Set move/reorder animation
+    #[deprecated(
+        since = "3.5.0",
+        note = "TransitionGroup draws its items without animating them; wrap each item in a `Transition` for enter/leave animations"
+    )]
     pub fn move_animation(mut self, animation: Animation) -> Self {
         self.move_animation = Some(animation);
         self
     }
 
     /// Set stagger delay between item animations
+    #[deprecated(
+        since = "3.5.0",
+        note = "TransitionGroup draws its items without animating them; wrap each item in a `Transition` for enter/leave animations"
+    )]
     pub fn stagger(mut self, delay_ms: u64) -> Self {
         self.stagger_delay = delay_ms;
         self

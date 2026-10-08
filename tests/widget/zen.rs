@@ -216,3 +216,28 @@ fn test_zen_render_large_padding() {
     z.enable();
     z.render(&mut ctx); // Should saturate and not panic
 }
+
+/// The row of the first `needle` character, if painted.
+fn row_of(z: &ZenMode, needle: char) -> Option<u16> {
+    let mut buffer = Buffer::new(20, 10);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 10));
+    z.render(&mut ctx);
+    (0..10).find(|&y| (0..20).any(|x| buffer.get(x, y).unwrap().symbol == needle))
+}
+
+/// #799: `center()` was stored and only read back by a getter.
+#[test]
+fn test_zen_center_centers_content_vertically() {
+    // Padding 2 leaves rows 2..8; a one-row text centers on row 2 + (6-1)/2.
+    let mut top = zen(Text::new("Q")).padding_y(2);
+    top.enable();
+    assert_eq!(row_of(&top, 'Q'), Some(2));
+
+    let mut centered = zen(Text::new("Q")).padding_y(2).center();
+    centered.enable();
+    assert_eq!(row_of(&centered, 'Q'), Some(4));
+
+    // Off, it is just the content.
+    let off = zen(Text::new("Q")).center();
+    assert_eq!(row_of(&off, 'Q'), Some(0));
+}

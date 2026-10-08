@@ -501,3 +501,65 @@ fn test_drop_zone_with_style_and_classes() {
     assert_eq!(View::id(&zone), Some("upload-zone"));
     assert_eq!(View::classes(&zone), ["primary", "large"]);
 }
+
+// =========================================================================
+// focused / disabled / fg / bg (#799) - stored, never read by render
+// =========================================================================
+
+#[test]
+fn test_drop_zone_fg_colors_the_placeholder() {
+    let zone = DropZone::new("Drop").fg(Color::MAGENTA);
+    let buffer = render(&zone, 20, 5);
+    // The placeholder sits on the middle row, from x = 2.
+    assert_eq!(symbol(&buffer, 2, 2), 'D');
+    assert_eq!(buffer.get(2, 2).unwrap().fg, Some(Color::MAGENTA));
+}
+
+#[test]
+fn test_drop_zone_bg_fills_the_zone() {
+    let zone = DropZone::new("Drop").bg(Color::BLUE);
+    let buffer = render(&zone, 20, 5);
+    assert_eq!(buffer.get(10, 1).unwrap().bg, Some(Color::BLUE));
+    assert_eq!(buffer.get(2, 2).unwrap().bg, Some(Color::BLUE));
+}
+
+#[test]
+fn test_drop_zone_focused_bolds_the_border() {
+    use revue::render::Modifier;
+    let rest = render(&DropZone::new("Drop"), 20, 5);
+    assert!(!rest.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
+    let focused = render(&DropZone::new("Drop").focused(true), 20, 5);
+    assert!(focused.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
+}
+
+#[test]
+fn test_drop_zone_disabled_refuses_drops_and_greys_out() {
+    use std::cell::Cell as StdCell;
+    use std::rc::Rc;
+
+    let called = Rc::new(StdCell::new(false));
+    let seen = called.clone();
+    let mut zone = DropZone::new("Drop").disabled(true).on_drop(move |_| {
+        seen.set(true);
+        true
+    });
+    assert!(!zone.can_drop());
+    zone.on_drag_enter(&DragData::text("x"));
+    let buffer = render(&zone, 20, 5);
+    assert_ne!(
+        row(&buffer, 2).trim(),
+        "Drop here!",
+        "a disabled zone invited the drop"
+    );
+    assert!(!Draggable::on_drop(&mut zone, DragData::text("x")));
+    assert!(!called.get(), "a disabled zone ran its drop handler");
+}
+
+#[test]
+fn test_drop_zone_disabled_reaches_the_dom() {
+    use revue::testing::PipelineHarness;
+    let zone = DropZone::new("Drop").element_id("dz").disabled(true);
+    let mut h = PipelineHarness::new(20, 5).dom_from_render(true);
+    h.draw(&zone);
+    assert!(h.node_state("dz").is_some_and(|s| s.disabled));
+}

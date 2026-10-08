@@ -7,9 +7,11 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
+#[allow(deprecated)] // never read (#799)
+use revue::widget::SectionAlign;
 use revue::widget::{
-    footer, header, statusbar, KeyHint, RenderContext, SectionAlign, StatusBar, StatusBarPosition,
-    StatusSection, View,
+    footer, header, statusbar, KeyHint, RenderContext, StatusBar, StatusBarPosition, StatusSection,
+    View,
 };
 
 fn row(bar: &StatusBar, y: u16) -> String {
@@ -28,6 +30,7 @@ fn contents(sections: &[StatusSection]) -> Vec<&str> {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_section_align_default() {
     assert_eq!(SectionAlign::default(), SectionAlign::Left);
     assert_ne!(SectionAlign::Left, SectionAlign::Center);
@@ -212,4 +215,23 @@ fn test_status_bar_render_left_and_right_text() {
     assert!(bottom.starts_with("Left"), "{bottom:?}");
     assert!(bottom.ends_with("Right"), "{bottom:?}");
     assert_eq!(row(&bar, 0), "");
+}
+
+/// #799: the separator only left a gap; its character was never drawn.
+#[test]
+fn test_status_bar_draws_the_separator_between_sections() {
+    let bar = StatusBar::new()
+        .height(1)
+        .separator('|')
+        .left_text("A")
+        .left_text("B")
+        .right_text("C")
+        .right_text("D");
+    let text = row(&bar, 4);
+    assert!(text.starts_with("A|B"), "left sections: {text:?}");
+    assert!(
+        !text.starts_with("A|B|"),
+        "separator after the last section: {text:?}"
+    );
+    assert!(text.ends_with("C|D"), "right sections: {text:?}");
 }

@@ -279,7 +279,7 @@ impl<'a> RenderContext<'a> {
                 }
             }
             Some(RenderPass::Collect { sink, parent }) => {
-                let me = sink.push(child.meta(), *parent);
+                let me = sink.push_styled(child.meta(), child.inline_style(), *parent);
                 let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
                 ctx.pass = Some(RenderPass::Collect {
                     sink,

@@ -134,9 +134,12 @@ impl NotificationCenter {
     }
 
     /// Dismiss selected notification
+    ///
+    /// Does nothing when the selected notification is not
+    /// [`dismissible`](Notification::dismissible).
     pub fn dismiss_selected(&mut self) {
         if let Some(idx) = self.selected {
-            if idx < self.notifications.len() {
+            if idx < self.notifications.len() && self.notifications[idx].dismissible {
                 let id = self.notifications[idx].id;
                 self.dismiss(id);
             }
@@ -228,7 +231,9 @@ impl NotificationCenter {
                 true
             }
             Key::Char('c') => {
-                self.clear();
+                // Clears what the user may dismiss; the rest stay.
+                self.notifications.retain(|n| !n.dismissible);
+                self.selected = None;
                 true
             }
             _ => false,

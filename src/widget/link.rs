@@ -130,6 +130,10 @@ impl Link {
     }
 
     /// Set tooltip
+    #[deprecated(
+        since = "3.5.0",
+        note = "never shown: a link has no hover state to show it on; wrap the link in a `Tooltip` widget instead"
+    )]
     pub fn tooltip(mut self, tooltip: impl Into<String>) -> Self {
         self.tooltip = Some(tooltip.into());
         self
@@ -178,6 +182,10 @@ impl Link {
     }
 
     #[doc(hidden)]
+    #[deprecated(
+        since = "3.5.0",
+        note = "`Link::tooltip` is deprecated; it is never shown"
+    )]
     pub fn get_tooltip(&self) -> &Option<String> {
         &self.tooltip
     }

@@ -17,6 +17,7 @@ impl DomRenderer {
         // Create root node and recursively build children
         let meta = root.meta();
         let root_id = self.tree.create_root(meta);
+        self.apply_inline_style(root_id, &root.inline_style());
 
         // Recursively build child nodes
         build_children_internal(self, root_id, root.children());
@@ -58,6 +59,7 @@ pub(crate) fn build_children_internal(
     for child in children {
         let child_meta = child.meta();
         let child_id = renderer.tree.add_child(parent_id, child_meta);
+        renderer.apply_inline_style(child_id, &child.inline_style());
 
         // Recursively process this child's children
         build_children_internal(renderer, child_id, child.children());
