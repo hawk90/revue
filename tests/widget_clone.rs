@@ -43,6 +43,9 @@ fn widgets_implement_clone() {
     assert_clone::<EmptyState>();
     assert_clone::<FilePicker>();
     assert_clone::<FileTree>();
+    assert_clone::<Tree>();
+    assert_clone::<ScreenStack>();
+    assert_clone::<Screen>();
     assert_clone::<Form>();
     assert_clone::<FormFieldWidget>();
     assert_clone::<Gauge>();
@@ -182,4 +185,30 @@ fn a_cloned_form_shares_its_form_state() {
 
     original.form_state().set_value("name", "Ada");
     assert_eq!(copy.form_state().value("name").as_deref(), Some("Ada"));
+}
+
+/// A cloned `Tree` moves its own selection but calls the same `on_select`.
+#[test]
+fn a_cloned_tree_has_its_own_selection_and_shares_on_select() {
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    let calls = Rc::new(Cell::new(0));
+    let seen = calls.clone();
+    let original = Tree::new()
+        .node(TreeNode::new("a"))
+        .node(TreeNode::new("b"))
+        .on_select(move |_| seen.set(seen.get() + 1));
+    let mut copy = original.clone();
+
+    copy.select_next();
+    assert_eq!(copy.selected_index(), 1);
+    assert_eq!(
+        original.selected_index(),
+        0,
+        "the clone moved the original's selection"
+    );
+
+    copy.toggle_select();
+    assert!(calls.get() > 0, "the clone lost the on_select callback");
 }

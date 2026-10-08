@@ -86,6 +86,7 @@ age:>18              // age greater than 18
 price:<100           // price less than 100
 age:>=21             // age greater than or equal to 21
 price:<=50           // price less than or equal to 50
+name:>=m             // strings compare too, ignoring case like `name:m`
 ```
 
 ### Date Filters
@@ -133,7 +134,9 @@ let query = Query::new()
 | `.limit(n)` | Limit to N results |
 | `.offset(n)` | Skip first N results |
 | `.matches(item)` | Check if item matches all filters |
+| `.matches_with(item, case)` | Same, with a [`Case`](#case-sensitivity) rule |
 | `.filter_items(items)` | Filter, sort, and paginate a slice |
+| `.filter_items_with(items, case)` | Same, with a [`Case`](#case-sensitivity) rule |
 | `.is_empty()` | True if no filters, sort, or limit set |
 
 ## Filter Combinators
@@ -249,6 +252,33 @@ let query = Query::new()
 ```
 
 Sorting works with String, Int, Float, and Date values. Items with missing field values sort after items with values.
+Strings sort ignoring case (`apple`, `Banana`, `cherry`), with strings that
+differ only in case in a fixed order; `Case::Sensitive` sorts by code point.
+
+## Case Sensitivity
+
+By default every string comparison ignores case: equality, `~` contains, free
+text, `>`/`<`/`>=`/`<=` and sorting. They all follow one rule, so `name:bob`,
+`name:>=bob` and a sort by `name` agree. Pick another rule for a whole query
+with `Case`:
+
+| `Case` | `rust` finds | `Rust` finds | Used by |
+|--------|--------------|--------------|---------|
+| `Insensitive` (default) | `rust`, `Rust`, `RUST` | `rust`, `Rust`, `RUST` | most search boxes |
+| `Sensitive` | `rust` | `Rust` | `grep`, PostgreSQL `LIKE` |
+| `Smart` | `rust`, `Rust`, `RUST` | `Rust` | fzf (default), vim `smartcase`, ripgrep `-S` |
+
+```rust
+use revue::query::{Case, Query};
+
+let query = Query::parse("title~Rust")?;
+let exact = query.filter_items_with(&items, Case::Smart); // "Rust" has a capital: exact
+```
+
+`Smart` decides per searched value: in `title~rust author:Ann`, `rust` ignores
+case and `Ann` does not. The rule is a parameter rather than part of the query
+string, so an app can offer it as a toggle (an "Aa" button) next to its search
+box.
 
 ## Pagination
 

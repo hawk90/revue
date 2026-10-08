@@ -2,9 +2,13 @@
 
 mod render;
 
-use super::{Action, SnapshotValue, StateDiff, StateSnapshot, TimeTravelConfig, TimeTravelView};
+use super::json;
+use super::{
+    Action, SnapshotValue, StateDiff, StateSnapshot, TimeTravelConfig, TimeTravelImportError,
+    TimeTravelView,
+};
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 /// Time-travel debugger
 pub struct TimeTravelDebugger {
@@ -243,38 +247,66 @@ impl TimeTravelDebugger {
     // -------------------------------------------------------------------------
 
     /// Export session history as JSON string
+    ///
+    /// Each snapshot has its `id`, `label`, `timestamp_ms` (milliseconds since
+    /// the Unix epoch), its `state`, and the action that caused it: `action`
+    /// (the name), `action_payload`, `action_source`, `action_timestamp_ms`
+    /// and `action_duration_ms`. `state_keys` counts the state entries.
+    /// [`import_json`](Self::import_json) reads it back.
+    ///
+    /// Timestamps keep millisecond precision, and a float that is NaN or
+    /// infinite is written as `null`; everything else round-trips exactly.
     pub fn export(&self) -> String {
-        let mut json = String::from("{\n");
-        json.push_str(&format!(
+        let mut out = String::from("{\n");
+        out.push_str(&format!(
             "  \"snapshot_count\": {},\n",
             self.snapshots.len()
         ));
-        json.push_str(&format!("  \"current_position\": {},\n", self.position));
-        json.push_str("  \"snapshots\": [\n");
+        out.push_str(&format!("  \"current_position\": {},\n", self.position));
+        out.push_str("  \"snapshots\": [\n");
 
         for (i, snapshot) in self.snapshots.iter().enumerate() {
-            json.push_str("    {\n");
-            json.push_str(&format!("      \"id\": {},\n", snapshot.id));
+            let mut fields = vec![
+                format!("\"id\": {}", snapshot.id),
+                format!("\"timestamp_ms\": {}", millis(snapshot.timestamp)),
+            ];
             if let Some(label) = &snapshot.label {
-                json.push_str(&format!("      \"label\": {},\n", json_string(label)));
+                fields.push(format!("\"label\": {}", json::string(label)));
             }
             if let Some(action) = &snapshot.action {
-                json.push_str(&format!(
-                    "      \"action\": {},\n",
-                    json_string(&action.name)
+                fields.push(format!("\"action\": {}", json::string(&action.name)));
+                if let Some(payload) = &action.payload {
+                    fields.push(format!("\"action_payload\": {}", json::value(payload)));
+                }
+                if let Some(source) = &action.source {
+                    fields.push(format!("\"action_source\": {}", json::string(source)));
+                }
+                fields.push(format!(
+                    "\"action_timestamp_ms\": {}",
+                    millis(action.timestamp)
                 ));
+                if let Some(duration) = action.duration {
+                    fields.push(format!("\"action_duration_ms\": {}", duration.as_millis()));
+                }
             }
-            json.push_str(&format!("      \"state_keys\": {}\n", snapshot.state.len()));
-            json.push_str("    }");
-            if i < self.snapshots.len() - 1 {
-                json.push(',');
+            fields.push(format!("\"state_keys\": {}", snapshot.state.len()));
+            fields.push(format!(
+                "\"state\": {}",
+                json::value(&SnapshotValue::Object(snapshot.state.clone()))
+            ));
+
+            out.push_str("    {\n      ");
+            out.push_str(&fields.join(",\n      "));
+            out.push_str("\n    }");
+            if i + 1 < self.snapshots.len() {
+                out.push(',');
             }
-            json.push('\n');
+            out.push('\n');
         }
 
-        json.push_str("  ]\n");
-        json.push_str("}\n");
-        json
+        out.push_str("  ]\n");
+        out.push_str("}\n");
+        out
     }
 
     /// Import session from exported data
@@ -287,6 +319,57 @@ impl TimeTravelDebugger {
             self.position = self.snapshots.len() - 1;
             self.next_id = self.snapshots.iter().map(|s| s.id).max().unwrap_or(0) + 1;
         }
+    }
+
+    /// Replace the history with a session saved by [`export`](Self::export),
+    /// and return how many snapshots it has.
+    ///
+    /// The position is restored too. Only `id` is required of a snapshot;
+    /// without `state` it is empty, without `timestamp_ms` it is the epoch.
+    /// On an error the history is left as it was.
+    ///
+    /// ```
+    /// use revue::devtools::{SnapshotValue, StateSnapshot, TimeTravelDebugger};
+    ///
+    /// let mut debugger = TimeTravelDebugger::new();
+    /// debugger.record(StateSnapshot::new(0).with_state("count", SnapshotValue::Int(1)));
+    /// let saved = debugger.export();
+    ///
+    /// let mut restored = TimeTravelDebugger::new();
+    /// assert_eq!(restored.import_json(&saved).unwrap(), 1);
+    /// assert_eq!(restored.snapshots()[0].state["count"], SnapshotValue::Int(1));
+    /// ```
+    pub fn import_json(&mut self, text: &str) -> Result<usize, TimeTravelImportError> {
+        let root = json::parse(text).map_err(TimeTravelImportError::new)?;
+        let SnapshotValue::Object(mut root) = root else {
+            return Err(TimeTravelImportError::new(
+                "the session is not a JSON object",
+            ));
+        };
+        let Some(SnapshotValue::Array(items)) = root.remove("snapshots") else {
+            return Err(TimeTravelImportError::new(
+                "`snapshots` is missing or not an array",
+            ));
+        };
+
+        let mut snapshots = Vec::with_capacity(items.len());
+        for (i, item) in items.into_iter().enumerate() {
+            snapshots.push(
+                snapshot_from(item)
+                    .map_err(|e| TimeTravelImportError::new(format!("snapshot {i}: {e}")))?,
+            );
+        }
+
+        let position = match root.get("current_position") {
+            Some(SnapshotValue::Int(p)) => usize::try_from(*p).ok(),
+            _ => None,
+        };
+        let count = snapshots.len();
+        self.import(snapshots);
+        if let Some(p) = position.filter(|&p| p < count) {
+            self.position = p;
+        }
+        Ok(count)
     }
 
     // -------------------------------------------------------------------------
@@ -343,26 +426,56 @@ impl Default for TimeTravelDebugger {
     }
 }
 
-/// `s` as a quoted JSON string: quotes, backslashes and control characters
-/// are escaped, so a label or action name cannot break the exported JSON
-fn json_string(s: &str) -> String {
-    use std::fmt::Write;
+/// Milliseconds from the Unix epoch to `time` (0 before it).
+fn millis(time: SystemTime) -> u128 {
+    time.duration_since(UNIX_EPOCH).map_or(0, |d| d.as_millis())
+}
 
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push('"');
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 => {
-                let _ = write!(out, "\\u{:04x}", c as u32);
-            }
-            c => out.push(c),
+/// The time `ms` milliseconds after the Unix epoch.
+fn from_millis(ms: i64) -> SystemTime {
+    UNIX_EPOCH + Duration::from_millis(u64::try_from(ms).unwrap_or(0))
+}
+
+/// One exported snapshot object back as a [`StateSnapshot`].
+fn snapshot_from(item: SnapshotValue) -> Result<StateSnapshot, String> {
+    let SnapshotValue::Object(mut fields) = item else {
+        return Err("not a JSON object".into());
+    };
+    let int = |fields: &HashMap<String, SnapshotValue>, key: &str| -> Result<Option<i64>, String> {
+        match fields.get(key) {
+            None => Ok(None),
+            Some(SnapshotValue::Int(n)) => Ok(Some(*n)),
+            Some(_) => Err(format!("`{key}` is not an integer")),
         }
+    };
+    let text = |fields: &mut HashMap<String, SnapshotValue>,
+                key: &str|
+     -> Result<Option<String>, String> {
+        match fields.remove(key) {
+            None => Ok(None),
+            Some(SnapshotValue::String(s)) => Ok(Some(s)),
+            Some(_) => Err(format!("`{key}` is not a string")),
+        }
+    };
+
+    let id = int(&fields, "id")?.ok_or("`id` is missing")?;
+    let id = u64::try_from(id).map_err(|_| "`id` is negative".to_string())?;
+    let mut snapshot = StateSnapshot::new(id);
+    snapshot.timestamp = from_millis(int(&fields, "timestamp_ms")?.unwrap_or(0));
+    snapshot.label = text(&mut fields, "label")?;
+    snapshot.state = match fields.remove("state") {
+        None => HashMap::new(),
+        Some(SnapshotValue::Object(state)) => state,
+        Some(_) => return Err("`state` is not an object".into()),
+    };
+    if let Some(name) = text(&mut fields, "action")? {
+        let mut action = Action::new(name);
+        action.payload = fields.remove("action_payload");
+        action.source = text(&mut fields, "action_source")?;
+        action.timestamp = from_millis(int(&fields, "action_timestamp_ms")?.unwrap_or(0));
+        action.duration = int(&fields, "action_duration_ms")?
+            .map(|ms| Duration::from_millis(u64::try_from(ms).unwrap_or(0)));
+        snapshot.action = Some(action);
     }
-    out.push('"');
-    out
+    Ok(snapshot)
 }

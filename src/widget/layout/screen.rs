@@ -12,9 +12,12 @@ use std::collections::HashMap;
 pub type ScreenId = &'static str;
 
 /// Type alias for screen render callback
-type ScreenRenderer = Box<dyn Fn(&Screen, &mut RenderContext)>;
+///
+/// Shared, so a cloned stack draws its screens with the same renderers.
+type ScreenRenderer = std::sync::Arc<dyn Fn(&Screen, &mut RenderContext)>;
 
 /// A screen in the stack
+#[derive(Clone)]
 pub struct Screen {
     /// Screen identifier
     pub id: ScreenId,
@@ -78,6 +81,10 @@ pub enum ScreenTransition {
 }
 
 /// Screen stack manager
+///
+/// A clone is an independent stack (its own screens and history) that shares
+/// the screen renderers.
+#[derive(Clone)]
 pub struct ScreenStack {
     /// Stack of screens
     screens: Vec<Screen>,
@@ -135,7 +142,7 @@ impl ScreenStack {
     where
         F: Fn(&Screen, &mut RenderContext) + 'static,
     {
-        self.renderers.insert(id, Box::new(renderer));
+        self.renderers.insert(id, std::sync::Arc::new(renderer));
         self
     }
 

@@ -145,6 +145,7 @@ restore는 raw mode 밖에서는 아무것도 하지 않으므로 이 층은 res
 | `terminal` | 터미널 위젯 `write`(ANSI 파서) + 그리기 |
 | `ansi` | `parse_ansi`, `strip_ansi`, `ansi_len` |
 | `json` | `JsonViewer::from_content` + 그리기 |
+| `timetravel` | `TimeTravelDebugger::import_json`(그대로, 그리고 세션의 `state` 자리에 넣어서) + 성공하면 `export` |
 | `csv` | `CsvViewer::from_content` + 그리기 |
 | `syntax` | `utils::highlight`(언어 6개) |
 
@@ -188,8 +189,8 @@ test와 nextest 어느 쪽에서도 같게 동작한다.
   한다. 그래서 목록은 줄어들기만 한다.
 - 이번 구성에서 돌지 않은 케이스(꺼진 기능 뒤의 대상)는 어느 쪽으로도 세지 않는다.
 
-**지금 `KNOWN`에는 4e의 한 항목만 남아 있다.** 버그라기보다 설계 결정이
-필요한 것이다. [4e의 남긴 것](#남긴-것--설계-결정이-필요하다)을 보라. 4a–4d는 비어 있다.
+**지금 `KNOWN`은 비어 있다.** 4e에 남았던 두 설계 결정(drop 중인 태스크, 플러그인
+패닉)은 F 단계에서 정해 고쳤다.
 
 ## 발견하고 고친 것
 
@@ -400,15 +401,7 @@ test와 nextest 어느 쪽에서도 같게 동작한다.
 | `dispatch on-in-handler` | `EventDispatcher::dispatch`가 핸들러 표의 읽기 잠금을 쥔 채 핸들러를 불렀다. (표를 공유하는 복제본으로) 핸들러를 등록하거나 지우는 핸들러가 같은 스레드에서 쓰기 잠금을 청해 교착했다 | 그 이벤트 형식의 핸들러(이제 공유 `Arc`)를 복사해 두고 잠금을 푼 뒤 부른다. dispatch 중에 더하거나 지운 핸들러는 다음 dispatch부터 적용된다 | `tests/event/custom.rs::a_handler_can_register_and_remove_handlers_while_dispatched` |
 | `plugin init-error`, `plugin mount-error` | `PluginRegistry::mount`는 `on_mount`가 실패한 첫 플러그인에서 돌아가며 `mounted`를 거짓으로 두었다. 그 앞에서 mount된 플러그인은 mount된 채였지만 `unmount()`는 `mounted == false`를 보고 바로 돌아갔다. 그래서 끝내 unmount되지 않았다. `App`은 mount 실패를 로그로 남기고 계속 도므로 이것이 평범한 길이다. 다시 부른 `init()`도 이미 초기화된 플러그인의 `on_init`을 또 불렀다 | init과 mount가 몇 번째 플러그인까지 갔는지 센다. 다시 부르면 실패한 플러그인부터 잇고, `unmount`는 mount된 것만 정확히 unmount한다. 실패한 플러그인이 컨텍스트의 현재 플러그인으로 남던 것도 지운다 | `plugin::registry::tests::a_failed_mount_leaves_the_mounted_plugins_to_unmount`, `a_retried_init_does_not_initialize_a_plugin_twice` |
 | `plugin init-panic`, `plugin mount-panic`, `plugin tick-panic`, `plugin unmount-panic` (F 단계에서 결정) | 플러그인 훅의 패닉이 `PluginRegistry`와 `App`을 지나 그대로 풀렸다. 앱이 죽었다 | 레지스트리가 훅마다 패닉을 잡는다(`catch_panic`이라 터미널도 TUI 모드에 남는다). 그 플러그인을 끄고, 컨텍스트 에러 로그에 남기고, 그 생명주기 호출의 에러로 돌려준다. 꺼진 플러그인은 더 이상 훅을 받지 않는다(`on_unmount`도). 나머지 플러그인은 생명주기를 끝까지 돈다. `disabled_plugins()`로 볼 수 있다. `panic = "abort"` 빌드에서는 잡을 수 없다 | 강화한 `plugin *-panic` 케이스(꺼진 플러그인이 훅을 더 받지 않는지, 나머지 플러그인이 훅을 한 번씩 받는지까지 본다) |
-
-### 남긴 것 — 설계 결정이 필요하다
-
-한 원인은 고치지 않고 `KNOWN`에 남겼다. 어느 쪽이 맞는지는 API의 약속을 정하는
-문제이기 때문이다.
-
-| 케이스 | 지금 동작 | 정해야 할 것 |
-|---|---|---|
-| `runner drop-running`, `pool drop-running` | `TaskRunner`와 `WorkerPool`은 drop될 때 도는 태스크를 join한다(코드 주석에 "Wait for all threads to complete", "clean shutdown"이라고 의도가 적혀 있다). 끝나지 않는 태스크가 있으면 drop이 영원히 막힌다. 화면을 바꾸며 러너를 쥔 컴포넌트를 drop하면 UI 스레드가 네트워크 태스크가 끝날 때까지 멈춘다 | join을 지킬 것인가(drop 뒤에 태스크의 부수 효과가 남지 않는다), 아니면 형제들처럼 떼어 낼 것인가(`PooledTaskRunner`와 `WorkerHandle`은 drop에서 기다리지 않는다) |
+| `runner drop-running`, `pool drop-running` (F 단계에서 결정) | `TaskRunner`와 `WorkerPool`은 drop될 때 도는 태스크를 join했다. 끝나지 않는 태스크가 있으면 drop이 영원히 막혔다. 러너를 쥔 컴포넌트를 drop하면 UI 스레드가 태스크가 끝날 때까지 멈췄다 | 형제들(`PooledTaskRunner`, `WorkerHandle`)처럼 drop은 기다리지 않는다. `TaskRunner`는 스레드를 떼어 내고 결과를 버린다. `WorkerPool`은 shutdown만 하고, 워커는 이미 큐에 든 태스크를 마치고 스스로 끝난다. 기다려야 하는 쪽(프로세스 종료 전 등)을 위해 `join_timeout(timeout) -> bool`을 더했다 | `runner join-timeout`, `pool join-timeout` |
 
 ### 견딘 것
 
@@ -552,8 +545,19 @@ cargo test --no-default-features --test config_matrix  # 기능 없이
 깨서 되돌렸다. 대신 매트릭스는 **넘친 것이 모두 `overflow: hidden` 상자 안에 갇히는지**를
 본다. 그래서 세 번째 스타일시트 값이 있다. 위의 버그 하나를 고친 뒤 그 검사는 전부 통과한다.
 
-남는 질문은 이것이다. 터미널에서는 넘친 칸이 갈 곳 없이 이웃을 덮어쓴다. 그런데도 기본값이
-`visible`이어야 하는가? 바꾸면 동작이 바뀌는 일이라 여기서는 결정하지 않는다.
+남았던 질문은 이것이었다. 터미널에서는 넘친 칸이 갈 곳 없이 이웃을 덮어쓴다. 그런데도
+기본값이 `visible`이어야 하는가?
+
+**F 단계에서 정했다. 기본값은 CSS대로 `visible`로 둔다.** 바꾸면 동작이 바뀌고,
+`overflow: hidden`이 관찰할 수 있는 이유도 사라진다. 대신 `overflow: hidden`이 빈틈없이
+잘라내게 했다. 그 전에는 `RenderContext`의 메서드만 클립을 봤고, `ctx.buffer`에 직접 쓰는
+위젯(`Canvas`, `BrailleCanvas`, `Alert`의 테두리, `GradientBox`, 사용자 위젯)은 상자 밖에도
+썼다. 이제 `Buffer`가 렌더 중의 클립을 들고 있어서 `set`·`get_mut`·`fill`·`put_str`·
+`put_sequence`가 모두 클립 밖 칸을 건드리지 않는다. 클립이 반으로 자를 넓은 문자와 OSC 66
+시퀀스는 아예 쓰지 않는다. 클립된 하위 트리 안의 패닉이 클립 복원을 건너뛰어도
+`ErrorBoundary`가 복원한 뒤 대체 화면을 그린다. 오버레이(드롭다운, 툴팁, 토스트)는 트리
+다음에 그리므로 잘리지 않는다. 테스트는 `tests/overflow_clips_direct_writers.rs`와
+`render::buffer::clip_tests`다.
 
 #### 견딘 것
 

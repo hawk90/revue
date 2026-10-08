@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0](https://github.com/hawk90/revue/compare/v3.3.3...v3.4.0) (2026-10-08)
+
+
+### Features
+
+* **plugin:** disable a plugin whose hook panics instead of ending the app ([#786](https://github.com/hawk90/revue/issues/786)) ([2dda22b](https://github.com/hawk90/revue/commit/2dda22bddcadee3a8683be96978d3e71b6d64d4a))
+* **query:** one case rule for every string comparison, and Case to pick it ([#791](https://github.com/hawk90/revue/issues/791)) ([0d5724d](https://github.com/hawk90/revue/commit/0d5724d7a2c98ed704c44bf52504b68d6d4ce2ff))
+* **tasks:** dropping a TaskRunner or WorkerPool no longer waits for its tasks ([#787](https://github.com/hawk90/revue/issues/787)) ([172cc36](https://github.com/hawk90/revue/commit/172cc36b9cc11ef6fc2ed786b3e0f444c56398b5))
+* **widget:** [[ writes a literal [ in RichText markup, and RichText::escape ([#789](https://github.com/hawk90/revue/issues/789)) ([1d2f8a7](https://github.com/hawk90/revue/commit/1d2f8a746a21d96b9ca089772ecada2254caa883))
+
+
+### Bug Fixes
+
+* **render:** overflow: hidden also clips widgets that write to the buffer ([#788](https://github.com/hawk90/revue/issues/788)) ([421bb43](https://github.com/hawk90/revue/commit/421bb43f59c541b7556f9334c55dfec4a734eeb7))
+
 ## [3.3.3](https://github.com/hawk90/revue/compare/v3.3.2...v3.3.3) (2026-10-07)
 
 

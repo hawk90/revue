@@ -300,3 +300,31 @@ impl Default for TimeTravelConfig {
         }
     }
 }
+
+/// Why [`TimeTravelDebugger::import_json`](super::TimeTravelDebugger::import_json)
+/// refused a session
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TimeTravelImportError {
+    message: String,
+}
+
+impl TimeTravelImportError {
+    pub(super) fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+
+    /// What was wrong, and where
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+}
+
+impl std::fmt::Display for TimeTravelImportError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "cannot import time-travel session: {}", self.message)
+    }
+}
+
+impl std::error::Error for TimeTravelImportError {}
