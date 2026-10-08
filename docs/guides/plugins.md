@@ -119,6 +119,23 @@ impl Plugin for MyPlugin {
 }
 ```
 
+### Errors and Panics
+
+A hook that returns an error is logged to the context (`"Init failed: ..."`).
+An error from `on_init` or `on_mount` stops that pass at the failing plugin, and
+calling `init`/`mount` again resumes from it. An error from `on_tick` or
+`on_unmount` does not stop the plugins after it.
+
+A hook that **panics** disables its plugin instead of ending the app. The
+registry catches the panic, logs it, and returns it as the error of that
+lifecycle call. The plugin gets no more hooks - not even `on_unmount`, since its
+state is whatever the panic left - while every other plugin runs its whole
+lifecycle. `PluginRegistry::disabled_plugins()` lists the disabled ones. The
+terminal stays in TUI mode throughout.
+
+This needs unwinding. In a build with `panic = "abort"` a panicking plugin ends
+the process, after the panic hook restores the terminal.
+
 ## Plugin Context
 
 ### Storing Data
