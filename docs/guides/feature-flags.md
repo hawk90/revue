@@ -6,7 +6,7 @@ Revue uses Cargo feature flags to keep compile times fast and binary sizes small
 
 ```toml
 [dependencies]
-revue = "2.71"  # enables: async, config
+revue = "3"  # enables: async, config
 ```
 
 | Feature | Dependencies | Purpose |
@@ -27,7 +27,7 @@ For convenience, Revue provides preset feature groups:
 
 ```toml
 # Example: use the gui preset
-revue = { version = "2.71", features = ["gui"] }
+revue = { version = "3", features = ["gui"] }
 ```
 
 ## Individual Features
@@ -65,38 +65,38 @@ revue = { version = "2.71", features = ["gui"] }
 
 ```toml
 # Just the defaults
-revue = "2.71"
+revue = "3"
 ```
 
 ### Dashboard App
 
 ```toml
-revue = { version = "2.71", features = ["std"] }
+revue = { version = "3", features = ["std"] }
 ```
 
 ### Text Editor
 
 ```toml
-revue = { version = "2.71", features = ["std", "syntax-highlighting", "clipboard"] }
+revue = { version = "3", features = ["std", "syntax-highlighting", "clipboard"] }
 ```
 
 ### Content Viewer
 
 ```toml
-revue = { version = "2.71", features = ["gui", "syntax-highlighting"] }
+revue = { version = "3", features = ["gui", "syntax-highlighting"] }
 ```
 
 ### Full-Featured Application
 
 ```toml
-revue = { version = "2.71", features = ["all-gui"] }
+revue = { version = "3", features = ["all-gui"] }
 ```
 
 ### Development with Hot Reload
 
 ```toml
 # In your development profile
-revue = { version = "2.71", features = ["full"] }
+revue = { version = "3", features = ["full"] }
 ```
 
 ## Build Impact
@@ -116,5 +116,5 @@ The `syntax-highlighting` feature is the heaviest, pulling in 12 tree-sitter lan
 To start with no features and add only what you need:
 
 ```toml
-revue = { version = "2.71", default-features = false, features = ["async"] }
+revue = { version = "3", default-features = false, features = ["async"] }
 ```
