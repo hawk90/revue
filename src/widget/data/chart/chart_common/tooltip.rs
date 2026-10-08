@@ -1,4 +1,13 @@
+//! Chart tooltip configuration (deprecated: no chart draws a tooltip)
+
+// The types below are deprecated together and refer to each other.
+#![allow(deprecated)]
+
 /// Tooltip configuration
+#[deprecated(
+    since = "3.5.0",
+    note = "never drawn: no chart shows a tooltip; draw the value yourself, e.g. in a `Text` beside the chart"
+)]
 #[derive(Clone, Debug, Default)]
 pub struct ChartTooltip {
     /// Whether tooltip is enabled
@@ -49,6 +58,10 @@ impl ChartTooltip {
 }
 
 /// Tooltip format
+#[deprecated(
+    since = "3.5.0",
+    note = "never drawn: no chart shows a tooltip; draw the value yourself, e.g. in a `Text` beside the chart"
+)]
 #[derive(Clone, Debug, Default)]
 pub enum ChartTooltipFormat {
     /// Automatic format based on data
@@ -59,6 +72,10 @@ pub enum ChartTooltipFormat {
 }
 
 /// Tooltip position mode
+#[deprecated(
+    since = "3.5.0",
+    note = "never drawn: no chart shows a tooltip; draw the value yourself, e.g. in a `Text` beside the chart"
+)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ChartTooltipPosition {
     /// Follow cursor position

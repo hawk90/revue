@@ -19,6 +19,20 @@ impl View for DataGrid {
 
         let row_num_width = self.row_number_gutter_width();
         let header_height: u16 = if self.options.show_header { 1 } else { 0 };
+        // The footer takes its rows from the bottom of the viewport, as long
+        // as at least one data row still fits above it.
+        let footer_rows: &[super::types::FooterRow] = if self.show_footer {
+            &self.footer_rows
+        } else {
+            &[]
+        };
+        let footer_height = footer_rows.len() as u16;
+        let footer_rows = if header_height + footer_height < area.height {
+            footer_rows
+        } else {
+            &[]
+        };
+        let footer_height = footer_rows.len() as u16;
 
         // Position columns for this viewport, applying column freeze and
         // horizontal scroll. Both the header and the rows draw from this plan so
@@ -38,8 +52,8 @@ impl View for DataGrid {
 
         // Calculate visible range with virtual scrolling
         let total_rows = self.filtered_count();
-        let visible_height =
-            (area.height - header_height) as usize / self.options.row_height.max(1) as usize;
+        let visible_height = (area.height - header_height - footer_height) as usize
+            / self.options.row_height.max(1) as usize;
         self.last_viewport_height.set(visible_height);
 
         // Virtual scroll: calculate render range with overscan
@@ -64,8 +78,14 @@ impl View for DataGrid {
         // Render rows using index-based access (no allocation)
         self.render_rows_virtual(ctx, render_start, render_end, &params);
 
+        // Draw the footer rows at the bottom
+        let footer_y = area.height - footer_height;
+        for (i, footer) in footer_rows.iter().enumerate() {
+            self.render_footer(ctx, footer, &slots, content_end, footer_y + i as u16);
+        }
+
         // Draw scrollbar if needed
-        self.render_scrollbar(ctx, total_rows, visible_height, area, y);
+        self.render_scrollbar(ctx, total_rows, visible_height, area, y, footer_y);
     }
 }
 
@@ -286,6 +306,56 @@ impl DataGrid {
         }
     }
 
+    /// Render one footer row: each aggregation in its column, and the row
+    /// label in the first column when that column has no aggregation.
+    fn render_footer(
+        &self,
+        ctx: &mut RenderContext,
+        footer: &super::types::FooterRow,
+        slots: &[ColumnSlot<'_>],
+        content_end: u16,
+        y: u16,
+    ) {
+        let bg = self.colors.header_bg;
+        for gx in 0..content_end {
+            let mut cell = Cell::new(' ');
+            cell.bg = Some(bg);
+            ctx.set(gx, y, cell);
+        }
+
+        let values = self.get_footer_values(footer);
+        for (i, slot) in slots.iter().enumerate() {
+            let text = values
+                .iter()
+                .find(|(key, _)| *key == slot.col.key)
+                .map(|(_, text)| text.as_str())
+                .or((i == 0).then_some(footer.label.as_str()))
+                .unwrap_or("");
+
+            let truncated = truncate_to_width(text, (slot.width as usize).saturating_sub(1));
+            let dw = display_width(truncated) as u16;
+            let start_x = match slot.col.align {
+                super::types::Alignment::Left => slot.x,
+                super::types::Alignment::Center => slot.x + (slot.width.saturating_sub(dw)) / 2,
+                super::types::Alignment::Right => slot.x + slot.width.saturating_sub(dw + 1),
+            };
+            let mut dx: u16 = 0;
+            for ch in truncated.chars() {
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(self.colors.header_fg);
+                cell.bg = Some(bg);
+                cell.modifier |= Modifier::BOLD;
+                ctx.set(start_x + dx, y, cell);
+                dx += char_width(ch) as u16;
+            }
+
+            let mut sep = Cell::new('│');
+            sep.fg = Some(self.colors.border_color);
+            sep.bg = Some(bg);
+            ctx.set(slot.x + slot.width, y, sep);
+        }
+    }
+
     /// Render row number column
     ///
     /// `gutter` is the row-number column width computed in `render()`
@@ -419,6 +489,7 @@ impl DataGrid {
         visible_height: usize,
         area: Rect,
         content_y: u16,
+        footer_y: u16,
     ) {
         if total_rows <= visible_height {
             return;
@@ -448,7 +519,7 @@ impl DataGrid {
         // Draw row indicator
         let indicator = format!(" {}/{} ", self.selected_row + 1, total_rows);
         let indicator_x = area.width.saturating_sub(indicator.len() as u16 + 1);
-        let indicator_y = area.height - 1;
+        let indicator_y = footer_y.saturating_sub(1);
 
         for (j, ch) in indicator.chars().enumerate() {
             let mut cell = Cell::new(ch);

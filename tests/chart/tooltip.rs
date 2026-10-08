@@ -1,4 +1,8 @@
 //! Tooltip public API tests
+//!
+//! `ChartTooltip` is deprecated (no chart draws a tooltip); these stay until
+//! it is removed in 4.0.
+#![allow(deprecated)]
 mod tests {
     use revue::widget::data::chart::chart_common::{
         ChartTooltip, ChartTooltipFormat, ChartTooltipPosition,

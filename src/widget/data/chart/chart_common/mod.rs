@@ -20,6 +20,7 @@ pub use grid::{ChartGrid, GridStyle};
 pub use legend::{Legend, LegendOrientation, LegendPosition};
 pub use marker::Marker;
 pub use orientation::ChartOrientation;
+#[allow(deprecated)]
 pub use tooltip::{ChartTooltip, ChartTooltipFormat, ChartTooltipPosition};
 
 #[cfg(test)]
@@ -135,6 +136,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_legend_builder() {
         let legend = Legend::new()
             .position(LegendPosition::BottomCenter)
@@ -149,6 +151,7 @@ mod tests {
     // ========== Tooltip Tests ==========
 
     #[test]
+    #[allow(deprecated)]
     fn test_tooltip_default() {
         let tooltip = ChartTooltip::new();
         assert!(!tooltip.enabled);
@@ -157,12 +160,14 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_tooltip_enabled() {
         let tooltip = ChartTooltip::enabled();
         assert!(tooltip.enabled);
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_tooltip_builder() {
         let tooltip = ChartTooltip::new()
             .enable(true)
@@ -175,6 +180,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_tooltip_format() {
         let tooltip = ChartTooltip::new().format(ChartTooltipFormat::Auto);
         assert!(matches!(tooltip.format, ChartTooltipFormat::Auto));

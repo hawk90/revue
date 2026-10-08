@@ -1,7 +1,7 @@
 //! JsonViewer rendering: the `View` impl
 
 use super::JsonViewer;
-use crate::render::Cell;
+use crate::render::{Cell, Modifier};
 use crate::widget::data::json_viewer::helpers::line_number_width;
 use crate::widget::data::json_viewer::types::JsonType;
 use crate::widget::traits::{RenderContext, View};
@@ -214,6 +214,28 @@ impl View for JsonViewer {
                             ctx.set(x, y, cell);
                             x += 1;
                         }
+                    }
+                }
+            }
+
+            // Type badge after the value
+            if self.show_type_badges {
+                let badge = match node.value_type {
+                    JsonType::Object => "object",
+                    JsonType::Array => "array",
+                    JsonType::String => "string",
+                    JsonType::Number => "number",
+                    JsonType::Boolean => "boolean",
+                    JsonType::Null => "null",
+                };
+                for ch in std::iter::once(' ').chain(badge.chars()) {
+                    if x < area.width {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = if is_selected { fg } else { self.line_number_fg };
+                        cell.bg = bg;
+                        cell.modifier |= Modifier::DIM;
+                        ctx.set(x, y, cell);
+                        x += 1;
                     }
                 }
             }

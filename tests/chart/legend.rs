@@ -7,7 +7,6 @@ mod tests {
         let legend = Legend::new();
         assert_eq!(legend.position, LegendPosition::TopRight);
         assert_eq!(legend.orientation, LegendOrientation::Horizontal);
-        assert!(!legend.interactive);
     }
 
     #[test]
@@ -30,21 +29,13 @@ mod tests {
     }
 
     #[test]
-    fn test_legend_interactive() {
-        let legend = Legend::new().interactive(true);
-        assert!(legend.interactive);
-    }
-
-    #[test]
     fn test_legend_builder_chain() {
         let legend = Legend::new()
             .position(LegendPosition::TopCenter)
-            .orientation(LegendOrientation::Vertical)
-            .interactive(true);
+            .orientation(LegendOrientation::Vertical);
 
         assert_eq!(legend.position, LegendPosition::TopCenter);
         assert_eq!(legend.orientation, LegendOrientation::Vertical);
-        assert!(legend.interactive);
     }
 
     #[test]
@@ -199,11 +190,9 @@ mod tests {
     fn test_legend_clone() {
         let legend1 = Legend::new()
             .position(LegendPosition::BottomRight)
-            .orientation(LegendOrientation::Vertical)
-            .interactive(true);
+            .orientation(LegendOrientation::Vertical);
         let legend2 = legend1.clone();
         assert_eq!(legend1.position, legend2.position);
         assert_eq!(legend1.orientation, legend2.orientation);
-        assert_eq!(legend1.interactive, legend2.interactive);
     }
 }

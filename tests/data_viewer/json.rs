@@ -253,3 +253,34 @@ fn test_json_viewer_show_type_badges() {
     let viewer = JsonViewer::new().show_type_badges(true);
     assert!(!viewer.has_data());
 }
+
+fn render_lines(viewer: &JsonViewer, w: u16, h: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    viewer.render(&mut ctx);
+    (0..h)
+        .map(|y| {
+            (0..w)
+                .map(|x| buffer.get(x, y).map(|c| c.symbol).unwrap_or(' '))
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
+
+#[test]
+fn type_badges_are_drawn_after_each_value() {
+    let json = r#"{"name": "Alice", "age": 30, "ok": true, "x": null, "tags": []}"#;
+    let viewer = JsonViewer::from_content(json)
+        .show_line_numbers(false)
+        .show_type_badges(true);
+    let text = render_lines(&viewer, 50, 8).join("\n");
+    for badge in ["string", "number", "boolean", "null", "array", "object"] {
+        assert!(text.contains(badge), "missing {badge} badge in:\n{text}");
+    }
+
+    let plain = JsonViewer::from_content(json).show_line_numbers(false);
+    let text = render_lines(&plain, 50, 8).join("\n");
+    assert!(!text.contains("string"), "badges drawn while off:\n{text}");
+}

@@ -71,3 +71,21 @@ fn test_filter_cancels_edit() {
     grid.set_filter("x");
     assert!(!grid.is_editing());
 }
+
+#[test]
+fn non_filterable_column_does_not_match_the_filter() {
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("a", "A"))
+        .column(GridColumn::new("b", "B").filterable(false))
+        .row(GridRow::new().cell("a", "Alice").cell("b", "x"))
+        .row(GridRow::new().cell("a", "Bob").cell("b", "Alice"));
+
+    grid.set_filter("alice");
+    assert_eq!(grid.filtered_count(), 1);
+    assert_eq!(grid.filtered_rows()[0].get("a"), Some("Alice"));
+
+    // Filtering on the non-filterable column directly matches nothing.
+    grid.filter_column = Some(1);
+    grid.set_filter("alice");
+    assert_eq!(grid.filtered_count(), 0);
+}

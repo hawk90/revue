@@ -3,15 +3,26 @@
 use crate::style::Color;
 
 /// Calendar display mode
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[deprecated(
+    since = "3.5.0",
+    note = "never applied: the calendar always shows one month; lay out several `Calendar`s for a year view"
+)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CalendarMode {
     /// Single month view
-    #[default]
     Month,
     /// Year overview (12 months)
     Year,
     /// Week view
     Week,
+}
+
+// Written out (not derived) so the deprecated variant can be allowed here
+#[allow(deprecated, clippy::derivable_impls)]
+impl Default for CalendarMode {
+    fn default() -> Self {
+        CalendarMode::Month
+    }
 }
 
 /// First day of week

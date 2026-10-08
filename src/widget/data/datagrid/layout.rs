@@ -60,9 +60,9 @@ impl DataGrid {
     /// Position the visible columns for the current viewport.
     ///
     /// Applies column freeze and horizontal scroll: the first `frozen_left`
-    /// display columns are pinned to the left, the last `frozen_right` are
-    /// pinned flush to the right, and the columns in between scroll horizontally
-    /// by `scroll_col`. Middle columns that would collide with the right-frozen
+    /// display columns (widened to the last `GridColumn::frozen` one) are
+    /// pinned to the left, the last `frozen_right` are pinned flush to the
+    /// right, and the columns in between scroll horizontally by `scroll_col`. Middle columns that would collide with the right-frozen
     /// region are dropped.
     ///
     /// `widths` is parallel to `visible_cols` (display order). Returned slots
@@ -82,7 +82,7 @@ impl DataGrid {
             return Vec::new();
         }
 
-        let frozen_left = self.frozen_left.min(n);
+        let frozen_left = self.frozen_left_for(visible_cols).min(n);
         let frozen_right = self.frozen_right.min(n - frozen_left);
         let width_at = |i: usize| widths.get(i).copied().unwrap_or(0);
         // Column width plus its trailing separator.

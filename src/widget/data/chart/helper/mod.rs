@@ -28,8 +28,6 @@ pub struct Chart {
     border_color: Option<Color>,
     /// Use Braille for higher resolution
     braille_mode: bool,
-    /// Tooltip configuration
-    tooltip: Option<super::chart_common::ChartTooltip>,
     /// Widget properties
     props: WidgetProps,
 }
@@ -46,7 +44,6 @@ impl Chart {
             bg_color: None,
             border_color: None,
             braille_mode: false,
-            tooltip: None,
             props: WidgetProps::new(),
         }
     }
@@ -115,15 +112,22 @@ impl Chart {
         self
     }
 
-    /// Set tooltip configuration
-    pub fn tooltip(mut self, tooltip: super::chart_common::ChartTooltip) -> Self {
-        self.tooltip = Some(tooltip);
+    /// Set tooltip configuration (has no effect)
+    #[deprecated(
+        since = "3.5.0",
+        note = "never drawn: no chart shows a tooltip; draw the value yourself, e.g. in a `Text` beside the chart"
+    )]
+    #[allow(deprecated)]
+    pub fn tooltip(self, _tooltip: super::chart_common::ChartTooltip) -> Self {
         self
     }
 
-    /// Enable tooltips with default settings
-    pub fn with_tooltip(mut self) -> Self {
-        self.tooltip = Some(super::chart_common::ChartTooltip::enabled());
+    /// Enable tooltips with default settings (has no effect)
+    #[deprecated(
+        since = "3.5.0",
+        note = "never drawn: no chart shows a tooltip; draw the value yourself, e.g. in a `Text` beside the chart"
+    )]
+    pub fn with_tooltip(self) -> Self {
         self
     }
 }

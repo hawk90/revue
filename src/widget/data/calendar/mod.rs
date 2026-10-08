@@ -30,12 +30,8 @@
 //! ```rust,ignore
 //! use revue::prelude::*;
 //!
-//! calendar()
-//!     .mode(CalendarMode::Range)
-//!     .start_date(Date::today())
-//!     .on_range_select(|start, end| {
-//!         println!("Range: {:?} to {:?}", start, end);
-//!     });
+//! // Highlight the days from the 10th to the 20th
+//! calendar(2025, 1).range(Date::new(2025, 1, 10), Date::new(2025, 1, 20));
 //! ```
 //!
 //! # Custom Date Styling
@@ -301,7 +297,9 @@ mod tests {
 }
 
 pub use date::Date;
-pub use types::{CalendarMode, DateMarker, FirstDayOfWeek};
+#[allow(deprecated)]
+pub use types::CalendarMode;
+pub use types::{DateMarker, FirstDayOfWeek};
 pub use utils::{days_in_month, first_day_of_month, is_leap_year};
 
 /// Calendar widget
@@ -315,8 +313,6 @@ pub struct Calendar {
     selected: Option<Date>,
     /// Selection range end (for range selection)
     range_end: Option<Date>,
-    /// Display mode
-    mode: CalendarMode,
     /// First day of week
     first_day: FirstDayOfWeek,
     /// Show week numbers
@@ -349,7 +345,6 @@ impl Calendar {
             month: month.clamp(1, 12),
             selected: None,
             range_end: None,
-            mode: CalendarMode::Month,
             first_day: FirstDayOfWeek::Sunday,
             show_week_numbers: false,
             markers: Vec::new(),
@@ -383,9 +378,13 @@ impl Calendar {
         self
     }
 
-    /// Set display mode
-    pub fn mode(mut self, mode: CalendarMode) -> Self {
-        self.mode = mode;
+    /// Set display mode (has no effect: the calendar always shows one month)
+    #[deprecated(
+        since = "3.5.0",
+        note = "never applied: the calendar always shows one month; lay out several `Calendar`s for a year view"
+    )]
+    #[allow(deprecated)]
+    pub fn mode(self, _mode: CalendarMode) -> Self {
         self
     }
 
