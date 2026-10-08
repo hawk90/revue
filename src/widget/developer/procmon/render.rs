@@ -14,13 +14,16 @@ const PROC_FG: Color = Color::WHITE;
 /// Where the command column starts, after the status column
 const CMD_X: u16 = 59;
 
+/// The column header sits under the stats bar (row 0).
+const HEADER_ROW: u16 = 1;
+
 impl ProcessMonitor {
     /// Format bytes to human readable
     fn format_bytes(bytes: u64) -> String {
         format_size_compact(bytes)
     }
 
-    /// Render header
+    /// Render the column header on [`HEADER_ROW`]
     fn render_header(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
 
@@ -28,7 +31,7 @@ impl ProcessMonitor {
         for x in 0..area.width {
             let mut cell = Cell::new(' ');
             cell.bg = Some(self.colors.header_bg);
-            ctx.set(x, 0, cell);
+            ctx.set(x, HEADER_ROW, cell);
         }
 
         // Column headers
@@ -64,14 +67,14 @@ impl ProcessMonitor {
                 cell.fg = Some(self.colors.header_fg);
                 cell.bg = Some(self.colors.header_bg);
                 cell.modifier = Modifier::BOLD;
-                ctx.set(hx, 0, cell);
+                ctx.set(hx, HEADER_ROW, cell);
                 hx += cw;
             }
             x_offset += width as u16;
         }
 
         if self.show_cmd {
-            ctx.put_str_with(CMD_X, 0, "COMMAND", area.width, |ch| {
+            ctx.put_str_with(CMD_X, HEADER_ROW, "COMMAND", area.width, |ch| {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.colors.header_fg);
                 cell.bg = Some(self.colors.header_bg);
@@ -295,20 +298,42 @@ mod tests {
     }
 
     #[test]
+    fn the_stats_bar_and_the_column_header_each_get_their_row() {
+        let mut monitor = ProcessMonitor::new();
+        monitor.set_process_list(vec![info(7, "sh", "501", "")]);
+        let rows = rows(&monitor, 100, 5);
+        assert!(
+            rows[0].contains("Processes:"),
+            "stats bar missing: {:?}",
+            rows[0]
+        );
+        assert!(
+            rows[1].contains("PID"),
+            "column header missing: {:?}",
+            rows[1]
+        );
+        assert!(
+            rows[2].contains("sh"),
+            "first process missing: {:?}",
+            rows[2]
+        );
+    }
+
+    #[test]
     fn show_cmd_draws_the_command_column() {
         let list = vec![info(7, "sh", "501", "/bin/sh -c true")];
 
         let mut monitor = ProcessMonitor::new();
         monitor.set_process_list(list.clone());
         let hidden = rows(&monitor, 100, 5);
-        // The column header is the top row; the processes start on the third.
-        assert!(!hidden[0].contains("COMMAND"), "{:?}", hidden[0]);
+        // Stats bar, column header, then the processes.
+        assert!(!hidden[1].contains("COMMAND"), "{:?}", hidden[1]);
         assert!(!hidden[2].contains("/bin/sh"), "{:?}", hidden[2]);
 
         let mut monitor = ProcessMonitor::new().show_cmd(true);
         monitor.set_process_list(list);
         let shown = rows(&monitor, 100, 5);
-        assert!(shown[0].contains("COMMAND"), "{:?}", shown[0]);
+        assert!(shown[1].contains("COMMAND"), "{:?}", shown[1]);
         assert!(shown[2].contains("/bin/sh -c true"), "{:?}", shown[2]);
     }
 
