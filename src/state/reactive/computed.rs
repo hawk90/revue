@@ -2,7 +2,10 @@
 //!
 //! Thread-safe computed values using Arc and atomic operations.
 
-use super::tracker::{dispose_subscriber, run_tracked, Subscriber, SubscriberId};
+use super::tracker::{
+    dispose_subscriber, notify_dependents, run_tracked, track_read, Subscriber, SubscriberId,
+};
+use super::SignalId;
 use crate::utils::lock::{lock_or_recover, read_or_recover, write_or_recover};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
@@ -19,6 +22,9 @@ thread_local! {
 pub struct Computed<T: Clone + Send + Sync + 'static> {
     /// Unique identifier for this computed value
     id: SubscriberId,
+    /// This value as a dependency: effects and computed values that read it
+    /// register on this id, and are notified when it is invalidated
+    source: SignalId,
     /// The computation function
     compute: Arc<dyn Fn() -> T + Send + Sync>,
     /// Cached result
@@ -46,6 +52,7 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
 
         Self {
             id,
+            source: SignalId::new(),
             compute,
             cached: Arc::new(RwLock::new(None)),
             dirty: Arc::new(AtomicBool::new(true)),
@@ -67,6 +74,10 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
     /// or through others that read it (a circular dependency). Waiting on its
     /// own recompute lock would deadlock the thread instead.
     pub fn get(&self) -> T {
+        // Whoever is tracking now (an effect, another computed) depends on
+        // this value - also when it is served from the cache.
+        track_read(self.source);
+
         // Fast path: check if we can use cached value without locking
         if !self.needs_recompute() {
             if let Some(value) = self.get_cached() {
@@ -111,10 +122,16 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
     fn recompute_and_cache(&self) -> T {
         // Create a subscriber that invalidates when dependencies change
         let dirty_flag = self.dirty.clone();
+        let source = self.source;
         let subscriber = Subscriber {
             id: self.id,
             callback: Arc::new(move || {
-                dirty_flag.store(true, Ordering::SeqCst);
+                // Pass the change on to what reads this value. Only on the
+                // clean -> dirty step: while dirty, nobody has read the new
+                // value yet, so its dependents have already been told.
+                if !dirty_flag.swap(true, Ordering::SeqCst) {
+                    notify_dependents(source);
+                }
             }),
         };
 
@@ -148,7 +165,9 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
 
     /// Force recalculation on next get
     pub fn invalidate(&self) {
-        self.dirty.store(true, Ordering::SeqCst);
+        if !self.dirty.swap(true, Ordering::SeqCst) {
+            notify_dependents(self.source);
+        }
     }
 
     /// Check if the value needs recalculation
@@ -166,6 +185,7 @@ impl<T: Clone + Send + Sync + 'static> Clone for Computed<T> {
 
         Self {
             id: self.id,
+            source: self.source,
             compute: self.compute.clone(),
             cached: self.cached.clone(),
             dirty: self.dirty.clone(),

@@ -6,6 +6,8 @@ mod async_state;
 mod batch;
 #[path = "reactive/computed.rs"]
 mod computed;
+#[path = "reactive/computed_propagation.rs"]
+mod computed_propagation;
 #[path = "reactive/context.rs"]
 mod context;
 #[path = "reactive/effect.rs"]

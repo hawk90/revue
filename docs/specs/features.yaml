@@ -520,10 +520,12 @@ items:
     status: done
     acceptance:
       - computed recomputes when a dependency signal changes
+      - a computed is itself a dependency - effects and computed values that read it follow its inputs, also through a chain
     evidence:
       - src/state/reactive/mod.rs::computed
       - src/state/reactive/computed.rs
       - tests/reactive.rs
+      - tests/reactive/computed_propagation.rs::an_effect_reading_a_computed_reruns_when_its_input_changes
     source:
       - FEATURES.md §3 Reactivity / Computed
   - id: RX-003
