@@ -88,14 +88,14 @@ mod imp {
         Ok(())
     }
 
-    enum Disposition {
+    pub(super) enum Disposition {
         Default,
         Ignored,
         /// Someone else's handler, or a disposition we could not read.
         Handled,
     }
 
-    fn disposition(signal: libc::c_int) -> Disposition {
+    pub(super) fn disposition(signal: libc::c_int) -> Disposition {
         // SAFETY: with a null `act`, `sigaction` only reads the current
         // disposition into `old`, a valid, writable `sigaction`. All-zero
         // bytes are a valid `sigaction` value (plain integers and a mask).
@@ -175,10 +175,22 @@ mod tests {
         for signal in imp::SIGNALS {
             let signals = ShutdownSignals::listen();
             assert!(!signals.requested());
+            // A signal this process inherited as ignored stays ignored - a
+            // background job of a non-interactive shell starts with SIGINT
+            // ignored, for one. Nothing is registered for it, so it is still
+            // `SIG_IGN` here, and raising it must not request a shutdown.
+            let inherited_ignore = matches!(imp::disposition(signal), imp::Disposition::Ignored);
 
             raise(signal).unwrap();
 
-            assert!(signals.requested(), "signal {signal} was not noticed");
+            if inherited_ignore {
+                assert!(
+                    !signals.requested(),
+                    "ignored signal {signal} requested shutdown"
+                );
+            } else {
+                assert!(signals.requested(), "signal {signal} was not noticed");
+            }
         }
     }
 
