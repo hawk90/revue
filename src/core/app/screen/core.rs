@@ -1,7 +1,7 @@
 //! Screen manager core implementation
 
 use super::types::{
-    Screen, ScreenConfig, ScreenData, ScreenEvent, ScreenId, ScreenResult, Transition,
+    Screen, ScreenConfig, ScreenData, ScreenEvent, ScreenId, ScreenMode, ScreenResult, Transition,
 };
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -119,10 +119,15 @@ impl ScreenManager {
             }
         };
 
-        // Send suspend to current top
+        let config = screen.config();
+
+        // Send suspend to current top. A modal or popup is drawn over it, so
+        // it stays visible; a fullscreen screen hides it.
         if let Some(current) = self.stack.last_mut() {
             current.screen.on_event(ScreenEvent::Suspend);
-            current.visible = false;
+            if config.mode == ScreenMode::Fullscreen {
+                current.visible = false;
+            }
         }
 
         // Send data if pending
@@ -134,8 +139,6 @@ impl ScreenManager {
         screen.on_event(ScreenEvent::Mount);
         screen.on_event(ScreenEvent::Show);
         screen.on_event(ScreenEvent::Focus);
-
-        let config = screen.config();
 
         // Start transition if configured
         if config.enter_transition != Transition::None {
@@ -311,8 +314,15 @@ impl ScreenManager {
 
     /// Render current screen
     pub fn render(&self, ctx: &mut RenderContext) {
-        // Render visible screens from bottom to top
-        for entry in &self.stack {
+        // Render visible screens from bottom to top, starting at the topmost
+        // fullscreen one: modals and popups above it are drawn over it, and
+        // nothing below it shows
+        let start = self
+            .stack
+            .iter()
+            .rposition(|e| e.visible && e.screen.config().mode == ScreenMode::Fullscreen)
+            .unwrap_or(0);
+        for entry in &self.stack[start..] {
             if entry.visible {
                 entry.screen.render(ctx);
             }

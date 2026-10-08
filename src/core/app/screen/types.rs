@@ -62,9 +62,9 @@ pub enum ScreenMode {
     /// Full screen (replaces previous)
     #[default]
     Fullscreen,
-    /// Modal (overlays previous)
+    /// Modal (overlays previous): the screen below is still drawn under it
     Modal,
-    /// Popup (small overlay)
+    /// Popup (small overlay): the screen below is still drawn under it
     Popup,
 }
 
