@@ -1017,3 +1017,54 @@ fn test_rating_thumbs_rendering() {
 }
 
 // =============================================================================
+
+/// Paint `r` and return its row as text.
+fn rating_row(r: &Rating) -> String {
+    let mut buffer = Buffer::new(20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 1));
+    r.render(&mut ctx);
+    (0..20)
+        .map(|x| buffer.get(x, 0).map_or(' ', |c| c.symbol))
+        .collect()
+}
+
+#[test]
+fn test_rating_readonly_ignores_user_changes() {
+    // #799: `readonly(true)` was stored and never read, so the user could
+    // still change the rating.
+    let mut r = Rating::new().value(3.0).readonly(true);
+    let before = rating_row(&r);
+
+    r.increment();
+    assert_eq!(
+        rating_row(&r),
+        before,
+        "increment changed a read-only rating"
+    );
+    r.decrement();
+    assert_eq!(
+        rating_row(&r),
+        before,
+        "decrement changed a read-only rating"
+    );
+    r.clear();
+    assert_eq!(rating_row(&r), before, "clear changed a read-only rating");
+    r.set_hover(Some(5.0));
+    assert_eq!(
+        rating_row(&r),
+        before,
+        "a hover preview showed on a read-only rating"
+    );
+
+    // The application can still set it.
+    r.set_value(1.0);
+    assert_ne!(rating_row(&r), before);
+}
+
+#[test]
+fn test_rating_editable_takes_user_changes() {
+    let mut r = Rating::new().value(3.0);
+    let before = rating_row(&r);
+    r.increment();
+    assert_ne!(rating_row(&r), before);
+}
