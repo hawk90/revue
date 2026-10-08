@@ -316,6 +316,15 @@ Browse all examples in the [examples/](examples/) directory.
 | [Accessibility](docs/guides/accessibility.md) | Build inclusive apps |
 | [Performance](docs/guides/performance.md) | Optimization tips |
 | [Plugin System](docs/guides/plugins.md) | Create and use plugins |
+| [Animations](docs/guides/animations.md) | Tween and keyframe animations |
+| [Drag & Drop](docs/guides/drag-drop.md) | Drag and drop system |
+| [Routing](docs/guides/routing.md) | Navigation and routing |
+| [Store](docs/guides/store.md) | Centralized state management |
+| [Query](docs/guides/query.md) | Query DSL for filtering, sorting and searching items |
+| [Error Handling](docs/guides/error-handling.md) | Errors, panics and terminal restoration |
+| [CLI](docs/guides/cli.md) | The `revue` command: new projects, templates, dev server |
+| [Constructor Patterns](docs/guides/constructor-patterns.md) | Widget construction patterns |
+| [Feature Flags](docs/guides/feature-flags.md) | Cargo feature configuration |
 
 <br>
 
@@ -351,6 +360,7 @@ Browse all examples in the [examples/](examples/) directory.
 - **[App Builder Guide](docs/guides/app-builder.md)** — Complete App Builder API reference
 - **[Styling Guide](docs/guides/styling.md)** — CSS properties and theming
 - **[State Management](docs/guides/state.md)** — Signals, Computed, Effects
+- **[Migrating to 3.0](docs/migration/v3.0.0.md)** — What changes coming from 2.x
 - **[API Reference](https://docs.rs/revue)** — Full API documentation
 - **[Architecture](docs/ARCHITECTURE.md)** — System design
 

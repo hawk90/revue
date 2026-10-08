@@ -91,15 +91,16 @@ perf(render): optimize diff algorithm
 test(button): add click event tests
 chore(deps): update crossterm to 0.28
 
-# Breaking changes - add ! after type
-feat!(api): change View trait signature
+# Breaking changes - add ! before the colon
+feat(api)!: change View trait signature
 ```
 
 **The description must not start with a capital letter.** CI enforces this on
 the PR title with `subjectPattern: ^(?![A-Z]).+$`, and a squash merge takes the
 PR title as the commit message — so `feat(event): Tab moves focus` fails and
 `feat(event): move focus with Tab` passes. Rewrite the sentence rather than
-lowercasing a proper noun.
+lowercasing a proper noun. The `commit-msg` hook checks the same rule on the
+first line of every commit.
 
 **Types:**
 
