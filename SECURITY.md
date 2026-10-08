@@ -4,8 +4,8 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 2.x     | :white_check_mark: |
-| < 2.0   | :x:                |
+| 3.x     | :white_check_mark: |
+| < 3.0   | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -54,6 +54,40 @@ We consider security research conducted in accordance with this policy to be:
 - Exempt from restrictions in our Terms of Service that would interfere with conducting security research
 
 We will not pursue civil action or initiate a complaint to law enforcement for accidental, good-faith violations of this policy.
+
+## Handling a Report (Maintainers)
+
+A vulnerability is fixed in private and disclosed after the fixed version is
+out. A public issue or pull request shows the problem to everyone before users
+can upgrade, so neither is used until then.
+
+1. **Open a draft advisory.** For a report that came in through "Report a
+   vulnerability", the draft already exists. For one found another way
+   (review, a private message), create it yourself: Security → Advisories →
+   New draft security advisory. Fill in the affected versions and the
+   severity.
+2. **Fix it in the advisory's private fork.** On the draft advisory, use
+   "Start a temporary private fork". Write the failing test first, as for any
+   bug, and review the fix there. A collaborator invited to the advisory can
+   see and work on the fork.
+3. **Release.** Merge the fix from the advisory and cut a patch release as
+   usual. The commit and release notes say what changed in neutral terms; the
+   details go in the advisory.
+4. **Publish the advisory** once the release is on crates.io, crediting the
+   reporter unless they asked not to be. Request a CVE from the advisory page
+   if the issue is moderate or worse.
+5. **Decide on RustSec.** Filing in
+   [rustsec/advisory-db](https://github.com/rustsec/advisory-db) warns everyone
+   running `cargo audit` or `cargo deny`. Do it when an ordinary app using
+   revue is affected without doing anything unusual. It can be skipped when
+   the issue needs several uncommon conditions together (one platform, an app
+   passing untrusted input to a specific API, and a user action); the GitHub
+   advisory then stands as the record.
+6. **Record it** under [Recent Security Fixes](#recent-security-fixes) below.
+
+If a fix has already gone through a public pull request (for a low-severity
+issue, or before this process was followed), still publish the advisory after
+the release, so users have a record of what was fixed and why to upgrade.
 
 ## Security Best Practices for Users
 
