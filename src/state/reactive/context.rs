@@ -111,7 +111,8 @@ where
 /// Creating one provides the value like [`provide_signal`]: it is visible to
 /// [`use_context`] until replaced or cleared with [`clear_context`], and the
 /// provider and its consumers share one signal, so [`Provider::set`] is seen
-/// by every consumer.
+/// by every consumer. For a provider limited to a subtree, use
+/// [`ContextScope::provider`].
 pub struct Provider<T: Clone + Send + Sync + 'static> {
     context_id: ContextId,
     value: Signal<T>,
@@ -491,6 +492,22 @@ impl ContextScope {
 
         signal
     }
+
+    /// Create a [`Provider`] whose value is provided within this scope
+    ///
+    /// [`Provider::new`] provides globally, like [`provide`]; this provides
+    /// for this scope only, like [`provide_signal`](Self::provide_signal).
+    /// The value disappears with the scope even if the provider is kept.
+    pub fn provider<T: Clone + Send + Sync + 'static>(
+        &self,
+        context: &Context<T>,
+        value: T,
+    ) -> Provider<T> {
+        Provider {
+            context_id: context.id,
+            value: self.provide_signal(context, value),
+        }
+    }
 }
 
 impl Default for ContextScope {
@@ -803,6 +820,34 @@ mod tests {
     }
 
     // Provider tests
+    #[test]
+    fn a_scope_provider_is_seen_only_while_its_scope_lives() {
+        let ctx: Context<i32> = Context::new();
+        let global = Provider::new(&ctx, 1);
+        {
+            let scope = ContextScope::new();
+            let scoped = scope.provider(&ctx, 2);
+            assert_eq!(
+                use_context(&ctx),
+                Some(2),
+                "the scope shadows the global value"
+            );
+            scoped.set(3);
+            assert_eq!(
+                use_context(&ctx),
+                Some(3),
+                "consumers share the provider's signal"
+            );
+            assert_eq!(global.get(), 1, "the global provider was touched");
+        }
+        assert_eq!(
+            use_context(&ctx),
+            Some(1),
+            "the scoped value outlived its scope"
+        );
+        clear_context(&ctx);
+    }
+
     #[test]
     fn test_provider_new() {
         let ctx = create_context::<i32>();
