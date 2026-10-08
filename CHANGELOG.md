@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0](https://github.com/hawk90/revue/compare/v3.6.3...v3.7.0) (2026-10-08)
+
+
+### Features
+
+* **app:** draw modal and popup screens over the screen below ([#847](https://github.com/hawk90/revue/issues/847)) ([48e1450](https://github.com/hawk90/revue/commit/48e14500d01dd79a4094a2f9136cb9f2e1718d44))
+* **devtools:** make the inspector honor its display settings ([#844](https://github.com/hawk90/revue/issues/844)) ([789b5bb](https://github.com/hawk90/revue/commit/789b5bb7873c8c6c7b8826beb0830accc1c466ee))
+* **text:** make CharWidthTable honor its CJK and Nerd Font widths ([#843](https://github.com/hawk90/revue/issues/843)) ([91fc13c](https://github.com/hawk90/revue/commit/91fc13c8d2a9cb12471f44f584b7e2a72059c971))
+* **widget:** deprecate three settings that cannot do anything ([#837](https://github.com/hawk90/revue/issues/837)) ([723e57c](https://github.com/hawk90/revue/commit/723e57c8939cdfdaae144c49dfe5f72e1dc4f13c))
+* **widget:** let a narrow StatusBar leave out its least important sections ([#841](https://github.com/hawk90/revue/issues/841)) ([637d5b1](https://github.com/hawk90/revue/commit/637d5b14d5f6d52969cc7049e8929d748b43ecbd))
+* **widget:** list Combobox options under their group headers ([#842](https://github.com/hawk90/revue/issues/842)) ([6bbf5ff](https://github.com/hawk90/revue/commit/6bbf5ffc9681ede849ae472c9d00c6f4579feb63))
+* **widget:** make ThemePicker::show_preview hide the color swatches ([#839](https://github.com/hawk90/revue/issues/839)) ([1c7ab9e](https://github.com/hawk90/revue/commit/1c7ab9ee5cfc4cab6d3be9ad970ec70ed9b22301))
+
+
+### Bug Fixes
+
+* **cli:** update rustls and rustls-webpki past five advisories ([#840](https://github.com/hawk90/revue/issues/840)) ([5e39013](https://github.com/hawk90/revue/commit/5e39013a4df60d7c9bf2a14d8d912f919b4e18e1))
+* **utils:** open URLs on Windows without going through cmd ([#896](https://github.com/hawk90/revue/issues/896)) ([dbcbe3d](https://github.com/hawk90/revue/commit/dbcbe3d16a685f5517ca22728ac2273f7e8245de))
+
 ## [3.6.3](https://github.com/hawk90/revue/compare/v3.6.2...v3.6.3) (2026-10-08)
 
 
