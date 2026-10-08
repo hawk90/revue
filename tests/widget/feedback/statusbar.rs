@@ -7,9 +7,11 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
+#[allow(deprecated)] // never read (#799)
+use revue::widget::SectionAlign;
 use revue::widget::{
-    footer, header, statusbar, KeyHint, RenderContext, SectionAlign, StatusBar, StatusBarPosition,
-    StatusSection, View,
+    footer, header, statusbar, KeyHint, RenderContext, StatusBar, StatusBarPosition, StatusSection,
+    View,
 };
 
 fn row(bar: &StatusBar, y: u16) -> String {
@@ -28,6 +30,7 @@ fn contents(sections: &[StatusSection]) -> Vec<&str> {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_section_align_default() {
     assert_eq!(SectionAlign::default(), SectionAlign::Left);
     assert_ne!(SectionAlign::Left, SectionAlign::Center);

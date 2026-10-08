@@ -15,12 +15,10 @@
 //!     .enter(Animation::fade_in().duration(300))
 //!     .leave(Animation::fade_out().duration(200));
 //!
-//! // List transitions
+//! // A list. TransitionGroup draws its items; it does not animate them -
+//! // its enter/leave/move/stagger builders are deprecated.
 //! let items = vec!["Item 1", "Item 2", "Item 3"];
-//! TransitionGroup::new(items)
-//!     .enter(Animation::slide_in_left())
-//!     .leave(Animation::slide_out_right())
-//!     .stagger(50); // ms delay between items
+//! TransitionGroup::new(items);
 //! ```
 
 mod core;

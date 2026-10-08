@@ -6,7 +6,9 @@
 mod render;
 mod types;
 
-pub use types::{KeyHint, SectionAlign, StatusBarPosition, StatusSection};
+#[allow(deprecated)]
+pub use types::SectionAlign;
+pub use types::{KeyHint, StatusBarPosition, StatusSection};
 
 use crate::style::Color;
 use crate::widget::theme::{DARK_BG, SECONDARY_TEXT};

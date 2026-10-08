@@ -312,9 +312,10 @@ pub use datetime_picker::{
     date_picker, datetime_picker, time_picker, DateTime, DateTimeFormat, DateTimeMode,
     DateTimePicker, Time, TimeField,
 };
+#[allow(deprecated)]
+pub use debug_overlay::{disable_debug, enable_debug, is_debug_enabled, toggle_debug};
 pub use debug_overlay::{
-    disable_debug, enable_debug, is_debug_enabled, toggle_debug, DebugConfig, DebugEvent,
-    DebugOverlay, DebugPosition, EventLog, PerfMetrics, WidgetInfo,
+    DebugConfig, DebugEvent, DebugOverlay, DebugPosition, EventLog, PerfMetrics, WidgetInfo,
 };
 pub use dropzone::{drop_zone, DropZone, DropZoneStyle};
 pub use filepicker::{
@@ -413,15 +414,17 @@ pub use data::{
 };
 
 // Feedback widgets (re-exported from feedback module)
+#[allow(deprecated)]
+pub use feedback::SectionAlign;
 pub use feedback::{
     alert, context_menu, error_alert, error_boundary, footer, header, info_alert, key_hint, menu,
     menu_bar, menu_item, modal, notification_center, popover, status_section, statusbar,
     success_alert, toast, toast_queue, tooltip, warning_alert, Alert, AlertLevel, AlertVariant,
     ContextMenu, ErrorBoundary, KeyHint, Menu, MenuBar, MenuItem, Modal, ModalButton,
     ModalButtonStyle, Notification, NotificationCenter, NotificationLevel, NotificationPosition,
-    Popover, PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger, SectionAlign,
-    StackDirection, StatusBar, StatusBarPosition, StatusSection, Toast, ToastEntry, ToastLevel,
-    ToastPosition, ToastPriority, ToastQueue, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle,
+    Popover, PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger, StackDirection,
+    StatusBar, StatusBarPosition, StatusSection, Toast, ToastEntry, ToastLevel, ToastPosition,
+    ToastPriority, ToastQueue, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle,
 };
 
 // Developer widgets (re-exported from developer module)

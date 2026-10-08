@@ -35,6 +35,10 @@ pub struct DebugConfig {
     /// Maximum height
     pub max_height: u16,
     /// Panel opacity (0-255)
+    #[deprecated(
+        since = "3.5.0",
+        note = "never read: a terminal cell cannot be partly transparent, so the panel is always drawn opaque"
+    )]
     pub opacity: u8,
     /// Background color
     pub bg_color: Color,
@@ -44,6 +48,7 @@ pub struct DebugConfig {
     pub accent_color: Color,
 }
 
+#[allow(deprecated)] // `opacity` is still initialized
 impl Default for DebugConfig {
     fn default() -> Self {
         Self {

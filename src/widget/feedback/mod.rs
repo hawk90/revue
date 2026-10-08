@@ -119,9 +119,11 @@ pub use notification::{
     notification_center, Notification, NotificationCenter, NotificationLevel, NotificationPosition,
 };
 pub use popover::{popover, Popover, PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger};
+#[allow(deprecated)]
+pub use statusbar::SectionAlign;
 pub use statusbar::{
-    footer, header, key_hint, section as status_section, statusbar, KeyHint, SectionAlign,
-    StatusBar, StatusBarPosition, StatusSection,
+    footer, header, key_hint, section as status_section, statusbar, KeyHint, StatusBar,
+    StatusBarPosition, StatusSection,
 };
 pub use toast::{toast, Toast, ToastLevel, ToastPosition};
 pub use toast_queue::{toast_queue, StackDirection, ToastEntry, ToastPriority, ToastQueue};

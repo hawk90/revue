@@ -202,6 +202,7 @@ fn test_transition_group_items() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_transition_group_builder() {
     let enter = Animation::fade_in();
     let leave = Animation::fade_out();
@@ -213,6 +214,7 @@ fn test_transition_group_builder() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_transition_group_move_animation() {
     let _group = TransitionGroup::new(vec!["A", "B"]).move_animation(Animation::slide_left());
 }

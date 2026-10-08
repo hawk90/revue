@@ -34,24 +34,28 @@ fn test_transition_group_default() {
 }
 
 #[test]
+#[allow(deprecated)] // the animation builders are deprecated no-ops (#799)
 fn test_transition_group_enter() {
     let group = TransitionGroup::new(["a", "b"]).enter(Animation::fade());
     assert_eq!(group.len(), 2);
 }
 
 #[test]
+#[allow(deprecated)] // the animation builders are deprecated no-ops (#799)
 fn test_transition_group_leave() {
     let group = TransitionGroup::new(["a", "b"]).leave(Animation::fade());
     assert_eq!(group.len(), 2);
 }
 
 #[test]
+#[allow(deprecated)] // the animation builders are deprecated no-ops (#799)
 fn test_transition_group_move_animation() {
     let group = TransitionGroup::new(["a", "b"]).move_animation(Animation::slide_left());
     assert_eq!(group.len(), 2);
 }
 
 #[test]
+#[allow(deprecated)] // the animation builders are deprecated no-ops (#799)
 fn test_transition_group_stagger() {
     let group = TransitionGroup::new(["a", "b", "c"]).stagger(100);
     assert_eq!(group.len(), 3);
@@ -162,6 +166,7 @@ fn test_transition_group_items_empty() {
 }
 
 #[test]
+#[allow(deprecated)] // the animation builders are deprecated no-ops (#799)
 fn test_transition_group_builder_chain() {
     let group = TransitionGroup::new(["a", "b", "c"])
         .enter(Animation::fade())
