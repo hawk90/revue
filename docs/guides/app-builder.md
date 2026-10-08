@@ -430,7 +430,7 @@ let app = App::builder()
 ```toml
 # Cargo.toml
 [dependencies]
-revue = { version = "2", features = ["devtools", "hot-reload"] }
+revue = { version = "3", features = ["devtools", "hot-reload"] }
 ```
 
 ### Conditional Hot Reload
@@ -553,13 +553,13 @@ let app = App::builder()
 
 ```toml
 # Enable all features
-revue = { version = "2", features = ["full"] }
+revue = { version = "3", features = ["full"] }
 
 # Minimal (no devtools, no hot reload)
-revue = { version = "2", default-features = false }
+revue = { version = "3", default-features = false }
 
 # Selective
-revue = { version = "2", features = ["devtools"] }
+revue = { version = "3", features = ["devtools"] }
 ```
 
 ## See Also
