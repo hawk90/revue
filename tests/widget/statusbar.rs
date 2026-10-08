@@ -1221,3 +1221,73 @@ fn test_key_hint_clone() {
     assert_eq!(hint1.key, hint2.key);
     assert_eq!(hint1.description, hint2.description);
 }
+
+// =============================================================================
+// Priority: what a narrow bar keeps
+// =============================================================================
+
+/// The bar's one row at `width` columns.
+fn bar_row(bar: &StatusBar, width: u16) -> String {
+    let mut buffer = Buffer::new(width, 1);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, 1));
+    bar.render(&mut ctx);
+    (0..width)
+        .map(|x| buffer.get(x, 0).map(|c| c.symbol).unwrap_or(' '))
+        .collect()
+}
+
+/// file (8 columns with its gap) + encoding (6) + position (13) = 27.
+fn editor_bar() -> StatusBar {
+    statusbar()
+        .left(StatusSection::new("main.rs").priority(2))
+        .left(StatusSection::new("utf-8"))
+        .right(StatusSection::new("Ln 10, Col 5").priority(1))
+}
+
+#[test]
+fn test_priority_wide_bar_shows_every_section() {
+    let row = bar_row(&editor_bar(), 40);
+    assert!(row.contains("main.rs") && row.contains("utf-8") && row.contains("Ln 10, Col 5"));
+}
+
+#[test]
+fn test_priority_narrow_bar_hides_the_least_important_section() {
+    // 22 columns: dropping "utf-8" (6) leaves 21, which fits
+    let row = bar_row(&editor_bar(), 22);
+    assert!(
+        !row.contains("utf"),
+        "the priority-0 section was kept: {row:?}"
+    );
+    assert!(row.starts_with("main.rs "), "{row:?}");
+    assert!(row.ends_with("Ln 10, Col 5 "), "{row:?}");
+}
+
+#[test]
+fn test_priority_hides_more_sections_until_the_rest_fit() {
+    // 10 columns: only the file name (priority 2) fits
+    let row = bar_row(&editor_bar(), 10);
+    assert_eq!(row, "main.rs   ");
+}
+
+#[test]
+fn test_priority_ties_hide_the_later_section_first() {
+    let bar = statusbar()
+        .left(StatusSection::new("keep").priority(1))
+        .left(StatusSection::new("first"))
+        .right(StatusSection::new("second"));
+    // 5 + 6 + 7 = 18 needed; 12 columns fit "keep" and one more
+    let row = bar_row(&bar, 12);
+    assert!(row.contains("first"), "{row:?}");
+    assert!(!row.contains("second"), "{row:?}");
+}
+
+#[test]
+fn test_priority_equal_priorities_hide_nothing() {
+    // With no priorities set, a narrow bar draws every section as before
+    let bar = statusbar()
+        .left(StatusSection::new("aaaaaaaaaa"))
+        .right(StatusSection::new("bbbbbbbbbb"));
+    let row = bar_row(&bar, 15);
+    assert!(row.contains("bbbbbbbbbb"), "{row:?}");
+    assert!(row.starts_with("aaaa"), "{row:?}");
+}
