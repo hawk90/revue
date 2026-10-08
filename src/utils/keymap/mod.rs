@@ -24,6 +24,7 @@ mod presets;
 
 use crate::event::KeyBinding;
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 pub use parse::{format_key_binding, parse_key_binding};
 pub use presets::{emacs_preset, vim_preset};
@@ -99,8 +100,10 @@ pub struct KeymapConfig {
     current_mode: Mode,
     /// Pending keys for multi-key chords
     pending: Vec<KeyBinding>,
-    /// Timeout for multi-key chords (ms)
+    /// Timeout for multi-key chords (ms); 0 never times out
     chord_timeout: u64,
+    /// When the last pending key arrived
+    last_key: Option<Instant>,
     /// Global bindings (active in all modes)
     global_bindings: HashMap<KeyChord, String>,
 }
@@ -113,6 +116,7 @@ impl KeymapConfig {
             current_mode: Mode::Normal,
             pending: Vec::new(),
             chord_timeout: 1000,
+            last_key: None,
             global_bindings: HashMap::new(),
         }
     }
@@ -155,7 +159,27 @@ impl KeymapConfig {
     }
 
     /// Look up action for a key
+    ///
+    /// A chord left unfinished for longer than the
+    /// [`chord_timeout`](Self::chord_timeout) is forgotten: the key then
+    /// starts a new chord instead of continuing the old one.
     pub fn lookup(&mut self, key: KeyBinding) -> LookupResult {
+        self.lookup_at(key, Instant::now())
+    }
+
+    /// [`lookup`](Self::lookup), with `now` as the time the key arrived
+    ///
+    /// For tests and replays, which need the chord timeout to be
+    /// deterministic.
+    pub fn lookup_at(&mut self, key: KeyBinding, now: Instant) -> LookupResult {
+        let expired = self.chord_timeout > 0
+            && self.last_key.is_some_and(|last| {
+                now.saturating_duration_since(last) > Duration::from_millis(self.chord_timeout)
+            });
+        if expired {
+            self.pending.clear();
+        }
+        self.last_key = Some(now);
         self.pending.push(key.normalized());
 
         let chord = KeyChord {
@@ -205,7 +229,8 @@ impl KeymapConfig {
         !self.pending.is_empty()
     }
 
-    /// Set chord timeout
+    /// Set how long (ms) a multi-key chord may wait for its next key;
+    /// 0 waits forever. The default is 1000.
     pub fn chord_timeout(&mut self, ms: u64) {
         self.chord_timeout = ms;
     }
