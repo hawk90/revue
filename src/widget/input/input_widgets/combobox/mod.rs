@@ -196,7 +196,9 @@ impl Combobox {
         self
     }
 
-    /// Set max visible options
+    /// Set how many dropdown rows are visible at once
+    ///
+    /// Group headers take a row each (see [`ComboOption::group`]).
     pub fn max_visible(mut self, count: usize) -> Self {
         self.max_visible = count.max(1);
         self

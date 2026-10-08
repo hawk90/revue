@@ -1,10 +1,11 @@
 //! View implementation for Combobox
 
 use super::super::dropdown::{
-    calculate_dropdown_layout, queue_or_inline_overlay, render_options, render_status_row,
-    DropdownColors, DropdownOption, MIN_DROPDOWN_WIDTH,
+    calculate_dropdown_layout, queue_or_inline_overlay, render_rows, render_status_row,
+    DropdownColors, DropdownOption, DropdownRow, MIN_DROPDOWN_WIDTH,
 };
 use super::super::Combobox;
+use super::filter::DisplayRow;
 
 // ── Combobox header layout ───────────────────────────────────────────
 //
@@ -120,11 +121,12 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
         disabled_fg: combobox.disabled_fg,
     };
 
+    // The rows: options, with a header above each group. The scroll offset
+    // counts rows.
+    let rows = combobox.display_rows();
+
     // Calculate dropdown height, accounting for scroll offset
-    let items_after_scroll = combobox
-        .filtered
-        .len()
-        .saturating_sub(combobox.scroll_offset);
+    let items_after_scroll = rows.len().saturating_sub(combobox.scroll_offset);
     let dropdown_h = if combobox.loading || combobox.filtered.is_empty() {
         1u16
     } else {
@@ -165,16 +167,18 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
         return;
     }
 
-    // Build option descriptors
-    let dropdown_options: Vec<DropdownOption<'_>> = combobox
-        .filtered
+    // Build row descriptors
+    let dropdown_rows: Vec<DropdownRow<'_>> = rows
         .iter()
         .skip(combobox.scroll_offset)
         .take(visible_count)
-        .enumerate()
-        .map(|(row, &option_idx)| {
-            let option = &combobox.options[option_idx];
-            let is_highlighted = row + combobox.scroll_offset == combobox.selected_idx;
+        .map(|display_row| {
+            let pos = match *display_row {
+                DisplayRow::Header(name) => return DropdownRow::Header(name),
+                DisplayRow::Option(pos) => pos,
+            };
+            let option = &combobox.options[combobox.filtered[pos]];
+            let is_highlighted = pos == combobox.selected_idx;
             let is_multi_selected =
                 combobox.multi_select && combobox.is_selected(option.get_value());
 
@@ -195,26 +199,20 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
                 .map(|m| m.indices.into_iter().collect())
                 .unwrap_or_default();
 
-            DropdownOption {
+            DropdownRow::Option(DropdownOption {
                 label: &option.label,
                 is_highlighted,
                 is_disabled: option.disabled,
                 match_indices,
                 indicator,
-            }
+            })
         })
         .collect();
 
-    render_options(
-        &mut entry,
-        &dropdown_options,
-        width,
-        &colors,
-        SCROLL_RESERVE,
-    );
+    render_rows(&mut entry, &dropdown_rows, width, &colors, SCROLL_RESERVE);
 
     // Draw scroll indicators
-    let total_filtered = combobox.filtered.len();
+    let total_filtered = rows.len();
     let scroll_col = width - SCROLL_RESERVE;
     if total_filtered > visible_count {
         if combobox.scroll_offset > 0 {
