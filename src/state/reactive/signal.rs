@@ -290,6 +290,14 @@ impl<T: 'static> Signal<T> {
             // Lock released here when `subs` goes out of scope
         };
 
+        // Inside a batch, hold them until it ends (each once)
+        if super::batch::is_batching() {
+            for callback in callbacks {
+                super::tracker::defer_callback(callback);
+            }
+            return;
+        }
+
         // Invoke callbacks without holding any lock
         // This allows callbacks to safely drop their Subscription handles
         for callback in callbacks {
