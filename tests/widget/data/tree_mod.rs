@@ -527,3 +527,68 @@ fn test_tree_next_prev_match_empty() {
     assert!(!t.next_match());
     assert!(!t.prev_match());
 }
+
+// =========================================================================
+// Non-selectable nodes
+// =========================================================================
+
+/// "Fruits" (header, not selectable) > Apple, "Pending" (not selectable),
+/// Banana; then "Veg" (header, not selectable) > Carrot.
+fn tree_with_headers() -> Tree {
+    Tree::new().nodes(vec![
+        TreeNode::new("Fruits")
+            .selectable(false)
+            .expanded(true)
+            .child(TreeNode::new("Apple"))
+            .child(TreeNode::new("Pending").selectable(false))
+            .child(TreeNode::new("Banana")),
+        TreeNode::new("Veg")
+            .selectable(false)
+            .expanded(true)
+            .child(TreeNode::new("Carrot")),
+    ])
+}
+
+#[test]
+fn navigation_skips_non_selectable_nodes() {
+    use revue::event::Key;
+
+    let mut t = tree_with_headers();
+    // The initial selection moves off the non-selectable first node.
+    assert_eq!(t.selected_label(), Some("Apple"));
+
+    t.handle_key(&Key::Down);
+    assert_eq!(t.selected_label(), Some("Banana"));
+    t.handle_key(&Key::Down);
+    assert_eq!(t.selected_label(), Some("Carrot"));
+    // Nothing selectable below: stays.
+    assert!(!t.handle_key(&Key::Down));
+    assert_eq!(t.selected_label(), Some("Carrot"));
+
+    t.handle_key(&Key::Up);
+    assert_eq!(t.selected_label(), Some("Banana"));
+    t.handle_key(&Key::Up);
+    assert_eq!(t.selected_label(), Some("Apple"));
+    // The header above is skipped and nothing selectable is above it.
+    assert!(!t.handle_key(&Key::Up));
+    assert_eq!(t.selected_label(), Some("Apple"));
+
+    t.handle_key(&Key::End);
+    assert_eq!(t.selected_label(), Some("Carrot"));
+    t.handle_key(&Key::Home);
+    assert_eq!(t.selected_label(), Some("Apple"));
+
+    // Left from a child does not land on its non-selectable parent.
+    assert!(!t.handle_key(&Key::Left));
+    assert_eq!(t.selected_label(), Some("Apple"));
+}
+
+#[test]
+fn non_selectable_node_cannot_be_multi_selected() {
+    let mut t = Tree::new()
+        .multi_select(true)
+        .selected(0)
+        .nodes(vec![TreeNode::new("Header").selectable(false)]);
+    t.toggle_select();
+    assert!(t.selected_nodes().is_empty());
+}
