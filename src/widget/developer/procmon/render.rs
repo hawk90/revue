@@ -11,6 +11,9 @@ use crate::widget::traits::{RenderContext, View};
 /// [`ProcColors::name`](crate::widget::ProcColors::name) nor the stylesheet names one.
 const PROC_FG: Color = Color::WHITE;
 
+/// Where the command column starts, after the status column
+const CMD_X: u16 = 59;
+
 impl ProcessMonitor {
     /// Format bytes to human readable
     fn format_bytes(bytes: u64) -> String {
@@ -65,6 +68,16 @@ impl ProcessMonitor {
                 hx += cw;
             }
             x_offset += width as u16;
+        }
+
+        if self.show_cmd {
+            ctx.put_str_with(CMD_X, 0, "COMMAND", area.width, |ch| {
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(self.colors.header_fg);
+                cell.bg = Some(self.colors.header_bg);
+                cell.modifier = Modifier::BOLD;
+                cell
+            });
         }
     }
 
@@ -231,8 +244,87 @@ impl View for ProcessMonitor {
                     stx += cw;
                 }
             }
+
+            // Command line (the name when the system gave none)
+            if self.show_cmd {
+                let cmd = if proc.cmd.is_empty() {
+                    &proc.name
+                } else {
+                    &proc.cmd
+                };
+                ctx.put_str_with(CMD_X, y, cmd, area.width, |ch| {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(LIGHT_GRAY);
+                    cell.bg = bg;
+                    cell
+                });
+            }
         }
     }
 
     crate::impl_view_meta!("ProcessMonitor");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::{ProcessInfo, ProcessView};
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    fn info(pid: u32, name: &str, user: &str, cmd: &str) -> ProcessInfo {
+        ProcessInfo {
+            pid,
+            parent_pid: None,
+            name: name.to_string(),
+            cpu: 0.0,
+            memory: 0,
+            memory_percent: 0.0,
+            status: "Run".to_string(),
+            cmd: cmd.to_string(),
+            user: user.to_string(),
+        }
+    }
+
+    fn rows(monitor: &ProcessMonitor, w: u16, h: u16) -> Vec<String> {
+        let mut buf = Buffer::new(w, h);
+        monitor.render(&mut RenderContext::new(&mut buf, Rect::new(0, 0, w, h)));
+        (0..h)
+            .map(|y| (0..w).map(|x| buf.get(x, y).unwrap().symbol).collect())
+            .collect()
+    }
+
+    #[test]
+    fn show_cmd_draws_the_command_column() {
+        let list = vec![info(7, "sh", "501", "/bin/sh -c true")];
+
+        let mut monitor = ProcessMonitor::new();
+        monitor.set_process_list(list.clone());
+        let hidden = rows(&monitor, 100, 5);
+        // The column header is the top row; the processes start on the third.
+        assert!(!hidden[0].contains("COMMAND"), "{:?}", hidden[0]);
+        assert!(!hidden[2].contains("/bin/sh"), "{:?}", hidden[2]);
+
+        let mut monitor = ProcessMonitor::new().show_cmd(true);
+        monitor.set_process_list(list);
+        let shown = rows(&monitor, 100, 5);
+        assert!(shown[0].contains("COMMAND"), "{:?}", shown[0]);
+        assert!(shown[2].contains("/bin/sh -c true"), "{:?}", shown[2]);
+    }
+
+    #[test]
+    fn user_view_lists_only_the_current_users_processes() {
+        let list = vec![info(1, "init", "0", ""), info(2, "mine", "501", "")];
+
+        let mut monitor = ProcessMonitor::new();
+        monitor.current_user = Some("501".to_string());
+        monitor.set_process_list(list.clone());
+        assert_eq!(monitor.process_count(), 2);
+
+        let mut monitor = ProcessMonitor::new().view(ProcessView::User);
+        monitor.current_user = Some("501".to_string());
+        monitor.set_process_list(list);
+        assert_eq!(monitor.process_count(), 1);
+        assert_eq!(monitor.selected_process().unwrap().name, "mine");
+    }
 }
