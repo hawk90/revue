@@ -4,7 +4,10 @@
 //!
 //! # Example
 //!
-//! ```
+//! Not run as a test: it needs the system clipboard (CI machines have
+//! none) and would overwrite yours.
+//!
+//! ```no_run
 //! use revue::utils::clipboard::{copy, paste, Clipboard};
 //!
 //! // Simple copy/paste
