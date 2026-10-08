@@ -42,8 +42,8 @@ pub struct DiffViewer {
     show_line_numbers: bool,
     /// Scroll position
     scroll: usize,
-    /// Context lines around changes
-    context_lines: usize,
+    /// Unchanged lines kept around each change; `None` shows every line
+    context_lines: Option<usize>,
     /// Computed diff lines (cached)
     diff_lines: Vec<DiffLine>,
     /// Widget properties
@@ -62,7 +62,7 @@ impl DiffViewer {
             colors: DiffColors::default(),
             show_line_numbers: true,
             scroll: 0,
-            context_lines: 3,
+            context_lines: None,
             diff_lines: Vec::new(),
             props: WidgetProps::new(),
         }
@@ -120,15 +120,18 @@ impl DiffViewer {
         self
     }
 
-    /// Set context lines around changes
+    /// Keep `lines` unchanged lines around each change and fold the rest
+    /// of each unchanged run into a `⋯ N unchanged lines` row
+    ///
+    /// Without it every line is shown.
     pub fn context(mut self, lines: usize) -> Self {
-        self.context_lines = lines;
+        self.context_lines = Some(lines);
         self
     }
 
     /// Set scroll position
     pub fn set_scroll(&mut self, scroll: usize) {
-        self.scroll = scroll.min(self.diff_lines.len().saturating_sub(1));
+        self.scroll = scroll.min(self.rows().len().saturating_sub(1));
     }
 
     /// Scroll down

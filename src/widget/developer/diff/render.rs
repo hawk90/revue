@@ -14,7 +14,62 @@ struct LineLayout {
     content_width: usize,
 }
 
+/// A row of the viewer: a diff line, or a run of unchanged lines folded away
+pub(super) enum Row<'a> {
+    Line(&'a DiffLine),
+    Fold(usize),
+}
+
 impl DiffViewer {
+    /// The rows to draw: every diff line, or with a context set, the lines
+    /// near a change and a fold for each longer unchanged run
+    pub(super) fn rows(&self) -> Vec<Row<'_>> {
+        let lines = &self.diff_lines;
+        let Some(context) = self.context_lines else {
+            return lines.iter().map(Row::Line).collect();
+        };
+
+        let mut near = vec![false; lines.len()];
+        for (i, line) in lines.iter().enumerate() {
+            if line.change != ChangeType::Equal {
+                let end = i.saturating_add(context).min(lines.len() - 1);
+                near[i.saturating_sub(context)..=end].fill(true);
+            }
+        }
+
+        let mut rows = Vec::new();
+        let mut i = 0;
+        while i < lines.len() {
+            if near[i] {
+                rows.push(Row::Line(&lines[i]));
+                i += 1;
+                continue;
+            }
+            let start = i;
+            while i < lines.len() && !near[i] {
+                i += 1;
+            }
+            // A marker for one line would take as much room as the line
+            if i - start == 1 {
+                rows.push(Row::Line(&lines[start]));
+            } else {
+                rows.push(Row::Fold(i - start));
+            }
+        }
+        rows
+    }
+
+    /// Draw a fold row across the width
+    fn render_fold(&self, ctx: &mut RenderContext, y: u16, hidden: usize) {
+        let text = format!("⋯ {hidden} unchanged lines");
+        let fg = self.colors.line_number;
+        ctx.put_str_with(0, y, &text, ctx.area.width, |ch| {
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(fg);
+            cell
+        });
+    }
+
     /// Render split view
     fn render_split(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
@@ -31,14 +86,21 @@ impl DiffViewer {
 
         // Content
         let visible_lines = (area.height - 1) as usize;
-        for (i, line) in self
-            .diff_lines
-            .iter()
+        for (i, row) in self
+            .rows()
+            .into_iter()
             .skip(self.scroll)
             .take(visible_lines)
             .enumerate()
         {
             let y = 1 + i as u16;
+            let line = match row {
+                Row::Line(line) => line,
+                Row::Fold(hidden) => {
+                    self.render_fold(ctx, y, hidden);
+                    continue;
+                }
+            };
 
             // Left side
             let left_layout = LineLayout {
@@ -188,14 +250,21 @@ impl DiffViewer {
         let content_width = area.width.saturating_sub(line_num_width + 1) as usize;
 
         let visible_lines = area.height as usize;
-        for (i, line) in self
-            .diff_lines
-            .iter()
+        for (i, row) in self
+            .rows()
+            .into_iter()
             .skip(self.scroll)
             .take(visible_lines)
             .enumerate()
         {
             let y = i as u16;
+            let line = match row {
+                Row::Line(line) => line,
+                Row::Fold(hidden) => {
+                    self.render_fold(ctx, y, hidden);
+                    continue;
+                }
+            };
 
             // Line numbers (left:right)
             if self.show_line_numbers {
@@ -258,5 +327,71 @@ impl View for DiffViewer {
             DiffMode::Split => self.render_split(ctx),
             DiffMode::Unified | DiffMode::Inline => self.render_unified(ctx),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    fn rows(viewer: &DiffViewer, w: u16, h: u16) -> Vec<String> {
+        let mut buf = Buffer::new(w, h);
+        viewer.render(&mut RenderContext::new(&mut buf, Rect::new(0, 0, w, h)));
+        (0..h)
+            .map(|y| {
+                (0..w)
+                    .map(|x| buf.get(x, y).unwrap().symbol)
+                    .collect::<String>()
+                    .trim_end()
+                    .to_string()
+            })
+            .collect()
+    }
+
+    fn one_change() -> DiffViewer {
+        DiffViewer::new()
+            .compare("a\nb\nc\nd\ne\nf\ng\n", "a\nb\nc\nD\ne\nf\ng\n")
+            .mode(DiffMode::Unified)
+            .line_numbers(false)
+    }
+
+    #[test]
+    fn without_context_every_line_is_shown() {
+        assert_eq!(
+            rows(&one_change(), 30, 8),
+            [" a", " b", " c", "-d", "+D", " e", " f", " g"]
+        );
+    }
+
+    #[test]
+    fn context_folds_unchanged_runs_away_from_changes() {
+        assert_eq!(
+            rows(&one_change().context(1), 30, 8),
+            [
+                "⋯ 2 unchanged lines",
+                " c",
+                "-d",
+                "+D",
+                " e",
+                "⋯ 2 unchanged lines",
+                "",
+                ""
+            ]
+        );
+        // A run of one is shown rather than replaced by a marker as tall
+        assert_eq!(
+            rows(&one_change().context(2), 30, 8),
+            [" a", " b", " c", "-d", "+D", " e", " f", " g"]
+        );
+    }
+
+    #[test]
+    fn context_folds_in_the_split_view() {
+        let viewer = one_change().mode(DiffMode::Split).context(1);
+        let rows = rows(&viewer, 30, 8);
+        assert!(rows[1].contains("⋯ 2 unchanged lines"), "{:?}", rows[1]);
+        assert!(rows[6].contains("⋯ 2 unchanged lines"), "{:?}", rows[6]);
     }
 }
