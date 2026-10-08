@@ -213,3 +213,22 @@ fn test_status_bar_render_left_and_right_text() {
     assert!(bottom.ends_with("Right"), "{bottom:?}");
     assert_eq!(row(&bar, 0), "");
 }
+
+/// #799: the separator only left a gap; its character was never drawn.
+#[test]
+fn test_status_bar_draws_the_separator_between_sections() {
+    let bar = StatusBar::new()
+        .height(1)
+        .separator('|')
+        .left_text("A")
+        .left_text("B")
+        .right_text("C")
+        .right_text("D");
+    let text = row(&bar, 4);
+    assert!(text.starts_with("A|B"), "left sections: {text:?}");
+    assert!(
+        !text.starts_with("A|B|"),
+        "separator after the last section: {text:?}"
+    );
+    assert!(text.ends_with("C|D"), "right sections: {text:?}");
+}

@@ -44,32 +44,14 @@ impl View for StatusBar {
         let right_width: u16 = self.right.iter().map(|s| s.width() + 1).sum();
 
         // Render left sections
-        let mut x: u16 = 0;
-        for section in &self.left {
-            x = self.render_section(ctx, section, x, y);
-            if self.separator.is_some() && x < area.width {
-                x += 1;
-            }
-        }
+        let x = self.render_group(ctx, &self.left, 0, y);
 
         // Render center sections
         let center_start = (area.width.saturating_sub(center_width)) / 2;
-        let mut x = center_start.max(x + 1);
-        for section in &self.center {
-            x = self.render_section(ctx, section, x, y);
-            if self.separator.is_some() && x < area.width {
-                x += 1;
-            }
-        }
+        self.render_group(ctx, &self.center, center_start.max(x + 1), y);
 
         // Render right sections
-        let mut x = area.width.saturating_sub(right_width);
-        for section in &self.right {
-            x = self.render_section(ctx, section, x, y);
-            if self.separator.is_some() && x < area.width {
-                x += 1;
-            }
-        }
+        self.render_group(ctx, &self.right, area.width.saturating_sub(right_width), y);
 
         // Render key hints on second row if height > 1
         if self.height > 1 && !self.key_hints.is_empty() {
@@ -86,6 +68,32 @@ impl View for StatusBar {
 }
 
 impl StatusBar {
+    /// Draw one group of sections from `x`, with the separator, if any, in
+    /// the column between two sections. Returns the column after the group.
+    fn render_group(
+        &self,
+        ctx: &mut RenderContext,
+        sections: &[StatusSection],
+        mut x: u16,
+        y: u16,
+    ) -> u16 {
+        for (i, section) in sections.iter().enumerate() {
+            x = self.render_section(ctx, section, x, y);
+            if let Some(sep) = self.separator {
+                if x < ctx.area.width {
+                    if i + 1 < sections.len() {
+                        let mut cell = Cell::new(sep);
+                        cell.fg = Some(self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE)));
+                        cell.bg = Some(self.bg);
+                        ctx.set(x, y, cell);
+                    }
+                    x += 1;
+                }
+            }
+        }
+        x
+    }
+
     fn render_section(
         &self,
         ctx: &mut RenderContext,

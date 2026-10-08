@@ -136,7 +136,8 @@ impl StatusBar {
         self
     }
 
-    /// Set separator character
+    /// Set separator character, drawn between neighboring sections of the
+    /// left, center and right groups
     pub fn separator(mut self, sep: char) -> Self {
         self.separator = Some(sep);
         self
