@@ -12,9 +12,15 @@ mod view;
 pub use types::TreeNode;
 
 /// Callback type for node selection events
-type SelectCallback = Box<dyn Fn(&TreeNode)>;
+///
+/// Shared, so a cloned tree calls the same callback.
+type SelectCallback = std::sync::Arc<dyn Fn(&TreeNode)>;
 
 /// A tree widget for displaying hierarchical data
+///
+/// A clone has its own nodes and selection and shares the `on_select`
+/// callback.
+#[derive(Clone)]
 pub struct Tree {
     root: Vec<TreeNode>,
     selection: Selection,
@@ -130,7 +136,7 @@ impl Tree {
 
     /// Set selection callback invoked when a node is selected
     pub fn on_select(mut self, callback: impl Fn(&TreeNode) + 'static) -> Self {
-        self.on_select = Some(Box::new(callback));
+        self.on_select = Some(std::sync::Arc::new(callback));
         self
     }
 
