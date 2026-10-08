@@ -13,7 +13,7 @@
 
 - **68개에 `#[derive(Clone)]` 추가.** 필드가 전부 이미 `Clone`이었다.
 - **`Splitter`도.** 막고 있던 건 단순 데이터인 `Pane`의 빠진 derive였다.
-- `tests/widget_clone.rs`가 공개 위젯 102개의 `Clone`을 컴파일 시점에 확인한다.
+- `tests/widget_clone.rs`가 공개 위젯 105개의 `Clone`을 컴파일 시점에 확인한다.
   derive가 빠지거나 `Clone`이 아닌 필드가 들어오면 이 테스트가 깨진다. 기능
   플래그 뒤의 위젯(`Markdown`, `Image`, `QrCodeWidget`, `DiffViewer`,
   `MarkdownPresentation`)은 해당 `cfg`로 감쌌다.
@@ -29,12 +29,12 @@
 
 ## 나중에 정할 것
 
-### 1. `Clone`이 안 되는 17개
+### 1. `Clone`이 안 되는 15개
 
 | 원인 | 위젯 |
 |---|---|
 | 자식 뷰 `Box<dyn View>` | `Border`, `Card`, `ErrorBoundary`, `Modal`, `Positioned`, `Stack`, `ZenMode`, `Grid`(`GridItem.widget`), `Layers`(`LayerChild.child`) |
-| 박스 콜백 `Box<dyn Fn…>` | `DataGrid`(`on_column_resize` 등), `SortableList`, `Tree`, `ContextMenu`·`MenuBar`(`MenuItem.action: MenuAction`), `ScreenStack`(`ScreenRenderer`), `DeclarativeRouter`(`Router.listeners`) |
+| 박스 콜백 `Box<dyn Fn…>` | `DataGrid`(`on_column_resize` 등), `SortableList`, `ContextMenu`·`MenuBar`(`MenuItem.action: MenuAction`), `DeclarativeRouter`(`Router.listeners`) |
 | 외부 타입 | `ProcessMonitor`(`sysinfo::System`) |
 
 선택지:
@@ -44,10 +44,14 @@
   breaking이다. (b) 자식을 `Rc<dyn View>`로 바꿔 복제가 자식을 공유하게 한다. 뷰가
   불변이면 안전하지만 `&mut` 접근이 막힌다. (c) 컨테이너는 `Clone`을 안 한다.
   지금의 상태다.
-- **콜백.** `Form`은 이미 `Arc<dyn Fn>`을 쓴다. 콜백을 `Arc`로 통일하면
-  `DataGrid`, `SortableList`, `Tree`, `ContextMenu`, `MenuBar`, `ScreenStack`,
-  `DeclarativeRouter`도 `Clone`이 된다. `FnMut` 콜백은 `Arc<Mutex<…>>`
-  나 `Fn` + 내부 가변성이 필요해 API가 바뀐다.
+- **콜백.** `Form`은 이미 `Arc<dyn Fn>`을 쓴다. **F 단계에서 콜백 형식이 비공개인
+  `Tree`(`SelectCallback`)와 `ScreenStack`(`ScreenRenderer`)을 `Arc`로 바꿔
+  `Clone`으로 만들었다(`Screen`도). 복제본은 콜백을 공유하고 선택·스택은 따로 갖는다
+  (`a_cloned_tree_has_its_own_selection_and_shares_on_select`).** 나머지는 콜백 형식이
+  공개라 3.x에서 바꿀 수 없어 4.0으로 미룬다. `MenuAction`·`ReorderCallback`·
+  `RouteRenderer`는 공개 타입 별칭이고, `DataGrid`의 `on_column_resize`·
+  `on_column_reorder`는 공개 필드다. `FnMut` 콜백(`SortableList`, `DataGrid`)은
+  `Arc<Mutex<…>>`나 `Fn` + 내부 가변성이 필요해 API도 바뀐다.
 - **`ProcessMonitor`.** `sysinfo::System`을 복제하지 않고 새로 만들게 직접 `Clone`을
   구현할 수 있다.
 

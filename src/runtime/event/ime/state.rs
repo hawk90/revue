@@ -163,19 +163,27 @@ impl ImeState {
     }
 
     /// Update composition text
+    ///
+    /// Starts a composition first if none is running. Does nothing while the
+    /// IME is disabled, or when `text` is longer than the composition limit.
     pub fn update_composition(&mut self, text: &str, cursor: usize) {
-        if self.state == CompositionState::Idle {
-            self.start_composition();
+        if !self.enabled {
+            return;
         }
 
         // Reject overly long compositions to prevent memory exhaustion
         // Check both byte length and char count for proper Unicode handling
-        // Validation must happen BEFORE any string allocation
+        // Validation must happen BEFORE any string allocation - and before
+        // starting a composition, so a rejected update changes nothing
         let byte_len = text.len();
         let char_count = text.chars().count();
 
         if byte_len > MAX_COMPOSITION_LENGTH || char_count > MAX_COMPOSITION_LENGTH {
             return;
+        }
+
+        if self.state == CompositionState::Idle {
+            self.start_composition();
         }
 
         // Only allocate after validation passes
@@ -292,7 +300,7 @@ impl ImeState {
             return false;
         }
 
-        // Remove last character
+        // Remove the character before the cursor
         let mut chars: Vec<char> = self.composing_text.chars().collect();
         if self.cursor > 0 && self.cursor <= chars.len() {
             chars.remove(self.cursor - 1);

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0](https://github.com/hawk90/revue/compare/v3.4.0...v3.5.0) (2026-10-08)
+
+
+### Features
+
+* **devtools:** read back a time-travel export with TimeTravelDebugger::import_json ([#794](https://github.com/hawk90/revue/issues/794)) ([361edf3](https://github.com/hawk90/revue/commit/361edf3318d42a731a6b21fab12858adcb94a891))
+* **reactive:** add ContextScope::provider for a provider limited to a scope ([#792](https://github.com/hawk90/revue/issues/792)) ([5e29b6a](https://github.com/hawk90/revue/commit/5e29b6adfaa3f3b80cc645d44a4a712563ca1a55))
+* **widget:** make Tree, ScreenStack and Screen Clone ([#796](https://github.com/hawk90/revue/issues/796)) ([6690832](https://github.com/hawk90/revue/commit/6690832bb2602c39417dc9ced1a5c1c67ae2aa43))
+
+
+### Bug Fixes
+
+* **event:** a disabled IME ignores composition updates; document the state machine ([#797](https://github.com/hawk90/revue/issues/797)) ([039f1f5](https://github.com/hawk90/revue/commit/039f1f5be0338f0956c26061e894c1db00534368))
+* **keymap:** chord_timeout now expires an unfinished chord ([#795](https://github.com/hawk90/revue/issues/795)) ([f05ee74](https://github.com/hawk90/revue/commit/f05ee740d6eee50bace8c592321cd2abbd642444))
+
 ## [3.4.0](https://github.com/hawk90/revue/compare/v3.3.3...v3.4.0) (2026-10-08)
 
 

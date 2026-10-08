@@ -145,6 +145,7 @@ restore는 raw mode 밖에서는 아무것도 하지 않으므로 이 층은 res
 | `terminal` | 터미널 위젯 `write`(ANSI 파서) + 그리기 |
 | `ansi` | `parse_ansi`, `strip_ansi`, `ansi_len` |
 | `json` | `JsonViewer::from_content` + 그리기 |
+| `timetravel` | `TimeTravelDebugger::import_json`(그대로, 그리고 세션의 `state` 자리에 넣어서) + 성공하면 `export` |
 | `csv` | `CsvViewer::from_content` + 그리기 |
 | `syntax` | `utils::highlight`(언어 6개) |
 

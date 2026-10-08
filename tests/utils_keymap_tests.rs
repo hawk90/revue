@@ -170,3 +170,50 @@ fn test_multi_key_global_binding() {
         assert!(!keymap.has_pending());
     }
 }
+
+#[test]
+fn a_chord_left_unfinished_past_the_timeout_starts_over() {
+    use std::time::{Duration, Instant};
+
+    let mut keymap = KeymapConfig::new();
+    keymap.bind(Mode::Normal, "g g", "goto_first");
+    keymap.chord_timeout(500);
+    let g = parse_key_binding("g").unwrap();
+    let t0 = Instant::now();
+
+    // In time: the chord completes.
+    assert_eq!(keymap.lookup_at(g.clone(), t0), LookupResult::Pending);
+    assert_eq!(
+        keymap.lookup_at(g.clone(), t0 + Duration::from_millis(400)),
+        LookupResult::Action("goto_first".into())
+    );
+
+    // Too late: the first `g` is forgotten and the second starts a new chord.
+    assert_eq!(keymap.lookup_at(g.clone(), t0), LookupResult::Pending);
+    assert_eq!(
+        keymap.lookup_at(g.clone(), t0 + Duration::from_millis(600)),
+        LookupResult::Pending
+    );
+    assert_eq!(keymap.pending_keys().len(), 1);
+    // ...which a timely third `g` completes.
+    assert_eq!(
+        keymap.lookup_at(g.clone(), t0 + Duration::from_millis(700)),
+        LookupResult::Action("goto_first".into())
+    );
+}
+
+#[test]
+fn a_zero_chord_timeout_never_expires() {
+    use std::time::{Duration, Instant};
+
+    let mut keymap = KeymapConfig::new();
+    keymap.bind(Mode::Normal, "g g", "goto_first");
+    keymap.chord_timeout(0);
+    let g = parse_key_binding("g").unwrap();
+    let t0 = Instant::now();
+    assert_eq!(keymap.lookup_at(g.clone(), t0), LookupResult::Pending);
+    assert_eq!(
+        keymap.lookup_at(g, t0 + Duration::from_secs(3600)),
+        LookupResult::Action("goto_first".into())
+    );
+}
