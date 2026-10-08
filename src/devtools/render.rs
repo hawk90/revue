@@ -8,6 +8,10 @@ impl DevTools {
     /// Render devtools panel
     pub fn render(&self, buffer: &mut Buffer, area: Rect) {
         if let Some(panel) = self.panel_rect(area) {
+            // The inspected widget's outline goes under the panel
+            if self.config.active_tab == DevToolsTab::Inspector {
+                self.inspector.render_bounds(buffer);
+            }
             self.render_panel(buffer, panel);
         }
     }

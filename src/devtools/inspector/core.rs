@@ -338,7 +338,7 @@ impl Inspector {
         }
 
         // Label
-        let label = node.label();
+        let label = self.tree_label(node);
         let fg = if node.selected {
             config.bg_color
         } else {
@@ -361,6 +361,55 @@ impl Inspector {
                 }
                 px += 1;
             }
+        }
+    }
+
+    /// A node's label in the tree: its type, then `#id` and `.class`es as
+    /// `show_ids` and `show_classes` allow
+    fn tree_label(&self, node: &WidgetNode) -> String {
+        let mut label = node.type_name.clone();
+        if self.config.show_ids {
+            if let Some(ref id) = node.widget_id {
+                label.push('#');
+                label.push_str(id);
+            }
+        }
+        if self.config.show_classes {
+            for class in &node.classes {
+                label.push('.');
+                label.push_str(class);
+            }
+        }
+        label
+    }
+
+    /// Outline the selected node's area on screen in `highlight_color`,
+    /// when `show_bounds` is on. DevTools draws this under its panel.
+    pub(crate) fn render_bounds(&self, buffer: &mut Buffer) {
+        if !self.config.show_bounds {
+            return;
+        }
+        let Some(rect) = self.selected().map(|n| n.rect) else {
+            return;
+        };
+        if rect.width == 0 || rect.height == 0 {
+            return;
+        }
+        let color = self.config.highlight_color;
+        let right = rect.x.saturating_add(rect.width - 1);
+        let bottom = rect.y.saturating_add(rect.height - 1);
+        let mut paint = |x: u16, y: u16| {
+            if let Some(cell) = buffer.get_mut(x, y) {
+                cell.bg = Some(color);
+            }
+        };
+        for x in rect.x..=right {
+            paint(x, rect.y);
+            paint(x, bottom);
+        }
+        for y in rect.y..=bottom {
+            paint(rect.x, y);
+            paint(right, y);
         }
     }
 
