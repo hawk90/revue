@@ -144,20 +144,36 @@ impl CharWidthTable {
     }
 
     /// Get width of a character
+    ///
+    /// In order: a [`set_override`](Self::set_override) for `ch`; the
+    /// [`emoji`](Self::emoji) width for a character shown as emoji by
+    /// default; the [`nerd_font`](Self::nerd_font) width for a Private Use
+    /// Area character, where Nerd Font icons live; the [`cjk`](Self::cjk)
+    /// width for a wide (East Asian) character; otherwise the Unicode width.
     pub fn width(&self, ch: char) -> u8 {
         if let Some(&w) = self.overrides.get(&ch) {
             return w;
         }
 
-        // Check if emoji
-        if unic_emoji_char::is_emoji(ch) {
+        // Emoji shown as emoji by default. Characters like '1', '#' or '©'
+        // have the Emoji property too but are drawn as text.
+        if unic_emoji_char::is_emoji_presentation(ch) {
             return self.emoji;
         }
 
+        if is_private_use(ch) {
+            return self.nerd_font;
+        }
+
         // Use unicode-width as base
-        unicode_width::UnicodeWidthChar::width(ch)
+        let base = unicode_width::UnicodeWidthChar::width(ch)
             .map(|w| w as u8)
-            .unwrap_or(1)
+            .unwrap_or(1);
+        if base == 2 {
+            self.cjk
+        } else {
+            base
+        }
     }
 
     /// Override width for specific character
@@ -182,6 +198,14 @@ impl CharWidthTable {
         self.nerd_font = width;
         self
     }
+}
+
+/// Whether `ch` is in a Private Use Area, where Nerd Fonts put their icons
+fn is_private_use(ch: char) -> bool {
+    matches!(
+        ch as u32,
+        0xE000..=0xF8FF | 0xF_0000..=0xF_FFFD | 0x10_0000..=0x10_FFFD
+    )
 }
 
 impl Default for CharWidthTable {

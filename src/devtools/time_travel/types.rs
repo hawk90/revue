@@ -286,11 +286,16 @@ pub struct TimeTravelConfig {
     /// Maximum number of snapshots to keep
     pub max_snapshots: usize,
     /// Auto-record state changes
+    #[deprecated(
+        since = "3.7.0",
+        note = "never read: nothing records on its own; snapshots come from `record` and `record_action`, and `pause` stops recording"
+    )]
     pub auto_record: bool,
     /// Record interval (minimum time between auto-snapshots)
     pub record_interval: Duration,
 }
 
+#[allow(deprecated)] // `auto_record` is still initialized
 impl Default for TimeTravelConfig {
     fn default() -> Self {
         Self {

@@ -442,7 +442,6 @@ mod tests {
     fn test_time_travel_config_default() {
         let config = TimeTravelConfig::default();
         assert_eq!(config.max_snapshots, 100);
-        assert!(config.auto_record);
         assert_eq!(config.record_interval, Duration::from_millis(100));
     }
 
@@ -458,8 +457,8 @@ mod tests {
     fn test_time_travel_debugger_with_config() {
         let config = TimeTravelConfig {
             max_snapshots: 50,
-            auto_record: false,
             record_interval: Duration::from_millis(200),
+            ..TimeTravelConfig::default()
         };
         let tt = TimeTravelDebugger::new().with_config(config);
         assert_eq!(tt.config.max_snapshots, 50);

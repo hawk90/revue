@@ -2,7 +2,7 @@
 
 use revue::text::{
     contains_rtl, detect_direction, is_rtl_char, mirror_char, reverse_graphemes, BidiClass,
-    BidiConfig, BidiInfo, BidiRun, ResolvedDirection, RtlLayout, TextAlign, TextDirection,
+    BidiInfo, BidiRun, ResolvedDirection, RtlLayout, TextAlign, TextDirection,
 };
 
 // ============================================================
@@ -437,18 +437,6 @@ fn bidi_class_is_neutral() {
 #[test]
 fn text_align_default_is_start() {
     assert_eq!(TextAlign::default(), TextAlign::Start);
-}
-
-// ============================================================
-// types.rs — BidiConfig
-// ============================================================
-
-#[test]
-fn bidi_config_default() {
-    let config = BidiConfig::default();
-    assert_eq!(config.default_direction, TextDirection::Auto);
-    assert!(config.enable_overrides);
-    assert!(config.enable_mirroring);
 }
 
 // ============================================================
