@@ -33,6 +33,14 @@ impl RichTextEditor {
 
             let block = &self.blocks[block_idx];
             let row_y = y + row as u16;
+            let links = super::link::link_char_ranges(&block.text());
+            let text_fg = |i: usize| {
+                if links.iter().any(|r| r.contains(&i)) {
+                    self.link_fg
+                } else {
+                    fg
+                }
+            };
 
             match block.block_type {
                 BlockType::Heading1 => {
@@ -68,11 +76,11 @@ impl RichTextEditor {
                     let mut col = x;
                     ctx.set(col, row_y, Cell::new('•').fg(fg).bg(self.preview_bg));
                     col += 2;
-                    for ch in block.text().chars() {
+                    for (i, ch) in block.text().chars().enumerate() {
                         if col >= x + width {
                             break;
                         }
-                        ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
+                        ctx.set(col, row_y, Cell::new(ch).fg(text_fg(i)).bg(self.preview_bg));
                         col += 1;
                     }
                 }
@@ -87,11 +95,11 @@ impl RichTextEditor {
                     }
                     ctx.set(col, row_y, Cell::new('.').fg(fg).bg(self.preview_bg));
                     col += 2;
-                    for ch in block.text().chars() {
+                    for (i, ch) in block.text().chars().enumerate() {
                         if col >= x + width {
                             break;
                         }
-                        ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
+                        ctx.set(col, row_y, Cell::new(ch).fg(text_fg(i)).bg(self.preview_bg));
                         col += 1;
                     }
                 }
@@ -116,11 +124,11 @@ impl RichTextEditor {
                     }
                 }
                 _ => {
-                    for (col, ch) in (x..).zip(block.text().chars()) {
+                    for (i, (col, ch)) in (x..).zip(block.text().chars()).enumerate() {
                         if col >= x + width {
                             break;
                         }
-                        ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
+                        ctx.set(col, row_y, Cell::new(ch).fg(text_fg(i)).bg(self.preview_bg));
                     }
                 }
             }

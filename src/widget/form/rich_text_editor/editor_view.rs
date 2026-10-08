@@ -78,6 +78,14 @@ impl RichTextEditor {
                 col += cw;
             }
 
+            // Links keep their markdown in the editor; they are told apart
+            // by color. A code block is literal text and has none.
+            let links = if block.block_type == BlockType::CodeBlock {
+                Vec::new()
+            } else {
+                super::link::link_char_ranges(&block.text())
+            };
+
             // Render block content with per-span formatting
             let mut char_idx = 0;
             for span in &block.spans {
@@ -110,7 +118,12 @@ impl RichTextEditor {
                     };
 
                     // Build cell with span formatting
-                    let mut cell = Cell::new(ch).fg(fg).bg(cell_bg);
+                    let text_fg = if links.iter().any(|r| r.contains(&char_idx)) {
+                        self.link_fg
+                    } else {
+                        fg
+                    };
+                    let mut cell = Cell::new(ch).fg(text_fg).bg(cell_bg);
 
                     // Apply text formatting modifiers
                     if span.format.bold {

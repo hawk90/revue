@@ -58,3 +58,53 @@ fn test_dialog_in_a_tiny_area() {
         editor.render(&mut ctx);
     }
 }
+
+/// Paint `editor` and return the fg of each cell of the row holding `needle`,
+/// starting at its first character.
+fn fgs_at(editor: &RichTextEditor, needle: &str) -> Vec<(char, Option<revue::style::Color>)> {
+    let mut buffer = Buffer::new(60, 6);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 60, 6));
+    editor.render(&mut ctx);
+    for y in 0..6 {
+        let row: String = (0..60).map(|x| buffer.get(x, y).unwrap().symbol).collect();
+        if let Some(byte) = row.find(needle) {
+            let start = row[..byte].chars().count() as u16;
+            return (start..start + needle.chars().count() as u16)
+                .map(|x| {
+                    let c = buffer.get(x, y).unwrap();
+                    (c.symbol, c.fg)
+                })
+                .collect();
+        }
+    }
+    panic!("{needle:?} not painted");
+}
+
+/// #799: `link_fg` was stored and never read.
+#[test]
+fn test_link_fg_colors_links() {
+    use revue::style::Color;
+    const LINK: Color = Color {
+        r: 250,
+        g: 10,
+        b: 10,
+        a: 255,
+    };
+    for mode in [EditorViewMode::Editor, EditorViewMode::Preview] {
+        let editor = RichTextEditor::new()
+            .toolbar(false)
+            .view_mode(mode)
+            .content("see [docs](http://x) and ![img](a.png)")
+            .link_fg(LINK);
+
+        let cells = fgs_at(&editor, "see [docs](http://x) and ![img](a.png)");
+        for (i, (ch, fg)) in cells.iter().enumerate() {
+            let in_link = (4..20).contains(&i);
+            assert_eq!(
+                *fg == Some(LINK),
+                in_link,
+                "{mode:?}: {ch:?} at {i} in_link={in_link} fg={fg:?}"
+            );
+        }
+    }
+}

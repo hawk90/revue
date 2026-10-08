@@ -1,5 +1,30 @@
 //! Link and image reference types for rich text editor
 
+/// Char ranges of the markdown links - `[text](url)` - in `text`.
+///
+/// Images (`![alt](src)`) are not links and are left out.
+pub(super) fn link_char_ranges(text: &str) -> Vec<std::ops::Range<usize>> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut ranges = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] == '[' && (i == 0 || chars[i - 1] != '!') {
+            let close = (i + 1..chars.len()).find(|&j| chars[j] == ']');
+            if let Some(close) = close {
+                if chars.get(close + 1) == Some(&'(') {
+                    if let Some(end) = (close + 2..chars.len()).find(|&j| chars[j] == ')') {
+                        ranges.push(i..end + 1);
+                        i = end + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+        i += 1;
+    }
+    ranges
+}
+
 /// Link data
 #[derive(Clone, Debug)]
 pub struct Link {
