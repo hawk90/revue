@@ -441,3 +441,39 @@ fn test_center_action_line_clips_long_labels() {
     assert!(line.contains("[A very long"), "{line:?}");
     assert_eq!(chars[0], '│', "{line:?}");
 }
+
+/// #799: `dismissible(false)` was stored and never read, so `d` removed the
+/// notification anyway.
+#[test]
+fn test_non_dismissible_survives_the_dismiss_keys() {
+    let mut center = NotificationCenter::new().focused(true);
+    center.push(Notification::warning("pinned").dismissible(false));
+    center.push(Notification::info("transient"));
+
+    // Select the pinned one and press `d`.
+    center.handle_key(&Key::Down);
+    center.handle_key(&Key::Char('d'));
+    assert_eq!(
+        center.count(),
+        2,
+        "`d` dismissed a non-dismissible notification"
+    );
+
+    // Delete on the transient one still works.
+    center.handle_key(&Key::Down);
+    center.handle_key(&Key::Delete);
+    assert_eq!(center.count(), 1);
+
+    // `c` clears what the user may dismiss, which is nothing now.
+    center.push(Notification::info("another"));
+    center.handle_key(&Key::Char('c'));
+    assert_eq!(
+        center.count(),
+        1,
+        "`c` cleared a non-dismissible notification"
+    );
+
+    // The application can still remove it.
+    center.clear();
+    assert_eq!(center.count(), 0);
+}

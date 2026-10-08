@@ -116,6 +116,12 @@ impl Notification {
     }
 
     /// Set dismissible
+    ///
+    /// A notification that is not dismissible ignores the `d`/`Delete` and
+    /// `c` keys of its [`NotificationCenter`](super::NotificationCenter). It
+    /// still expires on its own, and the application can remove it with
+    /// [`dismiss`](super::NotificationCenter::dismiss) or
+    /// [`clear`](super::NotificationCenter::clear).
     pub fn dismissible(mut self, dismissible: bool) -> Self {
         self.dismissible = dismissible;
         self
