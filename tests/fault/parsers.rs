@@ -204,6 +204,18 @@ fn json(s: &str) {
     paint(&viewer);
 }
 
+fn time_travel(s: &str) {
+    let mut debugger = revue::devtools::TimeTravelDebugger::new();
+    // Bare JSON values, and the same text as a session's state.
+    if debugger.import_json(s).is_ok() {
+        let _ = debugger.export();
+    }
+    let session = format!(r#"{{"snapshots": [{{"id": 0, "state": {s}}}]}}"#);
+    if debugger.import_json(&session).is_ok() {
+        let _ = debugger.export();
+    }
+}
+
 fn csv(s: &str) {
     let viewer = revue::widget::CsvViewer::from_content(s);
     let _ = (viewer.row_count(), viewer.column_count());
@@ -695,6 +707,7 @@ fn targets() -> Vec<Target> {
         t("terminal", terminal_ansi, ANSI_TOKENS),
         t("ansi", ansi, ANSI_TOKENS),
         t("json", json, JSON_TOKENS),
+        t("timetravel", time_travel, JSON_TOKENS),
         t("csv", csv, CSV_TOKENS),
         t("syntax", syntax, SYNTAX_TOKENS),
     ];

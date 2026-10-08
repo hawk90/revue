@@ -47,7 +47,7 @@ pub use state::{StateDebugger, StateEntry, StateValue};
 pub use style::{ComputedProperty, PropertySource, StyleCategory, StyleInspector};
 pub use time_travel::{
     Action, SnapshotValue, StateDiff, StateSnapshot, TimeTravelConfig, TimeTravelDebugger,
-    TimeTravelView,
+    TimeTravelImportError, TimeTravelView,
 };
 pub use types::{DevToolsConfig, DevToolsPosition, DevToolsTab};
 

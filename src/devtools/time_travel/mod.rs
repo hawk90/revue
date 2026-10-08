@@ -14,11 +14,13 @@
 //! - Pause/resume recording
 
 mod debugger;
+mod json;
 mod types;
 
 pub use debugger::TimeTravelDebugger;
 pub use types::{
-    Action, SnapshotValue, StateDiff, StateSnapshot, TimeTravelConfig, TimeTravelView,
+    Action, SnapshotValue, StateDiff, StateSnapshot, TimeTravelConfig, TimeTravelImportError,
+    TimeTravelView,
 };
 
 #[cfg(test)]
@@ -28,6 +30,102 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use std::time::{Duration, SystemTime};
+
+    fn ms(t: SystemTime) -> u128 {
+        t.duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+    }
+
+    #[test]
+    fn an_exported_session_imports_back_as_it_was() {
+        let mut original = TimeTravelDebugger::new().with_config(TimeTravelConfig {
+            record_interval: Duration::ZERO,
+            ..TimeTravelConfig::default()
+        });
+        original.record(
+            StateSnapshot::new(0)
+                .with_state("count", SnapshotValue::Int(0))
+                .with_label("start \"quoted\"\n"),
+        );
+        let mut nested = HashMap::new();
+        nested.insert("x".to_string(), SnapshotValue::Float(1.0));
+        let mut state = HashMap::new();
+        state.insert("count".to_string(), SnapshotValue::Int(1));
+        state.insert("obj".to_string(), SnapshotValue::Object(nested));
+        state.insert(
+            "list".to_string(),
+            SnapshotValue::Array(vec![SnapshotValue::Null, "한🦀".into()]),
+        );
+        original.record_action(
+            Action::new("increment")
+                .with_payload(SnapshotValue::Int(1))
+                .with_source("button")
+                .with_duration(Duration::from_millis(7)),
+            state,
+        );
+        original.step_back();
+
+        let mut restored = TimeTravelDebugger::new();
+        assert_eq!(restored.import_json(&original.export()), Ok(2));
+        assert_eq!(restored.position(), original.position());
+        assert_eq!(restored.snapshots().len(), 2);
+        for (a, b) in original.snapshots().iter().zip(restored.snapshots()) {
+            assert_eq!(a.id, b.id);
+            assert_eq!(a.label, b.label);
+            assert_eq!(a.state, b.state);
+            assert_eq!(ms(a.timestamp), ms(b.timestamp));
+            match (&a.action, &b.action) {
+                (None, None) => {}
+                (Some(x), Some(y)) => {
+                    assert_eq!(x.name, y.name);
+                    assert_eq!(x.payload, y.payload);
+                    assert_eq!(x.source, y.source);
+                    assert_eq!(x.duration, y.duration);
+                    assert_eq!(ms(x.timestamp), ms(y.timestamp));
+                }
+                other => panic!("actions differ: {other:?}"),
+            }
+        }
+        // Exporting the import gives the same text.
+        assert_eq!(restored.export(), original.export());
+    }
+
+    #[test]
+    fn a_bad_session_is_refused_and_the_history_kept() {
+        let mut debugger = TimeTravelDebugger::new();
+        debugger.record(StateSnapshot::new(0).with_label("keep"));
+        for bad in [
+            "",
+            "[]",
+            "{}",
+            r#"{"snapshots": {}}"#,
+            r#"{"snapshots": [1]}"#,
+            r#"{"snapshots": [{}]}"#,
+            r#"{"snapshots": [{"id": -1}]}"#,
+            r#"{"snapshots": [{"id": 1, "state": []}]}"#,
+            r#"{"snapshots": [{"id": 1, "label": 3}]}"#,
+            r#"{"snapshots": [{"id": 1}]} trailing"#,
+        ] {
+            let err = debugger.import_json(bad).unwrap_err();
+            assert!(!err.message().is_empty());
+            assert_eq!(debugger.snapshots().len(), 1, "{bad:?} changed the history");
+            assert_eq!(debugger.snapshots()[0].label.as_deref(), Some("keep"));
+        }
+    }
+
+    #[test]
+    fn an_import_needs_only_ids() {
+        let mut debugger = TimeTravelDebugger::new();
+        let n = debugger
+            .import_json(r#"{"snapshots": [{"id": 3}, {"id": 9, "action": "go"}]}"#)
+            .unwrap();
+        assert_eq!(n, 2);
+        assert!(debugger.snapshots()[0].state.is_empty());
+        assert_eq!(debugger.snapshots()[1].action.as_ref().unwrap().name, "go");
+        // No position given: the latest, as with `import`.
+        assert_eq!(debugger.position(), 1);
+    }
 
     #[test]
     fn test_snapshot_creation() {
