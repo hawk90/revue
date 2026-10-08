@@ -138,6 +138,12 @@ jobs:
       # Report every failing test, not just the first: a platform-specific
       # break (Windows above all) usually fails several tests at once.
       - run: cargo nextest run --all-features --tests --no-fail-fast
+      # nextest does not run doc examples, and `cargo doc` only builds them;
+      # without this step a doc example can call an API that no longer
+      # exists (#800).
+      - name: Doc tests
+        if: success() || failure()
+        run: cargo test --all-features --doc
 
   standalone:
     name: Standalone Crates
