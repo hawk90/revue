@@ -235,3 +235,45 @@ fn test_ime_config() {
 }
 
 // =============================================================================
+
+/// A disabled IME takes no composition input at all: no text, no events, and
+/// it stays `Idle` - `update_composition` used to store the text and emit an
+/// `Update` while the state stayed `Idle`.
+#[test]
+fn a_disabled_ime_ignores_composition_updates() {
+    let mut ime = ImeState::new();
+    let events = Arc::new(AtomicUsize::new(0));
+    let seen = events.clone();
+    ime.on_composition(move |_| {
+        seen.fetch_add(1, Ordering::SeqCst);
+    });
+    ime.disable();
+
+    ime.update_composition("か", 1);
+
+    assert_eq!(ime.state(), CompositionState::Idle);
+    assert_eq!(ime.composing_text(), "");
+    assert_eq!(ime.cursor(), 0);
+    assert_eq!(
+        events.load(Ordering::SeqCst),
+        0,
+        "a disabled IME emitted events"
+    );
+}
+
+/// An update over the length limit is ignored outright - it does not start a
+/// composition first.
+#[test]
+fn an_over_long_update_does_not_start_a_composition() {
+    let mut ime = ImeState::new();
+    let events = Arc::new(AtomicUsize::new(0));
+    let seen = events.clone();
+    ime.on_composition(move |_| {
+        seen.fetch_add(1, Ordering::SeqCst);
+    });
+
+    ime.update_composition(&"a".repeat(100_000), 0);
+
+    assert_eq!(ime.state(), CompositionState::Idle);
+    assert_eq!(events.load(Ordering::SeqCst), 0);
+}
