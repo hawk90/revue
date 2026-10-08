@@ -95,7 +95,10 @@ impl ThemePicker {
         self
     }
 
-    /// Show theme preview (default: true)
+    /// Show each theme's color swatch next to its name (default: true)
+    ///
+    /// With `false`, the header and the dropdown list show names only.
+    /// Compact mode is made of swatches, so it ignores this.
     pub fn show_preview(mut self, show: bool) -> Self {
         self.show_preview = show;
         self
@@ -259,14 +262,16 @@ impl View for ThemePicker {
                 x += 1;
             }
 
-            // Space
-            let mut cell = Cell::new(' ');
-            cell.bg = Some(bg);
-            ctx.set(x, 0, cell);
-            x += 1;
+            if self.show_preview {
+                // Space
+                let mut cell = Cell::new(' ');
+                cell.bg = Some(bg);
+                ctx.set(x, 0, cell);
+                x += 1;
 
-            // Swatch
-            x += self.draw_swatch(ctx, x, 0, &current_theme);
+                // Swatch
+                x += self.draw_swatch(ctx, x, 0, &current_theme);
+            }
 
             // Dropdown indicator
             let indicator = if self.open { " ▲" } else { " ▼" };
@@ -342,8 +347,10 @@ impl View for ThemePicker {
                         ctx.set(cx, y, cell);
                         cx += 1;
 
-                        // Swatch
-                        cx += self.draw_swatch(ctx, cx, y, &theme);
+                        if self.show_preview {
+                            // Swatch
+                            cx += self.draw_swatch(ctx, cx, y, &theme);
+                        }
 
                         // Space
                         let mut cell = Cell::new(' ');
@@ -351,8 +358,8 @@ impl View for ThemePicker {
                         ctx.set(cx, y, cell);
                         cx += 1;
 
-                        // Name
-                        let max_name_len = (width as usize).saturating_sub(9);
+                        // Name, up to the right border
+                        let max_name_len = (width.saturating_sub(1).saturating_sub(cx)) as usize;
                         for (j, ch) in theme.name.chars().enumerate() {
                             if j >= max_name_len {
                                 break;
