@@ -150,6 +150,10 @@ impl Gauge {
     }
 
     /// Set label position
+    ///
+    /// `Inside` draws the label over the `Bar` and `Arc` styles and beside
+    /// `Circle` (other styles have no room for it); `Left`, `Right`, `Above`
+    /// and `Below` draw it next to the gauge in any style; `None` hides it.
     pub fn label_position(mut self, position: LabelPosition) -> Self {
         self.label_position = position;
         self
@@ -185,7 +189,8 @@ impl Gauge {
         self
     }
 
-    /// Set border color
+    /// Set the outline color of the `Battery` and `Circle` styles
+    /// (white by default)
     pub fn border(mut self, color: Color) -> Self {
         self.border_color = Some(color);
         self
