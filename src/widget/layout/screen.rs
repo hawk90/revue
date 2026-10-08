@@ -349,7 +349,7 @@ impl View for ScreenStack {
     crate::impl_view_meta!("ScreenStack");
 
     fn render(&self, ctx: &mut RenderContext) {
-        let _area = self.apply_constraints(ctx.area);
+        let area = self.apply_constraints(ctx.area);
 
         // Render visible screens (modal screens hide those below)
         let mut start_idx = 0;
@@ -360,11 +360,13 @@ impl View for ScreenStack {
             }
         }
 
-        for screen in &self.screens[start_idx..] {
-            if let Some(renderer) = self.renderers.get(screen.id) {
-                renderer(screen, ctx);
+        super::constraints::within(ctx, area, |ctx| {
+            for screen in &self.screens[start_idx..] {
+                if let Some(renderer) = self.renderers.get(screen.id) {
+                    renderer(screen, ctx);
+                }
             }
-        }
+        });
     }
 }
 

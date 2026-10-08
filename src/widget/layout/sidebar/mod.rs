@@ -277,7 +277,14 @@ impl Default for Sidebar {
 
 impl crate::widget::traits::View for Sidebar {
     fn render(&self, ctx: &mut crate::widget::traits::RenderContext) {
-        self.render_sidebar(ctx);
+        let area = crate::widget::layout::constraints::constrain(
+            ctx.area,
+            self.min_width,
+            self.min_height,
+            self.max_width,
+            self.max_height,
+        );
+        crate::widget::layout::constraints::within(ctx, area, |ctx| self.render_sidebar(ctx));
     }
 
     crate::impl_view_meta!("Sidebar");

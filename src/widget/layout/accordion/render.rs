@@ -11,6 +11,20 @@ impl View for Accordion {
     crate::impl_view_meta!("Accordion");
 
     fn render(&self, ctx: &mut RenderContext) {
+        let area = crate::widget::layout::constraints::constrain(
+            ctx.area,
+            self.min_width,
+            self.min_height,
+            self.max_width,
+            self.max_height,
+        );
+        crate::widget::layout::constraints::within(ctx, area, |ctx| self.render_constrained(ctx));
+    }
+}
+
+impl Accordion {
+    /// Draw into `ctx.area`, already constrained.
+    fn render_constrained(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < 3 || area.height < 1 {
             return;

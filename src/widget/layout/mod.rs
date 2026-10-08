@@ -119,6 +119,7 @@ pub mod accordion;
 pub mod border;
 pub mod card;
 pub mod collapsible;
+pub(crate) mod constraints;
 pub mod dock;
 pub mod grid;
 pub mod layer;
