@@ -97,6 +97,11 @@ impl<V: View> DebugOverlay<V> {
     }
 
     /// Show/hide style inspector
+    #[deprecated(
+        since = "3.7.0",
+        note = "the overlay has no style panel and never reads this; inspect styles with `revue::devtools::StyleInspector`"
+    )]
+    #[allow(deprecated)] // sets the deprecated `DebugConfig::show_styles`
     pub fn show_styles(mut self, show: bool) -> Self {
         self.config.show_styles = show;
         self
@@ -251,13 +256,6 @@ mod tests {
     }
 
     #[test]
-    fn test_debug_overlay_show_styles() {
-        let text = Text::new("test");
-        let overlay = DebugOverlay::wrap(text).show_styles(true);
-        assert!(overlay.config.show_styles);
-    }
-
-    #[test]
     fn test_debug_overlay_position_top_right() {
         let text = Text::new("test");
         let overlay = DebugOverlay::wrap(text).position(DebugPosition::TopRight);
@@ -339,7 +337,6 @@ mod tests {
             .show_metrics(true)
             .show_tree(true)
             .show_events(true)
-            .show_styles(true)
             .position(DebugPosition::TopLeft)
             .width(50);
 
@@ -347,7 +344,6 @@ mod tests {
         assert!(overlay.config.show_metrics);
         assert!(overlay.config.show_tree);
         assert!(overlay.config.show_events);
-        assert!(overlay.config.show_styles);
         assert_eq!(overlay.config.position, DebugPosition::TopLeft);
         assert_eq!(overlay.config.width, 50);
     }

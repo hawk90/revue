@@ -99,6 +99,10 @@ impl ZenMode {
     }
 
     /// Set dim opacity for transition effect (0.0 = no dim, 1.0 = full dim)
+    #[deprecated(
+        since = "3.7.0",
+        note = "never read: zen mode fills its whole area and draws only its content, so there is nothing around it to dim"
+    )]
     pub fn dim(mut self, opacity: f32) -> Self {
         self.dim_opacity = opacity.clamp(0.0, 1.0);
         self
@@ -164,6 +168,10 @@ impl ZenMode {
         self.bg_color
     }
 
+    #[deprecated(
+        since = "3.7.0",
+        note = "never read: zen mode fills its whole area and draws only its content, so there is nothing around it to dim"
+    )]
     #[doc(hidden)]
     pub fn get_dim_opacity(&self) -> f32 {
         self.dim_opacity

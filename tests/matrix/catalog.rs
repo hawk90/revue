@@ -344,7 +344,7 @@ pub fn catalog() -> Vec<Entry> {
                 .field("other", |f| f.label(label))
                 .build();
             state.set_value("name", t(c));
-            Box::new(Form::new(state).submit_text(t(c)))
+            Box::new(Form::new(state))
         }),
         e("FormFieldWidget", |c, _| {
             Box::new(

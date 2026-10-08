@@ -103,6 +103,10 @@ impl Form {
     }
 
     /// Set custom submit button text
+    #[deprecated(
+        since = "3.7.0",
+        note = "Form draws no submit button, so this text is never shown; put a `Button` with your label next to the form and call `Form::submit` from it"
+    )]
     pub fn submit_text(mut self, text: impl Into<String>) -> Self {
         self.submit_text = Some(text.into());
         self
@@ -136,6 +140,10 @@ impl Form {
     }
 
     /// Get submit button text
+    #[deprecated(
+        since = "3.7.0",
+        note = "Form draws no submit button, so this text is never shown; put a `Button` with your label next to the form and call `Form::submit` from it"
+    )]
     pub fn get_submit_text(&self) -> Option<&String> {
         self.submit_text.as_ref()
     }
