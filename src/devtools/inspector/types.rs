@@ -94,15 +94,16 @@ impl WidgetNode {
 /// Inspector configuration
 #[derive(Debug, Clone)]
 pub struct InspectorConfig {
-    /// Show bounding boxes
+    /// Outline the selected widget's area on screen (while the Inspector
+    /// tab is open)
     pub show_bounds: bool,
-    /// Show widget IDs
+    /// Show `#id` after the type in the tree
     pub show_ids: bool,
-    /// Show classes
+    /// Show `.class`es after the type in the tree
     pub show_classes: bool,
     /// Show rect info
     pub show_rect: bool,
-    /// Highlight color
+    /// Color of the selected widget's outline
     pub highlight_color: Color,
 }
 
