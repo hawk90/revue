@@ -87,6 +87,7 @@ impl Tree {
     pub fn nodes(mut self, nodes: Vec<TreeNode>) -> Self {
         self.root = nodes;
         self.selection.set_len(self.count_visible());
+        self.settle_selection();
         self
     }
 
@@ -94,6 +95,7 @@ impl Tree {
     pub fn node(mut self, node: TreeNode) -> Self {
         self.root.push(node);
         self.selection.set_len(self.count_visible());
+        self.settle_selection();
         self
     }
 
@@ -209,24 +211,68 @@ impl Tree {
         find_node_mut(&mut self.root, index, &mut current)
     }
 
-    /// Select next visible node
+    /// `selectable` flag of every visible node, in visible order
+    fn selectable_flags(&self) -> Vec<bool> {
+        fn collect(nodes: &[TreeNode], out: &mut Vec<bool>) {
+            for node in nodes {
+                out.push(node.selectable);
+                if node.expanded && !node.children.is_empty() {
+                    collect(&node.children, out);
+                }
+            }
+        }
+        let mut out = Vec::new();
+        collect(&self.root, &mut out);
+        out
+    }
+
+    /// Whether the node at a visible index can be selected
+    fn is_selectable_at(&self, index: usize) -> bool {
+        self.get_node_at(index).is_some_and(|(n, _)| n.selectable)
+    }
+
+    /// Move the selection off a non-selectable node: to the next selectable
+    /// node, else the previous one. Stays when there is none.
+    fn settle_selection(&mut self) {
+        let flags = self.selectable_flags();
+        let idx = self.selection.index;
+        if flags.get(idx).copied().unwrap_or(true) {
+            return;
+        }
+        let next = (idx + 1..flags.len()).find(|&i| flags[i]);
+        if let Some(i) = next.or_else(|| (0..idx).rev().find(|&i| flags[i])) {
+            self.selection.set(i);
+        }
+    }
+
+    /// Select next visible node (skipping non-selectable ones)
     pub fn select_next(&mut self) {
-        self.selection.down();
+        let flags = self.selectable_flags();
+        let idx = self.selection.index;
+        if let Some(i) = (idx + 1..flags.len()).find(|&i| flags[i]) {
+            self.selection.set(i);
+        }
     }
 
-    /// Select previous visible node
+    /// Select previous visible node (skipping non-selectable ones)
     pub fn select_prev(&mut self) {
-        self.selection.up();
+        let flags = self.selectable_flags();
+        let idx = self.selection.index.min(flags.len());
+        if let Some(i) = (0..idx).rev().find(|&i| flags[i]) {
+            self.selection.set(i);
+        }
     }
 
-    /// Select first node
+    /// Select first selectable node
     pub fn select_first(&mut self) {
         self.selection.first();
+        self.settle_selection();
     }
 
-    /// Select last visible node
+    /// Select last selectable visible node
     pub fn select_last(&mut self) {
         self.selection.last();
+        self.settle_selection();
     }
 
     /// Toggle expand/collapse of selected node
@@ -262,6 +308,9 @@ impl Tree {
     /// Toggle selection of current node in multi-select mode
     pub fn toggle_select(&mut self) {
         let idx = self.selection.index;
+        if !self.is_selectable_at(idx) {
+            return;
+        }
         if let Some(pos) = self.selected_indices.iter().position(|&i| i == idx) {
             self.selected_indices.remove(pos);
         } else {
@@ -293,6 +342,15 @@ impl Tree {
     /// Check if a visible index is selected in multi-select mode
     pub fn is_multi_selected(&self, index: usize) -> bool {
         self.selected_indices.contains(&index)
+    }
+
+    /// Nearest selectable ancestor of the node at the given visible index
+    fn find_selectable_ancestor(&self, index: usize) -> Option<usize> {
+        let mut current = self.find_parent_index(index)?;
+        while !self.is_selectable_at(current) {
+            current = self.find_parent_index(current)?;
+        }
+        Some(current)
     }
 
     /// Find the parent index of the node at the given visible index
@@ -412,7 +470,8 @@ impl Tree {
                     let old_count = self.selection.len;
                     self.collapse();
                     old_count != self.selection.len
-                } else if let Some(parent_idx) = self.find_parent_index(self.selection.index) {
+                } else if let Some(parent_idx) = self.find_selectable_ancestor(self.selection.index)
+                {
                     let old = self.selection.index;
                     self.selection.set(parent_idx);
                     old != self.selection.index
@@ -430,7 +489,8 @@ impl Tree {
                     let old_count = self.selection.len;
                     self.collapse();
                     old_count != self.selection.len
-                } else if let Some(parent_idx) = self.find_parent_index(self.selection.index) {
+                } else if let Some(parent_idx) = self.find_selectable_ancestor(self.selection.index)
+                {
                     let old = self.selection.index;
                     self.selection.set(parent_idx);
                     old != self.selection.index

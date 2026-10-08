@@ -84,6 +84,23 @@ impl View for TimeSeries {
             current_y += 1;
         }
 
+        // Y-axis label (the unit), on its own row above the value axis
+        if let Some(ref label) = self.y_label {
+            let mut x: u16 = 0;
+            for ch in label.chars() {
+                let cw = char_width(ch) as u16;
+                if x + cw > area.width {
+                    break;
+                }
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(chrome);
+                cell.bg = self.bg_color;
+                ctx.set(x, current_y, cell);
+                x += cw;
+            }
+            current_y += 1;
+        }
+
         let y_label_width = 8u16;
         let plot_x = y_label_width;
         let plot_width = area.width.saturating_sub(y_label_width + 1);

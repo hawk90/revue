@@ -42,6 +42,23 @@ impl Gauge {
         }
     }
 
+    /// The columns and rows the gauge itself takes in an area of
+    /// `avail_w` x `avail_h`, as each style draws it
+    fn body_size(&self, avail_w: u16, avail_h: u16) -> (u16, u16) {
+        let (w, h) = match self.style {
+            GaugeStyle::Bar => (self.width.min(avail_w), 1),
+            GaugeStyle::Battery => (self.width.min(avail_w).max(6), 1),
+            GaugeStyle::Segments => (self.segments.min(avail_w / 2).saturating_mul(2), 1),
+            GaugeStyle::Dots => (self.segments.min(avail_w), 1),
+            GaugeStyle::Vertical => (1, self.height.min(avail_h)),
+            GaugeStyle::Thermometer => (1, self.height.min(avail_h).max(3)),
+            GaugeStyle::Arc => (self.width.min(avail_w).max(8), avail_h.min(3)),
+            // `(` + five dots + `)`
+            GaugeStyle::Circle => (7, 1),
+        };
+        (w.min(avail_w), h.min(avail_h))
+    }
+
     /// Render bar style
     fn render_bar(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
@@ -102,8 +119,9 @@ impl Gauge {
         let color = self.current_color(ctx);
 
         // Battery body
+        let outline = self.border_color.unwrap_or(Color::WHITE);
         let mut left = Cell::new('[');
-        left.fg = Some(Color::WHITE);
+        left.fg = Some(outline);
         ctx.set(0, 0, left);
 
         for x in 0..inner_width {
@@ -115,12 +133,12 @@ impl Gauge {
         }
 
         let mut right = Cell::new(']');
-        right.fg = Some(Color::WHITE);
+        right.fg = Some(outline);
         ctx.set(1 + inner_width, 0, right);
 
         // Battery cap
         let mut cap = Cell::new('▌');
-        cap.fg = Some(Color::WHITE);
+        cap.fg = Some(outline);
         ctx.set(2 + inner_width, 0, cap);
     }
 
@@ -192,14 +210,17 @@ impl Gauge {
             left.fg = Some(color);
             ctx.set(0, 1, left);
 
-            let mut dx: u16 = 0;
-            for ch in label.chars() {
-                let cw = char_width(ch) as u16;
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(contrast_color(self.empty_bg.unwrap_or(Color::rgb(0, 0, 0))));
-                cell.modifier |= Modifier::BOLD;
-                ctx.set(label_x + dx, 1, cell);
-                dx += cw;
+            // Other positions are drawn by `render`
+            if matches!(self.label_position, LabelPosition::Inside) {
+                let mut dx: u16 = 0;
+                for ch in label.chars() {
+                    let cw = char_width(ch) as u16;
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(contrast_color(self.empty_bg.unwrap_or(Color::rgb(0, 0, 0))));
+                    cell.modifier |= Modifier::BOLD;
+                    ctx.set(label_x + dx, 1, cell);
+                    dx += cw;
+                }
             }
 
             let mut right = Cell::new('│');
@@ -240,8 +261,9 @@ impl Gauge {
         let segments = 5u16;
         let filled = (self.value * segments as f64).round() as u16;
 
+        let outline = self.border_color.unwrap_or(Color::WHITE);
         let mut open = Cell::new('(');
-        open.fg = Some(Color::WHITE);
+        open.fg = Some(outline);
         ctx.set(0, 0, open);
 
         for i in 0..segments {
@@ -253,10 +275,13 @@ impl Gauge {
         }
 
         let mut close = Cell::new(')');
-        close.fg = Some(Color::WHITE);
+        close.fg = Some(outline);
         ctx.set(1 + segments, 0, close);
 
-        // Label
+        // Label (other positions are drawn by `render`)
+        if !matches!(self.label_position, LabelPosition::Inside) {
+            return;
+        }
         let label_x = 3 + segments;
         let mut dx: u16 = 0;
         for ch in label.chars() {
@@ -329,7 +354,9 @@ impl View for Gauge {
     /// title: `Bar` is [`width`](Gauge::width) columns, `Battery` the same
     /// but at least 6, `Segments` two columns per segment, `Dots` one per
     /// dot, `Vertical` [`height`](Gauge::height) rows and `Thermometer` the
-    /// same but at least 3. `Arc` and `Circle` fill what they are given.
+    /// same but at least 3. A label to the `Left` or `Right` adds its width
+    /// and a space, one `Above` or `Below` a row. `Arc` and `Circle` fill
+    /// what they are given.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         let (w, h) = match self.style {
             GaugeStyle::Bar => (self.width, 1),
@@ -339,6 +366,12 @@ impl View for Gauge {
             GaugeStyle::Vertical => (1, self.height),
             GaugeStyle::Thermometer => (1, self.height.max(3)),
             GaugeStyle::Arc | GaugeStyle::Circle => return None,
+        };
+        let label_w = display_width(&self.get_label()).min(u16::MAX as usize - 1) as u16;
+        let (w, h) = match self.label_position {
+            LabelPosition::Left | LabelPosition::Right => (w.saturating_add(label_w + 1), h),
+            LabelPosition::Above | LabelPosition::Below => (w.max(label_w), h.saturating_add(1)),
+            LabelPosition::None | LabelPosition::Inside => (w, h),
         };
         let (w, h) = match &self.title {
             Some(title) => (
@@ -365,12 +398,49 @@ impl View for Gauge {
             y_offset = 1;
         }
 
-        let adjusted_area = ctx.sub_area(
-            0,
-            y_offset,
-            area.width,
-            area.height.saturating_sub(y_offset),
-        );
+        let (mut x, mut y) = (0u16, y_offset);
+        let (mut width, mut height) = (area.width, area.height.saturating_sub(y_offset));
+
+        // A label outside the gauge takes its own columns or row
+        let label = self.get_label();
+        let label_w = display_width(&label).min(u16::MAX as usize - 1) as u16;
+        let put_label = |ctx: &mut RenderContext, lx: u16, ly: u16| {
+            if lx < area.width && ly < area.height {
+                ctx.put_str_with(lx, ly, &label, area.width, |ch| {
+                    Cell::new(ch).fg(Color::WHITE).bold()
+                });
+            }
+        };
+        match self.label_position {
+            LabelPosition::Left => {
+                put_label(ctx, 0, y);
+                x = (label_w + 1).min(width);
+                width -= x;
+            }
+            LabelPosition::Right => {
+                width = width.saturating_sub(label_w + 1);
+                let (body_w, _) = self.body_size(width, height);
+                put_label(ctx, body_w + 1, y);
+            }
+            LabelPosition::Above => {
+                put_label(ctx, 0, y);
+                y += 1;
+                height = height.saturating_sub(1);
+            }
+            LabelPosition::Below => {
+                height = height.saturating_sub(1);
+                let (_, body_h) = self.body_size(width, height);
+                if height > 0 {
+                    put_label(ctx, 0, y + body_h);
+                }
+            }
+            LabelPosition::None | LabelPosition::Inside => {}
+        }
+        if width == 0 || height == 0 {
+            return;
+        }
+
+        let adjusted_area = ctx.sub_area(x, y, width, height);
 
         let mut adjusted_ctx = ctx.sub_ctx(adjusted_area);
 
@@ -445,5 +515,55 @@ mod tests {
         assert_eq!(top(0.0), "──────────");
         assert_eq!(top(0.5), "━━━━━─────");
         assert_eq!(top(1.0), "━━━━━━━━━━");
+    }
+
+    fn rows(g: &Gauge, w: u16, h: u16) -> Vec<String> {
+        let buf = render(g, w, h);
+        (0..h)
+            .map(|y| {
+                (0..w)
+                    .map(|x| buf.get(x, y).unwrap().symbol)
+                    .collect::<String>()
+                    .trim_end()
+                    .to_string()
+            })
+            .collect()
+    }
+
+    fn half(position: LabelPosition) -> Gauge {
+        Gauge::new()
+            .width(10)
+            .percent(50.0)
+            .label_position(position)
+    }
+
+    #[test]
+    fn label_position_places_the_label_around_the_bar() {
+        assert_eq!(rows(&half(LabelPosition::Inside), 20, 1), ["███50%░░░░"]);
+        assert_eq!(rows(&half(LabelPosition::None), 20, 1), ["█████░░░░░"]);
+        assert_eq!(rows(&half(LabelPosition::Left), 20, 1), ["50% █████░░░░░"]);
+        assert_eq!(rows(&half(LabelPosition::Right), 20, 1), ["█████░░░░░ 50%"]);
+        assert_eq!(
+            rows(&half(LabelPosition::Above), 20, 2),
+            ["50%", "█████░░░░░"]
+        );
+        assert_eq!(
+            rows(&half(LabelPosition::Below), 20, 2),
+            ["█████░░░░░", "50%"]
+        );
+    }
+
+    #[test]
+    fn label_position_outside_the_bar_is_measured() {
+        assert_eq!(half(LabelPosition::Right).measure(80, 24), Some((14, 1)));
+        assert_eq!(half(LabelPosition::Below).measure(80, 24), Some((10, 2)));
+    }
+
+    #[test]
+    fn border_colors_the_battery_outline() {
+        let g = super::super::battery(80.0).border(Color::BLUE);
+        let buf = render(&g, 12, 1);
+        assert_eq!(buf.get(0, 0).unwrap().fg, Some(Color::BLUE));
+        assert_eq!(buf.get(11, 0).unwrap().fg, Some(Color::BLUE));
     }
 }

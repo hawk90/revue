@@ -305,9 +305,9 @@ pub use canvas::{
     Polygon, Rectangle, Shape, Transform,
 };
 pub use command_palette::{command_palette, Command, CommandPalette};
-pub use data::calendar::{
-    calendar, days_in_month, Calendar, CalendarMode, Date, DateMarker, FirstDayOfWeek,
-};
+#[allow(deprecated)]
+pub use data::calendar::CalendarMode;
+pub use data::calendar::{calendar, days_in_month, Calendar, Date, DateMarker, FirstDayOfWeek};
 pub use datetime_picker::{
     date_picker, datetime_picker, time_picker, DateTime, DateTimeFormat, DateTimeMode,
     DateTimePicker, Time, TimeField,

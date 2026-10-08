@@ -188,7 +188,13 @@ impl View for CodeEditor {
                 scroll_x,
                 text_width,
                 |char_idx, ch| {
-                    let mut cell = Cell::new(ch);
+                    // Whitespace markers, drawn in the line-number color
+                    let marker = match ch {
+                        ' ' if self.config.show_whitespace => Some('·'),
+                        '\t' if self.config.show_whitespace => Some('→'),
+                        _ => None,
+                    };
+                    let mut cell = Cell::new(marker.unwrap_or(ch));
 
                     // Check cursor position
                     let is_cursor =
@@ -241,6 +247,9 @@ impl View for CodeEditor {
                         }
                         if !fg_set {
                             cell.fg = self.fg;
+                        }
+                        if marker.is_some() {
+                            cell.fg = Some(self.line_number_fg);
                         }
                         if self.config.highlight_current_line && is_current_line && self.focused {
                             cell.bg = Some(self.current_line_bg);

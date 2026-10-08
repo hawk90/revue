@@ -7,9 +7,7 @@ use revue::style::Color;
 use revue::widget::traits::RenderContext;
 use revue::widget::StyledView;
 use revue::widget::View;
-use revue::widget::{
-    calendar, days_in_month, Calendar, CalendarMode, Date, DateMarker, FirstDayOfWeek,
-};
+use revue::widget::{calendar, days_in_month, Calendar, Date, DateMarker, FirstDayOfWeek};
 
 // =============================================================================
 // 생성자 및 빌더 테스트 (Constructor and Builder Tests)
@@ -69,15 +67,6 @@ fn test_calendar_builder_selected() {
 fn test_calendar_builder_range() {
     let cal = Calendar::new(2025, 1).range(Date::new(2025, 1, 10), Date::new(2025, 1, 20));
     assert_eq!(cal.get_selected(), Some(Date::new(2025, 1, 10)));
-}
-
-#[test]
-fn test_calendar_builder_mode() {
-    let cal = Calendar::new(2025, 1).mode(CalendarMode::Year);
-    let mut buffer = Buffer::new(30, 12);
-    let area = Rect::new(0, 0, 30, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    cal.render(&mut ctx);
 }
 
 #[test]
@@ -222,7 +211,6 @@ fn test_calendar_builder_focused() {
 fn test_calendar_builder_chain() {
     let cal = Calendar::new(2025, 6)
         .selected(Date::new(2025, 6, 15))
-        .mode(CalendarMode::Month)
         .first_day(FirstDayOfWeek::Monday)
         .week_numbers(true)
         .today(Date::new(2025, 6, 10))
@@ -762,36 +750,6 @@ fn test_calendar_render_with_week_numbers() {
     let cal = Calendar::new(2025, 1).week_numbers(true);
     let mut buffer = Buffer::new(35, 12);
     let area = Rect::new(0, 0, 35, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cal.render(&mut ctx);
-}
-
-#[test]
-fn test_calendar_render_month_mode() {
-    let cal = Calendar::new(2025, 1).mode(CalendarMode::Month);
-    let mut buffer = Buffer::new(30, 12);
-    let area = Rect::new(0, 0, 30, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cal.render(&mut ctx);
-}
-
-#[test]
-fn test_calendar_render_year_mode() {
-    let cal = Calendar::new(2025, 1).mode(CalendarMode::Year);
-    let mut buffer = Buffer::new(30, 12);
-    let area = Rect::new(0, 0, 30, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cal.render(&mut ctx);
-}
-
-#[test]
-fn test_calendar_render_week_mode() {
-    let cal = Calendar::new(2025, 1).mode(CalendarMode::Week);
-    let mut buffer = Buffer::new(30, 12);
-    let area = Rect::new(0, 0, 30, 12);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     cal.render(&mut ctx);

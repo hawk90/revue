@@ -19,6 +19,7 @@ fn test_editor_config_default() {
 }
 
 #[test]
+#[allow(deprecated)] // `word_wrap`
 fn test_editor_config_custom() {
     let config = EditorConfig {
         indent_style: IndentStyle::Tabs,
@@ -52,4 +53,27 @@ fn test_builder_methods() {
         .minimap(true);
 
     assert_eq!(editor.get_content(), "code");
+}
+
+fn first_row(editor: &CodeEditor, width: u16) -> String {
+    let mut buf = Buffer::new(width, 1);
+    editor.render(&mut RenderContext::new(&mut buf, Rect::new(0, 0, width, 1)));
+    (0..width)
+        .map(|x| buf.get(x, 0).unwrap().symbol)
+        .collect::<String>()
+        .trim_end()
+        .to_string()
+}
+
+#[test]
+fn show_whitespace_marks_spaces() {
+    let editor = CodeEditor::new().content("a  b").line_numbers(false);
+    assert_eq!(first_row(&editor, 10), "a  b");
+
+    let config = EditorConfig {
+        show_whitespace: true,
+        ..EditorConfig::default()
+    };
+    let editor = editor.config(config);
+    assert_eq!(first_row(&editor, 10), "a··b");
 }

@@ -6,6 +6,10 @@ pub struct Legend {
     /// Orientation of legend items
     pub orientation: LegendOrientation,
     /// Whether legend items are interactive (click to toggle)
+    #[deprecated(
+        since = "3.5.0",
+        note = "never applied: legend items do not respond to clicks; toggle a series by rebuilding the chart without it"
+    )]
     pub interactive: bool,
 }
 
@@ -27,7 +31,12 @@ impl Legend {
         self
     }
 
-    /// Enable interactive mode
+    /// Enable interactive mode (has no effect)
+    #[deprecated(
+        since = "3.5.0",
+        note = "never applied: legend items do not respond to clicks; toggle a series by rebuilding the chart without it"
+    )]
+    #[allow(deprecated)]
     pub fn interactive(mut self, interactive: bool) -> Self {
         self.interactive = interactive;
         self

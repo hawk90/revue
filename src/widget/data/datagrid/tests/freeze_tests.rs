@@ -170,3 +170,23 @@ fn frozen_both_sides_keep_edges_while_middle_scrolls() {
         "middle after offset missing: {header:?}"
     );
 }
+
+#[test]
+fn column_marked_frozen_survives_horizontal_scroll() {
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("c0", "C0").width(6).frozen(true))
+        .column(GridColumn::new("c1", "C1").width(6))
+        .column(GridColumn::new("c2", "C2").width(6))
+        .column(GridColumn::new("c3", "C3").width(6))
+        .row(GridRow::new());
+    grid.scroll_col_right();
+
+    let buf = render_to(&grid, 80, 5);
+    let header = row_text(&buf, 0, 80);
+    assert!(
+        header.starts_with("C0"),
+        "frozen col not pinned left: {header:?}"
+    );
+    assert!(!header.contains("C1"), "scrolled col shown: {header:?}");
+    assert!(header.contains("C2"), "post-scroll col missing: {header:?}");
+}

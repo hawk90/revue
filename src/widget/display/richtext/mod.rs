@@ -76,7 +76,8 @@ impl RichText {
         self
     }
 
-    /// Set default style
+    /// Set the style for what a span leaves unset: its colors apply to spans
+    /// without their own, its attributes (bold, italic, ...) to every span
     pub fn default_style(mut self, style: Style) -> Self {
         self.default_style = style;
         self

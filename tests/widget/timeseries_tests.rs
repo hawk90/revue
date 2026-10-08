@@ -239,6 +239,23 @@ fn test_time_series_y_label() {
 }
 
 #[test]
+fn y_label_is_drawn_above_the_value_axis() {
+    let chart = TimeSeries::new()
+        .series(TimeSeriesData::new("Mem").point(0, 1.0).point(10, 4.0))
+        .show_legend(false)
+        .y_label("GB");
+    let mut buffer = Buffer::new(40, 12);
+    let area = Rect::new(0, 0, 40, 12);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    chart.render(&mut ctx);
+
+    let top: String = (0..40)
+        .map(|x| buffer.get(x, 0).map(|c| c.symbol).unwrap_or(' '))
+        .collect();
+    assert!(top.starts_with("GB"), "y label not drawn: {top:?}");
+}
+
+#[test]
 fn test_time_series_show_grid() {
     let chart = TimeSeries::new().show_grid(false);
     let debug = format!("{:?}", chart);

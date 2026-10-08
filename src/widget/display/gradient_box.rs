@@ -104,7 +104,8 @@ impl GradientBox {
 
     /// Use half-block characters for higher resolution (2x vertical)
     ///
-    /// Each "pixel" becomes two half-blocks stacked vertically.
+    /// Each cell shows two gradient rows: `▀` in the upper row's color over
+    /// the lower row's. The fill character is not used.
     pub fn half_block(mut self, half: bool) -> Self {
         self.half_block = half;
         self
@@ -252,6 +253,11 @@ impl View for GradientBox {
         let width = self.width.min(area.width);
         let height = self.height.min(area.height);
 
+        if self.half_block {
+            self.render_half_block(ctx, width, height);
+            return;
+        }
+
         // Render with animation offset if enabled
         if self.animated && self.offset > 0.0 {
             self.render_animated(ctx, width, height);
@@ -300,10 +306,11 @@ impl View for GradientBox {
 }
 
 impl GradientBox {
-    /// Get contrasting color for text at position
-    fn get_contrast_color_at(&self, x: u16, y: u16, width: u16, height: u16) -> Color {
+    /// Where the gradient is (0.0 - 1.0) at a position, with the animation
+    /// offset applied
+    fn t_at(&self, x: u16, y: u16, width: u16, height: u16) -> f32 {
         // Normalize position
-        let mut t = match self.direction {
+        let t = match self.direction {
             GradientDirection::ToRight => x as f32 / width.max(1) as f32,
             GradientDirection::ToLeft => 1.0 - (x as f32 / width.max(1) as f32),
             GradientDirection::ToBottom => y as f32 / height.max(1) as f32,
@@ -318,10 +325,15 @@ impl GradientBox {
 
         // Apply animation offset if enabled
         if self.animated {
-            t = (t + self.offset) % 1.0;
+            (t + self.offset) % 1.0
+        } else {
+            t
         }
+    }
 
-        let bg_color = self.gradient.at(t);
+    /// Get contrasting color for text at position
+    fn get_contrast_color_at(&self, x: u16, y: u16, width: u16, height: u16) -> Color {
+        let bg_color = self.gradient.at(self.t_at(x, y, width, height));
 
         // Calculate luminance
         let luminance =
@@ -332,6 +344,19 @@ impl GradientBox {
             Color::BLACK
         } else {
             Color::WHITE
+        }
+    }
+
+    /// Two gradient rows per cell: `▀` in the top row's color over the
+    /// bottom row's
+    fn render_half_block(&self, ctx: &mut RenderContext, width: u16, height: u16) {
+        let rows = height.saturating_mul(2);
+        for py in 0..height {
+            for px in 0..width {
+                let top = self.gradient.at(self.t_at(px, py * 2, width, rows));
+                let bottom = self.gradient.at(self.t_at(px, py * 2 + 1, width, rows));
+                ctx.set(px, py, Cell::new('▀').fg(top).bg(bottom));
+            }
         }
     }
 
@@ -438,6 +463,32 @@ mod tests {
         let mut box_widget = GradientBox::horizontal(Color::BLUE, Color::RED, 20, 5);
         box_widget = box_widget.fill_char('░');
         assert_eq!(box_widget.fill_char, '░');
+    }
+
+    #[test]
+    fn half_block_draws_two_gradient_rows_per_cell() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+
+        let g = GradientBox::vertical(Color::BLACK, Color::WHITE, 1, 2).half_block(true);
+        let mut buf = Buffer::new(1, 2);
+        g.render(&mut RenderContext::new(&mut buf, Rect::new(0, 0, 1, 2)));
+        // Four half rows: 0/4, 1/4, 2/4, 3/4 of the way down
+        let gradient = Gradient::linear(Color::BLACK, Color::WHITE);
+        for y in 0..2u16 {
+            let cell = buf.get(0, y).unwrap();
+            assert_eq!(cell.symbol, '▀');
+            assert_eq!(
+                cell.fg,
+                Some(gradient.at(f32::from(y * 2) / 4.0)),
+                "top of row {y}"
+            );
+            assert_eq!(
+                cell.bg,
+                Some(gradient.at(f32::from(y * 2 + 1) / 4.0)),
+                "bottom of row {y}"
+            );
+        }
     }
 
     #[test]

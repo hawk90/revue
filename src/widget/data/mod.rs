@@ -18,7 +18,9 @@ pub mod tree;
 pub mod virtuallist;
 
 // Re-exports for convenience
-pub use calendar::{calendar, Calendar, CalendarMode, Date, DateMarker, FirstDayOfWeek};
+#[allow(deprecated)]
+pub use calendar::CalendarMode;
+pub use calendar::{calendar, Calendar, Date, DateMarker, FirstDayOfWeek};
 pub use chart::{
     barchart, boxplot, candle_chart, heatmap, line_chart, pie_chart, scatter_chart, BarChart,
     BoxPlot, CandleChart, Chart, HeatMap, PieChart, ScatterChart,

@@ -1,9 +1,9 @@
 //! DataGrid core structure and builders
 
 use super::editing::EditState;
-#[cfg(test)]
-use super::types::AggregationType;
-use super::types::{FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection};
+use super::types::{
+    AggregationType, FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection,
+};
 use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -435,7 +435,6 @@ impl DataGrid {
     }
 
     /// Compute aggregation value for a column
-    #[cfg(test)]
     pub(super) fn compute_aggregation(
         &self,
         column_key: &str,
@@ -466,7 +465,6 @@ impl DataGrid {
     }
 
     /// Get computed footer values for rendering
-    #[cfg(test)]
     pub(super) fn get_footer_values(&self, footer: &FooterRow) -> Vec<(String, String)> {
         let mut values = Vec::new();
 
@@ -503,7 +501,7 @@ impl DataGrid {
                 .enumerate()
                 .filter(|(_, row)| match self.filter_column {
                     Some(col_idx) => {
-                        if let Some(col) = self.columns.get(col_idx) {
+                        if let Some(col) = self.columns.get(col_idx).filter(|c| c.filterable) {
                             row.get(&col.key)
                                 .map(|v| v.to_lowercase().contains(&self.filter))
                                 .unwrap_or(false)
@@ -511,10 +509,14 @@ impl DataGrid {
                             false
                         }
                     }
-                    None => row
-                        .data
-                        .iter()
-                        .any(|(_, v)| v.to_lowercase().contains(&self.filter)),
+                    None => row.data.iter().any(|(k, v)| {
+                        let filterable = self
+                            .columns
+                            .iter()
+                            .find(|c| &c.key == k)
+                            .is_none_or(|c| c.filterable);
+                        filterable && v.to_lowercase().contains(&self.filter)
+                    }),
                 })
                 .map(|(i, _)| i)
                 .collect()

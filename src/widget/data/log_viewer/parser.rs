@@ -10,12 +10,28 @@ pub struct LogParser {
     /// Enable JSON log parsing
     pub json_parsing: bool,
     /// Timestamp regex pattern
+    #[deprecated(
+        since = "3.5.0",
+        note = "never applied: `parse` reads JSON fields and common text layouts, and revue has no regex engine; pre-process lines yourself or set the `json_*_field` names"
+    )]
     pub timestamp_pattern: Option<String>,
     /// Level regex pattern
+    #[deprecated(
+        since = "3.5.0",
+        note = "never applied: `parse` reads JSON fields and common text layouts, and revue has no regex engine; pre-process lines yourself or set the `json_*_field` names"
+    )]
     pub level_pattern: Option<String>,
     /// Source regex pattern
+    #[deprecated(
+        since = "3.5.0",
+        note = "never applied: `parse` reads JSON fields and common text layouts, and revue has no regex engine; pre-process lines yourself or set the `json_*_field` names"
+    )]
     pub source_pattern: Option<String>,
     /// Message regex pattern
+    #[deprecated(
+        since = "3.5.0",
+        note = "never applied: `parse` reads JSON fields and common text layouts, and revue has no regex engine; pre-process lines yourself or set the `json_*_field` names"
+    )]
     pub message_pattern: Option<String>,
     /// JSON level field name
     pub json_level_field: String,
@@ -27,6 +43,7 @@ pub struct LogParser {
     pub json_source_field: String,
 }
 
+#[allow(deprecated)] // the deprecated `*_pattern` fields stay `None`
 impl Default for LogParser {
     fn default() -> Self {
         Self {

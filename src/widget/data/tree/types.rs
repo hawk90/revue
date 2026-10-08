@@ -61,6 +61,9 @@ impl TreeNode {
     }
 
     /// Set whether this node can be selected
+    ///
+    /// Keyboard navigation skips a non-selectable node, and multi-select
+    /// does not pick it.
     pub fn selectable(mut self, selectable: bool) -> Self {
         self.selectable = selectable;
         self

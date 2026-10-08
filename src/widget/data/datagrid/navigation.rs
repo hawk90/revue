@@ -48,9 +48,9 @@ impl DataGrid {
 
     /// Ensure selected row is visible (auto-scroll)
     pub fn ensure_visible(&mut self) {
-        // This will be called with viewport_height from render
-        // For now, use a reasonable default
-        self.ensure_visible_with_height(20);
+        // The data-row viewport height of the last render (header and footer
+        // excluded)
+        self.ensure_visible_with_height(self.last_viewport_height.get().max(1));
     }
 
     /// Ensure selected row is visible with specific viewport height

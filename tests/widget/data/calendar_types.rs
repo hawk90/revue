@@ -6,25 +6,30 @@
 //! - DateMarker struct
 
 use revue::style::Color;
-use revue::widget::data::calendar::{CalendarMode, Date, DateMarker, FirstDayOfWeek};
+#[allow(deprecated)]
+use revue::widget::data::calendar::CalendarMode;
+use revue::widget::data::calendar::{Date, DateMarker, FirstDayOfWeek};
 
 // =========================================================================
-// CalendarMode enum tests
+// CalendarMode enum tests (deprecated type, kept until 4.0)
 // =========================================================================
 
 #[test]
+#[allow(deprecated)]
 fn test_calendar_mode_default() {
     let mode = CalendarMode::default();
     assert_eq!(mode, CalendarMode::Month);
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_calendar_mode_clone() {
     let mode = CalendarMode::Year;
     assert_eq!(mode.clone(), CalendarMode::Year);
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_calendar_mode_copy() {
     let mode1 = CalendarMode::Week;
     let mode2 = mode1;
@@ -32,6 +37,7 @@ fn test_calendar_mode_copy() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_calendar_mode_partial_eq() {
     let mode1 = CalendarMode::Month;
     let mode2 = CalendarMode::Month;
@@ -39,6 +45,7 @@ fn test_calendar_mode_partial_eq() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_calendar_mode_partial_ne() {
     let mode1 = CalendarMode::Month;
     let mode2 = CalendarMode::Year;

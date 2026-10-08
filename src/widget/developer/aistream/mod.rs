@@ -1,7 +1,7 @@
 //! AI Streaming widget for LLM response display
 //!
-//! Displays streaming text with typing effects, markdown rendering,
-//! and code block syntax highlighting.
+//! Displays streaming text with typing effects. The text is drawn as plain
+//! text; render a finished response with the `Markdown` widget for formatting.
 
 mod render;
 mod stream;
@@ -138,6 +138,10 @@ impl AiStream {
     }
 
     /// Enable/disable markdown rendering
+    #[deprecated(
+        since = "3.5.0",
+        note = "AiStream draws plain text and never rendered markdown; show a finished response in the `Markdown` widget instead. This setting has no effect"
+    )]
     pub fn markdown(mut self, enable: bool) -> Self {
         self.render_markdown = enable;
         self

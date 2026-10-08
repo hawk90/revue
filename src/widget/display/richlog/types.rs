@@ -70,7 +70,7 @@ pub struct LogEntry {
     pub timestamp: Option<String>,
     /// Source/module
     pub source: Option<String>,
-    /// Is expanded (for multi-line)
+    /// Is expanded: draw the detail lines under the message
     pub expanded: bool,
     /// Additional lines
     pub details: Vec<String>,
@@ -172,6 +172,10 @@ pub enum LogFormat {
     /// With timestamp and source
     Detailed,
     /// Custom format
+    #[deprecated(
+        since = "3.5.0",
+        note = "there is no way to supply a custom format; it draws like `Standard`. Use `Standard` and the column builders (`timestamps`, `sources`, `icons`, `labels`) instead"
+    )]
     Custom,
 }
 

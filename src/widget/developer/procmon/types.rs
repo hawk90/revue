@@ -27,6 +27,10 @@ pub enum ProcessView {
     /// Show only user processes
     User,
     /// Show tree view
+    #[deprecated(
+        since = "3.5.0",
+        note = "the monitor has no tree layout and shows the flat list; group by `ProcessInfo::parent_pid` yourself"
+    )]
     Tree,
 }
 
