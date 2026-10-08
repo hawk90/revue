@@ -1,6 +1,7 @@
 //! Double buffer implementation
 
 use super::Cell;
+use crate::layout::Rect;
 use crate::style::Color;
 use crate::utils::unicode::char_width;
 use std::collections::HashMap;
@@ -18,6 +19,9 @@ pub struct Buffer {
     /// Escape sequence registry (indexed by sequence_id in Cell)
     /// Used for raw escape sequences like OSC 66 text sizing
     sequences: Vec<String>,
+    /// While a widget under `overflow: hidden` renders: the only cells writes
+    /// may change. See [`replace_clip`](Self::replace_clip).
+    clip: Option<Rect>,
 }
 
 /// Maximum allowed buffer dimensions to prevent memory exhaustion
@@ -119,6 +123,7 @@ impl Buffer {
             hyperlinks: Vec::new(),
             hyperlink_cache: HashMap::new(),
             sequences: Vec::new(),
+            clip: None,
         }
     }
 
@@ -163,6 +168,7 @@ impl Buffer {
             hyperlinks: Vec::new(),
             hyperlink_cache: HashMap::new(),
             sequences: Vec::new(),
+            clip: None,
         })
     }
 
@@ -185,9 +191,38 @@ impl Buffer {
         self.index(x, y).map(|idx| &self.cells[idx])
     }
 
+    /// The index of `(x, y)` if a write may change it: inside the buffer and
+    /// inside the clip, if one is set.
+    #[inline]
+    fn writable(&self, x: u16, y: u16) -> Option<usize> {
+        match self.clip {
+            Some(clip) if !clip.contains(x, y) => None,
+            _ => self.index(x, y),
+        }
+    }
+
+    /// Set the region writes are clipped to, returning the previous one.
+    ///
+    /// The render pass sets it around each widget drawn under
+    /// `overflow: hidden`, so a widget that writes to the buffer directly -
+    /// not through `RenderContext` - is clipped too. While it is set, `set`,
+    /// `get_mut` and the other writers leave every cell outside it alone
+    /// (`get_mut` returns `None` there). Reads are not clipped.
+    pub(crate) fn replace_clip(&mut self, clip: Option<Rect>) -> Option<Rect> {
+        std::mem::replace(&mut self.clip, clip)
+    }
+
+    /// The region writes are clipped to, if any; see [`replace_clip`](Self::replace_clip).
+    pub(crate) fn clip(&self) -> Option<Rect> {
+        self.clip
+    }
+
     /// Get a mutable cell at position
+    ///
+    /// `None` outside the buffer, and outside the clip region while a widget
+    /// under `overflow: hidden` is rendering.
     pub fn get_mut(&mut self, x: u16, y: u16) -> Option<&mut Cell> {
-        self.index(x, y).map(|idx| &mut self.cells[idx])
+        self.writable(x, y).map(|idx| &mut self.cells[idx])
     }
 
     /// Get a slice of cells for a given row
@@ -209,28 +244,28 @@ impl Buffer {
 
     /// Set a cell at position
     pub fn set(&mut self, x: u16, y: u16, cell: Cell) {
-        if let Some(idx) = self.index(x, y) {
+        if let Some(idx) = self.writable(x, y) {
             self.cells[idx] = cell;
         }
     }
 
     /// Set foreground color at position
     pub fn set_fg(&mut self, x: u16, y: u16, fg: Color) {
-        if let Some(idx) = self.index(x, y) {
+        if let Some(idx) = self.writable(x, y) {
             self.cells[idx].fg = Some(fg);
         }
     }
 
     /// Set background color at position
     pub fn set_bg(&mut self, x: u16, y: u16, bg: Color) {
-        if let Some(idx) = self.index(x, y) {
+        if let Some(idx) = self.writable(x, y) {
             self.cells[idx].bg = Some(bg);
         }
     }
 
     /// Set both foreground and background colors at position
     pub fn set_colors(&mut self, x: u16, y: u16, fg: Color, bg: Color) {
-        if let Some(idx) = self.index(x, y) {
+        if let Some(idx) = self.writable(x, y) {
             self.cells[idx].fg = Some(fg);
             self.cells[idx].bg = Some(bg);
         }
@@ -263,6 +298,15 @@ impl Buffer {
                 break;
             }
 
+            // A glyph the clip would cut in half is not drawn at all.
+            if width == 2 && self.clip.is_some() {
+                let last = curr_x.saturating_add(1);
+                if self.writable(curr_x, y).is_none() || self.writable(last, y).is_none() {
+                    offset = offset.saturating_add(width);
+                    continue;
+                }
+            }
+
             // Create cell for this character
             let mut cell = Cell::new(ch);
             cell.fg = fg;
@@ -292,6 +336,15 @@ impl Buffer {
     ///
     /// Optimized using slice operations for better performance.
     pub fn fill(&mut self, x: u16, y: u16, width: u16, height: u16, cell: Cell) {
+        // Clamp the fill region to the clip region, if any
+        let (x, y, width, height) = match self.clip {
+            None => (x, y, width, height),
+            Some(clip) => match Rect::new(x, y, width, height).intersection(&clip) {
+                Some(r) => (r.x, r.y, r.width, r.height),
+                None => return,
+            },
+        };
+
         // Clamp the fill region to buffer bounds
         let x_end = x.saturating_add(width).min(self.width);
         let y_end = y.saturating_add(height).min(self.height);
@@ -553,6 +606,15 @@ impl Buffer {
     /// * `width` - Number of cells this sequence spans (for continuation markers)
     /// * `height` - Number of rows this sequence spans
     pub fn put_sequence(&mut self, x: u16, y: u16, seq: &str, width: u16, height: u16) {
+        // The terminal draws the whole sequence from its first cell, so a
+        // sequence the clip would cut is not written at all.
+        if let Some(clip) = self.clip {
+            let span = Rect::new(x, y, width, height);
+            if span.intersection(&clip) != Some(span) {
+                return;
+            }
+        }
+
         let seq_id = self.register_sequence(seq);
 
         // Set first cell with sequence ID
@@ -892,5 +954,95 @@ mod tests {
         assert_eq!(buffer.get(9, 4).unwrap().symbol, ' ');
         // Cells outside the region should be unchanged
         assert_eq!(buffer.get(0, 0).unwrap().symbol, 'B');
+    }
+}
+
+#[cfg(test)]
+mod clip_tests {
+    use super::*;
+
+    fn clipped() -> Buffer {
+        let mut b = Buffer::new(10, 3);
+        b.replace_clip(Some(Rect::new(2, 1, 4, 1)));
+        b
+    }
+
+    fn row(b: &Buffer, y: u16) -> String {
+        (0..b.width())
+            .map(|x| b.get(x, y).unwrap().symbol)
+            .collect()
+    }
+
+    #[test]
+    fn writes_outside_the_clip_change_nothing() {
+        let mut b = clipped();
+        for y in 0..3 {
+            for x in 0..10 {
+                b.set(x, y, Cell::new('#'));
+                b.set_bg(x, y, Color::rgb(1, 2, 3));
+            }
+        }
+        assert_eq!(row(&b, 0), " ".repeat(10));
+        assert_eq!(row(&b, 1), "  ####    ");
+        assert_eq!(row(&b, 2), " ".repeat(10));
+        assert!(
+            b.get_mut(0, 1).is_none(),
+            "get_mut handed out a clipped cell"
+        );
+        assert!(b.get_mut(2, 1).is_some());
+        // Reads are not clipped.
+        assert!(b.get(0, 0).is_some());
+    }
+
+    #[test]
+    fn fill_is_cut_to_the_clip() {
+        let mut b = clipped();
+        b.fill(0, 0, 10, 3, Cell::new('='));
+        assert_eq!(row(&b, 1), "  ====    ");
+        assert_eq!(row(&b, 0), " ".repeat(10));
+        // A fill entirely outside writes nothing.
+        b.fill(7, 0, 3, 3, Cell::new('x'));
+        assert!(!row(&b, 1).contains('x'));
+    }
+
+    #[test]
+    fn a_wide_glyph_the_clip_would_halve_is_skipped() {
+        let mut b = clipped();
+        // Columns 1-2 straddle the left edge, 5-6 the right one.
+        b.put_str(1, 1, "가나다");
+        let cells: Vec<char> = (0..10).map(|x| b.get(x, 1).unwrap().symbol).collect();
+        assert_eq!(cells[1], ' ', "a half glyph left of the clip");
+        assert_eq!(
+            cells[2], ' ',
+            "the glyph straddling the left edge was drawn"
+        );
+        assert_eq!(cells[3], '나');
+        assert_eq!(
+            cells[5], ' ',
+            "the glyph straddling the right edge was drawn"
+        );
+    }
+
+    #[test]
+    fn a_sequence_the_clip_would_cut_is_not_written() {
+        let mut b = clipped();
+        b.put_sequence(4, 1, "\x1b]66;s=2;hi\x07", 4, 1);
+        assert!(
+            (0..10).all(|x| b.get(x, 1).unwrap().sequence_id.is_none()),
+            "a cut sequence was written"
+        );
+        b.put_sequence(2, 1, "\x1b]66;s=2;hi\x07", 4, 1);
+        assert!(b.get(2, 1).unwrap().sequence_id.is_some());
+    }
+
+    #[test]
+    fn replace_clip_returns_the_previous_clip() {
+        let mut b = Buffer::new(4, 4);
+        let r = Rect::new(0, 0, 2, 2);
+        assert_eq!(b.replace_clip(Some(r)), None);
+        assert_eq!(b.clip(), Some(r));
+        assert_eq!(b.replace_clip(None), Some(r));
+        b.set(3, 3, Cell::new('#'));
+        assert_eq!(b.get(3, 3).unwrap().symbol, '#');
     }
 }

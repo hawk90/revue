@@ -235,7 +235,7 @@ impl<'a> RenderContext<'a> {
     pub fn render_child_with_overflow(
         &mut self,
         child: &dyn View,
-        mut area: Rect,
+        area: Rect,
         overflow_hidden: bool,
         parent_clip: Option<Rect>,
     ) {
@@ -253,6 +253,17 @@ impl<'a> RenderContext<'a> {
             parent_clip
         };
 
+        // The buffer carries the clip too, so a child that writes to
+        // `ctx.buffer` directly - a canvas, a border helper, a user widget -
+        // is clipped like one drawing through `ctx`.
+        let outer = self.buffer.replace_clip(clip);
+        self.paint_child(child, area, clip);
+        self.buffer.replace_clip(outer);
+    }
+
+    /// Render `child` into `area` under `clip`; the body of
+    /// [`render_child_with_overflow`](Self::render_child_with_overflow).
+    fn paint_child(&mut self, child: &dyn View, mut area: Rect, clip: Option<Rect>) {
         // Destructured so the buffer and the pass can be borrowed at once.
         let RenderContext { buffer, pass, .. } = self;
 

@@ -197,11 +197,15 @@ impl View for ErrorBoundary {
 
         // Try rendering child with panic catch
         if let Some(ref child) = self.child {
+            // A panic inside a clipped subtree skips the code that restores
+            // the buffer's clip; put it back before drawing the fallback.
+            let clip = ctx.buffer.clip();
             let result = crate::render::catch_panic(panic::AssertUnwindSafe(|| {
                 child.render(ctx);
             }));
 
             if let Err(panic_info) = result {
+                ctx.buffer.replace_clip(clip);
                 self.has_error.set(true);
                 let msg = if let Some(s) = panic_info.downcast_ref::<&str>() {
                     s.to_string()

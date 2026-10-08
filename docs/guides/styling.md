@@ -151,6 +151,13 @@ On widgets that draw a border - `Border`, `Card`, `Accordion`, `Alert`,
 ```
 
 The container still places each child; these adjust the box it was handed.
+
+**Overflow.** As in CSS, `overflow` defaults to `visible`: a child whose
+`width`/`height` makes it larger than the slot its container gave it paints
+past that slot, over its neighbors. Put `overflow: hidden` on the container to
+keep it inside. The clip covers everything the subtree draws, including widgets
+that write to `ctx.buffer` directly (canvases, custom widgets); overlays such as
+dropdowns, tooltips and toasts are drawn after the tree and are not clipped.
 In a content-sized `vstack`/`hstack` a child's `height`/`width`, `min-*`/`max-*`
 and margins along the stack count toward its slot, so `margin-top: 2` moves a
 line of text down. `gap: 0` closes a gap the builder opened.
