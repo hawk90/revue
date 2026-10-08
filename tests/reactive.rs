@@ -14,6 +14,8 @@ mod computed_propagation;
 mod context;
 #[path = "reactive/effect.rs"]
 mod effect;
+#[path = "reactive/incremental.rs"]
+mod incremental;
 #[path = "reactive/integration.rs"]
 mod integration;
 #[path = "reactive/runtime.rs"]
