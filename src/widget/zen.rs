@@ -105,6 +105,9 @@ impl ZenMode {
     }
 
     /// Center content vertically in zen mode
+    ///
+    /// The content gets the height it [`measure`](View::measure)s at; a
+    /// content that does not measure fills the padded area as before.
     pub fn center(mut self) -> Self {
         self.center_vertical = true;
         self
@@ -211,11 +214,22 @@ impl View for ZenMode {
             let content_height = area.height.saturating_sub(self.padding_y * 2);
 
             if content_width > 0 && content_height > 0 {
+                // Centered, the content gets the height it measures at, in the
+                // middle of the padded area. A content that does not measure
+                // keeps the whole area.
+                let (offset_y, height) = if self.center_vertical {
+                    match self.content.measure(content_width, content_height) {
+                        Some((_, h)) if h < content_height => ((content_height - h) / 2, h),
+                        _ => (0, content_height),
+                    }
+                } else {
+                    (0, content_height)
+                };
                 let content_area = ctx.sub_area(
                     self.padding_x,
-                    self.padding_y,
+                    self.padding_y + offset_y,
                     content_width,
-                    content_height,
+                    height,
                 );
 
                 ctx.render_child(self.content.as_ref(), content_area);
