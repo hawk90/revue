@@ -5,22 +5,30 @@
 //!
 //! # Example
 //!
-//! ```ignore
+//! ```
 //! use revue::patterns::AsyncTask;
-//! use std::thread;
+//!
+//! #[derive(Clone)]
+//! struct Client;
+//!
+//! impl Client {
+//!     fn fetch_items(&self) -> Result<Vec<String>, String> {
+//!         Ok(vec!["one".into(), "two".into()])
+//!     }
+//! }
 //!
 //! struct App {
-//!     items: Vec<Item>,
+//!     client: Client,
+//!     items: Vec<String>,
+//!     error: Option<String>,
 //!     loading: bool,
-//!     fetch_task: Option<AsyncTask<Vec<Item>>>,
+//!     fetch_task: Option<AsyncTask<Result<Vec<String>, String>>>,
 //! }
 //!
 //! impl App {
 //!     fn start_fetch(&mut self) {
 //!         let client = self.client.clone();
-//!         let task = AsyncTask::spawn(move || {
-//!             client.fetch_items()
-//!         });
+//!         let task = AsyncTask::spawn(move || client.fetch_items());
 //!
 //!         self.fetch_task = Some(task);
 //!         self.loading = true;
@@ -33,7 +41,7 @@
 //!             if let Some(result) = task.try_recv() {
 //!                 match result {
 //!                     Ok(items) => self.items = items,
-//!                     Err(e) => self.message.set(format!("Error: {}", e)),
+//!                     Err(e) => self.error = Some(format!("Error: {}", e)),
 //!                 }
 //!                 self.fetch_task = None;
 //!                 self.loading = false;
@@ -44,6 +52,19 @@
 //!         needs_redraw
 //!     }
 //! }
+//!
+//! let mut app = App {
+//!     client: Client,
+//!     items: Vec::new(),
+//!     error: None,
+//!     loading: false,
+//!     fetch_task: None,
+//! };
+//! app.start_fetch();
+//! while !app.poll() {
+//!     std::thread::sleep(std::time::Duration::from_millis(1));
+//! }
+//! assert_eq!(app.items, ["one", "two"]);
 //! ```
 
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
@@ -63,7 +84,10 @@ impl<T: Send + 'static> AsyncTask<T> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
+    /// use revue::patterns::AsyncTask;
+    ///
+    /// # fn fetch_data_from_api() -> String { String::new() }
     /// let task = AsyncTask::spawn(|| {
     ///     // Heavy computation or I/O
     ///     fetch_data_from_api()
@@ -91,10 +115,15 @@ impl<T: Send + 'static> AsyncTask<T> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
+    /// use revue::patterns::AsyncTask;
+    ///
+    /// let mut task = AsyncTask::spawn(|| 42);
+    ///
+    /// // On each tick:
     /// if let Some(result) = task.try_recv() {
     ///     // Task completed!
-    ///     self.handle_result(result);
+    ///     println!("got {}", result);
     /// }
     /// ```
     pub fn try_recv(&mut self) -> Option<T> {
@@ -106,8 +135,12 @@ impl<T: Send + 'static> AsyncTask<T> {
     }
 
     /// Check if task is still running
+    ///
+    /// Once this returns `false`, the result (if the task did not panic) is
+    /// ready for [`try_recv`](Self::try_recv) or [`wait`](Self::wait).
+    /// Checking does not take the result.
     pub fn is_running(&self) -> bool {
-        matches!(self.rx.try_recv(), Err(TryRecvError::Empty))
+        self.handle.as_ref().is_some_and(|h| !h.is_finished())
     }
 
     /// Wait for task to complete (blocking)
@@ -119,8 +152,8 @@ impl<T: Send + 'static> AsyncTask<T> {
 
     /// Cancel the task
     ///
-    /// Drops the receiver, which will cause the sender to fail.
-    /// The background thread will continue until it tries to send.
+    /// Drops the receiver and waits for the background thread to finish, so
+    /// this blocks until the task's closure returns.
     pub fn cancel(mut self) {
         drop(self.rx);
         if let Some(handle) = self.handle.take() {
@@ -138,10 +171,12 @@ pub const SPINNER_FRAMES: &[&str] = &["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", 
 ///
 /// # Example
 ///
-/// ```ignore
-/// let frame = self.spinner_frame;
-/// let spinner = spinner_char(frame);
-/// ctx.draw_text(x, y, spinner, CYAN);
+/// ```
+/// use revue::patterns::spinner_char;
+///
+/// // Advance the frame on each tick; it wraps around
+/// assert_eq!(spinner_char(0), "⣾");
+/// assert_eq!(spinner_char(8), spinner_char(0));
 /// ```
 pub fn spinner_char(frame: usize) -> &'static str {
     SPINNER_FRAMES[frame % SPINNER_FRAMES.len()]
@@ -153,8 +188,12 @@ pub fn spinner_char(frame: usize) -> &'static str {
 ///
 /// # Example
 ///
-/// ```ignore
-/// let (rx, handle) = spawn_task(|| fetch_data());
+/// ```
+/// use revue::patterns::async_ops::spawn_task;
+///
+/// let (rx, handle) = spawn_task(|| 6 * 7);
+/// assert_eq!(rx.recv(), Ok(42));
+/// handle.join().unwrap();
 /// ```
 pub fn spawn_task<T, F>(f: F) -> (Receiver<T>, JoinHandle<()>)
 where
@@ -175,13 +214,18 @@ where
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
+/// use revue::patterns::async_ops::spawn_with_sender;
+/// use std::{thread, time::Duration};
+///
 /// let rx = spawn_with_sender(|tx| {
 ///     for i in 0..10 {
 ///         tx.send(i).unwrap();
-///         thread::sleep(Duration::from_millis(100));
+///         thread::sleep(Duration::from_millis(1));
 ///     }
 /// });
+/// // Progress updates arrive as they are sent
+/// assert_eq!(rx.iter().sum::<i32>(), 45);
 /// ```
 pub fn spawn_with_sender<T, F>(f: F) -> Receiver<T>
 where

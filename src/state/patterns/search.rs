@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::patterns::SearchState;
 //!
 //! let items = vec!["apple", "banana", "cherry"];
@@ -12,7 +12,7 @@
 //!
 //! search.set_query("an");
 //! let filtered: Vec<_> = search.filter(&items, |item| item.to_string());
-//! assert_eq!(filtered, vec!["banana"]);
+//! assert_eq!(filtered, [&"banana"]);
 //! ```
 
 use crate::constants::DEBOUNCE_SEARCH;

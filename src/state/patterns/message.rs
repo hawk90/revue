@@ -5,7 +5,7 @@
 //!
 //! # Example
 //!
-//! ```ignore
+//! ```
 //! use revue::patterns::MessageState;
 //!
 //! struct App {
@@ -23,14 +23,16 @@
 //!         self.message.check_timeout()
 //!     }
 //!
-//!     fn render_footer(&self, ctx: &mut RenderContext) {
-//!         if let Some(msg) = self.message.get() {
-//!             ctx.draw_text(0, 0, msg, YELLOW);
-//!             return;
-//!         }
-//!         // ... render normal footer ...
+//!     fn footer(&self) -> &str {
+//!         // The message replaces the normal footer while it shows
+//!         self.message.get().unwrap_or("s: save")
 //!     }
 //! }
+//!
+//! let mut app = App { message: MessageState::new() };
+//! app.save();
+//! assert_eq!(app.footer(), "Saved successfully!");
+//! assert!(!app.poll(), "the message stays for 3 seconds");
 //! ```
 
 use crate::constants::MESSAGE_DEFAULT_DURATION;
@@ -54,6 +56,8 @@ pub struct MessageState {
     message_time: Option<Instant>,
     /// Duration before auto-clear
     duration: Duration,
+    /// Duration for the current message only, from `set_with_duration`
+    message_duration: Option<Duration>,
 }
 
 impl Default for MessageState {
@@ -69,6 +73,7 @@ impl MessageState {
             message: None,
             message_time: None,
             duration: DEFAULT_MESSAGE_DURATION,
+            message_duration: None,
         }
     }
 
@@ -76,7 +81,10 @@ impl MessageState {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
+    /// use revue::patterns::MessageState;
+    /// use std::time::Duration;
+    ///
     /// // 5-second timeout
     /// let msg = MessageState::with_duration(Duration::from_secs(5));
     /// ```
@@ -85,6 +93,7 @@ impl MessageState {
             message: None,
             message_time: None,
             duration,
+            message_duration: None,
         }
     }
 
@@ -92,29 +101,40 @@ impl MessageState {
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// app.message.set("File saved!".to_string());
+    /// ```
+    /// use revue::patterns::MessageState;
+    ///
+    /// let mut message = MessageState::new();
+    /// message.set("File saved!".to_string());
+    /// assert_eq!(message.get(), Some("File saved!"));
     /// ```
     pub fn set(&mut self, message: String) {
         self.message = Some(message);
         self.message_time = Some(Instant::now());
+        self.message_duration = None;
     }
 
     /// Set message with custom duration (one-time override)
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
+    /// use revue::patterns::MessageState;
+    /// use std::time::Duration;
+    ///
+    /// let mut message = MessageState::new();
+    ///
     /// // Show error for 10 seconds
-    /// app.message.set_with_duration(
+    /// message.set_with_duration(
     ///     "Critical error!".to_string(),
     ///     Duration::from_secs(10)
     /// );
+    /// assert!(message.remaining().unwrap() > Duration::from_secs(9));
     /// ```
     pub fn set_with_duration(&mut self, message: String, duration: Duration) {
         self.message = Some(message);
         self.message_time = Some(Instant::now());
-        self.duration = duration;
+        self.message_duration = Some(duration);
     }
 
     /// Get current message (if any)
@@ -131,6 +151,7 @@ impl MessageState {
     pub fn clear(&mut self) {
         self.message = None;
         self.message_time = None;
+        self.message_duration = None;
     }
 
     /// Check if message timeout has elapsed and clear if so
@@ -141,16 +162,22 @@ impl MessageState {
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// fn poll(&mut self) -> bool {
-    ///     let mut needs_redraw = false;
-    ///     needs_redraw |= self.message.check_timeout();
-    ///     needs_redraw
-    /// }
+    /// ```
+    /// use revue::patterns::MessageState;
+    /// use std::time::Duration;
+    ///
+    /// let mut message = MessageState::with_duration(Duration::ZERO);
+    /// message.set("Done".to_string());
+    ///
+    /// // In the poll loop:
+    /// let mut needs_redraw = false;
+    /// needs_redraw |= message.check_timeout();
+    /// assert!(needs_redraw);
+    /// assert!(!message.has_message());
     /// ```
     pub fn check_timeout(&mut self) -> bool {
         if let Some(time) = self.message_time {
-            if time.elapsed() >= self.duration {
+            if time.elapsed() >= self.current_duration() {
                 self.clear();
                 return true; // Needs redraw
             }
@@ -164,8 +191,13 @@ impl MessageState {
     pub fn remaining(&self) -> Option<Duration> {
         self.message_time.map(|time| {
             let elapsed = time.elapsed();
-            self.duration.saturating_sub(elapsed)
+            self.current_duration().saturating_sub(elapsed)
         })
+    }
+
+    /// The current message's own duration, or the default one
+    fn current_duration(&self) -> Duration {
+        self.message_duration.unwrap_or(self.duration)
     }
 
     /// Check if message is about to expire (< 1 second remaining)
