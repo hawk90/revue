@@ -5,7 +5,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::easing::{ease_out_quad, Easing};
 //!
 //! // Using function directly

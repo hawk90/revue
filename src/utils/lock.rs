@@ -5,7 +5,7 @@
 //!
 //! # Example
 //!
-//! ```ignore
+//! ```
 //! use std::sync::Mutex;
 //! use revue::utils::lock::lock_or_recover;
 //!

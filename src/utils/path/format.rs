@@ -8,7 +8,9 @@ use crate::utils::path::util::normalize_separators;
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::path::shorten_path;
+///
 /// let short = shorten_path("/very/long/path/to/file.txt", 20);
 /// assert_eq!(short, ".../path/to/file.txt");
 /// ```
@@ -70,7 +72,7 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
 
         if result.len() + needed + 4 <= max_width {
             if i > 0 {
-                result = format!("/{}{}", component, result);
+                result = format!("{}/{}", component, result);
             } else {
                 result = component.to_string();
             }
@@ -97,9 +99,11 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::path::abbreviate_path;
+///
 /// let abbr = abbreviate_path("/Users/john/Documents/Projects/rust/main.rs");
-/// // Returns "/U/j/D/Projects/rust/main.rs"
+/// assert_eq!(abbr, "/U/j/D/P/rust/main.rs");
 /// ```
 pub fn abbreviate_path(path: impl AsRef<Path>) -> String {
     abbreviate_path_keep(path, 2)

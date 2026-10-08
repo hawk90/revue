@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::{UndoHistory, Mergeable};
 //!
 //! #[derive(Clone)]

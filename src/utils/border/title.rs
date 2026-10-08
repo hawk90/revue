@@ -170,10 +170,21 @@ impl BorderTitle {
 /// Use this after drawing the border.
 ///
 /// # Example
-/// ```ignore
-/// render_border(ctx, area, Color::BLUE);
-/// draw_border_title(ctx, area, &BorderTitle::new(" Title ").fg(Color::BLUE));
-/// draw_border_title(ctx, area, &BorderTitle::new("Info").end().fg(Color::GREEN));
+/// ```
+/// use revue::layout::Rect;
+/// use revue::render::Buffer;
+/// use revue::style::Color;
+/// use revue::utils::border::{draw_border_title, render_border, BorderTitle};
+/// use revue::widget::RenderContext;
+///
+/// let mut buffer = Buffer::new(20, 3);
+/// let area = Rect::new(0, 0, 20, 3);
+/// let mut ctx = RenderContext::new(&mut buffer, area);
+/// render_border(&mut ctx, area, Color::BLUE);
+/// draw_border_title(&mut ctx, area, &BorderTitle::new("Title").fg(Color::BLUE));
+/// draw_border_title(&mut ctx, area, &BorderTitle::new("Info").end().fg(Color::GREEN));
+/// let top: String = (0..20).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+/// assert!(top.contains("Title") && top.contains("Info"));
 /// ```
 pub fn draw_border_title(ctx: &mut RenderContext, area: Rect, title: &BorderTitle) {
     if area.width < 3 || area.height < 2 {

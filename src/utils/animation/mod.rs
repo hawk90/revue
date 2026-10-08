@@ -5,22 +5,27 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! use revue::utils::animation::{Spring, Keyframes, Timer};
+//! ```
+//! use revue::utils::animation::{Keyframes, Spring};
 //!
-//! // Spring animation for smooth motion
+//! // Spring animation for smooth motion, stepped at 60 fps
+//! let dt = 1.0 / 60.0;
 //! let mut spring = Spring::new(0.0, 100.0);
-//! loop {
-//!     let value = spring.update(dt);
-//!     if spring.is_settled() { break; }
+//! for _ in 0..600 {
+//!     spring.update(dt);
+//!     if spring.is_settled() {
+//!         break;
+//!     }
 //! }
+//! assert!((spring.value() - 100.0).abs() < 1.0);
 //!
 //! // Keyframe animation
 //! let anim = Keyframes::new()
 //!     .add(0.0, 0.0)
 //!     .add(0.5, 100.0)
 //!     .add(1.0, 50.0);
-//! let value = anim.at(0.25);  // Interpolated between keyframes
+//! let value = anim.at(0.25); // interpolated between the first two keyframes
+//! assert!(value.is_some_and(|v| v > 0.0 && v < 100.0));
 //! ```
 
 mod animated;

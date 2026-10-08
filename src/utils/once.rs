@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::Once;
 //!
 //! let mut once = Once::new();
