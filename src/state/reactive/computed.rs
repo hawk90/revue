@@ -3,7 +3,8 @@
 //! Thread-safe computed values using Arc and atomic operations.
 
 use super::tracker::{
-    dispose_subscriber, notify_dependents, run_tracked, track_read, Subscriber, SubscriberId,
+    dispose_subscriber, mark_immediate, notify_dependents, run_tracked, track_read, Subscriber,
+    SubscriberId,
 };
 use super::SignalId;
 use crate::utils::lock::{lock_or_recover, read_or_recover, write_or_recover};
@@ -145,6 +146,9 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
         }
         COMPUTING.with(|c| c.borrow_mut().push(self.id));
         let _computing = Computing(self.id);
+        // Marking stale is cheap and keeps reads inside a batch correct, so a
+        // computed value hears of a change at once, batch or not.
+        mark_immediate(self.id);
         let value = run_tracked(subscriber, || (self.compute)());
 
         // Cache the result and mark as clean

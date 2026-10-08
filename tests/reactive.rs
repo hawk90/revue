@@ -4,6 +4,8 @@
 mod async_state;
 #[path = "reactive/batch.rs"]
 mod batch;
+#[path = "reactive/batch_defers.rs"]
+mod batch_defers;
 #[path = "reactive/computed.rs"]
 mod computed;
 #[path = "reactive/computed_propagation.rs"]

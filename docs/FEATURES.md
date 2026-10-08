@@ -11,7 +11,7 @@
 |---|---|---|---|---|---|
 | CSS (`CSS-*`) | 12 | 7 | 1 | 0 | 20 |
 | Layout (`LAY-*`) | 4 | 2 | 0 | 0 | 6 |
-| Reactivity (`RX-*`) | 4 | 0 | 0 | 0 | 4 |
+| Reactivity (`RX-*`) | 5 | 0 | 0 | 0 | 5 |
 | Widgets (`WID-*`) | 40 | 3 | 1 | 0 | 44 |
 | Charts (`CHART-*`) | 8 | 0 | 0 | 0 | 8 |
 | Navigation (`NAV-*`) | 3 | 0 | 0 | 0 | 3 |
@@ -20,7 +20,7 @@
 | Theming (`THEME-*`) | 2 | 0 | 1 | 0 | 3 |
 | Keyboard & clipboard (`KEY-*`) | 3 | 1 | 0 | 0 | 4 |
 | Utilities (`UTIL-*`) | 5 | 0 | 0 | 0 | 5 |
-| **Total** | **86** | **15** | **4** | **0** | **105** |
+| **Total** | **87** | **15** | **4** | **0** | **106** |
 
 Known gaps worth knowing before you build on them: CSS `transparent` paints black, `opacity` /
 `z-index` / `position` are parsed but not applied, CSS transitions are not triggered by state changes,

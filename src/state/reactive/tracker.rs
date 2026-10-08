@@ -101,6 +101,10 @@ pub struct DependencyTracker {
     subscribers: HashMap<SubscriberId, SubscriberCallback>,
     /// Map from subscriber ID to signals it depends on (for cleanup)
     subscriber_deps: HashMap<SubscriberId, HashSet<SignalId>>,
+    /// Subscribers notified at once even inside a batch: computed values,
+    /// whose notification only marks them stale, so a read in the batch
+    /// recomputes. Everything else (effects) waits for the batch to end.
+    immediate: HashSet<SubscriberId>,
 }
 
 impl DependencyTracker {
@@ -111,6 +115,7 @@ impl DependencyTracker {
             dependencies: HashMap::new(),
             subscribers: HashMap::new(),
             subscriber_deps: HashMap::new(),
+            immediate: HashSet::new(),
         }
     }
 
@@ -192,6 +197,7 @@ impl DependencyTracker {
     pub fn dispose_subscriber(&mut self, subscriber_id: SubscriberId) {
         self.clear_subscriber_deps(subscriber_id);
         self.subscribers.remove(&subscriber_id);
+        self.immediate.remove(&subscriber_id);
     }
 
     /// Check if currently tracking (inside an effect/computed)
@@ -253,18 +259,27 @@ pub fn track_read(signal_id: SignalId) {
 pub fn notify_dependents(signal_id: SignalId) {
     // Check and increment recursion depth
     let _depth = enter_notify();
+    let batching = super::batch::is_batching();
 
-    // Collect callbacks while holding borrow, then call them after releasing
+    // Collect callbacks while holding borrow, then call them after releasing.
+    // Inside a batch, a dependent that is not a computed value is deferred
+    // instead of collected.
     let callbacks: Vec<SubscriberCallback> = with_tracker(|t| {
-        t.dependencies
-            .get(&signal_id)
-            .map(|subscriber_ids| {
-                subscriber_ids
-                    .iter()
-                    .filter_map(|id| t.subscribers.get(id).cloned())
-                    .collect()
-            })
-            .unwrap_or_default()
+        let Some(subscriber_ids) = t.dependencies.get(&signal_id) else {
+            return Vec::new();
+        };
+        let mut now = Vec::new();
+        for id in subscriber_ids {
+            let Some(callback) = t.subscribers.get(id) else {
+                continue;
+            };
+            if batching && !t.immediate.contains(id) {
+                defer_subscriber(*id);
+            } else {
+                now.push(callback.clone());
+            }
+        }
+        now
     });
 
     // Now call callbacks without holding tracker borrow
@@ -329,6 +344,84 @@ pub(crate) fn run_tracked<R>(subscriber: Subscriber, f: impl FnOnce() -> R) -> R
 /// Dispose a subscriber (called when effect is dropped)
 pub fn dispose_subscriber(subscriber_id: SubscriberId) {
     with_tracker(|t| t.dispose_subscriber(subscriber_id));
+}
+
+/// Notify `subscriber_id` at once even inside a batch (computed values).
+pub(crate) fn mark_immediate(subscriber_id: SubscriberId) {
+    with_tracker(|t| {
+        t.immediate.insert(subscriber_id);
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Deferred notification (batch)
+// ─────────────────────────────────────────────────────────────────────────────
+
+thread_local! {
+    /// Effects to run when the outermost batch ends, each once, in the order
+    /// they were first notified.
+    static DEFERRED_SUBSCRIBERS: RefCell<(Vec<SubscriberId>, HashSet<SubscriberId>)> =
+        RefCell::new((Vec::new(), HashSet::new()));
+    /// `Signal::subscribe` subscriptions to call then, each once, keyed by
+    /// (signal id, subscription id) - both unique for the process' lifetime.
+    static DEFERRED_CALLBACKS: RefCell<Vec<((u64, u64), SubscriberCallback)>> =
+        const { RefCell::new(Vec::new()) };
+}
+
+fn defer_subscriber(id: SubscriberId) {
+    DEFERRED_SUBSCRIBERS.with(|d| {
+        let (order, seen) = &mut *d.borrow_mut();
+        if seen.insert(id) {
+            order.push(id);
+        }
+    });
+}
+
+/// Hold a `Signal::subscribe` subscription until the batch ends (once per
+/// batch, by `key`). `run` looks the subscription up when it is called, so
+/// one dropped in the meantime is skipped.
+pub(crate) fn defer_callback(key: (u64, u64), run: SubscriberCallback) {
+    DEFERRED_CALLBACKS.with(|d| {
+        let mut d = d.borrow_mut();
+        if !d.iter().any(|(k, _)| *k == key) {
+            d.push((key, run));
+        }
+    });
+}
+
+/// Is anything waiting for the batch to end?
+pub(crate) fn has_deferred() -> bool {
+    DEFERRED_SUBSCRIBERS.with(|d| !d.borrow().0.is_empty())
+        || DEFERRED_CALLBACKS.with(|d| !d.borrow().is_empty())
+}
+
+/// Run what the batch deferred, each once. An effect disposed since it was
+/// notified is skipped.
+pub(crate) fn run_deferred() {
+    let ids = DEFERRED_SUBSCRIBERS.with(|d| {
+        let (order, seen) = &mut *d.borrow_mut();
+        seen.clear();
+        std::mem::take(order)
+    });
+    let callbacks = DEFERRED_CALLBACKS.with(|d| std::mem::take(&mut *d.borrow_mut()));
+    for id in ids {
+        if let Some(callback) = with_tracker(|t| t.subscribers.get(&id).cloned()) {
+            callback();
+        }
+    }
+    for (_, callback) in callbacks {
+        callback();
+    }
+}
+
+/// Forget what the batch deferred (a batch that panicked).
+pub(crate) fn discard_deferred() {
+    DEFERRED_SUBSCRIBERS.with(|d| {
+        let (order, seen) = &mut *d.borrow_mut();
+        order.clear();
+        seen.clear();
+    });
+    DEFERRED_CALLBACKS.with(|d| d.borrow_mut().clear());
 }
 
 /// Check if currently tracking dependencies
