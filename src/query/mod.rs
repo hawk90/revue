@@ -13,6 +13,15 @@
 //! - **Boolean**: `active:true`, `published:false`
 //! - **Date**: `after:2024-01-01`, `before:2024-12-31`
 //!
+//! # Case
+//!
+//! Strings are compared without case by default: `author:john`, `title~rust`,
+//! free text, `name:>=bob` and sorting all ignore it, and agree with each
+//! other. [`Case`] picks another rule for the whole query - pass it to
+//! [`Query::filter_items_with`] or [`Query::matches_with`]:
+//! [`Case::Sensitive`], or [`Case::Smart`] (fzf's and vim's `smartcase`: a
+//! searched value with an upper-case letter is matched exactly).
+//!
 //! # Example
 //!
 //! ```rust,ignore
@@ -88,12 +97,14 @@ impl QueryValue {
 
     /// Check if value contains substring (case-insensitive)
     pub fn contains(&self, needle: &str) -> bool {
+        self.contains_with(needle, Case::Insensitive)
+    }
+
+    /// [`contains`](Self::contains), comparing strings by `case`
+    pub fn contains_with(&self, needle: &str, case: Case) -> bool {
         match self {
-            Self::String(s) => {
-                // Convert needle once instead of twice
-                let needle_lower = needle.to_lowercase();
-                s.to_lowercase().contains(&needle_lower)
-            }
+            Self::String(s) if case.sensitive_for(needle) => s.contains(needle),
+            Self::String(s) => s.to_lowercase().contains(&needle.to_lowercase()),
             Self::Int(n) => n.to_string().contains(needle),
             Self::Float(n) => n.to_string().contains(needle),
             Self::Bool(b) => b.to_string() == needle.to_lowercase(),
@@ -102,14 +113,15 @@ impl QueryValue {
         }
     }
 
-    /// Check equality with a string
+    /// Check equality with a string (case-insensitive)
     pub fn equals_str(&self, other: &str) -> bool {
+        self.equals_str_with(other, Case::Insensitive)
+    }
+
+    /// [`equals_str`](Self::equals_str), comparing strings by `case`
+    pub fn equals_str_with(&self, other: &str, case: Case) -> bool {
         match self {
-            Self::String(s) => {
-                // Convert other once instead of twice
-                let other_lower = other.to_lowercase();
-                s.to_lowercase() == other_lower
-            }
+            Self::String(s) => cmp_str(s, other, case.sensitive_for(other)).is_eq(),
             Self::Int(n) => other.parse::<i64>().map(|o| *n == o).unwrap_or(false),
             Self::Float(n) => other
                 .parse::<f64>()
@@ -127,14 +139,75 @@ impl QueryValue {
     }
 
     /// Compare values (for >, <, >=, <=)
+    ///
+    /// Strings compare without case, like [`equals_str`](Self::equals_str):
+    /// a value equal to `other` compares `Equal`.
     pub fn compare(&self, other: &str) -> Option<std::cmp::Ordering> {
+        self.compare_with(other, Case::Insensitive)
+    }
+
+    /// [`compare`](Self::compare), comparing strings by `case`
+    pub fn compare_with(&self, other: &str, case: Case) -> Option<std::cmp::Ordering> {
         match self {
             Self::Int(n) => other.parse::<i64>().ok().map(|o| n.cmp(&o)),
             Self::Float(n) => other.parse::<f64>().ok().and_then(|o| n.partial_cmp(&o)),
-            Self::String(s) => Some(s.cmp(&other.to_string())),
+            Self::String(s) => Some(cmp_str(s, other, case.sensitive_for(other))),
             Self::Date(d) => Some(d.cmp(&other.to_string())),
             _ => None,
         }
+    }
+}
+
+/// How string values are compared: in equality (`field:value`), `~`
+/// contains, free text, range comparisons (`>`, `<`, `>=`, `<=`) and sorting.
+///
+/// Every string comparison of a query follows the same rule, so `name:bob`,
+/// `name:>=bob` and a sort by `name` always agree. The default is
+/// [`Insensitive`](Self::Insensitive), as in most search boxes;
+/// [`Smart`](Self::Smart) is fzf's and vim's `smartcase`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Case {
+    /// `rust` matches `Rust` and `RUST`
+    #[default]
+    Insensitive,
+    /// `rust` matches only `rust`
+    Sensitive,
+    /// Insensitive, unless the searched value has an upper-case letter:
+    /// `rust` matches `Rust`, but `Rust` matches only `Rust`. Sorting, which
+    /// has no searched value, ignores case.
+    Smart,
+}
+
+impl Case {
+    /// Whether `needle`, searched for under this rule, is compared with case.
+    fn sensitive_for(self, needle: &str) -> bool {
+        match self {
+            Case::Insensitive => false,
+            Case::Sensitive => true,
+            Case::Smart => needle.chars().any(char::is_uppercase),
+        }
+    }
+
+    /// Compare two strings under this rule. Ignoring case, strings that differ
+    /// only in case fall back to a case-sensitive order, so a sort is
+    /// deterministic; they still count as equal for filters.
+    fn cmp_for_sort(self, a: &str, b: &str) -> std::cmp::Ordering {
+        match self {
+            Case::Sensitive => a.cmp(b),
+            Case::Insensitive | Case::Smart => a
+                .to_lowercase()
+                .cmp(&b.to_lowercase())
+                .then_with(|| a.cmp(b)),
+        }
+    }
+}
+
+/// `a` and `b` compared with or without case.
+fn cmp_str(a: &str, b: &str, sensitive: bool) -> std::cmp::Ordering {
+    if sensitive {
+        a.cmp(b)
+    } else {
+        a.to_lowercase().cmp(&b.to_lowercase())
     }
 }
 
@@ -245,34 +318,41 @@ impl Filter {
         Self::Not(Box::new(self))
     }
 
-    /// Check if item matches this filter
+    /// Check if item matches this filter, ignoring case
     pub fn matches<T: Queryable>(&self, item: &T) -> bool {
+        self.matches_with(item, Case::Insensitive)
+    }
+
+    /// Check if item matches this filter, comparing strings by `case`
+    pub fn matches_with<T: Queryable>(&self, item: &T, case: Case) -> bool {
         match self {
             Self::Text(text) => {
                 let full_text = item.full_text();
                 // Convert full_text once instead of per-word
                 let full_text_lower = full_text.to_lowercase();
-                text.split_whitespace()
-                    .all(|word| full_text_lower.contains(&word.to_lowercase()))
+                text.split_whitespace().all(|word| {
+                    if case.sensitive_for(word) {
+                        full_text.contains(word)
+                    } else {
+                        full_text_lower.contains(&word.to_lowercase())
+                    }
+                })
             }
             Self::Field { name, op, value } => {
                 if let Some(field_value) = item.field_value(name) {
+                    let compare = || field_value.compare_with(value, case);
                     match op {
-                        Operator::Eq => field_value.equals_str(value),
-                        Operator::Ne => !field_value.equals_str(value),
-                        Operator::Contains => field_value.contains(value),
-                        Operator::Gt => {
-                            field_value.compare(value) == Some(std::cmp::Ordering::Greater)
-                        }
-                        Operator::Lt => {
-                            field_value.compare(value) == Some(std::cmp::Ordering::Less)
-                        }
+                        Operator::Eq => field_value.equals_str_with(value, case),
+                        Operator::Ne => !field_value.equals_str_with(value, case),
+                        Operator::Contains => field_value.contains_with(value, case),
+                        Operator::Gt => compare() == Some(std::cmp::Ordering::Greater),
+                        Operator::Lt => compare() == Some(std::cmp::Ordering::Less),
                         Operator::Ge => matches!(
-                            field_value.compare(value),
+                            compare(),
                             Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
                         ),
                         Operator::Le => matches!(
-                            field_value.compare(value),
+                            compare(),
                             Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
                         ),
                     }
@@ -280,9 +360,9 @@ impl Filter {
                     false
                 }
             }
-            Self::And(a, b) => a.matches(item) && b.matches(item),
-            Self::Or(a, b) => a.matches(item) || b.matches(item),
-            Self::Not(f) => !f.matches(item),
+            Self::And(a, b) => a.matches_with(item, case) && b.matches_with(item, case),
+            Self::Or(a, b) => a.matches_with(item, case) || b.matches_with(item, case),
+            Self::Not(f) => !f.matches_with(item, case),
         }
     }
 }
@@ -404,17 +484,52 @@ impl Query {
         self
     }
 
-    /// Check if an item matches all filters
+    /// Check if an item matches all filters, ignoring case
     pub fn matches<T: Queryable>(&self, item: &T) -> bool {
-        if self.filters.is_empty() {
-            return true;
-        }
-        self.filters.iter().all(|f| f.matches(item))
+        self.matches_with(item, Case::Insensitive)
     }
 
-    /// Filter a slice of items
+    /// Check if an item matches all filters, comparing strings by `case`
+    pub fn matches_with<T: Queryable>(&self, item: &T, case: Case) -> bool {
+        self.filters.iter().all(|f| f.matches_with(item, case))
+    }
+
+    /// Filter, sort and page a slice of items, ignoring case
     pub fn filter_items<'a, T: Queryable>(&self, items: &'a [T]) -> Vec<&'a T> {
-        let mut result: Vec<_> = items.iter().filter(|item| self.matches(*item)).collect();
+        self.filter_items_with(items, Case::Insensitive)
+    }
+
+    /// Filter, sort and page a slice of items, comparing strings by `case`
+    ///
+    /// ```
+    /// use revue::query::{Case, Query, QueryValue, Queryable};
+    ///
+    /// struct Lang(&'static str);
+    /// impl Queryable for Lang {
+    ///     fn field_value(&self, _: &str) -> Option<QueryValue> {
+    ///         Some(QueryValue::String(self.0.into()))
+    ///     }
+    ///     fn full_text(&self) -> String {
+    ///         self.0.into()
+    ///     }
+    /// }
+    ///
+    /// let langs = [Lang("Rust"), Lang("rust"), Lang("Go")];
+    /// let names = |case| -> Vec<&str> {
+    ///     Query::parse("rust").unwrap().filter_items_with(&langs, case).iter().map(|l| l.0).collect()
+    /// };
+    /// assert_eq!(names(Case::Insensitive), ["Rust", "rust"]);
+    /// assert_eq!(names(Case::Sensitive), ["rust"]);
+    /// // Smart: a lower-case query ignores case, an upper-case letter makes it exact.
+    /// assert_eq!(names(Case::Smart), ["Rust", "rust"]);
+    /// let exact: Vec<&str> = Query::parse("Rust").unwrap().filter_items_with(&langs, Case::Smart).iter().map(|l| l.0).collect();
+    /// assert_eq!(exact, ["Rust"]);
+    /// ```
+    pub fn filter_items_with<'a, T: Queryable>(&self, items: &'a [T], case: Case) -> Vec<&'a T> {
+        let mut result: Vec<_> = items
+            .iter()
+            .filter(|item| self.matches_with(*item, case))
+            .collect();
 
         // Apply sorting
         if let Some(ref sort) = self.sort {
@@ -423,7 +538,9 @@ impl Query {
                 let b_val = b.field_value(&sort.field);
 
                 let ordering = match (&a_val, &b_val) {
-                    (Some(QueryValue::String(a)), Some(QueryValue::String(b))) => a.cmp(b),
+                    (Some(QueryValue::String(a)), Some(QueryValue::String(b))) => {
+                        case.cmp_for_sort(a, b)
+                    }
                     (Some(QueryValue::Int(a)), Some(QueryValue::Int(b))) => a.cmp(b),
                     (Some(QueryValue::Float(a)), Some(QueryValue::Float(b))) => {
                         a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
@@ -529,6 +646,134 @@ mod tests {
         fn full_text(&self) -> String {
             self.name.clone()
         }
+    }
+
+    fn field(name: &str, op: Operator, value: &str) -> Filter {
+        Filter::Field {
+            name: name.into(),
+            op,
+            value: value.into(),
+        }
+    }
+
+    fn named(name: &str) -> TestItem {
+        TestItem {
+            name: name.into(),
+            age: 0,
+            active: true,
+        }
+    }
+
+    /// Equality ignores case, so ordering must too: whatever `name:x` matches,
+    /// `name:>=x` and `name:<=x` match as well, and nothing is both `> x` and
+    /// equal to it.
+    #[test]
+    fn string_comparisons_ignore_case_like_equality() {
+        for (name, value) in [("Bob", "bob"), ("bob", "BOB"), ("Émile", "émile")] {
+            let item = named(name);
+            assert!(Filter::eq("name", value).matches(&item), "{name} = {value}");
+            assert!(
+                field("name", Operator::Ge, value).matches(&item),
+                "{name} >= {value} although they are equal"
+            );
+            assert!(
+                field("name", Operator::Le, value).matches(&item),
+                "{name} <= {value} although they are equal"
+            );
+            assert!(
+                !Filter::gt("name", value).matches(&item),
+                "{name} > {value}"
+            );
+            assert!(
+                !Filter::lt("name", value).matches(&item),
+                "{name} < {value}"
+            );
+        }
+        // Upper case no longer sorts before every lower-case letter.
+        assert!(Filter::gt("name", "alice").matches(&named("Bob")));
+        assert!(Filter::lt("name", "Carol").matches(&named("bob")));
+    }
+
+    #[test]
+    fn every_comparison_follows_the_case_rule() {
+        let bob = named("Bob");
+        let cases = [
+            // (filter, Insensitive, Sensitive, Smart)
+            (Filter::eq("name", "bob"), true, false, true),
+            (Filter::eq("name", "BOB"), true, false, false),
+            (Filter::eq("name", "Bob"), true, true, true),
+            (Filter::ne("name", "bob"), false, true, false),
+            (Filter::contains("name", "ob"), true, true, true),
+            (Filter::contains("name", "OB"), true, false, false),
+            (Filter::text("bob"), true, false, true),
+            (Filter::text("BOB"), true, false, false),
+            (field("name", Operator::Ge, "bob"), true, false, true),
+            // Sensitive: "B" (0x42) sorts before "a" (0x61).
+            (Filter::lt("name", "alice"), false, true, false),
+        ];
+        for (filter, insensitive, sensitive, smart) in cases {
+            assert_eq!(
+                filter.matches_with(&bob, Case::Insensitive),
+                insensitive,
+                "{filter:?} Insensitive"
+            );
+            assert_eq!(
+                filter.matches_with(&bob, Case::Sensitive),
+                sensitive,
+                "{filter:?} Sensitive"
+            );
+            assert_eq!(
+                filter.matches_with(&bob, Case::Smart),
+                smart,
+                "{filter:?} Smart"
+            );
+            // The default is Insensitive.
+            assert_eq!(filter.matches(&bob), insensitive, "{filter:?} default");
+        }
+    }
+
+    #[test]
+    fn sorting_follows_the_case_rule() {
+        let items = ["banana", "Cherry", "apple"].map(named);
+        let sorted = |case| -> Vec<String> {
+            Query::new()
+                .sort_asc("name")
+                .filter_items_with(&items, case)
+                .iter()
+                .map(|i| i.name.clone())
+                .collect()
+        };
+        assert_eq!(sorted(Case::Insensitive), ["apple", "banana", "Cherry"]);
+        assert_eq!(sorted(Case::Smart), ["apple", "banana", "Cherry"]);
+        assert_eq!(sorted(Case::Sensitive), ["Cherry", "apple", "banana"]);
+    }
+
+    #[test]
+    fn sorting_strings_ignores_case_and_is_stable_on_ties() {
+        let items = ["banana", "Cherry", "apple", "Banana", "cherry"].map(named);
+        let names = |q: Query| -> Vec<String> {
+            q.filter_items(&items)
+                .iter()
+                .map(|i| i.name.clone())
+                .collect()
+        };
+        assert_eq!(
+            names(Query::new().sort_asc("name")),
+            ["apple", "Banana", "banana", "Cherry", "cherry"]
+        );
+        assert_eq!(
+            names(Query::new().sort_desc("name")),
+            ["cherry", "Cherry", "banana", "Banana", "apple"]
+        );
+        // A range filter selects a contiguous run of the sorted order.
+        assert_eq!(
+            names(
+                Query::new()
+                    .filter(field("name", Operator::Ge, "BANANA"))
+                    .sort_asc("name")
+            ),
+            ["Banana", "banana", "Cherry", "cherry"]
+        );
     }
 
     #[test]
