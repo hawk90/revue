@@ -56,6 +56,8 @@ pub struct MessageState {
     message_time: Option<Instant>,
     /// Duration before auto-clear
     duration: Duration,
+    /// Duration for the current message only, from `set_with_duration`
+    message_duration: Option<Duration>,
 }
 
 impl Default for MessageState {
@@ -71,6 +73,7 @@ impl MessageState {
             message: None,
             message_time: None,
             duration: DEFAULT_MESSAGE_DURATION,
+            message_duration: None,
         }
     }
 
@@ -90,6 +93,7 @@ impl MessageState {
             message: None,
             message_time: None,
             duration,
+            message_duration: None,
         }
     }
 
@@ -107,6 +111,7 @@ impl MessageState {
     pub fn set(&mut self, message: String) {
         self.message = Some(message);
         self.message_time = Some(Instant::now());
+        self.message_duration = None;
     }
 
     /// Set message with custom duration (one-time override)
@@ -129,7 +134,7 @@ impl MessageState {
     pub fn set_with_duration(&mut self, message: String, duration: Duration) {
         self.message = Some(message);
         self.message_time = Some(Instant::now());
-        self.duration = duration;
+        self.message_duration = Some(duration);
     }
 
     /// Get current message (if any)
@@ -146,6 +151,7 @@ impl MessageState {
     pub fn clear(&mut self) {
         self.message = None;
         self.message_time = None;
+        self.message_duration = None;
     }
 
     /// Check if message timeout has elapsed and clear if so
@@ -171,7 +177,7 @@ impl MessageState {
     /// ```
     pub fn check_timeout(&mut self) -> bool {
         if let Some(time) = self.message_time {
-            if time.elapsed() >= self.duration {
+            if time.elapsed() >= self.current_duration() {
                 self.clear();
                 return true; // Needs redraw
             }
@@ -185,8 +191,13 @@ impl MessageState {
     pub fn remaining(&self) -> Option<Duration> {
         self.message_time.map(|time| {
             let elapsed = time.elapsed();
-            self.duration.saturating_sub(elapsed)
+            self.current_duration().saturating_sub(elapsed)
         })
+    }
+
+    /// The current message's own duration, or the default one
+    fn current_duration(&self) -> Duration {
+        self.message_duration.unwrap_or(self.duration)
     }
 
     /// Check if message is about to expire (< 1 second remaining)
