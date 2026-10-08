@@ -142,7 +142,15 @@ impl View for Card {
         if self.max_height > 0 {
             h = h.min(self.max_height);
         }
-        Some((max_width, h.min(max_height)))
+        let width = crate::widget::layout::constraints::constrain(
+            Rect::new(0, 0, max_width, 0),
+            self.min_width,
+            0,
+            self.max_width,
+            0,
+        )
+        .width;
+        Some((width.min(max_width), h.min(max_height)))
     }
 
     /// It stretches across the width it is offered.
@@ -151,6 +159,20 @@ impl View for Card {
     }
 
     fn render(&self, ctx: &mut RenderContext) {
+        let area = crate::widget::layout::constraints::constrain(
+            ctx.area,
+            self.min_width,
+            self.min_height,
+            self.max_width,
+            self.max_height,
+        );
+        crate::widget::layout::constraints::within(ctx, area, |ctx| self.render_constrained(ctx));
+    }
+}
+
+impl Card {
+    /// Draw into `ctx.area`, already constrained.
+    fn render_constrained(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < 4 || area.height < 3 {
             return;

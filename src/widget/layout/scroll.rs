@@ -326,7 +326,7 @@ impl ScrollView {
 
     /// Render scrolled content from a pre-rendered buffer
     pub fn render_content(&self, ctx: &mut RenderContext, content_buffer: &Buffer) {
-        let area = self.content_area(ctx.area);
+        let area = self.content_area(self.apply_constraints(ctx.area));
         let viewport_height = area.height;
         let offset = self.offset_for(viewport_height);
 
@@ -357,7 +357,6 @@ impl View for ScrollView {
     crate::impl_view_meta!("ScrollView");
 
     fn render(&self, ctx: &mut RenderContext) {
-        let _area = self.apply_constraints(ctx.area);
         // ScrollView alone just renders the scrollbar
         // Content should be rendered via render_content method
         self.render_scrollbar(ctx);

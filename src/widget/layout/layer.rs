@@ -187,7 +187,7 @@ impl View for Layers {
             return;
         }
 
-        let _area = self.apply_constraints(ctx.area);
+        let area = self.apply_constraints(ctx.area);
 
         // Build render order: sort by z-index (stable to preserve insertion order for ties)
         let mut order: Vec<usize> = (0..self.children.len()).collect();
@@ -199,7 +199,6 @@ impl View for Layers {
         // correctly and leaves the child out of the DOM, so no rule can select
         // it and the hit test cannot find it. Both passes apply the same
         // `needs_render` predicate, so they agree on which children exist.
-        let area = ctx.area;
         for &idx in &order {
             if self.children[idx].child.needs_render() {
                 ctx.render_child(self.children[idx].child.as_ref(), area);
