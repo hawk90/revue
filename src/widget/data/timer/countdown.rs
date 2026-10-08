@@ -100,7 +100,7 @@ impl Timer {
         self
     }
 
-    /// Set progress bar width
+    /// Set progress bar width in cells (default 30; a narrower area clips it)
     pub fn progress_width(mut self, width: u16) -> Self {
         self.progress_width = width;
         self
@@ -283,7 +283,7 @@ impl Timer {
 
 impl View for Timer {
     fn render(&self, ctx: &mut RenderContext) {
-        use crate::widget::stack::vstack;
+        use crate::widget::stack::{hstack, vstack};
         use crate::widget::Progress;
         use crate::widget::Text;
 
@@ -310,7 +310,7 @@ impl View for Timer {
         // Progress bar
         if self.show_progress {
             let progress = Progress::new(self.progress()).filled_color(color);
-            content = content.child(progress);
+            content = content.child(hstack().child_sized(progress, self.progress_width));
         }
 
         // State indicator
