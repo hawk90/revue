@@ -15,16 +15,25 @@ use std::sync::{Arc, RwLock};
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// let count = signal(0);
+/// ```
+/// use revue::reactive::{Effect, signal};
 ///
-/// // This effect automatically tracks `count` as a dependency
-/// let _effect = Effect::new(move || {
-///     println!("Count: {}", count.get());
+/// let count = signal(0);
+/// let runs = signal(0);
+///
+/// // This effect automatically tracks `count` as a dependency. It stays
+/// // active while `_effect` is alive; dropping the handle stops it.
+/// let _effect = Effect::new({
+///     let (count, runs) = (count.clone(), runs.clone());
+///     move || {
+///         println!("Count: {}", count.get());
+///         runs.update(|n| *n += 1);
+///     }
 /// });
 ///
 /// count.set(1); // Effect re-runs, prints "Count: 1"
 /// count.set(2); // Effect re-runs, prints "Count: 2"
+/// assert_eq!(runs.get(), 3); // once on creation, then once per change
 /// ```
 ///
 /// # Thread Safety

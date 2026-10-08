@@ -12,15 +12,20 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
+//! use revue::reactive::{effect, signal};
+//!
 //! let count = signal(0);
+//! let seen = signal(0);
 //!
 //! // This effect automatically tracks `count` as a dependency
-//! effect(|| {
-//!     println!("Count: {}", count.get()); // Reading registers dependency
+//! let _effect = effect({
+//!     let (count, seen) = (count.clone(), seen.clone());
+//!     move || seen.set(count.get()) // reading `count` registers the dependency
 //! });
 //!
-//! count.set(1); // Automatically re-runs the effect
+//! count.set(1); // automatically re-runs the effect
+//! assert_eq!(seen.get(), 1);
 //! ```
 
 use super::SignalId;

@@ -13,8 +13,9 @@ use std::time::{Duration, Instant};
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::plugin::LoggerPlugin;
+/// use revue::prelude::App;
 ///
 /// let app = App::builder()
 ///     .plugin(LoggerPlugin::new().verbose(true))
@@ -101,14 +102,15 @@ impl Plugin for LoggerPlugin {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::plugin::PerformancePlugin;
+/// use revue::prelude::App;
 ///
 /// let app = App::builder()
 ///     .plugin(PerformancePlugin::new())
 ///     .build();
 ///
-/// // Access metrics via plugin context
+/// // Other plugins read the metrics from their context:
 /// // ctx.get_plugin_data::<f64>("performance", "fps")
 /// ```
 pub struct PerformancePlugin {

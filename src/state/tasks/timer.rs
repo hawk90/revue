@@ -23,7 +23,12 @@ pub struct TimerEntry {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
+/// use revue::tasks::Timer;
+/// use std::time::Duration;
+///
+/// let mut message = Some("Saved");
+/// let mut refreshes = 0;
 /// let mut timer = Timer::new();
 ///
 /// // One-shot timer
@@ -35,11 +40,13 @@ pub struct TimerEntry {
 /// // In tick handler
 /// while let Some(id) = timer.poll_expired() {
 ///     match id {
-///         "message_clear" => state.message = None,
-///         "auto_refresh" => state.refresh(),
+///         "message_clear" => message = None,
+///         "auto_refresh" => refreshes += 1,
 ///         _ => {}
 ///     }
 /// }
+/// // Neither has expired yet
+/// assert_eq!((message, refreshes), (Some("Saved"), 0));
 /// ```
 #[derive(Debug, Default)]
 pub struct Timer {

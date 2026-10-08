@@ -36,18 +36,25 @@ struct TaskMessage<T> {
 ///
 /// # Example
 ///
-/// ```ignore
-/// let mut tasks: TaskRunner<MountResult> = TaskRunner::new();
+/// ```
+/// use revue::tasks::TaskRunner;
+///
+/// use std::time::Duration;
+///
+/// fn mount(host: &str) -> String {
+///     format!("/mnt/{}", host)
+/// }
+///
+/// let mut tasks: TaskRunner<String> = TaskRunner::new();
 ///
 /// // Spawn a background task
-/// tasks.spawn("mount_host", || {
-///     mount_sshfs("myhost")
-/// });
+/// tasks.spawn("mount_host", || mount("myhost"));
 ///
 /// // In tick handler
+/// # tasks.join_timeout(Duration::from_secs(5));
 /// while let Some(result) = tasks.poll() {
 ///     match result.id {
-///         "mount_host" => handle_mount(result.result),
+///         "mount_host" => assert_eq!(result.result, Ok("/mnt/myhost".to_string())),
 ///         _ => {}
 ///     }
 /// }

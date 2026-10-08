@@ -1,65 +1,78 @@
 //! Worker system for background tasks
 //!
 //! Run CPU-intensive or I/O operations without blocking the UI.
-//! Built on tokio with worker pools for efficient task management.
 //!
 //! # Features
 //!
 //! - **Non-blocking UI** - Run heavy computations without freezing the UI
 //! - **Worker Pools** - Reusable thread pools for common operations
-//! - **Async/Await** - Full async/await support with tokio
+//! - **Futures** - Run a future in the background; with the `async` feature
+//!   it runs on a shared tokio runtime, without it on a small built-in executor
 //! - **Easy API** - Simple spawn and check operations
-//! - **Platform Detection** - Auto-detects optimal worker count
 //!
 //! # Quick Start
 //!
 //! ## Worker Pool
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::worker::WorkerPool;
+//! use std::sync::atomic::{AtomicU64, Ordering};
+//! use std::sync::Arc;
+//!
+//! fn expensive_calculation() -> u64 {
+//!     (1..=20).product()
+//! }
 //!
 //! // Create pool with 4 workers
-//! let pool = WorkerPool::new(4);
+//! let mut pool = WorkerPool::new(4);
+//! let total = Arc::new(AtomicU64::new(0));
 //!
 //! // Submit work
-//! pool.submit(|| {
+//! let sum = total.clone();
+//! pool.submit(move || {
 //!     // Heavy computation
-//!     expensive_calculation()
+//!     sum.fetch_add(expensive_calculation(), Ordering::SeqCst);
 //! });
 //!
-//! // Graceful shutdown
-//! pool.shutdown().await;
+//! // Graceful shutdown: finish the queued work and wait for it
+//! assert!(pool.join_timeout(std::time::Duration::from_secs(5)));
+//! assert_eq!(total.load(Ordering::SeqCst), 2_432_902_008_176_640_000);
 //! ```
 //!
 //! ## Spawn Task
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::worker::WorkerHandle;
 //!
+//! async fn fetch_data_from_api() -> String {
+//!     "response".to_string()
+//! }
+//!
 //! // Spawn a single background task
-//! let handle = WorkerHandle::spawn(async {
+//! let mut handle = WorkerHandle::spawn(async {
 //!     // Long-running operation
 //!     fetch_data_from_api().await
 //! });
 //!
-//! // Check if done
-//! if let Some(result) = handle.try_recv() {
-//!     // Use result
+//! // Check if done, e.g. on each tick
+//! if let Some(result) = handle.try_join() {
+//!     println!("{:?}", result);
 //! }
 //! ```
 //!
 //! ## Task with Return Value
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::worker::WorkerHandle;
 //!
-//! let handle = WorkerHandle::spawn(async {
+//! let handle = WorkerHandle::spawn_blocking(|| {
 //!     // Return a value
-//!     compute_result()
+//!     6 * 7
 //! });
 //!
-//! // Get result when ready
-//! let result = handle.join().await;
+//! // Wait for the result (this blocks the calling thread)
+//! let result = handle.join();
+//! assert_eq!(result.ok(), Some(42));
 //! ```
 
 mod channel;

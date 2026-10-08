@@ -66,22 +66,24 @@ fn type_store_cache() -> &'static TypeStoreCache {
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use revue::reactive::{signal, use_store};
-/// use revue::reactive::store::Store;
+/// ```
+/// use revue::reactive::{signal, use_store, Signal};
+/// use revue::Store;
 ///
 /// #[derive(Store)]
 /// struct CounterStore {
 ///     count: Signal<i32>,
 /// }
 ///
-/// impl CounterStore {
-///     fn new() -> Self {
+/// impl Default for CounterStore {
+///     fn default() -> Self {
 ///         Self {
 ///             count: signal(0),
 ///         }
 ///     }
+/// }
 ///
+/// impl CounterStore {
 ///     fn increment(&self) {
 ///         self.count.update(|c| *c += 1);
 ///     }
@@ -90,6 +92,7 @@ fn type_store_cache() -> &'static TypeStoreCache {
 /// // In component - always returns the same instance
 /// let counter = use_store::<CounterStore>();
 /// counter.increment();
+/// assert_eq!(use_store::<CounterStore>().count.get(), 1);
 /// ```
 ///
 /// # Singleton Behavior
@@ -112,19 +115,26 @@ where
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use revue::reactive::{signal, create_store};
-/// use revue::reactive::store::Store;
+/// ```
+/// use revue::reactive::{signal, create_store, Signal};
+/// use revue::Store;
 ///
 /// #[derive(Store)]
 /// struct TestStore {
 ///     value: Signal<i32>,
 /// }
 ///
+/// impl Default for TestStore {
+///     fn default() -> Self {
+///         Self { value: signal(0) }
+///     }
+/// }
+///
 /// // Each call creates a new, independent instance
 /// let store1 = create_store::<TestStore>();
 /// let store2 = create_store::<TestStore>();
-/// // store1 and store2 are different instances
+/// store1.value.set(5);
+/// assert_eq!(store2.value.get(), 0);
 /// ```
 pub fn create_store<T>() -> Arc<T>
 where

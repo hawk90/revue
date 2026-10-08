@@ -7,8 +7,11 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::prelude::*;
+//! # #[derive(Clone, Debug)]
+//! # struct User;
+//! # fn fetch_user(_id: u32) -> std::result::Result<User, String> { Ok(User) }
 //!
 //! // Create async state that fetches data
 //! let (user_data, fetch) = use_async(|| {
@@ -148,7 +151,10 @@ pub type AsyncResult<T> = Result<T, String>;
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::reactive::use_async;
+/// # fn fetch_data() -> Result<String, String> { Ok("data".into()) }
+///
 /// let (state, trigger) = use_async(|| {
 ///     // Runs in background thread
 ///     fetch_data()
@@ -239,17 +245,20 @@ enum PollState<T> {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::reactive::use_async_poll;
+/// # fn fetch_data() -> Result<String, String> { Ok("data".into()) }
+///
 /// let (state, start, poll) = use_async_poll(|| fetch_data());
 ///
-/// // In your app:
-/// fn on_button_click(&mut self) {
-///     start();
-/// }
+/// // When the user asks for it, e.g. on a button click:
+/// start();
 ///
-/// fn tick(&mut self) {
-///     poll(); // Call each tick to check for completion
+/// // Then on each tick, until the result is in:
+/// while !poll() {
+///     std::thread::sleep(std::time::Duration::from_millis(1));
 /// }
+/// assert!(state.get().is_ready());
 /// ```
 pub fn use_async_poll<T, F>(
     f: F,
@@ -324,7 +333,10 @@ where
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::reactive::use_async_immediate;
+/// # fn fetch_data() -> Result<String, String> { Ok("data".into()) }
+///
 /// let state = use_async_immediate(|| fetch_data());
 /// // Operation has already started
 /// ```
@@ -356,7 +368,10 @@ where
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::reactive::AsyncResource;
+/// # fn fetch_user() -> Result<String, String> { Ok("user".into()) }
+///
 /// let (user, trigger) = AsyncResource::new(|| fetch_user())
 ///     .build();
 /// ```
