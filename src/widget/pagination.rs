@@ -134,6 +134,8 @@ impl Pagination {
     }
 
     /// Set focused state
+    ///
+    /// Focused, the current page is drawn underlined.
     pub fn focused(mut self) -> Self {
         self.focused = true;
         self
@@ -271,6 +273,12 @@ impl View for Pagination {
             .unwrap_or_else(|| ctx.css_color(SUBTLE_GRAY));
         let area = ctx.area;
         let mut x: u16 = 0;
+        // Focused, the current page is underlined.
+        let focus_mark = if self.focused {
+            Modifier::UNDERLINE
+        } else {
+            Modifier::empty()
+        };
 
         match self.style {
             PaginationStyle::Full => {
@@ -335,7 +343,7 @@ impl View for Pagination {
                         let mut cell = Cell::new(ch);
                         if is_current {
                             cell.fg = Some(self.active_color);
-                            cell.modifier |= Modifier::BOLD;
+                            cell.modifier |= Modifier::BOLD | focus_mark;
                         } else {
                             cell.fg = Some(inactive_color);
                         }
@@ -413,6 +421,7 @@ impl View for Pagination {
                 for ch in text.chars() {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(inactive_color);
+                    cell.modifier |= focus_mark;
                     ctx.set(x, 0, cell);
                     x += 1;
                 }
@@ -433,7 +442,7 @@ impl View for Pagination {
                 for ch in text.chars() {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.active_color);
-                    cell.modifier |= Modifier::BOLD;
+                    cell.modifier |= Modifier::BOLD | focus_mark;
                     ctx.set(x, 0, cell);
                     x += 1;
                 }
@@ -453,6 +462,9 @@ impl View for Pagination {
                     } else {
                         inactive_color
                     });
+                    if is_current {
+                        cell.modifier |= focus_mark;
+                    }
                     ctx.set(x, 0, cell);
                     x += 2;
                 }
