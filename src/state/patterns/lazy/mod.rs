@@ -1,12 +1,16 @@
 //! Lazy loading patterns for deferred data and UI rendering
 //!
-//! This module provides patterns for managing data that loads asynchronously
-//! or incrementally, allowing your TUI to remain responsive while data is being fetched.
+//! This module provides patterns for data that is expensive to produce, so
+//! that it is produced only when - and as far as - it is needed.
+//!
+//! The loaders run synchronously, on the thread that first reads the value.
+//! For work that must not block the UI, load in the background with
+//! [`AsyncTask`](crate::patterns::AsyncTask) instead.
 //!
 //! # Overview
 //!
 //! Lazy loading patterns help manage data that:
-//! - Takes time to load from APIs or databases
+//! - Is expensive to compute or read
 //! - Is too large to load all at once
 //! - Should be loaded on-demand as users navigate
 //! - Needs periodic refresh/reloading
@@ -15,91 +19,91 @@
 //!
 //! ## LazyData
 //!
-//! Simple wrapper for data that loads once asynchronously.
+//! A value loaded once, on first access.
 //!
-//! ```rust,ignore
-//! use revue::patterns::lazy::LazyData;
+//! ```
+//! use revue::patterns::lazy::{LazyData, LoadState};
 //!
-//! struct App {
-//!     items: LazyData<Vec<Item>>,
-//! }
+//! let items = LazyData::new(|| vec!["one", "two"]);
+//! assert_eq!(items.state(), LoadState::Idle);
 //!
-//! impl App {
-//!     fn load_items(&mut self) {
-//!         self.items = LazyData::loading();
-//!         // Start async fetch...
-//!     }
+//! // The loader runs here
+//! assert_eq!(items.get().unwrap().len(), 2);
+//! assert!(items.is_loaded());
+//! ```
 //!
-//!     fn on_items_loaded(&mut self, items: Vec<Item>) {
-//!         self.items = LazyData::loaded(items);
-//!     }
-//! }
+//! ## PagedData
+//!
+//! Large data loaded a page at a time, as the pages are read.
+//!
+//! ```
+//! use revue::patterns::lazy::PagedData;
+//!
+//! // 1000 rows, 50 per page; the loader gets the page number and size
+//! let rows = PagedData::new(1000, 50, |page, size| {
+//!     (page * size..(page + 1) * size).map(|i| format!("row {}", i)).collect()
+//! });
+//!
+//! assert_eq!(&*rows.get(120).unwrap(), "row 120");
+//! assert!(rows.is_page_loaded(2));
+//! assert!(!rows.is_page_loaded(0));
 //! ```
 //!
 //! ## LazyList
 //!
-//! List data that loads in pages/chunks.
+//! A fixed-size list whose items are filled in as they arrive.
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::patterns::lazy::LazyList;
 //!
-//! struct App {
-//!     list: LazyList<Item>,
-//! }
+//! let list: LazyList<String> = LazyList::new(100);
+//! list.set(3, "fourth".to_string());
 //!
-//! impl App {
-//!     fn load_more(&mut self) {
-//!         if let Some(page) = self.list.next_page_to_load() {
-//!             self.fetch_page(page);
-//!         }
-//!     }
-//! }
+//! assert_eq!(list.get(3).as_deref(), Some("fourth"));
+//! assert!(!list.is_loaded(0));
+//! assert_eq!(list.loaded_count(), 1);
 //! ```
 //!
 //! ## LazyReloadable
 //!
 //! Data that can be refreshed/reloaded.
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::patterns::lazy::LazyReloadable;
+//! use std::cell::Cell;
 //!
-//! struct App {
-//!     data: LazyReloadable<Stats>,
-//! }
+//! let fetches = Cell::new(0);
+//! let stats = LazyReloadable::new(|| {
+//!     fetches.set(fetches.get() + 1);
+//!     fetches.get()
+//! });
 //!
-//! impl App {
-//!     fn refresh(&mut self) {
-//!         self.data.mark_needs_reload();
-//!     }
+//! assert_eq!(*stats.get(), 1);
 //!
-//!     fn poll(&mut self) {
-//!         if self.data.needs_reload() {
-//!             self.fetch_stats();
-//!         }
-//!     }
-//! }
+//! // Drop the cached value; the next read loads it again
+//! stats.invalidate();
+//! assert_eq!(*stats.get(), 2);
+//!
+//! // Or load it again right away
+//! stats.reload();
+//! assert_eq!(*stats.get(), 3);
 //! ```
 //!
 //! ## ProgressiveLoader
 //!
-//! Loads data incrementally and shows progress.
+//! Hands out items a chunk at a time and reports progress.
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::patterns::lazy::ProgressiveLoader;
 //!
-//! struct App {
-//!     loader: ProgressiveLoader<String>,
-//! }
+//! let loader = ProgressiveLoader::new((1..=10).collect::<Vec<_>>(), 4);
 //!
-//! impl App {
-//!     fn add_chunk(&mut self, chunk: String) {
-//!         self.loader.add(chunk);
-//!     }
-//!
-//!     fn progress(&self) -> f32 {
-//!         self.loader.progress()
-//!     }
-//! }
+//! // e.g. one chunk per tick
+//! assert_eq!(loader.load_next(), vec![1, 2, 3, 4]);
+//! assert_eq!(loader.progress(), 0.4);
+//! loader.load_next();
+//! loader.load_next();
+//! assert!(loader.is_complete());
 //! ```
 //!
 //! # Helper Functions
@@ -111,17 +115,20 @@
 //!
 //! # State Management
 //!
-//! All patterns use [`LoadState`] to track loading progress:
+//! The single-value patterns report a [`LoadState`]:
 //!
-//! ```rust,ignore
-//! use revue::patterns::lazy::LoadState;
+//! ```
+//! use revue::patterns::lazy::{LazyData, LoadState};
 //!
-//! match data.state() {
+//! let data = LazyData::new(|| 42);
+//!
+//! let status = match data.state() {
 //!     LoadState::Idle => "Not loaded",
 //!     LoadState::Loading => "Loading...",
 //!     LoadState::Loaded => "Ready",
 //!     LoadState::Failed => "Error loading",
 //! };
+//! assert_eq!(status, "Not loaded");
 //! ```
 
 mod helpers;

@@ -4,21 +4,22 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::patterns::{NavigationState, Route};
 //!
 //! let mut nav = NavigationState::new("home");
 //!
 //! nav.push("list");
-//! nav.push("detail/123");
+//! nav.push(Route::new("detail").param("id", "123"));
 //!
-//! assert_eq!(nav.current(), "detail/123");
+//! assert_eq!(nav.path(), "detail");
+//! assert_eq!(nav.current().get_param("id"), Some("123"));
 //!
 //! nav.back();
-//! assert_eq!(nav.current(), "list");
+//! assert_eq!(nav.path(), "list");
 //!
 //! nav.forward();
-//! assert_eq!(nav.current(), "detail/123");
+//! assert_eq!(nav.path(), "detail");
 //! ```
 
 use std::collections::HashMap;

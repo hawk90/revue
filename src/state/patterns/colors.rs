@@ -5,12 +5,13 @@
 //!
 //! # Example
 //!
-//! ```ignore
+//! ```
 //! use revue::patterns::colors::*;
 //!
-//! ctx.draw_text(x, y, "Success", GREEN);
-//! ctx.draw_text(x, y, "Error", RED);
-//! ctx.draw_text(x, y, "Warning", YELLOW);
+//! // The constants are `crossterm::style::Color` values
+//! let color = if 3 > 2 { GREEN } else { RED };
+//! assert_eq!(color, GREEN);
+//! assert_eq!(status_color(false), ERROR);
 //! ```
 
 use crossterm::style::Color;
@@ -171,9 +172,13 @@ pub const INFO: Color = BLUE;
 ///
 /// # Example
 ///
-/// ```ignore
-/// let color = status_color(build.is_success());
-/// ctx.draw_text(x, y, "Status", color);
+/// ```
+/// use revue::patterns::colors::status_color;
+///
+/// use revue::patterns::colors::{ERROR, SUCCESS};
+///
+/// assert_eq!(status_color(true), SUCCESS);
+/// assert_eq!(status_color(false), ERROR);
 /// ```
 pub fn status_color(success: bool) -> Color {
     if success {
@@ -192,8 +197,15 @@ pub fn status_color(success: bool) -> Color {
 ///
 /// # Example
 ///
-/// ```ignore
-/// let color = build_color(job.is_building(), job.last_success);
+/// ```
+/// use revue::patterns::colors::build_color;
+///
+/// use revue::patterns::colors::{GREEN, RED, YELLOW};
+///
+/// // Building wins over the last result
+/// assert_eq!(build_color(true, false), YELLOW);
+/// assert_eq!(build_color(false, true), GREEN);
+/// assert_eq!(build_color(false, false), RED);
 /// ```
 pub fn build_color(building: bool, success: bool) -> Color {
     if building {
@@ -209,9 +221,14 @@ pub fn build_color(building: bool, success: bool) -> Color {
 ///
 /// # Example
 ///
-/// ```ignore
-/// let color = priority_color(issue.priority_level);
-/// ctx.draw_text(x, y, &issue.priority, color);
+/// ```
+/// use revue::patterns::colors::priority_color;
+///
+/// use revue::patterns::colors::{FG_DIM, RED};
+///
+/// assert_eq!(priority_color(0), RED);
+/// // Anything past 3 counts as "none"
+/// assert_eq!(priority_color(9), FG_DIM);
 /// ```
 pub fn priority_color(level: u8) -> Color {
     match level {
