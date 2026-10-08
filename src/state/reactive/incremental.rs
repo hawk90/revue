@@ -5,7 +5,7 @@
 //!
 //! # Example: Filtered List with Incremental Updates
 //!
-//! ```ignore
+//! ```
 //! use revue::reactive::{signal_vec, IncrementalComputed, IncrementalHandlers};
 //!
 //! let items = signal_vec(vec![1, 2, 3, 4, 5, 6]);
@@ -15,7 +15,7 @@
 //!     items.clone(),
 //!     // Initial computation
 //!     |v| v.iter().filter(|x| *x % 2 == 0).copied().collect::<Vec<_>>(),
-//!     IncrementalHandlers::new()
+//!     IncrementalHandlers::<i32, Vec<i32>>::new()
 //!         .insert(|result, _index, value| {
 //!             // Only add if the new value is even
 //!             if value % 2 == 0 {
@@ -49,6 +49,7 @@
 //! items.push(8);   // Only checks if 8 is even
 //! items.remove(1); // Only removes 2 from result
 //! items.update(0, 10); // Only updates the affected values
+//! assert_eq!(evens.get(), vec![4, 6, 8, 10]);
 //! ```
 //!
 //! # Performance Benefits
@@ -57,8 +58,8 @@
 //! require re-filtering all 1001 items. With `IncrementalComputed`, only the
 //! new item is checked, resulting in ~1000x performance improvement for this case.
 
-use super::signal_vec::SignalVec;
-use super::tracker::notify_dependents;
+use super::signal_vec::{SignalVec, VecSubscription};
+use super::tracker::{notify_dependents, track_read};
 use super::SignalId;
 use crate::utils::lock::lock_or_recover;
 use std::sync::{Arc, Mutex};
@@ -136,14 +137,16 @@ impl<T: 'static, R: 'static> Default for IncrementalHandlers<T, R> {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::reactive::{IncrementalComputed, IncrementalHandlers, signal_vec};
+///
 /// let items = signal_vec(vec![1, 2, 3, 4, 5]);
 ///
 /// // Filter even numbers with incremental updates
 /// let filtered = IncrementalComputed::new(
 ///     items.clone(),
 ///     |v| v.iter().filter(|x| *x % 2 == 0).copied().collect(),
-///     IncrementalHandlers::new()
+///     IncrementalHandlers::<i32, Vec<i32>>::new()
 ///         .insert(|result, index, value| {
 ///             if value % 2 == 0 {
 ///                 result.push(value);
@@ -165,6 +168,7 @@ impl<T: 'static, R: 'static> Default for IncrementalHandlers<T, R> {
 /// );
 ///
 /// items.push(6);  // Only checks if 6 is even, doesn't re-filter entire list
+/// assert_eq!(filtered.get(), vec![2, 4, 6]);
 /// ```
 pub struct IncrementalComputed<T: Clone + Send + Sync + 'static, R: Clone + Send + Sync + 'static> {
     /// Source signal vector
@@ -173,6 +177,8 @@ pub struct IncrementalComputed<T: Clone + Send + Sync + 'static, R: Clone + Send
     cached: Arc<Mutex<R>>,
     /// Unique ID
     id: SignalId,
+    /// Keeps the handlers subscribed to `source` while any clone is alive
+    _subscription: Arc<VecSubscription<T>>,
 }
 
 impl<T: Clone + Send + Sync + 'static, R: Clone + Send + Sync + 'static> IncrementalComputed<T, R> {
@@ -198,8 +204,9 @@ impl<T: Clone + Send + Sync + 'static, R: Clone + Send + Sync + 'static> Increme
 
         // Subscribe to diff events from the source
         let cached_clone = cached.clone();
-        source.subscribe_diff(move |diff| {
-            if let Ok(mut result) = cached_clone.lock() {
+        let subscription = source.subscribe_diff(move |diff| {
+            {
+                let mut result = lock_or_recover(&cached_clone);
                 match diff {
                     super::signal_vec::VecDiff::Insert { index, value } => {
                         (handlers_clone.on_insert)(&mut result, index, value);
@@ -232,21 +239,32 @@ impl<T: Clone + Send + Sync + 'static, R: Clone + Send + Sync + 'static> Increme
                         *result = new_result;
                     }
                 }
-                // Notify dependents after incremental update
-                notify_dependents(id);
             }
+            // After the lock is released, so a dependent can read the value
+            notify_dependents(id);
         });
 
-        Self { source, cached, id }
+        Self {
+            source,
+            cached,
+            id,
+            _subscription: Arc::new(subscription),
+        }
     }
 
     /// Get the current cached value
+    ///
+    /// Inside an effect or a computed, this makes it depend on the value.
     pub fn get(&self) -> R {
+        track_read(self.id);
         lock_or_recover(&self.cached).clone()
     }
 
     /// Get the inner cached value (zero-copy with guard)
+    ///
+    /// Inside an effect or a computed, this makes it depend on the value.
     pub fn read(&self) -> std::sync::MutexGuard<'_, R> {
+        track_read(self.id);
         lock_or_recover(&self.cached)
     }
 
@@ -255,7 +273,10 @@ impl<T: Clone + Send + Sync + 'static, R: Clone + Send + Sync + 'static> Increme
         &self.source
     }
 
-    /// Invalidate cache (triggers recomputation on next get)
+    /// Notify whatever reads this value, as if it had changed
+    ///
+    /// The cached value itself is kept; effects and computeds that read it
+    /// run or recompute.
     pub fn invalidate(&self) {
         notify_dependents(self.id);
     }
@@ -274,6 +295,7 @@ impl<T: Clone + Send + Sync + 'static, R: Clone + Send + Sync + 'static> Clone
             source: self.source.clone(),
             cached: Arc::clone(&self.cached),
             id: self.id,
+            _subscription: Arc::clone(&self._subscription),
         }
     }
 }
