@@ -48,13 +48,18 @@ pub struct EditorConfig {
     pub show_minimap: bool,
     /// Minimap width
     pub minimap_width: u16,
-    /// Show whitespace characters
+    /// Show whitespace characters: a space as `·`, a tab as `→`
     pub show_whitespace: bool,
     /// Enable word wrap
+    #[deprecated(
+        since = "3.5.0",
+        note = "the code editor does not wrap lines; it scrolls horizontally instead. This field has no effect"
+    )]
     pub word_wrap: bool,
 }
 
 impl Default for EditorConfig {
+    #[allow(deprecated)] // `word_wrap`
     fn default() -> Self {
         Self {
             indent_style: IndentStyle::Spaces,

@@ -1,6 +1,6 @@
 //! Reading processes from the system, filtering and sorting them, and system totals
 
-use super::{ProcessInfo, ProcessMonitor, ProcessSort};
+use super::{ProcessInfo, ProcessMonitor, ProcessSort, ProcessView};
 
 impl ProcessMonitor {
     /// Set filter string
@@ -48,7 +48,7 @@ impl ProcessMonitor {
     fn update_process_list(&mut self) {
         let total_memory = self.system.total_memory() as f32;
 
-        self.processes = self
+        let all = self
             .system
             .processes()
             .iter()
@@ -70,6 +70,25 @@ impl ProcessMonitor {
                         .join(" "),
                     user: proc.user_id().map(|u| u.to_string()).unwrap_or_default(),
                 }
+            })
+            .collect();
+        self.current_user = sysinfo::get_current_pid()
+            .ok()
+            .and_then(|pid| self.system.process(pid))
+            .and_then(|proc| proc.user_id())
+            .map(|uid| uid.to_string());
+        self.set_process_list(all);
+    }
+
+    /// Filter and sort a freshly read process list and keep it
+    pub(super) fn set_process_list(&mut self, all: Vec<ProcessInfo>) {
+        self.processes = all
+            .into_iter()
+            // The `User` view keeps the processes owned by whoever runs this
+            // one; when that is unknown it keeps them all.
+            .filter(|p| match (self.view, &self.current_user) {
+                (ProcessView::User, Some(user)) => &p.user == user,
+                _ => true,
             })
             .filter(|p| {
                 if self.filter.is_empty() {

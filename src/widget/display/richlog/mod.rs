@@ -119,7 +119,11 @@ impl RichLog {
         self.write(LogLevel::Error, message);
     }
 
-    /// Set format
+    /// Set the display format
+    ///
+    /// `Simple` draws the message only. `Standard` draws the columns chosen
+    /// with `timestamps`, `sources`, `icons` and `labels`. `Detailed` always
+    /// draws the timestamp and source columns.
     pub fn format(mut self, format: LogFormat) -> Self {
         self.format = format;
         self
@@ -149,6 +153,12 @@ impl RichLog {
         self
     }
 
+    /// Show/hide level labels (`INFO`, `ERROR`, ...)
+    pub fn labels(mut self, show: bool) -> Self {
+        self.show_labels = show;
+        self
+    }
+
     /// Enable/disable auto-scroll
     pub fn auto_scroll(mut self, enable: bool) -> Self {
         self.auto_scroll = enable;
@@ -161,7 +171,7 @@ impl RichLog {
         self
     }
 
-    /// Set wrap
+    /// Wrap long messages onto the following rows instead of cutting them off
     pub fn wrap(mut self, enable: bool) -> Self {
         self.wrap = enable;
         self
