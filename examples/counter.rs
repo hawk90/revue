@@ -1,9 +1,9 @@
 //! Reactive counter example using Signal
 //!
-//! This demonstrates how to use the reactive system (Signal, Computed, Effect)
+//! This demonstrates how to use the reactive system (Signal, Computed)
 //! with the current widget API.
 //!
-//! Run with: cargo run --example reactive_counter
+//! Run with: cargo run --example counter
 
 use revue::prelude::*;
 
@@ -40,13 +40,6 @@ impl ReactiveCounter {
             } else {
                 "Zero".to_string()
             }
-        });
-
-        // Set up effect to log changes (optional)
-        let count_clone3 = count.clone();
-        effect(move || {
-            let value = count_clone3.get();
-            println!("Counter changed to: {}", value);
         });
 
         Self {

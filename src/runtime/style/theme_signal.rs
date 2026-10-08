@@ -12,7 +12,7 @@
 //! let theme = use_theme();
 //!
 //! // Theme changes trigger reactive updates
-//! effect(move || {
+//! let _on_theme = effect(move || {
 //!     let current = theme.get();
 //!     println!("Theme changed to: {}", current.name);
 //! });
@@ -78,7 +78,7 @@ fn get_theme_manager() -> Arc<Mutex<ThemeManager>> {
 /// println!("Using theme: {}", current.name);
 ///
 /// // React to theme changes
-/// effect(move || {
+/// let _on_theme = effect(move || {
 ///     let t = theme.get();
 ///     apply_colors(&t.colors);
 /// });

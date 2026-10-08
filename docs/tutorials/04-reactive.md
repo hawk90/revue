@@ -121,13 +121,15 @@ impl View for App {
 
 ## Effect
 
-An `Effect` runs side effects when dependencies change.
+An `Effect` runs side effects when dependencies change. It runs once when
+created, then again on every change, for as long as its handle is alive:
+dropping the handle stops it, so keep it in a variable or a struct field.
 
 ```rust
 let count = signal(0);
 
 let count_clone = count.clone();
-effect(move || {
+let _logger = effect(move || {
     let value = count_clone.get();
     println!("Count changed to: {}", value);
 });
@@ -140,18 +142,18 @@ count.set(5);  // Prints: "Count changed to: 5"
 
 ```rust
 // Logging
-effect(move || {
+let _logger = effect(move || {
     println!("State: {:?}", state.get());
 });
 
 // Saving to file
-effect(move || {
+let _saver = effect(move || {
     let data = app_state.get();
     fs::write("state.json", serde_json::to_string(&data).unwrap()).ok();
 });
 
 // Announcing to screen reader
-effect(move || {
+let _announcer = effect(move || {
     if error.get().is_some() {
         announce_error("An error occurred");
     }
@@ -168,6 +170,8 @@ struct Form {
     email: Signal<String>,
     is_valid: Computed<bool>,
     error: Computed<Option<String>>,
+    // Keeps the logging effect alive as long as the form
+    _log_valid: Effect,
 }
 
 impl Form {
@@ -197,13 +201,13 @@ impl Form {
 
         // Effect: log when form becomes valid
         let is_valid_clone = is_valid.clone();
-        effect(move || {
+        let _log_valid = effect(move || {
             if is_valid_clone.get() {
                 println!("Form is now valid!");
             }
         });
 
-        Self { name, email, is_valid, error }
+        Self { name, email, is_valid, error, _log_valid }
     }
 }
 ```
