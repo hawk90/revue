@@ -37,6 +37,10 @@ impl ComboOption {
     }
 
     /// Set group/category
+    ///
+    /// The open dropdown lists each group's options together under a header
+    /// with the group name: ungrouped options first, then the groups in the
+    /// order they first appear. The arrow keys skip the headers.
     pub fn group(mut self, group: impl Into<String>) -> Self {
         self.group = Some(group.into());
         self

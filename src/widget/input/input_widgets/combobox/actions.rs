@@ -1,6 +1,7 @@
 //! Action methods for Combobox
 
 use super::super::Combobox;
+use super::filter::DisplayRow;
 
 impl Combobox {
     // ─────────────────────────────────────────────────────────────────────────
@@ -116,10 +117,23 @@ impl Combobox {
 
     /// Ensure selected option is visible in viewport
     pub fn ensure_visible(&mut self) {
-        if self.selected_idx < self.scroll_offset {
-            self.scroll_offset = self.selected_idx;
-        } else if self.selected_idx >= self.scroll_offset + self.max_visible {
-            self.scroll_offset = self.selected_idx - self.max_visible + 1;
+        // The scroll offset counts dropdown rows, which include group headers
+        let rows = self.display_rows();
+        let Some(row) = rows
+            .iter()
+            .position(|r| matches!(r, DisplayRow::Option(pos) if *pos == self.selected_idx))
+        else {
+            return;
+        };
+        // A group's first option brings its header into view with it, when
+        // there is room for both
+        let header_above =
+            self.max_visible > 1 && row > 0 && matches!(rows[row - 1], DisplayRow::Header(_));
+        let top = if header_above { row - 1 } else { row };
+        if top < self.scroll_offset {
+            self.scroll_offset = top;
+        } else if row >= self.scroll_offset + self.max_visible {
+            self.scroll_offset = row + 1 - self.max_visible;
         }
     }
 }

@@ -1506,9 +1506,11 @@ items:
     evidence:
       - src/text/width.rs::CharWidthTable
       - src/text/width.rs::with_nerd_font
+      - tests/char_width_table.rs
     source:
       - FEATURES.md §6 Unicode & Font Support / Character Width Detection
-    notes: Type is exported and unit-tested but nothing in rendering consults it; buffer widths come from utils::unicode::char_width.
+    notes: CharWidthTable::width honors the cjk, emoji and nerd_font widths and the overrides, but nothing in rendering consults
+      the table; buffer widths come from utils::unicode::char_width.
   - id: TEXT-003
     title: revue.toml [font] width configuration
     area: unicode

@@ -8,7 +8,8 @@ mod resolve;
 mod types;
 
 pub use helpers::{contains_rtl, detect_direction, is_rtl_char, mirror_char, reverse_graphemes};
+#[allow(deprecated)] // never read (#799)
+pub use types::BidiConfig;
 pub use types::{
-    BidiClass, BidiConfig, BidiInfo, BidiRun, ResolvedDirection, RtlLayout, TextAlign,
-    TextDirection,
+    BidiClass, BidiInfo, BidiRun, ResolvedDirection, RtlLayout, TextAlign, TextDirection,
 };

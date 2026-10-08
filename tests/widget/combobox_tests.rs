@@ -684,3 +684,94 @@ fn test_combobox_render_highlighted_option() {
     assert!(!row(&buffer, 1).contains('›'));
     assert!(!row(&buffer, 3).contains('›'));
 }
+
+// =============================================================================
+// Option groups
+// =============================================================================
+
+/// Fruit and vegetables, listed out of group order.
+fn grocery() -> Combobox {
+    Combobox::new().options_with(vec![
+        ComboOption::new("Apple").group("Fruit"),
+        ComboOption::new("Carrot").group("Vegetable"),
+        ComboOption::new("Banana").group("Fruit"),
+        ComboOption::new("Leek").group("Vegetable"),
+    ])
+}
+
+#[test]
+fn test_combobox_groups_list_options_under_their_header() {
+    // Six rows with the two headers
+    let mut cb = grocery().max_visible(6);
+    cb.open_dropdown();
+    let buffer = render(&cb, 30, 10);
+
+    assert_eq!(row(&buffer, 1).trim(), "Fruit");
+    assert_eq!(find_row(&buffer, "Apple"), Some(2));
+    assert_eq!(find_row(&buffer, "Banana"), Some(3));
+    assert_eq!(row(&buffer, 4).trim(), "Vegetable");
+    assert_eq!(find_row(&buffer, "Carrot"), Some(5));
+    assert_eq!(find_row(&buffer, "Leek"), Some(6));
+}
+
+#[test]
+fn test_combobox_groups_arrow_keys_skip_headers() {
+    let mut cb = grocery();
+    cb.open_dropdown();
+    cb.handle_key(&Key::Down);
+    cb.handle_key(&Key::Down);
+    cb.handle_key(&Key::Enter);
+    assert_eq!(cb.input(), "Carrot", "Down from Banana should reach Carrot");
+}
+
+#[test]
+fn test_combobox_groups_filtering_keeps_each_group_together() {
+    let mut cb = grocery().filter_mode(FilterMode::Contains);
+    cb.set_input("a");
+    cb.open_dropdown();
+    let buffer = render(&cb, 30, 10);
+
+    assert_eq!(row(&buffer, 1).trim(), "Fruit");
+    assert_eq!(row(&buffer, 4).trim(), "Vegetable");
+    assert_eq!(find_row(&buffer, "Carrot"), Some(5));
+    assert_eq!(find_row(&buffer, "Leek"), None);
+}
+
+#[test]
+fn test_combobox_groups_ungrouped_options_come_first_without_a_header() {
+    let mut cb = Combobox::new().options_with(vec![
+        ComboOption::new("Apple").group("Fruit"),
+        ComboOption::new("Anything"),
+    ]);
+    cb.open_dropdown();
+    let buffer = render(&cb, 30, 10);
+
+    assert_eq!(find_row(&buffer, "Anything"), Some(1));
+    assert_eq!(row(&buffer, 2).trim(), "Fruit");
+    assert_eq!(find_row(&buffer, "Apple"), Some(3));
+}
+
+#[test]
+fn test_combobox_groups_scrolling_brings_the_header_into_view() {
+    let mut cb = grocery().max_visible(3);
+    cb.open_dropdown();
+
+    // Rows: Fruit, Apple, Banana, Vegetable, Carrot, Leek
+    for _ in 0..3 {
+        cb.handle_key(&Key::Down);
+    }
+    let buffer = render(&cb, 30, 10);
+    assert!(
+        find_row(&buffer, "Leek").is_some(),
+        "the highlighted option scrolled out of view"
+    );
+    assert!(find_row(&buffer, "Vegetable").is_some());
+
+    // Back up to the first option: its header comes back too
+    for _ in 0..3 {
+        cb.handle_key(&Key::Up);
+    }
+    let buffer = render(&cb, 30, 10);
+    assert_eq!(row(&buffer, 1).trim(), "Fruit");
+    assert_eq!(find_row(&buffer, "Apple"), Some(2));
+}
