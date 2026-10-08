@@ -65,8 +65,8 @@ static BATCH_COUNTER: AtomicUsize = AtomicUsize::new(0);
 /// Signal values change immediately inside `f`; what reacts to them waits
 /// until the outermost batch ends, runs the updates queued with
 /// [`queue_update`], and then runs each deferred effect and subscription
-/// once. Batches nest; only the outermost one flushes. See the
-/// [module docs](self).
+/// once. Batches nest; only the outermost one flushes. `SignalVec` diff
+/// subscribers are not deferred: each diff describes its own change.
 ///
 /// If `f` panics the batch still ends. An outermost batch then discards
 /// what it queued and deferred - nothing runs during the unwind - so an
