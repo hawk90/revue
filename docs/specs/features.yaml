@@ -1774,8 +1774,10 @@ items:
       - WorkerPool::new(n).submit(..)
       - WorkerHandle::spawn_blocking + state()/join()
       - Pending/Running/Completed/Failed/Cancelled states
+      - dropping a pool never blocks; join_timeout waits for the queued tasks
     evidence:
       - src/state/worker/pool.rs::submit
+      - src/state/worker/pool.rs::join_timeout
       - src/state/worker/handle.rs::spawn_blocking
       - tests/worker/pool.rs
       - examples/worker_basic.rs

@@ -12,14 +12,4 @@ pub struct Known {
     pub cases: &'static [&'static str],
 }
 
-pub const KNOWN: &[Known] = &[
-    // The remaining entry needs a design decision, not a fix; see
-    // docs/refactor/findings-fault-injection.md, "남긴 것".
-    Known {
-        layer: "concurrency",
-        reason: "design decision: TaskRunner and WorkerPool join running tasks on drop, so a \
-                 task that never finishes blocks the drop for good - keep the join, or detach \
-                 like PooledTaskRunner and WorkerHandle?",
-        cases: &["runner drop-running", "pool drop-running"],
-    },
-];
+pub const KNOWN: &[Known] = &[];

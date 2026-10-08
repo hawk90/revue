@@ -171,6 +171,32 @@ fn task_cases(cases: &mut Vec<Case>) {
             .then(|| format!("dropping the runner blocked for {took:?} on a running task"))
     }));
 
+    // Dropping detaches; `join_timeout` is how a caller waits on purpose.
+    cases.push(Case::new("runner join-timeout", LIMIT, || {
+        let gate = Gate::new();
+        let g = gate.clone();
+        let mut runner: TaskRunner<u32> = TaskRunner::new();
+        runner.spawn("gated", move || {
+            g.wait();
+            7
+        });
+        let start = Instant::now();
+        if runner.join_timeout(Duration::from_millis(100)) {
+            return Some("join_timeout reported a blocked task as finished".into());
+        }
+        let took = start.elapsed();
+        if took > Duration::from_secs(2) {
+            return Some(format!("join_timeout(100ms) took {took:?}"));
+        }
+        gate.open();
+        if !runner.join_timeout(Duration::from_secs(5)) {
+            return Some("join_timeout did not see the task finish".into());
+        }
+        // The result is still delivered after the wait.
+        (runner.poll().map(|r| r.result) != Some(Ok(7)))
+            .then(|| "the joined task's result was lost".into())
+    }));
+
     cases.push(Case::new("runner many-spawns", LIMIT, || {
         let mut runner: TaskRunner<usize> = TaskRunner::new();
         for i in 0..500 {
@@ -417,6 +443,31 @@ fn worker_cases(cases: &mut Vec<Case>) {
         let took = start.elapsed();
         (took > Duration::from_secs(1))
             .then(|| format!("dropping the pool blocked for {took:?} on a running task"))
+    }));
+
+    cases.push(Case::new("pool join-timeout", LIMIT, || {
+        let gate = Gate::new();
+        let g = gate.clone();
+        let done = Arc::new(AtomicUsize::new(0));
+        let mut pool = WorkerPool::new(1);
+        pool.submit(move || g.wait());
+        // Queued behind the blocked one: a join must still run it.
+        let d = done.clone();
+        pool.submit(move || {
+            d.fetch_add(1, Ordering::SeqCst);
+        });
+        if pool.join_timeout(Duration::from_millis(100)) {
+            return Some("join_timeout reported a blocked pool as finished".into());
+        }
+        if !pool.is_shutdown() {
+            return Some("join_timeout did not shut the pool down".into());
+        }
+        gate.open();
+        if !pool.join_timeout(Duration::from_secs(5)) {
+            return Some("join_timeout did not see the workers finish".into());
+        }
+        (done.load(Ordering::SeqCst) != 1)
+            .then(|| "a task queued before the join was dropped".into())
     }));
 
     cases.push(Case::new("pool after-shutdown", LIMIT, || {
