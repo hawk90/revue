@@ -113,7 +113,17 @@ impl GridColumn {
         self
     }
 
+    /// Set filterable (a non-filterable column's values never match the
+    /// grid filter)
+    pub fn filterable(mut self, f: bool) -> Self {
+        self.filterable = f;
+        self
+    }
+
     /// Set frozen (stays visible during horizontal scroll)
+    ///
+    /// A frozen column is pinned to the left together with every column
+    /// before it, like `DataGrid::freeze_columns_left`.
     pub fn frozen(mut self, f: bool) -> Self {
         self.frozen = f;
         self
