@@ -5,9 +5,11 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::{Debouncer, Throttle};
 //! use std::time::Duration;
+//! # fn perform_search() {}
+//! # fn update_position() {}
 //!
 //! // Debounce search input - call after 300ms of no activity
 //! let mut debouncer = Debouncer::new(Duration::from_millis(300));

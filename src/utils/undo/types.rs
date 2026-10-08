@@ -12,28 +12,33 @@ pub const DEFAULT_MAX_HISTORY: usize = 100;
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::undo::{Mergeable, UndoHistory};
+///
+/// #[derive(Clone, Debug, PartialEq)]
+/// enum TextOp {
+///     Insert { pos: usize, text: String },
+/// }
+///
 /// impl Mergeable for TextOp {
 ///     fn can_merge(&self, other: &Self) -> bool {
-///         match (self, other) {
-///             (TextOp::Insert { pos: p1, .. }, TextOp::Insert { pos: p2, .. }) => {
-///                 // Can merge if inserting at consecutive positions
-///                 *p2 == *p1 + 1
-///             }
-///             _ => false,
-///         }
+///         // Typing at the next position continues the same insertion
+///         let (TextOp::Insert { pos: p1, text }, TextOp::Insert { pos: p2, .. }) = (self, other);
+///         *p2 == *p1 + text.len()
 ///     }
 ///
 ///     fn merge(self, other: Self) -> Self {
-///         match (self, other) {
-///             (TextOp::Insert { pos, text: mut t1 }, TextOp::Insert { text: t2, .. }) => {
-///                 t1.push_str(&t2);
-///                 TextOp::Insert { pos, text: t1 }
-///             }
-///             _ => self,
-///         }
+///         let (TextOp::Insert { pos, text: mut t1 }, TextOp::Insert { text: t2, .. }) = (self, other);
+///         t1.push_str(&t2);
+///         TextOp::Insert { pos, text: t1 }
 ///     }
 /// }
+///
+/// let mut history = UndoHistory::new();
+/// history.push_merge(TextOp::Insert { pos: 0, text: "a".into() });
+/// history.push_merge(TextOp::Insert { pos: 1, text: "b".into() });
+/// // One undo removes both characters
+/// assert_eq!(history.undo(), Some(TextOp::Insert { pos: 0, text: "ab".into() }));
 /// ```
 pub trait Mergeable {
     /// Check if this operation can be merged with `other`

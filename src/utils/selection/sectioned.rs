@@ -26,8 +26,18 @@ impl SectionedSelection {
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// sel.next(&[5, 3, 2]); // 3 sections with 5, 3, 2 items
+    /// ```
+    /// use revue::utils::SectionedSelection;
+    ///
+    /// let sizes = [5, 3, 2]; // 3 sections with 5, 3, 2 items
+    /// let mut sel = SectionedSelection::new();
+    /// sel.next(&sizes);
+    /// assert_eq!((sel.section, sel.item), (0, 1));
+    ///
+    /// // Past the last item of a section, into the next one
+    /// sel.item = 4;
+    /// sel.next(&sizes);
+    /// assert_eq!((sel.section, sel.item), (1, 0));
     /// ```
     pub fn next(&mut self, section_sizes: &[usize]) {
         if section_sizes.is_empty() {

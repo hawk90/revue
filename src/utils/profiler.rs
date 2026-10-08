@@ -5,13 +5,15 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::profiler::{Profiler, profile};
+//! # fn expensive_render_operation() -> u32 { 42 }
 //!
-//! // Profile a section of code
+//! // Profile a section of code; its result is passed through
 //! let result = profile("render_widget", || {
 //!     expensive_render_operation()
 //! });
+//! assert_eq!(result, 42);
 //!
 //! // Get profiling report
 //! let report = Profiler::global().report();

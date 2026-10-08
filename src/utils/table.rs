@@ -3,7 +3,9 @@
 //! Provides easy column alignment for TUI tables.
 //!
 //! # Example
-//! ```ignore
+//! ```
+//! use revue::utils::table::{Align, Table};
+//!
 //! let table = Table::new()
 //!     .col("HOST", 8, Align::Left)
 //!     .col("PING", 7, Align::Right)

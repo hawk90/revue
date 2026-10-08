@@ -149,8 +149,18 @@ impl BorderStyle {
 /// * `color` - Border color
 ///
 /// # Example
-/// ```ignore
-/// render_border(ctx, area, Color::WHITE);
+/// ```
+/// use revue::layout::Rect;
+/// use revue::render::Buffer;
+/// use revue::style::Color;
+/// use revue::utils::border::render_border;
+/// use revue::widget::RenderContext;
+///
+/// let mut buffer = Buffer::new(10, 3);
+/// let area = Rect::new(0, 0, 10, 3);
+/// let mut ctx = RenderContext::new(&mut buffer, area);
+/// render_border(&mut ctx, area, Color::WHITE);
+/// assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('┌'));
 /// ```
 pub fn render_border(ctx: &mut RenderContext, area: Rect, color: Color) {
     render_border_with_style(ctx, area, BorderStyle::new(color));

@@ -26,7 +26,7 @@ use std::collections::HashMap;
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use revue::utils::SectionedSelection;
 ///
 /// let mut sel = SectionedSelection::new();

@@ -4,8 +4,8 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! use revue::utils::keymap::{KeymapConfig, Mode, bind};
+//! ```
+//! use revue::utils::keymap::{parse_key_binding, KeymapConfig, LookupResult, Mode};
 //!
 //! let mut keymap = KeymapConfig::new();
 //!
@@ -14,9 +14,10 @@
 //! keymap.bind(Mode::Normal, "k", "move_up");
 //! keymap.bind(Mode::Insert, "Escape", "exit_insert");
 //!
-//! // Parse and execute
+//! // Look up the action for a key press
 //! keymap.set_mode(Mode::Normal);
-//! let action = keymap.lookup("j");
+//! let j = parse_key_binding("j").unwrap();
+//! assert_eq!(keymap.lookup(j), LookupResult::Action("move_down".into()));
 //! ```
 
 mod parse;

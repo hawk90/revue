@@ -4,12 +4,14 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::i18n::{I18n, Locale};
 //!
-//! let mut i18n = I18n::new();
+//! let mut i18n = I18n::new(); // English is built in
+//! i18n.add_locale(Locale::korean());
+//! i18n.add_locale(Locale::japanese());
 //!
-//! // Add translations
+//! // Add translations (a locale must be added first)
 //! i18n.add_translation("en", "hello", "Hello");
 //! i18n.add_translation("ko", "hello", "안녕하세요");
 //! i18n.add_translation("ja", "hello", "こんにちは");
