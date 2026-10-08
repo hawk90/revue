@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0](https://github.com/hawk90/revue/compare/v3.5.0...v3.6.0) (2026-10-08)
+
+
+### Features
+
+* **widget:** input, form and feedback widgets honor their stored settings ([#799](https://github.com/hawk90/revue/issues/799)) ([a01637a](https://github.com/hawk90/revue/commit/a01637a2ffcfe7ec8430588d88022260cd98d672))
+
+
+### Bug Fixes
+
+* **widget:** data widgets honor their stored settings ([#799](https://github.com/hawk90/revue/issues/799)) ([#808](https://github.com/hawk90/revue/issues/808)) ([ed865fe](https://github.com/hawk90/revue/commit/ed865feca78846410d486db6d6bb6df8a44ccc77))
+* **widget:** display and developer widgets honor their stored settings ([#799](https://github.com/hawk90/revue/issues/799)) ([#807](https://github.com/hawk90/revue/issues/807)) ([1ef1a8b](https://github.com/hawk90/revue/commit/1ef1a8b267d6876ed5f2c6bd8f47c6757d68057d))
+* **widget:** six layout widgets honor their min/max size builders ([#799](https://github.com/hawk90/revue/issues/799)) ([#806](https://github.com/hawk90/revue/issues/806)) ([0ba9b57](https://github.com/hawk90/revue/commit/0ba9b5718273e80963c8276520307507cfc3bd39))
+
 ## [3.5.0](https://github.com/hawk90/revue/compare/v3.4.0...v3.5.0) (2026-10-08)
 
 
