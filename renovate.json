@@ -73,6 +73,15 @@
       "dependencyDashboardApproval": true
     },
     {
+      "description": "Pins, digest pins and lock-file maintenance carry no release timestamp, and Renovate >= 42 treats a missing timestamp as 'not old enough', so with minimumReleaseAge the renovate/stability-days status stays pending forever on those PRs (seen 2026-10-05..08). Exempt only these update types; real version updates still wait 3 days",
+      "matchUpdateTypes": [
+        "pin",
+        "pinDigest",
+        "lockFileMaintenance"
+      ],
+      "minimumReleaseAge": null
+    },
+    {
       "description": "Rust toolchain pin (rust-toolchain.toml): manual, one PR per release",
       "matchDepNames": [
         "rust-toolchain"
