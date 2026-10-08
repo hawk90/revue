@@ -124,11 +124,18 @@ impl View for Counter {
 | [Error Handling](guides/error-handling.md) | Error management strategies |
 | [Routing](guides/routing.md) | Navigation and routing |
 | [Store](guides/store.md) | Centralized state management |
-| [Query](guides/query.md) | DOM querying and selectors |
+| [Query](guides/query.md) | Query DSL for filtering, sorting and searching items |
 | [Constructor Patterns](guides/constructor-patterns.md) | Widget construction patterns |
 | [Feature Flags](guides/feature-flags.md) | Cargo feature configuration |
 
 ---
+
+## Migration
+
+| Guide | From |
+|-------|------|
+| [v3.0.0](migration/v3.0.0.md) | 2.x: CSS reaches every widget, and the APIs removed in 3.0 |
+| [v0.8.0](migration/v0.8.0.md) | 0.7.x |
 
 ## Design Notes
 
@@ -146,6 +153,15 @@ impl View for Counter {
 | [Phase 2 Cascade Precedence](refactor/phase2-cascade-precedence.md) | Where a widget's own colors rank against the stylesheet, and why disabled was in the wrong row |
 | [Selector Matcher Findings](refactor/findings-selector-matchers.md) | Two selector matchers that disagreed, and why descendant selectors stopped one level down |
 | [Prelude Coverage](refactor/findings-prelude-coverage.md) | 74 widgets the docs use from the prelude but the prelude does not export |
+| [Default Flip](refactor/findings-default-flip.md) | What turning `dom_from_render` and `css_layout` on by default changes, measured on every example |
+| [Content-Sized Stack](refactor/design-content-sized-stack.md) | Why stacks size children by their content, and how `measure`/`fills` get there |
+| [Event Dispatch Findings](refactor/findings-event-dispatch.md) | Why widget event dispatch is the prerequisite for moving to `on_key(&self, ctx)` |
+| [Named Color Precedence](refactor/findings-named-color-precedence.md) | Where a builder's color still loses to the stylesheet, and what is left to fix |
+| [Single-Responsibility Audit](refactor/srp-audit.md) | The per-file 3.x audit: criteria, every file's verdict, and the bugs found on the way |
+| [Widget Matrix](refactor/findings-widget-matrix.md) | Widgets drawn at every edge size, content and state combination, and what broke |
+| [Fault Injection](refactor/findings-fault-injection.md) | Failing output, odd events, broken text, missing resources and concurrency faults |
+| [Event Sequences](refactor/findings-event-sequences.md) | Property-tested key and mouse sequences, and the widget states they put out of sync |
+| [Widget Clone](refactor/findings-widget-clone.md) | Which widgets are `Clone`, which cannot be yet, and why |
 
 ---
 
