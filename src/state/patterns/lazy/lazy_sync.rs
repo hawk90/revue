@@ -44,16 +44,17 @@ where
 
     /// Get a read guard to the value without cloning (zero-copy access)
     ///
-    /// Returns `None` if the value hasn't been loaded yet.
-    /// Use `ensure_loaded()` or `get()` first if you need guaranteed access.
+    /// Loads the value first if it is not loaded yet. The guard holds `None`
+    /// while another thread is still running the loader (this does not wait
+    /// for it), or if the loader panicked.
     ///
     /// # Example
-    /// ```ignore
+    /// ```
+    /// use revue::patterns::LazySync;
+    ///
     /// let data = LazySync::new(|| vec![1, 2, 3]);
-    /// data.get(); // trigger loading
-    /// if let Some(guard) = data.read() {
-    ///     println!("Length: {}", guard.as_ref().map(|v| v.len()).unwrap_or(0));
-    /// }
+    /// let guard = data.read();
+    /// assert_eq!(guard.as_ref().map(|v| v.len()), Some(3));
     /// ```
     pub fn read(&self) -> std::sync::RwLockReadGuard<'_, Option<T>> {
         self.ensure_loaded();

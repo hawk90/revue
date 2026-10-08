@@ -14,7 +14,7 @@
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::patterns::lazy::LoadState;
 ///
 /// fn render_status(state: LoadState) -> &'static str {
@@ -43,10 +43,12 @@ impl LoadState {
     ///
     /// # Example
     ///
-    /// ```rust,ignore
-    /// if state.is_loading() {
-    ///     show_spinner();
-    /// }
+    /// ```
+    /// use revue::patterns::lazy::LoadState;
+    ///
+    /// // e.g. show a spinner
+    /// assert!(LoadState::Loading.is_loading());
+    /// assert!(!LoadState::Loaded.is_loading());
     /// ```
     pub const fn is_loading(&self) -> bool {
         matches!(self, LoadState::Loading)
@@ -56,10 +58,11 @@ impl LoadState {
     ///
     /// # Example
     ///
-    /// ```rust,ignore
-    /// if state.is_loaded() {
-    ///     display_data();
-    /// }
+    /// ```
+    /// use revue::patterns::lazy::LoadState;
+    ///
+    /// assert!(LoadState::Loaded.is_loaded());
+    /// assert!(!LoadState::Idle.is_loaded());
     /// ```
     pub const fn is_loaded(&self) -> bool {
         matches!(self, LoadState::Loaded)
@@ -69,10 +72,13 @@ impl LoadState {
     ///
     /// # Example
     ///
-    /// ```rust,ignore
-    /// if state.is_ready() {
-    ///     allow_user_interaction();
-    /// }
+    /// ```
+    /// use revue::patterns::lazy::LoadState;
+    ///
+    /// // Nothing is in flight or broken
+    /// assert!(LoadState::Idle.is_ready());
+    /// assert!(LoadState::Loaded.is_ready());
+    /// assert!(!LoadState::Loading.is_ready());
     /// ```
     pub const fn is_ready(&self) -> bool {
         matches!(self, LoadState::Idle | LoadState::Loaded)
@@ -82,10 +88,11 @@ impl LoadState {
     ///
     /// # Example
     ///
-    /// ```rust,ignore
-    /// if state.is_failed() {
-    ///     show_error_message();
-    /// }
+    /// ```
+    /// use revue::patterns::lazy::LoadState;
+    ///
+    /// assert!(LoadState::Failed.is_failed());
+    /// assert!(!LoadState::Loading.is_failed());
     /// ```
     pub const fn is_failed(&self) -> bool {
         matches!(self, LoadState::Failed)
