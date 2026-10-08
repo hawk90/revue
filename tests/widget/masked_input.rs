@@ -1257,3 +1257,38 @@ fn test_masked_input_focused_placeholder_is_gray() {
         assert_eq!(buffer.get(x, 0).unwrap().fg, Some(PLACEHOLDER_FG), "x={x}");
     }
 }
+
+/// #799: `bg` was stored and only read back by a getter.
+#[test]
+fn test_masked_input_bg_paints_the_field() {
+    const BG: Color = Color {
+        r: 10,
+        g: 20,
+        b: 30,
+        a: 255,
+    };
+    for focused in [false, true] {
+        let input = MaskedInput::new()
+            .value("abc")
+            .width(6)
+            .bg(BG)
+            .focused(focused);
+        let mut buffer = Buffer::new(20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 1));
+        input.render(&mut ctx);
+
+        // x=0 is the `[`; the field starts at x=1. Focused, the cursor sits at
+        // the end of the value, so the first cell is still plain field.
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '[');
+        assert_eq!(
+            buffer.get(1, 0).unwrap().bg,
+            Some(BG),
+            "focused={focused}: the field was not painted in `bg`"
+        );
+        assert_ne!(
+            buffer.get(0, 0).unwrap().bg,
+            Some(BG),
+            "the bracket took `bg`"
+        );
+    }
+}
