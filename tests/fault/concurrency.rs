@@ -404,7 +404,7 @@ fn worker_cases(cases: &mut Vec<Case>) {
         let pool = WorkerPool::with_config(WorkerConfig {
             threads: 1,
             queue_capacity: 4,
-            default_timeout_ms: None,
+            ..WorkerConfig::default()
         });
         let ran = Arc::new(AtomicUsize::new(0));
         let mut accepted = 0;

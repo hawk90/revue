@@ -82,6 +82,16 @@
       "minimumReleaseAge": null
     },
     {
+      "description": "GitHub Actions digest moves (a pinned sha following its floating major tag) age against the tag's timestamp, which the datasource does not provide, so renovate/stability-days stayed pending on a digest from 2026-09-01 even after the pin/lockfile exemption (hawk90.github.io#34, re-evaluated 2026-10-08). Exempt them too; the protection for actions is the sha pin plus CI, not the wait",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "minimumReleaseAge": null
+    },
+    {
       "description": "Rust toolchain pin (rust-toolchain.toml): manual, one PR per release",
       "matchDepNames": [
         "rust-toolchain"

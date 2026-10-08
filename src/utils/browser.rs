@@ -233,7 +233,7 @@ pub fn launch_suppressed() -> bool {
 /// Platform support:
 /// - macOS: Uses `open`
 /// - Linux: Uses `xdg-open`
-/// - Windows: Uses `start`
+/// - Windows: Uses `explorer`
 ///
 /// # Arguments
 /// * `url` - URL or file path to open
@@ -254,22 +254,29 @@ pub fn open_browser(url: &str) -> bool {
         return true;
     }
 
-    #[cfg(target_os = "macos")]
-    let result = Command::new("open").arg(url).spawn();
+    match opener(std::env::consts::OS, url) {
+        Some(mut cmd) => cmd.spawn().is_ok(),
+        None => false,
+    }
+}
 
-    #[cfg(target_os = "linux")]
-    let result = Command::new("xdg-open").arg(url).spawn();
-
-    #[cfg(target_os = "windows")]
-    let result = Command::new("cmd").args(["/C", "start", "", url]).spawn();
-
-    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    let result: Result<std::process::Child, std::io::Error> = Err(std::io::Error::new(
-        std::io::ErrorKind::Unsupported,
-        "Unsupported platform",
-    ));
-
-    result.is_ok()
+/// The command that opens `target` with the default application on `os`
+/// (a value of [`std::env::consts::OS`]), or `None` on other platforms.
+///
+/// No shell is involved: `target` reaches the opener as a single argument.
+/// On Windows this matters, since `cmd /C start` would interpret `>`, `^`,
+/// `%VAR%` and the like in a URL, and `%` cannot be rejected because URLs
+/// use it for percent-encoding.
+fn opener(os: &str, target: &str) -> Option<Command> {
+    let program = match os {
+        "macos" => "open",
+        "linux" => "xdg-open",
+        "windows" => "explorer",
+        _ => return None,
+    };
+    let mut cmd = Command::new(program);
+    cmd.arg(target);
+    Some(cmd)
 }
 
 /// Open a URL in the system default browser
@@ -291,26 +298,10 @@ pub fn open_url(url: &str) -> Result<(), BrowserError> {
         return Ok(());
     }
 
-    #[cfg(target_os = "macos")]
-    let child = Command::new("open")
-        .arg(url)
+    let child = opener(std::env::consts::OS, url)
+        .ok_or_else(|| BrowserError::IoError("Unsupported platform".to_string()))?
         .spawn()
         .map_err(|e| BrowserError::IoError(e.to_string()))?;
-
-    #[cfg(target_os = "linux")]
-    let child = Command::new("xdg-open")
-        .arg(url)
-        .spawn()
-        .map_err(|e| BrowserError::IoError(e.to_string()))?;
-
-    #[cfg(target_os = "windows")]
-    let child = Command::new("cmd")
-        .args(["/C", "start", "", url])
-        .spawn()
-        .map_err(|e| BrowserError::IoError(e.to_string()))?;
-
-    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    return Err(BrowserError::IoError("Unsupported platform".to_string()));
 
     // Detach - don't wait for browser to close
     // Dropping the child detaches it (no wait() call)
@@ -400,4 +391,47 @@ pub fn reveal_in_finder(path: &str) -> bool {
     ));
 
     result.is_ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn program_and_args(cmd: &Command) -> (String, Vec<String>) {
+        (
+            cmd.get_program().to_string_lossy().into_owned(),
+            cmd.get_args()
+                .map(|a| a.to_string_lossy().into_owned())
+                .collect(),
+        )
+    }
+
+    // A URL with characters cmd.exe would act on: redirection, its escape
+    // character and variable expansion. `%` is also how URLs encode bytes,
+    // so validation cannot reject it; the URL must not go through a shell.
+    const URL: &str = "https://example.com/a?b=1%20c>d^e%PATH%";
+
+    #[test]
+    fn windows_opens_without_a_shell() {
+        let (program, args) = program_and_args(&opener("windows", URL).unwrap());
+        assert_ne!(program, "cmd", "cmd.exe would interpret the URL");
+        assert_eq!(args, [URL], "the URL is passed as one argument, unchanged");
+    }
+
+    #[test]
+    fn macos_and_linux_pass_the_url_as_one_argument() {
+        assert_eq!(
+            program_and_args(&opener("macos", URL).unwrap()),
+            ("open".to_string(), vec![URL.to_string()])
+        );
+        assert_eq!(
+            program_and_args(&opener("linux", URL).unwrap()),
+            ("xdg-open".to_string(), vec![URL.to_string()])
+        );
+    }
+
+    #[test]
+    fn other_platforms_have_no_opener() {
+        assert!(opener("plan9", URL).is_none());
+    }
 }
