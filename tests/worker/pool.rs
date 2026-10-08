@@ -42,7 +42,7 @@ fn test_pool_config_queue_capacity() {
     let config = WorkerConfig {
         threads: 2,
         queue_capacity: 100,
-        default_timeout_ms: None,
+        ..WorkerConfig::default()
     };
     let pool = WorkerPool::with_config(config.clone());
     assert_eq!(pool.thread_count(), 2);
@@ -51,17 +51,6 @@ fn test_pool_config_queue_capacity() {
     for _ in 0..100 {
         assert!(pool.submit(|| {}));
     }
-}
-
-#[test]
-fn test_pool_config_timeout() {
-    let config = WorkerConfig {
-        threads: 1,
-        queue_capacity: 10,
-        default_timeout_ms: Some(1000),
-    };
-    let pool = WorkerPool::with_config(config);
-    assert_eq!(pool.thread_count(), 1);
 }
 
 #[test]
@@ -86,7 +75,7 @@ fn test_pool_submit_full_queue() {
     let config = WorkerConfig {
         threads: 1,
         queue_capacity: 3,
-        default_timeout_ms: Some(100),
+        ..WorkerConfig::default()
     };
     let pool = WorkerPool::with_config(config);
 
@@ -360,7 +349,7 @@ fn test_pool_queue_length() {
     let config = WorkerConfig {
         threads: 1,
         queue_capacity: 100,
-        default_timeout_ms: None,
+        ..WorkerConfig::default()
     };
     let pool = WorkerPool::with_config(config);
 
