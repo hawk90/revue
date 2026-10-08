@@ -43,13 +43,18 @@ Computed values derive from other signals and automatically update:
 
 ```rust
 let count = signal(0);
-let doubled = computed(move || count.get() * 2);
+let doubled = computed({
+    let count = count.clone(); // signals are cheap handles: clone one per closure
+    move || count.get() * 2
+});
 
 count.set(5);
-println!("{}", doubled.get()); // 10
+assert_eq!(doubled.get(), 10);
 ```
 
-Computed values are lazy - they only recalculate when accessed.
+Computed values are lazy - they only recalculate when accessed. A computed
+value is itself a dependency: an effect or another computed that reads it
+follows its inputs, through any number of steps.
 
 ## Effects
 
@@ -58,13 +63,42 @@ Effects run side effects when dependencies change:
 ```rust
 let count = signal(0);
 
-effect(move || {
-    println!("Count changed to: {}", count.get());
+// Keep the handle: an effect stops when it is dropped
+let _logger = effect({
+    let count = count.clone();
+    move || println!("Count changed to: {}", count.get())
 });
 
 count.set(1); // Prints: "Count changed to: 1"
 count.set(2); // Prints: "Count changed to: 2"
 ```
+
+An effect runs once when created, then after every change to what it read.
+
+## Batching
+
+`batch` groups changes so that what reacts to them runs once, after all of
+them:
+
+```rust
+let first = signal("Ada".to_string());
+let last = signal("Lovelace".to_string());
+let _greeting = effect({
+    let (first, last) = (first.clone(), last.clone());
+    move || println!("{} {}", first.get(), last.get())
+});
+
+batch(|| {
+    first.set("Alan".to_string());
+    last.set("Turing".to_string());
+}); // Prints "Alan Turing" once - never "Alan Lovelace"
+```
+
+Inside a batch, values change at once: reading a signal, or a computed value
+derived from it, gives the new value. Effects and `Signal::subscribe`
+callbacks wait until the outermost batch ends and then run once each.
+`flush()` runs them early without ending the batch. `SignalVec` diff
+subscribers are not deferred, since each diff describes its own change.
 
 ## Async State
 

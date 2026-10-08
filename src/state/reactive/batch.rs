@@ -1,24 +1,40 @@
 //! Batched signal updates
 //!
-//! Batch multiple signal updates into a single render cycle for better performance.
+//! Inside a batch, signal values still change at once - reading one, or a
+//! computed value derived from it, gives the new value - but what *reacts*
+//! to a change waits: effects and [`Signal::subscribe`](super::Signal::subscribe)
+//! callbacks are collected and run once each when the outermost batch ends.
+//! An effect over two signals set in one batch runs once, and never sees one
+//! updated and the other not.
+//!
+//! `SignalVec` diff subscribers are not deferred: each diff describes its
+//! own change, so they are delivered as they happen.
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! use revue::reactive::{signal, batch};
+//! ```
+//! use revue::reactive::{batch, effect, signal};
 //!
-//! let count = signal(0);
-//! let name = signal(String::new());
-//!
-//! // Without batching: triggers 2 re-renders
-//! count.set(1);
-//! name.set("Alice".to_string());
-//!
-//! // With batching: triggers only 1 re-render
-//! batch(|| {
-//!     count.set(1);
-//!     name.set("Alice".to_string());
+//! let first = signal("Ada".to_string());
+//! let last = signal("Lovelace".to_string());
+//! let shown = signal(Vec::new());
+//! let _greeting = effect({
+//!     let (first, last, shown) = (first.clone(), last.clone(), shown.clone());
+//!     move || shown.update(|v| v.push(format!("{} {}", first.get(), last.get())))
 //! });
+//!
+//! // Without a batch the effect runs after each set, and sees the mix
+//! first.set("Grace".to_string());
+//! last.set("Hopper".to_string());
+//! assert_eq!(shown.get()[1], "Grace Lovelace");
+//!
+//! // In a batch it runs once, with both names
+//! batch(|| {
+//!     first.set("Alan".to_string());
+//!     last.set("Turing".to_string());
+//! });
+//! assert_eq!(shown.get().last().unwrap(), "Alan Turing");
+//! assert_eq!(shown.get().len(), 4);
 //! ```
 
 use std::cell::RefCell;
@@ -43,32 +59,42 @@ static BATCH_COUNTER: AtomicUsize = AtomicUsize::new(0);
 // Batch API
 // =============================================================================
 
-/// Execute a function with batched updates
+/// Run `f` as a batch: effects and subscriptions it triggers run once,
+/// after it returns
 ///
-/// All signal updates within the closure are deferred until the batch completes.
-/// This prevents intermediate re-renders and improves performance.
+/// Signal values change immediately inside `f`; what reacts to them waits
+/// until the outermost batch ends, runs the updates queued with
+/// [`queue_update`], and then runs each deferred effect and subscription
+/// once. Batches nest; only the outermost one flushes. `SignalVec` diff
+/// subscribers are not deferred: each diff describes its own change.
 ///
-/// Batches can be nested - updates are only flushed when the outermost batch completes.
-///
-/// If `f` panics the batch still ends; the updates queued in it are
-/// discarded if it was the outermost one, never run during the unwind.
+/// If `f` panics the batch still ends. An outermost batch then discards
+/// what it queued and deferred - nothing runs during the unwind - so an
+/// effect may show the old state until its signals change again.
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use revue::reactive::{signal, batch};
+/// ```
+/// use revue::reactive::{batch, effect, signal};
 ///
-/// let x = signal(0);
-/// let y = signal(0);
-/// let z = signal(0);
+/// let (x, y) = (signal(0), signal(0));
+/// let runs = signal(0);
+/// let _sum = effect({
+///     let (x, y, runs) = (x.clone(), y.clone(), runs.clone());
+///     move || {
+///         let _ = x.get() + y.get();
+///         runs.update(|n| *n += 1);
+///     }
+/// });
 ///
-/// batch(|| {
+/// let value = batch(|| {
 ///     x.set(1);
 ///     y.set(2);
-///     z.set(3);
-///     // No re-renders happen yet
+///     assert_eq!(runs.get(), 1); // not yet
+///     x.get() + y.get() // values are current
 /// });
-/// // Single re-render happens here
+/// assert_eq!(value, 3);
+/// assert_eq!(runs.get(), 2); // once for both changes
 /// ```
 pub fn batch<F, R>(f: F) -> R
 where
@@ -86,10 +112,15 @@ where
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::reactive::{end_batch, is_batching, signal, start_batch};
+///
+/// let count = signal(0);
 /// start_batch();
-/// // ... do updates ...
+/// count.set(1); // effects on `count` wait for end_batch
+/// assert!(is_batching());
 /// end_batch();
+/// assert!(!is_batching());
 /// ```
 pub fn start_batch() {
     BATCH_DEPTH.with(|depth| {
@@ -102,16 +133,37 @@ pub fn start_batch() {
 ///
 /// Flushes pending updates if this is the outermost batch.
 pub fn end_batch() {
-    let outermost = BATCH_DEPTH.with(|depth| {
-        let mut d = depth.borrow_mut();
-        *d = d.saturating_sub(1);
-        *d == 0
-    });
-    // Flush with the depth borrow released: a flushed update may queue
-    // another or start a batch, which reads the depth.
-    if outermost {
+    let depth = batch_depth();
+    if depth == 0 {
+        return;
+    }
+    if depth > 1 {
+        BATCH_DEPTH.with(|d| *d.borrow_mut() -= 1);
+        return;
+    }
+    // The outermost batch. Its queued updates run while it is still open,
+    // so what they change is deferred along with the rest; then the batch
+    // closes and every deferred effect and subscription runs once. (The
+    // depth borrow is released throughout: an update may queue another or
+    // start a batch, which reads it.)
+    {
+        // If a queued update panics, close the batch anyway and drop what it
+        // deferred, as a batch whose closure panics does.
+        struct CloseOnUnwind;
+        impl Drop for CloseOnUnwind {
+            fn drop(&mut self) {
+                if std::thread::panicking() {
+                    BATCH_DEPTH.with(|d| *d.borrow_mut() = 0);
+                    PENDING_UPDATES.with(|updates| updates.borrow_mut().clear());
+                    super::tracker::discard_deferred();
+                }
+            }
+        }
+        let _close = CloseOnUnwind;
         flush_updates();
     }
+    BATCH_DEPTH.with(|d| *d.borrow_mut() = 0);
+    super::tracker::run_deferred();
 }
 
 /// Check if currently in a batch
@@ -132,23 +184,57 @@ pub fn batch_count() -> usize {
     BATCH_COUNTER.load(Ordering::Relaxed)
 }
 
-/// Force flush all pending updates immediately
+/// Run what the current batch has held back so far, now
 ///
-/// Use this when you need to ensure updates are applied synchronously.
+/// Runs the updates queued with [`queue_update`] and the effects and
+/// subscriptions deferred so far, and keeps going until they stop
+/// triggering each other. The batch stays open. Outside a batch nothing is
+/// held back, so this does nothing.
+///
+/// # Panics
+///
+/// Panics if effects keep changing what they depend on for 100 rounds.
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::reactive::{batch, effect, flush, signal};
+///
+/// let count = signal(0);
+/// let seen = signal(0);
+/// let _mirror = effect({
+///     let (count, seen) = (count.clone(), seen.clone());
+///     move || seen.set(count.get())
+/// });
+///
 /// batch(|| {
 ///     count.set(1);
-///     flush(); // Force update now
-///     // count is now definitely 1
+///     assert_eq!(seen.get(), 0); // deferred
+///     flush();
+///     assert_eq!(seen.get(), 1); // ran now, batch still open
 ///     count.set(2);
 /// });
+/// assert_eq!(seen.get(), 2);
 /// ```
 pub fn flush() {
     flush_updates();
+    // Inside a batch, run what it deferred so far - and what those runs
+    // defer in turn - until it settles.
+    let mut rounds = 0;
+    while super::tracker::has_deferred() {
+        rounds += 1;
+        assert!(
+            rounds <= MAX_FLUSH_ROUNDS,
+            "flush did not settle: effects kept changing what they depend on"
+        );
+        super::tracker::run_deferred();
+        flush_updates();
+    }
 }
+
+/// How many rounds of deferred effects `flush` runs before deciding the
+/// effects feed each other in a loop.
+const MAX_FLUSH_ROUNDS: usize = 100;
 
 /// Queue an update to be executed when batch completes
 ///
@@ -173,12 +259,18 @@ pub fn pending_count() -> usize {
 // =============================================================================
 
 fn flush_updates() {
-    PENDING_UPDATES.with(|updates| {
-        let pending: Vec<_> = updates.borrow_mut().drain(..).collect();
+    // An update may queue another while the batch is still open: drain until
+    // nothing is left.
+    loop {
+        let pending: Vec<_> =
+            PENDING_UPDATES.with(|updates| updates.borrow_mut().drain(..).collect());
+        if pending.is_empty() {
+            return;
+        }
         for update in pending {
             update();
         }
-    });
+    }
 }
 
 // =============================================================================
@@ -191,27 +283,25 @@ fn flush_updates() {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::reactive::{signal, Transaction};
 ///
 /// let balance = signal(100);
-/// let error = signal(None);
+///
+/// // Updates are recorded, not applied
+/// let mut tx = Transaction::new();
+/// let b = balance.clone();
+/// tx.update(move || b.update(|v| *v -= 50));
+/// assert_eq!(balance.get(), 100);
+///
+/// tx.commit(); // apply all updates, as one batch
+/// assert_eq!(balance.get(), 50);
 ///
 /// let mut tx = Transaction::new();
-/// tx.update(|| balance.update(|b| *b -= 50));
-/// tx.update(|| {
-///     if balance.get() < 0 {
-///         error.set(Some("Insufficient funds".to_string()));
-///         return Err(());
-///     }
-///     Ok(())
-/// });
-///
-/// if some_condition {
-///     tx.commit(); // Apply all updates
-/// } else {
-///     tx.rollback(); // Discard all updates
-/// }
+/// let b = balance.clone();
+/// tx.update(move || b.set(0));
+/// tx.rollback(); // discard all updates
+/// assert_eq!(balance.get(), 50);
 /// ```
 pub struct Transaction {
     updates: Vec<Box<dyn FnOnce()>>,
@@ -284,18 +374,31 @@ impl Drop for Transaction {
 
 /// RAII guard for batch scope
 ///
-/// Automatically starts a batch when created and ends it when dropped. When
-/// it is dropped by a panic unwinding, the batch ends without flushing, and
-/// an outermost batch discards the updates it queued.
+/// Automatically starts a batch when created and ends it when dropped, like
+/// [`batch`]. When it is dropped by a panic unwinding, the batch ends without
+/// flushing, and an outermost batch discards the updates it queued and the
+/// effects it deferred.
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::reactive::{effect, signal, BatchGuard};
+///
+/// let (a, b) = (signal(0), signal(0));
+/// let runs = signal(0);
+/// let _e = effect({
+///     let (a, b, runs) = (a.clone(), b.clone(), runs.clone());
+///     move || {
+///         let _ = (a.get(), b.get());
+///         runs.update(|n| *n += 1);
+///     }
+/// });
 /// {
 ///     let _guard = BatchGuard::new();
-///     signal1.set(1);
-///     signal2.set(2);
-/// } // Batch ends here, updates are flushed
+///     a.set(1);
+///     b.set(2);
+/// } // Batch ends here: the effect runs once
+/// assert_eq!(runs.get(), 2);
 /// ```
 pub struct BatchGuard {
     _private: (),
@@ -328,6 +431,7 @@ impl Drop for BatchGuard {
             });
             if outermost {
                 PENDING_UPDATES.with(|updates| updates.borrow_mut().clear());
+                super::tracker::discard_deferred();
             }
         } else {
             end_batch();

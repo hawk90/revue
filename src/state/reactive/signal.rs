@@ -283,6 +283,29 @@ impl<T: 'static> Signal<T> {
         // overflow.
         let _depth = enter_notify();
 
+        // Inside a batch, hold each subscription until it ends (once). What
+        // is held is the subscription, not its callback: one dropped before
+        // the batch ends is not called.
+        if super::batch::is_batching() {
+            let ids: Vec<SubscriptionId> =
+                read_or_recover(&self.subscribers).keys().copied().collect();
+            for id in ids {
+                let subscribers = Arc::downgrade(&self.subscribers);
+                super::tracker::defer_callback(
+                    (self.id.0, id.0),
+                    Arc::new(move || {
+                        let callback = subscribers
+                            .upgrade()
+                            .and_then(|subs| read_or_recover(&subs).get(&id).cloned());
+                        if let Some(callback) = callback {
+                            callback();
+                        }
+                    }),
+                );
+            }
+            return;
+        }
+
         // Clone callbacks while holding read lock
         let callbacks: Vec<_> = {
             let subs = read_or_recover(&self.subscribers);

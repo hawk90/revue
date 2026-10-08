@@ -556,6 +556,22 @@ items:
       - src/state/reactive/signal.rs::update
     source:
       - FEATURES.md §3 Reactivity / Reactive Collections
+  - id: RX-005
+    title: 'batch(): defer reactions until a group of changes is done'
+    area: reactive
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - values change at once inside a batch; computed values read inside it are current
+      - effects and Signal::subscribe callbacks run once each when the outermost batch ends
+      - queue_update work runs before the deferred effects; flush() runs them early
+      - a panicking batch discards what it deferred and closes
+    evidence:
+      - src/state/reactive/batch.rs::batch
+      - tests/reactive/batch_defers.rs::an_effect_runs_once_after_the_batch_and_never_sees_half_an_update
+    source:
+      - docs/guides/state.md Batching
   - id: WID-001
     title: 100+ built-in widgets
     area: widget
