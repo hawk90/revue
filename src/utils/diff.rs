@@ -5,7 +5,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::diff::{diff_lines, diff_chars, DiffOp};
 //!
 //! let old = "Hello\nWorld";
@@ -99,7 +99,7 @@ impl DiffChange {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::diff::diff_lines;
 ///
 /// let changes = diff_lines("a\nb\nc", "a\nx\nc");
@@ -116,7 +116,7 @@ pub fn diff_lines(old: &str, new: &str) -> Vec<DiffChange> {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::diff::diff_chars;
 ///
 /// let changes = diff_chars("hello", "hallo");

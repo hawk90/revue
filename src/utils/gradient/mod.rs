@@ -5,7 +5,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use revue::utils::gradient::{Gradient, ColorStop};
 //! use revue::style::Color;
 //!
@@ -52,7 +52,7 @@ pub use types::{ColorStop, GradientDirection, InterpolationMode, SpreadMode};
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::gradient::{fill_gradient_horizontal, Gradient, ColorStop};
 /// use revue::style::Color;
 /// use revue::render::Buffer;
@@ -97,7 +97,7 @@ pub fn fill_gradient_horizontal(
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
 /// use revue::utils::gradient::{fill_gradient_vertical, Gradient, ColorStop};
 /// use revue::style::Color;
 /// use revue::render::Buffer;

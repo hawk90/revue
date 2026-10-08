@@ -4,10 +4,10 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! use revue::utils::format::{format_duration, format_size, format_relative_time};
+//! ```
+//! use revue::utils::format::{format_duration_short, format_relative_time, format_size};
 //!
-//! assert_eq!(format_duration_short(3661), "1h 1m");
+//! assert_eq!(format_duration_short(3661), "1h 1m 1s");
 //! assert_eq!(format_size(1536), "1.5 KB");
 //! assert_eq!(format_relative_time(3600), "1 hour ago");
 //! ```
@@ -41,7 +41,9 @@ impl DurationParts {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_duration;
+///
 /// assert_eq!(format_duration(90), "1 minute, 30 seconds");
 /// assert_eq!(format_duration(3661), "1 hour, 1 minute, 1 second");
 /// ```
@@ -89,7 +91,9 @@ pub fn format_duration(seconds: u64) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_duration_short;
+///
 /// assert_eq!(format_duration_short(90), "1m 30s");
 /// assert_eq!(format_duration_short(3661), "1h 1m 1s");
 /// assert_eq!(format_duration_short(86400), "1d");
@@ -122,7 +126,9 @@ pub fn format_duration_short(seconds: u64) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_duration_compact;
+///
 /// assert_eq!(format_duration_compact(90), "1m");
 /// assert_eq!(format_duration_compact(3661), "1h");
 /// assert_eq!(format_duration_compact(86400), "1d");
@@ -163,7 +169,9 @@ pub fn format_std_duration_short(duration: Duration) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_relative_time;
+///
 /// assert_eq!(format_relative_time(30), "just now");
 /// assert_eq!(format_relative_time(90), "1 minute ago");
 /// assert_eq!(format_relative_time(7200), "2 hours ago");
@@ -226,7 +234,9 @@ pub fn format_relative_time(seconds_ago: u64) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_relative_time_short;
+///
 /// assert_eq!(format_relative_time_short(30), "now");
 /// assert_eq!(format_relative_time_short(90), "1m ago");
 /// assert_eq!(format_relative_time_short(7200), "2h ago");
@@ -275,7 +285,9 @@ pub fn format_relative_time_short(seconds_ago: u64) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_size;
+///
 /// assert_eq!(format_size(500), "500 B");
 /// assert_eq!(format_size(1024), "1.0 KB");
 /// assert_eq!(format_size(1536), "1.5 KB");
@@ -330,7 +342,9 @@ pub fn format_size_si(bytes: u64) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_size_compact;
+///
 /// assert_eq!(format_size_compact(1536), "1.5K");
 /// assert_eq!(format_size_compact(1048576), "1M");
 /// ```
@@ -377,7 +391,9 @@ pub fn format_size_compact(bytes: u64) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_rate;
+///
 /// assert_eq!(format_rate(1536), "1.5 KB/s");
 /// assert_eq!(format_rate(1048576), "1.0 MB/s");
 /// ```
@@ -398,7 +414,9 @@ pub fn format_rate_compact(bytes_per_second: u64) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_number;
+///
 /// assert_eq!(format_number(1234567), "1,234,567");
 /// ```
 pub fn format_number(n: u64) -> String {
@@ -420,7 +438,9 @@ pub fn format_number(n: u64) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_number_short;
+///
 /// assert_eq!(format_number_short(1500), "1.5K");
 /// assert_eq!(format_number_short(1500000), "1.5M");
 /// ```
@@ -455,7 +475,9 @@ pub fn format_number_short(n: u64) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::format_percent;
+///
 /// assert_eq!(format_percent(0.5), "50%");
 /// assert_eq!(format_percent(0.333), "33%");
 /// ```
@@ -479,7 +501,9 @@ pub fn format_percent_precise(ratio: f64, decimals: usize) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::pluralize;
+///
 /// assert_eq!(pluralize(1, "item", "items"), "1 item");
 /// assert_eq!(pluralize(5, "item", "items"), "5 items");
 /// ```
@@ -504,7 +528,9 @@ pub fn pluralize_s(count: u64, word: &str) -> String {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```
+/// use revue::utils::format::ordinal;
+///
 /// assert_eq!(ordinal(1), "1st");
 /// assert_eq!(ordinal(2), "2nd");
 /// assert_eq!(ordinal(3), "3rd");
