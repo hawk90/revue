@@ -62,6 +62,7 @@ use super::signal_vec::{SignalVec, VecSubscription};
 use super::tracker::{notify_dependents, track_read};
 use super::SignalId;
 use crate::utils::lock::lock_or_recover;
+use std::panic::AssertUnwindSafe;
 use std::sync::{Arc, Mutex};
 
 /// Handlers for incremental updates from a SignalVec
@@ -178,7 +179,11 @@ pub struct IncrementalComputed<T: Clone + Send + Sync + 'static, R: Clone + Send
     /// Unique ID
     id: SignalId,
     /// Keeps the handlers subscribed to `source` while any clone is alive
-    _subscription: Arc<VecSubscription<T>>,
+    ///
+    /// It is only ever dropped, never read, so a panic cannot leave it in a
+    /// state anyone observes: asserting unwind safety keeps the type
+    /// `UnwindSafe` and `RefUnwindSafe` as it was.
+    _subscription: Arc<AssertUnwindSafe<VecSubscription<T>>>,
 }
 
 impl<T: Clone + Send + Sync + 'static, R: Clone + Send + Sync + 'static> IncrementalComputed<T, R> {
@@ -248,7 +253,7 @@ impl<T: Clone + Send + Sync + 'static, R: Clone + Send + Sync + 'static> Increme
             source,
             cached,
             id,
-            _subscription: Arc::new(subscription),
+            _subscription: Arc::new(AssertUnwindSafe(subscription)),
         }
     }
 
