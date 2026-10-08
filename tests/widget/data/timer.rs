@@ -53,3 +53,28 @@ fn progress_width_sets_the_bar_width() {
     let widths: Vec<usize> = (0..6).map(bar_cells).filter(|&n| n > 0).collect();
     assert_eq!(widths, vec![12], "bar widths per row: {widths:?}");
 }
+
+#[test]
+fn the_default_progress_bar_spans_the_timer() {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+
+    let timer = Timer::countdown(60);
+    let mut buffer = Buffer::new(40, 6);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 40, 6));
+    timer.render(&mut ctx);
+
+    let widest = (0..6)
+        .map(|y| {
+            (0..40)
+                .filter(|&x| matches!(buffer.get(x, y).map(|c| c.symbol), Some('█' | '░')))
+                .count()
+        })
+        .max();
+    assert_eq!(
+        widest,
+        Some(40),
+        "without progress_width the bar fills the width"
+    );
+}

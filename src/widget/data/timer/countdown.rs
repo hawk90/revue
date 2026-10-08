@@ -57,7 +57,7 @@ impl Timer {
             paused_remaining: None,
             format: TimerFormat::default(),
             show_progress: true,
-            progress_width: 30,
+            progress_width: 0,
             fg: None,
             warning_fg: Some(Color::YELLOW),
             danger_fg: Some(Color::RED),
@@ -100,7 +100,8 @@ impl Timer {
         self
     }
 
-    /// Set progress bar width in cells (default 30; a narrower area clips it)
+    /// Set progress bar width in cells (a narrower area clips it). The default,
+    /// 0, stretches the bar across the timer's width.
     pub fn progress_width(mut self, width: u16) -> Self {
         self.progress_width = width;
         self
@@ -310,7 +311,11 @@ impl View for Timer {
         // Progress bar
         if self.show_progress {
             let progress = Progress::new(self.progress()).filled_color(color);
-            content = content.child(hstack().child_sized(progress, self.progress_width));
+            content = if self.progress_width > 0 {
+                content.child(hstack().child_sized(progress, self.progress_width))
+            } else {
+                content.child(progress)
+            };
         }
 
         // State indicator
