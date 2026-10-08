@@ -10,6 +10,9 @@
   "schedule": [
     "before 9am on monday"
   ],
+  "prCreation": "not-pending",
+  "internalChecksFilter": "strict",
+  "internalChecksAsSuccess": true,
   "labels": [
     "dependencies"
   ],
@@ -27,6 +30,7 @@
   },
   "lockFileMaintenance": {
     "enabled": true,
+    "rebaseWhen": "conflicted",
     "schedule": [
       "before 9am on the first day of the month"
     ]
