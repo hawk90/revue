@@ -40,6 +40,7 @@ use std::sync::{Arc, RwLock};
 ///
 /// Effect closures must be `Send + Sync` since Signals are now thread-safe.
 /// This is automatically satisfied when capturing Signals.
+#[must_use = "an effect stops when its handle is dropped; bind it, e.g. `let _effect = ...`"]
 pub struct Effect {
     /// The effect function wrapped in Arc for sharing with tracker
     effect_fn: Arc<dyn Fn() + Send + Sync>,
@@ -212,7 +213,7 @@ mod tests {
         let count = Arc::new(AtomicI32::new(0));
         let count_clone = count.clone();
 
-        Effect::new(move || {
+        let _effect = Effect::new(move || {
             count_clone.fetch_add(1, Ordering::SeqCst);
         });
 
@@ -225,7 +226,7 @@ mod tests {
         let executed = Arc::new(AtomicBool::new(false));
         let executed_clone = executed.clone();
 
-        Effect::new(move || {
+        let _effect = Effect::new(move || {
             executed_clone.store(true, Ordering::SeqCst);
         });
 
@@ -238,7 +239,7 @@ mod tests {
         let count = Arc::new(AtomicI32::new(0));
         let count_clone = count.clone();
 
-        Effect::lazy(move || {
+        let _effect = Effect::lazy(move || {
             count_clone.fetch_add(1, Ordering::SeqCst);
         });
 

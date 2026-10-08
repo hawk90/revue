@@ -192,6 +192,10 @@ pub fn computed<T: Clone + Send + Sync + 'static>(
 
 /// Create a side effect
 ///
+/// The effect runs once now, then again whenever a signal it read changes,
+/// for as long as the returned [`Effect`] is alive. Dropping it stops the
+/// effect, so keep it in a variable or a field.
+///
 /// The closure must be `Send + Sync` since Signals are thread-safe.
 /// This is automatically satisfied when capturing Signals.
 pub fn effect(f: impl Fn() + Send + Sync + 'static) -> Effect {

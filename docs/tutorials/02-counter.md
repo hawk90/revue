@@ -128,8 +128,9 @@ fn main() -> Result<()> {
         move || format!("Count: {}", count.get())
     });
 
-    // Create an effect for side effects
-    effect({
+    // Create an effect for side effects. It runs while `_milestones` is
+    // alive, here until `main` returns.
+    let _milestones = effect({
         let count = count.clone();
         move || {
             let value = count.get();

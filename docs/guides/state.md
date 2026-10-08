@@ -228,16 +228,18 @@ let items = signal(vec![...]);
 
 ### 4. Use Effects Sparingly
 
-Effects are for side effects (logging, persistence), not rendering:
+Effects are for side effects (logging, persistence), not rendering. An
+effect runs only while its handle is alive, so keep it (`let _logger = ...`, or
+a field of your view); dropping it stops the effect:
 
 ```rust
 // Good: Logging side effect
-effect(move || {
+let _logger = effect(move || {
     log::info!("Selection changed: {}", selected.get());
 });
 
 // Bad: Don't use effects for rendering logic
-effect(move || {
+let _render = effect(move || {
     // This should be in render()
 });
 ```

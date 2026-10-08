@@ -344,7 +344,7 @@ pub fn use_context<T: Clone + Send + Sync + 'static>(context: &Context<T>) -> Op
 ///
 /// let theme_signal = use_context_signal(&theme);
 ///
-/// effect(move || {
+/// let _on_theme = effect(move || {
 ///     if let Some(sig) = &theme_signal {
 ///         println!("Theme changed to: {}", sig.get());
 ///     }

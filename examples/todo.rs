@@ -120,13 +120,6 @@ impl ReactiveTodoList {
         let items_clone4 = items.clone();
         let total_count = computed(move || items_clone4.with(|items| items.len()));
 
-        // Effect: log when items change (optional)
-        let items_clone5 = items.clone();
-        effect(move || {
-            let count = items_clone5.with(|items| items.len());
-            println!("Total items: {}", count);
-        });
-
         Self {
             items,
             filter,

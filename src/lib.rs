@@ -83,7 +83,7 @@
 //! let count = signal(0);
 //! let doubled = computed(move || count.get() * 2);
 //!
-//! effect(move || {
+//! let _logger = effect(move || {
 //!     println!("Count changed to: {}", count.get());
 //! });
 //!
