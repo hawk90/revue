@@ -150,15 +150,17 @@ impl DateTimePicker {
     }
 
     /// Set selected time
+    ///
+    /// Clamped to [`min_time`](Self::min_time)/[`max_time`](Self::max_time).
     pub fn selected_time(mut self, time: Time) -> Self {
-        self.time = time;
+        self.time = self.clamp_time(time);
         self
     }
 
     /// Set both date and time
     pub fn selected(mut self, date: Date, time: Time) -> Self {
         self.date = date;
-        self.time = time;
+        self.time = self.clamp_time(time);
         self.cursor_day = date.day;
         self
     }
@@ -176,6 +178,9 @@ impl DateTimePicker {
     }
 
     /// Use 24-hour format
+    ///
+    /// `false` shows the hour on a 12-hour clock followed by `AM`/`PM`. The
+    /// stored [`Time`] stays 24-hour either way.
     pub fn use_24h(mut self, use_24h: bool) -> Self {
         self.use_24h = use_24h;
         self
@@ -201,15 +206,45 @@ impl DateTimePicker {
     }
 
     /// Set minimum time
+    ///
+    /// The selected time is clamped to it, and the arrow keys stop there.
     pub fn min_time(mut self, time: Time) -> Self {
         self.min_time = Some(time);
+        self.time = self.clamp_time(self.time);
         self
     }
 
     /// Set maximum time
+    ///
+    /// The selected time is clamped to it, and the arrow keys stop there.
     pub fn max_time(mut self, time: Time) -> Self {
         self.max_time = Some(time);
+        self.time = self.clamp_time(self.time);
         self
+    }
+
+    /// `time` moved into `min_time`/`max_time`.
+    fn clamp_time(&self, time: Time) -> Time {
+        let time = self.min_time.map_or(time, |min| time.max(min));
+        self.max_time.map_or(time, |max| time.min(max))
+    }
+
+    /// Keep a time the arrow keys just changed within `min_time`/`max_time`.
+    ///
+    /// A step past a limit stops at it. A step that wrapped around the clock -
+    /// hour 23 to 0, or 0 to 23 - and landed outside the range is undone
+    /// instead, since clamping it would jump to the opposite limit.
+    fn keep_time_in_limits(&mut self, before: Time, up: bool) {
+        let clamped = self.clamp_time(self.time);
+        if clamped == self.time {
+            return;
+        }
+        let wrapped = if up {
+            self.time < before
+        } else {
+            self.time > before
+        };
+        self.time = if wrapped { before } else { clamped };
     }
 
     /// Get selected datetime
@@ -454,11 +489,15 @@ impl input::Input for DateTimePicker {
     }
 
     fn nav_increment_time(&mut self) {
+        let before = self.time;
         <Self as navigation::Navigation>::increment_time(self);
+        self.keep_time_in_limits(before, true);
     }
 
     fn nav_decrement_time(&mut self) {
+        let before = self.time;
         <Self as navigation::Navigation>::decrement_time(self);
+        self.keep_time_in_limits(before, false);
     }
 }
 
@@ -490,6 +529,10 @@ impl render::Rendering for DateTimePicker {
 
     fn show_seconds(&self) -> bool {
         self.show_seconds
+    }
+
+    fn use_24h(&self) -> bool {
+        self.use_24h
     }
 
     fn header_fg(&self) -> Color {

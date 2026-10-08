@@ -19,6 +19,11 @@ pub trait Rendering {
     fn time_field(&self) -> super::types::TimeField;
     fn show_seconds(&self) -> bool;
 
+    /// Show the hour on a 24-hour clock; `false` shows 12-hour with AM/PM.
+    fn use_24h(&self) -> bool {
+        true
+    }
+
     // Colors
     fn header_fg(&self) -> Color;
     fn selected_fg(&self) -> Color;
@@ -167,7 +172,16 @@ pub trait Rendering {
         let mut field_x = x;
 
         // Hour
-        let hour_str = format!("{:02}", self.time().hour);
+        let hour = self.time().hour;
+        let shown_hour = if self.use_24h() {
+            hour
+        } else {
+            match hour % 12 {
+                0 => 12,
+                h => h,
+            }
+        };
+        let hour_str = format!("{:02}", shown_hour);
         let (hour_fg, hour_bg) = if self.mode() == super::types::DateTimeMode::Time
             && self.time_field() == super::types::TimeField::Hour
         {
@@ -243,6 +257,12 @@ pub trait Rendering {
                 second_fg,
                 second_bg.is_some(),
             );
+            field_x += 2;
+        }
+
+        if !self.use_24h() {
+            let meridiem = if hour < 12 { " AM" } else { " PM" };
+            self.draw_text(ctx, field_x, field_y, meridiem, field_fg, false);
         }
 
         // Instructions
