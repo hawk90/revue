@@ -106,8 +106,12 @@ impl<T: Send + 'static> AsyncTask<T> {
     }
 
     /// Check if task is still running
+    ///
+    /// Once this returns `false`, the result (if the task did not panic) is
+    /// ready for [`try_recv`](Self::try_recv) or [`wait`](Self::wait).
+    /// Checking does not take the result.
     pub fn is_running(&self) -> bool {
-        matches!(self.rx.try_recv(), Err(TryRecvError::Empty))
+        self.handle.as_ref().is_some_and(|h| !h.is_finished())
     }
 
     /// Wait for task to complete (blocking)
@@ -119,8 +123,8 @@ impl<T: Send + 'static> AsyncTask<T> {
 
     /// Cancel the task
     ///
-    /// Drops the receiver, which will cause the sender to fail.
-    /// The background thread will continue until it tries to send.
+    /// Drops the receiver and waits for the background thread to finish, so
+    /// this blocks until the task's closure returns.
     pub fn cancel(mut self) {
         drop(self.rx);
         if let Some(handle) = self.handle.take() {
