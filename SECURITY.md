@@ -112,6 +112,9 @@ Revue includes several security features:
 
 ### Recent Security Fixes
 
+- **v3.7.0** (PR #896, [GHSA-369w-9xqc-8542](https://github.com/hawk90/revue/security/advisories/GHSA-369w-9xqc-8542)): Fixed command injection in `open_url` / `open_browser` on Windows
+  - URLs were passed through `cmd /C start`, where characters such as `>`, `<`, `^` and `%VAR%` slipped past validation
+  - Windows now launches `explorer <url>` with the URL as a single argument, without a shell
 - **v2.43.1** (PR #340): Fixed command injection in accessibility backends
   - macOS osascript commands now properly escape quotes, backslashes, and control characters
   - Windows PowerShell commands use single-quote escaping for safe parameter passing
