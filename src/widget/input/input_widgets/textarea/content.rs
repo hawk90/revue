@@ -144,28 +144,9 @@ impl TextArea {
             }
         } else {
             // Multi-line selection
-            // Get the content before and after selection
-            let before: String = self
-                .lines
-                .get(sel.start.0)
-                .map(|l| l.chars().take(sel.start.1).collect())
-                .unwrap_or_default();
-            let after: String = self
-                .lines
-                .get(sel.end.0)
-                .map(|l| l.chars().skip(sel.end.1).collect())
-                .unwrap_or_default();
-
-            // Remove lines between start and end
-            for _ in sel.start.0..=sel.end.0 {
-                if sel.start.0 < self.lines.len() {
-                    self.lines.remove(sel.start.0);
-                }
-            }
-
-            // Insert merged line
-            self.lines
-                .insert(sel.start.0, format!("{}{}", before, after));
+            let start = CursorPos::new(sel.start.0, sel.start.1);
+            let end = CursorPos::new(sel.end.0, sel.end.1);
+            self.replace_with_undo(start, end, "");
         }
 
         // Update cursor to selection start
@@ -202,6 +183,78 @@ impl TextArea {
             self.undo_stack.remove(0);
         }
         self.redo_stack.clear();
+    }
+
+    /// The text from `start` to `end`, `'\n'` between lines; positions
+    /// past the end of a line or the text are clamped
+    pub(super) fn text_between(&self, start: CursorPos, end: CursorPos) -> String {
+        let last = self.lines.len().saturating_sub(1);
+        let (start_line, end_line) = (start.line.min(last), end.line.min(last));
+        let mut text = String::new();
+        for line_idx in start_line..=end_line {
+            let line = &self.lines[line_idx];
+            let from = if line_idx == start_line { start.col } else { 0 };
+            let to = if line_idx == end_line {
+                end.col
+            } else {
+                usize::MAX
+            };
+            text.extend(line.chars().skip(from).take(to.saturating_sub(from)));
+            if line_idx < end_line {
+                text.push('\n');
+            }
+        }
+        text
+    }
+
+    /// Replace `removed`, the text at `line`/`col`, with `inserted`; either
+    /// may span lines. Returns the position just after `inserted`.
+    pub(super) fn splice(
+        &mut self,
+        line: usize,
+        col: usize,
+        removed: &str,
+        inserted: &str,
+    ) -> CursorPos {
+        let last = self.lines.len().saturating_sub(1);
+        let line = line.min(last);
+        let end_line = (line + removed.matches('\n').count()).min(last);
+        let end_col = match removed.rsplit_once('\n') {
+            Some((_, tail)) => tail.chars().count(),
+            None => col + removed.chars().count(),
+        };
+
+        let before: String = self.lines[line].chars().take(col).collect();
+        let after: String = self.lines[end_line].chars().skip(end_col).collect();
+        let text = format!("{before}{inserted}{after}");
+        self.lines
+            .splice(line..=end_line, text.split('\n').map(String::from));
+
+        match inserted.rsplit_once('\n') {
+            Some((_, tail)) => {
+                CursorPos::new(line + inserted.matches('\n').count(), tail.chars().count())
+            }
+            None => CursorPos::new(line, col + inserted.chars().count()),
+        }
+    }
+
+    /// Replace the text from `start` to `end` with `inserted`, as one undo
+    /// step. Returns the position just after `inserted`.
+    pub(super) fn replace_with_undo(
+        &mut self,
+        start: CursorPos,
+        end: CursorPos,
+        inserted: &str,
+    ) -> CursorPos {
+        let removed = self.text_between(start, end);
+        let after = self.splice(start.line, start.col, &removed, inserted);
+        self.push_undo(EditOperation::Replace {
+            line: start.line,
+            col: start.col,
+            removed,
+            inserted: inserted.to_string(),
+        });
+        after
     }
 
     /// Set primary cursor position (internal helper, clamped to valid range)
