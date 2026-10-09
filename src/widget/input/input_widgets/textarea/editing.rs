@@ -1,5 +1,6 @@
 //! Text editing methods for TextArea
 
+use super::cursor::{CursorPos, CursorSet};
 use super::edit::EditOperation;
 
 impl TextArea {
@@ -40,52 +41,65 @@ impl TextArea {
         }
     }
 
-    /// Insert a string at cursor
+    /// Insert a string at cursor, replacing the selection if any; one
+    /// undo step. Line breaks past [`max_lines`](Self::max_lines) are
+    /// dropped, as Enter is refused there, and the text goes in.
     pub fn insert_str(&mut self, s: &str) {
         if self.read_only {
             return;
         }
 
-        if self.has_selection() {
-            self.delete_selection();
-        }
+        let cursor = self.cursors.primary();
+        let (start, end) = match cursor.selection() {
+            Some(sel) => {
+                let sel = sel.normalized();
+                (
+                    CursorPos::new(sel.start.0, sel.start.1),
+                    CursorPos::new(sel.end.0, sel.end.1),
+                )
+            }
+            None => (cursor.pos, cursor.pos),
+        };
 
-        // Handle multi-line inserts
-        let parts: Vec<&str> = s.split('\n').collect();
-        if parts.len() == 1 {
-            // Single line insert
-            let cursor_pos = self.cursors.primary().pos;
-            if let Some(line) = self.lines.get_mut(cursor_pos.line) {
-                let col = cursor_pos.col.min(line.chars().count());
+        if start == end && !s.contains('\n') {
+            // Plain insert on one line
+            if let Some(line) = self.lines.get_mut(start.line) {
+                let col = start.col.min(line.chars().count());
                 let byte_col = crate::utils::text::char_to_byte_index(line, col);
                 line.insert_str(byte_col, s);
                 self.push_undo(EditOperation::Insert {
-                    line: cursor_pos.line,
+                    line: start.line,
                     col,
                     text: s.to_string(),
                 });
-                self.set_primary_cursor(cursor_pos.line, col + s.chars().count());
+                self.set_primary_cursor(start.line, col + s.chars().count());
             }
-        } else {
-            // Multi-line insert
-            for (i, part) in parts.iter().enumerate() {
-                let cursor_pos = self.cursors.primary().pos;
-                if i == 0 {
-                    if let Some(line) = self.lines.get_mut(cursor_pos.line) {
-                        let byte_col = crate::utils::text::char_to_byte_index(line, cursor_pos.col);
-                        line.insert_str(byte_col, part);
-                    }
-                    self.set_primary_cursor(cursor_pos.line, cursor_pos.col + part.chars().count());
-                } else {
-                    self.insert_newline();
-                    let cursor_pos = self.cursors.primary().pos;
-                    if let Some(line) = self.lines.get_mut(cursor_pos.line) {
-                        line.insert_str(0, part);
-                    }
-                    self.set_primary_cursor(cursor_pos.line, part.chars().count());
-                }
-            }
+            return;
         }
+
+        let s = self.fit_line_breaks(s, end.line - start.line);
+        let after = self.replace_with_undo(start, end, &s);
+        self.cursors = CursorSet::new(after);
+    }
+
+    /// `s` with the line breaks that would take the text past `max_lines`
+    /// dropped, when inserting it over `removed_breaks` line breaks
+    fn fit_line_breaks(&self, s: &str, removed_breaks: usize) -> String {
+        if self.max_lines == 0 {
+            return s.to_string();
+        }
+        let kept_lines = self.lines.len() - removed_breaks;
+        let mut room = self.max_lines.saturating_sub(kept_lines);
+        s.chars()
+            .filter(|&c| {
+                if c != '\n' {
+                    return true;
+                }
+                let fits = room > 0;
+                room = room.saturating_sub(1);
+                fits
+            })
+            .collect()
     }
 
     /// Insert a newline at cursor
