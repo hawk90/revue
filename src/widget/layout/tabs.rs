@@ -348,6 +348,24 @@ impl View for Tabs {
     crate::impl_view_meta!("Tabs");
 }
 
+/// The columns each label takes in the bar `Tabs` draws, relative to its
+/// left edge, as `start..end`: a space, the label, a space, then a divider
+/// column before the next. Columns past the bar's width are not drawn.
+pub(crate) fn label_spans<'a>(labels: impl IntoIterator<Item = &'a str>) -> Vec<(u16, u16)> {
+    let mut x: u16 = 0;
+    labels
+        .into_iter()
+        .map(|label| {
+            let start = x;
+            let width = u16::try_from(crate::utils::display_width(label)).unwrap_or(u16::MAX);
+            x = x.saturating_add(width).saturating_add(2);
+            let span = (start, x);
+            x = x.saturating_add(1);
+            span
+        })
+        .collect()
+}
+
 /// Helper function to create tabs
 pub fn tabs() -> Tabs {
     Tabs::new()
@@ -363,6 +381,25 @@ impl_props_builders!(Tabs);
 mod tests {
     use super::*;
     use crate::render::Buffer;
+
+    #[test]
+    fn label_spans_match_the_drawn_bar() {
+        let labels = ["one", "日本", "x"];
+        let t = Tabs::new().tabs(labels.to_vec());
+        let mut buf = Buffer::new(30, 1);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, 30, 1));
+        t.render(&mut ctx);
+
+        let spans = label_spans(labels);
+        assert_eq!(spans, vec![(0, 5), (6, 12), (13, 16)]);
+        for (i, &(start, end)) in spans.iter().enumerate() {
+            assert_eq!(buf.get(start, 0).unwrap().symbol, ' ');
+            assert_eq!(buf.get(end - 1, 0).unwrap().symbol, ' ');
+            if i + 1 < spans.len() {
+                assert_eq!(buf.get(end, 0).unwrap().symbol, '│');
+            }
+        }
+    }
 
     #[test]
     fn test_tabs_new_empty() {

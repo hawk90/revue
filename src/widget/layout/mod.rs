@@ -20,6 +20,7 @@
 //! | [`Grid`] | CSS Grid layout | [`grid()`] |
 //! | [`Splitter`] | Resizable split panes | [`hsplit()`][hsplit], [`vsplit()`][vsplit] |
 //! | [`SplitView`] | Resizable panes holding widgets | [`split_view()`] |
+//! | [`TabView`] | Tab bar and the selected tab's widget | [`tab_view()`] |
 //! | [`ScrollView`] | Scrollable container | [`scroll_view()`] |
 //! | [`Layers`] | Z-index layering | [`layers()`] |
 //! | [`Positioned`] | Absolute positioning | [`positioned()`] |
@@ -132,6 +133,7 @@ pub mod sidebar;
 pub mod split_view;
 pub mod splitter;
 pub mod stack;
+pub mod tab_view;
 pub mod tabs;
 
 // Re-exports for convenience
@@ -158,4 +160,5 @@ pub use splitter::{
     hsplit, pane, splitter, vsplit, HSplit, Pane, SplitOrientation, Splitter, SplitterStyle, VSplit,
 };
 pub use stack::{hstack, vstack, Direction, Stack};
+pub use tab_view::{tab_view, TabState, TabView};
 pub use tabs::{tabs, Tab, Tabs};

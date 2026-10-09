@@ -18,6 +18,7 @@
 //! | [`Grid`] | CSS Grid layout | [`grid()`] |
 //! | [`Splitter`] | Resizable panes | [`hsplit()`], [`vsplit()`] |
 //! | [`SplitView`] | Resizable panes holding widgets | [`split_view()`] |
+//! | [`TabView`] | Tab bar and the selected tab's widget | [`tab_view()`] |
 //! | [`Accordion`] | Collapsible sections | [`accordion()`] |
 //! | [`Collapsible`] | Single expandable section | [`collapsible()`] |
 //! | [`Card`] | Content container | [`card()`] |
@@ -288,12 +289,12 @@ pub use layout::{
     accordion, border, card, collapsible, draw_border, grid, grid_item, grid_template, hsplit,
     hstack, layer, layers, pane, positioned, resizable, screen, screen_stack, scroll, scroll_view,
     section, sidebar, sidebar_item, sidebar_section, sidebar_section_titled, split_view, splitter,
-    stack, tabs, vsplit, vstack, Accordion, AccordionSection, Anchor, Border, BorderType, Card,
-    CardVariant, CollapseMode, Collapsible, Direction, FlattenedItem, Grid, GridAlign, GridItem,
-    GridPlacement, HSplit, Layers, Pane, Positioned, Resizable, ResizeDirection, ResizeHandle,
-    ResizeStyle, Screen, ScreenStack, ScreenTransition, ScrollView, Sidebar, SidebarItem,
-    SidebarSection, SplitOrientation, SplitState, SplitView, Splitter, SplitterStyle, Stack, Tab,
-    Tabs, TrackSize, VSplit,
+    stack, tab_view, tabs, vsplit, vstack, Accordion, AccordionSection, Anchor, Border, BorderType,
+    Card, CardVariant, CollapseMode, Collapsible, Direction, FlattenedItem, Grid, GridAlign,
+    GridItem, GridPlacement, HSplit, Layers, Pane, Positioned, Resizable, ResizeDirection,
+    ResizeHandle, ResizeStyle, Screen, ScreenStack, ScreenTransition, ScrollView, Sidebar,
+    SidebarItem, SidebarSection, SplitOrientation, SplitState, SplitView, Splitter, SplitterStyle,
+    Stack, Tab, TabState, TabView, Tabs, TrackSize, VSplit,
 };
 // Input widgets (re-exported from input_widgets module)
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
