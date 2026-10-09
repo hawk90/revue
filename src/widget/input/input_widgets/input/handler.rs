@@ -43,10 +43,7 @@ impl Input {
                 self.move_word_right();
                 Some(true)
             }
-            Key::Backspace => {
-                self.delete_word_left();
-                Some(true)
-            }
+            Key::Backspace => Some(self.delete_word_left()),
             _ => None,
         }
     }

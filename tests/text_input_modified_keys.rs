@@ -81,3 +81,42 @@ fn textarea_ctrl_a_selects_all_and_ctrl_shift_k_deletes_the_line() {
     assert!(ta.handle_key_event(&ctrl_shift('K')));
     assert_eq!(ta.get_content(), "two");
 }
+
+fn shift(key: Key) -> KeyEvent {
+    let mut event = KeyEvent::new(key);
+    event.shift = true;
+    event
+}
+
+fn type_str(input: &mut Input, text: &str) {
+    for c in text.chars() {
+        input.handle_key_event(&KeyEvent::new(Key::Char(c)));
+    }
+}
+
+#[test]
+fn input_ctrl_backspace_deletes_the_selection_like_backspace() {
+    let mut input = Input::new().value("hello world").focused(true);
+    input.handle_key_event(&shift(Key::Left));
+    input.handle_key_event(&shift(Key::Left));
+    assert_eq!(input.selected_text(), Some("ld"));
+
+    assert!(input.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    assert_eq!(input.text(), "hello wor");
+    assert!(!input.has_selection());
+    type_str(&mut input, "x");
+    assert_eq!(input.text(), "hello worx");
+}
+
+#[test]
+fn input_ctrl_backspace_without_a_selection_leaves_no_stale_anchor() {
+    let mut input = Input::new().value("hello world").focused(true);
+    // Select, then drop the selection by moving: the anchor may stay
+    input.handle_key_event(&shift(Key::Left));
+    input.handle_key_event(&KeyEvent::new(Key::Right));
+
+    assert!(input.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    assert_eq!(input.text(), "hello ");
+    type_str(&mut input, "x");
+    assert_eq!(input.text(), "hello x");
+}
