@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.1](https://github.com/hawk90/revue/compare/v3.9.0...v3.9.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **css,color_picker:** take hex colors of ASCII hex digits only ([#919](https://github.com/hawk90/revue/issues/919)) ([1815a5d](https://github.com/hawk90/revue/commit/1815a5dff6ce4508705c957f100dce44b4c82517))
+* **css:** style every selector of a selector list, not only the first ([#917](https://github.com/hawk90/revue/issues/917)) ([448d28e](https://github.com/hawk90/revue/commit/448d28ebe41c143dfd1ed6799877b2ea76df7683))
+* **render:** blank the other half of a wide glyph a write cuts in two ([#920](https://github.com/hawk90/revue/issues/920)) ([48edf05](https://github.com/hawk90/revue/commit/48edf057dbffd64a2f1c79883e4258c1294c394a))
+* **render:** compare what hyperlinks and escape sequences say, not their ids ([#918](https://github.com/hawk90/revue/issues/918)) ([4cae191](https://github.com/hawk90/revue/commit/4cae1913adb70985551dc002d3d758dd93726518))
+* **render:** keep paint order and wide cells in RenderBatch::optimize ([#921](https://github.com/hawk90/revue/issues/921)) ([f2cc8dc](https://github.com/hawk90/revue/commit/f2cc8dc391a8bc219942fa08c60b2e459723a78f))
+* **textarea,input:** replace all without overlap, unbound Ctrl/Alt letters not typed, Ctrl+Backspace with a selection ([#914](https://github.com/hawk90/revue/issues/914)) ([09b1d59](https://github.com/hawk90/revue/commit/09b1d596d7aa250b03c7c93d382d907a05d61c08))
+* **textarea:** make edits that span lines one undo step each ([#916](https://github.com/hawk90/revue/issues/916)) ([53753d2](https://github.com/hawk90/revue/commit/53753d2332f2ba1bbaa16fd20ce99f13948a75ca))
+
 ## [3.9.0](https://github.com/hawk90/revue/compare/v3.8.0...v3.9.0) (2026-10-09)
 
 
