@@ -67,8 +67,13 @@ use crate::{impl_props_builders, impl_styled_view};
 /// ([`min_size`](Pane::min_size), [`max_size`](Pane::max_size)) and whether
 /// it starts collapsed. Sizes the user drags to and panes the app collapses
 /// are kept in the [`SplitState`], keyed by pane id.
+///
+/// `'a` is how long the child widgets borrow: `'static` when they are
+/// owned, as they must be for the `SplitView` to go in a
+/// [`Stack`](crate::widget::Stack) or [`Border`](crate::widget::Border). The state is
+/// not borrowed.
 pub struct SplitView<'a> {
-    state: &'a SplitState,
+    state: SplitState,
     panes: Vec<(Pane, Box<dyn View + 'a>)>,
     orientation: SplitOrientation,
     style: SplitterStyle,
@@ -79,10 +84,11 @@ pub struct SplitView<'a> {
 }
 
 impl<'a> SplitView<'a> {
-    /// A side-by-side split drawn from `state`
-    pub fn new(state: &'a SplitState) -> Self {
+    /// A side-by-side split drawn from `state` (a handle to it: the view
+    /// does not borrow the state)
+    pub fn new(state: &SplitState) -> Self {
         Self {
-            state,
+            state: state.clone(),
             panes: Vec::new(),
             orientation: SplitOrientation::Horizontal,
             style: SplitterStyle::Line,
@@ -147,7 +153,7 @@ impl View for SplitView<'_> {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        self.state.record(Frame {
+        let (placed, resizing) = self.state.record(Frame {
             orientation: self.orientation,
             area,
             panes: self
@@ -163,7 +169,6 @@ impl View for SplitView<'_> {
                 .collect(),
         });
 
-        let placed = self.state.placed();
         let idle = self.color.unwrap_or_else(|| ctx.css_color(DARK_GRAY));
         let ch = self.style.char(self.orientation);
 
@@ -185,7 +190,7 @@ impl View for SplitView<'_> {
             if i + 1 == placed.len() {
                 break;
             }
-            let fg = if self.state.resizing() == Some(i) {
+            let fg = if resizing == Some(i) {
                 self.active_color
             } else {
                 idle
@@ -213,6 +218,6 @@ impl_styled_view!(SplitView<'_>);
 impl_props_builders!(SplitView<'_>);
 
 /// A side-by-side split drawn from `state`; see [`SplitView`]
-pub fn split_view(state: &SplitState) -> SplitView<'_> {
+pub fn split_view<'a>(state: &SplitState) -> SplitView<'a> {
     SplitView::new(state)
 }

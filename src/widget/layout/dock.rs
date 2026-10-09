@@ -108,6 +108,10 @@ impl DockPosition {
 /// The state of a [`Dock`]: area sizes the user has dragged, collapsed
 /// areas, and each area's selected tab. The app keeps it and builds the
 /// `Dock` from it every frame.
+///
+/// Like the [`SplitState`] and [`TabState`] it is made of, it is a handle:
+/// clones share one state, and the dock keeps a clone, so it does not
+/// borrow the app and can sit in any container.
 #[derive(Clone, Debug, Default)]
 pub struct DockState {
     /// Top, middle, bottom
@@ -207,18 +211,24 @@ impl Default for Area<'_> {
 
 /// Left, right, top, bottom and center areas of panels. See the
 /// [module docs](self).
+///
+/// `'a` is how long the child widgets borrow: `'static` when they are
+/// owned, as they must be for the `Dock` to go in a
+/// [`Stack`](crate::widget::Stack) or [`Border`](crate::widget::Border). The state is
+/// not borrowed.
 pub struct Dock<'a> {
-    state: &'a DockState,
+    state: DockState,
     /// By `DockPosition::index`
     areas: [Area<'a>; 5],
     props: WidgetProps,
 }
 
 impl<'a> Dock<'a> {
-    /// An empty dock drawn from `state`
-    pub fn new(state: &'a DockState) -> Self {
+    /// An empty dock drawn from `state` (a handle to it: the dock does not
+    /// borrow the state)
+    pub fn new(state: &DockState) -> Self {
         Self {
-            state,
+            state: state.clone(),
             areas: Default::default(),
             props: WidgetProps::new(),
         }
@@ -375,6 +385,6 @@ impl_styled_view!(Dock<'_>);
 impl_props_builders!(Dock<'_>);
 
 /// A dock drawn from `state`; see [`Dock`]
-pub fn dock(state: &DockState) -> Dock<'_> {
+pub fn dock<'a>(state: &DockState) -> Dock<'a> {
     Dock::new(state)
 }

@@ -231,10 +231,10 @@ pub fn catalog() -> Vec<Entry> {
                 ),
             )
         }),
-        // The views below borrow a state the app keeps; a leaked one
-        // stands in for the app's.
+        // The views below are drawn from a state the app keeps; a fresh
+        // one stands in for the app's.
         e("SplitView", |c, _| {
-            let state: &'static SplitState = Box::leak(Box::new(SplitState::new()));
+            let state = &SplitState::new();
             Box::new(
                 c.items
                     .iter()
@@ -245,7 +245,7 @@ pub fn catalog() -> Vec<Entry> {
             )
         }),
         e("TabView", |c, _| {
-            let state: &'static TabState = Box::leak(Box::new(TabState::new()));
+            let state = &TabState::new();
             Box::new(
                 c.items
                     .iter()
@@ -257,7 +257,7 @@ pub fn catalog() -> Vec<Entry> {
         }),
         e("Dock", |c, _| {
             use DockPosition::{Bottom, Center, Left, Right, Top};
-            let state: &'static DockState = Box::leak(Box::new(DockState::new()));
+            let state = &DockState::new();
             let areas = [Center, Left, Bottom, Right, Top];
             Box::new(c.items.iter().enumerate().fold(dock(state), |d, (i, s)| {
                 d.panel_with_id(

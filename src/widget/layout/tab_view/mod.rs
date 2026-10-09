@@ -67,8 +67,13 @@ pub enum TabBar {
 
 /// A tab bar on the first row and the selected tab's widget below it. See
 /// the [module docs](self).
+///
+/// `'a` is how long the child widgets borrow: `'static` when they are
+/// owned, as they must be for the `TabView` to go in a
+/// [`Stack`](crate::widget::Stack) or [`Border`](crate::widget::Border). The state is
+/// not borrowed.
 pub struct TabView<'a> {
-    state: &'a TabState,
+    state: TabState,
     /// (id, label, widget)
     tabs: Vec<(String, String, Box<dyn View + 'a>)>,
     bar: TabBar,
@@ -76,10 +81,11 @@ pub struct TabView<'a> {
 }
 
 impl<'a> TabView<'a> {
-    /// A tab view drawn from `state`
-    pub fn new(state: &'a TabState) -> Self {
+    /// A tab view drawn from `state` (a handle to it: the view does not
+    /// borrow the state)
+    pub fn new(state: &TabState) -> Self {
         Self {
-            state,
+            state: state.clone(),
             tabs: Vec::new(),
             bar: TabBar::Auto,
             props: WidgetProps::new(),
@@ -165,6 +171,6 @@ impl_styled_view!(TabView<'_>);
 impl_props_builders!(TabView<'_>);
 
 /// A tab view drawn from `state`; see [`TabView`]
-pub fn tab_view(state: &TabState) -> TabView<'_> {
+pub fn tab_view<'a>(state: &TabState) -> TabView<'a> {
     TabView::new(state)
 }
