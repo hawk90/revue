@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.0](https://github.com/hawk90/revue/compare/v3.8.0...v3.9.0) (2026-10-09)
+
+
+### Features
+
+* **dock:** an IDE-style layout of areas built from SplitView and TabView, replacing DockManager ([#911](https://github.com/hawk90/revue/issues/911)) ([2c89049](https://github.com/hawk90/revue/commit/2c8904960f726c5b0af7e7247845441c9d7a9703))
+* **layout:** shared state handles so docks nest in containers; rebuild the ide example on dock() ([#912](https://github.com/hawk90/revue/issues/912)) ([af64b48](https://github.com/hawk90/revue/commit/af64b48f39b394aa44d0a6be084da69d3a880e44))
+* **split_view:** panes that hold widgets, sized from a SplitState the app keeps ([#907](https://github.com/hawk90/revue/issues/907)) ([9895a4a](https://github.com/hawk90/revue/commit/9895a4ac2b50bfe8b0042968ada5b0c4ecb3c988))
+* **tab_view:** a tab bar and the selected tab's widget, switched through a TabState ([#909](https://github.com/hawk90/revue/issues/909)) ([4e4514c](https://github.com/hawk90/revue/commit/4e4514c33f38ce0a733c451fb25777cb40955b59))
+* **tab_view:** choose when the tab bar shows, by default with two tabs or more ([#910](https://github.com/hawk90/revue/issues/910)) ([77b8a55](https://github.com/hawk90/revue/commit/77b8a55e0aaeef19d93542606bc038fa9130d930))
+
+
+### Bug Fixes
+
+* **textarea:** keep the final newline through set_content and get_content ([#913](https://github.com/hawk90/revue/issues/913)) ([69c04e3](https://github.com/hawk90/revue/commit/69c04e395941a9b106272a68df18af1daef4bbd0))
+
 ## [3.8.0](https://github.com/hawk90/revue/compare/v3.7.0...v3.8.0) (2026-10-09)
 
 
