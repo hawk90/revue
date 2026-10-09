@@ -21,6 +21,7 @@
 //! | [`Splitter`] | Resizable split panes | [`hsplit()`][hsplit], [`vsplit()`][vsplit] |
 //! | [`SplitView`] | Resizable panes holding widgets | [`split_view()`] |
 //! | [`TabView`] | Tab bar and the selected tab's widget | [`tab_view()`] |
+//! | [`Dock`] | IDE-style areas: left, right, top, bottom, center | [`dock()`] |
 //! | [`ScrollView`] | Scrollable container | [`scroll_view()`] |
 //! | [`Layers`] | Z-index layering | [`layers()`] |
 //! | [`Positioned`] | Absolute positioning | [`positioned()`] |
