@@ -151,6 +151,16 @@ proptest = "1.11.0"
 tempfile = "3.27.0"
 serial_test = "4.0"
 
+# The Windows key-release test (tests/windows_key_release.rs) writes key
+# records into the console input buffer.
+[target.'cfg(windows)'.dev-dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Console",
+] }
+
 [[bench]]
 name = "render"
 harness = false
