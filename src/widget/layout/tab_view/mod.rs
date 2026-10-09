@@ -1,6 +1,6 @@
 //! Tab view: a tab bar and the selected tab's widget
 //!
-//! [`Tabs`](super::Tabs) draws only the bar; a `TabView` also renders the
+//! [`Tabs`] draws only the bar; a `TabView` also renders the
 //! selected tab's widget below it, through
 //! [`RenderContext::render_child`], so the widget is in the DOM. Only the
 //! selected tab is rendered.
