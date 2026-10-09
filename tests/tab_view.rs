@@ -5,7 +5,7 @@ use revue::event::{Key, MouseButton, MouseEvent, MouseEventKind};
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::testing::PipelineHarness;
-use revue::widget::{tab_view, RenderContext, TabState, TabView, Text, View};
+use revue::widget::{tab_view, RenderContext, TabBar, TabState, TabView, Text, View};
 
 /// Tabs `one` and `two`, whose bodies are text with ids `one-body`, `two-body`
 fn two_tabs(state: &TabState) -> TabView<'_> {
@@ -124,10 +124,10 @@ fn closing_the_selected_tab_selects_the_one_in_its_place() {
     assert_eq!(state.selected().as_deref(), Some("c"));
     render(&tabs(&["a", "c"], &state), 20, 2);
 
-    // the last tab is gone: the new last one
+    // the last tab is gone: the new last one, alone, so with no bar
     let buffer = render(&tabs(&["a"], &state), 20, 2);
     assert_eq!(state.selected().as_deref(), Some("a"));
-    assert!(row(&buffer, 1, 20).starts_with('A'));
+    assert!(row(&buffer, 0, 20).starts_with('A'));
 }
 
 #[test]
@@ -150,4 +150,39 @@ fn a_stylesheet_reaches_the_tab_bar() {
     let cell = h.buffer().get(7, 0).unwrap();
     assert_eq!(cell.symbol, 't');
     assert_eq!(cell.fg, Some(revue::style::Color::RED));
+}
+
+#[test]
+fn by_default_a_single_tab_shows_no_bar() {
+    let state = TabState::new();
+    let view = tab_view(&state).tab("one", Text::new("ONE"));
+    let buffer = render(&view, 12, 2);
+    assert_eq!(row(&buffer, 0, 12), "ONE         ");
+}
+
+#[test]
+fn the_bar_can_always_show() {
+    let state = TabState::new();
+    let view = tab_view(&state)
+        .tab("one", Text::new("ONE"))
+        .tab_bar(TabBar::Always);
+    let buffer = render(&view, 12, 2);
+    assert_eq!(row(&buffer, 0, 12), " one        ");
+    assert_eq!(row(&buffer, 1, 12), "ONE         ");
+}
+
+#[test]
+fn the_bar_can_be_hidden_with_several_tabs() {
+    let mut state = TabState::new();
+    fn view(state: &TabState) -> TabView<'_> {
+        two_tabs(state).tab_bar(TabBar::Never)
+    }
+    let buffer = render(&view(&state), 12, 2);
+    assert_eq!(row(&buffer, 0, 12), "ONE         ");
+
+    // No bar to click; keys and the app still switch
+    assert!(!state.handle_mouse(&click(8, 0)));
+    assert!(state.handle_key(&Key::Right));
+    let buffer = render(&view(&state), 12, 2);
+    assert_eq!(row(&buffer, 0, 12), "TWO         ");
 }

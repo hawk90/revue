@@ -3,7 +3,8 @@
 //! [`Tabs`] draws only the bar; a `TabView` also renders the
 //! selected tab's widget below it, through
 //! [`RenderContext::render_child`], so the widget is in the DOM. Only the
-//! selected tab is rendered.
+//! selected tab is rendered. The bar shows with two tabs or more, or as
+//! [`TabBar`] says.
 //!
 //! Which tab is selected lives in a [`TabState`] the app keeps, so the view
 //! can be built afresh every frame from the app's state.
@@ -52,12 +53,25 @@ use crate::layout::Rect;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
+/// When a [`TabView`] shows its tab bar
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TabBar {
+    /// With two tabs or more: a single widget shows on its own
+    #[default]
+    Auto,
+    /// Always, even over a single tab
+    Always,
+    /// Never: the tab is switched by keys or by the app
+    Never,
+}
+
 /// A tab bar on the first row and the selected tab's widget below it. See
 /// the [module docs](self).
 pub struct TabView<'a> {
     state: &'a TabState,
     /// (id, label, widget)
     tabs: Vec<(String, String, Box<dyn View + 'a>)>,
+    bar: TabBar,
     props: WidgetProps,
 }
 
@@ -67,6 +81,7 @@ impl<'a> TabView<'a> {
         Self {
             state,
             tabs: Vec::new(),
+            bar: TabBar::Auto,
             props: WidgetProps::new(),
         }
     }
@@ -75,6 +90,13 @@ impl<'a> TabView<'a> {
     pub fn tab(self, label: impl Into<String>, child: impl View + 'a) -> Self {
         let label = label.into();
         self.tab_with_id(label.clone(), label, child)
+    }
+
+    /// When to show the tab bar: by default ([`TabBar::Auto`]) with two
+    /// tabs or more
+    pub fn tab_bar(mut self, bar: TabBar) -> Self {
+        self.bar = bar;
+        self
     }
 
     /// Add a tab with an id apart from its label, for tabs whose labels
@@ -104,7 +126,13 @@ impl View for TabView<'_> {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let bar = Rect::new(area.x, area.y, area.width, area.height.min(1));
+        let show_bar = match self.bar {
+            TabBar::Auto => self.tabs.len() > 1,
+            TabBar::Always => true,
+            TabBar::Never => false,
+        };
+        let bar_height = if show_bar { area.height.min(1) } else { 0 };
+        let bar = Rect::new(area.x, area.y, area.width, bar_height);
         let labels = || self.tabs.iter().map(|(_, label, _)| label.as_str());
         let shown = self.state.record(
             self.tabs.iter().map(|(id, _, _)| id.clone()).collect(),
@@ -115,10 +143,17 @@ impl View for TabView<'_> {
             return;
         }
 
-        let tabs = Tabs::new().tabs(labels().collect()).selected(shown);
-        ctx.render_child(&tabs, bar);
+        if show_bar {
+            let tabs = Tabs::new().tabs(labels().collect()).selected(shown);
+            ctx.render_child(&tabs, bar);
+        }
 
-        let body = Rect::new(area.x, area.y + 1, area.width, area.height - 1);
+        let body = Rect::new(
+            area.x,
+            area.y + bar_height,
+            area.width,
+            area.height - bar_height,
+        );
         let child = self.tabs[shown].2.as_ref();
         if body.height > 0 && child.needs_render() {
             ctx.render_child(child, body);

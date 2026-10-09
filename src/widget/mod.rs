@@ -294,7 +294,7 @@ pub use layout::{
     GridItem, GridPlacement, HSplit, Layers, Pane, Positioned, Resizable, ResizeDirection,
     ResizeHandle, ResizeStyle, Screen, ScreenStack, ScreenTransition, ScrollView, Sidebar,
     SidebarItem, SidebarSection, SplitOrientation, SplitState, SplitView, Splitter, SplitterStyle,
-    Stack, Tab, TabState, TabView, Tabs, TrackSize, VSplit,
+    Stack, Tab, TabBar, TabState, TabView, Tabs, TrackSize, VSplit,
 };
 // Input widgets (re-exported from input_widgets module)
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};

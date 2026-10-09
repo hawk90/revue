@@ -160,5 +160,5 @@ pub use splitter::{
     hsplit, pane, splitter, vsplit, HSplit, Pane, SplitOrientation, Splitter, SplitterStyle, VSplit,
 };
 pub use stack::{hstack, vstack, Direction, Stack};
-pub use tab_view::{tab_view, TabState, TabView};
+pub use tab_view::{tab_view, TabBar, TabState, TabView};
 pub use tabs::{tabs, Tab, Tabs};
