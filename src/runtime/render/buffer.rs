@@ -247,11 +247,42 @@ impl Buffer {
         }
     }
 
-    /// Set a cell at position
+    /// Set a cell at position. Over half of a wide glyph, the other half
+    /// is blanked: the terminal erases the whole glyph.
     pub fn set(&mut self, x: u16, y: u16, cell: Cell) {
         if let Some(idx) = self.writable(x, y) {
+            self.split_wide_chars(y, x, x.saturating_add(1), !cell.is_continuation());
             self.cells[idx] = cell;
         }
+    }
+
+    /// Before columns `x_start..x_end` of row `y` are overwritten, blank the
+    /// half of any wide glyph the write cuts off, so the buffer never holds
+    /// a glyph the terminal has erased, or a continuation with no glyph.
+    /// `left` is false when the write is the continuation of a glyph just
+    /// written to its left.
+    ///
+    /// The blanked cell may lie outside the clip: it is half of a glyph
+    /// the write erases on screen either way.
+    fn split_wide_chars(&mut self, y: u16, x_start: u16, x_end: u16, left: bool) {
+        if left && x_start > 0 {
+            if let Some(idx) = self.index(x_start, y) {
+                if self.cells[idx].is_continuation() {
+                    Self::blank(&mut self.cells[idx - 1]);
+                }
+            }
+        }
+        if let Some(idx) = self.index(x_end, y) {
+            if self.cells[idx].is_continuation() {
+                Self::blank(&mut self.cells[idx]);
+            }
+        }
+    }
+
+    /// A space in place of half a wide glyph, keeping its colors
+    fn blank(cell: &mut Cell) {
+        cell.symbol = ' ';
+        cell.sequence_id = None;
     }
 
     /// Set foreground color at position
@@ -365,6 +396,7 @@ impl Buffer {
 
         // Fill each row using slice operations for better performance
         for row_y in y..y_end {
+            self.split_wide_chars(row_y, x, x_end, !cell.is_continuation());
             // Use saturating arithmetic to prevent overflow
             let start_idx = (row_y as usize)
                 .saturating_mul(row_width)
@@ -408,6 +440,7 @@ impl Buffer {
             }
 
             for y in rect.y..y_end {
+                self.split_wide_chars(y, x_start as u16, x_end as u16, true);
                 let start = (y as usize)
                     .saturating_mul(row_width)
                     .saturating_add(x_start);
