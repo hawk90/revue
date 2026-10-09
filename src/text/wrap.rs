@@ -151,8 +151,14 @@ impl TextWrapper {
                             break;
                         }
 
-                        // Truncate to fit in remaining width
-                        let chunk = truncate_to_width(remaining_str, remaining_width);
+                        // Truncate to fit in remaining width. A wide char
+                        // wider than that gets a line of its own, so the
+                        // loop always advances.
+                        let mut chunk = truncate_to_width(remaining_str, remaining_width);
+                        if chunk.is_empty() {
+                            let first = remaining_str.chars().next().map_or(0, char::len_utf8);
+                            chunk = &remaining_str[..first];
+                        }
                         lines.push(format!("{}{}", current_indent, chunk));
 
                         pos += chunk.len();
