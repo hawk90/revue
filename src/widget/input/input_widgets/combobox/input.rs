@@ -1,5 +1,6 @@
 //! Input handling methods for Combobox
 
+use super::super::dropdown::MIN_DROPDOWN_WIDTH;
 use super::super::Combobox;
 
 impl Combobox {
@@ -154,7 +155,9 @@ impl Combobox {
     /// Calculate display width
     pub(super) fn display_width(&self, max_width: u16) -> u16 {
         if let Some(w) = self.width {
-            return w.min(max_width);
+            // The header needs room for its arrow; a smaller configured
+            // width would leave none.
+            return w.max(MIN_DROPDOWN_WIDTH).min(max_width);
         }
 
         let max_option_len = self

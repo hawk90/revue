@@ -62,9 +62,9 @@ impl View for Streamline {
                     ctx.set(x + dx, chart_y, c);
                     dx += cw;
                 }
-                x += display_width(&layer.name) as u16 + 2;
+                x = x.saturating_add(display_width(&layer.name) as u16 + 2);
 
-                if x > area.width - 10 {
+                if x > area.width.saturating_sub(10) {
                     break;
                 }
             }

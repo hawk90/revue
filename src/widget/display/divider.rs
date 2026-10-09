@@ -221,10 +221,14 @@ impl View for Divider {
             Orientation::Horizontal => {
                 let start_x = self.margin;
                 let end_x = if self.length > 0 {
-                    (start_x + self.length).min(area.width)
+                    start_x.saturating_add(self.length).min(area.width)
                 } else {
                     area.width.saturating_sub(self.margin)
                 };
+                // Margins that meet or pass each other leave no room for a line.
+                if end_x <= start_x {
+                    return;
+                }
 
                 // Draw the line
                 if let Some(ref label) = self.label {
@@ -264,10 +268,13 @@ impl View for Divider {
             Orientation::Vertical => {
                 let start_y = self.margin;
                 let end_y = if self.length > 0 {
-                    (start_y + self.length).min(area.height)
+                    start_y.saturating_add(self.length).min(area.height)
                 } else {
                     area.height.saturating_sub(self.margin)
                 };
+                if end_y <= start_y {
+                    return;
+                }
 
                 ctx.draw_vline(0, start_y, end_y - start_y, line_char, color);
             }

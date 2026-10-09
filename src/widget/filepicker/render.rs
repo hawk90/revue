@@ -23,7 +23,7 @@ impl View for FilePicker {
 
         // Current path - truncate from the left to show the end of the path
         let path_str = self.current_dir.display().to_string();
-        let max_path_width = self.width as usize - 4;
+        let max_path_width = (self.width as usize).saturating_sub(4);
         let truncated_path = if crate::utils::display_width(&path_str) > max_path_width {
             let suffix_width = max_path_width.saturating_sub(3); // "..." prefix
                                                                  // Find suffix that fits by iterating from the end

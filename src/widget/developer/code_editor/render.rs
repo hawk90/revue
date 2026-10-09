@@ -96,7 +96,7 @@ impl View for CodeEditor {
 
         let line_num_width = self.line_number_width();
         let minimap_width = if self.config.show_minimap {
-            self.config.minimap_width
+            self.config.minimap_width.min(area.width)
         } else {
             0
         };

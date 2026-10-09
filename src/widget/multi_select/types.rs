@@ -1,6 +1,7 @@
 //! Core types for the multi-select widget
 
 use crate::style::Color;
+use crate::widget::input_widgets::dropdown::MIN_DROPDOWN_WIDTH;
 use crate::widget::traits::{WidgetProps, WidgetState};
 
 /// An option in the multi-select widget
@@ -298,7 +299,9 @@ impl MultiSelect {
     /// Calculate display width
     pub(super) fn display_width(&self, max_width: u16) -> u16 {
         if let Some(w) = self.width {
-            return w.min(max_width);
+            // The header needs room for its arrow; a smaller configured
+            // width would leave none.
+            return w.max(MIN_DROPDOWN_WIDTH).min(max_width);
         }
 
         let max_option_len = self
