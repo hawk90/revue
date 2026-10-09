@@ -6,7 +6,7 @@ use crate::widget::theme::DARK_GRAY;
 use crate::widget::traits::{RenderContext, View};
 
 impl SplitterStyle {
-    fn char(&self, orientation: SplitOrientation) -> char {
+    pub(crate) fn char(&self, orientation: SplitOrientation) -> char {
         match (self, orientation) {
             (SplitterStyle::Line, SplitOrientation::Horizontal) => '│',
             (SplitterStyle::Line, SplitOrientation::Vertical) => '─',

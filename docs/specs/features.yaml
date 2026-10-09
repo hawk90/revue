@@ -3,7 +3,7 @@
 # Verified against the code on 2026-10-05 (code wins over docs). `source` § refers to the
 # pre-2026-10-05 docs/FEATURES.md layout (see git history / docs narrative).
 schema: 1
-updated: '2026-10-08'
+updated: '2026-10-09'
 sources:
   - 'docs/FEATURES.md (pre-2026-10-05 layout: §1–§11, Advanced Widgets, Feature Comparison)'
 statuses:
@@ -1293,6 +1293,24 @@ items:
       - FEATURES.md §7 Developer Experience / Error Handling
     notes: Catches a child's render panic without restoring the terminal (tests/invariants.rs); no test checks the fallback content. Doc .fallback(|err| ..) takes a closure; real
       fallback() takes a View.
+  - id: WID-045
+    title: Split view holding widgets (resizable, collapsible panes)
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - each pane renders a widget, registered in the DOM (CSS and hit test reach it)
+      - drag a divider with the mouse; move it a cell at a time with the keyboard
+      - pane bounds (min/max) hold while resizing; sizes keep their proportion when the area changes
+      - panes collapse and expand from the app (state.toggle)
+    evidence:
+      - src/widget/layout/split_view/mod.rs::split_view
+      - tests/split_view.rs::children_are_in_the_dom_and_styled
+      - tests/split_view.rs::dragging_a_divider_moves_it_to_the_pointer
+    source:
+      - 'issue #836 (dock rebuild, step 1)'
+    notes: State (sizes, collapsed panes, the divider being moved) lives in a SplitState the app keeps; the view is rebuilt from it each frame. Tab view and dock() are steps 2 and 3 of #836.
   - id: CHART-001
     title: Shared chart components (Axis, Legend, ColorScheme, ChartGrid)
     area: chart

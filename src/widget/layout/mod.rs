@@ -19,6 +19,7 @@
 //! |--------|-------------|-------------|
 //! | [`Grid`] | CSS Grid layout | [`grid()`] |
 //! | [`Splitter`] | Resizable split panes | [`hsplit()`][hsplit], [`vsplit()`][vsplit] |
+//! | [`SplitView`] | Resizable panes holding widgets | [`split_view()`] |
 //! | [`ScrollView`] | Scrollable container | [`scroll_view()`] |
 //! | [`Layers`] | Z-index layering | [`layers()`] |
 //! | [`Positioned`] | Absolute positioning | [`positioned()`] |
@@ -128,6 +129,7 @@ pub mod resizable;
 pub mod screen;
 pub mod scroll;
 pub mod sidebar;
+pub mod split_view;
 pub mod splitter;
 pub mod stack;
 pub mod tabs;
@@ -151,6 +153,7 @@ pub use sidebar::{
     sidebar, sidebar_item, sidebar_section, sidebar_section_titled, CollapseMode, FlattenedItem,
     Sidebar, SidebarItem, SidebarSection,
 };
+pub use split_view::{split_view, SplitState, SplitView};
 pub use splitter::{
     hsplit, pane, splitter, vsplit, HSplit, Pane, SplitOrientation, Splitter, SplitterStyle, VSplit,
 };
