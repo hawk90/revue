@@ -252,7 +252,8 @@ impl MouseEvent {
 /// Application event
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
-    /// Keyboard event
+    /// Keyboard event: a key press, or a repeat while it is held.
+    /// Key releases are not reported.
     Key(KeyEvent),
     /// Mouse event
     Mouse(MouseEvent),
