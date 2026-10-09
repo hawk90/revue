@@ -710,13 +710,14 @@ items:
     priority_inferred: true
     status: done
     acceptance:
-      - content/placeholder
+      - content/placeholder; get_content gives back the text set, final newline included
       - line_numbers, read_only
       - syntax highlighting by language
     evidence:
       - src/widget/input/input_widgets/textarea/mod.rs::textarea
       - src/widget/input/input_widgets/textarea/mod.rs::syntax
       - tests/textarea_unicode_tests.rs
+      - tests/textarea_content.rs
       - examples/text_editor.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / TextArea

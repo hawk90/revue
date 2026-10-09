@@ -28,12 +28,15 @@ impl TextArea {
         self.lines.join("\n")
     }
 
-    /// Set the text content
+    /// Set the text content. A final line break is kept (as an empty last
+    /// line), so [`get_content`](Self::get_content) gives the text back;
+    /// `\r\n` line breaks read as `\n`.
     pub fn set_content(&mut self, text: &str) {
-        self.lines = text.lines().map(String::from).collect();
-        if self.lines.is_empty() {
-            self.lines.push(String::new());
-        }
+        // Not `str::lines`, which drops a final line break
+        self.lines = text
+            .split('\n')
+            .map(|line| line.strip_suffix('\r').unwrap_or(line).to_string())
+            .collect();
         self.cursors = CursorSet::default();
         self.scroll.set(0);
         self.scroll_x.set(0);
