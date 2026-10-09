@@ -280,14 +280,18 @@ impl TextArea {
             let is_whole_word =
                 !options.whole_word || self.is_word_boundary(line, match_start, match_end);
 
+            // A match is taken whole: the search goes on after it, so
+            // matches do not overlap and replacing them all rewrites each
+            // piece of text once. A rejected one may hide a match inside it.
             if is_whole_word {
                 matches.push(FindMatch::new(
                     CursorPos::new(line_idx, match_start),
                     CursorPos::new(line_idx, match_end),
                 ));
+                start = match_end;
+            } else {
+                start = match_start + 1;
             }
-
-            start = match_start + 1;
         }
     }
 

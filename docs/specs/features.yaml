@@ -751,10 +751,11 @@ items:
     acceptance:
       - Ctrl+F find, Ctrl+H replace, F3/Shift+F3 next/prev, Esc closes
       - case-sensitive / whole-word / regex toggles
-      - replace current / replace all
+      - replace current / replace all; matches do not overlap
     evidence:
       - src/widget/input/input_widgets/textarea/find_impl.rs::toggle_regex
       - src/widget/input/input_widgets/textarea/mod.rs::handle_key_event
+      - tests/textarea_find_replace.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / TextArea
     notes: Regex toggle needs the `regex` feature.
