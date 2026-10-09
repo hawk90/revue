@@ -23,6 +23,14 @@ pub enum EditOperation {
     MergeLines { line: usize, col: usize },
     /// Split line at position
     SplitLine { line: usize, col: usize },
+    /// Replace `removed` with `inserted` at a position; either may span
+    /// lines (hold `'\n'`)
+    Replace {
+        line: usize,
+        col: usize,
+        removed: String,
+        inserted: String,
+    },
 }
 
 // # KEEP HERE - Private tests that cannot be extracted

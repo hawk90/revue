@@ -58,6 +58,15 @@ impl TextArea {
                     }
                     self.set_primary_cursor(*line + 1, 0);
                 }
+                EditOperation::Replace {
+                    line,
+                    col,
+                    removed,
+                    inserted,
+                } => {
+                    let at = self.splice(*line, *col, inserted, removed);
+                    self.set_primary_cursor(at.line, at.col);
+                }
             }
             self.redo_stack.push(op);
         }
@@ -105,6 +114,15 @@ impl TextArea {
                         }
                     }
                     self.set_primary_cursor(*line, *col);
+                }
+                EditOperation::Replace {
+                    line,
+                    col,
+                    removed,
+                    inserted,
+                } => {
+                    let at = self.splice(*line, *col, removed, inserted);
+                    self.set_primary_cursor(at.line, at.col);
                 }
             }
             self.push_undo_internal(op);

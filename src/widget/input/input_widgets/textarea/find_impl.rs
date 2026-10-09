@@ -338,42 +338,9 @@ impl TextArea {
         }
     }
 
-    /// Replace text in range
+    /// Replace text in range, as one undo step
     fn replace_range(&mut self, start: CursorPos, end: CursorPos, replacement: &str) {
-        if start.line == end.line {
-            // Single line replacement
-            if let Some(line) = self.lines.get_mut(start.line) {
-                let before: String = line.chars().take(start.col).collect();
-                let after: String = line.chars().skip(end.col).collect();
-                *line = format!("{}{}{}", before, replacement, after);
-            }
-        } else {
-            // Multi-line replacement
-            let before: String = self
-                .lines
-                .get(start.line)
-                .map(|l| l.chars().take(start.col).collect())
-                .unwrap_or_default();
-            let after: String = self
-                .lines
-                .get(end.line)
-                .map(|l| l.chars().skip(end.col).collect())
-                .unwrap_or_default();
-
-            // Remove lines between start and end
-            for _ in start.line..=end.line {
-                if start.line < self.lines.len() {
-                    self.lines.remove(start.line);
-                }
-            }
-
-            // Insert replacement
-            let new_content = format!("{}{}{}", before, replacement, after);
-            let new_lines: Vec<String> = new_content.lines().map(String::from).collect();
-            for (i, new_line) in new_lines.into_iter().enumerate() {
-                self.lines.insert(start.line + i, new_line);
-            }
-        }
+        self.replace_with_undo(start, end, replacement);
         self.clamp_cursors();
     }
 }
