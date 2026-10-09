@@ -1,11 +1,12 @@
 //! What a split remembers between frames
 
-use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use super::layout::{self, PaneSpec};
 use crate::event::{Key, MouseButton, MouseEvent, MouseEventKind};
 use crate::layout::Rect;
+use crate::utils::lock::lock_or_recover;
 use crate::widget::layout::splitter::SplitOrientation;
 
 /// The state of a [`SplitView`](super::SplitView): pane sizes the user has
@@ -15,12 +16,21 @@ use crate::widget::layout::splitter::SplitOrientation;
 /// `SplitView` from it every frame. Sizes and collapsed panes are keyed by
 /// pane id, so they hold when panes come and go between frames.
 ///
+/// It is a handle: clones share one state, as [`Signal`](crate::reactive::Signal)
+/// clones share a value. The view keeps a clone, so it does not borrow the
+/// app and can sit in any container.
+///
 /// It also remembers where the split was last drawn, so
 /// [`handle_mouse`](Self::handle_mouse) and [`handle_key`](Self::handle_key)
 /// need no area: they act on the last frame. Before the first frame they
 /// take nothing.
 #[derive(Clone, Debug, Default)]
 pub struct SplitState {
+    inner: Arc<Mutex<Inner>>,
+}
+
+#[derive(Debug, Default)]
+struct Inner {
     /// Weights set by resizing, by pane id
     weights: HashMap<String, f32>,
     /// Collapsed or expanded by the app, by pane id
@@ -28,7 +38,7 @@ pub struct SplitState {
     /// The divider being moved, counted among the visible panes
     resizing: Option<usize>,
     /// The last frame
-    frame: RefCell<Option<Frame>>,
+    frame: Option<Frame>,
 }
 
 /// Where and how a split was last drawn
@@ -78,62 +88,63 @@ impl SplitState {
         Self::default()
     }
 
+    fn lock(&self) -> MutexGuard<'_, Inner> {
+        lock_or_recover(&self.inner)
+    }
+
     /// Whether pane `id` is collapsed: as set by
     /// [`set_collapsed`](Self::set_collapsed) or [`toggle`](Self::toggle),
     /// else as declared (`Pane::collapsed`) in the last frame
     pub fn is_collapsed(&self, id: &str) -> bool {
-        self.collapsed.get(id).copied().unwrap_or_else(|| {
-            self.frame
-                .borrow()
-                .as_ref()
-                .is_some_and(|f| f.panes.iter().any(|p| p.id == id && p.collapsed))
-        })
+        self.lock().is_collapsed(id)
     }
 
     /// Collapse or expand pane `id`. A collapsed pane is not drawn and its
     /// room goes to the others. Stops a resize in progress, since the
     /// dividers change.
     pub fn set_collapsed(&mut self, id: impl Into<String>, collapsed: bool) {
-        self.collapsed.insert(id.into(), collapsed);
-        self.resizing = None;
+        self.lock().set_collapsed(id.into(), collapsed);
     }
 
     /// Collapse pane `id` if it is expanded, expand it if collapsed
     pub fn toggle(&mut self, id: &str) {
-        let collapsed = self.is_collapsed(id);
-        self.set_collapsed(id, !collapsed);
+        let mut inner = self.lock();
+        let collapsed = inner.is_collapsed(id);
+        inner.set_collapsed(id.to_string(), !collapsed);
     }
 
     /// Forget resized sizes and collapsed panes, back to what the panes
     /// declare
     pub fn reset(&mut self) {
-        self.weights.clear();
-        self.collapsed.clear();
-        self.resizing = None;
+        let mut inner = self.lock();
+        inner.weights.clear();
+        inner.collapsed.clear();
+        inner.resizing = None;
     }
 
     /// Whether a divider is being moved, by mouse or keyboard
     pub fn is_resizing(&self) -> bool {
-        self.resizing.is_some()
+        self.lock().resizing.is_some()
     }
 
     /// The divider being moved: 0 is the one after the first visible pane
     pub fn resizing(&self) -> Option<usize> {
-        self.resizing
+        self.lock().resizing
     }
 
     /// Start moving `divider` (0 is the one after the first visible pane)
     /// with the arrow keys; see [`handle_key`](Self::handle_key). Does
     /// nothing if the last frame has no such divider.
     pub fn start_resize(&mut self, divider: usize) {
-        if divider + 1 < self.placed().len() {
-            self.resizing = Some(divider);
+        let mut inner = self.lock();
+        if divider + 1 < inner.placed().len() {
+            inner.resizing = Some(divider);
         }
     }
 
     /// Stop moving the divider
     pub fn stop_resize(&mut self) {
-        self.resizing = None;
+        self.lock().resizing = None;
     }
 
     /// While a divider is being moved, the arrow keys (and `h` `j` `k` `l`)
@@ -141,6 +152,40 @@ impl SplitState {
     /// used; other keys, and every key when no divider is being moved, are
     /// left for the app.
     pub fn handle_key(&mut self, key: &Key) -> bool {
+        self.lock().handle_key(key)
+    }
+
+    /// Pressing the left button on a divider picks it up, dragging moves
+    /// it to the pointer (within the panes' bounds), and releasing drops
+    /// it. Returns whether the event was used.
+    pub fn handle_mouse(&mut self, event: &MouseEvent) -> bool {
+        self.lock().handle_mouse(event)
+    }
+
+    /// Record the frame about to be drawn; returns its visible panes, laid
+    /// out with the current sizes, and the divider being moved
+    pub(super) fn record(&self, frame: Frame) -> (Vec<Placed>, Option<usize>) {
+        let mut inner = self.lock();
+        inner.frame = Some(frame);
+        (inner.placed(), inner.resizing)
+    }
+}
+
+impl Inner {
+    fn is_collapsed(&self, id: &str) -> bool {
+        self.collapsed.get(id).copied().unwrap_or_else(|| {
+            self.frame
+                .as_ref()
+                .is_some_and(|f| f.panes.iter().any(|p| p.id == id && p.collapsed))
+        })
+    }
+
+    fn set_collapsed(&mut self, id: String, collapsed: bool) {
+        self.collapsed.insert(id, collapsed);
+        self.resizing = None;
+    }
+
+    fn handle_key(&mut self, key: &Key) -> bool {
         let Some(divider) = self.resizing else {
             return false;
         };
@@ -161,11 +206,8 @@ impl SplitState {
         true
     }
 
-    /// Pressing the left button on a divider picks it up, dragging moves
-    /// it to the pointer (within the panes' bounds), and releasing drops
-    /// it. Returns whether the event was used.
-    pub fn handle_mouse(&mut self, event: &MouseEvent) -> bool {
-        let Some(frame) = self.frame.borrow().clone() else {
+    fn handle_mouse(&mut self, event: &MouseEvent) -> bool {
+        let Some(frame) = self.frame.as_ref() else {
             return false;
         };
         let (along, across, cross_start, cross_len) = match frame.orientation {
@@ -204,34 +246,19 @@ impl SplitState {
         }
     }
 
-    /// The weight pane `id` is drawn with: resized, or `declared`
-    pub(super) fn weight(&self, id: &str, declared: f32) -> f32 {
-        self.weights.get(id).copied().unwrap_or(declared)
-    }
-
-    /// Whether pane `id` is drawn collapsed, given what it declares
-    pub(super) fn collapsed_or(&self, id: &str, declared: bool) -> bool {
-        self.collapsed.get(id).copied().unwrap_or(declared)
-    }
-
-    pub(super) fn record(&self, frame: Frame) {
-        *self.frame.borrow_mut() = Some(frame);
-    }
-
     /// The last frame's visible panes, laid out with the current sizes
-    pub(super) fn placed(&self) -> Vec<Placed> {
-        let frame = self.frame.borrow();
-        let Some(frame) = frame.as_ref() else {
+    fn placed(&self) -> Vec<Placed> {
+        let Some(frame) = self.frame.as_ref() else {
             return Vec::new();
         };
         let visible: Vec<(usize, PaneSpec)> = frame
             .panes
             .iter()
             .enumerate()
-            .filter(|(_, p)| !self.collapsed_or(&p.id, p.collapsed))
+            .filter(|(_, p)| !self.collapsed.get(&p.id).copied().unwrap_or(p.collapsed))
             .map(|(i, p)| {
                 let spec = PaneSpec {
-                    weight: self.weight(&p.id, p.weight),
+                    weight: self.weights.get(&p.id).copied().unwrap_or(p.weight),
                     min: p.min,
                     max: p.max,
                 };
@@ -267,6 +294,9 @@ impl SplitState {
         let (Some(before), Some(after)) = (placed.get(divider), placed.get(divider + 1)) else {
             return;
         };
+        let Some(frame) = self.frame.as_ref() else {
+            return;
+        };
         let target = at
             .saturating_sub(before.start)
             .min(before.size + after.size);
@@ -278,16 +308,10 @@ impl SplitState {
         let weight = layout::weight_for(&specs, available, divider, target);
         let pair = before.spec.weight.max(0.0) + after.spec.weight.max(0.0);
 
-        let ids = {
-            let frame = self.frame.borrow();
-            let Some(frame) = frame.as_ref() else {
-                return;
-            };
-            (
-                frame.panes[before.index].id.clone(),
-                frame.panes[after.index].id.clone(),
-            )
-        };
+        let ids = (
+            frame.panes[before.index].id.clone(),
+            frame.panes[after.index].id.clone(),
+        );
         self.weights.insert(ids.0, weight);
         self.weights.insert(ids.1, pair - weight);
     }

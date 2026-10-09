@@ -5,10 +5,10 @@ use revue::event::{Key, MouseButton, MouseEvent, MouseEventKind};
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::testing::PipelineHarness;
-use revue::widget::{tab_view, RenderContext, TabBar, TabState, TabView, Text, View};
+use revue::widget::{tab_view, vstack, RenderContext, TabBar, TabState, TabView, Text, View};
 
 /// Tabs `one` and `two`, whose bodies are text with ids `one-body`, `two-body`
-fn two_tabs(state: &TabState) -> TabView<'_> {
+fn two_tabs(state: &TabState) -> TabView<'static> {
     tab_view(state)
         .tab("one", Text::new("ONE").element_id("one-body"))
         .tab("two", Text::new("TWO").element_id("two-body"))
@@ -71,7 +71,7 @@ fn clicking_a_label_selects_its_tab() {
 #[test]
 fn keys_move_between_tabs() {
     let mut state = TabState::new();
-    fn three(state: &TabState) -> TabView<'_> {
+    fn three(state: &TabState) -> TabView<'static> {
         tab_view(state)
             .tab("a", Text::new("A"))
             .tab("b", Text::new("B"))
@@ -174,7 +174,7 @@ fn the_bar_can_always_show() {
 #[test]
 fn the_bar_can_be_hidden_with_several_tabs() {
     let mut state = TabState::new();
-    fn view(state: &TabState) -> TabView<'_> {
+    fn view(state: &TabState) -> TabView<'static> {
         two_tabs(state).tab_bar(TabBar::Never)
     }
     let buffer = render(&view(&state), 12, 2);
@@ -185,4 +185,40 @@ fn the_bar_can_be_hidden_with_several_tabs() {
     assert!(state.handle_key(&Key::Right));
     let buffer = render(&view(&state), 12, 2);
     assert_eq!(row(&buffer, 0, 12), "TWO         ");
+}
+
+/// An app view that puts the tabs under a title row, in a container that
+/// holds only owned widgets
+struct Titled {
+    tabs: TabState,
+}
+
+impl View for Titled {
+    fn render(&self, ctx: &mut RenderContext) {
+        vstack()
+            .child_sized(Text::new("TITLE"), 1)
+            .child(two_tabs(&self.tabs))
+            .render(ctx);
+    }
+}
+
+#[test]
+fn a_tab_view_sits_in_a_container_and_its_state_still_takes_the_click() {
+    let mut app = Titled {
+        tabs: TabState::new(),
+    };
+    render(&app, 12, 4);
+
+    // The bar is on row 1; " two " is columns 6-10
+    assert!(app.tabs.handle_mouse(&click(8, 1)));
+    let buffer = render(&app, 12, 4);
+    assert_eq!(row(&buffer, 2, 12), "TWO         ");
+}
+
+#[test]
+fn clones_of_a_state_share_it() {
+    let state = TabState::new();
+    let mut clone = state.clone();
+    clone.select("two");
+    assert_eq!(state.selected().as_deref(), Some("two"));
 }

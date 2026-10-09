@@ -281,7 +281,7 @@ cargo run --example gallery       # Widget showcase
 cargo run --example animations    # Animation system
 cargo run --example worker_basic  # Background tasks
 cargo run --example slideshow     # Terminal presentations
-cargo run --example ide           # Rich text editor
+cargo run --example ide           # IDE layout: explorer, editor tabs, terminal
 
 # Real-world
 cargo run --example chat          # Multi-user chat

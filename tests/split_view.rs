@@ -5,14 +5,16 @@ use revue::event::{Key, MouseButton, MouseEvent, MouseEventKind};
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::testing::PipelineHarness;
-use revue::widget::{pane, split_view, Pane, RenderContext, SplitState, SplitView, Text, View};
+use revue::widget::{
+    pane, split_view, vstack, Pane, RenderContext, SplitState, SplitView, Text, View,
+};
 
 fn half(id: &str) -> Pane {
     pane(id).ratio(0.5).min_size(0)
 }
 
 /// Two panes, `a` and `b`, holding text with those element ids
-fn two_panes(state: &SplitState) -> SplitView<'_> {
+fn two_panes(state: &SplitState) -> SplitView<'static> {
     split_view(state)
         .pane(half("a"), Text::new("AAA").element_id("a"))
         .pane(half("b"), Text::new("BBB").element_id("b"))
@@ -109,7 +111,7 @@ fn a_dragged_split_keeps_its_proportions_when_the_area_grows() {
 #[test]
 fn a_drag_stops_at_the_minimum_size() {
     let mut state = SplitState::new();
-    fn view(state: &SplitState) -> SplitView<'_> {
+    fn view(state: &SplitState) -> SplitView<'static> {
         split_view(state)
             .pane(half("a"), Text::new("A"))
             .pane(half("b").min_size(8), Text::new("B"))
@@ -177,4 +179,49 @@ fn panes_fill_the_area_exactly() {
     let buffer = render(&view, 20, 1);
     assert_eq!(divider_columns(&buffer, 20, 0), vec![6, 13]);
     assert_eq!(buffer.get(14, 0).unwrap().symbol, 'C');
+}
+
+/// An app view that puts the split under a title row, in a container that
+/// holds only owned widgets
+struct Titled {
+    split: SplitState,
+}
+
+impl View for Titled {
+    fn render(&self, ctx: &mut RenderContext) {
+        vstack()
+            .child_sized(Text::new("TITLE"), 1)
+            .child(two_panes(&self.split))
+            .render(ctx);
+    }
+}
+
+#[test]
+fn a_split_sits_in_a_container_and_its_state_still_takes_the_drag() {
+    let mut app = Titled {
+        split: SplitState::new(),
+    };
+    render(&app, 21, 4);
+
+    // The split starts on row 1, its divider at column 10
+    assert!(app
+        .split
+        .handle_mouse(&mouse(MouseEventKind::Down(LEFT), 10, 2)));
+    assert!(app
+        .split
+        .handle_mouse(&mouse(MouseEventKind::Drag(LEFT), 5, 2)));
+    assert!(app
+        .split
+        .handle_mouse(&mouse(MouseEventKind::Up(LEFT), 5, 2)));
+
+    let buffer = render(&app, 21, 4);
+    assert_eq!(divider_columns(&buffer, 21, 1), vec![5]);
+}
+
+#[test]
+fn clones_of_a_state_share_it() {
+    let state = SplitState::new();
+    let mut clone = state.clone();
+    clone.set_collapsed("a", true);
+    assert!(state.is_collapsed("a"));
 }

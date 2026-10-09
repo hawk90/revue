@@ -6,13 +6,15 @@ use revue::event::{MouseButton, MouseEvent, MouseEventKind};
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::testing::PipelineHarness;
-use revue::widget::{dock, Dock, DockPosition, DockState, RenderContext, TabBar, Text, View};
+use revue::widget::{
+    dock, vstack, Border, Dock, DockPosition, DockState, RenderContext, TabBar, Text, View,
+};
 
 use DockPosition::{Bottom, Center, Left};
 
 /// Files on the left (a quarter), the editor in the center, a terminal at
 /// the bottom (a quarter)
-fn ide(state: &DockState) -> Dock<'_> {
+fn ide(state: &DockState) -> Dock<'static> {
     dock(state)
         .panel(Left, "Files", Text::new("FILES").element_id("files"))
         .panel(Center, "main.rs", Text::new("MAIN").element_id("main"))
@@ -22,7 +24,7 @@ fn ide(state: &DockState) -> Dock<'_> {
 }
 
 /// The same, with a second editor tab
-fn ide_two_tabs(state: &DockState) -> Dock<'_> {
+fn ide_two_tabs(state: &DockState) -> Dock<'static> {
     ide(state).panel(Center, "lib.rs", Text::new("LIB"))
 }
 
@@ -161,4 +163,45 @@ fn a_stylesheet_reaches_a_panel() {
         h.buffer().get(0, 0).unwrap().fg,
         Some(revue::style::Color::RED)
     );
+}
+
+/// An app view that puts the dock in a border under a title row: containers
+/// that hold only owned widgets
+struct Workbench {
+    dock: DockState,
+}
+
+impl View for Workbench {
+    fn render(&self, ctx: &mut RenderContext) {
+        vstack()
+            .child_sized(Text::new("TITLE"), 1)
+            .child(Border::single().child(ide(&self.dock)))
+            .render(ctx);
+    }
+}
+
+#[test]
+fn a_dock_sits_in_containers_and_its_state_still_takes_the_drag() {
+    let mut app = Workbench {
+        dock: DockState::new(),
+    };
+    // The border leaves the dock 40 x 20 at (1, 2), as in the tests above:
+    // the left area's divider is at column 11
+    let buffer = render(&app, 42, 23);
+    assert_eq!(at(&buffer, 1, 2), 'F');
+    assert_eq!(at(&buffer, 11, 2), '│');
+
+    drag(&mut app.dock, (11, 5), (15, 5));
+    let buffer = render(&app, 42, 23);
+    assert_eq!(at(&buffer, 15, 2), '│');
+}
+
+#[test]
+fn clones_of_a_state_share_it() {
+    let state = DockState::new();
+    let mut clone = state.clone();
+    clone.toggle(Left);
+    assert!(state.is_collapsed(Left));
+    clone.tabs_mut(Center).select("lib.rs");
+    assert_eq!(state.tabs(Center).selected().as_deref(), Some("lib.rs"));
 }

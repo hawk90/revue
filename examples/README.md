@@ -56,7 +56,7 @@ cargo run --example <name>
 | [dashboard](dashboard.rs) | System monitoring dashboard |
 | [data_explorer](data_explorer.rs) | Data grid with filtering/sorting |
 | [text_editor](text_editor.rs) | Full-featured text editor |
-| [ide](ide.rs) | Mini IDE application |
+| [ide](ide.rs) | Mini IDE on `dock()`: file explorer, editor tabs, terminal |
 | [slideshow](slideshow.rs) | Markdown presentation slides |
 
 ## Workers & Async
