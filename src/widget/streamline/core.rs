@@ -33,6 +33,20 @@ pub struct Streamline {
     pub props: WidgetProps,
 }
 
+/// Layer colors used when no palette is set, or when it is set empty.
+const DEFAULT_PALETTE: [Color; 10] = [
+    Color::rgb(66, 133, 244),  // Blue
+    Color::rgb(234, 67, 53),   // Red
+    Color::rgb(251, 188, 5),   // Yellow
+    Color::rgb(52, 168, 83),   // Green
+    Color::rgb(155, 89, 182),  // Purple
+    Color::rgb(241, 196, 15),  // Gold
+    Color::rgb(26, 188, 156),  // Teal
+    Color::rgb(230, 126, 34),  // Orange
+    Color::rgb(149, 165, 166), // Gray
+    Color::rgb(231, 76, 60),   // Coral
+];
+
 impl Default for Streamline {
     fn default() -> Self {
         Self::new()
@@ -52,18 +66,7 @@ impl Streamline {
             x_labels: Vec::new(),
             bg_color: None,
             height: None,
-            palette: vec![
-                Color::rgb(66, 133, 244),  // Blue
-                Color::rgb(234, 67, 53),   // Red
-                Color::rgb(251, 188, 5),   // Yellow
-                Color::rgb(52, 168, 83),   // Green
-                Color::rgb(155, 89, 182),  // Purple
-                Color::rgb(241, 196, 15),  // Gold
-                Color::rgb(26, 188, 156),  // Teal
-                Color::rgb(230, 126, 34),  // Orange
-                Color::rgb(149, 165, 166), // Gray
-                Color::rgb(231, 76, 60),   // Coral
-            ],
+            palette: DEFAULT_PALETTE.to_vec(),
             highlighted: None,
             props: WidgetProps::new(),
         }
@@ -130,6 +133,8 @@ impl Streamline {
     }
 
     /// Set color palette
+    ///
+    /// An empty palette falls back to the default colors.
     pub fn palette(mut self, colors: Vec<Color>) -> Self {
         self.palette = colors;
         self
@@ -143,13 +148,15 @@ impl Streamline {
 
     /// Get the color for a layer at the given index
     pub fn get_layer_color(&self, index: usize) -> Color {
-        if index < self.layers.len() {
-            self.layers[index]
-                .color
-                .unwrap_or_else(|| self.palette[index % self.palette.len()])
+        let palette: &[Color] = if self.palette.is_empty() {
+            &DEFAULT_PALETTE
         } else {
-            self.palette[index % self.palette.len()]
-        }
+            &self.palette
+        };
+        self.layers
+            .get(index)
+            .and_then(|layer| layer.color)
+            .unwrap_or(palette[index % palette.len()])
     }
 
     /// Compute stack positions for all layers

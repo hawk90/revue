@@ -198,15 +198,18 @@ impl Default for ThemePicker {
     }
 }
 
+/// Narrowest the picker draws: its label, a swatch and the frame need this.
+const MIN_WIDTH: u16 = 10;
+
 impl View for ThemePicker {
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        if area.width < 10 || area.height < 1 {
+        if area.width < MIN_WIDTH || area.height < 1 {
             return;
         }
 
         let current_theme = use_theme().get();
-        let width = self.width.unwrap_or(area.width.min(35));
+        let width = self.width.unwrap_or(area.width.min(35)).max(MIN_WIDTH);
 
         let fg = self.fg.unwrap_or(current_theme.colors.text);
         let bg = self.bg.unwrap_or(current_theme.colors.surface);
@@ -252,7 +255,7 @@ impl View for ThemePicker {
 
             // Theme name
             for ch in current_theme.name.chars() {
-                if x >= width - 6 {
+                if x >= width.saturating_sub(6) {
                     break;
                 }
                 let mut cell = Cell::new(ch);

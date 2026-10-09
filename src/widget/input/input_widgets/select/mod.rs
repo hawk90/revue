@@ -5,6 +5,7 @@ mod input;
 mod render;
 mod state;
 
+use super::dropdown::MIN_DROPDOWN_WIDTH;
 use crate::style::Color;
 use crate::utils::{display_width, Selection};
 use crate::widget::traits::WidgetProps;
@@ -170,7 +171,9 @@ impl Select {
     /// Calculate display width (uses cache when available)
     pub(crate) fn display_width(&self, max_width: u16) -> u16 {
         if let Some(w) = self.width {
-            return w.min(max_width);
+            // The header needs room for its arrow; a smaller configured
+            // width would leave none.
+            return w.max(MIN_DROPDOWN_WIDTH).min(max_width);
         }
 
         if let Some(cached) = self.cached_auto_width {
