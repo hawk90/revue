@@ -389,7 +389,8 @@ impl TextArea {
             }
         }
 
-        // Ctrl combinations for find/replace and multi-cursor selection.
+        // Ctrl combinations: find/replace, multi-cursor selection, undo and
+        // line commands.
         if event.ctrl && !event.alt {
             match event.key {
                 Key::Char('f') => {
@@ -402,6 +403,27 @@ impl TextArea {
                 }
                 Key::Char('d') => {
                     self.select_next_occurrence();
+                    return true;
+                }
+                // Shift may come as the flag, as the capital, or both
+                Key::Char('z' | 'Z') if event.shift => {
+                    self.redo();
+                    return true;
+                }
+                Key::Char('z') => {
+                    self.undo();
+                    return true;
+                }
+                Key::Char('y') => {
+                    self.redo();
+                    return true;
+                }
+                Key::Char('a') => {
+                    self.select_all();
+                    return true;
+                }
+                Key::Char('k' | 'K') if event.shift => {
+                    self.delete_line();
                     return true;
                 }
                 _ => {}
@@ -428,6 +450,13 @@ impl TextArea {
                 self.clear_secondary_cursors();
                 return true;
             }
+            return false;
+        }
+
+        // Ctrl or Alt with a letter is a command, and this one is not
+        // bound: leave it to the app rather than type the letter. Ctrl+Alt
+        // with a letter is text, as Windows reports AltGr.
+        if matches!(event.key, Key::Char(_)) && event.ctrl != event.alt {
             return false;
         }
 

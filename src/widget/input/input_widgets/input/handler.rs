@@ -71,6 +71,13 @@ impl Input {
             }
         }
 
+        // Ctrl or Alt with a letter is a command, and this one is not
+        // bound: leave it to the app rather than type the letter. Ctrl+Alt
+        // with a letter is text, as Windows reports AltGr.
+        if matches!(event.key, Key::Char(_)) && event.ctrl != event.alt {
+            return false;
+        }
+
         // Regular key handling (clears selection on most actions)
         self.handle_key(&event.key)
     }

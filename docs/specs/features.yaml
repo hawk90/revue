@@ -737,11 +737,12 @@ items:
       - src/widget/input/input_widgets/textarea/undo.rs
       - src/widget/input/input_widgets/textarea/editing.rs::duplicate_line
       - tests/textarea_undo_tests.rs
+      - tests/text_input_modified_keys.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / TextArea
-    notes: 'Methods exist (undo, redo, duplicate_line, delete_line, select_all) but handle_key_event binds none of these keys.
-      BUG: an unbound Ctrl+letter falls through to handle_key(&event.key) and inserts the letter (Ctrl+Z types "z"). Doc assigns
-      Ctrl+D to both duplicate-line and select-next-occurrence; code binds select-next-occurrence.'
+    notes: 'handle_key_event binds Ctrl+Z, Ctrl+Y / Ctrl+Shift+Z, Ctrl+A and Ctrl+Shift+K; an unbound Ctrl or Alt letter is
+      left to the app, not typed (#888). Not yet: Shift/Ctrl+Shift+Arrow selection. Doc assigns Ctrl+D to both duplicate-line
+      and select-next-occurrence; code binds select-next-occurrence.'
   - id: WID-011
     title: TextArea find/replace
     area: widget
