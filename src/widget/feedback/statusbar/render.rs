@@ -125,8 +125,9 @@ impl StatusBar {
         [pick(0), pick(1), pick(2)]
     }
 
-    /// Draw one group of sections from `x`, with the separator, if any, in
-    /// the column between two sections. Returns the column after the group.
+    /// Draw one group of sections from `x`, each followed by a one-column
+    /// gap; between two sections the gap holds the separator, if any.
+    /// Returns the column after the group.
     fn render_group(
         &self,
         ctx: &mut RenderContext,
@@ -136,17 +137,16 @@ impl StatusBar {
     ) -> u16 {
         for (i, section) in sections.iter().enumerate() {
             x = self.render_section(ctx, section, x, y);
-            if let Some(sep) = self.separator {
-                if x < ctx.area.width {
-                    if i + 1 < sections.len() {
-                        let mut cell = Cell::new(sep);
-                        cell.fg = Some(self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE)));
-                        cell.bg = Some(self.bg);
-                        ctx.set(x, y, cell);
-                    }
-                    x += 1;
-                }
+            if x >= ctx.area.width {
+                continue;
             }
+            if let Some(sep) = self.separator.filter(|_| i + 1 < sections.len()) {
+                let mut cell = Cell::new(sep);
+                cell.fg = Some(self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE)));
+                cell.bg = Some(self.bg);
+                ctx.set(x, y, cell);
+            }
+            x += 1;
         }
         x
     }
@@ -293,6 +293,30 @@ mod tests {
         let buffer = render_bar(&bar, 10);
         assert_eq!(buffer.get(1, 0).unwrap().symbol, '1');
         assert_eq!(buffer.get(8, 0).unwrap().symbol, '8');
+    }
+
+    fn row(buffer: &Buffer, width: u16) -> String {
+        (0..width)
+            .map(|x| buffer.get(x, 0).unwrap().symbol)
+            .collect()
+    }
+
+    #[test]
+    fn test_render_sections_without_separator_keep_a_gap() {
+        let bar = StatusBar::new().left_text("main").left_text("UTF-8");
+        assert_eq!(row(&render_bar(&bar, 12), 12), "main UTF-8  ");
+    }
+
+    #[test]
+    fn test_render_right_sections_without_separator_sit_where_separated_ones_do() {
+        let plain = StatusBar::new().right_text("ab").right_text("cd");
+        assert_eq!(row(&render_bar(&plain, 10), 10), "    ab cd ");
+
+        let separated = StatusBar::new()
+            .right_text("ab")
+            .right_text("cd")
+            .separator('|');
+        assert_eq!(row(&render_bar(&separated, 10), 10), "    ab|cd ");
     }
 
     #[test]
