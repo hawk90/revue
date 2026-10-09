@@ -3,7 +3,8 @@
 /// Parse hex color string like "#rrggbb"
 pub fn parse_hex_color(s: &str) -> Option<(u8, u8, u8)> {
     let s = s.trim().trim_start_matches('#');
-    if s.len() != 6 {
+    // Hex digits only: the slices below are by byte
+    if s.len() != 6 || !s.bytes().all(|b| b.is_ascii_hexdigit()) {
         return None;
     }
     let r = u8::from_str_radix(&s[0..2], 16).ok()?;
@@ -19,6 +20,13 @@ mod tests {
     // =========================================================================
     // parse_hex_color() helper tests
     // =========================================================================
+
+    #[test]
+    fn test_parse_hex_color_rejects_non_ascii_and_signs() {
+        // Six bytes, but slicing at 2 would split the 'é' (#863)
+        assert_eq!(parse_hex_color("1é345"), None);
+        assert_eq!(parse_hex_color("#+12345"), None);
+    }
 
     #[test]
     fn test_parse_hex_color_valid_with_hash() {
