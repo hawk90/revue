@@ -16,6 +16,27 @@ pub struct Change {
     pub cell: Cell,
 }
 
+/// Whether the cell at (`x`, `y`) differs between the buffers. Hyperlinks
+/// and escape sequences are compared by what they say: each buffer numbers
+/// them in its own registry, so equal ids may mean different content.
+fn cell_changed(old: &Buffer, new: &Buffer, x: u16, y: u16) -> Option<Cell> {
+    let new_cell = *new.get(x, y)?;
+    let Some(old_cell) = old.get(x, y) else {
+        return Some(new_cell);
+    };
+    let bare = |c: &Cell| Cell {
+        hyperlink_id: None,
+        sequence_id: None,
+        ..*c
+    };
+    let same = bare(old_cell) == bare(&new_cell)
+        && old_cell.hyperlink_id.and_then(|id| old.get_hyperlink(id))
+            == new_cell.hyperlink_id.and_then(|id| new.get_hyperlink(id))
+        && old_cell.sequence_id.and_then(|id| old.get_sequence(id))
+            == new_cell.sequence_id.and_then(|id| new.get_sequence(id));
+    (!same).then_some(new_cell)
+}
+
 /// Compute the differences between two buffers within specified dirty regions.
 pub fn diff(old: &Buffer, new: &Buffer, dirty_rects: &[Rect]) -> Vec<Change> {
     let mut changes = Vec::new();
@@ -44,13 +65,8 @@ pub fn diff(old: &Buffer, new: &Buffer, dirty_rects: &[Rect]) -> Vec<Change> {
 
             for y in rect.y..y_end {
                 for x in rect.x..x_end {
-                    let old_cell = old.get(x, y);
-                    let new_cell = new.get(x, y);
-
-                    if old_cell != new_cell {
-                        if let Some(new) = new_cell {
-                            changes.push(Change { x, y, cell: *new });
-                        }
+                    if let Some(cell) = cell_changed(old, new, x, y) {
+                        changes.push(Change { x, y, cell });
                     }
                 }
             }
@@ -75,13 +91,8 @@ pub fn diff(old: &Buffer, new: &Buffer, dirty_rects: &[Rect]) -> Vec<Change> {
         for y in rect.y..y_end {
             for x in rect.x..x_end {
                 if checked_cells.insert((x, y)) {
-                    let old_cell = old.get(x, y);
-                    let new_cell = new.get(x, y);
-
-                    if old_cell != new_cell {
-                        if let Some(new) = new_cell {
-                            changes.push(Change { x, y, cell: *new });
-                        }
+                    if let Some(cell) = cell_changed(old, new, x, y) {
+                        changes.push(Change { x, y, cell });
                     }
                 }
             }
