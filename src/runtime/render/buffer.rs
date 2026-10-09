@@ -19,6 +19,9 @@ pub struct Buffer {
     /// Escape sequence registry (indexed by sequence_id in Cell)
     /// Used for raw escape sequences like OSC 66 text sizing
     sequences: Vec<String>,
+    /// Escape sequence cache (sequence -> id), so a sequence drawn again
+    /// keeps its id and the registry does not grow
+    sequence_cache: HashMap<String, u16>,
     /// While a widget under `overflow: hidden` renders: the only cells writes
     /// may change. See [`replace_clip`](Self::replace_clip).
     clip: Option<Rect>,
@@ -123,6 +126,7 @@ impl Buffer {
             hyperlinks: Vec::new(),
             hyperlink_cache: HashMap::new(),
             sequences: Vec::new(),
+            sequence_cache: HashMap::new(),
             clip: None,
         }
     }
@@ -168,6 +172,7 @@ impl Buffer {
             hyperlinks: Vec::new(),
             hyperlink_cache: HashMap::new(),
             sequences: Vec::new(),
+            sequence_cache: HashMap::new(),
             clip: None,
         })
     }
@@ -377,11 +382,12 @@ impl Buffer {
         self.fill(x, y, width, height, cell);
     }
 
-    /// Clear the buffer
-    ///
-    /// Optimized using slice::fill with default cell.
+    /// Clear the buffer: every cell, and the hyperlinks and escape
+    /// sequences registered for them, so the next frame numbers its own
     pub fn clear(&mut self) {
         self.cells.fill(Cell::default());
+        self.clear_hyperlinks();
+        self.clear_sequences();
     }
 
     /// Clear only specific rectangular regions of the buffer
@@ -415,11 +421,16 @@ impl Buffer {
 
     /// Copy all cells from another buffer
     ///
-    /// Copies the cell data from `other` into this buffer. Both buffers must have
-    /// the same dimensions.
+    /// Copies the cell data from `other` into this buffer, with the
+    /// hyperlinks and escape sequences the cells' ids point to. Both
+    /// buffers must have the same dimensions.
     pub fn copy_from(&mut self, other: &Buffer) {
         if self.width == other.width && self.height == other.height {
             self.cells.copy_from_slice(&other.cells);
+            self.hyperlinks.clone_from(&other.hyperlinks);
+            self.hyperlink_cache.clone_from(&other.hyperlink_cache);
+            self.sequences.clone_from(&other.sequences);
+            self.sequence_cache.clone_from(&other.sequence_cache);
         }
     }
 
@@ -515,6 +526,7 @@ impl Buffer {
     /// Clear hyperlinks (call on buffer clear/resize)
     pub fn clear_hyperlinks(&mut self) {
         self.hyperlinks.clear();
+        self.hyperlink_cache.clear();
     }
 
     /// Put a hyperlinked string at position
@@ -578,7 +590,11 @@ impl Buffer {
     /// The sequence will be written directly to the terminal instead of the cell's symbol.
     pub fn register_sequence(&mut self, seq: impl Into<String>) -> u16 {
         let seq = seq.into();
+        if let Some(&id) = self.sequence_cache.get(&seq) {
+            return id;
+        }
         let id = self.sequences.len() as u16;
+        self.sequence_cache.insert(seq.clone(), id);
         self.sequences.push(seq);
         id
     }
@@ -596,6 +612,7 @@ impl Buffer {
     /// Clear sequences (call on buffer clear/resize)
     pub fn clear_sequences(&mut self) {
         self.sequences.clear();
+        self.sequence_cache.clear();
     }
 
     /// Put an escape sequence at position, marking subsequent cells as continuations
