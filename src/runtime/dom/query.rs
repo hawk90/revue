@@ -12,7 +12,7 @@
 //! let cards = dom.query_all(".card");
 //! ```
 
-use super::selector::{parse_selector, Selector};
+use super::selector::{parse_selectors, Selector};
 use super::{DomId, DomNode};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -101,7 +101,7 @@ pub struct DomTree {
     class_index: HashMap<Arc<str>, Vec<DomId>>,
     /// Selector cache: maps selector string to parsed Selector (for repeated queries)
     /// Uses RwLock for interior mutability since Query trait takes &self
-    selector_cache: RwLock<HashMap<String, Selector>>,
+    selector_cache: RwLock<HashMap<String, Vec<Selector>>>,
 }
 
 impl DomTree {
@@ -669,21 +669,21 @@ impl DomTree {
         crate::dom::selector::matching::matches(node, selector, &|id| self.nodes.get(&id))
     }
 
-    /// Get a parsed selector from cache, or parse and cache it
+    /// Get a parsed selector list from cache, or parse and cache it
     ///
     /// This avoids re-parsing the same selector string multiple times,
     /// which is especially beneficial for repeated queries in loops.
-    fn get_or_parse_selector(&self, selector_str: &str) -> Option<Selector> {
+    fn get_or_parse_selectors(&self, selector_str: &str) -> Option<Vec<Selector>> {
         // Try read lock first to check cache
         {
             let cache = self.selector_cache.read().ok()?;
-            if let Some(selector) = cache.get(selector_str) {
-                return Some(selector.clone());
+            if let Some(selectors) = cache.get(selector_str) {
+                return Some(selectors.clone());
             }
         }
 
         // Not in cache, need to parse
-        let parsed = parse_selector(selector_str).ok()?;
+        let parsed = parse_selectors(selector_str).ok()?;
 
         // Upgrade to write lock to insert into cache
         if let Ok(mut cache) = self.selector_cache.write() {
@@ -691,6 +691,11 @@ impl DomTree {
         }
 
         Some(parsed)
+    }
+
+    /// Whether `node` matches any selector of a list
+    fn matches_any(&self, node: &DomNode, selectors: &[Selector]) -> bool {
+        selectors.iter().any(|s| self.matches_selector(node, s))
     }
 
     /// Clear the selector cache (useful for memory management)
@@ -706,14 +711,14 @@ impl DomTree {
 
 impl Query for DomTree {
     fn query_one(&self, selector_str: &str) -> Option<&DomNode> {
-        let selector = self.get_or_parse_selector(selector_str)?;
+        let selectors = self.get_or_parse_selectors(selector_str)?;
         self.document_order()
             .into_iter()
-            .find(|node| self.matches_selector(node, &selector))
+            .find(|node| self.matches_any(node, &selectors))
     }
 
     fn query_all(&self, selector_str: &str) -> QueryResult<'_> {
-        let selector = match self.get_or_parse_selector(selector_str) {
+        let selectors = match self.get_or_parse_selectors(selector_str) {
             Some(s) => s,
             None => return QueryResult::empty(),
         };
@@ -721,7 +726,7 @@ impl Query for DomTree {
         let nodes: Vec<_> = self
             .document_order()
             .into_iter()
-            .filter(|node| self.matches_selector(node, &selector))
+            .filter(|node| self.matches_any(node, &selectors))
             .collect();
 
         QueryResult::from_nodes(nodes)

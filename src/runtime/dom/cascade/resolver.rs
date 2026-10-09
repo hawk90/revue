@@ -236,8 +236,9 @@ impl<'a> StyleResolver<'a> {
         // Pre-parse all selectors
         let mut selectors = Vec::new();
         for (idx, rule) in stylesheet.rules.iter().enumerate() {
-            if let Ok(selector) = super::super::parse_selector(&rule.selector) {
-                selectors.push((selector, idx));
+            // A list (`A, B`) is a selector each, all for the rule
+            if let Ok(list) = super::super::parse_selectors(&rule.selector) {
+                selectors.extend(list.into_iter().map(|selector| (selector, idx)));
             }
         }
 

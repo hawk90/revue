@@ -10,8 +10,9 @@ impl DomRenderer {
         if self.cached_selectors.is_none() {
             let mut selectors = Vec::new();
             for (idx, rule) in self.stylesheet.rules.iter().enumerate() {
-                if let Ok(selector) = crate::dom::parse_selector(&rule.selector) {
-                    selectors.push((selector, idx));
+                // A list (`A, B`) is a selector each, all for the rule
+                if let Ok(list) = crate::dom::parse_selectors(&rule.selector) {
+                    selectors.extend(list.into_iter().map(|selector| (selector, idx)));
                 }
             }
             self.has_sibling_combinators = selectors.iter().any(|(selector, _)| {
