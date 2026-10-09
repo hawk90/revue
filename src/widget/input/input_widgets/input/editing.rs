@@ -78,10 +78,18 @@ impl Input {
         self.cursor = (self.cursor + advance).min(char_len);
     }
 
-    /// Delete word to the left with undo support
-    pub(super) fn delete_word_left(&mut self) {
+    /// Delete word to the left with undo support; with a selection, delete
+    /// the selection instead, as Backspace does. Returns whether the value
+    /// changed.
+    pub(super) fn delete_word_left(&mut self) -> bool {
+        if self.has_selection() {
+            return self.delete_selection_with_undo();
+        }
+        // An empty selection (anchor at the cursor) must not outlive the
+        // edit and turn into a stale range
+        self.clear_selection();
         if self.cursor == 0 {
-            return;
+            return false;
         }
 
         let end = self.cursor;
@@ -97,6 +105,7 @@ impl Input {
 
         // Delete characters between new cursor position and old cursor position
         self.remove_char_range(start, end);
+        true
     }
 
     // ─────────────────────────────────────────────────────────────────────────

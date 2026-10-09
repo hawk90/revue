@@ -43,10 +43,7 @@ impl Input {
                 self.move_word_right();
                 Some(true)
             }
-            Key::Backspace => {
-                self.delete_word_left();
-                Some(true)
-            }
+            Key::Backspace => Some(self.delete_word_left()),
             _ => None,
         }
     }
@@ -69,6 +66,13 @@ impl Input {
             if let Some(handled) = self.handle_shift_key(&event.key) {
                 return handled;
             }
+        }
+
+        // Ctrl or Alt with a letter is a command, and this one is not
+        // bound: leave it to the app rather than type the letter. Ctrl+Alt
+        // with a letter is text, as Windows reports AltGr.
+        if matches!(event.key, Key::Char(_)) && event.ctrl != event.alt {
+            return false;
         }
 
         // Regular key handling (clears selection on most actions)
