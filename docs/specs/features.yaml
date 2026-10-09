@@ -1311,6 +1311,23 @@ items:
     source:
       - 'issue #836 (dock rebuild, step 1)'
     notes: State (sizes, collapsed panes, the divider being moved) lives in a SplitState the app keeps; the view is rebuilt from it each frame. Tab view and dock() are steps 2 and 3 of #836.
+  - id: WID-046
+    title: Tab view holding widgets (tab bar plus the selected tab's content)
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - the selected tab's widget renders below the bar, registered in the DOM; other tabs are not rendered
+      - switch by clicking a label, or by Left/Right, Home/End, 1-9
+      - the selection follows its tab by id when tabs move; closing it selects the tab in its place
+    evidence:
+      - src/widget/layout/tab_view/mod.rs::tab_view
+      - tests/tab_view.rs::only_the_selected_tab_is_in_the_dom
+      - tests/tab_view.rs::clicking_a_label_selects_its_tab
+    source:
+      - 'issue #836 (dock rebuild, step 2)'
+    notes: The selection lives in a TabState the app keeps, like SplitState (WID-045). dock() is step 3 of #836.
   - id: CHART-001
     title: Shared chart components (Axis, Legend, ColorScheme, ChartGrid)
     area: chart
