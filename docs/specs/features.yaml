@@ -1321,10 +1321,12 @@ items:
       - the selected tab's widget renders below the bar, registered in the DOM; other tabs are not rendered
       - switch by clicking a label, or by Left/Right, Home/End, 1-9
       - the selection follows its tab by id when tabs move; closing it selects the tab in its place
+      - the bar shows with two tabs or more by default; TabBar::Always / TabBar::Never override it
     evidence:
       - src/widget/layout/tab_view/mod.rs::tab_view
       - tests/tab_view.rs::only_the_selected_tab_is_in_the_dom
       - tests/tab_view.rs::clicking_a_label_selects_its_tab
+      - tests/tab_view.rs::the_bar_can_always_show
     source:
       - 'issue #836 (dock rebuild, step 2)'
     notes: The selection lives in a TabState the app keeps, like SplitState (WID-045). dock() is step 3 of #836.

@@ -105,7 +105,8 @@ impl TabState {
                 return false;
             };
             let bar = frame.bar;
-            let on_bar = event.y == bar.y
+            let on_bar = bar.height > 0
+                && event.y == bar.y
                 && event.x >= bar.x
                 && u32::from(event.x) < u32::from(bar.x) + u32::from(bar.width);
             on_bar
