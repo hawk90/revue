@@ -1174,16 +1174,9 @@ fn test_divider_width_variations() {
         let mut ctx = RenderContext::new(&mut buffer, area);
         d.render(&mut ctx);
 
-        // First char should always be the divider
+        // First char should always be the divider (solid by default)
         let cell = buffer.get(0, 0).unwrap();
-        assert!(
-            cell.symbol == '─'
-                || cell.symbol == '═'
-                || cell.symbol == '━'
-                || cell.symbol == '╌'
-                || cell.symbol == '┄'
-                || cell.symbol == '═'
-        );
+        assert_eq!(cell.symbol, '─', "width {width}");
     }
 }
 
@@ -1200,16 +1193,9 @@ fn test_divider_height_variations() {
         let mut ctx = RenderContext::new(&mut buffer, area);
         d.render(&mut ctx);
 
-        // First char should always be the divider
+        // First char should always be the divider (solid by default)
         let cell = buffer.get(0, 0).unwrap();
-        assert!(
-            cell.symbol == '│'
-                || cell.symbol == '║'
-                || cell.symbol == '┃'
-                || cell.symbol == '╎'
-                || cell.symbol == '┆'
-                || cell.symbol == '║'
-        );
+        assert_eq!(cell.symbol, '│', "height {height}");
     }
 }
 

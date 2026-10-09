@@ -182,9 +182,7 @@ impl App {
                 should_draw = true;
             }
             Event::Key(key) if self.tab_navigation && is_tab_key(&key) => {
-                if self.track_tab_focus(&key) {
-                    should_draw = true;
-                }
+                should_draw |= self.track_tab_focus(&key);
             }
             Event::Mouse(ref mouse) => {
                 if self.track_hover(mouse.x, mouse.y) {

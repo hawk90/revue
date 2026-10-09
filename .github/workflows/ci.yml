@@ -254,13 +254,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # Pinned, not `stable`. On `stable` this job checked nothing about 1.95.
       - uses: dtolnay/rust-toolchain@1.95
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       # The MSRV covers every feature combination, so a dependency that raises
       # its own floor above it fails here, not in a consumer's build.
       # See CONTRIBUTING.md.
       - run: cargo check --locked --no-default-features
       - run: cargo check --locked
-      - run: cargo check --locked --all-features --all-targets
+      # Clippy on the MSRV too: its lints differ from the pinned toolchain's,
+      # and a consumer building on 1.95 sees these warnings.
+      - run: cargo clippy --locked --all-features --all-targets -- -D warnings
 
   # The same rustdoc build CD runs. CD is not a PR check, so a broken
   # intra-doc link used to reach main unnoticed and fail every deploy after it.

@@ -234,11 +234,9 @@ impl Markdown {
                 ctx.flush_line();
                 ctx.new_line();
             }
-            TagEnd::Strong => {
-                // A heading is bold throughout, strong text or not
-                if !ctx.in_heading {
-                    ctx.current_modifier &= !Modifier::BOLD;
-                }
+            // A heading is bold throughout, strong text or not
+            TagEnd::Strong if !ctx.in_heading => {
+                ctx.current_modifier &= !Modifier::BOLD;
             }
             TagEnd::Emphasis => {
                 ctx.current_modifier &= !Modifier::ITALIC;

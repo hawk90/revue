@@ -23,7 +23,6 @@ proptest! {
     #[test]
     fn test_bool_state_idempotent(state in any::<bool>()) {
         prop_assert_eq!(state, state);
-        prop_assert_eq!(!(!state), state);
     }
 
     /// Test that mutually exclusive states are never both true
