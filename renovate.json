@@ -101,7 +101,7 @@
       "minimumReleaseAge": "14 days"
     },
     {
-      "description": "dtolnay/rust-toolchain: the tag is the MSRV pin (e.g. @1.88), not an action release",
+      "description": "dtolnay/rust-toolchain: the tag is the MSRV pin (e.g. @1.95), not an action release",
       "matchManagers": [
         "github-actions"
       ],
