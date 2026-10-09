@@ -249,18 +249,22 @@ impl RenderBatch {
 
     /// Optimize the batch by merging/reordering operations
     ///
-    /// Drawing operations are sorted by position and adjacent cells merged,
-    /// but only within a run between `Clear` and cursor operations: those
-    /// are ordering barriers and keep their place relative to the writes
-    /// before and after them.
+    /// Single-cell writes are sorted by position and adjacent ones merged,
+    /// but only within a run of consecutive `SetCell` ops: cells at
+    /// different positions do not overlap, so their order does not matter.
+    /// Every other op keeps its place, so overlapping ops keep their paint
+    /// order. What the batch draws is unchanged.
     pub fn optimize(&mut self) {
         if !self.optimize || self.ops.len() < 2 {
             return;
         }
 
-        // Sort each run of drawing ops between barriers by position to
-        // improve cache locality (stable, so equal positions keep order)
-        for run in self.ops.split_mut(Self::is_barrier) {
+        // Sort each run of single-cell writes by position (stable, so
+        // writes to one cell keep their order)
+        for run in self
+            .ops
+            .split_mut(|op| !matches!(op, RenderOp::SetCell { .. }))
+        {
             run.sort_by_key(Self::op_position);
         }
 
@@ -271,6 +275,13 @@ impl RenderBatch {
 
         for op in self.ops.drain(..) {
             match op {
+                // A cell that is not one column wide (a wide glyph, or a
+                // continuation) is not merged: text advances by char width
+                RenderOp::SetCell { x, y, cell } if char_width(cell.symbol) != 1 => {
+                    Self::flush_pending_cells(&mut optimized, &mut pending_cells, pending_y);
+                    pending_y = None;
+                    optimized.push(RenderOp::SetCell { x, y, cell });
+                }
                 RenderOp::SetCell { x, y, cell } => {
                     if pending_y == Some(y) {
                         // Same row, try to merge
@@ -352,15 +363,6 @@ impl RenderBatch {
         }
 
         pending_cells.clear();
-    }
-
-    /// Whether `op` must keep its place in the queue: drawing ops on either
-    /// side of it must not move across it
-    fn is_barrier(op: &RenderOp) -> bool {
-        matches!(
-            op,
-            RenderOp::Clear | RenderOp::MoveCursor { .. } | RenderOp::ShowCursor(_)
-        )
     }
 
     /// Get operation position for sorting
