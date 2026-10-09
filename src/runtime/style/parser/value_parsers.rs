@@ -52,8 +52,12 @@ pub fn parse_color(value: &str) -> Option<Color> {
         return Some(c);
     }
 
-    // Hex color
-    if let Some(hex) = value.strip_prefix('#') {
+    // Hex color: hex digits only (from_str_radix would take a '+', and a
+    // non-ASCII char makes byte length and char count differ)
+    if let Some(hex) = value
+        .strip_prefix('#')
+        .filter(|hex| hex.bytes().all(|b| b.is_ascii_hexdigit()))
+    {
         if hex.len() == 6 {
             if let Ok(v) = u32::from_str_radix(hex, 16) {
                 return Some(Color::hex(v));
@@ -580,5 +584,18 @@ fn parse_calc_operand(value: &str) -> Option<CalcExpr> {
         Some(CalcExpr::Fixed(v))
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod hex_tests {
+    use super::parse_color;
+
+    #[test]
+    fn a_hex_with_non_ascii_characters_or_a_sign_is_no_color() {
+        // "€" is 3 bytes but 1 char; from_str_radix takes a leading '+' (#863)
+        assert_eq!(parse_color("#€"), None);
+        assert_eq!(parse_color("#é1"), None);
+        assert_eq!(parse_color("#+fffff"), None);
     }
 }

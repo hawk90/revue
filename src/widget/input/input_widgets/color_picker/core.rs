@@ -161,7 +161,8 @@ impl ColorPicker {
     /// Set color from hex string
     pub fn set_hex(&mut self, hex: &str) -> bool {
         let hex = hex.trim_start_matches('#');
-        if hex.len() == 6 {
+        // Hex digits only: the slices below are by byte (#863)
+        if hex.len() == 6 && hex.bytes().all(|b| b.is_ascii_hexdigit()) {
             if let (Ok(r), Ok(g), Ok(b)) = (
                 u8::from_str_radix(&hex[0..2], 16),
                 u8::from_str_radix(&hex[2..4], 16),
