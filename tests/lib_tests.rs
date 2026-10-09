@@ -134,14 +134,12 @@ fn test_error_clone_for_render() {
 fn test_result_ok_variant() {
     let result: Result<String> = Ok("success".to_string());
     assert!(result.is_ok());
-    assert!(!result.is_err());
 }
 
 #[test]
 fn test_result_err_variant() {
     let io_err = io::Error::new(io::ErrorKind::NotFound, "not found");
     let result: Result<String> = Err(io_err.into());
-    assert!(!result.is_ok());
     assert!(result.is_err());
 }
 

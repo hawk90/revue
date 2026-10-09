@@ -9,18 +9,18 @@ Thank you for your interest in contributing to Revue! We welcome contributions o
 ### Prerequisites
 
 ```bash
-# Rust (1.88+)
+# Rust (1.95+)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Optional: typos (spell checker)
 cargo install typos-cli
 ```
 
-**What 1.88 covers.** It is the floor for building `revue` with **default
-features**, which is what the `MSRV (1.88)` CI job checks. Optional features
-pull dependencies with their own, higher floors — `sysinfo` currently needs
-1.95 — so `--all-features` needs a newer toolchain. Contributors should use
-stable; the MSRV job exists to keep the default build honest for consumers.
+**What 1.95 covers.** It is the floor for building `revue` with **any
+combination of features** — no features, the defaults, or `--all-features` —
+and the `MSRV (1.95)` CI job checks all three. The highest floor among the
+dependencies is `sysinfo`'s 1.95. Contributors should use the pinned toolchain
+in `rust-toolchain.toml`; the MSRV job keeps the floor honest for consumers.
 
 ### Project Setup
 

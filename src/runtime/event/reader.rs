@@ -104,13 +104,8 @@ fn convert_event(event: CrosstermEvent) -> Option<Event> {
 
 /// Cut `text` to at most `MAX_PASTE_SIZE` bytes, on a char boundary
 fn truncate_paste(mut text: String) -> String {
-    if text.len() > MAX_PASTE_SIZE {
-        let mut end = MAX_PASTE_SIZE;
-        while !text.is_char_boundary(end) {
-            end -= 1;
-        }
-        text.truncate(end);
-    }
+    let end = text.floor_char_boundary(MAX_PASTE_SIZE);
+    text.truncate(end);
     text
 }
 

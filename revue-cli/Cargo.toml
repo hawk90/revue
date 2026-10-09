@@ -2,9 +2,10 @@
 name = "revue-cli"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.95"
 description = "CLI tool for Revue TUI framework"
 license = "MIT"
-repository = "https://github.com/user/revue"
+repository = "https://github.com/hawk90/revue"
 keywords = ["tui", "cli", "terminal", "ui"]
 categories = ["command-line-utilities", "development-tools"]
 
