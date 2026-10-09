@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0](https://github.com/hawk90/revue/compare/v3.7.0...v3.8.0) (2026-10-09)
+
+
+### Features
+
+* **msrv:** raise the minimum supported Rust version to 1.95 ([#906](https://github.com/hawk90/revue/issues/906)) ([32231da](https://github.com/hawk90/revue/commit/32231da0b4e31ee0ba72cee0a1bf27ffb8b85318))
+
+
+### Bug Fixes
+
+* **event:** cut large pastes on a char boundary and drop key releases ([#905](https://github.com/hawk90/revue/issues/905)) ([7f718c8](https://github.com/hawk90/revue/commit/7f718c81103ca8eac884adddb1965571ba2059ff))
+* **statusbar:** keep a one-column gap between sections when no separator is set ([#901](https://github.com/hawk90/revue/issues/901)) ([dbd5838](https://github.com/hawk90/revue/commit/dbd5838f4b1c4454ef9dd91f0e452960d69aa8ac))
+* **text:** stop char wrapping from looping forever on a wide char that does not fit ([#904](https://github.com/hawk90/revue/issues/904)) ([fbc43af](https://github.com/hawk90/revue/commit/fbc43af7f7388193bfd89064d856e6a307e2de70))
+
 ## [3.7.0](https://github.com/hawk90/revue/compare/v3.6.3...v3.7.0) (2026-10-08)
 
 
