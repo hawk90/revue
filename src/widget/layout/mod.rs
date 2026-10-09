@@ -19,6 +19,7 @@
 //! |--------|-------------|-------------|
 //! | [`Grid`] | CSS Grid layout | [`grid()`] |
 //! | [`Splitter`] | Resizable split panes | [`hsplit()`][hsplit], [`vsplit()`][vsplit] |
+//! | [`SplitView`] | Resizable panes holding widgets | [`split_view()`] |
 //! | [`ScrollView`] | Scrollable container | [`scroll_view()`] |
 //! | [`Layers`] | Z-index layering | [`layers()`] |
 //! | [`Positioned`] | Absolute positioning | [`positioned()`] |

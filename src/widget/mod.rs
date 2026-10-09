@@ -17,6 +17,7 @@
 //! | [`Positioned`] | Absolute positioning | [`positioned()`] |
 //! | [`Grid`] | CSS Grid layout | [`grid()`] |
 //! | [`Splitter`] | Resizable panes | [`hsplit()`], [`vsplit()`] |
+//! | [`SplitView`] | Resizable panes holding widgets | [`split_view()`] |
 //! | [`Accordion`] | Collapsible sections | [`accordion()`] |
 //! | [`Collapsible`] | Single expandable section | [`collapsible()`] |
 //! | [`Card`] | Content container | [`card()`] |
