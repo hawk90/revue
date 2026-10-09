@@ -142,7 +142,7 @@ pub use border::{border, draw_border, Border, BorderType};
 pub use card::{card, Card, CardVariant};
 pub use collapsible::{collapsible, Collapsible};
 #[allow(unused_imports)]
-pub use dock::{dock, dock_area, DockArea, DockManager, DockPosition, TabContent};
+pub use dock::{dock, Dock, DockPosition, DockState};
 pub use grid::{
     grid, grid_item, grid_template, Grid, GridAlign, GridItem, GridPlacement, TrackSize,
 };

@@ -412,3 +412,60 @@ impl View for Box<dyn View> {
         (**self).meta()
     }
 }
+
+/// A borrowed view is a view, so a container can render a widget it does
+/// not own - one held in a field, or passed down from its caller.
+impl<V: View + ?Sized> View for &V {
+    fn render(&self, ctx: &mut RenderContext) {
+        (**self).render(ctx);
+    }
+
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        (**self).measure(max_width, max_height)
+    }
+
+    fn measure_styled(
+        &self,
+        max_width: u16,
+        max_height: u16,
+        subtree: StyledSubtree<'_>,
+    ) -> Option<(u16, u16)> {
+        (**self).measure_styled(max_width, max_height, subtree)
+    }
+
+    fn fills(&self) -> Fill {
+        (**self).fills()
+    }
+
+    fn widget_type(&self) -> &'static str {
+        (**self).widget_type()
+    }
+
+    fn id(&self) -> Option<&str> {
+        (**self).id()
+    }
+
+    fn classes(&self) -> &[String] {
+        (**self).classes()
+    }
+
+    fn children(&self) -> &[Box<dyn View>] {
+        (**self).children()
+    }
+
+    fn needs_render(&self) -> bool {
+        (**self).needs_render()
+    }
+
+    fn key(&self) -> Option<WidgetKey> {
+        (**self).key()
+    }
+
+    fn inline_style(&self) -> Option<Style> {
+        (**self).inline_style()
+    }
+
+    fn meta(&self) -> WidgetMeta {
+        (**self).meta()
+    }
+}

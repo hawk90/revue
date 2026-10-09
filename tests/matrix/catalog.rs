@@ -5,9 +5,6 @@
 //! (options, rows, data points, children), it gets `content.items` or numbers
 //! derived from them, so the same content drives 0 / 1 / many items. Where a
 //! widget has a `focused` builder, the factory passes the case's focus.
-//!
-//! Not in the catalog: `DockArea`/`DockManager` (not reachable from outside
-//! the crate - `widget::layout` is private and they are not re-exported).
 
 use revue::core::app::{DeclarativeRouter, Inspector as AppInspector, WidgetInfo};
 use revue::devtools::{
@@ -233,6 +230,43 @@ pub fn catalog() -> Vec<Entry> {
                         .collect(),
                 ),
             )
+        }),
+        // The views below borrow a state the app keeps; a leaked one
+        // stands in for the app's.
+        e("SplitView", |c, _| {
+            let state: &'static SplitState = Box::leak(Box::new(SplitState::new()));
+            Box::new(
+                c.items
+                    .iter()
+                    .enumerate()
+                    .fold(split_view(state), |v, (i, s)| {
+                        v.pane(Pane::new(format!("p{i}")), Text::new(s.clone()))
+                    }),
+            )
+        }),
+        e("TabView", |c, _| {
+            let state: &'static TabState = Box::leak(Box::new(TabState::new()));
+            Box::new(
+                c.items
+                    .iter()
+                    .enumerate()
+                    .fold(tab_view(state), |v, (i, s)| {
+                        v.tab_with_id(format!("t{i}"), s.clone(), Text::new(s.clone()))
+                    }),
+            )
+        }),
+        e("Dock", |c, _| {
+            use DockPosition::{Bottom, Center, Left, Right, Top};
+            let state: &'static DockState = Box::leak(Box::new(DockState::new()));
+            let areas = [Center, Left, Bottom, Right, Top];
+            Box::new(c.items.iter().enumerate().fold(dock(state), |d, (i, s)| {
+                d.panel_with_id(
+                    areas[i % 5],
+                    format!("d{i}"),
+                    s.clone(),
+                    Text::new(s.clone()),
+                )
+            }))
         }),
         e("Stack", |c, _| {
             let mut s = vstack().gap(1);
