@@ -737,11 +737,12 @@ items:
       - src/widget/input/input_widgets/textarea/undo.rs
       - src/widget/input/input_widgets/textarea/editing.rs::duplicate_line
       - tests/textarea_undo_tests.rs
+      - tests/textarea_multiline_undo.rs
       - tests/text_input_modified_keys.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / TextArea
     notes: 'handle_key_event binds Ctrl+Z, Ctrl+Y / Ctrl+Shift+Z, Ctrl+A and Ctrl+Shift+K; an unbound Ctrl or Alt letter is
-      left to the app, not typed (#888). Not yet: Shift/Ctrl+Shift+Arrow selection. Doc assigns Ctrl+D to both duplicate-line
+      left to the app, not typed (#888). Edits that span lines (delete, paste, replace) are one undo step each. Not yet: Shift/Ctrl+Shift+Arrow selection. Doc assigns Ctrl+D to both duplicate-line
       and select-next-occurrence; code binds select-next-occurrence.'
   - id: WID-011
     title: TextArea find/replace
