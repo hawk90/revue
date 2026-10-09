@@ -140,3 +140,14 @@ fn a_tab_can_have_an_id_apart_from_its_label() {
     let buffer = render(&view, 20, 2);
     assert!(row(&buffer, 1, 20).starts_with('B'));
 }
+
+#[test]
+fn a_stylesheet_reaches_the_tab_bar() {
+    let state = TabState::new();
+    let mut h = PipelineHarness::with_css("Tabs { color: red; }", 12, 3);
+    h.draw(&two_tabs(&state));
+    // `two` is not selected, so it takes the rule's color
+    let cell = h.buffer().get(7, 0).unwrap();
+    assert_eq!(cell.symbol, 't');
+    assert_eq!(cell.fg, Some(revue::style::Color::RED));
+}
