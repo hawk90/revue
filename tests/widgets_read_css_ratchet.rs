@@ -51,6 +51,9 @@ const NOT_YET_READING_CSS: &[&str] = &[
     // The bar is a `Tabs` node and the body the tab's own widget; a rule for
     // `Tabs` reaches the bar (tests/tab_view.rs).
     "TabView",
+    // Its areas are `SplitView`s and `TabView`s; a rule reaches each panel
+    // (tests/dock.rs).
+    "Dock",
     // intentional: per-token or per-role colors. A JSON key against its string
     // value, a log's timestamp against its source, a diff's additions against
     // its deletions, a syntax highlighter's keywords - the colors are how the

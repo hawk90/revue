@@ -1330,6 +1330,23 @@ items:
     source:
       - 'issue #836 (dock rebuild, step 2)'
     notes: The selection lives in a TabState the app keeps, like SplitState (WID-045). dock() is step 3 of #836.
+  - id: WID-047
+    title: Dock (IDE-style left/right/top/bottom/center areas)
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - areas hold panels (widgets); two or more show as tabs, as TabBar says
+      - dividers drag in both directions; areas collapse from the app (state.toggle)
+      - every panel is in the DOM (CSS and hit test reach it); empty areas are left out
+    evidence:
+      - src/widget/layout/dock.rs::dock
+      - tests/dock.rs::dividers_drag_in_both_directions
+      - tests/dock.rs::a_stylesheet_reaches_a_panel
+    source:
+      - 'issue #193 (IDE-style docking), issue #836 (step 3)'
+    notes: "Built from SplitView (WID-045) and TabView (WID-046); its state is a DockState the app keeps. Replaces the crate-private DockManager (#798). Not yet: keyboard focus between areas, persisted layout, keyboard resizing at dock level."
   - id: CHART-001
     title: Shared chart components (Axis, Legend, ColorScheme, ChartGrid)
     area: chart

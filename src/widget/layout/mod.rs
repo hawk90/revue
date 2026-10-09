@@ -21,6 +21,7 @@
 //! | [`Splitter`] | Resizable split panes | [`hsplit()`][hsplit], [`vsplit()`][vsplit] |
 //! | [`SplitView`] | Resizable panes holding widgets | [`split_view()`] |
 //! | [`TabView`] | Tab bar and the selected tab's widget | [`tab_view()`] |
+//! | [`Dock`] | IDE-style areas: left, right, top, bottom, center | [`dock()`] |
 //! | [`ScrollView`] | Scrollable container | [`scroll_view()`] |
 //! | [`Layers`] | Z-index layering | [`layers()`] |
 //! | [`Positioned`] | Absolute positioning | [`positioned()`] |
@@ -142,7 +143,7 @@ pub use border::{border, draw_border, Border, BorderType};
 pub use card::{card, Card, CardVariant};
 pub use collapsible::{collapsible, Collapsible};
 #[allow(unused_imports)]
-pub use dock::{dock, dock_area, DockArea, DockManager, DockPosition, TabContent};
+pub use dock::{dock, Dock, DockPosition, DockState};
 pub use grid::{
     grid, grid_item, grid_template, Grid, GridAlign, GridItem, GridPlacement, TrackSize,
 };

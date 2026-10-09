@@ -123,7 +123,7 @@ full PTY Terminal widget. (Textual has no equivalents.)
 | Flexbox | ✅ | ✅ | ❌ |
 | Grid | ✅ | ✅ | ❌ |
 | Constraint (Cassowary) | ❌ | ❌ | ✅ |
-| Dock | ❌ | ✅ | ❌ |
+| Dock (edge areas) | ✅ `dock()`: draggable, collapsible, tabbed areas | ✅ CSS `dock` | ❌ |
 | Percent / Auto | ✅ | ✅ | partial |
 
 ---

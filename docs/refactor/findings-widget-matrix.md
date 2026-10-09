@@ -30,7 +30,8 @@ underflow로 패닉하는지는 아무도 모른다. 매트릭스는 모든 공�
   `Markdown`, `MarkdownPresentation`, `QrCodeWidget`, `ProcessMonitor`)은 해당
   `cfg`로 감쌌다.
 - **빠진 것:** `DockArea`/`DockManager`. `widget::layout`이 비공개이고 다시
-  내보내지도 않아 크레이트 밖에서 만들 수 없다.
+  내보내지도 않아 크레이트 밖에서 만들 수 없다. (2026-10-09, #836: 둘을
+  지우고 `Dock`으로 대체. `SplitView`·`TabView`·`Dock`은 카탈로그에 있다.)
 
 전체 곱은 너무 크고 실패의 원인을 짚기 어렵다. 그래서 층을 셋으로 나누고 층마다
 파일 하나를 뒀다. 실패 메시지가 층 이름을 단다.

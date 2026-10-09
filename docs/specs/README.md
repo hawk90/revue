@@ -74,3 +74,4 @@ Snapshot on 2026-10-07 (stacks content-sized by default, LAY-006 done): 105 item
 Snapshot on 2026-10-07 (`revue dev` watches and restarts, DX-002 done): 105 items — 86 done, 15 partial, 4 todo, 0 dropped.
 Snapshot on 2026-10-09 (SplitView holding widgets, WID-045 done): 107 items — 88 done, 15 partial, 4 todo, 0 dropped.
 Snapshot on 2026-10-09 (TabView holding widgets, WID-046 done): 108 items — 89 done, 15 partial, 4 todo, 0 dropped.
+Snapshot on 2026-10-09 (dock(), WID-047 done): 109 items — 90 done, 15 partial, 4 todo, 0 dropped.
