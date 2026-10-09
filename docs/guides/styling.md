@@ -54,6 +54,11 @@ Button.primary {
     background: #7aa2f7;
     color: #1a1b26;
 }
+
+/* A selector list: the rule styles whatever any of them matches */
+Input, TextArea {
+    color: white;
+}
 ```
 
 ### Applying Classes

@@ -37,10 +37,12 @@ items:
       - element (type) selector matches widget_type
       - .class and .a.b compound selectors match
       - '#id selector matches element_id'
+      - a selector list (A, B) styles what any of its selectors matches; DomTree::query takes lists too
     evidence:
       - src/runtime/dom/selector/parser.rs
       - src/runtime/dom/selector/mod.rs::test_selector_part_class
       - tests/css_reaches_the_screen.rs::color_reaches_the_cell
+      - tests/css_selector_lists.rs
     source:
       - FEATURES.md §1 CSS Styling / Selectors
   - id: CSS-003

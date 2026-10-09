@@ -8,17 +8,26 @@ use super::types::{
 /// Maximum allowed length for CSS identifiers to prevent DoS attacks
 const MAX_IDENTIFIER_LENGTH: usize = 256;
 
-/// Parse a single selector
+/// Parse a single selector. A selector list (`A, B`) is an error: parse
+/// it with [`parse_selectors`].
 pub fn parse_selector(input: &str) -> Result<Selector, SelectorParseError> {
     let mut parser = SelectorParser::new(input);
-    parser.parse_selector()
+    let selector = parser.parse_selector()?;
+    parser.skip_whitespace();
+    if parser.peek() == Some(',') {
+        return Err(SelectorParseError {
+            message: "A selector list; parse it with parse_selectors".to_string(),
+            position: parser.pos,
+        });
+    }
+    Ok(selector)
 }
 
 /// Parse comma-separated selectors
 pub fn parse_selectors(input: &str) -> Result<Vec<Selector>, SelectorParseError> {
     let mut selectors = Vec::new();
 
-    for part in input.split(',') {
+    for part in split_selector_list(input) {
         let trimmed = part.trim();
         if !trimmed.is_empty() {
             selectors.push(parse_selector(trimmed)?);
@@ -26,6 +35,31 @@ pub fn parse_selectors(input: &str) -> Result<Vec<Selector>, SelectorParseError>
     }
 
     Ok(selectors)
+}
+
+/// Split a selector list on its top-level commas: not those inside
+/// brackets, parentheses or quotes (`[title="a,b"]`)
+fn split_selector_list(input: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0usize;
+    let mut quote = None;
+    let mut start = 0;
+    for (i, ch) in input.char_indices() {
+        match (quote, ch) {
+            (Some(q), _) if ch == q => quote = None,
+            (Some(_), _) => {}
+            (None, '"' | '\'') => quote = Some(ch),
+            (None, '[' | '(') => depth += 1,
+            (None, ']' | ')') => depth = depth.saturating_sub(1),
+            (None, ',') if depth == 0 => {
+                parts.push(&input[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    parts.push(&input[start..]);
+    parts
 }
 
 struct SelectorParser<'a> {
