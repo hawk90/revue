@@ -1,11 +1,11 @@
 //! Event reader using crossterm
 
 use crossterm::event::{
-    self, poll, Event as CrosstermEvent, KeyCode, KeyEvent as CrosstermKeyEvent, KeyModifiers,
-    MouseButton as CrosstermMouseButton, MouseEvent as CrosstermMouseEvent,
+    self, poll, Event as CrosstermEvent, KeyCode, KeyEvent as CrosstermKeyEvent, KeyEventKind,
+    KeyModifiers, MouseButton as CrosstermMouseButton, MouseEvent as CrosstermMouseEvent,
     MouseEventKind as CrosstermMouseEventKind,
 };
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use super::{Event, Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use crate::constants::{MAX_PASTE_SIZE, POLL_IMMEDIATE, TICK_RATE_DEFAULT};
@@ -32,6 +32,7 @@ impl EventReader {
     ///
     /// Polls for events up to `tick_rate` duration. If an event is available,
     /// it is returned. If the timeout expires with no event, returns `Event::Tick`.
+    /// Key releases are skipped (see [`Event::Key`]).
     ///
     /// # Errors
     ///
@@ -39,24 +40,15 @@ impl EventReader {
     /// - Terminal event polling fails
     /// - Event reading fails (e.g., terminal disconnected)
     pub fn read(&self) -> Result<Event> {
-        if poll(self.tick_rate)? {
-            let event = match event::read()? {
-                CrosstermEvent::Key(key) => Event::Key(convert_key_event(key)),
-                CrosstermEvent::Mouse(mouse) => Event::Mouse(convert_mouse_event(mouse)),
-                CrosstermEvent::Resize(width, height) => Event::Resize(width, height),
-                CrosstermEvent::FocusGained => Event::FocusGained,
-                CrosstermEvent::FocusLost => Event::FocusLost,
-                CrosstermEvent::Paste(mut text) => {
-                    // Truncate paste to prevent DoS through large paste events
-                    if text.len() > MAX_PASTE_SIZE {
-                        text.truncate(MAX_PASTE_SIZE);
-                    }
-                    Event::Paste(text)
-                }
-            };
-            Ok(event)
-        } else {
-            Ok(Event::Tick)
+        let deadline = Instant::now() + self.tick_rate;
+        loop {
+            let left = deadline.saturating_duration_since(Instant::now());
+            if !poll(left)? {
+                return Ok(Event::Tick);
+            }
+            if let Some(event) = convert_event(event::read()?) {
+                return Ok(event);
+            }
         }
     }
 
@@ -69,24 +61,12 @@ impl EventReader {
     ///
     /// Returns `Err(io::Error)` if terminal event polling or reading fails.
     pub fn try_read(&self) -> Result<Option<Event>> {
-        if poll(POLL_IMMEDIATE)? {
-            match event::read()? {
-                CrosstermEvent::Key(key) => Ok(Some(Event::Key(convert_key_event(key)))),
-                CrosstermEvent::Mouse(mouse) => Ok(Some(Event::Mouse(convert_mouse_event(mouse)))),
-                CrosstermEvent::Resize(width, height) => Ok(Some(Event::Resize(width, height))),
-                CrosstermEvent::FocusGained => Ok(Some(Event::FocusGained)),
-                CrosstermEvent::FocusLost => Ok(Some(Event::FocusLost)),
-                CrosstermEvent::Paste(mut text) => {
-                    // Truncate paste to prevent DoS through large paste events
-                    if text.len() > MAX_PASTE_SIZE {
-                        text.truncate(MAX_PASTE_SIZE);
-                    }
-                    Ok(Some(Event::Paste(text)))
-                }
+        while poll(POLL_IMMEDIATE)? {
+            if let Some(event) = convert_event(event::read()?) {
+                return Ok(Some(event));
             }
-        } else {
-            Ok(None)
         }
+        Ok(None)
     }
 
     /// Check if an event is available
@@ -105,6 +85,33 @@ impl Default for EventReader {
     fn default() -> Self {
         Self::default_rate()
     }
+}
+
+/// Convert a crossterm event to ours. Key releases, which crossterm reports
+/// on Windows, give `None`: a key acts once, when pressed (or repeated).
+fn convert_event(event: CrosstermEvent) -> Option<Event> {
+    Some(match event {
+        CrosstermEvent::Key(key) if key.kind == KeyEventKind::Release => return None,
+        CrosstermEvent::Key(key) => Event::Key(convert_key_event(key)),
+        CrosstermEvent::Mouse(mouse) => Event::Mouse(convert_mouse_event(mouse)),
+        CrosstermEvent::Resize(width, height) => Event::Resize(width, height),
+        CrosstermEvent::FocusGained => Event::FocusGained,
+        CrosstermEvent::FocusLost => Event::FocusLost,
+        // Truncate paste to prevent DoS through large paste events
+        CrosstermEvent::Paste(text) => Event::Paste(truncate_paste(text)),
+    })
+}
+
+/// Cut `text` to at most `MAX_PASTE_SIZE` bytes, on a char boundary
+fn truncate_paste(mut text: String) -> String {
+    if text.len() > MAX_PASTE_SIZE {
+        let mut end = MAX_PASTE_SIZE;
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        text.truncate(end);
+    }
+    text
 }
 
 /// Convert crossterm KeyEvent to our KeyEvent
@@ -291,5 +298,47 @@ mod tests {
             let key_event = convert_key_event(ct_key);
             assert_eq!(key_event.key, expected_key, "Failed for {:?}", ct_code);
         }
+    }
+
+    #[test]
+    fn test_key_release_is_dropped() {
+        use crossterm::event::KeyEventState;
+        let key = |kind| {
+            CrosstermEvent::Key(CrosstermKeyEvent {
+                code: KeyCode::Char('a'),
+                modifiers: KeyModifiers::NONE,
+                kind,
+                state: KeyEventState::NONE,
+            })
+        };
+        assert!(convert_event(key(KeyEventKind::Release)).is_none());
+        for kind in [KeyEventKind::Press, KeyEventKind::Repeat] {
+            assert!(matches!(
+                convert_event(key(kind)),
+                Some(Event::Key(KeyEvent {
+                    key: Key::Char('a'),
+                    ..
+                }))
+            ));
+        }
+    }
+
+    #[test]
+    fn test_large_paste_is_cut_on_a_char_boundary() {
+        // 3-byte chars, so MAX_PASTE_SIZE falls inside one
+        let text = "한".repeat(MAX_PASTE_SIZE / 3 + 10);
+        assert!(!text.is_char_boundary(MAX_PASTE_SIZE));
+
+        let Some(Event::Paste(pasted)) = convert_event(CrosstermEvent::Paste(text)) else {
+            panic!("expected a paste event");
+        };
+        assert!(pasted.len() <= MAX_PASTE_SIZE);
+        assert_eq!(pasted.chars().count(), MAX_PASTE_SIZE / 3);
+    }
+
+    #[test]
+    fn test_small_paste_is_kept() {
+        let pasted = convert_event(CrosstermEvent::Paste("붙여넣기".into()));
+        assert!(matches!(pasted, Some(Event::Paste(t)) if t == "붙여넣기"));
     }
 }
