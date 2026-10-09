@@ -3,7 +3,7 @@
 //! Each area holds one or more panels (widgets); with two or more, they
 //! show as tabs. The areas are a [`SplitView`](super::SplitView) of rows
 //! (top, middle, bottom) whose middle is a split of columns (left, center,
-//! right), and each area a [`TabView`](super::TabView). So the dividers
+//! right), and each area a [`TabView`]. So the dividers
 //! drag, areas collapse, and every panel is in the DOM. An area with no
 //! panels is left out.
 //!
