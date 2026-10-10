@@ -78,10 +78,8 @@ This document describes the GitHub settings for the revue repository.
 
 **Settings → Environments**
 
-### github-pages
-
-- **Deployment branches:** `main` only
-- **Required reviewers:** None (automatic deployment)
+None required. The former `github-pages` environment is unused since Pages is
+disabled (see below) and can be deleted.
 
 ---
 
@@ -102,10 +100,9 @@ This document describes the GitHub settings for the revue repository.
 
 ## GitHub Pages
 
-**Settings → Pages**
-
-- **Source:** GitHub Actions
-- **Custom domain:** (optional)
+Disabled. API documentation is published on [docs.rs](https://docs.rs/revue)
+(the crate's `documentation` URL). The account's user site serves the blog at
+`hawk90.dev`, so a project Pages site here would appear under that domain.
 
 ---
 
@@ -115,10 +112,8 @@ This document describes the GitHub settings for the revue repository.
 [ ] Create branch protection rule (main)
 [ ] Configure merge settings (squash only)
 [ ] Configure Actions permissions
-[ ] Create github-pages environment
 [ ] Add CODECOV_TOKEN secret
 [ ] Add CARGO_REGISTRY_TOKEN secret
-[ ] Set Pages source to GitHub Actions
 ```
 
 ## Rulesets (Recommended)
