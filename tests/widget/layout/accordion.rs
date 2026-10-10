@@ -637,3 +637,24 @@ fn test_accordion_many_sections() {
     let acc = Accordion::new().sections(sections);
     assert_eq!(acc.len(), 20);
 }
+
+mod snapshots {
+
+    use revue::testing::{Pilot, TestApp};
+    use revue::widget::Accordion;
+
+    #[test]
+    fn test_accordion_basic() {
+        use revue::widget::AccordionSection;
+
+        let view = Accordion::new()
+            .section(AccordionSection::new("Section 1").content("Content for section 1"))
+            .section(AccordionSection::new("Section 2").content("Content for section 2"))
+            .section(AccordionSection::new("Section 3").content("Content for section 3"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("accordion_basic");
+    }
+}

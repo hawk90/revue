@@ -1216,3 +1216,26 @@ mod edge_cases {
         switch.render(&mut ctx);
     }
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+    use revue::widget::Switch;
+
+    #[test]
+    fn test_switch_basic() {
+        let view = vstack()
+            .gap(1)
+            .child(hstack().child(Switch::new()).child(text(" Enable feature")))
+            .child(
+                hstack()
+                    .child(Switch::new().on(true))
+                    .child(text(" Dark mode")),
+            );
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("switch_basic");
+    }
+}

@@ -1264,3 +1264,38 @@ fn test_all_languages_are_distinct() {
         }
     }
 }
+
+#[test]
+fn test_syntax_rust() {
+    use revue::widget::{Language, SyntaxHighlighter};
+
+    let _code = r#"fn main() {
+    let x = 42;
+    println!("{}", x);
+}"#;
+
+    let highlighter = SyntaxHighlighter::new(Language::Rust);
+    // Just test that highlighting produces spans
+    let spans = highlighter.highlight_line("fn main() {");
+    assert!(!spans.is_empty());
+}
+
+#[test]
+fn test_syntax_themes() {
+    use revue::widget::{Language, SyntaxHighlighter, SyntaxTheme};
+
+    let _dark = SyntaxHighlighter::new(Language::Rust).theme(SyntaxTheme::dark());
+    let _light = SyntaxHighlighter::new(Language::Rust).theme(SyntaxTheme::light());
+    let _monokai = SyntaxHighlighter::new(Language::Rust).theme(SyntaxTheme::monokai());
+}
+
+#[test]
+fn test_syntax_languages() {
+    use revue::widget::Language;
+
+    assert_eq!(Language::from_extension("rs"), Language::Rust);
+    assert_eq!(Language::from_extension("py"), Language::Python);
+    assert_eq!(Language::from_extension("js"), Language::JavaScript);
+    assert_eq!(Language::from_extension("ts"), Language::JavaScript);
+    assert_eq!(Language::from_extension("go"), Language::Go);
+}

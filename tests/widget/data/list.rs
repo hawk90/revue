@@ -1060,3 +1060,28 @@ fn test_list_view_meta_complete() {
 }
 
 // =============================================================================
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_list_basic() {
+        let view = List::new(vec!["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"]);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("list_basic");
+    }
+
+    #[test]
+    fn test_list_selected() {
+        let view = List::new(vec!["First", "Second", "Third"]).selected(1);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("list_selected");
+    }
+}

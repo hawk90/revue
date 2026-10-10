@@ -1068,3 +1068,23 @@ fn test_rating_editable_takes_user_changes() {
     r.increment();
     assert_ne!(rating_row(&r), before);
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+    use revue::widget::Rating;
+
+    #[test]
+    fn test_rating_basic() {
+        let view = vstack()
+            .gap(1)
+            .child(Rating::new().max_value(5).value(3.0))
+            .child(Rating::new().max_value(5).value(5.0))
+            .child(Rating::new().max_value(5).value(0.0));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("rating_basic");
+    }
+}

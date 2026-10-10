@@ -997,3 +997,21 @@ fn test_spinner_label_color_independence() {
     assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::RED));
     assert_eq!(buffer.get(2, 0).unwrap().fg, None);
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_spinner_basic() {
+        let view = hstack()
+            .gap(1)
+            .child(Spinner::new())
+            .child(text("Loading..."));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("spinner_basic");
+    }
+}

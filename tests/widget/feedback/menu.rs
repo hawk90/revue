@@ -136,3 +136,58 @@ fn test_menu_item_long_label() {
     let item = menu_item(long_label);
     let _ = item;
 }
+
+mod snapshots {
+
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_menubar_basic() {
+        use revue::widget::{Menu, MenuBar, MenuItem};
+
+        let view = MenuBar::new()
+            .menu(
+                Menu::new("File")
+                    .item(MenuItem::new("New"))
+                    .item(MenuItem::new("Open"))
+                    .item(MenuItem::separator())
+                    .item(MenuItem::new("Save"))
+                    .item(MenuItem::new("Exit")),
+            )
+            .menu(
+                Menu::new("Edit")
+                    .item(MenuItem::new("Cut"))
+                    .item(MenuItem::new("Copy")),
+            )
+            .menu(Menu::new("Help").item(MenuItem::new("About")));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("menubar_basic");
+    }
+
+    #[test]
+    fn test_menubar_with_shortcuts() {
+        use revue::widget::{Menu, MenuBar, MenuItem};
+
+        let view = MenuBar::new()
+            .menu(
+                Menu::new("File")
+                    .item(MenuItem::new("New").shortcut("Ctrl+N"))
+                    .item(MenuItem::new("Open").shortcut("Ctrl+O"))
+                    .item(MenuItem::new("Save").shortcut("Ctrl+S")),
+            )
+            .menu(
+                Menu::new("Edit")
+                    .item(MenuItem::new("Cut").shortcut("Ctrl+X"))
+                    .item(MenuItem::new("Copy").shortcut("Ctrl+C"))
+                    .item(MenuItem::new("Paste").shortcut("Ctrl+V")),
+            );
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("menubar_shortcuts");
+    }
+}

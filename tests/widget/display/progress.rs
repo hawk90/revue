@@ -1076,3 +1076,50 @@ fn test_progress_unicode_labels() {
         .collect();
     assert!(text.contains('█') || text.contains('━'));
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_progress_0_percent() {
+        let view = progress(0.0);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("progress_0_percent");
+    }
+
+    #[test]
+    fn test_progress_50_percent() {
+        let view = progress(0.5);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("progress_50_percent");
+    }
+
+    #[test]
+    fn test_progress_100_percent() {
+        let view = progress(1.0);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("progress_100_percent");
+    }
+
+    #[test]
+    fn test_progress_with_label() {
+        let view = vstack()
+            .child(text("Download Progress"))
+            .child(progress(0.75));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("progress_with_label");
+    }
+}

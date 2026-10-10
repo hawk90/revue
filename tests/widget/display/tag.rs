@@ -168,3 +168,36 @@ fn test_tag_zero_width_area() {
     let buffer = render_in(&tag("Test"), 0);
     assert_eq!(text(&buffer), "");
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_tag_basic() {
+        let view = hstack()
+            .gap(1)
+            .child(Tag::new("Rust"))
+            .child(Tag::new("TUI"))
+            .child(Tag::new("CSS"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("tag_basic");
+    }
+
+    #[test]
+    fn test_tag_colors() {
+        let view = hstack()
+            .gap(1)
+            .child(Tag::new("Success").green())
+            .child(Tag::new("Warning").yellow())
+            .child(Tag::new("Error").red());
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("tag_colors");
+    }
+}

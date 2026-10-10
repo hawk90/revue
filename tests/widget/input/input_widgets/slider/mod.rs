@@ -22,3 +22,23 @@ pub fn render_rows(slider: &Slider, w: u16, h: u16) -> Vec<String> {
         })
         .collect()
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+    use revue::widget::Slider;
+
+    #[test]
+    fn test_slider_basic() {
+        let view = vstack()
+            .gap(1)
+            .child(Slider::new().value(50.0))
+            .child(Slider::new().value(25.0))
+            .child(Slider::new().value(75.0));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("slider_basic");
+    }
+}

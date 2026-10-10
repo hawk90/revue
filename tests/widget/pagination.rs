@@ -831,3 +831,18 @@ mod edge_cases {
         }
     }
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_pagination_basic() {
+        let view = Pagination::new(10).current(3);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("pagination_basic");
+    }
+}

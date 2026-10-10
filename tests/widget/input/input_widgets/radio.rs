@@ -633,3 +633,18 @@ mod edge_cases {
         radio.render(&mut ctx);
     }
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_radio_group() {
+        let view = RadioGroup::new(["Option A", "Option B", "Option C"]);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("radio_group");
+    }
+}

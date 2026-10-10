@@ -1302,3 +1302,44 @@ fn test_tooltip_custom_colors_with_all_styles() {
 }
 
 // =============================================================================
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp, TestConfig};
+
+    #[test]
+    fn test_tooltip_basic() {
+        use revue::widget::Tooltip;
+
+        let view = Tooltip::new("This is helpful information")
+            .visible(true)
+            .anchor(10, 5);
+
+        let config = TestConfig::with_size(50, 10);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("tooltip_basic");
+    }
+
+    #[test]
+    fn test_tooltip_variants() {
+        use revue::widget::Tooltip;
+
+        let view = vstack()
+            .gap(2)
+            .child(Tooltip::info("Info tooltip").visible(true).anchor(5, 1))
+            .child(
+                Tooltip::warning("Warning tooltip")
+                    .visible(true)
+                    .anchor(5, 4),
+            )
+            .child(Tooltip::error("Error tooltip").visible(true).anchor(5, 7));
+
+        let config = TestConfig::with_size(50, 12);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("tooltip_variants");
+    }
+}

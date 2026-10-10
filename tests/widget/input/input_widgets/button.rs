@@ -1242,3 +1242,34 @@ mod edge_cases {
         button.render(&mut ctx);
     }
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_button_basic() {
+        let view = button("Click Me");
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("button_basic");
+    }
+
+    #[test]
+    fn test_button_variants() {
+        use revue::widget::Button;
+        let view = vstack()
+            .gap(1)
+            .child(Button::primary("Primary"))
+            .child(Button::ghost("Ghost"))
+            .child(Button::success("Success"))
+            .child(Button::danger("Danger"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("button_variants");
+    }
+}

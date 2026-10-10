@@ -866,3 +866,79 @@ fn test_markdown_text_after_an_image_drops_the_link_color() {
     let md = Markdown::new("![alt](pic.png) after").link_fg(revue::style::Color::CYAN);
     assert_eq!(fg_at(md, 40, "after"), None);
 }
+
+mod snapshots {
+
+    use revue::testing::{Pilot, TestApp, TestConfig};
+
+    #[test]
+    fn test_markdown_basic() {
+        use revue::widget::Markdown;
+
+        let source = r#"# Hello World
+
+This is a **bold** and *italic* text.
+
+- Item 1
+- Item 2
+- Item 3
+
+`inline code` and more text.
+"#;
+
+        let view = Markdown::new(source);
+
+        let config = TestConfig::with_size(50, 15);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("markdown_basic");
+    }
+
+    #[test]
+    fn test_markdown_code_block() {
+        use revue::widget::Markdown;
+
+        let source = r#"## Code Example
+
+```rust
+fn main() {
+    println!("Hello!");
+}
+```
+"#;
+
+        let view = Markdown::new(source);
+
+        let config = TestConfig::with_size(50, 12);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("markdown_code");
+    }
+
+    #[test]
+    fn test_markdown_with_toc() {
+        use revue::widget::Markdown;
+
+        let source = r#"# Main Title
+
+## Section 1
+Content here.
+
+## Section 2
+More content.
+
+### Subsection 2.1
+Details.
+"#;
+
+        let view = Markdown::new(source).show_toc(true);
+
+        let config = TestConfig::with_size(60, 15);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("markdown_toc");
+    }
+}

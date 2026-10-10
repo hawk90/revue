@@ -944,3 +944,18 @@ fn test_tabs_builder_consumes_self() {
     let t2 = t1.tab("B");
     assert_eq!(t2.len(), 2);
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_tabs_basic() {
+        let view = Tabs::new().tab("Home").tab("Settings").tab("About");
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("tabs_basic");
+    }
+}

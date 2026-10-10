@@ -1239,3 +1239,34 @@ fn test_timer_builder() {
 
     // If we get here without panicking, the builder works
 }
+
+mod snapshots {
+
+    use revue::testing::{Pilot, TestApp, TestConfig};
+
+    #[test]
+    fn test_timer_countdown() {
+        use revue::widget::Timer;
+
+        let view = Timer::countdown(300); // 5 minutes
+
+        let config = TestConfig::with_size(30, 5);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("timer_countdown");
+    }
+
+    #[test]
+    fn test_timer_with_progress() {
+        use revue::widget::Timer;
+
+        let view = Timer::countdown(600).title("Pomodoro").show_progress(true);
+
+        let config = TestConfig::with_size(40, 6);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("timer_progress");
+    }
+}

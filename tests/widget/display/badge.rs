@@ -1143,3 +1143,37 @@ mod edge_cases {
         badge.render(&mut ctx);
     }
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_badge_basic() {
+        let view = hstack()
+            .gap(1)
+            .child(badge("New"))
+            .child(badge("5"))
+            .child(badge("Beta"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("badge_basic");
+    }
+
+    #[test]
+    fn test_badge_variants() {
+        let view = vstack()
+            .gap(1)
+            .child(badge("Success").success())
+            .child(badge("Error").error())
+            .child(badge("Warning").warning())
+            .child(badge("Info").info());
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("badge_variants");
+    }
+}

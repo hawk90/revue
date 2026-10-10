@@ -1064,3 +1064,23 @@ fn test_gauge_single_pixel_height() {
 }
 
 // =============================================================================
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+    use revue::widget::Gauge;
+
+    #[test]
+    fn test_gauge_basic() {
+        let view = vstack()
+            .gap(1)
+            .child(Gauge::new().value(0.25).label("CPU"))
+            .child(Gauge::new().value(0.75).label("Memory"))
+            .child(Gauge::new().value(0.50).label("Disk"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("gauge_basic");
+    }
+}

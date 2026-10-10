@@ -441,3 +441,32 @@ mod edge_cases {
         }
     }
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_focused_state() {
+        // Placeholder for future focused state testing
+        let view = Border::single().child(text("[Focused Element]"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("focused_state");
+    }
+
+    #[test]
+    fn test_disabled_state() {
+        // Placeholder for future disabled state testing
+        let view = vstack()
+            .child(text("[Enabled Button]"))
+            .child(Text::muted("[Disabled Button]"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("disabled_state");
+    }
+}
