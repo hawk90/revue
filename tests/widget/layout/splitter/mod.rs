@@ -1,4 +1,7 @@
-//! Integration tests for Splitter widget
+//! Splitter widget tests
+
+mod drag;
+mod render;
 
 use revue::layout::Rect;
 use revue::render::Buffer;

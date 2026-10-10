@@ -21,5 +21,3 @@ pub fn sidebar_section(items: Vec<SidebarItem>) -> SidebarSection {
 pub fn sidebar_section_titled(title: impl Into<String>, items: Vec<SidebarItem>) -> SidebarSection {
     SidebarSection::titled(title, items)
 }
-
-// All tests extracted to tests/widget/layout/sidebar_helpers.rs

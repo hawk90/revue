@@ -1,7 +1,5 @@
 //! Widget integration tests - split into modules by widget type
 
-#[path = "widget/accordion.rs"]
-mod accordion;
 #[path = "widget/aistream/mod.rs"]
 mod aistream;
 #[path = "widget/alert.rs"]
@@ -16,14 +14,10 @@ mod breadcrumb;
 mod callout;
 #[path = "widget/canvas/mod.rs"]
 mod canvas;
-#[path = "widget/card.rs"]
-mod card;
 #[path = "widget/code_editor/mod.rs"]
 mod code_editor;
 #[path = "widget/code_editor_tests.rs"]
 mod code_editor_tests;
-#[path = "widget/collapsible.rs"]
-pub mod collapsible;
 #[path = "widget/command_palette.rs"]
 mod command_palette;
 #[path = "widget/command_palette_unit/mod.rs"]
@@ -96,18 +90,10 @@ mod progress;
 mod qrcode;
 #[path = "widget/range_picker/mod.rs"]
 mod range_picker;
-#[path = "widget/resizable.rs"]
-mod resizable;
 #[path = "widget/richlog.rs"]
 mod richlog;
 #[path = "widget/richtext.rs"]
 mod richtext;
-#[path = "widget/screen.rs"]
-pub mod screen;
-#[path = "widget/scroll.rs"]
-mod scroll;
-#[path = "widget/sidebar_tests.rs"]
-mod sidebar_tests;
 #[path = "widget/skeleton.rs"]
 mod skeleton;
 #[cfg(feature = "markdown")]
@@ -117,16 +103,12 @@ mod slides;
 mod sortable;
 #[path = "widget/spinner.rs"]
 mod spinner;
-#[path = "widget/splitter/mod.rs"]
-mod splitter;
 #[path = "widget/statusbar.rs"]
 mod statusbar;
 #[path = "widget/streamline/mod.rs"]
 mod streamline;
 #[path = "widget/syntax.rs"]
 mod syntax;
-#[path = "widget/tabs.rs"]
-mod tabs;
 #[path = "widget/terminal.rs"]
 mod terminal;
 #[path = "widget/terminal_ansi.rs"]

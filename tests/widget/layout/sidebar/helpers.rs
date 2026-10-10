@@ -1,6 +1,9 @@
-//! Tests for sidebar layout widget helper functions
+//! Sidebar helper function tests
 
-use revue::widget::{sidebar, sidebar_item, sidebar_section, sidebar_section_titled};
+use revue::widget::sidebar;
+use revue::widget::sidebar_item;
+use revue::widget::sidebar_section;
+use revue::widget::sidebar_section_titled;
 
 // =========================================================================
 // sidebar helper tests
@@ -114,4 +117,25 @@ fn test_sidebar_section_titled_vs_untitled() {
 
     assert!(titled.title.is_some());
     assert!(untitled.title.is_none());
+}
+
+#[test]
+fn test_sidebar_helper() {
+    let sb = sidebar()
+        .header("Test")
+        .items(vec![sidebar_item("home", "Home").icon('🏠')]);
+
+    assert_eq!(sb.item_count(), 1);
+}
+
+#[test]
+fn test_sidebar_section_helpers() {
+    let sb = sidebar()
+        .section(sidebar_section_titled(
+            "Navigation",
+            vec![sidebar_item("home", "Home")],
+        ))
+        .section(sidebar_section(vec![sidebar_item("other", "Other")]));
+
+    assert_eq!(sb.item_count(), 2);
 }

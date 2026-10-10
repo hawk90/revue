@@ -374,7 +374,6 @@ pub fn tabs() -> Tabs {
 impl_styled_view!(Tabs);
 impl_props_builders!(Tabs);
 
-// Most tests moved to tests/widget_tests.rs
 // Tests below access private fields and must stay inline
 
 #[cfg(test)]

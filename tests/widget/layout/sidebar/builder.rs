@@ -1,15 +1,7 @@
 //! Sidebar Builder tests
 
-#![allow(unused_imports)]
-
-use revue::layout::Rect;
-use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::traits::{RenderContext, View};
-use revue::widget::{
-    sidebar, sidebar_item, sidebar_section, sidebar_section_titled, CollapseMode, FlattenedItem,
-    Sidebar, SidebarItem, SidebarSection,
-};
+use revue::widget::{CollapseMode, Sidebar, SidebarItem, SidebarSection};
 
 #[test]
 fn test_sidebar_items() {

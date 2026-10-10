@@ -2,8 +2,7 @@
 //!
 //! The color builders only store an Option<Color>; there is no public getter,
 //! so these read the private fields. Everything else about Sidebar is tested
-//! through the public API in tests/sidebar/, tests/widget/sidebar_tests.rs and
-//! tests/widget/layout/sidebar*.rs.
+//! through the public API in tests/widget/layout/sidebar/.
 
 use super::Sidebar;
 use crate::style::Color;

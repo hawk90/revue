@@ -1,8 +1,8 @@
 //! Resizable unit tests that need private state
 //!
-//! The public tests in tests/widget/resizable.rs call handle_color() and
+//! The public tests in tests/widget/layout/resizable/ call handle_color() and
 //! set_hovered() without asserting anything, so these read the fields.
-//! Everything else is covered there and in tests/resizable_types.rs.
+//! Everything else is covered there.
 
 use super::*;
 use crate::style::Color;
