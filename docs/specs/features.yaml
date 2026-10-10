@@ -1026,7 +1026,7 @@ items:
       - placeholder, show/hide
     evidence:
       - src/widget/command_palette/helper.rs::command_palette
-      - tests/fuzzy_tests.rs
+      - tests/utils/fuzzy.rs
       - examples/ide.rs
     source:
       - FEATURES.md §4 Widgets / Special Widgets / Command Palette
@@ -1551,7 +1551,7 @@ items:
     evidence:
       - src/utils/unicode.rs::char_width
       - src/utils/unicode.rs::display_width
-      - tests/unicode_tests.rs
+      - tests/utils/unicode.rs
     source:
       - FEATURES.md §6 Unicode & Font Support / Supported Characters
     notes: display_width sums per-char widths, so a ZWJ emoji sequence like the family emoji measures 8, not the doc's 2 (no
@@ -1744,7 +1744,7 @@ items:
     evidence:
       - src/utils/clipboard/mod.rs::copy
       - src/utils/clipboard/mod.rs::paste
-      - tests/clipboard_tests.rs
+      - tests/utils/clipboard/mod.rs
     source:
       - FEATURES.md §9 Clipboard
     notes: System backend needs `clipboard` feature. Doc clipboard::copy path is utils::clipboard::copy; widget .on_key(Ctrl(..))
@@ -1804,7 +1804,7 @@ items:
       - call() + is_ready() trailing edge
     evidence:
       - src/utils/debounce.rs::debounce_ms
-      - tests/debounce_tests.rs::test_debouncer_trailing_edge
+      - tests/utils/debounce.rs::test_debouncer_trailing_edge
     source:
       - FEATURES.md §11 Event Utilities / Debounce
   - id: UTIL-002
@@ -1817,7 +1817,7 @@ items:
       - 'throttle_ms(n): at most once per interval'
     evidence:
       - src/utils/debounce.rs::throttle_ms
-      - tests/debounce_tests.rs
+      - tests/utils/debounce.rs
     source:
       - FEATURES.md §11 Event Utilities / Throttle
   - id: UTIL-003
@@ -1833,7 +1833,7 @@ items:
     evidence:
       - src/utils/debounce.rs::both_edges
       - src/utils/debounce.rs::remaining
-      - tests/debounce_tests.rs::test_debouncer_leading_edge
+      - tests/utils/debounce.rs::test_debouncer_leading_edge
     source:
       - FEATURES.md §11 Event Utilities / Edge Modes
   - id: UTIL-004
@@ -1849,7 +1849,7 @@ items:
     evidence:
       - src/utils/animation/presets.rs::fade_in
       - src/utils/animation/sequence.rs::then_eased
-      - tests/utils_animation_mod_tests.rs
+      - tests/utils/animation/mod.rs
       - examples/animations.rs
     source:
       - FEATURES.md §Advanced Widgets / Animation System

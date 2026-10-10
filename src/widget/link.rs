@@ -334,12 +334,13 @@ pub fn url_link(url: impl Into<String>) -> Link {
 #[cfg(test)]
 mod activation_tests {
     use super::*;
-    use serial_test::serial;
 
     // Links activate on Enter (and mouse click), but NOT on Space. Space is a
     // common navigation key, so binding it to "open the browser" caused
-    // accidental launches. The positive Enter case uses REVUE_NO_BROWSER so it
-    // never spawns a real browser.
+    // accidental launches. The positive Enter case relies on REVUE_NO_BROWSER,
+    // which .cargo/config.toml sets for every test process, so it never spawns
+    // a real browser. Tests must not set or remove it: that would race, and
+    // removing it lets later tests launch one.
 
     #[test]
     fn space_does_not_activate() {
@@ -349,13 +350,14 @@ mod activation_tests {
     }
 
     #[test]
-    #[serial]
     fn enter_activates() {
-        std::env::set_var(crate::utils::browser::NO_LAUNCH_ENV, "1");
+        assert!(
+            crate::utils::browser::launch_suppressed(),
+            "REVUE_NO_BROWSER must be set (.cargo/config.toml) so tests never launch a browser"
+        );
         let mut link = Link::new("https://example.com").focused(true);
         let result = link.handle_key(&KeyEvent::new(Key::Enter));
         assert_eq!(result, EventResult::ConsumedAndRender);
-        std::env::remove_var(crate::utils::browser::NO_LAUNCH_ENV);
     }
 
     #[test]
