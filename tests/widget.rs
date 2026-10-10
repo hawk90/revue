@@ -57,8 +57,6 @@ mod feedback;
 mod filepicker;
 #[path = "widget/form/mod.rs"]
 mod form;
-#[path = "widget/form_tests.rs"]
-mod form_tests;
 #[path = "widget/gauge.rs"]
 mod gauge;
 #[path = "widget/httpclient/mod.rs"]
@@ -80,10 +78,6 @@ mod markdown;
 #[cfg(feature = "markdown")]
 #[path = "widget/markdown_presentation.rs"]
 mod markdown_presentation;
-#[path = "widget/masked_input.rs"]
-mod masked_input;
-#[path = "widget/masked_input_tests.rs"]
-mod masked_input_tests;
 #[path = "widget/mermaid/mod.rs"]
 mod mermaid;
 #[path = "widget/multi_select/mod.rs"]

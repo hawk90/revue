@@ -1,14 +1,6 @@
 //! Toolbar Action tests
 
-#![allow(unused_imports)]
-
-use revue::layout::Rect;
-use revue::render::Buffer;
-use revue::widget::traits::{RenderContext, View};
-use revue::widget::{
-    rich_text_editor, Block, BlockType, EditorViewMode, FormattedSpan, RichTextEditor, TextFormat,
-    ToolbarAction,
-};
+use revue::widget::{BlockType, RichTextEditor, ToolbarAction};
 
 #[test]
 fn test_toolbar_action_formatting() {
