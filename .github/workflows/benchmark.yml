@@ -17,6 +17,12 @@ env:
   CARGO_TERM_COLOR: always
   BENCH_TARGETS: --bench render --bench layout --bench css --bench dom --bench widget --bench patterns --bench utils
 
+# Reads the repository, then posts or updates the results comment on the
+# pull request and removes the trigger label.
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   benchmark:
     name: Benchmark Regression Check
