@@ -1,6 +1,4 @@
 //! Code editor editing operations
-//!
-//! Public API tests extracted to tests/widget/code_editor/editing.rs
 
 use super::types::{EditOp, IndentStyle};
 

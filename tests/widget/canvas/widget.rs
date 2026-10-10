@@ -1,14 +1,15 @@
 //! Canvas and BrailleCanvas widget tests
-//!
-//! Basic rendering through canvas()/braille_canvas() is covered in
-//! tests/canvas/integration.rs; these cover the area handling and the
-//! constructors not used there.
 
 use revue::layout::Rect;
-use revue::render::{Buffer, Cell};
+use revue::render::Buffer;
+use revue::render::Cell;
 use revue::style::Color;
-use revue::widget::traits::{RenderContext, View};
-use revue::widget::{BrailleCanvas, Canvas};
+use revue::widget::braille_canvas;
+use revue::widget::canvas;
+use revue::widget::traits::RenderContext;
+use revue::widget::traits::View;
+use revue::widget::BrailleCanvas;
+use revue::widget::Canvas;
 
 fn render(view: &impl View, buffer: &mut Buffer, area: Rect) {
     let mut ctx = RenderContext::new(buffer, area);
@@ -110,6 +111,18 @@ fn test_braille_canvas_clear() {
     let mut buffer = Buffer::new(2, 1);
     render(&bc, &mut buffer, Rect::new(0, 0, 2, 1));
     assert_eq!(row(&buffer, 0), " \u{2808}");
+
+    use revue::widget::View;
+
+    let bc = braille_canvas(|ctx| {
+        ctx.circle(20.0, 20.0, 10.0, Color::RED);
+        ctx.clear();
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    bc.render(&mut render_ctx);
 }
 
 #[test]
@@ -125,4 +138,234 @@ fn test_braille_canvas_closure_capture() {
     // (0,0)+(1,1) in the first cell, (2,2)+(3,3) in the second
     assert_eq!(buffer.get(0, 0).unwrap().symbol, '\u{2811}');
     assert_eq!(buffer.get(1, 0).unwrap().symbol, '\u{2884}');
+}
+
+#[test]
+fn test_braille_canvas_creation() {
+    let bc = braille_canvas(|_ctx| {});
+    let _ = bc;
+}
+
+#[test]
+fn test_braille_canvas_draw_basic() {
+    use revue::widget::View;
+
+    let bc = braille_canvas(|ctx| {
+        ctx.set(10, 10, Color::WHITE);
+        ctx.line(0.0, 0.0, 20.0, 40.0, Color::CYAN);
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    bc.render(&mut render_ctx);
+}
+
+#[test]
+fn test_braille_canvas_shapes() {
+    use revue::widget::View;
+
+    let bc = braille_canvas(|ctx| {
+        ctx.circle(20.0, 20.0, 10.0, Color::RED);
+        ctx.filled_circle(40.0, 20.0, 8.0, Color::GREEN);
+        ctx.rect(5.0, 5.0, 15.0, 10.0, Color::BLUE);
+        ctx.filled_rect(50.0, 5.0, 15.0, 10.0, Color::YELLOW);
+    });
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    bc.render(&mut render_ctx);
+}
+
+#[test]
+fn test_braille_canvas_points() {
+    use revue::widget::View;
+
+    let bc = braille_canvas(|ctx| {
+        ctx.points(
+            vec![(0.0, 0.0), (10.0, 20.0), (20.0, 0.0), (30.0, 20.0)],
+            Color::MAGENTA,
+        );
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    bc.render(&mut render_ctx);
+}
+
+#[test]
+fn test_braille_canvas_arc() {
+    use revue::widget::View;
+
+    let bc = braille_canvas(|ctx| {
+        ctx.arc(20.0, 20.0, 10.0, 0.0, std::f64::consts::PI, Color::CYAN);
+        ctx.arc_degrees(40.0, 20.0, 10.0, 0.0, 270.0, Color::YELLOW);
+    });
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    bc.render(&mut render_ctx);
+}
+
+#[test]
+fn test_braille_canvas_polygon() {
+    use revue::widget::View;
+
+    let bc = braille_canvas(|ctx| {
+        ctx.polygon(vec![(10.0, 10.0), (30.0, 10.0), (20.0, 30.0)], Color::RED);
+        ctx.regular_polygon(50.0, 20.0, 10.0, 6, Color::BLUE);
+    });
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    bc.render(&mut render_ctx);
+}
+
+#[test]
+fn test_braille_canvas_filled_polygon() {
+    use revue::widget::View;
+
+    let bc = braille_canvas(|ctx| {
+        ctx.filled_polygon(vec![(10.0, 10.0), (30.0, 10.0), (20.0, 30.0)], Color::GREEN);
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    bc.render(&mut render_ctx);
+}
+
+#[test]
+fn test_braille_canvas_dimensions() {
+    use revue::widget::View;
+
+    let bc = braille_canvas(|ctx| {
+        let w = ctx.width();
+        let h = ctx.height();
+        // Draw border using dimensions
+        ctx.rect(0.0, 0.0, w as f64 - 1.0, h as f64 - 1.0, Color::WHITE);
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    bc.render(&mut render_ctx);
+}
+
+#[test]
+fn test_canvas_creation() {
+    let c = canvas(|_ctx| {});
+    let _ = c;
+}
+
+#[test]
+fn test_canvas_draw_basic() {
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        ctx.set(5, 5, 'X');
+        ctx.text(0, 0, "Hello", Some(Color::WHITE));
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
+}
+
+#[test]
+fn test_canvas_draw_shapes() {
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        ctx.hline(0, 0, 10, '-', Some(Color::WHITE));
+        ctx.vline(0, 0, 5, '|', Some(Color::WHITE));
+        ctx.rect(2, 2, 8, 4, Some(Color::CYAN));
+        ctx.bar(0, 5, 10, Color::GREEN, None);
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
+}
+
+#[test]
+fn test_canvas_partial_bar() {
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        ctx.partial_bar(0, 0, 5.5, Color::BLUE);
+    });
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
+}
+
+#[test]
+fn test_canvas_line_drawing() {
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        ctx.line(0, 0, 15, 8, '*', Some(Color::YELLOW));
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
+}
+
+#[test]
+fn test_canvas_fill_rect() {
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        ctx.fill_rect(
+            Rect::new(2, 2, 5, 3),
+            '#',
+            Some(Color::RED),
+            Some(Color::BLACK),
+        );
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
+}
+
+#[test]
+fn test_canvas_point() {
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        ctx.point(5, 5, Color::MAGENTA);
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
+}
+
+#[test]
+fn test_canvas_clear() {
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        ctx.set(5, 5, 'X');
+        ctx.clear();
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
 }

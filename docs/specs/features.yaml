@@ -1106,7 +1106,7 @@ items:
       - process list with sort and update interval
     evidence:
       - src/widget/developer/procmon/mod.rs::process_monitor
-      - tests/widget/procmon.rs
+      - tests/widget/developer/procmon.rs
     source:
       - FEATURES.md §Advanced Widgets / Process Monitor
     notes: Needs `sysinfo` feature.
@@ -1121,7 +1121,7 @@ items:
       - request/response view with history
     evidence:
       - src/widget/developer/httpclient/helpers.rs::http_client
-      - tests/widget/httpclient/client.rs
+      - tests/widget/developer/httpclient/client.rs
     source:
       - FEATURES.md §Advanced Widgets / HTTP Client
   - id: WID-033
@@ -1602,7 +1602,7 @@ items:
       - tests/wide_char_placement.rs
       - tests/widget/layout/border.rs::wide_title_truncates_by_columns
       - tests/widget/input/input_widgets/wide_chars.rs
-      - tests/code_editor_wide_chars.rs
+      - tests/widget/developer/code_editor/wide_chars.rs
       - tests/text_fields_wide_chars.rs
     source:
       - PR #684

@@ -1,6 +1,4 @@
 //! Code editor cursor and navigation
-//!
-//! Public API tests extracted to tests/widget/code_editor/navigation.rs
 
 use crate::widget::traits::render_context::edit_line::{char_at_col, col_of};
 

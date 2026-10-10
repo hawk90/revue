@@ -1,6 +1,4 @@
 //! CodeEditor key handling tests
-//!
-//! Extracted from src/widget/developer/code_editor/key_handling.rs
 
 use revue::event::Key;
 use revue::widget::CodeEditor;

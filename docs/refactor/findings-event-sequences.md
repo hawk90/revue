@@ -139,7 +139,7 @@ CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다.
 | `DateTimePicker` | `'j'` (1월 31일에서) | 2월 31일 | 달 이동이 커서 날짜만 새 달에 맞추고 저장된 날짜(`get_date()`)의 일은 둠 | 저장된 일도 새 달에 맞춤 | `tests/widget/datetime_picker.rs::test_month_navigation_keeps_a_real_date` |
 | `DateTimePicker(range)` | `Up` (10월 7일, 범위 10/1~10/20) | 범위 밖 날짜 | 이동은 저장된 날짜를 함께 옮기는데 `date_range`는 날짜를 고를 때만 확인 | `RangePicker`처럼 커서와 날짜를 범위로 자름 — 이동이 한계에서 멈춤 | `tests/widget/datetime_picker.rs::test_navigation_stops_at_the_date_range` |
 | `RangePicker` | `'j'` (1월 31일 시작) | 2월 31일 | `DateTimePicker`와 같은 원인 | 저장된 일도 새 달에 맞춤 | `range_picker::navigation::tests::test_navigation_keeps_real_dates` |
-| `CodeEditor` | `<find 'n'> Backspace 'n' <set content> Enter` *(깊은 탐색)* | 커서가 글 밖 | `set_content()`가 옛 글의 찾기 결과를 둠. 다음 찾기가 없는 줄·열로 커서를 옮김 | 새 글로 찾기 결과를 다시 계산 | `tests/code_editor/find.rs::test_set_content_refreshes_the_find_matches` |
+| `CodeEditor` | `<find 'n'> Backspace 'n' <set content> Enter` *(깊은 탐색)* | 커서가 글 밖 | `set_content()`가 옛 글의 찾기 결과를 둠. 다음 찾기가 없는 줄·열로 커서를 옮김 | 새 글로 찾기 결과를 다시 계산 | `tests/widget/developer/code_editor/modes.rs::test_set_content_refreshes_the_find_matches` |
 | `SortableList` | `Down(Left)@(+0,start) Drag(Left)@(start,mid) <remove 0> Up(Left)@(start,start)` *(깊은 탐색, 마우스 층)* | 패닉 | 끌기가 옛 목록의 인덱스를 들고 있는데 `remove()`가 끌기 중에 항목을 지움. 놓을 때 범위 밖에 삽입 | `remove()`가 진행 중인 끌기를 취소, `end_drag()`는 항목에 맞지 않는 인덱스를 무시 | `tests/widget/sortable/core.rs::test_remove_during_a_drag_cancels_it` |
 
 공개 API는 바뀌지 않았다(`cargo semver-checks`). 새로 생긴 메서드는 크레이트 안에서만

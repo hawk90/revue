@@ -1,6 +1,4 @@
-//! CodeEditor editing operations tests
-//!
-//! Extracted from src/widget/developer/code_editor/editing.rs
+//! CodeEditor editing tests
 
 use revue::widget::CodeEditor;
 
@@ -315,6 +313,14 @@ fn test_undo_insert() {
     editor.undo();
     assert_eq!(editor.get_content(), "a");
     assert_eq!(editor.cursor_position(), (0, 1));
+
+    let mut editor = CodeEditor::new().content("hello");
+    editor.set_cursor(0, 5);
+    editor.insert_char('!');
+    assert_eq!(editor.get_content(), "hello!");
+
+    editor.undo();
+    assert_eq!(editor.get_content(), "hello");
 }
 
 #[test]
@@ -342,6 +348,14 @@ fn test_undo_delete() {
     editor.delete_char_before();
     editor.undo();
     assert_eq!(editor.get_content(), "abc");
+
+    let mut editor = CodeEditor::new().content("hello");
+    editor.set_cursor(0, 5);
+    editor.delete_char_before();
+    assert_eq!(editor.get_content(), "hell");
+
+    editor.undo();
+    assert_eq!(editor.get_content(), "hello");
 }
 
 #[test]
@@ -398,4 +412,98 @@ fn test_redo_after_new_action() {
     editor.insert_char('x');
     editor.redo();
     assert_eq!(editor.get_content(), "ax");
+}
+
+#[test]
+fn test_insert_char() {
+    let mut editor = CodeEditor::new().content("hllo");
+    editor.set_cursor(0, 1);
+    editor.insert_char('e');
+    assert_eq!(editor.get_content(), "hello");
+    assert_eq!(editor.cursor_position(), (0, 2));
+}
+
+#[test]
+fn test_insert_str() {
+    let mut editor = CodeEditor::new().content("hd");
+    editor.set_cursor(0, 1);
+    editor.insert_str("ello worl");
+    assert_eq!(editor.get_content(), "hello world");
+}
+
+#[test]
+fn test_delete_char_before() {
+    let mut editor = CodeEditor::new().content("hello");
+    editor.set_cursor(0, 5);
+    editor.delete_char_before();
+    assert_eq!(editor.get_content(), "hell");
+}
+
+#[test]
+fn test_delete_char_at() {
+    let mut editor = CodeEditor::new().content("hello");
+    editor.set_cursor(0, 0);
+    editor.delete_char_at();
+    assert_eq!(editor.get_content(), "ello");
+}
+
+#[test]
+fn test_delete_line() {
+    let mut editor = CodeEditor::new().content("line1\nline2\nline3");
+    editor.set_cursor(1, 0);
+    editor.delete_line();
+    assert_eq!(editor.get_content(), "line1\nline3");
+    assert_eq!(editor.line_count(), 2);
+}
+
+#[test]
+fn test_newline_insertion() {
+    let mut editor = CodeEditor::new().content("hello world");
+    editor.set_cursor(0, 5);
+    editor.insert_char('\n');
+    assert_eq!(editor.line_count(), 2);
+}
+
+#[test]
+fn test_delete_selection() {
+    let mut editor = CodeEditor::new().content("hello world");
+    editor.set_cursor(0, 0);
+    editor.start_selection();
+    editor.set_cursor(0, 6);
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "world");
+}
+
+#[test]
+fn test_read_only_mode() {
+    let editor = CodeEditor::new().content("hello").read_only(true);
+    // In read-only mode, inserts should be ignored by the handle_key method
+    // But insert_char itself doesn't check read_only (that's done in handle_key)
+    assert_eq!(editor.get_content(), "hello");
+}
+
+#[test]
+fn test_redo() {
+    let mut editor = CodeEditor::new().content("hello");
+    editor.set_cursor(0, 5);
+    editor.insert_char('!');
+    editor.undo();
+    assert_eq!(editor.get_content(), "hello");
+
+    editor.redo();
+    assert_eq!(editor.get_content(), "hello!");
+}
+
+#[test]
+fn test_multiple_undo() {
+    let mut editor = CodeEditor::new().content("a");
+    editor.set_cursor(0, 1);
+    editor.insert_char('b');
+    editor.insert_char('c');
+    assert_eq!(editor.get_content(), "abc");
+
+    editor.undo();
+    assert_eq!(editor.get_content(), "ab");
+    editor.undo();
+    assert_eq!(editor.get_content(), "a");
 }

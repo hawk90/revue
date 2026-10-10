@@ -1,6 +1,4 @@
 //! CodeEditor selection tests
-//!
-//! Extracted from src/widget/developer/code_editor/selection.rs
 
 use revue::widget::CodeEditor;
 
@@ -239,4 +237,29 @@ fn test_select_all_overwrites() {
     editor.select_all();
     // select_all re-anchors at the document start
     assert_eq!(editor.get_selection(), Some("test".to_string()));
+}
+
+#[test]
+fn test_selection_basic() {
+    let mut editor = CodeEditor::new().content("hello world");
+    assert!(!editor.has_selection());
+
+    editor.start_selection();
+    assert!(editor.has_selection());
+
+    editor.clear_selection();
+    assert!(!editor.has_selection());
+}
+
+#[test]
+fn test_get_selection() {
+    let mut editor = CodeEditor::new().content("hello world");
+    editor.set_cursor(0, 0);
+    editor.start_selection();
+    editor.set_cursor(0, 5);
+    // Selection from (0,0) to (0,5)
+    // Note: get_selection returns text between anchor and cursor
+    let sel = editor.get_selection();
+    assert!(sel.is_some());
+    assert_eq!(sel.unwrap(), "hello");
 }

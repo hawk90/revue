@@ -3,7 +3,10 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::{BrailleGrid, Layer};
+use revue::widget::BrailleGrid;
+use revue::widget::Circle;
+use revue::widget::Layer;
+use revue::widget::Line;
 
 fn sym(buffer: &Buffer, x: u16, y: u16) -> char {
     buffer.get(x, y).map(|c| c.symbol).unwrap_or('\0')
@@ -150,6 +153,11 @@ fn test_braille_grid_clear() {
     // All cells should be cleared
     assert!(grid.cells().iter().all(|&c| c == 0));
     assert!(grid.colors().iter().all(|c| c.is_none()));
+
+    let mut grid = BrailleGrid::new(10, 10);
+    grid.set(5, 5, Color::RED);
+    grid.clear();
+    // Grid should be cleared
 }
 
 #[test]
@@ -235,6 +243,13 @@ fn test_braille_grid_render() {
     // Dot (3, 7) is the bottom-right dot of cell (1, 1)
     assert_eq!(sym(&buffer, 1, 1), '\u{2880}');
     assert_eq!(buffer.get(1, 1).unwrap().fg, Some(Color::BLUE));
+
+    let mut grid = BrailleGrid::new(20, 10);
+    grid.draw(&Circle::new(10.0, 10.0, 5.0, Color::CYAN));
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    grid.render(&mut buffer, area);
 }
 
 #[test]
@@ -449,4 +464,31 @@ fn test_braille_grid_composite_preserves_existing_dots() {
 
     // Original pattern should be preserved
     assert_eq!(grid.cells()[0], original_pattern);
+}
+
+#[test]
+fn test_braille_grid_creation() {
+    let grid = BrailleGrid::new(40, 20);
+    assert_eq!(grid.width(), 80); // 40 * 2
+    assert_eq!(grid.height(), 80); // 20 * 4
+}
+
+#[test]
+fn test_braille_grid_set() {
+    let mut grid = BrailleGrid::new(10, 10);
+    grid.set(5, 5, Color::RED);
+    // Dot should be set
+}
+
+#[test]
+fn test_braille_grid_set_bounds() {
+    let mut grid = BrailleGrid::new(10, 10);
+    // Should not crash when setting out of bounds
+    grid.set(1000, 1000, Color::RED);
+}
+
+#[test]
+fn test_braille_grid_draw_shape() {
+    let mut grid = BrailleGrid::new(20, 10);
+    grid.draw(&Line::new(0.0, 0.0, 20.0, 20.0, Color::WHITE));
 }

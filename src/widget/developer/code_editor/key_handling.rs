@@ -1,6 +1,4 @@
 //! Code editor key handling
-//!
-//! Public API tests extracted to tests/widget/code_editor/key_handling.rs
 
 use crate::event::Key;
 
