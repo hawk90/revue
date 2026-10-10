@@ -632,7 +632,7 @@ items:
     evidence:
       - src/widget/data/table.rs::table
       - src/widget/data/table.rs::virtual_scroll
-      - tests/table_tests.rs
+      - tests/widget/data/table.rs
     source:
       - FEATURES.md §4 Widgets / Basic Widgets / Table
     notes: Doc .headers([...]) / .on_select do not exist; headers come from table(columns) / Column.

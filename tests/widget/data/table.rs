@@ -616,3 +616,266 @@ fn test_table_virtual_scroll_keeps_selection_visible() {
         assert_eq!(buffer.get(0, 5).unwrap().bg, Some(Color::BLUE));
     }
 }
+
+// =========================================================================
+// Empty input, edge values and the option matrix
+// =========================================================================
+
+/// The text of row `y` with box-drawing and scrollbar characters removed.
+fn cell_text(buffer: &Buffer, y: u16) -> String {
+    row_text(buffer, y)
+        .chars()
+        .filter(|c| !"│├┤┼┌┐└┘┬┴─█░".contains(*c))
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+#[test]
+fn test_table_without_columns_draws_nothing() {
+    let t = Table::new(vec![]).rows(numbered(5));
+    let buffer = render(&t, 10, 6);
+    for y in 0..6 {
+        assert_eq!(row_text(&buffer, y), "", "row {y}");
+    }
+}
+
+#[test]
+fn test_table_tiny_areas_do_not_panic() {
+    for border in [true, false] {
+        for n in [0, 1, 150] {
+            for width in 0..5 {
+                for height in 0..5 {
+                    let t = scroll_table(n).border(border).selected(n.saturating_sub(1));
+                    render(&t, width, height);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn test_table_huge_fixed_widths_do_not_panic() {
+    let t = Table::new(vec![
+        Column::new("A").width(u16::MAX),
+        Column::new("B").width(u16::MAX),
+        Column::new("C"),
+    ])
+    .row(vec!["a", "b", "c"]);
+    let buffer = render(&t, 20, 5);
+    assert!(row_text(&buffer, 1).contains('A'));
+}
+
+#[test]
+fn test_table_wide_char_at_column_edge_is_not_split() {
+    // Column 0 is three cells wide: "가" fits, "나" would straddle the border
+    let t = Table::new(vec![Column::new("K").width(3), Column::new("V").width(2)])
+        .row(vec!["가나", "x"]);
+    let buffer = render(&t, 10, 5);
+    assert_eq!(buffer.get(1, 3).unwrap().symbol, '가');
+    assert_eq!(buffer.get(3, 3).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(4, 3).unwrap().symbol, '│');
+    assert_eq!(buffer.get(5, 3).unwrap().symbol, 'x');
+}
+
+/// #854: virtual scroll (on by itself at 100+ rows) drew the bottom border
+/// over the first data row.
+#[test]
+fn test_table_bottom_border_is_below_the_rows_at_the_threshold() {
+    for n in [99, 100, 101, 150] {
+        let t = Table::new(vec![Column::new("N").width(4)]).rows(numbered(n));
+        let buffer = render(&t, 20, 10);
+        assert_eq!(cell_text(&buffer, 3), "0", "{n} rows: first data row");
+        assert!(
+            row_text(&buffer, 9).starts_with('└'),
+            "{n} rows: bottom border"
+        );
+        for y in 0..9 {
+            assert!(
+                !row_text(&buffer, y).starts_with('└'),
+                "{n} rows: border at {y}"
+            );
+        }
+    }
+}
+
+/// #854: below the virtual threshold the table never scrolled, so moving the
+/// selection past the viewport left it off screen.
+#[test]
+fn test_table_small_table_scrolls_to_the_selection() {
+    let mut t = Table::new(vec![Column::new("N").width(4)]).rows(numbered(20));
+    for _ in 0..12 {
+        t.select_next();
+    }
+    let buffer = render(&t, 20, 10);
+    let shown: Vec<String> = (3..9).map(|y| cell_text(&buffer, y)).collect();
+    assert!(
+        shown.contains(&"12".to_string()),
+        "row 12 not shown: {shown:?}"
+    );
+}
+
+#[test]
+fn test_table_scrolls_back_up_and_after_rows_shrink() {
+    let mut t = scroll_table(150).selected(140);
+    render(&t, 10, 6);
+    t.select_first();
+    let buffer = render(&t, 10, 6);
+    assert_eq!(cell_text(&buffer, 1), "0");
+
+    let t = scroll_table(150).selected(140);
+    render(&t, 10, 6);
+    let t = t.rows(numbered(3));
+    let buffer = render(&t, 10, 6);
+    let shown: Vec<String> = (1..4).map(|y| cell_text(&buffer, y)).collect();
+    assert_eq!(shown, ["0", "1", "2"]);
+}
+
+/// Every combination of border, virtual scroll, row count, selection and
+/// height: the selected row is drawn highlighted, data rows are contiguous
+/// and in order, and the bottom border sits below all of them.
+#[test]
+fn test_table_option_matrix() {
+    for border in [true, false] {
+        for virtual_scroll in [false, true] {
+            for height in [2u16, 3, 4, 5, 6, 10] {
+                let viewport = height.saturating_sub(if border { 4 } else { 1 }) as usize;
+                for n in [0, 1, viewport, viewport + 1, 150] {
+                    let mut selections = vec![0, n / 2, n.saturating_sub(1)];
+                    selections.dedup();
+                    for sel in selections {
+                        let ctx = format!(
+                            "border={border} virtual={virtual_scroll} height={height} rows={n} sel={sel}"
+                        );
+                        let t = Table::new(vec![Column::new("N").width(4)])
+                            .rows(numbered(n))
+                            .border(border)
+                            .virtual_scroll(virtual_scroll)
+                            .selected(sel);
+                        let buffer = render(&t, 12, height);
+
+                        let first_data_y = if border { 3 } else { 1 };
+                        let data_end = if border {
+                            height.saturating_sub(1)
+                        } else {
+                            height
+                        };
+                        let shown: Vec<usize> = (first_data_y..data_end.max(first_data_y))
+                            .filter_map(|y| cell_text(&buffer, y).parse().ok())
+                            .collect();
+
+                        assert!(
+                            shown.windows(2).all(|w| w[1] == w[0] + 1),
+                            "{ctx}: rows not contiguous {shown:?}"
+                        );
+                        assert_eq!(shown.len(), n.min(viewport), "{ctx}: {shown:?}");
+                        if n > 0 && viewport > 0 {
+                            let y = (first_data_y..data_end)
+                                .find(|&y| cell_text(&buffer, y) == sel.to_string())
+                                .unwrap_or_else(|| panic!("{ctx}: selection not shown {shown:?}"));
+                            assert_eq!(buffer.get(1, y).unwrap().bg, Some(Color::BLUE), "{ctx}");
+                        }
+                        if border && height >= 4 {
+                            let bottom = (0..height)
+                                .filter(|&y| row_text(&buffer, y).starts_with('└'))
+                                .collect::<Vec<_>>();
+                            let last_row_y = first_data_y + shown.len() as u16;
+                            assert_eq!(bottom, [last_row_y], "{ctx}: bottom border");
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// =========================================================================
+// Combined with other modules
+// =========================================================================
+
+/// Drawn into an offset sub-area (as a layout parent does), a scrolled table
+/// stays inside it and leaves the surrounding cells alone.
+#[test]
+fn test_table_in_an_offset_area_stays_inside_it() {
+    for border in [true, false] {
+        for n in [0usize, 3, 150] {
+            let mut buffer = Buffer::new(20, 12);
+            for y in 0..12 {
+                for x in 0..20 {
+                    buffer.set(x, y, revue::render::Cell::new('x'));
+                }
+            }
+            let area = Rect::new(3, 2, 12, 7);
+            let t = Table::new(vec![Column::new("A"), Column::new("B").width(3)])
+                .rows((0..n).map(|i| vec![i.to_string(), "b".into()]).collect())
+                .border(border)
+                .selected(n.saturating_sub(1));
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            t.render(&mut ctx);
+
+            for y in 0..12 {
+                for x in 0..20 {
+                    if !(3..15).contains(&x) || !(2..9).contains(&y) {
+                        assert_eq!(
+                            buffer.get(x, y).unwrap().symbol,
+                            'x',
+                            "border={border} rows={n}: drew outside the area at ({x}, {y})"
+                        );
+                    }
+                }
+            }
+            if n == 150 {
+                let last = (2..9).any(|y| (3..15).any(|x| buffer.get(x, y).unwrap().symbol == '9'));
+                assert!(last, "border={border}: row 149 not shown");
+            }
+        }
+    }
+}
+
+/// Inside a vstack, through the stylesheet and DOM path: a large table keeps
+/// its sibling, its border and the stylesheet color on its rows.
+#[test]
+fn test_table_in_a_stack_with_a_stylesheet() {
+    use revue::prelude::*;
+    use revue::testing::PipelineHarness;
+
+    struct Screen;
+    impl View for Screen {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .child(
+                    Table::new(vec![Column::new("N").width(5)])
+                        .rows(numbered(150))
+                        .element_id("tbl"),
+                )
+                .child(Text::new("footer"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Screen"
+        }
+    }
+
+    let red = Color::rgb(255, 0, 0);
+    let mut h = PipelineHarness::with_css("#tbl { color: #ff0000; }", 30, 12).dom_from_render(true);
+    h.draw(&Screen);
+    let buffer = h.buffer();
+    let rows: Vec<String> = (0..12).map(|y| row_text(buffer, y)).collect();
+
+    let top = rows
+        .iter()
+        .position(|r| r.starts_with('┌'))
+        .expect("top border");
+    let bottom = rows
+        .iter()
+        .position(|r| r.starts_with('└'))
+        .expect("bottom border");
+    assert!(bottom > top + 3, "bottom border over the rows: {rows:#?}");
+    assert_eq!(cell_text(buffer, top as u16 + 3), "0", "{rows:#?}");
+    assert!(
+        rows.iter().any(|r| r.contains("footer")),
+        "sibling lost: {rows:#?}"
+    );
+    // Row 1 is unselected and takes the stylesheet color
+    assert_eq!(buffer.get(1, top as u16 + 4).unwrap().fg, Some(red));
+}
