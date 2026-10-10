@@ -46,7 +46,7 @@ unwrap을 쓰지 말 것
 
 | 파일 | 대상 | 내용 |
 |---|---|---|
-| [`catalog.yaml`](catalog.yaml) | LLM / 스크립트 | 150개 항목의 기계 판독용 원본. **single source of truth** |
+| [`catalog.yaml`](catalog.yaml) | LLM / 스크립트 | 154개 항목의 기계 판독용 원본. **single source of truth** |
 | `README.md` (이 파일) | 사람 | 카테고리·우선순위·invariant 요약과 전체 ID 색인 |
 | [`architecture-review.md`](architecture-review.md) | 사람 | "지금 아키텍처가 맞나?" 논의와 대안 스택 3안 |
 
@@ -69,7 +69,7 @@ unwrap을 쓰지 말 것
 
 ### LLM: 코드 리뷰 프롬프트
 
-`catalog.yaml`을 컨텍스트로 넣고 스코프를 좁혀서 물어본다. 전체 150개를 한 번에
+`catalog.yaml`을 컨텍스트로 넣고 스코프를 좁혀서 물어본다. 전체 154개를 한 번에
 적용하려 하면 정확도가 떨어지므로, 변경된 파일의 subsystem에 해당하는 카테고리만 필터링한다.
 
 ```bash
@@ -100,6 +100,7 @@ diff에서 실제로 해당하는 항목만 골라 id, 파일:줄, 근거를 제
 | `detect` | 어디를 보면 발견되는지 (예시 · 취약 대상 · 검증 입력) |
 | `fix` | 방지 원칙과 개선 방향 |
 | `snippets` | 원문 코드/도식 (등장 순서) |
+| `observed` | 이 저장소에서 실제로 일어난 사례 (PR · 이슈 번호). 이 필드가 있는 항목은 가설이 아니라 확인된 실패다 |
 
 최상위에는 `review_tags`, `invariants`, `review_questions`, `priorities`, `categories`, `entries`가 있다.
 
@@ -125,7 +126,7 @@ diff에서 실제로 해당하는 항목만 골라 id, 파일:줄, 근거를 제
 | `RUST` | Rust-specific | Rust 특화 안티패턴 | 10 | `REV-RUST-001` – `REV-RUST-010` |
 | `MEM` | Memory / resources | 메모리 및 Resource 안티패턴 | 5 | `REV-MEM-001` – `REV-MEM-005` |
 | `DEV` | DevTools | DevTools 안티패턴 | 4 | `REV-DEV-001` – `REV-DEV-004` |
-| `TEST` | Testing | 테스트 안티패턴 | 6 | `REV-TEST-001` – `REV-TEST-006` |
+| `TEST` | Testing | 테스트 안티패턴 | 10 | `REV-TEST-001` – `REV-TEST-010` |
 | `API` | Public API / SemVer | API 및 SemVer 안티패턴 | 5 | `REV-API-001` – `REV-API-005` |
 | `UX` | Accessibility / UX | 접근성 및 UX 안티패턴 | 7 | `REV-UX-001` – `REV-UX-007` |
 | `SEC` | Security / robustness | 보안 및 안정성 안티패턴 | 5 | `REV-SEC-001` – `REV-SEC-005` |
@@ -376,6 +377,10 @@ ADR · performance budgets · migration guides · fuzz/property testing.
 - **`REV-TEST-004`** No Model-Based Event Testing — input·focus·modal·scroll은 상태 머신 성격이 강하다.
 - **`REV-TEST-005`** No Fuzzing at Parser Boundary — CSS, escape sequence, markdown, CSV, JSON, tree-sitter 입력은 fuzzing 대상이다.
 - **`REV-TEST-006`** Testing Public Examples Manually — README와 tutorial 예제가 CI에서 compile되지 않는다.
+- **`REV-TEST-007`** Whitespace-Blind Test Move Check — 테스트를 옮긴 뒤 공백을 모두 지우고 비교해, 문자열 리터럴 안의 변화를 놓친다. *(관찰: #930 W8)*
+- **`REV-TEST-008`** Duplicate Test Binary — `mod x;` 한 줄짜리 파일이 같은 테스트를 한 번 더 돌린다. *(관찰: #929, #932)*
+- **`REV-TEST-009`** Unbounded CPU-Bound Test Next to Wall-Clock Tests — CPU를 독점하는 테스트 옆에서 시간 제한 테스트가 버그 없이 실패한다. *(관찰: #929, #931, #938)*
+- **`REV-TEST-010`** Same Body, Different Names — 이름이 약속하는 검사를 본문이 하지 않는다. *(관찰: #930)*
 
 ### 20. Public API / SemVer — API 및 SemVer 안티패턴
 
