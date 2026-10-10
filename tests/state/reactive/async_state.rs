@@ -1,9 +1,7 @@
 //! Async state tests
 
-#![allow(unused_imports)]
-
 use revue::reactive::*;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};

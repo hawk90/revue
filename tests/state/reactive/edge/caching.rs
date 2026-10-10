@@ -1,7 +1,5 @@
 //! Computed Value Caching tests
 
-#![allow(unused_imports)]
-
 use revue::reactive::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;

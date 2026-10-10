@@ -101,9 +101,15 @@ fn sigterm_unmounts_plugins_and_restores_the_terminal_once() {
     let marker = std::env::temp_dir().join(format!("revue-sigterm-{}", std::process::id()));
     let _ = std::fs::remove_file(&marker);
 
+    // The harness names a test by its path inside the test crate, without
+    // the crate name that `module_path!` starts with.
+    let this_test = format!(
+        "{}::sigterm_unmounts_plugins_and_restores_the_terminal_once",
+        module_path!().split_once("::").map_or("", |(_, path)| path)
+    );
     let mut child = Command::new(std::env::current_exe().unwrap())
         .args([
-            "sigterm_unmounts_plugins_and_restores_the_terminal_once",
+            this_test.as_str(),
             "--exact",
             "--nocapture",
             "--test-threads=1",

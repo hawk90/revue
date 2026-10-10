@@ -511,7 +511,7 @@ items:
     evidence:
       - src/state/reactive/mod.rs::signal
       - src/state/reactive/signal.rs::update
-      - tests/reactive.rs
+      - tests/state/reactive/mod.rs
     source:
       - FEATURES.md §3 Reactivity / Signal
   - id: RX-002
@@ -526,8 +526,8 @@ items:
     evidence:
       - src/state/reactive/mod.rs::computed
       - src/state/reactive/computed.rs
-      - tests/reactive.rs
-      - tests/reactive/computed_propagation.rs::an_effect_reading_a_computed_reruns_when_its_input_changes
+      - tests/state/reactive/mod.rs
+      - tests/state/reactive/computed_propagation.rs::an_effect_reading_a_computed_reruns_when_its_input_changes
     source:
       - FEATURES.md §3 Reactivity / Computed
   - id: RX-003
@@ -541,7 +541,7 @@ items:
     evidence:
       - src/state/reactive/mod.rs::effect
       - src/state/reactive/effect.rs
-      - tests/reactive.rs
+      - tests/state/reactive/mod.rs
     source:
       - FEATURES.md §3 Reactivity / Effect
   - id: RX-004
@@ -571,7 +571,7 @@ items:
       - a panicking batch discards what it deferred and closes
     evidence:
       - src/state/reactive/batch.rs::batch
-      - tests/reactive/batch_defers.rs::an_effect_runs_once_after_the_batch_and_never_sees_half_an_update
+      - tests/state/reactive/batch_defers.rs::an_effect_runs_once_after_the_batch_and_never_sees_half_an_update
     source:
       - docs/guides/state.md Batching
   - id: WID-001
@@ -1569,7 +1569,7 @@ items:
     evidence:
       - src/text/width.rs::CharWidthTable
       - src/text/width.rs::with_nerd_font
-      - tests/char_width_table.rs
+      - tests/text/width.rs
     source:
       - FEATURES.md §6 Unicode & Font Support / Character Width Detection
     notes: CharWidthTable::width honors the cjk, emoji and nerd_font widths and the overrides, but nothing in rendering consults
@@ -1868,7 +1868,7 @@ items:
       - src/state/worker/pool.rs::submit
       - src/state/worker/pool.rs::join_timeout
       - src/state/worker/handle.rs::spawn_blocking
-      - tests/worker/pool.rs
+      - tests/state/worker/pool.rs
       - examples/worker_basic.rs
     source:
       - FEATURES.md §Advanced Widgets / Worker Pool

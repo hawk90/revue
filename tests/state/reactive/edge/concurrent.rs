@@ -1,7 +1,5 @@
 //! Concurrent Update tests
 
-#![allow(unused_imports)]
-
 use revue::reactive::*;
 use serial_test::serial;
 use std::sync::atomic::{AtomicUsize, Ordering};

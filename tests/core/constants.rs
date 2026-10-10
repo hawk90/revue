@@ -1,5 +1,3 @@
-//! Tests for core constants extracted from src/core/constants.rs
-//!
 //! All tests use only public constants from the revue::constants module.
 
 use revue::constants::*;

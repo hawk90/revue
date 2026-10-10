@@ -1,11 +1,8 @@
 //! Signal tests
 
-#![allow(unused_imports)]
-
 use revue::reactive::*;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[test]
 fn test_signal_get_set() {

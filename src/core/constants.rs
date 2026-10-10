@@ -211,6 +211,4 @@ pub const PROFILER_REPORT_INTERVAL: Duration = Duration::from_secs(5);
 ///
 /// Time window for calculating average FPS.
 pub const FPS_COUNTER_WINDOW: Duration = Duration::from_secs(1);
-
-// Tests extracted to tests/core_constants_tests.rs
 // All constant value tests use only public constants
