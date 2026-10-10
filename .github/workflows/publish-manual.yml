@@ -13,6 +13,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+# Checkout only; crates.io publishing uses CARGO_REGISTRY_TOKEN, not GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   publish-macros:
     name: Publish revue-macros to crates.io

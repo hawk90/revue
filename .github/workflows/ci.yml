@@ -13,11 +13,19 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -Dwarnings
 
+# Every job only reads the repository. Codecov uploads with its own token.
+permissions:
+  contents: read
+
 jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # dorny/paths-filter lists a pull request's files through the API.
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
       standalone: ${{ steps.filter.outputs.standalone }}
