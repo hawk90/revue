@@ -2421,7 +2421,7 @@ dependencies = [
 
 [[package]]
 name = "revue"
-version = "3.9.1"
+version = "3.9.2"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2475,7 +2475,7 @@ dependencies = [
 
 [[package]]
 name = "revue-macros"
-version = "3.9.1"
+version = "3.9.2"
 dependencies = [
  "proc-macro2",
  "quote",
