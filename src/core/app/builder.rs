@@ -2,6 +2,7 @@
 
 use super::App;
 use crate::constants::MAX_CSS_FILE_SIZE;
+use crate::event::{Key, KeyEvent};
 use crate::plugin::{Plugin, PluginRegistry};
 use crate::style::{parse_css, StyleSheet};
 use std::fs;
@@ -29,6 +30,7 @@ pub struct AppBuilder {
     /// Reconcile the DOM against the view on every frame
     incremental_dom: bool,
     tab_navigation: bool,
+    quit_key: Option<KeyEvent>,
     /// Build the DOM from the render traversal instead of `View::children`
     dom_from_render: bool,
     css_layout: bool,
@@ -49,6 +51,7 @@ impl AppBuilder {
             size: None,
             incremental_dom: false,
             tab_navigation: false,
+            quit_key: Some(KeyEvent::ctrl(Key::Char('c'))),
             dom_from_render: true,
             css_layout: true,
         }
@@ -175,6 +178,26 @@ impl AppBuilder {
     /// ```
     pub fn tab_navigation(mut self, enabled: bool) -> Self {
         self.tab_navigation = enabled;
+        self
+    }
+
+    /// Set the key that quits the app, or `None` to leave the key to the
+    /// handler.
+    ///
+    /// The default is Ctrl+C. With `None` the event loop never quits on its
+    /// own, and the app decides what the key means. With `Some(key)` exactly
+    /// that chord quits; a Ctrl+C binding keeps the historical behavior, where
+    /// Ctrl+C with an extra Alt or Shift also quits.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let app = App::builder()
+    ///     .quit_key(None)
+    ///     .build();
+    /// ```
+    pub fn quit_key(mut self, key: Option<KeyEvent>) -> Self {
+        self.quit_key = key;
         self
     }
 
@@ -330,6 +353,7 @@ impl AppBuilder {
 
         let incremental_dom = self.incremental_dom;
         let tab_navigation = self.tab_navigation;
+        let quit_key = self.quit_key;
         let dom_from_render = self.dom_from_render;
         let css_layout = self.css_layout;
 
@@ -355,6 +379,7 @@ impl AppBuilder {
 
         app.set_incremental_dom(incremental_dom);
         app.set_tab_navigation(tab_navigation);
+        app.set_quit_key(quit_key);
         app.set_dom_from_render(dom_from_render);
         app.set_css_layout(css_layout);
         app
@@ -444,6 +469,17 @@ mod tests {
         assert!(builder.style_paths.is_empty());
         assert!(!builder.hot_reload);
         assert!(builder.mouse_capture);
+    }
+
+    #[test]
+    fn test_builder_quit_key() {
+        let builder = AppBuilder::new();
+        assert_eq!(builder.quit_key, Some(KeyEvent::ctrl(Key::Char('c'))));
+        let builder = AppBuilder::new().quit_key(None);
+        assert!(builder.quit_key.is_none());
+        let alt_x = KeyEvent::alt(Key::Char('x'));
+        let builder = AppBuilder::new().quit_key(Some(alt_x.clone()));
+        assert_eq!(builder.quit_key, Some(alt_x));
     }
 
     #[test]
