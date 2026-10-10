@@ -599,8 +599,8 @@ fn test_table_virtual_scroll_shows_first_rows() {
 
 #[test]
 fn test_table_virtual_scroll_keeps_selection_visible() {
-    for overscan in [0, 3, 5] {
-        let t = scroll_table(500).overscan(overscan).selected(50);
+    {
+        let t = scroll_table(500).selected(50);
         let buffer = render(&t, 10, 6);
 
         let rows: Vec<String> = (1..6)
@@ -612,7 +612,7 @@ fn test_table_virtual_scroll_keeps_selection_visible() {
             })
             .collect();
         // Five data rows fit; scrolling down to row 50 leaves it at the bottom
-        assert_eq!(rows, ["46", "47", "48", "49", "50"], "overscan {overscan}");
+        assert_eq!(rows, ["46", "47", "48", "49", "50"]);
         assert_eq!(buffer.get(0, 5).unwrap().bg, Some(Color::BLUE));
     }
 }
@@ -878,4 +878,82 @@ fn test_table_in_a_stack_with_a_stylesheet() {
     );
     // Row 1 is unselected and takes the stylesheet color
     assert_eq!(buffer.get(1, top as u16 + 4).unwrap().fg, Some(red));
+}
+
+fn draw_styled(css: &str, t: Table) -> revue::testing::PipelineHarness {
+    use revue::prelude::*;
+
+    struct Screen(Table);
+    impl View for Screen {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack().child(self.0.clone().element_id("tbl")).render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Screen"
+        }
+    }
+
+    let mut h = revue::testing::PipelineHarness::with_css(css, 30, 8).dom_from_render(true);
+    h.draw(&Screen(t));
+    h
+}
+
+fn two_rows() -> Table {
+    Table::new(vec![Column::new("Name").width(6)])
+        .row(vec!["a"])
+        .row(vec!["b"])
+}
+
+/// The header has a default color of its own, but no builder named it, so
+/// the stylesheet's `color` and `background` reach it.
+#[test]
+fn test_table_header_reads_the_stylesheet() {
+    let red = Color::rgb(255, 0, 0);
+    let navy = Color::rgb(0, 0, 128);
+    let h = draw_styled("#tbl { color: #ff0000; background: #000080; }", two_rows());
+    let header = h.buffer().get(1, 1).unwrap();
+    assert_eq!(header.symbol, 'N');
+    assert_eq!(header.fg, Some(red));
+    assert_eq!(header.bg, Some(navy));
+}
+
+/// A header color the builder named outranks the stylesheet.
+#[test]
+fn test_table_header_style_outranks_the_stylesheet() {
+    let green = Color::rgb(0, 255, 0);
+    let h = draw_styled(
+        "#tbl { color: #ff0000; }",
+        two_rows().header_style(green, None),
+    );
+    assert_eq!(h.buffer().get(1, 1).unwrap().fg, Some(green));
+}
+
+/// Without a stylesheet the header keeps its white default.
+#[test]
+fn test_table_header_default_without_a_stylesheet() {
+    let h = draw_styled("", two_rows());
+    assert_eq!(h.buffer().get(1, 1).unwrap().fg, Some(Color::WHITE));
+}
+
+/// The border lines take `border-color`, falling back to `color`.
+#[test]
+fn test_table_border_lines_read_the_stylesheet() {
+    let red = Color::rgb(255, 0, 0);
+    let blue = Color::rgb(0, 0, 255);
+    for (css, want) in [
+        ("#tbl { border-color: #0000ff; color: #ff0000; }", blue),
+        ("#tbl { color: #ff0000; }", red),
+    ] {
+        let h = draw_styled(css, two_rows());
+        let buffer = h.buffer();
+        for (x, y) in [(0, 0), (3, 0), (0, 2), (3, 2), (0, 5), (3, 5)] {
+            let cell = buffer.get(x, y).unwrap();
+            assert!(
+                "┌─├└".contains(cell.symbol),
+                "({x}, {y}) is {:?}",
+                cell.symbol
+            );
+            assert_eq!(cell.fg, Some(want), "{css}: ({x}, {y})");
+        }
+    }
 }

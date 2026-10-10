@@ -62,8 +62,6 @@ pub struct Table {
     virtual_scroll: bool,
     /// Auto-enable virtual scroll when row count exceeds this threshold
     virtual_threshold: usize,
-    /// Extra rows to render above/below the visible viewport
-    overscan: usize,
     /// Show scrollbar when virtual scrolling is active
     show_scrollbar: bool,
 }
@@ -75,7 +73,7 @@ impl Table {
             columns,
             rows: Vec::new(),
             selection: Selection::new(0),
-            header_fg: Some(Color::WHITE),
+            header_fg: None,
             header_bg: None,
             selected_fg: Some(Color::WHITE),
             selected_bg: Some(Color::BLUE),
@@ -83,7 +81,6 @@ impl Table {
             props: WidgetProps::new(),
             virtual_scroll: false,
             virtual_threshold: 100,
-            overscan: 5,
             show_scrollbar: true,
         }
     }
@@ -110,6 +107,9 @@ impl Table {
     }
 
     /// Set header colors
+    ///
+    /// These outrank the stylesheet. Unset, the header takes the
+    /// stylesheet's `color` and `background`, then white text.
     pub fn header_style(mut self, fg: Color, bg: Option<Color>) -> Self {
         self.header_fg = Some(fg);
         self.header_bg = bg;
@@ -140,10 +140,13 @@ impl Table {
 
     /// Set overscan rows
     ///
-    /// Stored but currently has no effect: rows outside the viewport are
-    /// never drawn.
-    pub fn overscan(mut self, rows: usize) -> Self {
-        self.overscan = rows;
+    /// Has no effect: a terminal frame never draws rows outside the
+    /// viewport, so there is nothing to render ahead of time.
+    #[deprecated(
+        since = "3.10.0",
+        note = "has no effect; rows outside the viewport are never drawn"
+    )]
+    pub fn overscan(self, _rows: usize) -> Self {
         self
     }
 
@@ -317,8 +320,11 @@ impl Table {
         }
 
         let header_style = RowStyle {
-            fg: self.header_fg,
-            bg: self.header_bg,
+            fg: self
+                .header_fg
+                .or_else(|| ctx.css_color_if_set())
+                .or(Some(Color::WHITE)),
+            bg: self.header_bg.or_else(|| ctx.css_background_if_set()),
             bold: true,
         };
         let titles: Vec<String> = self.columns.iter().map(|c| c.title.clone()).collect();
@@ -447,9 +453,15 @@ impl Table {
         widths: &[u16],
         chars: &BorderChars,
     ) {
+        let fg = ctx.css_border_or_text_color();
+        let line = |ch: char| {
+            let mut cell = Cell::new(ch);
+            cell.fg = fg;
+            cell
+        };
         let mut cx = x;
 
-        ctx.set(cx, y, Cell::new(chars.left));
+        ctx.set(cx, y, line(chars.left));
         cx += 1;
 
         for (i, &width) in widths.iter().enumerate() {
@@ -457,16 +469,16 @@ impl Table {
                 return;
             }
             for _ in 0..width.min(ctx.area.width - cx) {
-                ctx.set(cx, y, Cell::new(chars.horiz));
+                ctx.set(cx, y, line(chars.horiz));
                 cx += 1;
             }
             if i < widths.len() - 1 {
-                ctx.set(cx, y, Cell::new(chars.mid));
+                ctx.set(cx, y, line(chars.mid));
                 cx += 1;
             }
         }
 
-        ctx.set(cx, y, Cell::new(chars.right));
+        ctx.set(cx, y, line(chars.right));
     }
 }
 
