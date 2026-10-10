@@ -364,3 +364,103 @@ fn test_link_debug() {
     let debug_str = format!("{:?}", link);
     assert!(debug_str.contains("url"));
 }
+
+/// Test Link widget edge cases
+mod edge_cases {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::Link;
+
+    #[test]
+    fn test_link_with_empty_url() {
+        let link = Link::new("");
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        link.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_link_with_empty_label() {
+        let link = Link::new("https://example.com").text("");
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        link.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_link_with_both_empty() {
+        let link = Link::new("").text("");
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        link.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_link_with_very_long_url() {
+        let long_url = "https://example.com/".repeat(100);
+        let link = Link::new(&long_url);
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        link.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_link_with_very_long_label() {
+        let long_label = "A".repeat(1000);
+        let link = Link::new("https://example.com").text(&long_label);
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Should clip to buffer width
+        link.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_link_with_unicode_label() {
+        let link = Link::new("https://example.com").text("클릭하세요 🖱️");
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        link.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_link_with_special_chars_in_url() {
+        let urls = [
+            "https://example.com/path?query=value&foo=bar",
+            "https://example.com/path#fragment",
+            "https://user:pass@example.com/",
+            "https://example.com/path/%20%space%",
+        ];
+
+        for url in urls {
+            let link = Link::new(url);
+            let mut buffer = Buffer::new(20, 10);
+            let area = Rect::new(0, 0, 20, 10);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+
+            link.render(&mut ctx);
+        }
+    }
+
+    #[test]
+    fn test_link_with_zero_width_buffer() {
+        let link = Link::new("https://example.com");
+        let mut buffer = Buffer::new(0, 10);
+        let area = Rect::new(0, 0, 0, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        link.render(&mut ctx);
+    }
+}

@@ -88,5 +88,3 @@ pub fn resource_stream(
                 .color(Color::rgb(241, 196, 15)),
         )
 }
-
-// Tests extracted to tests/widget/streamline/helper_tests.rs

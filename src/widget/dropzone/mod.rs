@@ -19,8 +19,6 @@ mod core;
 mod helper;
 mod types;
 
-// Public API tests extracted to tests/widget/dropzone/ (core.rs, helper.rs, types.rs)
-
 // Re-exports
 pub use core::DropZone;
 pub use helper::drop_zone;

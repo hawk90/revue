@@ -648,7 +648,7 @@ items:
       - wide characters (CJK, emoji) laid out in columns; scrolls to keep the cursor in view
     evidence:
       - src/widget/input/input_widgets/input/mod.rs::input
-      - tests/widget_validation_tests.rs
+      - tests/widget/validation.rs
       - tests/widget/input/input_widgets/wide_chars.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / Input
@@ -961,15 +961,15 @@ items:
       - src/widget/markdown/helpers.rs::markdown
       - src/widget/markdown/mod.rs::syntax_highlight
       - src/widget/markdown/mod.rs::figlet_headings
-      - tests/widget/markdown/markdown_tests.rs::test_markdown_figlet_headings_render_big_text
+      - tests/widget/markdown/mod.rs::test_markdown_figlet_headings_render_big_text
       - src/widget/markdown/mod.rs::show_toc
-      - tests/widget/markdown/markdown_tests.rs::test_markdown_show_toc_renders_contents_first
-      - tests/widget/markdown/markdown_tests.rs::test_markdown_heading_inline_code_stays_in_place
-      - tests/widget/markdown/markdown_tests.rs::test_markdown_heading_color_returns_after_a_link
-      - tests/widget/markdown.rs
-      - tests/widget/markdown/markdown_tests.rs::test_markdown_table_cells_render
-      - tests/widget/markdown/markdown_tests.rs::test_markdown_fenced_code_block_is_highlighted
-      - tests/widget/markdown.rs::test_markdown_render_basic
+      - tests/widget/markdown/mod.rs::test_markdown_show_toc_renders_contents_first
+      - tests/widget/markdown/mod.rs::test_markdown_heading_inline_code_stays_in_place
+      - tests/widget/markdown/mod.rs::test_markdown_heading_color_returns_after_a_link
+      - tests/widget/markdown/integration.rs
+      - tests/widget/markdown/mod.rs::test_markdown_table_cells_render
+      - tests/widget/markdown/mod.rs::test_markdown_fenced_code_block_is_highlighted
+      - tests/widget/markdown/integration.rs::test_markdown_render_basic
       - tests/widget/markdown_presentation.rs::test_code_fg
     source:
       - FEATURES.md §4 Widgets / Content Widgets / Markdown
@@ -1009,7 +1009,7 @@ items:
     evidence:
       - src/widget/image/mod.rs::image_from_file
       - src/widget/image/kitty.rs::kitty_escape
-      - tests/image_tests.rs
+      - tests/widget/image.rs
     source:
       - FEATURES.md §4 Widgets / Content Widgets / Image (Kitty Protocol)
     notes: Render paints placeholder cells only ("For now, render placeholder characters"); kitty_escape() is built but nothing
@@ -1265,7 +1265,7 @@ items:
       - presets
     evidence:
       - src/widget/range_picker/impls.rs::range_picker
-      - tests/widget/range_picker.rs
+      - tests/widget/range_picker/integration.rs
     source:
       - FEATURES.md §Advanced Widgets / Range Picker
     notes: No .on_change.
@@ -1280,7 +1280,7 @@ items:
       - toggle() from the app handler
     evidence:
       - src/widget/zen.rs::zen
-      - tests/zen_tests.rs
+      - tests/widget/zen.rs
     source:
       - FEATURES.md §Advanced Widgets / Zen Mode
   - id: WID-044

@@ -1200,3 +1200,71 @@ fn test_divider_height_variations() {
 }
 
 // =============================================================================
+
+/// Test Divider edge cases
+mod edge_cases {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::Divider;
+    #[test]
+    fn test_divider_horizontal_zero_width() {
+        let divider = Divider::new();
+        let mut buffer = Buffer::new(0, 10);
+        let area = Rect::new(0, 0, 0, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        divider.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_divider_vertical_zero_height() {
+        let divider = Divider::vertical();
+        let mut buffer = Buffer::new(10, 0);
+        let area = Rect::new(0, 0, 10, 0);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        divider.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_divider_both_zero() {
+        let divider = Divider::new();
+        let mut buffer = Buffer::new(0, 0);
+        let area = Rect::new(0, 0, 0, 0);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        divider.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_divider_with_empty_label() {
+        let divider = Divider::new().label("");
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        divider.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_divider_with_very_long_label() {
+        let long_label = "A".repeat(1000);
+        let divider = Divider::new().label(&long_label);
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        divider.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_divider_with_unicode_label() {
+        let divider = Divider::new().label("구분선 🎨");
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        divider.render(&mut ctx);
+    }
+}

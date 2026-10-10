@@ -6,5 +6,3 @@ use super::Markdown;
 pub fn markdown(source: impl Into<String>) -> Markdown {
     Markdown::new(source)
 }
-
-// Tests extracted to tests/widget/markdown/helper_tests.rs

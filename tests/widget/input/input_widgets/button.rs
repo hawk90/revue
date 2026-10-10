@@ -1152,3 +1152,93 @@ fn test_button_debug_format() {
 
     assert!(debug_str.contains("Button"));
 }
+
+/// Test Button edge cases
+mod edge_cases {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::Button;
+    #[test]
+    fn test_button_with_empty_label() {
+        let button = Button::new("");
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Should not panic with empty label
+        button.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_button_with_very_long_label() {
+        let long_label = "A".repeat(1000);
+        let button = Button::new(&long_label);
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Should clip to buffer width
+        button.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_button_with_newlines_in_label() {
+        let button = Button::new("Line 1\nLine 2");
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        button.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_button_with_special_chars() {
+        let button = Button::new("Test\t\r\n");
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        button.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_button_with_unicode_emoji() {
+        let button = Button::new("🎉 Click Me! 🎉");
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        button.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_button_with_icon() {
+        let button = Button::new("Save").icon('💾');
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        button.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_button_with_zero_width_buffer() {
+        let button = Button::new("Test");
+        let mut buffer = Buffer::new(0, 10);
+        let area = Rect::new(0, 0, 0, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        button.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_button_disabled_with_empty_label() {
+        let button = Button::new("").disabled(true);
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        button.render(&mut ctx);
+    }
+}

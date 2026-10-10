@@ -379,3 +379,65 @@ fn test_disabled_colors_are_defined() {
     assert_eq!(DISABLED_BG.g, 50);
     assert_eq!(DISABLED_BG.b, 50);
 }
+
+/// Test widget state edge cases
+mod edge_cases {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::{Button, Checkbox, Switch};
+    #[test]
+    fn test_button_all_states() {
+        let states = [
+            Button::new("Test"),
+            Button::new("Test").focused(true),
+            Button::new("Test").disabled(true),
+        ];
+
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+
+        for button in states {
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            button.render(&mut ctx);
+        }
+    }
+
+    #[test]
+    fn test_checkbox_all_states() {
+        let states = [
+            Checkbox::new("Test"),
+            Checkbox::new("Test").checked(true),
+            Checkbox::new("Test").disabled(true),
+            Checkbox::new("Test").focused(true),
+            Checkbox::new("Test").checked(true).disabled(true),
+        ];
+
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+
+        for checkbox in states {
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            checkbox.render(&mut ctx);
+        }
+    }
+
+    #[test]
+    fn test_switch_all_states() {
+        let states = [
+            Switch::new(),
+            Switch::new().on(true),
+            Switch::new().disabled(true),
+            Switch::new().focused(true),
+            Switch::new().on(true).disabled(true),
+        ];
+
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+
+        for switch in states {
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            switch.render(&mut ctx);
+        }
+    }
+}

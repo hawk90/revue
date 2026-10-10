@@ -1,5 +1,7 @@
 //! Syntax highlighting widget tests
 
+mod keywords;
+
 use revue::style::Color;
 use revue::widget::{HighlightSpan, Language, SyntaxHighlighter, SyntaxTheme};
 

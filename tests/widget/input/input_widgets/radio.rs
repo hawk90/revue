@@ -559,3 +559,77 @@ fn test_radio_group_helper_with_strings() {
     let _rg = revue::widget::radio_group(vec![String::from("A"), String::from("B")]);
     // Verify it compiles
 }
+
+/// Test RadioGroup edge cases
+mod edge_cases {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::RadioGroup;
+    #[test]
+    fn test_radio_group_empty() {
+        let radio = RadioGroup::new(std::iter::empty::<&str>());
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Should handle empty options gracefully
+        radio.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_radio_group_with_empty_option() {
+        let radio = RadioGroup::new([""]);
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        radio.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_radio_group_with_very_long_options() {
+        let long_option = "A".repeat(1000);
+        let radio = RadioGroup::new([&long_option, "Short", &long_option]);
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        radio.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_radio_group_with_unicode() {
+        let radio = RadioGroup::new(["옵션 1", "옵션 2", "옵션 3"]);
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        radio.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_radio_group_selection_edge_cases() {
+        let radio = RadioGroup::new(["A", "B", "C"]).selected(100); // Out of bounds
+                                                                    // Clamped to the last option
+        assert_eq!(radio.selected_index(), 2);
+        assert_eq!(radio.selected_value(), Some("C"));
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Should handle out of bounds selection gracefully
+        radio.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_radio_group_many_options() {
+        let options: Vec<String> = (0..100).map(|i| format!("Option {}", i)).collect();
+        let radio = RadioGroup::new(options);
+        let mut buffer = Buffer::new(20, 20);
+        let area = Rect::new(0, 0, 20, 20);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        radio.render(&mut ctx);
+    }
+}

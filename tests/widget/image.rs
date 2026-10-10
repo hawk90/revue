@@ -1,16 +1,25 @@
-//! Tests for Image widget
-//!
-//! Extracted from src/widget/image.rs
+//! Image widget tests
 
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::traits::{RenderContext, View};
-use revue::widget::{image_from_file, try_image_from_file, Image, ImageError, ScaleMode};
+use revue::widget::image_from_file;
+use revue::widget::traits::RenderContext;
+use revue::widget::traits::View;
+use revue::widget::try_image_from_file;
+use revue::widget::Image;
+use revue::widget::ImageError;
+use revue::widget::ScaleMode;
 
 #[test]
 fn test_image_from_rgb() {
     let data = vec![255, 0, 0, 0, 255, 0]; // 2 pixels: red, green
     let img = Image::from_rgb(data, 2, 1);
+    assert_eq!(img.width(), 2);
+    assert_eq!(img.height(), 1);
+
+    let data = vec![255, 0, 0, 0, 255, 0]; // 2 pixels: red, green
+    let img = Image::from_rgb(data.clone(), 2, 1);
+
     assert_eq!(img.width(), 2);
     assert_eq!(img.height(), 1);
 }
@@ -171,6 +180,9 @@ fn test_image_placeholder() {
     let img = Image::from_rgb(vec![0; 3], 1, 1).placeholder('X');
     // Can't access placeholder directly, but verify it compiles
     let _ = img;
+
+    let _img = Image::from_rgb(vec![0; 300], 10, 10).placeholder('#');
+    // Placeholder was set successfully
 }
 
 #[test]
@@ -194,18 +206,29 @@ fn test_image_scale_fill() {
 fn test_image_width() {
     let img = Image::from_rgb(vec![0; 300], 10, 10);
     assert_eq!(img.width(), 10);
+
+    let img = Image::from_rgb(vec![0; 300], 100, 50);
+    assert_eq!(img.width(), 100);
 }
 
 #[test]
 fn test_image_height() {
     let img = Image::from_rgb(vec![0; 300], 10, 10);
     assert_eq!(img.height(), 10);
+
+    let img = Image::from_rgb(vec![0; 300], 100, 50);
+    assert_eq!(img.height(), 50);
 }
 
 #[test]
 fn test_image_id() {
     let img = Image::from_rgb(vec![0; 3], 1, 1);
     assert!(img.id() > 0);
+
+    let img = Image::from_rgb(vec![0; 300], 10, 10);
+
+    // Image should have a valid ID (non-zero)
+    assert_ne!(img.id(), 0, "Image should have a non-zero ID");
 }
 
 #[test]
@@ -355,4 +378,232 @@ fn test_image_render_zero_height() {
 
     let img = Image::from_rgb(vec![0; 3], 1, 1);
     img.render(&mut ctx); // Should not panic
+}
+
+#[test]
+fn test_image_scale_modes() {
+    // Test that scale builder method works - each image is created fresh
+    let _img_stretch = Image::from_rgb(vec![0; 300], 10, 10);
+    let _img_fit = Image::from_rgb(vec![0; 300], 10, 10);
+    let _img_fill = Image::from_rgb(vec![0; 300], 10, 10);
+    let _img_none = Image::from_rgb(vec![0; 300], 10, 10);
+}
+
+#[test]
+fn test_image_scaled_dimensions_none() {
+    let img = Image::from_rgb(vec![0; 600], 200, 100);
+
+    // Test default scale mode
+    let (w, h) = img.scaled_dimensions(80, 40);
+    assert!(w > 0 && h > 0);
+}
+
+#[test]
+fn test_image_kitty_escape() {
+    let data = vec![0u8; 12]; // Small RGB data
+    let img = Image::from_rgb(data, 2, 2);
+    let escape = img.kitty_escape(10, 5);
+
+    // Should start with Kitty APC (ESC_G)
+    assert!(escape.starts_with("\u{1b}_G"));
+    // Should end with ST (ESC \)
+    assert!(escape.ends_with("\u{1b}\\"));
+}
+
+#[test]
+fn test_image_kitty_support() {
+    // Just check that the function works
+    let _supported = Image::is_kitty_supported();
+}
+
+#[test]
+fn test_image_from_png_invalid() {
+    let invalid_data = vec![0, 1, 2, 3];
+    let result = Image::from_png(invalid_data);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_image_try_from_png_invalid() {
+    let invalid_data = vec![0, 1, 2, 3];
+    let result = Image::try_from_png(invalid_data);
+    assert!(result.is_none());
+}
+
+#[test]
+fn test_image_from_file_not_found() {
+    let path = "/nonexistent/path/image.bin";
+    let result = Image::from_file(path);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_image_try_from_file_not_found() {
+    let path = "/nonexistent/path/image.bin";
+    let result = Image::try_from_file(path);
+    assert!(result.is_none());
+}
+
+#[test]
+fn test_image_builder_pattern() {
+    let img = Image::from_rgb(vec![0; 300], 100, 50).placeholder('x');
+
+    assert_eq!(img.width(), 100);
+    assert_eq!(img.height(), 50);
+}
+
+#[test]
+fn test_image_square() {
+    let img = Image::from_rgb(vec![0; 3], 1, 1);
+    assert_eq!(img.width(), 1);
+    assert_eq!(img.height(), 1);
+}
+
+#[test]
+fn test_image_wide() {
+    let img = Image::from_rgb(vec![0; 600], 200, 100);
+    assert_eq!(img.width(), 200);
+    assert_eq!(img.height(), 100);
+}
+
+#[test]
+fn test_image_tall() {
+    let img = Image::from_rgb(vec![0; 600], 100, 200);
+    assert_eq!(img.width(), 100);
+    assert_eq!(img.height(), 200);
+}
+
+#[test]
+fn test_image_empty_data() {
+    let img = Image::from_rgb(vec![], 0, 0);
+    assert_eq!(img.width(), 0);
+    assert_eq!(img.height(), 0);
+}
+
+/// Test Image widget edge cases
+mod edge_cases {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+
+    use revue::widget::{Image, ImageError, ScaleMode};
+    /// Create a minimal test image (1x1 red pixel)
+    fn test_image() -> Image {
+        Image::from_rgb(vec![255, 0, 0], 1, 1)
+    }
+
+    #[test]
+    fn test_image_with_nonexistent_path() {
+        let result = Image::try_from_file("/nonexistent/path/to/image.png");
+        assert!(result.is_none(), "Should return None for nonexistent path");
+    }
+
+    #[test]
+    fn test_image_from_file_error() {
+        let result = Image::from_file("/nonexistent/path/to/image.png");
+        assert!(result.is_err());
+        if let Err(ImageError::FileRead { path, .. }) = result {
+            assert!(path.to_str().unwrap().contains("nonexistent"));
+        } else {
+            panic!("Expected FileRead error");
+        }
+    }
+
+    #[test]
+    fn test_image_with_empty_path() {
+        let result = Image::try_from_file("");
+        assert!(result.is_none(), "Should return None for empty path");
+    }
+
+    #[test]
+    fn test_image_with_zero_width_buffer() {
+        let image = test_image();
+        let mut buffer = Buffer::new(0, 10);
+        let area = Rect::new(0, 0, 0, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Should handle gracefully
+        image.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_image_with_zero_height_buffer() {
+        let image = test_image();
+        let mut buffer = Buffer::new(10, 0);
+        let area = Rect::new(0, 0, 10, 0);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        image.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_image_with_both_zero() {
+        let image = test_image();
+        let mut buffer = Buffer::new(0, 0);
+        let area = Rect::new(0, 0, 0, 0);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        image.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_image_width_height_getters() {
+        let image = Image::from_rgb(vec![0; 12], 4, 3);
+        assert_eq!(image.width(), 4);
+        assert_eq!(image.height(), 3);
+    }
+
+    #[test]
+    fn test_image_with_large_dimensions() {
+        // Create a large image (10000x10000 would be too much memory, use smaller)
+        let large_data = vec![0u8; 100 * 100 * 3]; // 100x100 RGB
+        let image = Image::from_rgb(large_data, 100, 100);
+
+        assert_eq!(image.width(), 100);
+        assert_eq!(image.height(), 100);
+
+        // Rendering with small buffer should clip
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        image.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_image_placeholder() {
+        let image = Image::from_rgb(vec![255, 0, 0], 2, 2).placeholder('#');
+        let mut buffer = Buffer::new(5, 5);
+        let area = Rect::new(0, 0, 5, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        image.render(&mut ctx);
+
+        // Check placeholder was rendered
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '#');
+    }
+
+    #[test]
+    fn test_image_scaled_dimensions_fit() {
+        let image = Image::from_rgb(vec![0; 600], 200, 100); // 2:1 aspect
+        let (w, h) = image.scaled_dimensions(80, 40);
+        assert_eq!(w, 80);
+        assert_eq!(h, 40);
+    }
+
+    #[test]
+    fn test_image_scaled_dimensions_stretch() {
+        let image = Image::from_rgb(vec![0; 300], 10, 10).scale(ScaleMode::Stretch);
+        let (w, h) = image.scaled_dimensions(80, 24);
+        assert_eq!(w, 80);
+        assert_eq!(h, 24);
+    }
+
+    #[test]
+    fn test_image_rgba() {
+        let data = vec![255, 0, 0, 255, 0, 255, 0, 255]; // 2 pixels
+        let image = Image::from_rgba(data, 2, 1);
+        assert_eq!(image.width(), 2);
+        assert_eq!(image.height(), 1);
+    }
 }

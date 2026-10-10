@@ -1134,3 +1134,85 @@ fn test_switch_render_all_styles_with_colors() {
         s.render(&mut ctx);
     }
 }
+
+/// Test Switch edge cases
+mod edge_cases {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::{Switch, ToggleWidget};
+    #[test]
+    fn test_switch_no_label() {
+        let switch = Switch::new();
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        switch.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_switch_with_empty_label() {
+        let switch = Switch::new().label("");
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        switch.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_switch_with_very_long_label() {
+        let long_label = "A".repeat(1000);
+        let switch = Switch::new().label(&long_label);
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        switch.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_switch_toggle_multiple_times() {
+        let mut switch = Switch::new();
+
+        // Toggle many times
+        for i in 0..100 {
+            switch = switch.on(i % 2 == 1);
+        }
+
+        // 99 is odd, so on(true)
+        assert!(switch.is_on());
+    }
+
+    #[test]
+    fn test_switch_with_unicode() {
+        let switch = Switch::new().label("전환 ⚡");
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        switch.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_switch_disabled_on() {
+        let switch = Switch::new().on(true).disabled(true);
+        assert!(switch.is_on());
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        switch.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_switch_with_zero_width_buffer() {
+        let switch = Switch::new();
+        let mut buffer = Buffer::new(0, 10);
+        let area = Rect::new(0, 0, 0, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        switch.render(&mut ctx);
+    }
+}
