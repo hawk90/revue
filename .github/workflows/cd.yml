@@ -26,12 +26,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      # This copy shares hawk90.github.io with the blog and duplicates docs.rs
+      # (the crate's `documentation` URL), so keep it out of search indexes.
+      # Thousands of generated rustdoc pages would otherwise count against the
+      # blog's site-quality review. docs.rs builds don't use this flag.
+      - name: Write noindex header
+        run: echo '<meta name="robots" content="noindex, follow">' > "$RUNNER_TEMP/noindex.html"
       - name: Build rustdoc
         run: cargo doc --no-deps --all-features --document-private-items
         env:
-          RUSTDOCFLAGS: --cfg docsrs -D warnings
+          RUSTDOCFLAGS: --cfg docsrs -D warnings --html-in-header ${{ runner.temp }}/noindex.html
       - name: Create index redirect
-        run: echo '<html><head><meta http-equiv="refresh" content="0; url=revue/index.html"></head></html>' > target/doc/index.html
+        run: echo '<html><head><meta name="robots" content="noindex, follow"><meta http-equiv="refresh" content="0; url=revue/index.html"></head></html>' > target/doc/index.html
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
