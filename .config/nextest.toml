@@ -1,8 +1,9 @@
-# The fault-injection layers assert wall-clock limits (a hang is a failure).
-# Next to other CPU-heavy tests - on a 4-core CI runner, the event-sequence
-# suite alone keeps two cores busy for ~20s - their worker threads starve
-# and the limits fail without any bug (#923). Each of these tests takes
-# every test slot, so nothing else runs beside it.
+# The fault-injection layers assert wall-clock limits: a case that does not
+# finish in time is reported as a hang. Next to a CPU-bound test they fail
+# without any bug. `event_sequences` drives every widget on its own thread,
+# so its two tests keep ~100 busy threads on a 4-core CI runner for ~20s, and
+# the fault cases' worker threads do not get scheduled within their limits
+# (#923). Each fault test takes every test slot, so nothing runs beside it.
 [[profile.default.overrides]]
 filter = 'binary(fault_injection)'
 threads-required = 'num-test-threads'
