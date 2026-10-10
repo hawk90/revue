@@ -71,15 +71,16 @@ pre-push:
             # Run tests for specific test files that changed
             TEST_TARGETS=()
             for file in $CHANGED; do
-              if echo "$file" | grep -q "^tests/[^/]*\.rs$"; then
-                # Top-level test files (e.g., tests/buffer_tests.rs)
-                test_name=$(basename "$file" .rs)
-                TEST_TARGETS+=("--test" "$test_name")
-              elif echo "$file" | grep -q "^tests/[^/]+/"; then
+              if echo "$file" | grep -qE "^tests/[^/]+/"; then
                 # Test directories - run all tests
                 echo "Test directory changed, running all tests..."
                 cargo test --all-features || exit 1
                 exit 0
+              elif echo "$file" | grep -qE "^tests/[^/]+\.rs$" && [ -f "$file" ]; then
+                # Top-level test files (e.g., tests/buffer_tests.rs); a deleted
+                # one is no longer a target
+                test_name=$(basename "$file" .rs)
+                TEST_TARGETS+=("--test" "$test_name")
               fi
             done
             if [ ${#TEST_TARGETS[@]} -gt 0 ]; then
