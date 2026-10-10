@@ -17,7 +17,7 @@ meta:
   status: draft            # 코드베이스 대조 검증 전
   counts:
     categories: 24
-    entries: 150
+    entries: 154
 
 # ---------------------------------------------------------------------------
 # 코드 리뷰 태그 (커밋/PR/리뷰 코멘트 접두사로 사용)
@@ -1812,6 +1812,77 @@ entries:
     category: testing
     review_tag: TEST
     summary: "README와 tutorial 예제가 CI에서 compile되지 않는다. 문서 코드는 executable documentation이어야 한다."
+  - id: REV-TEST-007
+    title: "Whitespace-Blind Test Move Check"
+    category: testing
+    review_tag: TEST
+    summary: "테스트를 옮기거나 합친 뒤 본문이 그대로인지를 공백을 모두 지우고 비교한다. 여러 줄 문자열 리터럴 안의 공백이 바뀐 것을 놓친다."
+    problem:
+      - "테스트를 중첩 mod로 옮기며 줄마다 들여쓰기를 붙이면 raw string 안쪽 줄도 들여써져 테스트 입력이 바뀐다."
+      - "검사는 '빠진 테스트 0개'를 보고하고, snapshot이나 assertion이 우연히 실패해야 드러난다."
+      - "바뀐 입력으로도 통과하는 테스트라면 아무도 모른 채 다른 것을 검사하게 된다."
+    detect:
+      - "테스트 이동·병합 PR에서 본문을 다시 들여쓰는 스크립트"
+      - "re.sub(r'\\s+', '', body) 같은 공백 전체 제거 비교"
+      - "문자열 안의 '{'까지 세는 brace matching (bracket 테스트에서 깨진다)"
+    fix:
+      - "본문은 그대로 복사하고 들여쓰기는 rustfmt에 맡긴다. rustfmt는 문자열 리터럴 안을 건드리지 않는다."
+      - "비교할 때 주석과 리터럴 밖의 공백만 지우고, 문자열·문자 리터럴은 바이트 그대로 비교한다."
+      - "brace matching은 문자열과 문자 리터럴을 건너뛴다."
+    observed:
+      - "#930 W8: snapshot 테스트 이동에서 markdown raw string이 들여써져 snapshot 3개가 깨졌다. 공백을 모두 지운 검사는 빠진 테스트 0개로 보고했다."
+  - id: REV-TEST-008
+    title: "Duplicate Test Binary"
+    category: testing
+    review_tag: TEST
+    summary: "tests/x_tests.rs가 `mod x;` 한 줄뿐이라 tests/x.rs와 같은 테스트를 한 번 더 컴파일하고 실행한다."
+    problem:
+      - "같은 테스트가 두 번 돌아 CI 시간이 늘고 테스트 수가 부풀려진다."
+      - "실패도 두 번 보고되어, 실패한 테스트 수가 실제 결함 수와 맞지 않는다."
+    detect:
+      - "tests/*.rs 중 다른 바이너리 이름으로 `mod <name>;` 한 줄만 있는 파일"
+      - "cargo nextest list에서 테스트 수가 똑같은 두 바이너리"
+    fix:
+      - "한 줄짜리 파일을 지운다."
+      - "테스트 트리는 src 모듈마다 바이너리 하나로 둔다."
+    observed:
+      - "#929: style_tests.rs, event_tests.rs (408개가 두 번 실행)"
+      - "#932: data_viewer_tests.rs, log_viewer_tests.rs (171개가 두 번 실행)"
+  - id: REV-TEST-009
+    title: "Unbounded CPU-Bound Test Next to Wall-Clock Tests"
+    category: testing
+    review_tag: TEST
+    summary: "한 테스트가 위젯마다 스레드를 띄우는 식으로 CPU를 제한 없이 쓰고, 테스트 러너는 시간 제한을 검사하는 테스트를 그 옆에서 실행한다."
+    problem:
+      - "시간 제한 테스트가 버그 없이 실패한다."
+      - "실패가 테스트 실행 순서에 달려 있어서 관계없는 PR(테스트 파일 정리 등)이 CI를 깨뜨린다."
+      - "코어가 적은 러너(Windows 4코어)에서만 재현되어 로컬에서 원인을 찾기 어렵다."
+    detect:
+      - "available_parallelism으로 제한하지 않는 thread spawn 루프가 있는 테스트"
+      - "Instant/Duration 한도를 assert하는 테스트"
+      - "단독으로 돌리면 통과하고 전체 실행에서만 실패하는 테스트"
+    fix:
+      - "무거운 테스트의 병렬성을 코어 수로 제한한다."
+      - "시간 제한 테스트는 nextest threads-required로 혼자 돌게 한다."
+      - "원인은 두 바이너리만 겹쳐 돌려 재현해 확인한다 (겹침 실패, 단독 통과)."
+    observed:
+      - "#929: Windows CI에서 fault_injection의 concurrency 케이스 23~30개가 timeout. event_sequences와 겹친 것이 원인"
+      - "#931: fault_injection을 nextest에서 단독 실행. 남은 원인은 #938, pre-push hook 쪽은 #923"
+  - id: REV-TEST-010
+    title: "Same Body, Different Names"
+    category: testing
+    review_tag: TEST
+    summary: "이름은 다른데 본문이 똑같은 테스트. 이름이 약속하는 검사를 본문이 하지 않는다."
+    problem:
+      - "test_timer_default_warning_threshold 같은 이름 때문에 그 동작이 검증되는 것처럼 보이지만, 본문은 다른 것만 확인한다."
+      - "테스트 수와 커버리지가 실제보다 크게 보인다."
+    detect:
+      - "주석과 공백을 뺀 본문이 같은 테스트 묶음"
+    fix:
+      - "이름이 약속한 assertion을 추가하거나, 정말 중복이면 하나만 남긴다."
+      - "테스트를 옮기는 PR이 아니라 그 모듈을 감사할 때 고친다. 이동 PR에서는 목록만 남긴다."
+    observed:
+      - "#930: 위젯 테스트 정리(W1~W7)에서 76개 묶음을 찾아 위젯별로 기록"
   - id: REV-API-001
     title: "Release Number Inflation"
     category: api
