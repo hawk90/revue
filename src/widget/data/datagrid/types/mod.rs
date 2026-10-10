@@ -11,7 +11,6 @@ pub mod export;
 pub mod options;
 pub mod row;
 
-// Public API tests extracted to tests/widget/data/datagrid_types.rs
 // KEEP HERE - Private implementation tests (accesses private fields of GridColors, GridOptions, ColumnType, etc.)
 
 // Re-exports for backward compatibility

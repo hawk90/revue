@@ -263,5 +263,3 @@ impl<T: Display> crate::widget::StyledView for List<T> {
 pub fn list<T>(items: Vec<T>) -> List<T> {
     List::new(items)
 }
-
-// Tests moved to tests/widget/data/list.rs

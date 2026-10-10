@@ -7,7 +7,3 @@ pub enum ChartOrientation {
     /// Horizontal orientation
     Horizontal,
 }
-
-// KEEP HERE: All tests for ChartOrientation are public API tests
-// Since enum variants and their behavior are part of the public API,
-// we've extracted all tests to the separate test file.

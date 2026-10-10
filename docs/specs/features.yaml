@@ -3,7 +3,7 @@
 # Verified against the code on 2026-10-05 (code wins over docs). `source` § refers to the
 # pre-2026-10-05 docs/FEATURES.md layout (see git history / docs narrative).
 schema: 1
-updated: '2026-10-09'
+updated: '2026-10-10'
 sources:
   - 'docs/FEATURES.md (pre-2026-10-05 layout: §1–§11, Advanced Widgets, Feature Comparison)'
 statuses:
@@ -1368,10 +1368,10 @@ items:
       - ColorScheme default palette / monochrome
     evidence:
       - src/widget/data/chart/chart_common
-      - tests/chart/axis.rs
-      - tests/chart/legend.rs
-      - tests/chart/color_scheme.rs
-      - tests/chart/grid.rs
+      - tests/widget/data/chart/chart_common/axis.rs
+      - tests/widget/data/chart/chart_common/legend.rs
+      - tests/widget/data/chart/chart_common/color_scheme.rs
+      - tests/widget/data/chart/chart_common/grid.rs
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / Common Components
   - id: CHART-002
@@ -1488,7 +1488,7 @@ items:
       - candle_chart(data) with title
     evidence:
       - src/widget/data/chart/candlechart/mod.rs::candle_chart
-      - tests/widget/candlechart.rs
+      - tests/widget/data/chart/candlechart.rs
     source:
       - FEATURES.md §Advanced Widgets / Advanced Charts
   - id: NAV-001

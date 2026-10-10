@@ -550,6 +550,3 @@ impl<'a> BoxPlotRender<'a> {
         }
     }
 }
-
-// KEEP HERE - accesses private fields (RenderContext::buffer)
-// Tests extracted to tests/widget/data/chart_boxplot_render.rs

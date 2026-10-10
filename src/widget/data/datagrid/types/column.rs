@@ -135,5 +135,3 @@ impl GridColumn {
         self
     }
 }
-
-// Tests moved to tests/widget/data/datagrid_column_types.rs

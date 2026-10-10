@@ -16,18 +16,12 @@ mod badge;
 mod breadcrumb;
 #[path = "widget/button.rs"]
 mod button;
-#[path = "widget/calendar.rs"]
-mod calendar;
 #[path = "widget/callout/mod.rs"]
 mod callout;
-#[path = "widget/candlechart.rs"]
-mod candlechart;
 #[path = "widget/canvas/mod.rs"]
 mod canvas;
 #[path = "widget/card.rs"]
 mod card;
-#[path = "widget/data/chart/mod.rs"]
-mod chart;
 #[path = "widget/checkbox/mod.rs"]
 mod checkbox;
 #[path = "widget/code_editor/mod.rs"]
@@ -88,10 +82,6 @@ mod input;
 mod layout;
 #[path = "widget/link.rs"]
 mod link;
-#[path = "widget/list.rs"]
-mod list;
-#[path = "widget/log_viewer_tests.rs"]
-mod log_viewer_tests;
 #[path = "widget/macros.rs"]
 mod macros;
 #[cfg(feature = "markdown")]
@@ -177,12 +167,6 @@ mod terminal_ansi;
 mod terminal_types;
 #[path = "widget/theme_picker.rs"]
 mod theme_picker;
-#[path = "widget/timeline.rs"]
-mod timeline;
-#[path = "widget/timer.rs"]
-mod timer;
-#[path = "widget/timeseries_tests.rs"]
-pub mod timeseries_tests;
 #[path = "widget/tooltip.rs"]
 mod tooltip;
 #[path = "widget/transition/mod.rs"]

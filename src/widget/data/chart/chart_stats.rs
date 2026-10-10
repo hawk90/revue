@@ -214,5 +214,3 @@ pub fn compute_bins(data: &[f64], config: &BinConfig) -> Vec<HistogramBin> {
 
     bins
 }
-
-// All tests extracted to tests/widget/data/chart/chart_stats.rs

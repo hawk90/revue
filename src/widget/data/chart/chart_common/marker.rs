@@ -56,7 +56,3 @@ impl Marker {
         }
     }
 }
-
-// KEEP HERE: All tests for Marker are public API tests
-// Since enum variants and their behavior are part of the public API,
-// we've extracted all tests to the separate test file.

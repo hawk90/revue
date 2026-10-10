@@ -561,8 +561,6 @@ pub fn tree_node(label: impl Into<String>) -> TreeNode {
     TreeNode::new(label)
 }
 
-// Tests extracted to tests/widget/data/tree_mod.rs
-//
 // KEEP HERE: Tests that access private fields (fg, bg, indent)
 
 #[cfg(test)]

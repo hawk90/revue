@@ -122,11 +122,3 @@ impl Tree {
         self.matches.contains(&visible_index)
     }
 }
-
-// Tests extracted to:
-// - tests/widget/data/tree_view.rs (render API tests)
-// - tests/widget/data/tree_search.rs (search functionality tests)
-
-// Private tests that need access to internal details would go here
-// KEEP HERE: Tests for Tree::update_matches() and other private methods
-// Most tests have been moved to separate test files in tests/widget/data/

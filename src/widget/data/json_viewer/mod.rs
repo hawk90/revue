@@ -27,8 +27,7 @@ pub use helpers::json_viewer;
 mod tests {
     //! JSON Viewer widget tests that access private fields
     //!
-    //! Tests using only public APIs are in:
-    //! /Users/hawk/Workspaces/revue/tests/widget/data/json_viewer.rs
+    //! Tests using only public APIs are in tests/widget/data/json_viewer/.
 
     use super::*;
     use crate::layout::Rect;
@@ -44,8 +43,6 @@ mod tests {
         assert_eq!(viewer.visible_count(), 0);
         assert_eq!(viewer.selected_index(), 0);
     }
-
-    // EXTRACTED: tests/widget/data/json_viewer.rs
 
     // KEEP HERE: accesses private fields (selected_index)
     #[test]
@@ -101,8 +98,6 @@ mod tests {
         assert_eq!(viewer.visible_count(), initial_count);
     }
 
-    // EXTRACTED: tests/widget/data/json_viewer.rs
-
     // KEEP HERE: accesses private fields (get_indent_size)
     #[test]
     fn test_json_viewer_builders() {
@@ -125,8 +120,6 @@ mod tests {
         assert_eq!(viewer.get_indent_size(), 4);
     }
 
-    // EXTRACTED: tests/widget/data/json_viewer.rs
-
     // KEEP HERE: accesses private fields (node.children)
     #[test]
     fn test_json_node_child_count() {
@@ -137,8 +130,6 @@ mod tests {
             .push(JsonNode::new("a", "$.a", JsonType::String, 1));
         assert_eq!(node.child_count(), 1);
     }
-
-    // EXTRACTED: tests/widget/data/json_viewer.rs
 
     // KEEP HERE: accesses private types (RenderContext, Buffer, Rect)
     #[test]

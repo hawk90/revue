@@ -106,6 +106,3 @@ impl BoxStats {
         })
     }
 }
-
-// Tests extracted to tests/widget/data/chart_boxplot_group.rs
-// Tests only use public APIs
