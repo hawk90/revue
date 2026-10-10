@@ -1,7 +1,5 @@
 //! Table widget for displaying tabular data
 
-use std::cell::Cell as StdCell;
-
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{char_width, truncate_to_width, Selection};
@@ -64,10 +62,6 @@ pub struct Table {
     virtual_scroll: bool,
     /// Auto-enable virtual scroll when row count exceeds this threshold
     virtual_threshold: usize,
-    /// Extra rows to render above/below the visible viewport
-    overscan: usize,
-    /// Current scroll row offset (Cell: updated during render)
-    scroll_row: StdCell<usize>,
     /// Show scrollbar when virtual scrolling is active
     show_scrollbar: bool,
 }
@@ -79,7 +73,7 @@ impl Table {
             columns,
             rows: Vec::new(),
             selection: Selection::new(0),
-            header_fg: Some(Color::WHITE),
+            header_fg: None,
             header_bg: None,
             selected_fg: Some(Color::WHITE),
             selected_bg: Some(Color::BLUE),
@@ -87,8 +81,6 @@ impl Table {
             props: WidgetProps::new(),
             virtual_scroll: false,
             virtual_threshold: 100,
-            overscan: 5,
-            scroll_row: StdCell::new(0),
             show_scrollbar: true,
         }
     }
@@ -115,6 +107,9 @@ impl Table {
     }
 
     /// Set header colors
+    ///
+    /// These outrank the stylesheet. Unset, the header takes the
+    /// stylesheet's `color` and `background`, then white text.
     pub fn header_style(mut self, fg: Color, bg: Option<Color>) -> Self {
         self.header_fg = Some(fg);
         self.header_bg = bg;
@@ -134,15 +129,24 @@ impl Table {
         self
     }
 
-    /// Enable virtual scrolling for large datasets
+    /// Show a scrollbar for large datasets
+    ///
+    /// Every table scrolls to keep the selected row visible; this adds the
+    /// scrollbar column. It switches itself on at 100 rows.
     pub fn virtual_scroll(mut self, enabled: bool) -> Self {
         self.virtual_scroll = enabled;
         self
     }
 
-    /// Set overscan rows (extra rows rendered above/below viewport)
-    pub fn overscan(mut self, rows: usize) -> Self {
-        self.overscan = rows;
+    /// Set overscan rows
+    ///
+    /// Has no effect: a terminal frame never draws rows outside the
+    /// viewport, so there is nothing to render ahead of time.
+    #[deprecated(
+        since = "3.10.0",
+        note = "has no effect; rows outside the viewport are never drawn"
+    )]
+    pub fn overscan(self, _rows: usize) -> Self {
         self
     }
 
@@ -205,28 +209,6 @@ impl Table {
         self.virtual_scroll || self.rows.len() >= self.virtual_threshold
     }
 
-    /// Calculate the visible row range for virtual scrolling
-    fn visible_row_range(&self, viewport_rows: usize) -> (usize, usize) {
-        let scroll = self.scroll_row.get();
-        let start = scroll.saturating_sub(self.overscan);
-        let end = (scroll + viewport_rows + self.overscan).min(self.rows.len());
-        (start, end)
-    }
-
-    /// Ensure the selected row is visible, adjusting scroll offset
-    fn ensure_selected_visible(&self, viewport_rows: usize) {
-        let selected = self.selection.index;
-        let mut scroll = self.scroll_row.get();
-
-        if selected < scroll {
-            scroll = selected;
-        } else if selected >= scroll + viewport_rows {
-            scroll = selected.saturating_sub(viewport_rows.saturating_sub(1));
-        }
-
-        self.scroll_row.set(scroll);
-    }
-
     /// Calculate column widths
     fn calculate_widths(&self, available_width: u16) -> Vec<u16> {
         let col_count = self.columns.len();
@@ -243,11 +225,15 @@ impl Table {
 
         // Calculate fixed and auto columns
         let mut widths: Vec<u16> = self.columns.iter().map(|c| c.width).collect();
-        let fixed_total: u16 = widths.iter().filter(|&&w| w > 0).sum();
+        let fixed_total = widths.iter().fold(0u16, |sum, &w| sum.saturating_add(w));
         let auto_count = widths.iter().filter(|&&w| w == 0).count() as u16;
 
         // Distribute remaining space to auto columns
-        let border_space = if self.border { col_count as u16 + 1 } else { 0 };
+        let border_space = if self.border {
+            u16::try_from(col_count).map_or(u16::MAX, |n| n.saturating_add(1))
+        } else {
+            0
+        };
         let remaining = available_width
             .saturating_sub(fixed_total)
             .saturating_sub(border_space)
@@ -281,145 +267,31 @@ impl View for Table {
         }
 
         let widths = self.calculate_widths(area.width);
-        let mut y = 0u16;
+        let mut y = self.render_header(ctx, &widths);
 
-        // Render header
-        if self.border {
-            // Top border
-            let top_border = BorderChars {
-                left: '┌',
-                mid: '┬',
-                right: '┐',
-                horiz: '─',
-            };
-            self.render_border_line(ctx, 0, y, &widths, &top_border);
-            y += 1;
-        }
-
-        // Header row
-        let header_style = RowStyle {
-            fg: self.header_fg,
-            bg: self.header_bg,
-            bold: true,
-        };
-        self.render_row(
-            ctx,
-            0,
-            y,
-            &widths,
-            &self
-                .columns
-                .iter()
-                .map(|c| c.title.clone())
-                .collect::<Vec<_>>(),
-            &header_style,
-        );
-        y += 1;
-
-        if self.border {
-            // Header separator
-            let sep_border = BorderChars {
-                left: '├',
-                mid: '┼',
-                right: '┤',
-                horiz: '─',
-            };
-            self.render_border_line(ctx, 0, y, &widths, &sep_border);
-            y += 1;
-        }
-
-        // Data rows
         let max_data_y = area.height - if self.border { 1 } else { 0 };
         let viewport_rows = max_data_y.saturating_sub(y) as usize;
 
-        if self.is_virtual_active() && !self.rows.is_empty() {
-            // Virtual scroll mode
-            self.ensure_selected_visible(viewport_rows);
-            let (render_start, render_end) = self.visible_row_range(viewport_rows);
-            let scroll = self.scroll_row.get();
-
-            for i in render_start..render_end {
-                // Overscan rows above the scroll offset are off screen; the
-                // viewport starts at `scroll`, not at `render_start`.
-                if i < scroll {
-                    continue;
-                }
-                let viewport_y = y + (i - scroll) as u16;
-                if viewport_y >= max_data_y {
-                    break;
-                }
-
-                let is_selected = self.selection.is_selected(i);
-                let (fg, bg) = if is_selected {
-                    (self.selected_fg, self.selected_bg)
-                } else {
-                    // These were `(None, None)`, so a rule matching the table
-                    // never reached its rows.
-                    (ctx.css_color_if_set(), ctx.css_background_if_set())
-                };
-
-                let row_style = RowStyle {
-                    fg,
-                    bg,
-                    bold: false,
-                };
-                self.render_row(ctx, 0, viewport_y, &widths, &self.rows[i], &row_style);
-            }
-
-            // Render scrollbar
-            if self.show_scrollbar && self.rows.len() > viewport_rows {
-                let scrollbar_x = area.width - 1;
-                let track_height = viewport_rows as f32;
-                let total = self.rows.len() as f32;
-                let thumb_size = ((track_height / total) * track_height).max(1.0) as u16;
-                let scroll = self.scroll_row.get();
-                let max_scroll = self.rows.len().saturating_sub(viewport_rows);
-                let scroll_ratio = if max_scroll > 0 {
-                    scroll as f32 / max_scroll as f32
-                } else {
-                    0.0
-                };
-                let thumb_pos = (scroll_ratio
-                    * (viewport_rows as u16).saturating_sub(thumb_size) as f32)
-                    as u16;
-
-                for vy in 0..viewport_rows as u16 {
-                    let abs_y = y + vy;
-                    if abs_y < max_data_y {
-                        let in_thumb = vy >= thumb_pos && vy < thumb_pos + thumb_size;
-                        let ch = if in_thumb { '█' } else { '░' };
-                        ctx.set(scrollbar_x, abs_y, Cell::new(ch));
-                    }
-                }
-            }
-        } else {
-            // Normal rendering (non-virtual)
-            for (i, row) in self.rows.iter().enumerate() {
-                if y >= max_data_y {
-                    break;
-                }
-
-                let is_selected = self.selection.is_selected(i);
-                let (fg, bg) = if is_selected {
-                    (self.selected_fg, self.selected_bg)
-                } else {
-                    // These were `(None, None)`, so a rule matching the table
-                    // never reached its rows.
-                    (ctx.css_color_if_set(), ctx.css_background_if_set())
-                };
-
-                let row_style = RowStyle {
-                    fg,
-                    bg,
-                    bold: false,
-                };
-                self.render_row(ctx, 0, y, &widths, row, &row_style);
-                y += 1;
-            }
+        // Every table scrolls to keep the selection visible; virtual scroll
+        // only adds the scrollbar.
+        self.selection.set_visible(viewport_rows);
+        let range = self.selection.visible_range();
+        if self.is_virtual_active() && self.show_scrollbar && self.rows.len() > viewport_rows {
+            self.render_scrollbar(ctx, y, viewport_rows);
+        }
+        for i in range {
+            self.render_row(
+                ctx,
+                0,
+                y,
+                &widths,
+                &self.rows[i],
+                &self.data_row_style(ctx, i),
+            );
+            y += 1;
         }
 
         if self.border {
-            // Bottom border
             let bottom_border = BorderChars {
                 left: '└',
                 mid: '┴',
@@ -432,6 +304,83 @@ impl View for Table {
 }
 
 impl Table {
+    /// Draw the top border, header row and header separator; returns the
+    /// first row below them.
+    fn render_header(&self, ctx: &mut RenderContext, widths: &[u16]) -> u16 {
+        let mut y = 0u16;
+        if self.border {
+            let top_border = BorderChars {
+                left: '┌',
+                mid: '┬',
+                right: '┐',
+                horiz: '─',
+            };
+            self.render_border_line(ctx, 0, y, widths, &top_border);
+            y += 1;
+        }
+
+        let header_style = RowStyle {
+            fg: self
+                .header_fg
+                .or_else(|| ctx.css_color_if_set())
+                .or(Some(Color::WHITE)),
+            bg: self.header_bg.or_else(|| ctx.css_background_if_set()),
+            bold: true,
+        };
+        let titles: Vec<String> = self.columns.iter().map(|c| c.title.clone()).collect();
+        self.render_row(ctx, 0, y, widths, &titles, &header_style);
+        y += 1;
+
+        if self.border {
+            let sep_border = BorderChars {
+                left: '├',
+                mid: '┼',
+                right: '┤',
+                horiz: '─',
+            };
+            self.render_border_line(ctx, 0, y, widths, &sep_border);
+            y += 1;
+        }
+        y
+    }
+
+    fn data_row_style(&self, ctx: &RenderContext, index: usize) -> RowStyle {
+        let (fg, bg) = if self.selection.is_selected(index) {
+            (self.selected_fg, self.selected_bg)
+        } else {
+            // These were `(None, None)`, so a rule matching the table
+            // never reached its rows.
+            (ctx.css_color_if_set(), ctx.css_background_if_set())
+        };
+        RowStyle {
+            fg,
+            bg,
+            bold: false,
+        }
+    }
+
+    fn render_scrollbar(&self, ctx: &mut RenderContext, top: u16, viewport_rows: usize) {
+        let scrollbar_x = ctx.area.width - 1;
+        let track_height = viewport_rows as f32;
+        let total = self.rows.len() as f32;
+        let thumb_size = ((track_height / total) * track_height).max(1.0) as u16;
+        let scroll = self.selection.offset();
+        let max_scroll = self.rows.len().saturating_sub(viewport_rows);
+        let scroll_ratio = if max_scroll > 0 {
+            scroll as f32 / max_scroll as f32
+        } else {
+            0.0
+        };
+        let thumb_pos =
+            (scroll_ratio * (viewport_rows as u16).saturating_sub(thumb_size) as f32) as u16;
+
+        for vy in 0..viewport_rows as u16 {
+            let in_thumb = vy >= thumb_pos && vy < thumb_pos + thumb_size;
+            let ch = if in_thumb { '█' } else { '░' };
+            ctx.set(scrollbar_x, top + vy, Cell::new(ch));
+        }
+    }
+
     fn render_row(
         &self,
         ctx: &mut RenderContext,
@@ -451,14 +400,19 @@ impl Table {
             cx += 1;
         }
 
-        for (i, width) in widths.iter().enumerate() {
+        for (i, &width) in widths.iter().enumerate() {
+            // Fixed widths can add up past the area; stop at its edge.
+            if cx >= ctx.area.width {
+                break;
+            }
+            let width = width.min(ctx.area.width - cx);
             let content = cells.get(i).map(|s| s.as_str()).unwrap_or("");
-            let truncated = truncate_to_width(content, *width as usize);
+            let truncated = truncate_to_width(content, width as usize);
 
             let mut dx: u16 = 0;
             for ch in truncated.chars() {
                 let cw = char_width(ch) as u16;
-                if dx + cw > *width {
+                if dx + cw > width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -472,7 +426,7 @@ impl Table {
             }
 
             // Fill remaining space
-            for j in dx..*width {
+            for j in dx..width {
                 let mut cell = Cell::new(' ');
                 cell.fg = style.fg;
                 cell.bg = style.bg;
@@ -499,23 +453,32 @@ impl Table {
         widths: &[u16],
         chars: &BorderChars,
     ) {
+        let fg = ctx.css_border_or_text_color();
+        let line = |ch: char| {
+            let mut cell = Cell::new(ch);
+            cell.fg = fg;
+            cell
+        };
         let mut cx = x;
 
-        ctx.set(cx, y, Cell::new(chars.left));
+        ctx.set(cx, y, line(chars.left));
         cx += 1;
 
-        for (i, width) in widths.iter().enumerate() {
-            for _ in 0..*width {
-                ctx.set(cx, y, Cell::new(chars.horiz));
+        for (i, &width) in widths.iter().enumerate() {
+            if cx >= ctx.area.width {
+                return;
+            }
+            for _ in 0..width.min(ctx.area.width - cx) {
+                ctx.set(cx, y, line(chars.horiz));
                 cx += 1;
             }
             if i < widths.len() - 1 {
-                ctx.set(cx, y, Cell::new(chars.mid));
+                ctx.set(cx, y, line(chars.mid));
                 cx += 1;
             }
         }
 
-        ctx.set(cx, y, Cell::new(chars.right));
+        ctx.set(cx, y, line(chars.right));
     }
 }
 
@@ -532,17 +495,34 @@ pub fn column(title: impl Into<String>) -> Column {
     Column::new(title)
 }
 
-// Keep private tests that require private field access here
-// Tests above this line are public API tests that have been extracted to tests/widget/data/table.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn test_table_calculate_widths_private() {
-    // Test private method - keeping in source
-    let _t = Table::new(vec![
-        Column::new("A").width(10),
-        Column::new("B"), // auto width
-    ]);
+    #[test]
+    fn calculate_widths_shares_the_rest_among_auto_columns() {
+        let t = Table::new(vec![
+            Column::new("A").width(10),
+            Column::new("B"),
+            Column::new("C"),
+        ]);
+        // 30 - 10 fixed - 4 border cells = 16, split between two auto columns
+        assert_eq!(t.calculate_widths(30), [10, 8, 8]);
+        assert_eq!(t.clone().border(false).calculate_widths(30), [10, 10, 10]);
+    }
 
-    // This would require accessing private calculate_widths method
-    // Test kept inline due to private access
+    #[test]
+    fn calculate_widths_keeps_auto_columns_one_cell_wide_when_full() {
+        let t = Table::new(vec![Column::new("A").width(u16::MAX), Column::new("B")]);
+        assert_eq!(t.calculate_widths(20), [u16::MAX, 1]);
+    }
+
+    #[test]
+    fn calculate_widths_reserves_the_scrollbar_column() {
+        let t = Table::new(vec![Column::new("A")])
+            .border(false)
+            .virtual_scroll(true);
+        assert_eq!(t.calculate_widths(10), [9]);
+        assert_eq!(t.show_scrollbar(false).calculate_widths(10), [10]);
+    }
 }
