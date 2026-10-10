@@ -12,5 +12,6 @@ mod scroll;
 mod sidebar;
 mod split_view;
 mod splitter;
+mod stack;
 mod tab_view;
 mod tabs;

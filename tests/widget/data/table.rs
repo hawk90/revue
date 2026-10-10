@@ -957,3 +957,41 @@ fn test_table_border_lines_read_the_stylesheet() {
         }
     }
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_table_basic() {
+        let view = Table::new(vec![
+            Column::new("Name"),
+            Column::new("Age"),
+            Column::new("City"),
+        ])
+        .row(vec!["Alice", "30", "NYC"])
+        .row(vec!["Bob", "25", "LA"])
+        .row(vec!["Charlie", "35", "Chicago"]);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("table_basic");
+    }
+
+    #[test]
+    fn test_table_with_header() {
+        let view = Table::new(vec![
+            Column::new("ID"),
+            Column::new("Product"),
+            Column::new("Price"),
+        ])
+        .row(vec!["1", "Widget", "$9.99"])
+        .row(vec!["2", "Gadget", "$19.99"]);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("table_with_header");
+    }
+}

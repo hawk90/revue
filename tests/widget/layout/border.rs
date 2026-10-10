@@ -807,3 +807,72 @@ mod side_titles {
         assert_eq!(col, "  ⚙ab ");
     }
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_border_single() {
+        let view = Border::single().child(text("Bordered content"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("border_single");
+    }
+
+    #[test]
+    fn test_border_double() {
+        let view = Border::double().child(text("Double border"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("border_double");
+    }
+
+    #[test]
+    fn test_border_rounded() {
+        let view = Border::rounded().child(text("Rounded corners"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("border_rounded");
+    }
+
+    #[test]
+    fn test_border_with_title() {
+        let view = Border::single()
+            .title("My Title")
+            .child(text("Content with title"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("border_with_title");
+    }
+
+    #[test]
+    fn test_border_panel() {
+        let view = Border::panel()
+            .title("Panel")
+            .child(vstack().child(text("Line 1")).child(text("Line 2")));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("border_panel");
+    }
+
+    #[test]
+    fn test_empty_border() {
+        let view = Border::single();
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("empty_border");
+    }
+}

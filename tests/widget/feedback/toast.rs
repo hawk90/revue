@@ -211,3 +211,23 @@ fn test_toast_render_too_small_draws_nothing() {
     let buffer = render(&Toast::new("Test"), 4, 10);
     assert!((0..10).all(|y| row(&buffer, y).trim().is_empty()));
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_toast_variants() {
+        let view = vstack()
+            .gap(1)
+            .child(Toast::success("Operation completed!"))
+            .child(Toast::error("An error occurred"))
+            .child(Toast::warning("Please check your input"))
+            .child(Toast::info("New updates available"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("toast_variants");
+    }
+}

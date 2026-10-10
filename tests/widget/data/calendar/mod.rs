@@ -1268,3 +1268,19 @@ fn test_calendar_multiple_markers() {
     let mut ctx = RenderContext::new(&mut buffer, area);
     cal.render(&mut ctx);
 }
+
+mod snapshots {
+
+    use revue::testing::{Pilot, TestApp};
+    use revue::widget::Calendar;
+
+    #[test]
+    fn test_calendar_basic() {
+        let view = Calendar::new(2024, 6); // June 2024
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("calendar_basic");
+    }
+}

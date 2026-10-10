@@ -65,3 +65,34 @@ mod edge_cases {
         checkbox.render(&mut ctx);
     }
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_checkbox_basic() {
+        let view = vstack()
+            .child(checkbox("Option 1"))
+            .child(checkbox("Option 2"))
+            .child(checkbox("Option 3"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("checkbox_basic");
+    }
+
+    #[test]
+    fn test_checkbox_checked() {
+        let view = vstack()
+            .child(checkbox("Unchecked"))
+            .child(Checkbox::new("Checked").checked(true))
+            .child(Checkbox::new("Disabled").disabled(true));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("checkbox_checked");
+    }
+}

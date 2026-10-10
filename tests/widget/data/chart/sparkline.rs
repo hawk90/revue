@@ -208,3 +208,18 @@ fn test_sparkline_zero_area() {
     assert_eq!(render(&sl, 0, 1).width(), 0);
     assert_eq!(render(&sl, 4, 0).height(), 0);
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_sparkline_basic() {
+        let view = sparkline([1.0, 4.0, 2.0, 8.0, 3.0, 6.0, 5.0, 7.0]);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("sparkline_basic");
+    }
+}

@@ -2471,3 +2471,55 @@ fn test_timeline_view_classes_multiple() {
     let classes = View::classes(&tl);
     assert_eq!(classes.len(), 2);
 }
+
+mod snapshots {
+
+    use revue::testing::{Pilot, TestApp, TestConfig};
+
+    #[test]
+    fn test_timeline_basic() {
+        use revue::widget::{Timeline, TimelineEvent};
+
+        let view = Timeline::new()
+            .event(TimelineEvent::new("Project Started").timestamp("2024-01"))
+            .event(TimelineEvent::new("Beta Release").timestamp("2024-06"))
+            .event(TimelineEvent::new("1.0 Launch").timestamp("2024-12"));
+
+        let config = TestConfig::with_size(50, 12);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("timeline_basic");
+    }
+
+    #[test]
+    fn test_timeline_with_descriptions() {
+        use revue::widget::{EventType, Timeline, TimelineEvent};
+
+        let view = Timeline::new()
+            .event(
+                TimelineEvent::new("Bug Fix")
+                    .description("Fixed critical login issue")
+                    .event_type(EventType::Success)
+                    .timestamp("10:30"),
+            )
+            .event(
+                TimelineEvent::new("Deployment")
+                    .description("Pushed to production")
+                    .event_type(EventType::Info)
+                    .timestamp("11:00"),
+            )
+            .event(
+                TimelineEvent::new("Alert")
+                    .description("High memory usage")
+                    .event_type(EventType::Warning)
+                    .timestamp("11:30"),
+            );
+
+        let config = TestConfig::with_size(60, 15);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("timeline_descriptions");
+    }
+}

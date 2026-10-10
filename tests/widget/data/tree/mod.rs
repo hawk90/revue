@@ -596,3 +596,29 @@ fn non_selectable_node_cannot_be_multi_selected() {
     t.toggle_select();
     assert!(t.selected_nodes().is_empty());
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_tree_basic() {
+        let view = Tree::new().node(
+            TreeNode::new("Root")
+                .expanded(true)
+                .child(TreeNode::new("Child 1"))
+                .child(
+                    TreeNode::new("Child 2")
+                        .expanded(true)
+                        .child(TreeNode::new("Grandchild 1"))
+                        .child(TreeNode::new("Grandchild 2")),
+                )
+                .child(TreeNode::new("Child 3")),
+        );
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("tree_basic");
+    }
+}

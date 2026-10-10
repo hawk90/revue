@@ -991,3 +991,22 @@ fn test_avatar_default_trait() {
 
 // =============================================================================
 // =============================================================================
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_avatar_basic() {
+        let view = hstack()
+            .gap(2)
+            .child(Avatar::new("JD"))
+            .child(Avatar::new("AB"))
+            .child(Avatar::new("XY"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("avatar_basic");
+    }
+}

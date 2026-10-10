@@ -59,3 +59,39 @@ fn test_virtual_list_helper() {
     assert_eq!(list.len(), 3);
     assert_eq!(list.selected_item(), Some(&"a"));
 }
+
+mod snapshots {
+
+    use revue::testing::{Pilot, TestApp, TestConfig};
+
+    #[test]
+    fn test_virtuallist_basic() {
+        use revue::widget::VirtualList;
+
+        let items: Vec<String> = (0..100).map(|i| format!("Item {}", i)).collect();
+        let view = VirtualList::new(items).item_height(1).selected(5);
+
+        let config = TestConfig::with_size(40, 10);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("virtuallist_basic");
+    }
+
+    #[test]
+    fn test_virtuallist_with_scrollbar() {
+        use revue::widget::VirtualList;
+
+        let items: Vec<String> = (0..50).map(|i| format!("Row {}", i)).collect();
+        let view = VirtualList::new(items)
+            .item_height(1)
+            .show_scrollbar(true)
+            .selected(10);
+
+        let config = TestConfig::with_size(30, 8);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("virtuallist_scrollbar");
+    }
+}

@@ -229,3 +229,36 @@ fn test_empty_selection_does_not_outlive_backspace_or_delete() {
     assert_eq!(i.text(), "bc");
     assert_eq!(i.selection(), None);
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_input_basic() {
+        let view = vstack()
+            .gap(1)
+            .child(Input::new().placeholder("Enter text..."))
+            .child(Input::new().value("Hello World"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("input_basic");
+    }
+
+    #[test]
+    fn test_input_with_label() {
+        let view = vstack()
+            .gap(1)
+            .child(text("Username:"))
+            .child(Input::new().placeholder("Enter username"))
+            .child(text("Password:"))
+            .child(Input::new().placeholder("Enter password"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("input_with_label");
+    }
+}

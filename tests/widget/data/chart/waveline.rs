@@ -352,3 +352,63 @@ fn test_sawtooth_wave() {
     assert_eq!(sawtooth_wave(4, 1.0, 1.0), vec![-1.0, -0.5, 0.0, 0.5]);
     assert_eq!(sawtooth_wave(2, 1.0, 2.0), vec![-2.0, 0.0]);
 }
+
+mod snapshots {
+
+    use revue::testing::{Pilot, TestApp, TestConfig};
+
+    #[test]
+    fn test_waveline_basic() {
+        use revue::widget::Waveline;
+
+        let data: Vec<f64> = (0..50)
+            .map(|i| (i as f64 * 0.2).sin() * 0.4 + 0.5)
+            .collect();
+        let view = Waveline::new(data);
+
+        let config = TestConfig::with_size(60, 10);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("waveline_basic");
+    }
+
+    #[test]
+    fn test_waveline_filled() {
+        use revue::style::Color;
+        use revue::widget::{WaveStyle, Waveline};
+
+        let data: Vec<f64> = (0..40)
+            .map(|i| (i as f64 * 0.15).sin() * 0.3 + 0.5)
+            .collect();
+        let view = Waveline::new(data)
+            .style(WaveStyle::Filled)
+            .color(Color::GREEN);
+
+        let config = TestConfig::with_size(50, 8);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("waveline_filled");
+    }
+
+    #[test]
+    fn test_waveline_mirrored() {
+        use revue::style::Color;
+        use revue::widget::{WaveStyle, Waveline};
+
+        let data: Vec<f64> = (0..60)
+            .map(|i| (i as f64 * 0.1).sin() * 0.5 + 0.5)
+            .collect();
+        let view = Waveline::new(data)
+            .style(WaveStyle::Mirrored)
+            .color(Color::CYAN)
+            .show_baseline(true);
+
+        let config = TestConfig::with_size(70, 12);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("waveline_mirrored");
+    }
+}

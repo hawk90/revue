@@ -1154,3 +1154,20 @@ fn test_select_with_all_builder_options() {
     // Just verify it compiles and works
     assert_eq!(s.selected_index(), 1);
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_select_basic() {
+        let view = Select::new()
+            .options(vec!["Option 1", "Option 2", "Option 3"])
+            .selected(0);
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("select_basic");
+    }
+}

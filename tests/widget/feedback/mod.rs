@@ -2,6 +2,7 @@
 
 mod alert;
 mod menu;
+mod modal;
 mod notification;
 mod popover;
 mod statusbar;

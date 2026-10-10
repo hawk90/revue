@@ -1119,3 +1119,34 @@ fn test_theme_picker_single_theme() {
     let picker = ThemePicker::new().themes(["dark"]);
     assert_eq!(picker.selected_id(), Some("dark"));
 }
+
+mod snapshots {
+
+    use revue::testing::{Pilot, TestApp, TestConfig};
+
+    #[test]
+    fn test_theme_picker_basic() {
+        use revue::widget::ThemePicker;
+
+        let view = ThemePicker::new();
+
+        let config = TestConfig::with_size(40, 8);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("theme_picker_basic");
+    }
+
+    #[test]
+    fn test_theme_picker_compact() {
+        use revue::widget::ThemePicker;
+
+        let view = ThemePicker::new().compact(true);
+
+        let config = TestConfig::with_size(30, 5);
+        let mut app = TestApp::with_config(view, config);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("theme_picker_compact");
+    }
+}

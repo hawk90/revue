@@ -1268,3 +1268,34 @@ mod edge_cases {
         divider.render(&mut ctx);
     }
 }
+
+mod snapshots {
+    use revue::prelude::*;
+    use revue::testing::{Pilot, TestApp};
+
+    #[test]
+    fn test_divider_horizontal() {
+        let view = vstack()
+            .child(text("Above"))
+            .child(Divider::new())
+            .child(text("Below"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("divider_horizontal");
+    }
+
+    #[test]
+    fn test_divider_with_label() {
+        let view = vstack()
+            .child(text("Section 1"))
+            .child(Divider::new().label("OR"))
+            .child(text("Section 2"));
+
+        let mut app = TestApp::new(view);
+        let mut pilot = Pilot::new(&mut app);
+
+        pilot.snapshot("divider_with_label");
+    }
+}
