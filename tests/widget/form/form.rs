@@ -1,6 +1,4 @@
 //! Tests for the Form and FormFieldWidget widgets
-//!
-//! Extracted from src/widget/form/form.rs
 
 use revue::patterns::form::FormState;
 use revue::widget::{

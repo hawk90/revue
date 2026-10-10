@@ -1,14 +1,6 @@
-//! Form widget integration tests
+//! Tests for `revue::widget::form`, laid out like `src/widget/form/`
 
-mod block;
-mod core;
-mod cursor;
-mod dialog;
-mod editing;
-mod format;
-mod link;
-mod selection;
-mod text_edit;
-mod text_format;
-mod types;
-mod undo;
+#[allow(clippy::module_inception)]
+mod form;
+mod masked_input;
+mod rich_text_editor;

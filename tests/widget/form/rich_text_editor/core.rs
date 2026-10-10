@@ -1,14 +1,15 @@
-//! Basic Creation and Content tests
+//! RichTextEditor construction and content tests
 
-#![allow(unused_imports)]
+use revue::widget::rich_text_editor;
+use revue::widget::RichTextEditor;
 
-use revue::layout::Rect;
-use revue::render::Buffer;
-use revue::widget::traits::{RenderContext, View};
-use revue::widget::{
-    rich_text_editor, Block, BlockType, EditorViewMode, FormattedSpan, RichTextEditor, TextFormat,
-    ToolbarAction,
-};
+#[test]
+fn test_rich_text_editor_from_markdown_blank_line_is_a_block() {
+    let editor = RichTextEditor::new().from_markdown("# Heading\n\nParagraph");
+    // Creates 3 blocks: heading, empty paragraph, actual paragraph
+    assert_eq!(editor.block_count(), 3);
+    assert_eq!(editor.get_content(), "Heading\n\nParagraph");
+}
 
 #[test]
 fn test_rich_text_editor_new() {

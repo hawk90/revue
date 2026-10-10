@@ -1,9 +1,4 @@
 //! Selection in the rich text editor
-//!
-//! A selection runs from the anchor set by start_selection() to the
-//! cursor. The move_* methods clear it; set_cursor() does not, so it is
-//! how these tests extend a selection. start_selection/clear_selection
-//! and the initial state are covered by the in-source selection tests.
 
 use revue::widget::RichTextEditor;
 
@@ -133,4 +128,27 @@ fn test_delete_selection_multiline_merges_blocks() {
     assert_eq!(editor.block_count(), 1);
     assert_eq!(editor.get_content(), "line 3");
     assert_eq!(editor.cursor_position(), (0, 4));
+}
+
+#[test]
+fn test_selection_basic() {
+    let mut editor = RichTextEditor::new().content("hello world");
+    assert!(!editor.has_selection());
+
+    editor.start_selection();
+    assert!(editor.has_selection());
+
+    editor.clear_selection();
+    assert!(!editor.has_selection());
+}
+
+#[test]
+fn test_get_selection() {
+    let mut editor = RichTextEditor::new().content("hello world");
+    editor.set_cursor(0, 0);
+    editor.start_selection();
+    editor.set_cursor(0, 5);
+    let sel = editor.get_selection();
+    assert!(sel.is_some());
+    assert_eq!(sel.unwrap(), "hello");
 }

@@ -1,10 +1,8 @@
 //! ToolbarAction and EditorViewMode values
-//!
-//! EditorViewMode's default is covered by the in-source view_mode tests.
-//! The clone/copy/self-equality checks of the extracted file only
-//! exercised derives and were dropped.
 
-use revue::widget::{EditorViewMode, ToolbarAction};
+use revue::widget::EditorViewMode;
+use revue::widget::RichTextEditor;
+use revue::widget::ToolbarAction;
 
 #[test]
 fn test_toolbar_action_variants_are_distinct() {
@@ -53,4 +51,19 @@ fn test_editor_view_mode_debug() {
     assert_eq!(format!("{:?}", EditorViewMode::Editor), "Editor");
     assert_eq!(format!("{:?}", EditorViewMode::Preview), "Preview");
     assert_eq!(format!("{:?}", EditorViewMode::Split), "Split");
+}
+
+#[test]
+fn test_view_mode_default() {
+    let editor = RichTextEditor::new();
+    // Default should be editor mode
+    let _md = editor.to_markdown(); // Just verify it works
+}
+
+#[test]
+fn test_view_mode_builder() {
+    let _editor = RichTextEditor::new()
+        .view_mode(EditorViewMode::Split)
+        .toolbar(true)
+        .focused(true);
 }

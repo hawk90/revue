@@ -1,9 +1,4 @@
-//! Tests for rich_text_editor undo module
-
-//!
-//! Undoing an insert or delete_char_before, a block type change, undo or
-//! redo on an empty stack and an edit clearing the redo stack are covered
-//! by the in-source undo_redo and edge_cases tests.
+//! RichTextEditor undo and redo tests
 
 use revue::widget::RichTextEditor;
 
@@ -167,4 +162,38 @@ fn test_redo_with_cursor_position() {
     // Cursor should be at position 2 (after "hi")
     let pos = editor.cursor_position();
     assert_eq!(pos, (0, 2));
+}
+
+#[test]
+fn test_undo_insert() {
+    let mut editor = RichTextEditor::new().content("hello");
+    editor.set_cursor(0, 5);
+    editor.insert_char('!');
+    assert_eq!(editor.get_content(), "hello!");
+
+    editor.undo();
+    assert_eq!(editor.get_content(), "hello");
+}
+
+#[test]
+fn test_redo() {
+    let mut editor = RichTextEditor::new().content("hello");
+    editor.set_cursor(0, 5);
+    editor.insert_char('!');
+    editor.undo();
+    assert_eq!(editor.get_content(), "hello");
+
+    editor.redo();
+    assert_eq!(editor.get_content(), "hello!");
+}
+
+#[test]
+fn test_undo_delete() {
+    let mut editor = RichTextEditor::new().content("hello");
+    editor.set_cursor(0, 5);
+    editor.delete_char_before();
+    assert_eq!(editor.get_content(), "hell");
+
+    editor.undo();
+    assert_eq!(editor.get_content(), "hello");
 }
