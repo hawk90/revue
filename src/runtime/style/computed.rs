@@ -101,5 +101,3 @@ mod tests {
         assert_eq!(computed.style.layout.gap, style.layout.gap);
     }
 }
-
-// Tests moved to tests/style_tests.rs

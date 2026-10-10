@@ -54,7 +54,7 @@ devtools 어디에도 보이지 않는다.
 | 재정렬·삭제 후 `:first-child` / `:nth-child`가 이전 프레임 순서를 봄 | `parent.children`을 직접 대입해 형제 위치 상태(`child_index`, `sibling_count`, …)가 재계산되지 않음 |
 
 `DomTree::apply_meta`와 `DomTree::set_children`을 추가해 인덱스와 구조 상태를 함께 갱신한다.
-`tests/reconciliation.rs`의 해당 테스트 4개는 수정을 되돌리면 실제로 실패한다 — 확인했다.
+`tests/runtime/dom/reconciliation.rs`의 해당 테스트 4개는 수정을 되돌리면 실제로 실패한다 — 확인했다.
 
 ## 성능
 
@@ -118,7 +118,7 @@ lookup 테이블이 기존 노드의 id와 key를 **빌려 쓸 수 있다** — 
 
 ## 테스트
 
-`tests/reconciliation.rs` 14개.
+`tests/runtime/dom/reconciliation.rs` 14개.
 
 - 매칭 우선순위: prepend / reorder / 중간 삭제에서 키가 정체성을 지키는가
 - 중복 키가 한 노드로 합쳐지지 않는가

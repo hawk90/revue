@@ -42,7 +42,7 @@ items:
       - src/runtime/dom/selector/parser.rs
       - src/runtime/dom/selector/mod.rs::test_selector_part_class
       - tests/css_reaches_the_screen.rs::color_reaches_the_cell
-      - tests/css_selector_lists.rs
+      - tests/runtime/dom/selector/lists.rs
     source:
       - FEATURES.md §1 CSS Styling / Selectors
   - id: CSS-003
@@ -56,8 +56,8 @@ items:
       - a :focus rule repaints after focus moves
     evidence:
       - src/runtime/dom/selector/types.rs::PseudoClass
-      - tests/tab_navigation.rs::a_focus_rule_reaches_the_buffer_after_tab
-      - tests/cascade_precedence.rs::a_disabled_rule_repaints_the_widget_when_it_is_disabled
+      - tests/runtime/event/tab_navigation.rs::a_focus_rule_reaches_the_buffer_after_tab
+      - tests/runtime/dom/cascade/precedence.rs::a_disabled_rule_repaints_the_widget_when_it_is_disabled
     source:
       - FEATURES.md §1 CSS Styling / Selectors
     notes: Dynamic state needs dom_from_render (on by default since 3.0); with it turned off no node below the root has
@@ -73,8 +73,8 @@ items:
       - '"A > B" matches direct child only'
     evidence:
       - src/runtime/dom/selector/types.rs::Combinator
-      - tests/cascade_combinators.rs::a_descendant_rule_reaches_past_one_level
-      - tests/cascade_combinators.rs::a_child_rule_still_means_direct_child_only
+      - tests/runtime/dom/cascade/combinators.rs::a_descendant_rule_reaches_past_one_level
+      - tests/runtime/dom/cascade/combinators.rs::a_child_rule_still_means_direct_child_only
     source:
       - FEATURES.md §1 CSS Styling / Selectors
     notes: Code also supports + and ~ sibling combinators and attribute selectors (not in the doc).
@@ -105,7 +105,7 @@ items:
     evidence:
       - src/runtime/style/parser/parse.rs::parse_root_variables_str
       - src/runtime/style/parser/apply.rs::substitute_vars
-      - tests/style/parser.rs::test_apply_with_variables
+      - tests/runtime/style/parser/mod.rs::test_apply_with_variables
       - src/runtime/style/parser/mod.rs::test_var_inside_border_shorthand
       - src/runtime/style/parser/mod.rs::test_var_inside_margin_shorthand
     source:
@@ -250,10 +250,10 @@ items:
     evidence:
       - src/core/app/builder.rs::css_layout
       - tests/css_defaults.rs::both_are_on_by_default
-      - tests/css_layout.rs::it_can_be_turned_off
-      - tests/css_layout.rs::display_none_hides_a_widget
-      - tests/css_layout.rs::max_width_clamps_and_min_width_floors
-      - tests/css_layout.rs::a_percentage_resolves_against_the_offered_area
+      - tests/runtime/layout/css_layout.rs::it_can_be_turned_off
+      - tests/runtime/layout/css_layout.rs::display_none_hides_a_widget
+      - tests/runtime/layout/css_layout.rs::max_width_clamps_and_min_width_floors
+      - tests/runtime/layout/css_layout.rs::a_percentage_resolves_against_the_offered_area
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
   - id: CSS-015
@@ -268,8 +268,8 @@ items:
       - silent stylesheet leaves the builder value
     evidence:
       - src/widget/traits/render_context/css.rs::gap_or
-      - tests/css_layout.rs::a_css_gap_of_zero_overrides_the_builders_gap
-      - tests/css_layout.rs::a_css_gap_is_ignored_without_the_flag
+      - tests/runtime/layout/css_layout.rs::a_css_gap_of_zero_overrides_the_builders_gap
+      - tests/runtime/layout/css_layout.rs::a_css_gap_is_ignored_without_the_flag
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
     notes: 'Stale comment in src/widget/layout/stack/sizing.rs says "gap: 0 … reads as not specified"; behavior (and test) follow
@@ -353,7 +353,7 @@ items:
     evidence:
       - src/runtime/style/transition/manager.rs::TransitionManager
       - src/core/app/mod.rs::start_transition
-      - tests/style/transition.rs::test_transitions_parse
+      - tests/runtime/style/transition/mod.rs::test_transitions_parse
     source:
       - FEATURES.md §1 CSS Styling / Transitions
     notes: Parsing and a TransitionManager ticked by App::run exist, but nothing starts a transition when a selector state
@@ -371,7 +371,7 @@ items:
     evidence:
       - src/widget/layout/stack/mod.rs::vstack
       - src/widget/layout/stack/mod.rs::hstack
-      - tests/sibling_invalidation.rs
+      - tests/runtime/dom/cascade/sibling_invalidation.rs
     source:
       - FEATURES.md §2 Flexbox Layout / Direction
     notes: Direction is a builder property; flex-direction in CSS is not applied (CSS-016). Unsized children share the
@@ -404,7 +404,7 @@ items:
       - CSS gap/row-gap/column-gap (CSS-015)
     evidence:
       - src/widget/layout/stack/mod.rs::gap
-      - tests/css_layout.rs::a_css_gap_overrides_the_builders_gap
+      - tests/runtime/layout/css_layout.rs::a_css_gap_overrides_the_builders_gap
     source:
       - FEATURES.md §2 Flexbox Layout / Gap
   - id: LAY-004
@@ -422,7 +422,7 @@ items:
       - src/widget/layout/stack/mod.rs::child_flex
       - src/widget/layout/stack/mod.rs::child_sized
       - src/widget/layout/stack/mod.rs::constrain
-      - tests/css_layout.rs::width_narrows_a_widget
+      - tests/runtime/layout/css_layout.rs::width_narrows_a_widget
     source:
       - FEATURES.md §2 Flexbox Layout / Sizing
     notes: Builder-based (child_sized/child_flex/constrain); CSS flex-grow is not applied (CSS-016), CSS width/min/max go
@@ -440,7 +440,7 @@ items:
       - src/runtime/layout/engine.rs
       - src/runtime/layout/flex.rs::compute_flex
       - src/runtime/layout/grid.rs
-      - tests/layout_module.rs
+      - tests/runtime/layout/mod.rs
     source:
       - FEATURES.md §2 Flexbox Layout
     notes: 'Engine exists and is tested, and the tree-linking bug (L-1) is fixed, but widgets still lay out their own children;
@@ -1519,8 +1519,8 @@ items:
       - needs dom_from_render (on by default)
     evidence:
       - src/core/app/builder.rs::tab_navigation
-      - tests/tab_navigation.rs::tab_moves_to_the_next_control_in_document_order
-      - tests/click_focus.rs::clicking_a_control_focuses_it
+      - tests/runtime/event/tab_navigation.rs::tab_moves_to_the_next_control_in_document_order
+      - tests/runtime/event/click.rs::clicking_a_control_focuses_it
     source:
       - FEATURES.md §5 Navigation / Focus Management
   - id: NAV-003
@@ -1535,7 +1535,7 @@ items:
     evidence:
       - src/widget/layout/layer.rs::layers
       - src/widget/layout/layer.rs::child_z
-      - tests/container_children_get_nodes.rs
+      - tests/runtime/dom/container_children.rs
     source:
       - FEATURES.md §5 Navigation / Layers (z-index)
     notes: Doc layer(0, view) function does not exist; use layers().child_z(view, z). CSS z-index is not applied (CSS-018).
@@ -1789,7 +1789,7 @@ items:
       - helpers like KeyEvent::ctrl(Key::Char(c))
     evidence:
       - src/runtime/event/mod.rs::KeyEvent
-      - tests/event.rs
+      - tests/runtime/event/mod.rs
     source:
       - FEATURES.md §10 Keyboard Shortcuts / Key Modifiers
     notes: Doc notation Key::Ctrl(..)/Key::Alt(..)/Key::Shift(..) does not exist; modifiers are KeyEvent fields.

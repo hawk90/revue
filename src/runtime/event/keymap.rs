@@ -121,5 +121,3 @@ impl<A: Clone> Default for KeyMap<A> {
         Self::new()
     }
 }
-
-// Tests moved to tests/event_tests.rs

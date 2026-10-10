@@ -528,7 +528,6 @@ impl BatchStats {
     }
 }
 
-// Most tests moved to tests/render_tests.rs
 // This test accesses private field batch.ops and must stay inline
 #[cfg(test)]
 mod tests {

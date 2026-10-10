@@ -100,5 +100,3 @@ pub fn spring_out(t: f32) -> f32 {
         1.0 + decay * (phase).sin()
     }
 }
-
-// Tests moved to tests/style_tests.rs

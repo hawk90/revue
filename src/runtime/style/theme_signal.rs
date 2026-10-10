@@ -290,5 +290,3 @@ pub fn theme_to_css_variables(theme: &Theme) -> String {
         color_to_css(&theme.palette.info),
     )
 }
-
-// Tests moved to tests/style_tests.rs

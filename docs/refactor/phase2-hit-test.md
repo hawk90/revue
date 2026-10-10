@@ -153,14 +153,14 @@ if let Some(id) = new_hover_id {
 
 | | |
 |---|---|
-| ~~**Tab 이동**~~ | **완료.** `App::builder().tab_navigation(true)`, 기본 off. `FocusManager`를 `App`에 연결하는 대신 DOM을 문서 순서로 걷는다 — ring이 뷰와 자동으로 같아지고, 등록/해제라는 별도의 생애주기가 없다. Tab 충돌은 플래그로 피한다. `tests/tab_navigation.rs` |
+| ~~**Tab 이동**~~ | **완료.** `App::builder().tab_navigation(true)`, 기본 off. `FocusManager`를 `App`에 연결하는 대신 DOM을 문서 순서로 걷는다 — ring이 뷰와 자동으로 같아지고, 등록/해제라는 별도의 생애주기가 없다. Tab 충돌은 플래그로 피한다. `tests/runtime/event/tab_navigation.rs` |
 | **`focusable` 나머지 카테고리** | `input/` 16개만 표시했다 |
 | **`disabled`가 DOM에 닿지 않는다** | 위 참조 |
 | **클릭 라우팅** | 포커스만 옮긴다. 이벤트를 위젯에 전달하는 것은 계획서상 3.x |
 | **오버레이 히트 테스트** | 오버레이가 자기 area를 기록하지 않는다 |
 | **형제 결합자 무효화** | `.a:hover + .b`가 낡는다 |
 
-`tests/hit_test.rs`, `tests/click_focus.rs`, `tests/tab_navigation.rs`가 위 전부를 고정한다.
+`tests/runtime/dom/hit_test.rs`, `tests/runtime/event/click.rs`, `tests/runtime/event/tab_navigation.rs`가 위 전부를 고정한다.
 
 ## Tab — 왜 `FocusManager`를 쓰지 않았나
 

@@ -217,5 +217,3 @@ impl Default for EventHandler {
         Self::new()
     }
 }
-
-// Tests moved to tests/event_tests.rs

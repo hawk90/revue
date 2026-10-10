@@ -109,7 +109,6 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
     prev[b_len]
 }
 
-// Most tests moved to tests/style_tests.rs
 // Tests below use private function levenshtein_distance
 
 #[cfg(test)]

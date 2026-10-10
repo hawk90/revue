@@ -61,6 +61,5 @@ pub use types::{CustomEvent, DispatchPhase, EventEnvelope, EventId, EventMeta, E
 #[cfg(test)]
 mod tests {
     // Tests for custom event system
-    // Original file had tests moved to tests/event_tests.rs
     // Keeping module for future tests
 }

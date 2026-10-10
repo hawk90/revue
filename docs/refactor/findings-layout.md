@@ -42,7 +42,7 @@ let child_ids: Vec<u64> = children
 써넣은 뒤 아무 데도 내려가지 않았다. 루트를 제외한 모든 노드의 computed layout은 기본값
 `0×0`이었다.
 
-**고침:** 후위 순회로 바꿔 자식을 먼저 만든다. `tests/layout_tree.rs`가 고정한다 —
+**고침:** 후위 순회로 바꿔 자식을 먼저 만든다. `tests/runtime/layout/tree.rs`가 고정한다 —
 되돌리면 9개 테스트가 전부 깨진다(확인함).
 
 이것이 "엔진 출력을 아무도 읽지 않는다"의 진짜 이유이기도 하다. 읽을 것이 없었다.
@@ -100,7 +100,7 @@ collect → reconcile → compute styles → compute layout → paint
 바뀐 프레임에 직전 트리를 답한다. 페인트는 엔진 결과를 읽지 않으므로 레이아웃 패스를 렌더
 **뒤로** 옮겼다(`App::draw`). 같은 프레임의 DOM을 계산하고, 구조 변경(`take_structure_dirty`)도
 같은 프레임에 반영한다. 페인트 **전에** 계산해야 하는 것은 엔진을 배치의 권위로 삼을 때((A))이고,
-그때 위의 구조 변경과 함께 한다. `tests/layout_tree.rs::layout_follows_the_dom_the_same_frame_built`.
+그때 위의 구조 변경과 함께 한다. `tests/runtime/layout/tree.rs::layout_follows_the_dom_the_same_frame_built`.
 
 ## L-5 — 아무도 읽지 않는다 → 해결(다른 방식으로)
 
@@ -224,5 +224,5 @@ API라 계속 답해야 한다. 엔진 출력은 화면에 아무 영향이 없�
 위젯에서 +15% — 이 모든 앱에 붙는다. 읽는 사람이 없는 계산이다. 그래서 전환에 앞서
 "소비자가 없으면 레이아웃 패스를 건너뛴다"를 따로 한다(#674).
 
-`tests/css_layout.rs`가 (B)를, `tests/layout_tree.rs`가 L-1과 나머지 미해결 항목을 고정한다.
+`tests/runtime/layout/css_layout.rs`가 (B)를, `tests/runtime/layout/tree.rs`가 L-1과 나머지 미해결 항목을 고정한다.
 미해결 항목의 테스트는 그대로 둔다 — (A)를 시작하면 그것이 출발점이다.
