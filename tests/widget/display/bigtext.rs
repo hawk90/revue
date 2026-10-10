@@ -1,4 +1,4 @@
-//! BigText widget tests extracted from src/widget/display/bigtext.rs
+//! BigText widget tests
 
 use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};

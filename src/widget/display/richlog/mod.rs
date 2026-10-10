@@ -233,7 +233,6 @@ pub fn log_entry(message: impl Into<String>) -> LogEntry {
 #[cfg(test)]
 mod tests {
     // KEEP HERE - These tests access private fields and must stay inline
-    // Public API tests have been extracted to tests/widget/display/richlog.rs
 
     #[test]
     fn test_rich_log_private_initialization() {

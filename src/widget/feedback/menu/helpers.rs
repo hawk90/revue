@@ -23,9 +23,3 @@ pub fn menu_bar() -> MenuBar {
 pub fn context_menu() -> ContextMenu {
     ContextMenu::new()
 }
-
-// Tests for menu helpers have been extracted to:
-// tests/widget/feedback/menu_helpers.rs
-//
-// These tests only use public APIs and have been moved to maintain cleaner
-// source code while ensuring test coverage remains intact.

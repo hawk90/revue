@@ -523,6 +523,3 @@ pub fn clock(hours: u32, minutes: u32) -> Digits {
 pub fn timer(seconds: u64) -> Digits {
     Digits::timer(seconds)
 }
-
-// Private tests extracted to tests/widget/display/digits.rs
-// Tests using public APIs should be in tests/widget/display/digits.rs

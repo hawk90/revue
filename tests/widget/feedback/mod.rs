@@ -1,11 +1,10 @@
-//! Feedback widget tests
-//!
-//! Tests for feedback-related widgets extracted from source files.
+//! Tests for `revue::widget::feedback`, laid out like `src/widget/feedback/`
 
-pub mod notification_core;
-pub mod notification_types;
-pub mod popover;
-pub mod statusbar;
-pub mod toast;
-pub mod toast_queue;
-pub mod tooltip;
+mod alert;
+mod menu;
+mod notification;
+mod popover;
+mod statusbar;
+mod toast;
+mod toast_queue;
+mod tooltip;

@@ -1,6 +1,4 @@
-//! Tests for ToastQueue widget
-//!
-//! Extracted from src/widget/feedback/toast_queue.rs
+//! ToastQueue widget tests
 
 use revue::layout::Rect;
 use revue::render::Buffer;

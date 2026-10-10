@@ -1,6 +1,4 @@
-//! Tests for menu helper functions
-//!
-//! Tests extracted from src/widget/feedback/menu/helpers.rs that only test public APIs.
+//! Menu helper function tests (`menu`, `menu_bar`, `menu_item`, `context_menu`)
 
 use revue::widget::menu::{context_menu, menu, menu_bar, menu_item};
 

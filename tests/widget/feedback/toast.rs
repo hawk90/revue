@@ -1,6 +1,4 @@
-//! Tests for Toast widget
-//!
-//! Extracted from src/widget/feedback/toast.rs
+//! Toast widget tests
 
 use revue::layout::Rect;
 use revue::render::Buffer;

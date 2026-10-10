@@ -2,10 +2,16 @@
 
 use revue::event::Key;
 use revue::layout::Rect;
-use revue::render::{Buffer, Modifier};
+use revue::render::Buffer;
+use revue::render::Modifier;
 use revue::style::Color;
+use revue::widget::alert;
 use revue::widget::traits::RenderContext;
-use revue::widget::{alert, Alert, AlertLevel, AlertVariant, StyledView, View};
+use revue::widget::Alert;
+use revue::widget::AlertLevel;
+use revue::widget::AlertVariant;
+use revue::widget::StyledView;
+use revue::widget::View;
 
 // ==================== Constructor Tests ====================
 
@@ -19,6 +25,10 @@ fn test_alert_new() {
 fn test_alert_default() {
     let _a = Alert::default();
     // Private field - just verify it compiles
+
+    let a = Alert::default();
+    assert!(!a.is_dismissed());
+    assert_eq!(a.height(), 3); // "Alert" message with Filled variant, no title
 }
 
 #[test]
@@ -99,6 +109,11 @@ fn test_alert_no_icon() {
 fn test_alert_custom_icon() {
     let _a = Alert::new("Message").custom_icon('★');
     // Private field - just verify it compiles
+
+    let a = Alert::new("Test").custom_icon('★');
+    // The custom icon is used in rendering, but we can verify it doesn't break anything
+    assert!(!a.is_dismissed());
+    assert_eq!(a.height(), 3); // Filled variant with no title
 }
 
 #[test]
@@ -257,6 +272,17 @@ fn test_alert_level_colors() {
     assert_eq!(AlertLevel::Success.color(), Color::GREEN);
     assert_eq!(AlertLevel::Warning.color(), Color::YELLOW);
     assert_eq!(AlertLevel::Error.color(), Color::RED);
+
+    // Test color access through public methods
+    let info_color = AlertLevel::Info.color();
+    let success_color = AlertLevel::Success.color();
+    let warning_color = AlertLevel::Warning.color();
+    let error_color = AlertLevel::Error.color();
+
+    // Just verify they return colors (don't compare specific values unless needed)
+    assert!(info_color != success_color);
+    assert!(success_color != warning_color);
+    assert!(warning_color != error_color);
 }
 
 #[test]
@@ -724,4 +750,118 @@ fn test_alert_disabled_rendering() {
     let alert = Alert::new("Test").disabled(true);
     alert.render(&mut ctx);
     // Should render with disabled styling
+}
+
+#[test]
+fn test_alert_builder_pattern() {
+    // Test that we can create and configure an alert using only public methods
+    let a = Alert::new("Test message")
+        .title("My Title")
+        .level(AlertLevel::Error)
+        .variant(AlertVariant::Outlined)
+        .dismissible(true)
+        .icon(false);
+
+    // Test public methods
+    assert!(!a.is_dismissed());
+    assert_eq!(a.height(), 2); // Title + message; outlined has no top/bottom border
+}
+
+#[test]
+fn test_alert_level_builder_methods() {
+    // Test the builder methods for AlertLevel
+    let info = Alert::info("Info message");
+    assert!(!info.is_dismissed());
+
+    let success = Alert::success("Success message");
+    assert!(!success.is_dismissed());
+
+    let warning = Alert::warning("Warning message");
+    assert!(!warning.is_dismissed());
+
+    let error = Alert::error("Error message");
+    assert!(!error.is_dismissed());
+}
+
+#[test]
+fn test_alert_state_methods() {
+    let mut a = Alert::new("Test");
+
+    // Test initial state
+    assert!(!a.is_dismissed());
+
+    // Test dismiss
+    a.dismiss();
+    assert!(a.is_dismissed());
+
+    // Test reset
+    a.reset();
+    assert!(!a.is_dismissed());
+}
+
+#[test]
+fn test_alert_height_calculations() {
+    // Test height calculations using only public methods
+    let a1 = Alert::new("Message").variant(AlertVariant::Filled);
+    assert_eq!(a1.height(), 3);
+
+    let a2 = Alert::new("Message")
+        .title("Title")
+        .variant(AlertVariant::Filled);
+    assert_eq!(a2.height(), 4);
+
+    let a3 = Alert::new("Message").variant(AlertVariant::Minimal);
+    assert_eq!(a3.height(), 1);
+
+    let a4 = Alert::new("Message")
+        .title("Title")
+        .variant(AlertVariant::Minimal);
+    assert_eq!(a4.height(), 2);
+}
+
+#[test]
+fn test_alert_key_handling() {
+    let mut a = Alert::new("Test").dismissible(true);
+
+    // Test that non-dismiss keys don't work
+    assert!(!a.handle_key(&Key::Char('a')));
+    assert!(!a.is_dismissed());
+
+    // Test dismiss keys
+    assert!(a.handle_key(&Key::Char('x')));
+    assert!(a.is_dismissed());
+
+    // Reset for next test
+    a.reset();
+    assert!(!a.is_dismissed());
+
+    assert!(a.handle_key(&Key::Char('X')));
+    assert!(a.is_dismissed());
+
+    // Reset for next test
+    a.reset();
+    assert!(!a.is_dismissed());
+
+    assert!(a.handle_key(&Key::Escape));
+    assert!(a.is_dismissed());
+}
+
+#[test]
+fn test_alert_helper_functions() {
+    // Test the public helper functions
+    let a = alert("Helper message");
+    assert!(!a.is_dismissed());
+    assert_eq!(a.height(), 3); // Default is Filled variant with no title
+
+    let i = Alert::info("Info");
+    assert!(!i.is_dismissed());
+
+    let s = Alert::success("Success");
+    assert!(!s.is_dismissed());
+
+    let w = Alert::warning("Warning");
+    assert!(!w.is_dismissed());
+
+    let e = Alert::error("Error");
+    assert!(!e.is_dismissed());
 }
