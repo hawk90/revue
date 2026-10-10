@@ -2,7 +2,7 @@
 //!
 //! These assert on the highlighted index, scroll offset, cursor position and
 //! builder-set text/width, none of which has a public getter. Tests that only
-//! use the public API live in tests/widget/combobox_tests.rs.
+//! use the public API live in tests/widget/input/input_widgets/combobox/.
 
 use super::*;
 use crate::style::Color;

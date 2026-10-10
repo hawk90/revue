@@ -649,7 +649,7 @@ items:
     evidence:
       - src/widget/input/input_widgets/input/mod.rs::input
       - tests/widget_validation_tests.rs
-      - tests/input_wide_chars.rs
+      - tests/widget/input/input_widgets/wide_chars.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / Input
     notes: Doc .on_change(closure) does not exist; read get_value() in the handler.
@@ -679,7 +679,7 @@ items:
       - toggle via keyboard
     evidence:
       - src/widget/input/input_widgets/checkbox.rs::checkbox
-      - tests/widget/checkbox/basic.rs
+      - tests/widget/input/input_widgets/checkbox/basic.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / Checkbox
     notes: Label is the constructor argument; no .label()/.on_change.
@@ -718,8 +718,8 @@ items:
     evidence:
       - src/widget/input/input_widgets/textarea/mod.rs::textarea
       - src/widget/input/input_widgets/textarea/mod.rs::syntax
-      - tests/textarea_unicode_tests.rs
-      - tests/textarea_content.rs
+      - tests/widget/input/input_widgets/textarea/unicode.rs
+      - tests/widget/input/input_widgets/textarea/content.rs
       - examples/text_editor.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / TextArea
@@ -738,9 +738,9 @@ items:
     evidence:
       - src/widget/input/input_widgets/textarea/undo.rs
       - src/widget/input/input_widgets/textarea/editing.rs::duplicate_line
-      - tests/textarea_undo_tests.rs
-      - tests/textarea_multiline_undo.rs
-      - tests/text_input_modified_keys.rs
+      - tests/widget/input/input_widgets/textarea/undo.rs
+      - tests/widget/input/input_widgets/textarea/undo.rs::pasting_lines_is_one_undo_step
+      - tests/widget/input/input_widgets/modified_keys.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / TextArea
     notes: 'handle_key_event binds Ctrl+Z, Ctrl+Y / Ctrl+Shift+Z, Ctrl+A and Ctrl+Shift+K; an unbound Ctrl or Alt letter is
@@ -759,7 +759,7 @@ items:
     evidence:
       - src/widget/input/input_widgets/textarea/find_impl.rs::toggle_regex
       - src/widget/input/input_widgets/textarea/mod.rs::handle_key_event
-      - tests/textarea_find_replace.rs
+      - tests/widget/input/input_widgets/textarea/find_replace.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / TextArea
     notes: Regex toggle needs the `regex` feature.
@@ -1250,7 +1250,7 @@ items:
       - value/min/max/step
     evidence:
       - src/widget/input/input_widgets/number_input/helper.rs::number_input
-      - tests/widget/input/number_input.rs
+      - tests/widget/input/input_widgets/number_input.rs
     source:
       - FEATURES.md §Advanced Widgets / Number Input
     notes: No .on_change.
@@ -1601,7 +1601,7 @@ items:
       - src/widget/traits/render_context/edit_line.rs
       - tests/wide_char_placement.rs
       - tests/border_title_width.rs
-      - tests/input_wide_chars.rs
+      - tests/widget/input/input_widgets/wide_chars.rs
       - tests/code_editor_wide_chars.rs
       - tests/text_fields_wide_chars.rs
     source:

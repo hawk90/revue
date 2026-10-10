@@ -1,6 +1,4 @@
 //! Tests for combobox/option.rs
-//!
-//! Extracted from src/widget/input/input_widgets/combobox/option.rs
 
 use revue::widget::ComboOption;
 

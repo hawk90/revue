@@ -1,7 +1,6 @@
-//! Combobox tests
-//!
-//! Public-API copy of the former src/widget/input/input_widgets/combobox/
-//! tests.rs. Tests that need private state stay in src.
+//! Combobox widget tests
+
+mod option;
 
 use revue::event::Key;
 use revue::layout::Rect;
@@ -774,4 +773,19 @@ fn test_combobox_groups_scrolling_brings_the_header_into_view() {
     let buffer = render(&cb, 30, 10);
     assert_eq!(row(&buffer, 1).trim(), "Fruit");
     assert_eq!(find_row(&buffer, "Apple"), Some(2));
+}
+
+#[test]
+fn test_select_current_with_empty_options_no_panic() {
+    let mut c = Combobox::new();
+    let result = c.select_current();
+    assert!(!result);
+}
+
+#[test]
+fn test_select_current_with_empty_filtered_no_panic() {
+    let mut c = Combobox::new().options(["Apple", "Banana"]);
+    c.set_input("zzzzz");
+    let result = c.select_current();
+    assert!(!result);
 }
