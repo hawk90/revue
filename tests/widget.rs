@@ -6,10 +6,8 @@ mod breadcrumb;
 mod callout;
 #[path = "widget/canvas/mod.rs"]
 mod canvas;
-#[path = "widget/command_palette.rs"]
+#[path = "widget/command_palette/mod.rs"]
 mod command_palette;
-#[path = "widget/command_palette_unit/mod.rs"]
-pub mod command_palette_unit;
 #[path = "widget/data/mod.rs"]
 pub mod data;
 #[path = "widget/datetime_picker.rs"]
@@ -22,8 +20,6 @@ mod developer;
 mod display;
 #[path = "widget/dropzone/mod.rs"]
 mod dropzone;
-#[path = "widget/edge_cases/mod.rs"]
-mod edge_cases;
 #[path = "widget/feedback/mod.rs"]
 mod feedback;
 #[path = "widget/filepicker/mod.rs"]
@@ -67,8 +63,10 @@ mod slides;
 mod sortable;
 #[path = "widget/streamline/mod.rs"]
 mod streamline;
-#[path = "widget/syntax.rs"]
+#[path = "widget/syntax/mod.rs"]
 mod syntax;
+#[path = "widget/theme.rs"]
+mod theme;
 #[path = "widget/theme_picker.rs"]
 mod theme_picker;
 #[path = "widget/transition/mod.rs"]
@@ -79,9 +77,5 @@ mod validation;
 mod zen;
 
 // Shared infrastructure tests
-#[path = "widget/traits/focus_handlers.rs"]
-mod focus_handlers_tests;
-#[path = "widget/traits/theme.rs"]
-mod theme_constants_tests;
 #[path = "widget/traits/mod.rs"]
 mod traits;

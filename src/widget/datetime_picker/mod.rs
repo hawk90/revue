@@ -572,7 +572,6 @@ impl render::Rendering for DateTimePicker {
     }
 }
 
-// Public API tests extracted to tests/widget/datetime_picker.rs (already exists)
 // KEEP HERE - Tests for internal helpers and render functions
 #[cfg(test)]
 mod tests {

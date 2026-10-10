@@ -1,12 +1,15 @@
-//! Tests for Zen Mode widget
-//!
-//! Extracted from src/widget/zen.rs
+//! ZenMode widget tests
 
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
-use revue::widget::{zen, zen_dark, zen_light, Text, View, ZenMode};
+use revue::widget::zen;
+use revue::widget::zen_dark;
+use revue::widget::zen_light;
+use revue::widget::Text;
+use revue::widget::View;
+use revue::widget::ZenMode;
 
 #[test]
 fn test_zen_new() {
@@ -147,6 +150,8 @@ fn test_set_enabled_false() {
 fn test_zen_mode_default() {
     let z = ZenMode::default();
     assert!(!z.is_enabled());
+
+    let _zen = ZenMode::default();
 }
 
 #[test]
@@ -219,4 +224,139 @@ fn test_zen_center_centers_content_vertically() {
     // Off, it is just the content.
     let off = zen(Text::new("Q")).center();
     assert_eq!(row_of(&off, 'Q'), Some(0));
+}
+
+#[test]
+fn test_zen_mode_new() {
+    let content = Text::new("Test content");
+    let _zen = ZenMode::new(content);
+    // ZenMode created successfully
+}
+
+#[test]
+fn test_zen_mode_padding() {
+    let content = Text::new("Test");
+    let _zen = ZenMode::new(content).padding(4);
+}
+
+#[test]
+fn test_zen_mode_padding_x() {
+    let content = Text::new("Test");
+    let _zen = ZenMode::new(content).padding_x(8);
+}
+
+#[test]
+fn test_zen_mode_padding_y() {
+    let content = Text::new("Test");
+    let _zen = ZenMode::new(content).padding_y(6);
+}
+
+#[test]
+fn test_zen_mode_bg() {
+    let content = Text::new("Test");
+    let _zen = ZenMode::new(content).bg(Color::rgb(20, 20, 30));
+}
+
+#[test]
+fn test_zen_mode_center() {
+    let content = Text::new("Test");
+    let _zen = ZenMode::new(content).center();
+}
+
+#[test]
+fn test_zen_mode_enable() {
+    let content = Text::new("Test");
+    let mut zen = ZenMode::new(content);
+    assert!(!zen.is_enabled());
+
+    zen.enable();
+    assert!(zen.is_enabled());
+}
+
+#[test]
+fn test_zen_mode_disable() {
+    let content = Text::new("Test");
+    let mut zen = ZenMode::new(content);
+    zen.enable();
+    assert!(zen.is_enabled());
+
+    zen.disable();
+    assert!(!zen.is_enabled());
+}
+
+#[test]
+fn test_zen_mode_toggle() {
+    let content = Text::new("Test");
+    let mut zen = ZenMode::new(content);
+    assert!(!zen.is_enabled());
+
+    zen.toggle();
+    assert!(zen.is_enabled());
+
+    zen.toggle();
+    assert!(!zen.is_enabled());
+}
+
+#[test]
+fn test_zen_mode_is_enabled() {
+    let content = Text::new("Test");
+    let zen = ZenMode::new(content);
+    assert!(!zen.is_enabled());
+}
+
+#[test]
+fn test_zen_mode_set_enabled() {
+    let content = Text::new("Test");
+    let mut zen = ZenMode::new(content);
+    zen.set_enabled(true);
+    assert!(zen.is_enabled());
+
+    zen.set_enabled(false);
+    assert!(!zen.is_enabled());
+}
+
+#[test]
+fn test_zen_mode_content() {
+    let content = Text::new("Test content");
+    let zen = ZenMode::new(content);
+    let _inner = zen.content();
+    // Can get content reference
+}
+
+#[test]
+fn test_zen_mode_content_mut() {
+    let content = Text::new("Test content");
+    let mut zen = ZenMode::new(content);
+    let _inner = zen.content_mut();
+    // Can get content mutable reference
+}
+
+#[test]
+fn test_zen_mode_builder_pattern() {
+    let content = Text::new("Focus on this");
+    let zen = ZenMode::new(content)
+        .padding(4)
+        .bg(Color::rgb(20, 20, 30))
+        .center();
+
+    assert!(!zen.is_enabled());
+}
+
+#[test]
+fn test_zen_mode_enabled_builder() {
+    let content = Text::new("Test");
+    let mut zen = ZenMode::new(content).padding(2);
+    zen.enable();
+    assert!(zen.is_enabled());
+}
+
+#[test]
+fn test_zen_mode_multiple_toggles() {
+    let content = Text::new("Test");
+    let mut zen = ZenMode::new(content);
+
+    for i in 0..10 {
+        zen.toggle();
+        assert_eq!(zen.is_enabled(), i % 2 == 0);
+    }
 }

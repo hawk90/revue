@@ -312,7 +312,6 @@ impl_styled_view!(Markdown);
 impl_props_builders!(Markdown);
 
 // KEEP HERE - Private implementation tests (AdmonitionType internals: from_marker, icon, label, color)
-// Public API tests extracted to tests/widget/markdown/markdown_tests.rs
 #[cfg(test)]
 mod tests {
     //! Markdown widget private implementation tests

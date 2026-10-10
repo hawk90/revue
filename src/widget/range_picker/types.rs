@@ -120,5 +120,3 @@ pub enum RangeFocus {
     /// Preset list
     Presets,
 }
-
-// KEEP HERE: Private tests - all public API tests moved to tests/widget/range_picker/types.rs

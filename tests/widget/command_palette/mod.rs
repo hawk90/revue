@@ -2,6 +2,10 @@
 //!
 //! CommandPalette 위젯의 통합 테스트입니다.
 
+mod command;
+mod helper;
+mod impls;
+
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;

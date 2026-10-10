@@ -104,7 +104,6 @@ impl Default for RangePicker {
     }
 }
 
-// Tests moved to tests/widget/range_picker/core.rs
 // Tests here access private fields and should remain in source
 
 #[cfg(test)]

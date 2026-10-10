@@ -4,6 +4,5 @@
 //! getters, setters, navigation and key handling.
 
 mod core;
-#[path = "../range_picker.rs"]
 mod integration;
 mod types;

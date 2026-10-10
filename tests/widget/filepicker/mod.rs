@@ -4,8 +4,9 @@
 //! lists does not depend on the working directory.
 
 pub mod basic;
-pub mod rendering;
+pub mod render;
 pub mod selection;
+mod windows_paths;
 
 use revue::widget::FilePicker;
 use std::fs;

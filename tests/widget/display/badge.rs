@@ -1085,3 +1085,61 @@ fn test_badge_newline_in_text() {
     let mut ctx = RenderContext::new(&mut buffer, area);
     b.render(&mut ctx);
 }
+
+/// Test Badge edge cases
+mod edge_cases {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::Badge;
+    #[test]
+    fn test_badge_with_empty_content() {
+        let badge = Badge::new("");
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        badge.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_badge_with_very_long_content() {
+        let long_content = "99".repeat(100);
+        let badge = Badge::new(&long_content);
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        badge.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_badge_with_unicode() {
+        let badge = Badge::new("🏷️ 뱃지");
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        badge.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_badge_with_zero_width_buffer() {
+        let badge = Badge::new("1");
+        let mut buffer = Buffer::new(0, 10);
+        let area = Rect::new(0, 0, 0, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        badge.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_badge_dot_variant() {
+        let badge = Badge::dot();
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        badge.render(&mut ctx);
+    }
+}

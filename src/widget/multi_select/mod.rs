@@ -12,7 +12,6 @@ mod key_handling;
 mod navigation;
 mod render;
 mod selection;
-// Public API tests extracted to tests/widget/multi_select/
 // KEEP HERE - Tests for internal state verification (dropdown_cursor, tag_cursor, filtered)
 
 #[cfg(test)]

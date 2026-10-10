@@ -1,14 +1,16 @@
 //! Transition widget tests: phase transitions and rendering
-//!
-//! Construction and plain show/hide/toggle visibility are covered by
-//! tests/transition_tests.rs and tests/transition_widget_tests.rs; these
-//! drive the animation phases and check what actually reaches the buffer.
 
 use revue::layout::Rect;
-use revue::render::{Buffer, Modifier};
+use revue::render::Buffer;
+use revue::render::Modifier;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
-use revue::widget::{Animation, AnimationTransition as Transition, TransitionPhase, View};
+use revue::widget::transition;
+use revue::widget::Animation;
+use revue::widget::AnimationTransition as Transition;
+use revue::widget::AnimationTransition;
+use revue::widget::TransitionPhase;
+use revue::widget::View;
 use std::thread;
 use std::time::Duration;
 
@@ -275,4 +277,189 @@ fn test_render_mid_animation_is_dimmed() {
     // Barely started leaving: all characters still shown, but dimmed
     assert_eq!(row(&buffer, 0, 10), "Hello     ");
     assert!(buffer.get(0, 0).unwrap().modifier.contains(Modifier::DIM));
+}
+
+// ============================================================================
+// Transition Widget Tests
+// ============================================================================
+
+#[test]
+fn test_transition_new() {
+    let t = AnimationTransition::new("Test content");
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_new_empty() {
+    let t = AnimationTransition::new("");
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_default() {
+    let t = AnimationTransition::default();
+    assert!(t.is_visible());
+    assert_eq!(t.phase(), TransitionPhase::Visible);
+}
+
+#[test]
+fn test_transition_enter() {
+    let t = AnimationTransition::new("Content").enter(Animation::fade());
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_leave() {
+    let t = AnimationTransition::new("Content").leave(Animation::fade());
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_animations() {
+    let enter = Animation::fade_in();
+    let leave = Animation::fade_out();
+    let t = AnimationTransition::new("Content").animations(enter, leave);
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_show() {
+    let mut t = AnimationTransition::new("Content");
+    t.show();
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_hide() {
+    let mut t = AnimationTransition::new("Content");
+    t.hide();
+    assert!(!t.is_visible());
+}
+
+#[test]
+fn test_transition_hide_then_show() {
+    let mut t = AnimationTransition::new("Content");
+    t.hide();
+    assert!(!t.is_visible());
+    t.show();
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_toggle_from_visible() {
+    let mut t = AnimationTransition::new("Content");
+    assert!(t.is_visible());
+    t.toggle();
+    assert!(!t.is_visible());
+}
+
+#[test]
+fn test_transition_toggle_from_hidden() {
+    let mut t = AnimationTransition::new("Content");
+    t.hide();
+    assert!(!t.is_visible());
+    t.toggle();
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_multiple_toggles() {
+    let mut t = AnimationTransition::new("Content");
+    assert!(t.is_visible());
+
+    t.toggle();
+    assert!(!t.is_visible());
+
+    t.toggle();
+    assert!(t.is_visible());
+
+    t.toggle();
+    assert!(!t.is_visible());
+}
+
+#[test]
+fn test_transition_is_visible() {
+    let t = AnimationTransition::new("Content");
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_phase_initial() {
+    let t = AnimationTransition::new("Content");
+    assert_eq!(t.phase(), TransitionPhase::Visible);
+}
+
+#[test]
+fn test_transition_with_enter_animation() {
+    let t = transition("Test").enter(Animation::fade_in());
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_with_leave_animation() {
+    let t = transition("Test").leave(Animation::fade_out());
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_builder_chain() {
+    let enter = Animation::fade_in();
+    let leave = Animation::fade_out();
+    let t = AnimationTransition::new("Content")
+        .enter(enter.clone())
+        .leave(leave.clone());
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_long_content() {
+    let long_content = "This is a very long content string for testing";
+    let t = AnimationTransition::new(long_content);
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_with_unicode() {
+    let unicode_content = "Hello 世界 🌍";
+    let t = AnimationTransition::new(unicode_content);
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_multiple_hide_calls() {
+    let mut t = AnimationTransition::new("Content");
+    t.hide();
+    assert!(!t.is_visible());
+
+    // Calling hide again when already hidden should not cause issues
+    t.hide();
+    assert!(!t.is_visible());
+}
+
+#[test]
+fn test_transition_multiple_show_calls() {
+    let mut t = AnimationTransition::new("Content");
+    t.show();
+    assert!(t.is_visible());
+
+    // Calling show again when already visible should not cause issues
+    t.show();
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_with_all_animations() {
+    let enter = Animation::fade_in().duration(300);
+    let leave = Animation::fade_out().duration(200);
+    let t = AnimationTransition::new("Content").animations(enter, leave);
+
+    // With animations set, hide() starts the leave animation tween
+    // The widget remains visible until the animation completes
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_transition_helper_function() {
+    let t = transition("Helper test");
+    assert!(t.is_visible());
 }

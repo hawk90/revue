@@ -98,7 +98,7 @@ CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다.
 | 공용 `draw_text`의 넓은 문자 overflow | 들어갈 자리를 u32로 계산하고 영역 끝과 좌표 공간 끝에서 멈춤. `draw_text_centered`/`_right`도 포화 | `render_context::tests::test_draw_text_wide_chars_stop_at_the_edge_of_the_coordinate_space` 외 |
 | `LogViewer` 타임스탬프 바이트 자르기 | `s.get(..8)`/`s.get(..19)`. ISO 검사 `&s[..19]`도 같은 버그였다 | `log_viewer::tests::test_parse_does_not_slice_inside_a_multibyte_char` |
 | `RichLog` 높이 0 | 크기 0 영역이면 바로 반환(폭 0의 `area.width - 1`도) | `tests/widget/display/richlog.rs::test_richlog_render_zero_sized_area_with_entries` |
-| `CommandPalette` 좁은 영역 | 오른쪽 테두리·글 끝·라벨 끝 열을 포화 계산으로 한 번만 구함(단축키·결과 수 위치도) | `tests/widget/command_palette.rs::test_command_palette_render_fits_very_narrow_areas` |
+| `CommandPalette` 좁은 영역 | 오른쪽 테두리·글 끝·라벨 끝 열을 포화 계산으로 한 번만 구함(단축키·결과 수 위치도) | `tests/widget/command_palette/mod.rs::test_command_palette_render_fits_very_narrow_areas` |
 | `Splitter` 패널 배치 overflow | `min_size`로 넘치는 패널을 영역 끝에서 자르고 offset 포화 | `splitter::tests::test_splitter_pane_areas_stay_inside_an_area_at_the_coordinate_edge` |
 | `Inspector` 패널 산술 | `panel_width - 3`, 제목 `title_x + i`, 행 커서를 포화 계산 | `inspector::tests::test_inspector_render_in_tiny_areas_and_at_the_coordinate_edge` |
 | `Inspector` 영역 밖 강조 | 모든 쓰기를 받은 영역(과 clip)으로 자름. 인스펙터는 화면 전체를 받도록 설계됐으므로(패널이 영역 오른쪽 끝, 강조는 패널 앞에서 멈춤) 그 쓰임에서는 바뀌는 것이 없다 | `inspector::tests::test_inspector_render_stays_inside_its_area`, `…_highlights_the_selected_widget_on_the_whole_screen` |
