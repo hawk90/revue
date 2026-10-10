@@ -108,4 +108,4 @@ root(.outer) > m1(.mid) > m2(.mid) > leaf
 전체보다 오래 살고 재귀에서 강등되므로, 호출자는 트리보다 짧게 빌린 노드로도 매칭할 수 있다.
 묶었더니 **통합 테스트는 전부 통과하는데 크레이트 자신의 unit 테스트만** 컴파일이 깨졌다.
 
-`tests/cascade_combinators.rs`와 `tests/sibling_invalidation.rs`가 고정한다.
+`tests/runtime/dom/cascade/combinators.rs`와 `tests/runtime/dom/cascade/sibling_invalidation.rs`가 고정한다.

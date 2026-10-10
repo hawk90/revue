@@ -215,7 +215,6 @@ pub(crate) fn parse_duration(s: &str) -> Option<Duration> {
     }
 }
 
-// Most tests moved to tests/style_tests.rs
 // Tests below use private function parse_duration
 
 #[cfg(test)]

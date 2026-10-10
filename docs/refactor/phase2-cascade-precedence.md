@@ -77,4 +77,4 @@ let bg = bg.with_interaction(self.pressed, self.hovered, self.focused);
 그걸 쓰는 모든 위젯이 한꺼번에 캐스케이드를 존중하게 만든 것이고, 자기 색을 직접 계산하는
 위젯들은 카테고리 단위로 따로 옮겨야 한다.
 
-`tests/cascade_precedence.rs`가 우선순위 표를 고정한다.
+`tests/runtime/dom/cascade/precedence.rs`가 우선순위 표를 고정한다.

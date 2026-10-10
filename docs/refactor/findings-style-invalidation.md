@@ -76,4 +76,4 @@ if !node.state.dirty && self.styles.contains_key(&node_id) {
 - ~~**형제 결합자.**~~ 해결 — [`findings-selector-matchers.md`](findings-selector-matchers.md).
   바뀐 노드 뒤의 형제를 무효화하고, 스타일시트에 그런 규칙이 있을 때만 한다
 
-`tests/style_invalidation.rs`가 위를 고정한다.
+`tests/runtime/dom/cascade/invalidation.rs`가 위를 고정한다.

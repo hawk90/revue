@@ -101,8 +101,6 @@ pub fn diff(old: &Buffer, new: &Buffer, dirty_rects: &[Rect]) -> Vec<Change> {
     changes
 }
 
-// Tests moved to tests/render_tests.rs
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -3,8 +3,8 @@
 > **상태**
 > - F-1·F-2·F-3 — `fix(render): always repaint from the view`로 해결
 > - F-4·F-5 — `App::builder().dom_from_render(true)`로 해결. **기본 off**이므로
->   `tests/render_pipeline.rs`가 계속 기본 동작을 고정한다. 새 경로의 계약은
->   `tests/dom_from_render.rs`
+>   `tests/runtime/render/pipeline.rs`가 계속 기본 동작을 고정한다. 새 경로의 계약은
+>   `tests/runtime/dom/from_render.rs`
 > - F-6 — 박스 속성은 `.css_layout(true)`로, `gap`은 컨테이너가 읽는 것으로 해결.
 >   `flex-*`·`grid-*`는 설계상 컨테이너가 계산한다(3.0은 (B)). 조사 결과와 설계 선택은
 >   [`findings-layout.md`](findings-layout.md)
@@ -17,7 +17,7 @@ Phase 1을 기본 on으로 뒤집기 전에 `examples/`를 손으로 확인하�
 **Phase 1·2보다 큰 문제이고, 3.0 계획의 순서를 바꿔야 한다.**
 
 카탈로그(`docs/anti-patterns/catalog.yaml`)가 "일어날 수 있는 실패 모드"의 목록인 것과 달리,
-아래는 **재현해서 확인한 것**이다. 특성화 테스트는 `tests/render_pipeline.rs`에 있다.
+아래는 **재현해서 확인한 것**이다. 특성화 테스트는 `tests/runtime/render/pipeline.rs`에 있다.
 
 ## 요약
 
@@ -227,7 +227,7 @@ Phase 1의 매칭기(key > id > position)를 그대로 재사용한다. 입력�
 
 **알려진 한계:** 뷰가 본문 전체를 다른 위젯에 위임하면(`vstack()...render(ctx)`) 그 위젯은
 자식이 아니라 뷰 자신의 렌더링이므로 노드를 얻지 못한다. id는 뷰 쪽에 붙여야 한다.
-`tests/dom_from_render.rs`가 이 한계를 고정하고 있다.
+`tests/runtime/dom/from_render.rs`가 이 한계를 고정하고 있다.
 
 ### 비용
 

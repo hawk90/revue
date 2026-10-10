@@ -562,5 +562,3 @@ impl Default for FocusManager {
         Self::new()
     }
 }
-
-// Tests moved to tests/event_tests.rs

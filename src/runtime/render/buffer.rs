@@ -688,8 +688,6 @@ impl Buffer {
     }
 }
 
-// Tests moved to tests/render_tests.rs
-
 #[cfg(test)]
 mod tests {
     use super::*;
