@@ -118,6 +118,4 @@ impl Default for ScreenReaderConfig {
         }
     }
 }
-
-// Tests extracted to tests/a11y_backend_types_tests.rs
 // All tests use only public methods and fields from BackendType and ScreenReaderConfig

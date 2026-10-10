@@ -1,6 +1,4 @@
-//! Tests for a11y::backend::types extracted from src/a11y/backend/types.rs
-//!
-//! All tests use only public methods and fields from BackendType and ScreenReaderConfig.
+//! `a11y::backend::types`: `BackendType` and `ScreenReaderConfig`
 
 use revue::a11y::{BackendType, ScreenReaderConfig};
 
@@ -34,15 +32,6 @@ fn test_backend_type_detect_returns_valid_type() {
         | BackendType::Logging
         | BackendType::None => {}
     }
-}
-
-#[test]
-fn test_backend_type_detect_with_logging_env() {
-    // Set the logging environment variable
-    std::env::set_var("REVUE_A11Y_LOG", "1");
-    let detected = BackendType::detect();
-    std::env::remove_var("REVUE_A11Y_LOG");
-    assert_eq!(detected, BackendType::Logging);
 }
 
 // =========================================================================

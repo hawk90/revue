@@ -116,6 +116,4 @@ pub fn is_available() -> bool {
 pub fn active_screen_reader() -> Option<String> {
     get_backend().active_screen_reader()
 }
-
-// Tests extracted to tests/a11y_public_api_tests.rs
 // All tests use only public functions from revue::a11y

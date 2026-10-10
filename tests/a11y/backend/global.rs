@@ -1,15 +1,18 @@
-//! Tests for a11y::backend::global extracted from src/a11y/backend/global.rs
+//! `a11y::backend::global`: the process-wide backend
 //!
-//! All tests use only public functions from the a11y::backend module.
+//! These share one backend with the rest of the binary, so every test is
+//! `#[serial]`.
 
 use revue::a11y::{announce_to_screen_reader, get_backend, init_backend, BackendType};
 use revue::utils::accessibility::Priority;
+use serial_test::serial;
 
 // =========================================================================
 // Backend initialization tests
 // =========================================================================
 
 #[test]
+#[serial]
 fn test_get_backend_auto_initializes() {
     // Should not panic and should return a backend
     let backend = get_backend();
@@ -18,6 +21,7 @@ fn test_get_backend_auto_initializes() {
 }
 
 #[test]
+#[serial]
 fn test_init_backend_with_auto() {
     // Initialize with Auto type
     let backend = init_backend(BackendType::Auto);
@@ -25,6 +29,7 @@ fn test_init_backend_with_auto() {
 }
 
 #[test]
+#[serial]
 fn test_init_backend_with_logging() {
     // Initialize with Logging type for testing
     let backend = init_backend(BackendType::Logging);
@@ -32,6 +37,7 @@ fn test_init_backend_with_logging() {
 }
 
 #[test]
+#[serial]
 fn test_init_backend_with_none() {
     // Initialize with None type (silent)
     let backend = init_backend(BackendType::None);
@@ -39,6 +45,7 @@ fn test_init_backend_with_none() {
 }
 
 #[test]
+#[serial]
 fn test_get_backend_returns_same_instance() {
     // get_backend should return the same instance each time
     let backend1 = get_backend();
@@ -48,6 +55,7 @@ fn test_get_backend_returns_same_instance() {
 }
 
 #[test]
+#[serial]
 fn test_init_backend_returns_same_instance() {
     // init_backend should return the same instance each time
     let backend1 = init_backend(BackendType::None);
@@ -60,24 +68,28 @@ fn test_init_backend_returns_same_instance() {
 // =========================================================================
 
 #[test]
+#[serial]
 fn test_announce_to_screen_reader_wrapper() {
     // Should not panic
     announce_to_screen_reader("Test message", Priority::Polite);
 }
 
 #[test]
+#[serial]
 fn test_announce_with_assertive_priority() {
     // Should not panic with assertive priority
     announce_to_screen_reader("Important message", Priority::Assertive);
 }
 
 #[test]
+#[serial]
 fn test_announce_with_polite_priority() {
     // Should not panic with polite priority
     announce_to_screen_reader("Polite message", Priority::Polite);
 }
 
 #[test]
+#[serial]
 fn test_multiple_announces() {
     // Should handle multiple announces
     announce_to_screen_reader("Message 1", Priority::Polite);

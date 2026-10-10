@@ -1,6 +1,4 @@
-//! Tests for accessibility announcement module
-//!
-//! Extracted from src/utils/accessibility/announcement.rs
+//! `utils::accessibility::announcement`
 
 use std::time::Duration;
 

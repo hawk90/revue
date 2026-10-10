@@ -2,6 +2,10 @@
 //!
 //! Tests for screen reader backend implementations and global backend management.
 
+mod core;
+mod global;
+mod types;
+
 use revue::a11y::{
     announce_to_screen_reader, get_backend, init_backend, set_backend, BackendType, LoggingBackend,
     ScreenReader, ScreenReaderBackend, ScreenReaderConfig,
@@ -23,7 +27,10 @@ fn test_backend_type_name() {
     assert_eq!(BackendType::None.name(), "None");
 }
 
+/// Sets `REVUE_A11Y_LOG`, which the global backend tests read through
+/// `detect`; serial keeps them from seeing it.
 #[test]
+#[serial]
 fn test_backend_type_from_env() {
     // Without env var, should return None or Logging (test environment)
     let detected = BackendType::detect();

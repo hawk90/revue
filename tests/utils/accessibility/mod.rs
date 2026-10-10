@@ -1,10 +1,15 @@
-//! Integration tests for accessibility module
-//!
-//! These tests are extracted from src/utils/accessibility/mod.rs
+//! `utils::accessibility`: the module root
+
+mod announcement;
+mod aria;
+mod manager;
+mod node;
+mod roles;
+mod state;
 
 use revue::utils::accessibility::{
-    announce, announce_now, aria, AccessibilityManager, AccessibleNode, AccessibleState, Priority,
-    Role, SharedAccessibility,
+    announce, announce_now, AccessibilityManager, AccessibleNode, AccessibleState, Priority, Role,
+    SharedAccessibility,
 };
 use serial_test::serial;
 
@@ -231,7 +236,9 @@ fn test_aria_builder_from_node() {
         .label("Submit")
         .description("Submit the form");
 
-    let aria = aria::AriaBuilder::new().from_node(&node).build();
+    let aria = revue::utils::accessibility::aria::AriaBuilder::new()
+        .from_node(&node)
+        .build();
 
     assert_eq!(aria.get("role"), Some(&"button".to_string()));
     assert_eq!(aria.get("aria-label"), Some(&"Submit".to_string()));
@@ -241,8 +248,8 @@ fn test_aria_builder_from_node() {
 #[test]
 #[serial]
 fn test_aria_builder_live_region() {
-    let aria = aria::AriaBuilder::new()
-        .live_region(aria::LiveRegion::Polite)
+    let aria = revue::utils::accessibility::aria::AriaBuilder::new()
+        .live_region(revue::utils::accessibility::aria::LiveRegion::Polite)
         .atomic(true)
         .build();
 
@@ -254,15 +261,15 @@ fn test_aria_builder_live_region() {
 #[serial]
 fn test_aria_attribute_name() {
     assert_eq!(
-        aria::AriaAttribute::Role("button".to_string()).name(),
+        revue::utils::accessibility::aria::AriaAttribute::Role("button".to_string()).name(),
         "role"
     );
     assert_eq!(
-        aria::AriaAttribute::Label("test".to_string()).name(),
+        revue::utils::accessibility::aria::AriaAttribute::Label("test".to_string()).name(),
         "aria-label"
     );
     assert_eq!(
-        aria::AriaAttribute::Checked(Some(true)).name(),
+        revue::utils::accessibility::aria::AriaAttribute::Checked(Some(true)).name(),
         "aria-checked"
     );
 }
@@ -270,15 +277,33 @@ fn test_aria_attribute_name() {
 #[test]
 #[serial]
 fn test_aria_attribute_value() {
-    assert_eq!(aria::AriaAttribute::Checked(Some(true)).value(), "true");
-    assert_eq!(aria::AriaAttribute::Checked(None).value(), "mixed");
-    assert_eq!(aria::AriaAttribute::Expanded(None).value(), "undefined");
+    assert_eq!(
+        revue::utils::accessibility::aria::AriaAttribute::Checked(Some(true)).value(),
+        "true"
+    );
+    assert_eq!(
+        revue::utils::accessibility::aria::AriaAttribute::Checked(None).value(),
+        "mixed"
+    );
+    assert_eq!(
+        revue::utils::accessibility::aria::AriaAttribute::Expanded(None).value(),
+        "undefined"
+    );
 }
 
 #[test]
 #[serial]
 fn test_live_region_as_str() {
-    assert_eq!(aria::LiveRegion::Off.as_str(), "off");
-    assert_eq!(aria::LiveRegion::Polite.as_str(), "polite");
-    assert_eq!(aria::LiveRegion::Assertive.as_str(), "assertive");
+    assert_eq!(
+        revue::utils::accessibility::aria::LiveRegion::Off.as_str(),
+        "off"
+    );
+    assert_eq!(
+        revue::utils::accessibility::aria::LiveRegion::Polite.as_str(),
+        "polite"
+    );
+    assert_eq!(
+        revue::utils::accessibility::aria::LiveRegion::Assertive.as_str(),
+        "assertive"
+    );
 }

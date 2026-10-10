@@ -1,6 +1,4 @@
-//! Tests for a11y::backend::core extracted from src/a11y/backend/core.rs
-//!
-//! All tests use only public methods from the ScreenReaderBackend type.
+//! `a11y::backend::core`: the `ScreenReaderBackend` type
 
 use revue::a11y::{BackendType, ScreenReaderBackend, ScreenReaderConfig};
 use revue::utils::accessibility::Priority;
