@@ -27,20 +27,12 @@ fn test_backend_type_name() {
     assert_eq!(BackendType::None.name(), "None");
 }
 
-/// Sets `REVUE_A11Y_LOG`, which the global backend tests read through
-/// `detect`; serial keeps them from seeing it.
+/// Which backend `detect` picks depends on the machine (a running screen
+/// reader, `REVUE_A11Y_LOG`); the rule itself is unit-tested beside it.
+/// Whatever it picks is a concrete backend, never `Auto`.
 #[test]
-#[serial]
-fn test_backend_type_from_env() {
-    // Without env var, should return None or Logging (test environment)
-    let detected = BackendType::detect();
-    assert!(matches!(detected, BackendType::None | BackendType::Logging));
-
-    // With env var set, should detect logging backend
-    std::env::set_var("REVUE_A11Y_LOG", "1");
-    let detected = BackendType::detect();
-    assert_eq!(detected, BackendType::Logging);
-    std::env::remove_var("REVUE_A11Y_LOG");
+fn test_backend_type_detect_is_concrete() {
+    assert_ne!(BackendType::detect(), BackendType::Auto);
 }
 
 #[test]

@@ -34,13 +34,6 @@ mod tests {
     use crate::utils::accessibility::Priority;
 
     #[test]
-    fn test_backend_type_detect() {
-        // In test environment, should return None or Logging
-        let detected = BackendType::detect();
-        assert!(matches!(detected, BackendType::None | BackendType::Logging));
-    }
-
-    #[test]
     fn test_backend_type_name() {
         assert_eq!(BackendType::MacOS.name(), "macOS/VoiceOver");
         assert_eq!(BackendType::Windows.name(), "Windows/Narrator");

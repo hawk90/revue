@@ -17,24 +17,6 @@ fn test_backend_type_name() {
 }
 
 // =========================================================================
-// BackendType::detect() tests
-// =========================================================================
-
-#[test]
-fn test_backend_type_detect_returns_valid_type() {
-    let detected = BackendType::detect();
-    // Should return one of the valid variants
-    match detected {
-        BackendType::Auto
-        | BackendType::MacOS
-        | BackendType::Windows
-        | BackendType::Linux
-        | BackendType::Logging
-        | BackendType::None => {}
-    }
-}
-
-// =========================================================================
 // BackendType trait implementations tests
 // =========================================================================
 

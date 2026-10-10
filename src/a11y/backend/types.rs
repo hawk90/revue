@@ -22,34 +22,49 @@ pub enum BackendType {
 
 impl BackendType {
     /// Detect the appropriate backend for the current platform
+    ///
+    /// A running platform screen reader wins; otherwise `REVUE_A11Y_LOG`
+    /// selects the logging backend; otherwise there is none.
     pub fn detect() -> Self {
+        Self::choose(
+            Self::running_platform_reader(),
+            std::env::var_os("REVUE_A11Y_LOG").is_some(),
+        )
+    }
+
+    /// The detection rule, separate from reading the environment.
+    fn choose(platform_reader: Option<Self>, log_requested: bool) -> Self {
+        match platform_reader {
+            Some(reader) => reader,
+            None if log_requested => BackendType::Logging,
+            None => BackendType::None,
+        }
+    }
+
+    /// The platform screen reader that is running, if any.
+    fn running_platform_reader() -> Option<Self> {
         #[cfg(target_os = "macos")]
         {
             if super::detection::is_voiceover_running() {
-                return BackendType::MacOS;
+                return Some(BackendType::MacOS);
             }
         }
 
         #[cfg(target_os = "windows")]
         {
             if super::detection::is_windows_screen_reader_running() {
-                return BackendType::Windows;
+                return Some(BackendType::Windows);
             }
         }
 
         #[cfg(target_os = "linux")]
         {
             if super::detection::is_atspi_available() {
-                return BackendType::Linux;
+                return Some(BackendType::Linux);
             }
         }
 
-        // Check for testing mode
-        if std::env::var("REVUE_A11Y_LOG").is_ok() {
-            return BackendType::Logging;
-        }
-
-        BackendType::None
+        None
     }
 
     /// Get backend name
@@ -119,3 +134,22 @@ impl Default for ScreenReaderConfig {
     }
 }
 // All tests use only public methods and fields from BackendType and ScreenReaderConfig
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_running_platform_reader_wins_over_the_log_variable() {
+        for reader in [BackendType::MacOS, BackendType::Windows, BackendType::Linux] {
+            assert_eq!(BackendType::choose(Some(reader), false), reader);
+            assert_eq!(BackendType::choose(Some(reader), true), reader);
+        }
+    }
+
+    #[test]
+    fn the_log_variable_selects_logging_when_no_reader_runs() {
+        assert_eq!(BackendType::choose(None, true), BackendType::Logging);
+        assert_eq!(BackendType::choose(None, false), BackendType::None);
+    }
+}
