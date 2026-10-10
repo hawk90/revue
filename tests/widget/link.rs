@@ -7,10 +7,9 @@ use revue::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};
 use revue::style::Color;
-use revue::utils::browser::NO_LAUNCH_ENV;
+use revue::utils::browser::launch_suppressed;
 use revue::widget::traits::RenderContext;
 use revue::widget::{link, url_link, EventResult, Interactive, Link, LinkStyle, View};
-use serial_test::serial;
 
 /// Render `link` (with OSC 8 off) into a one-row buffer.
 fn render(link: &Link, width: u16) -> Buffer {
@@ -126,12 +125,13 @@ fn test_link_space_does_not_activate() {
 }
 
 #[test]
-#[serial]
 fn test_link_left_click_activates() {
-    std::env::set_var(NO_LAUNCH_ENV, "1");
+    assert!(
+        launch_suppressed(),
+        "REVUE_NO_BROWSER must be set (.cargo/config.toml) so tests never launch a browser"
+    );
     let mut link = Link::new("https://example.com");
     let result = Interactive::handle_mouse(&mut link, &left_click(), Rect::new(0, 0, 10, 1));
-    std::env::remove_var(NO_LAUNCH_ENV);
     assert_eq!(result, EventResult::ConsumedAndRender);
 }
 

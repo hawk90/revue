@@ -1,6 +1,6 @@
 //! Unit tests for the crate-private Language tables
 //!
-//! The public highlighting API is tested in tests/utils_syntax_tests.rs.
+//! The public highlighting API is tested in tests/utils/syntax/mod.rs.
 
 use super::*;
 

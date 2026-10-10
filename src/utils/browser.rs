@@ -225,7 +225,13 @@ pub const NO_LAUNCH_ENV: &str = "REVUE_NO_BROWSER";
 ///
 /// See [`NO_LAUNCH_ENV`].
 pub fn launch_suppressed() -> bool {
-    std::env::var_os(NO_LAUNCH_ENV).is_some_and(|v| !v.is_empty())
+    suppressed_by(std::env::var_os(NO_LAUNCH_ENV).as_deref())
+}
+
+/// The suppression rule, separate from reading the environment: set and
+/// non-empty.
+fn suppressed_by(value: Option<&std::ffi::OsStr>) -> bool {
+    value.is_some_and(|v| !v.is_empty())
 }
 
 /// Open a URL or file in the system's default browser/application
@@ -396,6 +402,15 @@ pub fn reveal_in_finder(path: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn suppression_needs_a_non_empty_value() {
+        use std::ffi::OsStr;
+        assert!(suppressed_by(Some(OsStr::new("1"))));
+        assert!(suppressed_by(Some(OsStr::new("yes"))));
+        assert!(!suppressed_by(Some(OsStr::new(""))));
+        assert!(!suppressed_by(None));
+    }
 
     fn program_and_args(cmd: &Command) -> (String, Vec<String>) {
         (
