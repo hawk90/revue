@@ -192,7 +192,6 @@ impl super::CodeEditor {
     }
 }
 
-// Public API tests extracted to tests/widget/code_editor/modes.rs
 // KEEP HERE - Private helper method tests (handle_goto_input, handle_find_input)
 
 #[cfg(test)]

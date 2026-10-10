@@ -1,15 +1,18 @@
-//! Braille shape tests
-//!
-//! Each shape is drawn onto a BrailleGrid and checked dot by dot. Constructor
-//! field checks live in tests/canvas/{shape,arc,polygon}.rs.
-
-use std::collections::BTreeSet;
+//! Braille shape tests (Line, Circle, Arc, Polygon, Rectangle, Points)
 
 use revue::style::Color;
-use revue::widget::{
-    Arc, BrailleGrid, Circle, FilledCircle, FilledPolygon, FilledRectangle, Line, Points, Polygon,
-    Rectangle, Shape,
-};
+use revue::widget::Arc;
+use revue::widget::BrailleGrid;
+use revue::widget::Circle;
+use revue::widget::FilledCircle;
+use revue::widget::FilledPolygon;
+use revue::widget::FilledRectangle;
+use revue::widget::Line;
+use revue::widget::Points;
+use revue::widget::Polygon;
+use revue::widget::Rectangle;
+use revue::widget::Shape;
+use std::collections::BTreeSet;
 
 type Dots = BTreeSet<(usize, usize)>;
 
@@ -170,6 +173,10 @@ fn test_circle_draw() {
     for &(x, y) in &dots {
         assert!(dots.contains(&(20 - x, 20 - y)), "no mirror for ({x}, {y})");
     }
+
+    let mut grid = BrailleGrid::new(20, 10);
+    let circle = Circle::new(20.0, 20.0, 10.0, Color::CYAN);
+    circle.draw(&mut grid);
 }
 
 #[test]
@@ -200,6 +207,10 @@ fn test_filled_circle_draw() {
         .filter(|&p| dist(p, (10.0, 10.0)) <= 3.0)
         .collect();
     assert_eq!(dots, expected);
+
+    let mut grid = BrailleGrid::new(20, 10);
+    let circle = FilledCircle::new(20.0, 20.0, 5.0, Color::YELLOW);
+    circle.draw(&mut grid);
 }
 
 #[test]
@@ -273,6 +284,10 @@ fn test_arc_full_circle() {
     assert!(dots.iter().any(|&(x, y)| x < 10 && y > 10));
     assert!(dots.iter().any(|&(x, y)| x < 10 && y < 10));
     assert!(dots.iter().any(|&(x, y)| x > 10 && y < 10));
+
+    let mut grid = BrailleGrid::new(20, 10);
+    let arc = Arc::new(20.0, 20.0, 10.0, 0.0, std::f64::consts::TAU, Color::GREEN);
+    arc.draw(&mut grid);
 }
 
 #[test]
@@ -311,6 +326,13 @@ fn test_polygon_draw() {
         .filter(|&(x, y)| x == 2 || x == 8 || y == 2 || y == 8)
         .collect();
     assert_eq!(draw(&square), expected);
+
+    let mut grid = BrailleGrid::new(20, 10);
+    let polygon = Polygon::new(
+        vec![(10.0, 10.0), (30.0, 10.0), (30.0, 30.0), (10.0, 30.0)],
+        Color::CYAN,
+    );
+    polygon.draw(&mut grid);
 }
 
 #[test]
@@ -366,6 +388,13 @@ fn test_filled_polygon_draw() {
         Color::RED,
     );
     assert_eq!(draw(&square), rect_dots(2..=7, 2..=7));
+
+    let mut grid = BrailleGrid::new(20, 10);
+    let polygon = FilledPolygon::new(
+        vec![(10.0, 10.0), (30.0, 10.0), (20.0, 30.0)],
+        Color::MAGENTA,
+    );
+    polygon.draw(&mut grid);
 }
 
 #[test]
@@ -407,6 +436,10 @@ fn test_rectangle_draw() {
         draw(&Rectangle::new(2.0, 3.0, 5.0, 4.0, Color::RED)),
         expected
     );
+
+    let mut grid = BrailleGrid::new(20, 10);
+    let rect = Rectangle::new(5.0, 5.0, 20.0, 15.0, Color::WHITE);
+    rect.draw(&mut grid);
 }
 
 #[test]
@@ -423,6 +456,10 @@ fn test_filled_rectangle_draw() {
         draw(&FilledRectangle::new(2.0, 3.0, 5.0, 4.0, Color::RED)),
         rect_dots(2..=7, 3..=7)
     );
+
+    let mut grid = BrailleGrid::new(20, 10);
+    let rect = FilledRectangle::new(5.0, 5.0, 10.0, 8.0, Color::BLUE);
+    rect.draw(&mut grid);
 }
 
 #[test]
@@ -488,4 +525,159 @@ fn test_points_from_slices_uneven() {
 fn test_points_from_slices_empty() {
     let points = Points::from_slices(&[], &[], Color::MAGENTA);
     assert!(points.coords.is_empty());
+}
+
+#[test]
+fn test_arc_creation() {
+    let arc = Arc::new(20.0, 20.0, 10.0, 0.0, std::f64::consts::PI, Color::RED);
+    assert_eq!(arc.x, 20.0);
+    assert_eq!(arc.y, 20.0);
+    assert_eq!(arc.radius, 10.0);
+    assert_eq!(arc.start_angle, 0.0);
+    assert_eq!(arc.end_angle, std::f64::consts::PI);
+}
+
+#[test]
+fn test_arc_from_degrees() {
+    let arc = Arc::from_degrees(20.0, 20.0, 10.0, 0.0, 180.0, Color::BLUE);
+    assert_eq!(arc.x, 20.0);
+    assert_eq!(arc.y, 20.0);
+    assert!((arc.end_angle - std::f64::consts::PI).abs() < 0.001);
+}
+
+#[test]
+fn test_arc_draw() {
+    let mut grid = BrailleGrid::new(20, 10);
+    let arc = Arc::new(
+        20.0,
+        20.0,
+        10.0,
+        0.0,
+        std::f64::consts::FRAC_PI_2,
+        Color::CYAN,
+    );
+    arc.draw(&mut grid);
+}
+
+#[test]
+fn test_arc_reverse_direction() {
+    let mut grid = BrailleGrid::new(20, 10);
+    // End angle less than start angle should still work
+    let arc = Arc::new(20.0, 20.0, 10.0, std::f64::consts::PI, 0.0, Color::YELLOW);
+    arc.draw(&mut grid);
+}
+
+#[test]
+fn test_polygon_creation() {
+    let vertices = vec![(0.0, 0.0), (10.0, 0.0), (5.0, 10.0)];
+    let polygon = Polygon::new(vertices.clone(), Color::RED);
+    assert_eq!(polygon.vertices, vertices);
+}
+
+#[test]
+fn test_polygon_regular() {
+    let hex = Polygon::regular(20.0, 20.0, 10.0, 6, Color::BLUE);
+    assert_eq!(hex.vertices.len(), 6);
+}
+
+#[test]
+fn test_polygon_regular_triangle() {
+    let triangle = Polygon::regular(20.0, 20.0, 10.0, 3, Color::GREEN);
+    assert_eq!(triangle.vertices.len(), 3);
+}
+
+#[test]
+fn test_polygon_draw_empty() {
+    let mut grid = BrailleGrid::new(20, 10);
+    let polygon = Polygon::new(vec![], Color::RED);
+    polygon.draw(&mut grid);
+    // Should not crash with empty vertices
+}
+
+#[test]
+fn test_polygon_draw_single_point() {
+    let mut grid = BrailleGrid::new(20, 10);
+    let polygon = Polygon::new(vec![(10.0, 10.0)], Color::RED);
+    polygon.draw(&mut grid);
+    // Should not crash with single point
+}
+
+#[test]
+fn test_filled_polygon_creation() {
+    let vertices = vec![(0.0, 0.0), (10.0, 0.0), (5.0, 10.0)];
+    let polygon = FilledPolygon::new(vertices.clone(), Color::YELLOW);
+    assert_eq!(polygon.vertices, vertices);
+}
+
+#[test]
+fn test_line_creation() {
+    let line = Line::new(0.0, 0.0, 10.0, 10.0, Color::RED);
+    assert_eq!(line.x0, 0.0);
+    assert_eq!(line.y0, 0.0);
+    assert_eq!(line.x1, 10.0);
+    assert_eq!(line.y1, 10.0);
+}
+
+#[test]
+fn test_line_draw() {
+    let mut grid = BrailleGrid::new(20, 10);
+    let line = Line::new(0.0, 0.0, 10.0, 10.0, Color::WHITE);
+    line.draw(&mut grid);
+    // Line should be drawn (visual verification would require more setup)
+}
+
+#[test]
+fn test_circle_creation() {
+    let circle = Circle::new(20.0, 20.0, 10.0, Color::BLUE);
+    assert_eq!(circle.x, 20.0);
+    assert_eq!(circle.y, 20.0);
+    assert_eq!(circle.radius, 10.0);
+}
+
+#[test]
+fn test_filled_circle_creation() {
+    let circle = FilledCircle::new(15.0, 15.0, 8.0, Color::GREEN);
+    assert_eq!(circle.x, 15.0);
+    assert_eq!(circle.y, 15.0);
+    assert_eq!(circle.radius, 8.0);
+}
+
+#[test]
+fn test_rectangle_creation() {
+    let rect = Rectangle::new(5.0, 5.0, 20.0, 10.0, Color::MAGENTA);
+    assert_eq!(rect.x, 5.0);
+    assert_eq!(rect.y, 5.0);
+    assert_eq!(rect.width, 20.0);
+    assert_eq!(rect.height, 10.0);
+}
+
+#[test]
+fn test_filled_rectangle_creation() {
+    let rect = FilledRectangle::new(0.0, 0.0, 10.0, 5.0, Color::RED);
+    assert_eq!(rect.x, 0.0);
+    assert_eq!(rect.y, 0.0);
+    assert_eq!(rect.width, 10.0);
+    assert_eq!(rect.height, 5.0);
+}
+
+#[test]
+fn test_points_creation() {
+    let coords = vec![(0.0, 0.0), (5.0, 5.0), (10.0, 0.0)];
+    let points = Points::new(coords.clone(), Color::CYAN);
+    assert_eq!(points.coords, coords);
+}
+
+#[test]
+fn test_points_from_slices() {
+    let xs = [0.0, 5.0, 10.0, 15.0];
+    let ys = [0.0, 5.0, 0.0, 5.0];
+    let points = Points::from_slices(&xs, &ys, Color::WHITE);
+    assert_eq!(points.coords.len(), 4);
+}
+
+#[test]
+fn test_points_draw() {
+    let mut grid = BrailleGrid::new(20, 10);
+    let points = Points::new(vec![(0.0, 0.0), (20.0, 40.0), (40.0, 0.0)], Color::MAGENTA);
+    points.draw(&mut grid);
 }

@@ -1,11 +1,10 @@
 //! Layer tests
-//!
-//! Construction, visibility and opacity clamping are covered in
-//! tests/canvas/layer.rs, compositing in braille/grid_impl.rs; these cover
-//! drawing on a layer.
 
 use revue::style::Color;
-use revue::widget::{Circle, Layer, Line};
+use revue::widget::BrailleGrid;
+use revue::widget::Circle;
+use revue::widget::Layer;
+use revue::widget::Line;
 
 const EMPTY: char = '\u{2800}';
 
@@ -26,6 +25,10 @@ fn test_layer_set_dot() {
     layer.set(10, 5, Color::BLUE);
     assert_eq!(layer.grid().get_char(5, 1), '\u{2802}');
     assert_eq!(layer.colors()[40 + 5], Some(Color::BLUE));
+
+    let mut layer = Layer::new(40, 20);
+    layer.set(10, 10, Color::BLUE);
+    // Dot should be set
 }
 
 #[test]
@@ -75,6 +78,11 @@ fn test_layer_clear() {
     layer.clear();
     assert!(layer.cells().iter().all(|&c| c == 0));
     assert!(layer.colors().iter().all(|c| c.is_none()));
+
+    let mut layer = Layer::new(40, 20);
+    layer.draw(&Circle::new(20.0, 20.0, 10.0, Color::RED));
+    layer.clear();
+    // Layer should be cleared
 }
 
 #[test]
@@ -87,6 +95,10 @@ fn test_layer_draw_shape() {
         assert_eq!(layer.grid().get_char(cx, 0), '\u{2809}', "cell {cx}");
     }
     assert_eq!(layer.grid().get_char(4, 0), EMPTY);
+
+    let mut layer = Layer::new(40, 20);
+    layer.draw(&Circle::new(20.0, 20.0, 10.0, Color::RED));
+    // Shape should be drawn on the layer
 }
 
 #[test]
@@ -98,4 +110,81 @@ fn test_layer_grid_mut() {
     // Changes made through grid_mut are the layer's
     assert_eq!(layer.cells()[0], 0x08);
     assert_eq!(layer.colors()[0], Some(Color::CYAN));
+}
+
+#[test]
+fn test_layer_creation() {
+    let layer = Layer::new(40, 20);
+    assert_eq!(layer.width(), 80); // 40 * 2
+    assert_eq!(layer.height(), 80); // 20 * 4
+    assert!(layer.is_visible());
+    assert!((layer.opacity() - 1.0).abs() < 0.001);
+}
+
+#[test]
+fn test_layer_visibility() {
+    let mut layer = Layer::new(40, 20);
+    assert!(layer.is_visible());
+
+    layer.set_visible(false);
+    assert!(!layer.is_visible());
+
+    layer.set_visible(true);
+    assert!(layer.is_visible());
+}
+
+#[test]
+fn test_layer_opacity() {
+    let mut layer = Layer::new(40, 20);
+    assert!((layer.opacity() - 1.0).abs() < 0.001);
+
+    layer.set_opacity(0.5);
+    assert!((layer.opacity() - 0.5).abs() < 0.001);
+
+    layer.set_opacity(0.0);
+    assert!((layer.opacity() - 0.0).abs() < 0.001);
+
+    // Test clamping
+    layer.set_opacity(2.0);
+    assert!((layer.opacity() - 1.0).abs() < 0.001);
+
+    layer.set_opacity(-1.0);
+    assert!((layer.opacity() - 0.0).abs() < 0.001);
+}
+
+#[test]
+fn test_layer_composite() {
+    let mut grid = BrailleGrid::new(40, 20);
+    let mut layer = Layer::new(40, 20);
+
+    layer.draw(&Circle::new(20.0, 20.0, 10.0, Color::RED));
+    grid.composite_layer(&layer);
+    // Layer should be composited onto grid
+}
+
+#[test]
+fn test_layer_composite_invisible() {
+    let mut grid = BrailleGrid::new(40, 20);
+    let mut layer = Layer::new(40, 20);
+
+    layer.draw(&Circle::new(20.0, 20.0, 10.0, Color::RED));
+    layer.set_visible(false);
+
+    // Pre-draw something on the grid
+    grid.draw(&Line::new(0.0, 0.0, 10.0, 10.0, Color::WHITE));
+
+    grid.composite_layer(&layer);
+    // Invisible layer should not affect grid
+}
+
+#[test]
+fn test_layer_composite_zero_opacity() {
+    let mut grid = BrailleGrid::new(40, 20);
+    let mut layer = Layer::new(40, 20);
+
+    layer.draw(&Circle::new(20.0, 20.0, 10.0, Color::RED));
+    layer.set_opacity(0.0);
+
+    grid.composite_layer(&layer);
+    // Zero opacity layer should not affect grid
 }

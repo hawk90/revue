@@ -1,7 +1,7 @@
 //! Code editor unit tests not covered by the integration tests
 //!
 //! The rest of the editor is tested through the public API in
-//! tests/code_editor/ and tests/widget/code_editor_tests.rs.
+//! tests/widget/developer/code_editor/.
 
 use super::*;
 

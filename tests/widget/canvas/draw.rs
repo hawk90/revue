@@ -1,12 +1,12 @@
 //! DrawContext tests
-//!
-//! The basic primitives (dimensions, set, hline, vline, rect, fill_rect, bar,
-//! text, diagonal line, a half-cell partial bar, point) are covered in
-//! tests/canvas/integration.rs; these cover their edge cases.
 
 use revue::layout::Rect;
-use revue::render::{Buffer, Cell, Modifier};
+use revue::render::Buffer;
+use revue::render::Cell;
+use revue::render::Modifier;
 use revue::style::Color;
+use revue::widget::canvas;
+use revue::widget::traits::RenderContext;
 use revue::widget::DrawContext;
 
 fn sym(buffer: &Buffer, x: u16, y: u16) -> char {
@@ -276,6 +276,17 @@ fn test_draw_context_text_bold() {
     let cell = buffer.get(2, 1).unwrap();
     assert!(cell.modifier.contains(Modifier::BOLD));
     assert_eq!(cell.fg, Some(Color::WHITE));
+
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        ctx.text_bold(0, 0, "Bold Text", Some(Color::WHITE));
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
 }
 
 #[test]
@@ -384,4 +395,52 @@ fn test_draw_context_line_clipped() {
     ctx.line(0, 0, 9, 9, '*', None);
     assert_eq!(sym(&buffer, 4, 4), '*');
     assert_eq!(sym(&buffer, 5, 5), ' ');
+}
+
+#[test]
+fn test_draw_context_dimensions() {
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        // Just verify we can call these methods without panicking
+        let w = ctx.width();
+        let h = ctx.height();
+        assert!(w > 0);
+        assert!(h > 0);
+    });
+
+    let mut buffer = Buffer::new(30, 15);
+    let area = Rect::new(0, 0, 30, 15);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
+}
+
+#[test]
+fn test_draw_context_area() {
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        let area = ctx.area();
+        assert!(area.width > 0);
+        assert!(area.height > 0);
+    });
+
+    let mut buffer = Buffer::new(30, 15);
+    let area = Rect::new(5, 5, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
+}
+
+#[test]
+fn test_draw_context_styled() {
+    use revue::widget::View;
+
+    let c = canvas(|ctx| {
+        ctx.set_styled(5, 5, 'X', Some(Color::RED), Some(Color::BLUE));
+    });
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut render_ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut render_ctx);
 }

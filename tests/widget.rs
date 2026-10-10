@@ -1,17 +1,11 @@
 //! Widget integration tests - split into modules by widget type
 
-#[path = "widget/aistream/mod.rs"]
-mod aistream;
 #[path = "widget/breadcrumb/mod.rs"]
 mod breadcrumb;
 #[path = "widget/callout/mod.rs"]
 mod callout;
 #[path = "widget/canvas/mod.rs"]
 mod canvas;
-#[path = "widget/code_editor/mod.rs"]
-mod code_editor;
-#[path = "widget/code_editor_tests.rs"]
-mod code_editor_tests;
 #[path = "widget/command_palette.rs"]
 mod command_palette;
 #[path = "widget/command_palette_unit/mod.rs"]
@@ -24,9 +18,6 @@ mod datetime_picker;
 mod debug_overlay;
 #[path = "widget/developer/mod.rs"]
 mod developer;
-#[cfg(feature = "diff")]
-#[path = "widget/diff.rs"]
-mod diff;
 #[path = "widget/display/mod.rs"]
 mod display;
 #[path = "widget/dropzone/mod.rs"]
@@ -39,8 +30,6 @@ mod feedback;
 mod filepicker;
 #[path = "widget/form/mod.rs"]
 mod form;
-#[path = "widget/httpclient/mod.rs"]
-mod httpclient;
 #[cfg(feature = "image")]
 #[path = "widget/image.rs"]
 mod image;
@@ -66,9 +55,6 @@ mod multi_select;
 mod option_list;
 #[path = "widget/pagination.rs"]
 mod pagination;
-#[cfg(feature = "sysinfo")]
-#[path = "widget/procmon.rs"]
-mod procmon;
 #[cfg(feature = "qrcode")]
 #[path = "widget/qrcode.rs"]
 mod qrcode;
@@ -83,23 +69,12 @@ mod sortable;
 mod streamline;
 #[path = "widget/syntax.rs"]
 mod syntax;
-#[path = "widget/terminal.rs"]
-mod terminal;
-#[path = "widget/terminal_ansi.rs"]
-mod terminal_ansi;
-#[path = "widget/terminal_types.rs"]
-mod terminal_types;
 #[path = "widget/theme_picker.rs"]
 mod theme_picker;
 #[path = "widget/transition/mod.rs"]
 mod transition;
-#[cfg(feature = "syntax-highlighting")]
-#[path = "widget/tree_sitter_highlight.rs"]
-mod tree_sitter_highlight;
 #[path = "widget/validation.rs"]
 mod validation;
-#[path = "widget/vim.rs"]
-mod vim;
 #[path = "widget/zen.rs"]
 mod zen;
 

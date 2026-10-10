@@ -1,6 +1,4 @@
 //! Code editor bracket matching
-//!
-//! Public API tests extracted to tests/widget/code_editor/bracket.rs
 
 use super::types::BracketMatch;
 

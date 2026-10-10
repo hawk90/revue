@@ -1,11 +1,6 @@
 //! Edge Cases tests
 
-#![allow(unused_imports)]
-
-use revue::layout::Rect;
-use revue::render::Buffer;
-use revue::widget::traits::{RenderContext, View};
-use revue::widget::{code_editor, CodeEditor, EditorConfig, IndentStyle};
+use revue::widget::CodeEditor;
 
 #[test]
 fn test_empty_content() {

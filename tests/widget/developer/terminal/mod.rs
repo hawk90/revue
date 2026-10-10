@@ -2,6 +2,9 @@
 //!
 //! Tests for ANSI parsing, SGR sequences, colors, and terminal behavior.
 
+mod ansi;
+mod types;
+
 use revue::event::{Key, KeyEvent};
 use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};

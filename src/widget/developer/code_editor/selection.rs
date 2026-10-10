@@ -1,6 +1,4 @@
 //! Code editor selection
-//!
-//! Public API tests extracted to tests/widget/code_editor/selection.rs
 
 use super::editing::byte_at;
 

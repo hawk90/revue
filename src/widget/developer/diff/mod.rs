@@ -221,6 +221,3 @@ pub fn diff_viewer() -> DiffViewer {
 pub fn diff(left: impl Into<String>, right: impl Into<String>) -> DiffViewer {
     DiffViewer::new().compare(left, right)
 }
-
-// # KEEP HERE - tests were extracted to tests/widget/developer/diff.rs
-// All tests use public APIs only, so they were extracted

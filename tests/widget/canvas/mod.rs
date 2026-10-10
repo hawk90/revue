@@ -1,10 +1,9 @@
-//! Canvas widget tests
-//!
-//! tests/canvas.rs is the main canvas target; these cover what it does not.
+//! Tests for `revue::widget::canvas`, laid out like `src/widget/canvas/`
 
-pub mod braille;
-pub mod clip;
-pub mod draw;
-pub mod layer;
-pub mod transform;
-pub mod widget;
+mod braille;
+mod clip;
+mod draw;
+mod integration;
+mod layer;
+mod transform;
+mod widget;
