@@ -1312,8 +1312,8 @@ items:
       - panes collapse and expand from the app (state.toggle)
     evidence:
       - src/widget/layout/split_view/mod.rs::split_view
-      - tests/split_view.rs::children_are_in_the_dom_and_styled
-      - tests/split_view.rs::dragging_a_divider_moves_it_to_the_pointer
+      - tests/widget/layout/split_view.rs::children_are_in_the_dom_and_styled
+      - tests/widget/layout/split_view.rs::dragging_a_divider_moves_it_to_the_pointer
     source:
       - 'issue #836 (dock rebuild, step 1)'
     notes: State (sizes, collapsed panes, the divider being moved) lives in a SplitState the app keeps; the view is rebuilt from it each frame. Tab view and dock() are steps 2 and 3 of #836.
@@ -1330,9 +1330,9 @@ items:
       - the bar shows with two tabs or more by default; TabBar::Always / TabBar::Never override it
     evidence:
       - src/widget/layout/tab_view/mod.rs::tab_view
-      - tests/tab_view.rs::only_the_selected_tab_is_in_the_dom
-      - tests/tab_view.rs::clicking_a_label_selects_its_tab
-      - tests/tab_view.rs::the_bar_can_always_show
+      - tests/widget/layout/tab_view.rs::only_the_selected_tab_is_in_the_dom
+      - tests/widget/layout/tab_view.rs::clicking_a_label_selects_its_tab
+      - tests/widget/layout/tab_view.rs::the_bar_can_always_show
     source:
       - 'issue #836 (dock rebuild, step 2)'
     notes: The selection lives in a TabState the app keeps, like SplitState (WID-045). dock() is step 3 of #836.
@@ -1349,9 +1349,9 @@ items:
       - sits in any container (Stack, Border); the state is a shared handle, not borrowed
     evidence:
       - src/widget/layout/dock.rs::dock
-      - tests/dock.rs::dividers_drag_in_both_directions
-      - tests/dock.rs::a_stylesheet_reaches_a_panel
-      - tests/dock.rs::a_dock_sits_in_containers_and_its_state_still_takes_the_drag
+      - tests/widget/layout/dock.rs::dividers_drag_in_both_directions
+      - tests/widget/layout/dock.rs::a_stylesheet_reaches_a_panel
+      - tests/widget/layout/dock.rs::a_dock_sits_in_containers_and_its_state_still_takes_the_drag
       - examples/ide.rs
     source:
       - 'issue #193 (IDE-style docking), issue #836 (steps 3 and 4)'
@@ -1600,7 +1600,7 @@ items:
     evidence:
       - src/widget/traits/render_context/edit_line.rs
       - tests/wide_char_placement.rs
-      - tests/border_title_width.rs
+      - tests/widget/layout/border.rs::wide_title_truncates_by_columns
       - tests/widget/input/input_widgets/wide_chars.rs
       - tests/code_editor_wide_chars.rs
       - tests/text_fields_wide_chars.rs

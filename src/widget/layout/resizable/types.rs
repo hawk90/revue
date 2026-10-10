@@ -156,5 +156,3 @@ pub enum ResizeStyle {
     /// Dot indicators at corners
     Dots,
 }
-
-// All tests extracted to tests/widget/layout/resizable_types.rs

@@ -1,8 +1,16 @@
-//! Layout widget tests
+//! Tests for `revue::widget::layout`, laid out like `src/widget/layout/`
 
+mod accordion;
 mod border;
+mod card;
+mod collapsible;
+mod dock;
 mod grid;
+mod resizable;
+mod screen;
+mod scroll;
 mod sidebar;
-mod sidebar_helpers;
-mod sidebar_render;
-mod sidebar_types;
+mod split_view;
+mod splitter;
+mod tab_view;
+mod tabs;
