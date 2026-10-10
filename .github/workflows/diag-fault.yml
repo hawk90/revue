@@ -1,0 +1,35 @@
+# TEMPORARY: reproduces #923 on Windows; removed before merge.
+name: diag-fault
+on: pull_request
+jobs:
+  diag:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+      - uses: taiki-e/install-action@5f21b548deaf7778840b17f063ecb2721b5ffdeb # cargo-nextest
+      - run: nproc; echo "RUST_BACKTRACE=$RUST_BACKTRACE"
+      - run: cargo nextest run --no-run --all-features --test fault_injection --test event_sequences
+      - name: A overlap, backtrace as CI
+        continue-on-error: true
+        run: |
+          mv .config/nextest.toml nextest.off
+          for i in 1 2; do cargo nextest run --all-features --test fault_injection --test event_sequences --no-fail-fast 2>&1 | grep -E "PASS|FAIL|failing|slowest" ; done
+          mv nextest.off .config/nextest.toml
+      - name: B overlap, RUST_BACKTRACE=0
+        continue-on-error: true
+        env:
+          RUST_BACKTRACE: "0"
+        run: |
+          mv .config/nextest.toml nextest.off
+          for i in 1 2; do cargo nextest run --all-features --test fault_injection --test event_sequences --no-fail-fast 2>&1 | grep -E "PASS|FAIL|failing|slowest" ; done
+          mv nextest.off .config/nextest.toml
+      - name: C with the override
+        run: |
+          for i in 1 2; do cargo nextest run --all-features --test fault_injection --test event_sequences --no-fail-fast 2>&1 | grep -E "PASS|FAIL|failing|slowest|Summary" ; test ${PIPESTATUS[0]} -eq 0 || exit 1; done

@@ -1,0 +1,8 @@
+# The fault-injection layers assert wall-clock limits (a hang is a failure).
+# Next to other CPU-heavy tests - on a 4-core CI runner, the event-sequence
+# suite alone keeps two cores busy for ~20s - their worker threads starve
+# and the limits fail without any bug (#923). Each of these tests takes
+# every test slot, so nothing else runs beside it.
+[[profile.default.overrides]]
+filter = 'binary(fault_injection)'
+threads-required = 'num-test-threads'
