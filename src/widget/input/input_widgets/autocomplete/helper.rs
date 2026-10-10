@@ -4,5 +4,3 @@ use super::core::Autocomplete;
 pub fn autocomplete() -> Autocomplete {
     Autocomplete::new()
 }
-
-// # KEEP HERE - all tests extracted to tests/widget/input/autocomplete_helper_public.rs

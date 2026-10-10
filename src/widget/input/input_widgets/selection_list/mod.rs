@@ -258,5 +258,3 @@ where
 pub fn selection_item(text: impl Into<String>) -> SelectionItem {
     SelectionItem::new(text)
 }
-
-// KEEP HERE: All public API tests extracted to tests/widget/input/selection_list.rs

@@ -161,5 +161,3 @@ impl ColorPalette {
         }
     }
 }
-
-// KEEP HERE: All public API tests extracted to tests/widget/input/color_picker_types.rs

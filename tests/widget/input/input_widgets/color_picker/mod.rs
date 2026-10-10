@@ -1,5 +1,7 @@
 //! Color picker widget tests
 
+mod types;
+
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;

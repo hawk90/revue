@@ -6,34 +6,24 @@ mod accordion;
 mod aistream;
 #[path = "widget/alert.rs"]
 mod alert;
-#[path = "widget/autocomplete/mod.rs"]
-mod autocomplete;
 #[path = "widget/avatar.rs"]
 mod avatar;
 #[path = "widget/badge.rs"]
 mod badge;
 #[path = "widget/breadcrumb/mod.rs"]
 mod breadcrumb;
-#[path = "widget/button.rs"]
-mod button;
 #[path = "widget/callout/mod.rs"]
 mod callout;
 #[path = "widget/canvas/mod.rs"]
 mod canvas;
 #[path = "widget/card.rs"]
 mod card;
-#[path = "widget/checkbox/mod.rs"]
-mod checkbox;
 #[path = "widget/code_editor/mod.rs"]
 mod code_editor;
 #[path = "widget/code_editor_tests.rs"]
 mod code_editor_tests;
 #[path = "widget/collapsible.rs"]
 pub mod collapsible;
-#[path = "widget/color_picker.rs"]
-mod color_picker;
-#[path = "widget/combobox_tests.rs"]
-mod combobox_tests;
 #[path = "widget/command_palette.rs"]
 mod command_palette;
 #[path = "widget/command_palette_unit/mod.rs"]
@@ -110,12 +100,8 @@ mod progress;
 #[cfg(feature = "qrcode")]
 #[path = "widget/qrcode.rs"]
 mod qrcode;
-#[path = "widget/radio.rs"]
-mod radio;
 #[path = "widget/range_picker/mod.rs"]
 mod range_picker;
-#[path = "widget/rating.rs"]
-mod rating;
 #[path = "widget/resizable.rs"]
 mod resizable;
 #[path = "widget/richlog.rs"]
@@ -126,18 +112,10 @@ mod richtext;
 pub mod screen;
 #[path = "widget/scroll.rs"]
 mod scroll;
-#[path = "widget/search_bar.rs"]
-mod search_bar;
-#[path = "widget/select.rs"]
-mod select;
-#[path = "widget/selection_list.rs"]
-mod selection_list;
 #[path = "widget/sidebar_tests.rs"]
 mod sidebar_tests;
 #[path = "widget/skeleton.rs"]
 mod skeleton;
-#[path = "widget/slider/mod.rs"]
-mod slider;
 #[cfg(feature = "markdown")]
 #[path = "widget/slides.rs"]
 mod slides;
@@ -149,12 +127,8 @@ mod spinner;
 mod splitter;
 #[path = "widget/statusbar.rs"]
 mod statusbar;
-#[path = "widget/stepper.rs"]
-mod stepper;
 #[path = "widget/streamline/mod.rs"]
 mod streamline;
-#[path = "widget/switch.rs"]
-mod switch;
 #[path = "widget/syntax.rs"]
 mod syntax;
 #[path = "widget/tabs.rs"]
@@ -182,8 +156,6 @@ mod vim;
 mod zen;
 
 // Shared infrastructure tests
-#[path = "widget/traits/dropdown.rs"]
-mod dropdown_tests;
 #[path = "widget/traits/focus_handlers.rs"]
 mod focus_handlers_tests;
 #[path = "widget/traits/theme.rs"]

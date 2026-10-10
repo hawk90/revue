@@ -553,5 +553,3 @@ pub fn toggle(label: impl Into<String>) -> Switch {
 
 impl_styled_view!(Switch);
 impl_props_builders!(Switch);
-
-// All tests moved to tests/widget/switch.rs

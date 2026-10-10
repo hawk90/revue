@@ -95,5 +95,3 @@ pub struct Input {
     /// view only moves when the cursor would leave it
     pub(super) scroll_x: std::cell::Cell<usize>,
 }
-
-// KEEP HERE: All public API tests extracted to tests/widget/input/input_types.rs

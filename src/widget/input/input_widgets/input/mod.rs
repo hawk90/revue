@@ -6,7 +6,6 @@
 mod editing;
 mod handler;
 mod selection;
-// Public API tests extracted to tests/widget/input/input_tests.rs
 // KEEP HERE - Private implementation tests (accesses private fields: cursor, selection_anchor, clipboard, etc.)
 
 #[cfg(test)]

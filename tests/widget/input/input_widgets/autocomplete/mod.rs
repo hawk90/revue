@@ -1,2 +1,4 @@
 //! Autocomplete widget tests
-pub mod core;
+
+mod core;
+mod unicode;
