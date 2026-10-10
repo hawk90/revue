@@ -107,6 +107,4 @@ impl ScreenReaderBackend {
         self.inner.stop();
     }
 }
-
-// Tests extracted to tests/a11y_backend_core_tests.rs
 // All tests use only public methods from ScreenReaderBackend

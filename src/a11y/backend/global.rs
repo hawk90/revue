@@ -28,6 +28,4 @@ pub fn set_backend(backend: ScreenReaderBackend) -> bool {
 pub fn announce_to_screen_reader(message: impl Into<String>, priority: Priority) {
     get_backend().announce(message.into(), priority);
 }
-
-// Tests extracted to tests/a11y_backend_global_tests.rs
 // All tests use only public functions from a11y::backend
