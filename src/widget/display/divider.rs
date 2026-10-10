@@ -294,5 +294,3 @@ pub fn divider() -> Divider {
 pub fn vdivider() -> Divider {
     Divider::vertical()
 }
-
-// All tests moved to tests/widget/divider.rs

@@ -599,7 +599,7 @@ items:
       - class() for styling
     evidence:
       - src/widget/mod.rs::text
-      - tests/text_tests.rs
+      - tests/widget/display/text.rs
     source:
       - FEATURES.md §4 Widgets / Basic Widgets / Text
   - id: WID-003
@@ -807,7 +807,7 @@ items:
     evidence:
       - src/widget/feedback/menu/helpers.rs::menu_bar
       - src/widget/feedback/menu/types.rs::separator
-      - tests/menu_helpers_tests.rs
+      - tests/widget/feedback/menu.rs
     source:
       - FEATURES.md §4 Widgets / Navigation Widgets / Menu Bar
     notes: Doc menu_separator() does not exist; use MenuItem::separator().
@@ -886,7 +886,7 @@ items:
       - dismissible, icon toggle, custom icon, title
     evidence:
       - src/widget/feedback/alert/mod.rs::alert
-      - tests/alert_tests.rs
+      - tests/widget/feedback/alert.rs
       - examples/alert.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / Alert
@@ -920,7 +920,7 @@ items:
       - src/widget/display/status_indicator/mod.rs::status_indicator
       - src/widget/display/status_indicator/mod.rs::frame
       - tests/widget/display/status_indicator.rs
-      - tests/status_indicator_pulse.rs
+      - tests/widget/display/status_indicator.rs::a_stored_indicator_blinks_as_it_is_ticked
       - examples/status_indicator.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / StatusIndicator
@@ -939,7 +939,7 @@ items:
       - Full/Compact/Minimal variants, custom icon
     evidence:
       - src/widget/display/empty_state/mod.rs::empty_state
-      - tests/widget/empty_state.rs
+      - tests/widget/display/empty_state.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / EmptyState
   - id: WID-023
@@ -1222,7 +1222,7 @@ items:
       - width/height placeholder
     evidence:
       - src/widget/display/skeleton.rs::skeleton
-      - tests/widget/skeleton.rs
+      - tests/widget/display/skeleton.rs
     source:
       - FEATURES.md §Advanced Widgets / Skeleton
   - id: WID-040

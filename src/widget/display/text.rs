@@ -407,13 +407,11 @@ impl Default for Text {
 impl_styled_view!(Text);
 impl_props_builders!(Text);
 
-// Tests moved to tests/widget/display/text.rs
 // Tests below access private fields and must stay inline
 
 #[cfg(test)]
 mod tests {
     // KEEP HERE - These tests access private fields and must stay inline
-    // Public API tests have been extracted to tests/widget/display/text.rs
 
     #[test]
     fn test_text_private_initialization() {

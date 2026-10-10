@@ -282,8 +282,6 @@ pub fn battery(level: f64) -> Gauge {
     gauge
 }
 
-// Most tests moved to tests/widget_tests.rs
-
 #[cfg(test)]
 mod tests {
     use super::*;

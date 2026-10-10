@@ -1,6 +1,4 @@
-//! Tests for Tag widget
-//!
-//! Extracted from src/widget/display/tag.rs
+//! Tag widget tests
 
 use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};

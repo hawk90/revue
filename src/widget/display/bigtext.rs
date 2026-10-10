@@ -321,6 +321,3 @@ pub fn h2(text: impl Into<String>) -> BigText {
 pub fn h3(text: impl Into<String>) -> BigText {
     BigText::h3(text)
 }
-
-// Private tests extracted to tests/widget/display/bigtext.rs
-// Tests using public APIs should be in tests/widget/display/bigtext.rs

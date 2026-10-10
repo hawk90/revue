@@ -2,12 +2,6 @@
 
 #[path = "widget/aistream/mod.rs"]
 mod aistream;
-#[path = "widget/alert.rs"]
-mod alert;
-#[path = "widget/avatar.rs"]
-mod avatar;
-#[path = "widget/badge.rs"]
-mod badge;
 #[path = "widget/breadcrumb/mod.rs"]
 mod breadcrumb;
 #[path = "widget/callout/mod.rs"]
@@ -33,26 +27,18 @@ mod developer;
 #[cfg(feature = "diff")]
 #[path = "widget/diff.rs"]
 mod diff;
-#[path = "widget/digits.rs"]
-mod digits;
 #[path = "widget/display/mod.rs"]
 mod display;
-#[path = "widget/divider.rs"]
-mod divider;
 #[path = "widget/dropzone/mod.rs"]
 mod dropzone;
 #[path = "widget/edge_cases/mod.rs"]
 mod edge_cases;
-#[path = "widget/empty_state.rs"]
-mod empty_state;
 #[path = "widget/feedback/mod.rs"]
 mod feedback;
 #[path = "widget/filepicker/mod.rs"]
 mod filepicker;
 #[path = "widget/form/mod.rs"]
 mod form;
-#[path = "widget/gauge.rs"]
-mod gauge;
 #[path = "widget/httpclient/mod.rs"]
 mod httpclient;
 #[cfg(feature = "image")]
@@ -83,28 +69,16 @@ mod pagination;
 #[cfg(feature = "sysinfo")]
 #[path = "widget/procmon.rs"]
 mod procmon;
-#[path = "widget/progress.rs"]
-mod progress;
 #[cfg(feature = "qrcode")]
 #[path = "widget/qrcode.rs"]
 mod qrcode;
 #[path = "widget/range_picker/mod.rs"]
 mod range_picker;
-#[path = "widget/richlog.rs"]
-mod richlog;
-#[path = "widget/richtext.rs"]
-mod richtext;
-#[path = "widget/skeleton.rs"]
-mod skeleton;
 #[cfg(feature = "markdown")]
 #[path = "widget/slides.rs"]
 mod slides;
 #[path = "widget/sortable/mod.rs"]
 mod sortable;
-#[path = "widget/spinner.rs"]
-mod spinner;
-#[path = "widget/statusbar.rs"]
-mod statusbar;
 #[path = "widget/streamline/mod.rs"]
 mod streamline;
 #[path = "widget/syntax.rs"]
@@ -117,8 +91,6 @@ mod terminal_ansi;
 mod terminal_types;
 #[path = "widget/theme_picker.rs"]
 mod theme_picker;
-#[path = "widget/tooltip.rs"]
-mod tooltip;
 #[path = "widget/transition/mod.rs"]
 mod transition;
 #[cfg(feature = "syntax-highlighting")]
