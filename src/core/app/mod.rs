@@ -141,10 +141,18 @@ use style_sources::StyleSources;
 /// Tick handler callback type
 pub type TickHandler<V> = Box<dyn FnMut(&mut V, Duration) -> bool>;
 
-/// Check if key is a quit key (Ctrl+C only)
+/// Check if `key` is the configured quit key.
+///
+/// The default and any other Ctrl+C binding keep the historical predicate, so
+/// Ctrl+C with an extra Alt or Shift still quits. `None` disables the built-in
+/// key, which leaves the key to the app handler.
 #[inline]
-fn is_quit_key(key: &KeyEvent) -> bool {
-    key.is_ctrl_c()
+fn is_quit_key(quit_key: Option<&KeyEvent>, key: &KeyEvent) -> bool {
+    match quit_key {
+        Some(quit_key) if quit_key.is_ctrl_c() => key.is_ctrl_c(),
+        Some(quit_key) => key == quit_key,
+        None => false,
+    }
 }
 
 /// Is this the key that moves focus?
@@ -227,6 +235,9 @@ pub struct App {
     /// Tab moves `:focus` between focusable nodes (see
     /// [`AppBuilder::tab_navigation`](crate::core::app::AppBuilder::tab_navigation))
     tab_navigation: bool,
+    /// The key that quits the app (see
+    /// [`AppBuilder::quit_key`](crate::core::app::AppBuilder::quit_key))
+    quit_key: Option<KeyEvent>,
     /// Run [`LayoutEngine`] every frame. Off unless something will read its
     /// output - and nothing in the render path does: containers compute their
     /// own geometry. See `docs/refactor/findings-layout.md`.
@@ -268,6 +279,7 @@ impl App {
             needs_dom_rebuild: true,  // Initial render needs DOM root creation
             incremental_dom: false,   // Opt-in until the benches say otherwise
             tab_navigation: false,    // Opt-in: Tab may already be the app's key
+            quit_key: Some(KeyEvent::ctrl(Key::Char('c'))), // Historical default
             layout_engine: false,     // Nothing reads it yet
             plugins,
             devtools_enabled,
@@ -304,6 +316,7 @@ impl App {
             needs_dom_rebuild: true,
             incremental_dom: false,
             tab_navigation: false,
+            quit_key: Some(KeyEvent::ctrl(Key::Char('c'))), // Historical default
             layout_engine: false,
             plugins,
             devtools_enabled,
@@ -320,6 +333,11 @@ impl App {
     /// Let Tab and Shift+Tab move focus.
     pub(crate) fn set_tab_navigation(&mut self, enabled: bool) {
         self.tab_navigation = enabled;
+    }
+
+    /// Set the key that quits the app, or `None` to disable it.
+    pub(crate) fn set_quit_key(&mut self, key: Option<KeyEvent>) {
+        self.quit_key = key;
     }
 
     /// Compute [`LayoutEngine`] output every frame.
@@ -580,22 +598,32 @@ mod tests {
 
     #[test]
     fn test_is_quit_key() {
+        let quit_key = Some(KeyEvent::ctrl(Key::Char('c')));
         let q_key = KeyEvent::new(Key::Char('q'));
         let ctrl_c = KeyEvent::ctrl(Key::Char('c'));
         let other_key = KeyEvent::new(Key::Char('a'));
-        assert!(!is_quit_key(&q_key)); // 'q' alone is not a quit key
-        assert!(is_quit_key(&ctrl_c));
-        assert!(!is_quit_key(&other_key));
+        assert!(!is_quit_key(quit_key.as_ref(), &q_key)); // 'q' alone is not a quit key
+        assert!(is_quit_key(quit_key.as_ref(), &ctrl_c));
+        assert!(!is_quit_key(quit_key.as_ref(), &other_key));
     }
 
     #[test]
     fn test_is_quit_key_other_keys() {
+        let quit_key = Some(KeyEvent::ctrl(Key::Char('c')));
         let escape = KeyEvent::new(Key::Escape);
         let enter = KeyEvent::new(Key::Enter);
         let ctrl_d = KeyEvent::ctrl(Key::Char('d'));
-        assert!(!is_quit_key(&escape));
-        assert!(!is_quit_key(&enter));
-        assert!(!is_quit_key(&ctrl_d));
+        assert!(!is_quit_key(quit_key.as_ref(), &escape));
+        assert!(!is_quit_key(quit_key.as_ref(), &enter));
+        assert!(!is_quit_key(quit_key.as_ref(), &ctrl_d));
+    }
+
+    #[test]
+    fn test_is_quit_key_is_configurable() {
+        let alt_x = KeyEvent::alt(Key::Char('x'));
+        assert!(is_quit_key(Some(&alt_x), &alt_x));
+        assert!(!is_quit_key(Some(&alt_x), &KeyEvent::new(Key::Char('x'))));
+        assert!(!is_quit_key(None, &KeyEvent::ctrl(Key::Char('c'))));
     }
 
     #[test]

@@ -169,7 +169,7 @@ impl App {
         let mut should_draw = handler(&event, view, self);
 
         match event {
-            Event::Key(key) if is_quit_key(&key) => {
+            Event::Key(key) if is_quit_key(self.quit_key.as_ref(), &key) => {
                 self.quit();
                 return false;
             }
