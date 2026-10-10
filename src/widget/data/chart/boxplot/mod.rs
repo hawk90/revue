@@ -14,7 +14,6 @@ mod group;
 mod render;
 mod types;
 
-// Public API tests extracted to tests/widget/data/chart_boxplot.rs
 // KEEP HERE - Render tests require access to private RenderContext
 #[cfg(test)]
 mod tests {

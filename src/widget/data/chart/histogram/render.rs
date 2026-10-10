@@ -402,7 +402,6 @@ impl View for Histogram {
     }
 }
 
-// Public API tests extracted to tests/widget/data/chart_histogram.rs
 // KEEP HERE - Render tests require access to private RenderContext
 #[cfg(test)]
 mod tests {

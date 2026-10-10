@@ -1,6 +1,6 @@
 //! Log viewer unit tests not covered by the integration tests
 //!
-//! Everything else lives in tests/widget/log_viewer_tests.rs and tests/log_viewer/.
+//! Everything else lives in tests/widget/data/log_viewer/.
 
 use super::*;
 

@@ -79,5 +79,3 @@ impl TreeNode {
         Self::new(label)
     }
 }
-
-// Tests moved to tests/widget/data/tree_types.rs

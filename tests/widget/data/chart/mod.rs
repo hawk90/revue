@@ -8,16 +8,17 @@ use revue::widget::View;
 mod barchart;
 mod boxplot;
 mod candlechart;
+mod chart_common;
 mod chart_render;
 mod chart_stats;
-mod chart_types;
-mod chart_widget;
-mod color_scheme;
 mod heatmap;
+mod helper;
 mod histogram;
 mod piechart;
 mod scatterchart;
 mod sparkline;
+mod timeseries;
+mod types;
 mod waveline;
 
 /// Render `view` into a fresh `width` x `height` buffer.

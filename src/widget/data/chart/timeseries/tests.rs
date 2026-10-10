@@ -1,6 +1,6 @@
 //! Time series unit tests that need private state
 //!
-//! The live tests in tests/widget/timeseries_tests.rs cover these builders only
+//! The live tests in tests/widget/data/chart/timeseries.rs cover these builders only
 //! through Debug output or a render that asserts nothing, which cannot tell
 //! whether the value was stored. These read the fields directly.
 

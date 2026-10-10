@@ -42,5 +42,3 @@ pub fn line_number_width(show_line_numbers: bool, total_lines: usize) -> u16 {
         0
     }
 }
-
-// Tests moved to tests/widget/data/json_viewer_helpers.rs

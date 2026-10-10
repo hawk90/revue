@@ -50,6 +50,3 @@ impl BoxGroup {
             .or_else(|| BoxStats::from_data(&self.data, whisker_style))
     }
 }
-
-// Tests extracted to tests/widget/data/chart_boxplot_group.rs
-// Tests only use public APIs
