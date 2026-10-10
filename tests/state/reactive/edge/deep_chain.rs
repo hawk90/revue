@@ -1,10 +1,6 @@
 //! Deep Dependency Chain tests
 
-#![allow(unused_imports)]
-
 use revue::reactive::*;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
 
 #[test]
 fn test_deep_signal_chain() {

@@ -1,4 +1,4 @@
-//! Tests for BiDi text handling (helpers.rs and types.rs)
+//! Tests for BiDi text handling
 
 use revue::text::{
     contains_rtl, detect_direction, is_rtl_char, mirror_char, reverse_graphemes, BidiClass,
