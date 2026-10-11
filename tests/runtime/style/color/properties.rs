@@ -1,10 +1,6 @@
 //! Color Property tests
 
-#![allow(unused_imports)]
-
 use proptest::prelude::*;
-use revue::layout::Rect;
-use revue::reactive::signal;
 use revue::style::Color;
 
 proptest! {

@@ -3,6 +3,7 @@
 mod css_layout;
 mod engine;
 mod flex;
+mod rect;
 mod responsive;
 mod tree;
 

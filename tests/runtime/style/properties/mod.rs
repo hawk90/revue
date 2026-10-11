@@ -1,5 +1,7 @@
 //! Properties tests
 
+mod spacing;
+
 use revue::style::{Color, Display, FlexDirection, Size, Spacing, Style};
 
 #[test]

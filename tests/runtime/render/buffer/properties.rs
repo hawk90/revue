@@ -1,7 +1,5 @@
 //! Buffer Operation Property tests
 
-#![allow(unused_imports)]
-
 use proptest::prelude::*;
 use revue::render::{Buffer, Cell};
 use revue::style::Color;

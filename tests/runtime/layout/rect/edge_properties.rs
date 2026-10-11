@@ -1,11 +1,7 @@
 //! Layout Edge Case Property tests
 
-#![allow(unused_imports)]
-
 use proptest::prelude::*;
 use revue::layout::Rect;
-use revue::reactive::signal;
-use revue::style::Color;
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(1000))]

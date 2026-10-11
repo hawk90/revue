@@ -1,5 +1,7 @@
 //! Signal tests
 
+mod properties;
+
 use revue::reactive::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;

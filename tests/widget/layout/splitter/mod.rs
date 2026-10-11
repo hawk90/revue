@@ -1,5 +1,6 @@
 //! Splitter widget tests
 
+mod boundary;
 mod drag;
 mod render;
 

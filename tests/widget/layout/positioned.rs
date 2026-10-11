@@ -92,3 +92,47 @@ mod float_inputs {
         pos.render(&mut ctx);
     }
 }
+
+mod boundary {
+    //! Zero, maximum and out-of-range coordinates and percents.
+
+    use revue::widget::{Positioned, Text};
+
+    #[test]
+    fn test_positioned_with_negative_coords() {
+        // Should accept negative coords
+        let _positioned = Positioned::new(Text::new("Test")).x(-10).y(-5);
+
+        // Positioned was created with negative coords
+    }
+
+    #[test]
+    fn test_positioned_at_max_coords() {
+        // Should accept max coords
+        let _positioned = Positioned::new(Text::new("Test"))
+            .x(u16::MAX as i16)
+            .y(u16::MAX as i16);
+
+        // Positioned was created with max coords
+    }
+
+    #[test]
+    fn test_positioned_percent_zero() {
+        // Should accept zero percent
+        let _positioned = Positioned::new(Text::new("Test"))
+            .percent_x(0.0)
+            .percent_y(0.0);
+
+        // Positioned was created with zero percent
+    }
+
+    #[test]
+    fn test_positioned_percent_hundred() {
+        // Should accept 100% percent
+        let _positioned = Positioned::new(Text::new("Test"))
+            .percent_x(100.0)
+            .percent_y(100.0);
+
+        // Positioned was created with 100% percent
+    }
+}

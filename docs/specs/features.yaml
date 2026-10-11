@@ -599,7 +599,7 @@ items:
       - class() for styling
     evidence:
       - src/widget/mod.rs::text
-      - tests/widget/display/text.rs
+      - tests/widget/display/text/mod.rs
     source:
       - FEATURES.md §4 Widgets / Basic Widgets / Text
   - id: WID-003

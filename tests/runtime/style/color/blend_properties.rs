@@ -1,23 +1,12 @@
-//! CSS Parsing Property tests
-
-#![allow(unused_imports)]
+//! Color blending, lightening and darkening property tests
 
 use proptest::prelude::*;
-use revue::style::{Color, Size};
+use revue::style::Color;
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
     /// Test that unit parsing handles edge cases
-    #[test]
-    fn test_parse_unit_edge_cases(value in 0u32..10000u32) {
-        // Test that pixel values are handled correctly
-        let _size = Size::Fixed(value as u16);
-
-        // Test that we don't panic on large values
-        let clamped = value.min(u16::MAX as u32) as u16;
-        let _size2 = Size::Fixed(clamped);
-    }
 
     /// Test that color blending is commutative at 0.5
     #[test]

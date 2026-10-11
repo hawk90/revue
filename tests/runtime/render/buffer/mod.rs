@@ -1,5 +1,8 @@
 //! Buffer tests
 
+mod boundary;
+mod properties;
+
 use revue::layout::Rect;
 use revue::render::{Buffer, BufferError, Cell, Modifier};
 use revue::style::Color;

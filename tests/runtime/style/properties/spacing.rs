@@ -1,7 +1,5 @@
 //! Spacing Property tests
 
-#![allow(unused_imports)]
-
 use proptest::prelude::*;
 use revue::style::Spacing;
 

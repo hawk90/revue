@@ -1,5 +1,6 @@
 //! Stack layout widget tests (vstack, hstack)
 
+mod boundary;
 mod content_sized;
 
 mod snapshots {

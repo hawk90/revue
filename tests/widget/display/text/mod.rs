@@ -1,5 +1,7 @@
 //! Text widget tests
 
+mod boundary;
+
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::render::Modifier;

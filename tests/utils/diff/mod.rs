@@ -1,5 +1,7 @@
 //! Integration tests for diff utilities
 
+mod properties;
+
 use revue::utils::diff::*;
 
 #[test]

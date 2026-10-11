@@ -2,6 +2,7 @@
 //!
 //! Complements the in-source tests in src/widget/traits/render_context/tests.rs.
 
+mod boundary;
 mod clip;
 mod css;
 mod focus;

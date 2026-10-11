@@ -1,5 +1,8 @@
 //! Integration tests for Color and related style APIs
 
+mod blend_properties;
+mod properties;
+
 use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::utils::color::{
