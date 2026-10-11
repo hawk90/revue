@@ -14,7 +14,7 @@ Shift+→ 뒤에 Backspace, 접힌 패널, 커서가 글 끝을 넘어가기 같
 
 1. **그 단계가 패닉하지 않는다.**
 2. **지금 크기로 그려도 패닉하지 않고 영역 밖에 쓰지 않는다.** 위젯 매트릭스의 센티널
-   검사(`tests/matrix/sentinel.rs`)를 그대로 쓴다.
+   검사(`tests/widget/catalog/matrix/sentinel.rs`)를 그대로 쓴다.
 3. **위젯의 불변식이 지켜진다.** 공개 getter로 값싸게 볼 수 있는 것만 본다. 선택
    인덱스가 항목 안에 있다(비면 0이나 `None`), 커서가 글 안에 있다, 스크롤 offset이
    최댓값 이하다, 슬라이더 값이 범위 안이다, 날짜가 실제 날짜다 등. 불변식은 카탈로그
@@ -22,7 +22,7 @@ Shift+→ 뒤에 Backspace, 접힌 패널, 커서가 글 끝을 넘어가기 같
 
 ## 무엇을 덮나
 
-카탈로그(`tests/sequences/catalog.rs`)는 **위젯 55개, 설정 60개**를 갖는다. 같은
+카탈로그(`tests/widget/catalog/sequences/catalog.rs`)는 **위젯 55개, 설정 60개**를 갖는다. 같은
 위젯을 다른 설정으로 두 번 넣은 것이 있다(`List`와 `List(empty)`,
 `Combobox`와 `Combobox(multi)`, `MaskedInput`과 `MaskedInput(pin)`,
 `DateTimePicker`와 `DateTimePicker(range)`, `RangePicker`와 `RangePicker(order)`).
@@ -62,8 +62,8 @@ Shift+→ 뒤에 Backspace, 접힌 패널, 커서가 글 끝을 넘어가기 같
 
 | 층 | 파일 | 대상 | 단계 비중(키:변경:크기:마우스) | 위젯당 시퀀스 |
 |---|---|---|---|---|
-| 2a 키 | `tests/sequences/keys.rs` | 설정 60개 전부 | 12 : 2 : 2 : 0 | 512 |
-| 2b 마우스 | `tests/sequences/mouse.rs` | 마우스 핸들러가 있는 설정 9개 | 2 : 1 : 2 : 10 | 512 |
+| 2a 키 | `tests/widget/catalog/sequences/keys.rs` | 설정 60개 전부 | 12 : 2 : 2 : 0 | 512 |
+| 2b 마우스 | `tests/widget/catalog/sequences/mouse.rs` | 마우스 핸들러가 있는 설정 9개 | 2 : 1 : 2 : 10 | 512 |
 
 합계 약 35,000 시퀀스(단계로는 100만 개 남짓)이고, 디버그 빌드에서 타깃 전체가 약
 5~8초에 끝난다(위젯마다 스레드 하나, 두 층이 병렬). 기본 기능과
@@ -95,7 +95,7 @@ CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다.
 
 ## 래칫 규칙
 
-알려진 실패는 `tests/sequences/known_failures.rs`의 `KNOWN` 한 곳에 있다. 항목은
+알려진 실패는 `tests/widget/catalog/sequences/known_failures.rs`의 `KNOWN` 한 곳에 있다. 항목은
 (층, 위젯 설정, **줄인 최소 시퀀스**, 원인 한 줄)이다. 시퀀스는 보고서가 찍는 그대로의
 문자열이다. 단계는 공백으로 잇고, 키는 `Down`·`'한'`·`Ctrl+End`, 변경은
 `<clear>`, 크기는 `[5x2]`, 마우스는 `Down(Left)@(start,mid)`로 적는다.

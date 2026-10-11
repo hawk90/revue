@@ -2,7 +2,7 @@
 //! quietly, and rendering into a sentinel-filled buffer to catch writes
 //! outside the area.
 //!
-//! Self-contained on purpose: `tests/event_sequences.rs` includes this file
+//! Self-contained on purpose: `tests/widget/catalog/sequences/mod.rs` includes this file
 //! with `#[path]`, so it must not depend on the rest of the matrix.
 
 use std::cell::{Cell as StdCell, RefCell};

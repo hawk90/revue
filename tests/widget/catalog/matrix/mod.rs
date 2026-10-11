@@ -1,3 +1,16 @@
+//! The widget matrix: every public widget rendered across boundary sizes,
+//! edge contents, focus states and render paths, checked for two invariants -
+//! no panic, and nothing written outside the widget's area.
+//!
+//! Three layers, one file each, so a failure names its layer:
+//!
+//! - `matrix/sizes.rs` - boundary areas, one ordinary content;
+//! - `matrix/contents.rs` - edge contents, one ordinary area;
+//! - `matrix/pairwise.rs` - all pairs of {size, content, focus, path}.
+//!
+//! Known failures live in `matrix/known_failures.rs`; the list may only shrink.
+//! See `docs/refactor/findings-widget-matrix.md`.
+//!
 //! Shared machinery for the widget matrix: the inputs (areas, contents,
 //! focus, render paths), the two invariants every case is checked against,
 //! and the known-failures ratchet.
@@ -274,7 +287,7 @@ pub fn ratchet(layer: &str, cases_run: usize, failures: Vec<Failure>) {
     let mut report = String::new();
     if !new.is_empty() {
         report.push_str(&format!(
-            "\n{} NEW failure(s) in layer `{layer}` (fix the widget, or list them in tests/matrix/known_failures.rs):\n\n",
+            "\n{} NEW failure(s) in layer `{layer}` (fix the widget, or list them in tests/widget/catalog/matrix/known_failures.rs):\n\n",
             new.len()
         ));
         report.push_str(&format!(
@@ -309,7 +322,7 @@ pub fn ratchet(layer: &str, cases_run: usize, failures: Vec<Failure>) {
     }
     if !fixed.is_empty() {
         report.push_str(&format!(
-            "\n{} known failure(s) in layer `{layer}` no longer happen - remove them from tests/matrix/known_failures.rs:\n\n",
+            "\n{} known failure(s) in layer `{layer}` no longer happen - remove them from tests/widget/catalog/matrix/known_failures.rs:\n\n",
             fixed.len()
         ));
         for (widget, case, kind) in fixed {

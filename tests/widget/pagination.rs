@@ -679,7 +679,7 @@ fn test_pagination_navigation_sequence() {
     assert_eq!(p.get_current(), 10);
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
 // `<total 0> End` - with no pages, last() moved to page 0 although pages
 // count from 1 and set_total(0) keeps page 1.
 #[test]

@@ -499,7 +499,7 @@ mod tests {
         assert_eq!(s.offset(), 0);
     }
 
-    // Found by tests/event_sequences.rs: the shrunk sequence was
+    // Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
     // `Ctrl+End [80x24]` - scrolled to the bottom of a 10-row viewport, then
     // the viewport grew to 24 rows. The stored offset (40) was drawn as is,
     // leaving blank rows under the content, and Up needed many presses

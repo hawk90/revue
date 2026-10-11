@@ -8,7 +8,7 @@
 //! - Per-frame reconciliation is opt-in via
 //!   [`AppBuilder::incremental_dom`](revue::app::AppBuilder::incremental_dom).
 //!
-//! Companion to `tests/invariants.rs`, which pins the rules that must hold
+//! Companion to `tests/e2e/invariants.rs`, which pins the rules that must hold
 //! regardless of reconciliation.
 
 use revue::dom::{DomId, WidgetKey};
@@ -148,7 +148,7 @@ fn harness() -> PipelineHarness {
 // ---------------------------------------------------------------------------
 
 /// The positive contract that `keyless_children_are_identified_by_position_today`
-/// in `tests/invariants.rs` is the negative of.
+/// in `tests/e2e/invariants.rs` is the negative of.
 ///
 /// With no key, prepending shifts every widget onto its neighbor's node. With
 /// a key, the nodes move with their widgets and only the newcomer is created.

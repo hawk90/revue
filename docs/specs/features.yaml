@@ -123,7 +123,7 @@ items:
       - nested var() fallback chain
     evidence:
       - src/runtime/style/parser/vars.rs::resolve_var
-      - tests/e2e_scenarios.rs::test_css_variable_fallback_chain
+      - tests/e2e/scenarios.rs::test_css_variable_fallback_chain
       - src/runtime/style/parser/mod.rs::test_var_fallback_inside_shorthand
       - src/runtime/style/parser/mod.rs::test_var_fallback_that_is_a_var
     source:
@@ -232,7 +232,7 @@ items:
       - tests/widget/traits/css/card_and_overflow.rs::overflow_hidden_clips_a_child_to_its_container
       - src/widget/traits/render_context/tests.rs::test_clip_text_primitives
       - tests/widget/traits/render_context/clip.rs::a_widget_writing_to_the_buffer_is_clipped
-      - tests/config_matrix.rs::every_screen_survives_every_combination_of_switches
+      - tests/e2e/config_matrix.rs::every_screen_survives_every_combination_of_switches
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
     notes: scroll/auto parse but behave like visible/hidden; no CSS-driven scrolling. The default stays visible (CSS), so a box sized past its slot paints over its neighbors unless a container says overflow hidden.
@@ -664,7 +664,7 @@ items:
       - open/close, searchable
     evidence:
       - src/widget/input/input_widgets/select/mod.rs::select
-      - tests/widget_interaction_tests.rs
+      - tests/e2e/widget_interaction.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / Select
     notes: No .on_change; state-based.
@@ -790,7 +790,7 @@ items:
       - keyboard next/prev
     evidence:
       - src/widget/layout/tabs.rs::tabs
-      - tests/e2e_scenarios.rs
+      - tests/e2e/scenarios.rs
     source:
       - FEATURES.md §4 Widgets / Navigation Widgets / Tabs
     notes: Doc .active()/.on_change()/.content() do not exist (selected/selected_index/select); the app renders the tab body.
@@ -1294,10 +1294,10 @@ items:
       - fallback view shown with the error
     evidence:
       - src/widget/feedback/error_boundary.rs::error_boundary
-      - tests/invariants.rs::inv09_a_panic_revue_catches_does_not_restore_the_terminal
+      - tests/e2e/invariants.rs::inv09_a_panic_revue_catches_does_not_restore_the_terminal
     source:
       - FEATURES.md §7 Developer Experience / Error Handling
-    notes: Catches a child's render panic without restoring the terminal (tests/invariants.rs); no test checks the fallback content. Doc .fallback(|err| ..) takes a closure; real
+    notes: Catches a child's render panic without restoring the terminal (tests/e2e/invariants.rs); no test checks the fallback content. Doc .fallback(|err| ..) takes a closure; real
       fallback() takes a View.
   - id: WID-045
     title: Split view holding widgets (resizable, collapsible panes)
@@ -1690,7 +1690,7 @@ items:
     evidence:
       - src/testing/test_app.rs::send_key
       - src/testing/test_app.rs::screen_text
-      - tests/snapshots_widget.rs
+      - tests/e2e/screens.rs
     source:
       - FEATURES.md §7 Developer Experience / Testing
   - id: THEME-001

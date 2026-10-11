@@ -4,21 +4,21 @@
 리팩터에서는 리팩터 전후로 똑같이 참인 것만 그물이 될 수 있다.
 
 대상 목록은 `docs/anti-patterns/catalog.yaml`의 `invariants:` 절이고, 구현은
-`tests/invariants.rs`(통합)와 각 모듈의 단위 테스트다.
+`tests/e2e/invariants.rs`(통합)와 각 모듈의 단위 테스트다.
 
 ## 커버리지
 
 | ID | 규칙 | 상태 | 위치 |
 |---|---|---|---|
 | INV-01 | 하나의 application에는 하나의 UI-thread mutation owner만 존재 | 제외 | 런타임 어서션으로 표현 불가. Phase 2의 `NodeCtx`가 소유권을 타입으로 강제하면 그때 재검토 |
-| INV-02 | 한 focus scope에 focused widget 최대 1개 | ✅ | `tests/invariants.rs` — `inv02_*` 2개 |
-| INV-03 | 제거된 widget은 effect·task·timer·focus를 유지하지 않음 | ⚠️ 부분 | `tests/invariants.rs` — `inv03_*` 2개. **노드 상태와 focus만** 검증. effect/task/timer는 미검증 |
+| INV-02 | 한 focus scope에 focused widget 최대 1개 | ✅ | `tests/e2e/invariants.rs` — `inv02_*` 2개 |
+| INV-03 | 제거된 widget은 effect·task·timer·focus를 유지하지 않음 | ⚠️ 부분 | `tests/e2e/invariants.rs` — `inv03_*` 2개. **노드 상태와 focus만** 검증. effect/task/timer는 미검증 |
 | INV-04 | 한 transaction 안에서 동일 effect 중복 실행 없음 | 보류 | Phase 3의 `Invalidation` 도입과 함께. 지금은 검증할 transaction 경계가 없음 |
-| INV-05 | paint가 layout·clipping bounds를 벗어나지 않음 | ✅ | `tests/invariants.rs` — `inv05_*` 2개 |
-| INV-06 | 변경 없는 subtree는 style/layout/paint되지 않음 | ✅ | `tests/invariants.rs` — `inv06_*` 2개 |
-| INV-07 | 외부 입력이 terminal control sequence로 출력되지 않음 | ✅ | `tests/invariants.rs` — `inv07_*` 2개 |
+| INV-05 | paint가 layout·clipping bounds를 벗어나지 않음 | ✅ | `tests/e2e/invariants.rs` — `inv05_*` 2개 |
+| INV-06 | 변경 없는 subtree는 style/layout/paint되지 않음 | ✅ | `tests/e2e/invariants.rs` — `inv06_*` 2개 |
+| INV-07 | 외부 입력이 terminal control sequence로 출력되지 않음 | ✅ | `tests/e2e/invariants.rs` — `inv07_*` 2개 |
 | INV-08 | worker result는 생성 당시 generation과 일치할 때만 적용 | 제외 | generation 개념이 아직 코드에 없다. 만들 때 테스트도 같이 만든다 |
-| INV-09 | panic 또는 정상 종료 후 terminal state 복구 | ✅ | `tests/invariants.rs` — `inv09_*` 2개, `src/runtime/render/terminal/panic_hook.rs` 단위 테스트 4개 |
+| INV-09 | panic 또는 정상 종료 후 terminal state 복구 | ✅ | `tests/e2e/invariants.rs` — `inv09_*` 2개, `src/runtime/render/terminal/panic_hook.rs` 단위 테스트 4개 |
 | INV-10 | experimental API가 stable namespace에 자동 편입되지 않음 | 제외 | 런타임 속성이 아니라 릴리스 프로세스. Phase 4의 tier 도입 시 문서/CI로 처리 |
 
 추가로 Phase 1의 계약을 고정하는 테스트 4개가 있다 — `node_id_survives_*`,

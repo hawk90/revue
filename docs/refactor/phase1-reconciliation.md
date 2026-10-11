@@ -128,7 +128,7 @@ lookup 테이블이 기존 노드의 id와 key를 **빌려 쓸 수 있다** — 
 - 플래그 off일 때 DOM이 뷰를 따라가지 **않는가** (기본 동작 문서화)
 - 같은 뷰를 여러 번 그려도 정체성이 요동치지 않는가
 
-`tests/invariants.rs`의 `keyless_children_are_identified_by_position_today`는 그대로 통과한다.
+`tests/e2e/invariants.rs`의 `keyless_children_are_identified_by_position_today`는 그대로 통과한다.
 키는 opt-in이므로 keyless 폴백은 바뀌지 않았다 — 그 테스트가 음(陰)이고
 `keyed_children_survive_a_prepend`가 양(陽)이다.
 

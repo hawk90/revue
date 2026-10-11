@@ -20,4 +20,7 @@
 //! Known failures live in `fault/known_failures.rs`; the list may only shrink.
 //! See `docs/refactor/findings-fault-injection.md`.
 
+#[path = "fault/mod.rs"]
 mod fault;
+#[path = "fault/stress.rs"]
+mod stress;

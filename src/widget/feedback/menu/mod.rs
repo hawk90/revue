@@ -491,7 +491,7 @@ mod tests {
         assert!(!bar.is_open());
     }
 
-    // Found by tests/event_sequences.rs: the shrunk sequence was
+    // Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
     // `[5x2] <open menu 1> Left Left` - a menu whose title starts past the
     // right edge of a narrow area.
     #[test]

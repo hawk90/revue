@@ -548,7 +548,7 @@ fn test_remove_tag_at_cursor_no_cursor() {
     assert_eq!(select.selection_count(), 2);
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
 // `<select all> Escape Left <clear selection>` - the tag cursor kept
 // pointing at a tag that clear_selection() had removed.
 #[test]

@@ -39,7 +39,7 @@
 //! listed failure that no longer happens. The list only shrinks. See
 //! `docs/refactor/findings-fault-injection.md`, "빌드·설정 조합".
 
-#[path = "matrix/sentinel.rs"]
+#[path = "../widget/catalog/matrix/sentinel.rs"]
 #[allow(dead_code)]
 mod sentinel;
 
@@ -588,7 +588,7 @@ fn every_screen_survives_every_combination_of_switches() {
     let mut report = String::new();
     if !new.is_empty() {
         report.push_str(&format!(
-            "\n{} NEW failure(s) (fix the library, or list them in KNOWN in tests/config_matrix.rs):\n\n",
+            "\n{} NEW failure(s) (fix the library, or list them in KNOWN in tests/e2e/config_matrix.rs):\n\n",
             new.len()
         ));
         for (kind, key, detail) in &new {

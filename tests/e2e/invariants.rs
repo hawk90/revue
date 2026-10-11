@@ -526,6 +526,15 @@ fn contains_subslice(haystack: &[u8], needle: &[u8]) -> bool {
 // INV-09: panic 또는 정상 종료 후 terminal state는 복구된다
 // ---------------------------------------------------------------------------
 
+/// `name` as libtest knows it: its path inside the test binary, so the child
+/// runs only this test however the binary nests the module.
+fn this_test(name: &str) -> String {
+    match module_path!().split_once("::") {
+        Some((_, module)) => format!("{module}::{name}"),
+        None => name.to_string(),
+    }
+}
+
 /// End-to-end: a process that entered TUI mode and then panics must still emit
 /// the sequence that leaves the alternate screen and shows the cursor.
 ///
@@ -556,7 +565,7 @@ fn inv09_terminal_is_restored_when_the_process_panics() {
     let exe = std::env::current_exe().expect("test binary path");
     let out = std::process::Command::new(exe)
         .args([
-            "inv09_terminal_is_restored_when_the_process_panics",
+            &this_test("inv09_terminal_is_restored_when_the_process_panics"),
             "--exact",
             "--nocapture",
         ])
@@ -609,7 +618,7 @@ fn inv09_hook_is_silent_for_a_process_that_never_entered_tui_mode() {
     let exe = std::env::current_exe().expect("test binary path");
     let out = std::process::Command::new(exe)
         .args([
-            "inv09_hook_is_silent_for_a_process_that_never_entered_tui_mode",
+            &this_test("inv09_hook_is_silent_for_a_process_that_never_entered_tui_mode"),
             "--exact",
             "--nocapture",
         ])
@@ -668,7 +677,7 @@ fn inv09_a_panic_revue_catches_does_not_restore_the_terminal() {
     let exe = std::env::current_exe().expect("test binary path");
     let out = std::process::Command::new(exe)
         .args([
-            "inv09_a_panic_revue_catches_does_not_restore_the_terminal",
+            &this_test("inv09_a_panic_revue_catches_does_not_restore_the_terminal"),
             "--exact",
             "--nocapture",
         ])

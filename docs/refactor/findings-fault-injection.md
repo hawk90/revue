@@ -16,7 +16,7 @@
 ## 층
 
 층마다 파일 하나를 두어 실패 메시지가 층 이름을 단다. 다섯 층 모두 테스트 타깃
-`tests/fault_injection.rs` 하나(`mod fault;`)에 들어 있다. 4d와 4e는 아래
+`tests/fault.rs` 하나(`mod fault;`)에 들어 있다. 4d와 4e는 아래
 [4d 외부 자원](#4d-외부-자원--파일클립보드감시http)과 [4e 동시성](#4e-동시성--태스크워커잠금반응형플러그인)에서
 따로 다룬다.
 
@@ -491,7 +491,7 @@ test와 nextest 어느 쪽에서도 같게 동작한다.
 Feature Combinations 잡에 붙이지 않고 따로 두었다. 기능을 바꾸는 PR은 `Cargo.toml`을
 건드리므로 그 PR에서는 여전히 돈다. 기능 게이트만 바뀌는 `src/` 변경은 주간 실행이 잡는다.
 
-### 3b. 런타임 스위치 조합 — `tests/config_matrix.rs`
+### 3b. 런타임 스위치 조합 — `tests/e2e/config_matrix.rs`
 
 | 요인 | 값 |
 |---|---|
@@ -519,7 +519,7 @@ Feature Combinations 잡에 붙이지 않고 따로 두었다. 기능을 바꾸�
    `incremental_dom(true)`로 돌린 것, `layout_engine(false)`로 돌린 것 모두 세 프레임이
    칸 단위로(글자·색·modifier) 같아야 한다.
 
-래칫은 다른 층과 같고, 목록(`tests/config_matrix.rs`의 `KNOWN`)은 지금 비어 있다.
+래칫은 다른 층과 같고, 목록(`tests/e2e/config_matrix.rs`의 `KNOWN`)은 지금 비어 있다.
 
 ```bash
 cargo test --test config_matrix                        # 기본 기능

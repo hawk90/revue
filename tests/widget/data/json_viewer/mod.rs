@@ -352,7 +352,7 @@ fn test_parse_json_complex() {
     assert_eq!(viewer.root_type(), Some(&JsonType::Object));
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was `Ctrl+End 'x'`
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was `Ctrl+End 'x'`
 // (select the last row, then collapse everything) - the selection stayed on
 // a row that no longer existed.
 #[test]

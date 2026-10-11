@@ -94,7 +94,7 @@ fn test_dialog_open_close() {
     assert!(!editor.is_dialog_open());
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
 // `[2x1] <link dialog>` - an open dialog in an area too narrow for it.
 #[test]
 fn test_dialog_in_a_tiny_area() {

@@ -1,3 +1,18 @@
+//! Event sequences: stateful widgets driven with random sequences of keys,
+//! mouse events, data mutations and renders, checked after every step for no
+//! panic, nothing written outside the area, and the widget's own invariant
+//! (selection inside the items, cursor inside the text, value inside its
+//! range, ...).
+//!
+//! Two layers, one file each, so a failure names its layer:
+//!
+//! - `sequences/keys.rs` - key sequences on every widget with a key handler;
+//! - `sequences/mouse.rs` - mouse sequences on every widget with a mouse
+//!   handler.
+//!
+//! Known failures live in `sequences/known_failures.rs`; the list may only
+//! shrink. See `docs/refactor/findings-event-sequences.md`.
+//!
 //! Shared machinery for the event-sequence layers: the steps a sequence is
 //! made of, running one sequence against a widget with the invariants
 //! checked after every step, the proptest driver, and the known-failures
@@ -491,7 +506,7 @@ fn ratchet(layer: &str, ran: &[&'static str], cases: u32, failures: Vec<Failure>
     let mut report = String::new();
     if !new.is_empty() {
         report.push_str(&format!(
-            "\n{} NEW failure(s) in layer `{layer}` (fix the widget, or list them in tests/sequences/known_failures.rs):\n\n",
+            "\n{} NEW failure(s) in layer `{layer}` (fix the widget, or list them in tests/widget/catalog/sequences/known_failures.rs):\n\n",
             new.len()
         ));
         for f in &new {
@@ -510,7 +525,7 @@ fn ratchet(layer: &str, ran: &[&'static str], cases: u32, failures: Vec<Failure>
     }
     if !fixed.is_empty() {
         report.push_str(&format!(
-            "\n{} known failure(s) in layer `{layer}` no longer happen - remove them from tests/sequences/known_failures.rs:\n\n",
+            "\n{} known failure(s) in layer `{layer}` no longer happen - remove them from tests/widget/catalog/sequences/known_failures.rs:\n\n",
             fixed.len()
         ));
         for (widget, sequence) in fixed {
