@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0](https://github.com/hawk90/revue/compare/v3.9.1...v3.10.0) (2026-10-11)
+
+
+### Features
+
+* **app:** let the handler keep Ctrl+C and Tab with prevent_default ([#959](https://github.com/hawk90/revue/issues/959)) ([2736b03](https://github.com/hawk90/revue/commit/2736b03079a84f200e80b7adde8ab983ba7ae909)), closes [#949](https://github.com/hawk90/revue/issues/949) [#958](https://github.com/hawk90/revue/issues/958)
+
+
+### Bug Fixes
+
+* **hooks:** run the pre-push tests for test-tree moves and deletions ([#935](https://github.com/hawk90/revue/issues/935)) ([d229a68](https://github.com/hawk90/revue/commit/d229a68c2cec50155ece346f14b18422006c2ef0)), closes [#936](https://github.com/hawk90/revue/issues/936)
+* **table:** scroll every table to its selection; header and borders read the stylesheet ([#925](https://github.com/hawk90/revue/issues/925)) ([5fec65a](https://github.com/hawk90/revue/commit/5fec65a693ab602e92eeaf0da81039561e6f3991))
+* **widget:** stop u16 underflow in narrow areas and tiny configured widths ([#922](https://github.com/hawk90/revue/issues/922)) ([49e50a6](https://github.com/hawk90/revue/commit/49e50a6262baac85e52c8b8b1ea1f929815aeae8))
+
 ## [3.9.1](https://github.com/hawk90/revue/compare/v3.9.0...v3.9.1) (2026-10-09)
 
 
