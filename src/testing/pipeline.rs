@@ -253,6 +253,21 @@ impl PipelineHarness {
         self.app.dispatch_for_test(event, view)
     }
 
+    /// [`send`](Self::send) with the app's own handler, the closure
+    /// [`App::run`](App::run) would get.
+    ///
+    /// Use it to check how the handler and revue's default actions meet, for
+    /// instance that a handler calling
+    /// [`prevent_default`](App::prevent_default) keeps Tab from
+    /// moving focus.
+    pub fn send_with<V, H>(&mut self, event: crate::event::Event, view: &mut V, handler: H) -> bool
+    where
+        V: View,
+        H: FnMut(&crate::event::Event, &mut V, &mut App) -> bool,
+    {
+        self.app.dispatch_with_for_test(event, view, handler)
+    }
+
     /// Element id of the node under `(x, y)` in the last painted frame.
     pub fn element_at(&self, x: u16, y: u16) -> Option<String> {
         self.app.dom().element_at(x, y).map(str::to_owned)

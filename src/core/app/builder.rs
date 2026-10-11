@@ -160,7 +160,8 @@ impl AppBuilder {
     ///
     /// It is off by default because Tab is a key an existing app may already
     /// handle itself; the runtime taking it would be a silent behavior change.
-    /// The app's own handler runs first either way.
+    /// The app's own handler runs first either way, and can keep a Tab for
+    /// itself with [`App::prevent_default`].
     ///
     /// This sets `NodeState.focused` and nothing else. Widgets still read their
     /// own `focused` field, so no widget *behavior* changes - what changes is

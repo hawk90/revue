@@ -15,10 +15,13 @@ impl Input {
                 self.select_all();
                 Some(true)
             }
-            Key::Char('c') => {
+            // Only a selection makes Ctrl+C a copy. Without one the key is
+            // left to the app, where it quits by default.
+            Key::Char('c') if self.has_selection() => {
                 self.copy();
                 Some(true)
             }
+            Key::Char('c') => None,
             Key::Char('x') => Some(self.cut()),
             Key::Char('v') => Some(self.paste()),
             Key::Char('z') => Some(self.undo()),

@@ -235,6 +235,26 @@ fn tab_does_nothing_when_the_flag_is_off() {
     );
 }
 
+/// An app that uses Tab itself keeps it by calling `prevent_default`, and only
+/// for the events it handled.
+#[test]
+fn a_handler_that_prevents_default_keeps_tab() {
+    let mut h = harness("");
+    let mut view = Form;
+    h.draw(&view);
+    h.send(tab(), &mut view);
+    assert_eq!(h.focused_ids(), vec!["save"]);
+
+    h.send_with(tab(), &mut view, |_, _, app| {
+        app.prevent_default();
+        false
+    });
+    assert_eq!(h.focused_ids(), vec!["save"], "a prevented Tab moved focus");
+
+    h.send(tab(), &mut view);
+    assert_eq!(h.focused_ids(), vec!["quit"]);
+}
+
 // ---------------------------------------------------------------------------
 // It reaches the screen
 // ---------------------------------------------------------------------------
