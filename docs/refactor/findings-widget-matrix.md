@@ -61,10 +61,10 @@ underflow로 패닉하는지는 아무도 모른다. 매트릭스는 모든 공�
 ## 돌리는 법
 
 ```bash
-cargo test --test widget_matrix                    # 기본 기능
-cargo test --all-features --test widget_matrix     # CI와 같은 위젯 집합
-cargo test --all-features --test widget_matrix -- --nocapture   # 층별 요약 출력
-WIDGET_MATRIX_DUMP=/tmp/m cargo test --all-features --test widget_matrix  # 실패 전체를 층별 TSV로
+cargo test --test widget catalog::matrix                    # 기본 기능
+cargo test --all-features --test widget catalog::matrix     # CI와 같은 위젯 집합
+cargo test --all-features --test widget catalog::matrix -- --nocapture   # 층별 요약 출력
+WIDGET_MATRIX_DUMP=/tmp/m cargo test --all-features --test widget catalog::matrix  # 실패 전체를 층별 TSV로
 ```
 
 CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다.

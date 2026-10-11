@@ -274,7 +274,7 @@ F-4가 뿌리다. 그것이 풀리면 F-5는 따라오고, 영역 기반 렌더 
 ## 재현
 
 ```bash
-cargo test --test render_pipeline     # 리페인트 계약 4개 + 남은 결함 3개
+cargo test --test runtime render::pipeline  # 리페인트 계약 4개 + 남은 결함 3개
 cargo bench --bench frame             # 프레임 비용
 ```
 

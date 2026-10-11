@@ -48,6 +48,6 @@ hook이다. `src/runtime/render/terminal/panic_hook.rs`를 추가하고 두 백�
 ## 실행
 
 ```bash
-cargo test --test invariants
+cargo test --test e2e invariants
 cargo test --lib panic_hook
 ```

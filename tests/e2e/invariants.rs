@@ -340,7 +340,7 @@ impl View for AnonContainer {
 /// This stays true after Phase 1: `View::key` is opt-in, and a widget that
 /// claims no identity gets the positional one. The point of pinning it is that
 /// the fallback must keep working unchanged - the positive contract lives in
-/// `tests/reconciliation.rs::keyed_children_survive_a_prepend`, which is this
+/// `tests/runtime/dom/reconciliation.rs::keyed_children_survive_a_prepend`, which is this
 /// same scenario with a key attached.
 #[test]
 fn keyless_children_are_identified_by_position_today() {

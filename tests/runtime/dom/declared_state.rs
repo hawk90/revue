@@ -2,7 +2,7 @@
 //! discovers.
 //!
 //! `focused` and `hovered` are discovered - the runtime works out what the
-//! pointer is over and writes it (`tests/hit_test.rs`). `disabled` is the other
+//! pointer is over and writes it (`tests/runtime/dom/hit_test.rs`). `disabled` is the other
 //! kind: the application says so, the same way HTML has a `disabled` attribute
 //! rather than a `:disabled` that the browser infers. So it travels with the
 //! widget's `WidgetMeta` and is copied onto the node.

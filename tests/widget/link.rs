@@ -1,7 +1,7 @@
 //! Tests for Link widget
 //!
 //! Rendering is checked with OSC 8 off: the hyperlink itself is checked at
-//! the terminal-output level in tests/osc8_hyperlinks.rs.
+//! the terminal-output level in tests/runtime/render/terminal/osc8.rs.
 
 use revue::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use revue::layout::Rect;

@@ -167,10 +167,10 @@ proptest는 고정된 ChaCha 시드와 명시적인 `Config`로 돈다. 그래�
 ## 돌리는 법
 
 ```bash
-cargo test --test fault_injection                       # 기본 기능
-cargo test --all-features --test fault_injection        # CI와 같은 대상 집합(markdown 포함)
-cargo test --no-default-features --test fault_injection
-cargo test --all-features --test fault_injection -- --nocapture   # 층별 요약 출력
+cargo test --test fault fault::                       # 기본 기능
+cargo test --all-features --test fault fault::        # CI와 같은 대상 집합(markdown 포함)
+cargo test --no-default-features --test fault fault::
+cargo test --all-features --test fault fault:: -- --nocapture   # 층별 요약 출력
 ```
 
 CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다. 자식 프로세스는
@@ -522,8 +522,8 @@ Feature Combinations 잡에 붙이지 않고 따로 두었다. 기능을 바꾸�
 래칫은 다른 층과 같고, 목록(`tests/e2e/config_matrix.rs`의 `KNOWN`)은 지금 비어 있다.
 
 ```bash
-cargo test --test config_matrix                        # 기본 기능
-cargo test --no-default-features --test config_matrix  # 기능 없이
+cargo test --test e2e config_matrix                        # 기본 기능
+cargo test --no-default-features --test e2e config_matrix  # 기능 없이
 ```
 
 #### 발견하고 고친 것

@@ -49,10 +49,10 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Positioned",
     "ScreenStack",
     // The bar is a `Tabs` node and the body the tab's own widget; a rule for
-    // `Tabs` reaches the bar (tests/tab_view.rs).
+    // `Tabs` reaches the bar (tests/widget/layout/tab_view.rs).
     "TabView",
     // Its areas are `SplitView`s and `TabView`s; a rule reaches each panel
-    // (tests/dock.rs).
+    // (tests/widget/layout/dock.rs).
     "Dock",
     // intentional: per-token or per-role colors. A JSON key against its string
     // value, a log's timestamp against its source, a diff's additions against

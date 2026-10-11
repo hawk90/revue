@@ -1,7 +1,7 @@
 //! Animation, AnimationPreset and TransitionPhase tests
 //!
 //! The basic preset/duration/delay/clone checks live in
-//! tests/transition_tests.rs; these cover what that file does not.
+//! tests/widget/transition/mod.rs; these cover what that file does not.
 
 use revue::style::easing;
 use revue::widget::{Animation, AnimationPreset, TransitionPhase};

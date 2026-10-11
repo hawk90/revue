@@ -81,9 +81,9 @@ Shift+→ 뒤에 Backspace, 접힌 패널, 커서가 글 끝을 넘어가기 같
 ## 돌리는 법
 
 ```bash
-cargo test --test event_sequences                          # 기본 기능
-cargo test --test event_sequences -- --nocapture           # 층별 요약 출력
-cargo test --no-default-features --test event_sequences
+cargo test --test widget catalog::sequences                          # 기본 기능
+cargo test --test widget catalog::sequences -- --nocapture           # 층별 요약 출력
+cargo test --no-default-features --test widget catalog::sequences
 ```
 
 CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다.

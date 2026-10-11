@@ -1,7 +1,7 @@
 //! Contracts for Tab navigation.
 //!
 //! Until now the only thing that produced focus in a running application was a
-//! click (`tests/click_focus.rs`). An app driven from the keyboard had no
+//! click (`tests/runtime/event/click.rs`). An app driven from the keyboard had no
 //! `:focus` at all, so every rule naming it was dead - the same defect
 //! `:hover` and `:focus` each had before they got a production caller, recorded
 //! in `docs/refactor/phase2-hit-test.md`.

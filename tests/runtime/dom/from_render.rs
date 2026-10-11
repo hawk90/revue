@@ -6,7 +6,7 @@
 //!
 //! Without it the DOM comes from [`View::children`], which almost nothing
 //! implements: the idiomatic widget assembles its tree inside `render`. That
-//! left a real application with a DOM of one node. `tests/render_pipeline.rs`
+//! left a real application with a DOM of one node. `tests/runtime/render/pipeline.rs`
 //! pins that older behavior, which is still the default.
 
 use revue::prelude::*;
