@@ -6,6 +6,8 @@ mod breadcrumb;
 mod callout;
 #[path = "widget/canvas/mod.rs"]
 mod canvas;
+#[path = "widget/clone.rs"]
+mod clone;
 #[path = "widget/command_palette/mod.rs"]
 mod command_palette;
 #[path = "widget/data/mod.rs"]

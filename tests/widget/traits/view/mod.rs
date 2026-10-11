@@ -1,5 +1,11 @@
 //! Tests for the View, Interactive and Draggable trait defaults
 
+mod measure;
+mod overlap;
+mod size_agreement;
+mod small_width;
+mod wide_chars;
+
 use revue::event::drag::DragData;
 use revue::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use revue::layout::Rect;

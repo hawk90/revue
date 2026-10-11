@@ -539,7 +539,7 @@ cargo test --no-default-features --test config_matrix  # 기능 없이
 `.huge { width: 500 }` 같은 크기가 컨테이너가 준 슬롯보다 크면, `box_model::apply`가 상자를
 슬롯 밖으로 키운다. 그러면 위젯이 이웃이나 화면 가장자리 위에 그린다.
 
-이것은 CSS의 기본값 `overflow: visible`이다. `tests/css_card_and_overflow.rs`의
+이것은 CSS의 기본값 `overflow: visible`이다. `tests/widget/traits/css/card_and_overflow.rs`의
 `a_child_can_paint_outside_its_container`가 이 동작을 못박아 두었다. 이 동작이 없으면
 `overflow: hidden`도 관찰할 수 없다. 슬롯으로 잘라내는 수정을 시험해 봤지만 그 테스트를
 깨서 되돌렸다. 대신 매트릭스는 **넘친 것이 모두 `overflow: hidden` 상자 안에 갇히는지**를
@@ -556,7 +556,7 @@ cargo test --no-default-features --test config_matrix  # 기능 없이
 `put_sequence`가 모두 클립 밖 칸을 건드리지 않는다. 클립이 반으로 자를 넓은 문자와 OSC 66
 시퀀스는 아예 쓰지 않는다. 클립된 하위 트리 안의 패닉이 클립 복원을 건너뛰어도
 `ErrorBoundary`가 복원한 뒤 대체 화면을 그린다. 오버레이(드롭다운, 툴팁, 토스트)는 트리
-다음에 그리므로 잘리지 않는다. 테스트는 `tests/overflow_clips_direct_writers.rs`와
+다음에 그리므로 잘리지 않는다. 테스트는 `tests/widget/traits/render_context/clip.rs`와
 `render::buffer::clip_tests`다.
 
 #### 견딘 것

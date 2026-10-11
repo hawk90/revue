@@ -22,7 +22,7 @@ underflow로 패닉하는지는 아무도 모른다. 매트릭스는 모든 공�
 `RenderContext::full`에 `NodeState { focused: true }`도 넘겨 `ctx.is_focused()`를
 읽는 위젯까지 덮는다.
 
-- **위젯 131개**(`--all-features`, 기본 기능은 125개). `tests/widget_clone.rs`의
+- **위젯 131개**(`--all-features`, 기본 기능은 125개). `tests/widget/clone.rs`의
   타입 전부에 더해 `Clone`이 아닌 `Stack`/`Border`/`Card`/`Modal`/`DataGrid`/
   `Tree`/`MenuBar`/`ContextMenu`/`Grid`/`Layers`/`ScreenStack`/`ErrorBoundary`/
   `DeclarativeRouter` 등, 라우터 `Link`, 그리고 `View`가 아닌 `DevTools`를 탭

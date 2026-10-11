@@ -8,7 +8,7 @@
 //!
 //! The source-level ratchet could not see this: `gauge.rs` mentions
 //! `ctx.css_color`, so it counted as wired. That is the failure
-//! `tests/widgets_read_css_ratchet.rs` warns about in its own doc — the value
+//! `tests/widget/traits/css/ratchet.rs` warns about in its own doc — the value
 //! was computed and dropped. Only a buffer assertion catches it.
 
 use revue::prelude::*;

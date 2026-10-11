@@ -146,7 +146,7 @@ DOM에 실려야 하고 — 그러고 나서도 엔진이 내재 콘텐츠 크�
 `gap`과 손자들의 박스까지 예약한다(중첩 단계마다 같은 규칙). `flex-wrap` 행은 줄마다 가장
 큰 항목의 높이를 쓰고, 내용 크기 부모에게 줄 수만큼의 높이를 답한다. 자세한 규칙은
 [`design-content-sized-stack.md`](design-content-sized-stack.md) §3,
-`tests/content_sized_css.rs`, `tests/content_sized_nested_css.rs`, `tests/flex_wrap_content_sized.rs`가
+`tests/widget/layout/stack/content_sized/css.rs`, `tests/widget/layout/stack/content_sized/nested_css.rs`, `tests/widget/layout/stack/content_sized/flex_wrap.rs`가
 고정한다.
 
 ### 페인트 커서 재동기화

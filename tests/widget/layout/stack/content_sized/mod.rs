@@ -5,6 +5,10 @@
 //! examples were written as if the opposite were true; `.content_sized(false)`
 //! keeps that rule. Background: `docs/refactor/design-content-sized-stack.md`.
 
+mod css;
+mod flex_wrap;
+mod nested_css;
+
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
 use revue::widget::{card, Alert, Fill, Switch};

@@ -28,7 +28,7 @@
 //!    plain stylesheet: there a CSS `width`/`height`/`min-*` larger than the
 //!    slot a container offers lets the widget paint past it - CSS
 //!    `overflow: visible`, the default, pinned by
-//!    `tests/css_card_and_overflow.rs`. What this checks instead is that
+//!    `tests/widget/traits/css/card_and_overflow.rs`. What this checks instead is that
 //!    every such escape stays inside a box that says `overflow: hidden`;
 //! 3. a redraw of an unchanged view paints the same screen (frame 2 = frame 1);
 //! 4. switches that must not change the output do not: the same case with

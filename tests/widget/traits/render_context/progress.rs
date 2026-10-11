@@ -285,3 +285,184 @@ fn test_progress_bar_config_all_fields() {
     assert_eq!(config.filled_char, '█');
     assert_eq!(config.empty_char, '░');
 }
+
+mod float_inputs {
+    //! NaN, infinite, negative and out-of-range floats do not overflow the
+    //! `f32 as u16` conversions.
+
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::style::Color;
+    use revue::widget::traits::{ProgressBarConfig, RenderContext};
+
+    #[test]
+    fn test_progress_bar_negative_progress() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Negative progress should be clamped to 0.0
+        let config = ProgressBarConfig {
+            x: 0,
+            y: 0,
+            width: 10,
+            progress: -0.5,
+            filled_char: '█',
+            empty_char: '░',
+            fg: Color::WHITE,
+        };
+
+        // Should not panic
+        ctx.draw_progress_bar(&config);
+
+        // All characters should be empty since progress is clamped to 0
+        for i in 0..10 {
+            let cell = buffer.get(i, 0).unwrap();
+            assert_eq!(cell.symbol, '░');
+        }
+    }
+
+    #[test]
+    fn test_progress_bar_greater_than_one() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Progress > 1.0 should be clamped to 1.0
+        let config = ProgressBarConfig {
+            x: 0,
+            y: 0,
+            width: 10,
+            progress: 1.5,
+            filled_char: '█',
+            empty_char: '░',
+            fg: Color::WHITE,
+        };
+
+        // Should not panic
+        ctx.draw_progress_bar(&config);
+
+        // All characters should be filled since progress is clamped to 1
+        for i in 0..10 {
+            let cell = buffer.get(i, 0).unwrap();
+            assert_eq!(cell.symbol, '█');
+        }
+    }
+
+    #[test]
+    fn test_progress_bar_nan() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // NaN progress - should be clamped (NaN comparisons return false)
+        let config = ProgressBarConfig {
+            x: 0,
+            y: 0,
+            width: 10,
+            progress: f32::NAN,
+            filled_char: '█',
+            empty_char: '░',
+            fg: Color::WHITE,
+        };
+
+        // Should not panic - clamp(NaN, 0.0, 1.0) returns NaN, but the comparison handles it
+        ctx.draw_progress_bar(&config);
+    }
+
+    #[test]
+    fn test_progress_bar_infinity() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Infinity progress - should be clamped to 1.0
+        let config = ProgressBarConfig {
+            x: 0,
+            y: 0,
+            width: 10,
+            progress: f32::INFINITY,
+            filled_char: '█',
+            empty_char: '░',
+            fg: Color::WHITE,
+        };
+
+        // Should not panic
+        ctx.draw_progress_bar(&config);
+
+        // All should be filled
+        for i in 0..10 {
+            let cell = buffer.get(i, 0).unwrap();
+            assert_eq!(cell.symbol, '█');
+        }
+    }
+
+    #[test]
+    fn test_progress_bar_neg_infinity() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Negative infinity - should be clamped to 0.0
+        let config = ProgressBarConfig {
+            x: 0,
+            y: 0,
+            width: 10,
+            progress: f32::NEG_INFINITY,
+            filled_char: '█',
+            empty_char: '░',
+            fg: Color::WHITE,
+        };
+
+        // Should not panic
+        ctx.draw_progress_bar(&config);
+
+        // All should be empty
+        for i in 0..10 {
+            let cell = buffer.get(i, 0).unwrap();
+            assert_eq!(cell.symbol, '░');
+        }
+    }
+
+    #[test]
+    fn test_progress_bar_zero_width() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let config = ProgressBarConfig {
+            x: 0,
+            y: 0,
+            width: 0,
+            progress: 0.5,
+            filled_char: '█',
+            empty_char: '░',
+            fg: Color::WHITE,
+        };
+
+        // Should not panic with zero width
+        ctx.draw_progress_bar(&config);
+    }
+
+    #[test]
+    fn test_progress_bar_max_width() {
+        // Buffer has a security limit of MAX_BUFFER_DIMENSION (16,384)
+        // instead of u16::MAX
+        let mut buffer = Buffer::new(16_384, 1);
+        let area = Rect::new(0, 0, 16_384, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let config = ProgressBarConfig {
+            x: 0,
+            y: 0,
+            width: 16_384,
+            progress: 0.5,
+            filled_char: '█',
+            empty_char: '░',
+            fg: Color::WHITE,
+        };
+
+        // Should not panic with maximum allowed width
+        ctx.draw_progress_bar(&config);
+    }
+}

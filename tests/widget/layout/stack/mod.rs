@@ -1,5 +1,7 @@
 //! Stack layout widget tests (vstack, hstack)
 
+mod content_sized;
+
 mod snapshots {
     use revue::prelude::*;
     use revue::testing::{Pilot, TestApp};

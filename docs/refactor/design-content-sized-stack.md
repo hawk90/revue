@@ -57,8 +57,8 @@ pub trait View {
 #### 지금 답하는 위젯
 
 답은 `render`가 실제로 칠하는 크기다(테두리·여백·괄호 포함, 폭은 표시 폭). 최대값을 넘지
-않는다. 각 답은 `tests/widget_measure.rs`가 칠해진 영역과 대조하고, `height()` 헬퍼가 있는
-위젯은 `tests/widget_size_agreement.rs`가 헬퍼와 대조한다.
+않는다. 각 답은 `tests/widget/traits/view/measure.rs`가 칠해진 영역과 대조하고, `height()` 헬퍼가 있는
+위젯은 `tests/widget/traits/view/size_agreement.rs`가 헬퍼와 대조한다.
 
 | 종류 | 위젯 | 답 |
 |---|---|---|

@@ -6,6 +6,8 @@
 //! box, an offset or a truncation point comes out wrong - and slicing user
 //! text at a byte count panics when it falls inside a multibyte glyph.
 
+mod text_fields;
+
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
