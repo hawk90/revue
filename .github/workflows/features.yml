@@ -43,7 +43,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           shared-key: "features"
-      - uses: taiki-e/install-action@3ba07337ea315bc9340c308d30d4d10093baa59e # cargo-hack
+      - uses: taiki-e/install-action@a561ea09b94560aba5b8b2b78e1562ec242dc5f8 # cargo-hack
       # `--no-default-features --features X` for every X, plus the default
       # set, no features and all features. `--keep-going` reports every
       # failing feature, not just the first.
@@ -66,7 +66,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           shared-key: "features"
-      - uses: taiki-e/install-action@3ba07337ea315bc9340c308d30d4d10093baa59e # cargo-hack
+      - uses: taiki-e/install-action@a561ea09b94560aba5b8b2b78e1562ec242dc5f8 # cargo-hack
       # Presets (`full`, `std`, `gui`, `all-gui`, `default`) are unions of the
       # leaf features, so pairs of leaves cover them.
       - name: check (every pair of features)
