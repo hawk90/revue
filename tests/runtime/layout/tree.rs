@@ -2,7 +2,7 @@
 //!
 //! The first group is what `fix(layout): link the layout tree to the DOM tree`
 //! established. The rest **pin behavior that is wrong**, so it fails loudly
-//! when fixed - the same pattern as `tests/render_pipeline.rs`.
+//! when fixed - the same pattern as `tests/runtime/render/pipeline.rs`.
 //!
 //! Background: `docs/refactor/findings-layout.md`.
 

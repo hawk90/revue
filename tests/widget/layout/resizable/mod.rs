@@ -1144,3 +1144,58 @@ fn test_resizable_no_callback_when_resizing_same_size() {
     // Already at max, no change
     assert!(!called.get());
 }
+
+mod float_inputs {
+    //! NaN, infinite, negative and out-of-range floats do not overflow the
+    //! `f32 as u16` conversions.
+
+    use revue::widget::Resizable;
+
+    #[test]
+    fn test_resizable_nan_aspect_ratio() {
+        let mut r = Resizable::new(20, 10).aspect_ratio(f32::NAN);
+
+        // NaN aspect ratio - the division could produce issues
+        r.set_size(40, 10);
+
+        // Should not panic
+        let (w, h) = r.size();
+        assert!(w > 0 || h > 0);
+    }
+
+    #[test]
+    fn test_resizable_infinity_aspect_ratio() {
+        let mut r = Resizable::new(20, 10).aspect_ratio(f32::INFINITY);
+
+        // Infinity aspect ratio
+        r.set_size(40, 10);
+
+        // Should not panic
+        let (w, h) = r.size();
+        assert!(w > 0 || h > 0);
+    }
+
+    #[test]
+    fn test_resizable_zero_aspect_ratio() {
+        let mut r = Resizable::new(20, 10).aspect_ratio(0.0);
+
+        // Zero aspect ratio
+        r.set_size(40, 10);
+
+        // Should not panic
+        let (w, h) = r.size();
+        assert!(w >= 1 && h >= 1);
+    }
+
+    #[test]
+    fn test_resizable_negative_aspect_ratio() {
+        let mut r = Resizable::new(20, 10).aspect_ratio(-1.5);
+
+        // Negative aspect ratio
+        r.set_size(40, 10);
+
+        // Should not panic - max() calls handle it
+        let (w, h) = r.size();
+        assert!(w >= 1 && h >= 1);
+    }
+}

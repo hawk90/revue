@@ -6,8 +6,8 @@
 //! `dom_from_render(false)` / `css_layout(false)`: paint properties reach the
 //! root widget and stop there, and layout properties reach nothing at all.
 //! Those tests turn the flags off explicitly; the default path is pinned by
-//! `tests/dom_from_render.rs`, `tests/css_reaches_the_screen.rs`,
-//! `tests/css_layout.rs` and `tests/css_defaults.rs`.
+//! `tests/runtime/dom/from_render.rs`, `tests/widget/traits/css/reaches_the_screen.rs`,
+//! `tests/runtime/layout/css_layout.rs` and `tests/widget/traits/css/defaults.rs`.
 //!
 //! Background and evidence: `docs/refactor/findings-render-pipeline.md`.
 
@@ -268,7 +268,7 @@ fn children_composed_inside_render_get_no_dom_node_without_dom_from_render() {
 /// into `DomRenderer::styles` and then read by nobody.
 ///
 /// On the default path a child gets its style through `render_child` - see
-/// `tests/css_reaches_the_screen.rs`.
+/// `tests/widget/traits/css/reaches_the_screen.rs`.
 #[test]
 fn a_child_render_context_carries_no_computed_style_without_dom_from_render() {
     let seen = std::rc::Rc::new(std::cell::Cell::new(false));
@@ -326,7 +326,7 @@ fn the_root_render_context_does_carry_a_computed_style() {
 ///
 /// Still true with `dom_from_render(false).css_layout(false)`. The 3.0 default
 /// makes the box properties work by letting them override container-computed
-/// geometry - see `tests/css_layout.rs` and `docs/refactor/findings-layout.md`.
+/// geometry - see `tests/runtime/layout/css_layout.rs` and `docs/refactor/findings-layout.md`.
 /// `gap` is read by the container itself.
 #[test]
 fn css_layout_properties_have_no_effect_without_the_flags() {

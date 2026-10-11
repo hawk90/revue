@@ -59,7 +59,7 @@ breaking 릴리스이고, 미루면 4.0까지 이 네 곳만 우선순위가 뒤
 
 ## 테스트
 
-`tests/builder_outranks_stylesheet.rs`. 위젯마다 **양방향**이다 (3.0의 네 필드는
+`tests/widget/traits/css/builder_outranks_stylesheet.rs`. 위젯마다 **양방향**이다 (3.0의 네 필드는
 기본 렌더가 그대로인지까지 세 방향):
 
 1. 이름을 말한 빌더가 CSS를 이긴다

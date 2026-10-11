@@ -14,7 +14,7 @@ underflow로 패닉하는지는 아무도 모른다. 매트릭스는 모든 공�
 
 ## 무엇을 덮나
 
-카탈로그(`tests/matrix/catalog.rs`)는 공개 위젯마다 이름과 팩토리 하나를 갖는다.
+카탈로그(`tests/widget/catalog/matrix/catalog.rs`)는 공개 위젯마다 이름과 팩토리 하나를 갖는다.
 팩토리는 케이스의 내용을 위젯에 먹인다. 텍스트를 받는 위젯은 `content.text`를,
 목록을 받는 위젯(옵션, 행, 데이터 포인트, 자식)은 `content.items`나 거기서 만든
 숫자를 받는다. 그래서 같은 내용이 항목 0개 / 1개 / 많이를 함께 몬다. `focused`
@@ -22,7 +22,7 @@ underflow로 패닉하는지는 아무도 모른다. 매트릭스는 모든 공�
 `RenderContext::full`에 `NodeState { focused: true }`도 넘겨 `ctx.is_focused()`를
 읽는 위젯까지 덮는다.
 
-- **위젯 131개**(`--all-features`, 기본 기능은 125개). `tests/widget_clone.rs`의
+- **위젯 131개**(`--all-features`, 기본 기능은 125개). `tests/widget/clone.rs`의
   타입 전부에 더해 `Clone`이 아닌 `Stack`/`Border`/`Card`/`Modal`/`DataGrid`/
   `Tree`/`MenuBar`/`ContextMenu`/`Grid`/`Layers`/`ScreenStack`/`ErrorBoundary`/
   `DeclarativeRouter` 등, 라우터 `Link`, 그리고 `View`가 아닌 `DevTools`를 탭
@@ -38,9 +38,9 @@ underflow로 패닉하는지는 아무도 모른다. 매트릭스는 모든 공�
 
 | 층 | 파일 | 축 | 위젯당 케이스 | 케이스(전체 기능) |
 |---|---|---|---|---|
-| 1a 크기 | `tests/matrix/sizes.rs` | 0×0, 1×1, 2×1, 1×2, 3×3, 80×24, 1000×1, 1×1000, x축 끝(65530,1), y축 끝(1,65530). 내용은 "Hello"+항목 3개, 포커스 없음, 직접 경로 | 10 | 1,310 |
-| 1b 내용 | `tests/matrix/contents.rs` | "", 한글, 피부색·ZWJ 이모지, 결합 문자(e\u{301}), RTL, 폭 0 문자, 탭·개행·제어 문자, 약 1000자, 항목 0/1/200개. 크기는 40×10, 포커스 없음, 직접 경로 | 11 | 1,441 |
-| 1c 쌍 | `tests/matrix/pairwise.rs` | {크기 7개} × {내용 4개} × {포커스 켬/끔} × {직접/앱 경로}의 모든 쌍 | 28 | 3,668 |
+| 1a 크기 | `tests/widget/catalog/matrix/sizes.rs` | 0×0, 1×1, 2×1, 1×2, 3×3, 80×24, 1000×1, 1×1000, x축 끝(65530,1), y축 끝(1,65530). 내용은 "Hello"+항목 3개, 포커스 없음, 직접 경로 | 10 | 1,310 |
+| 1b 내용 | `tests/widget/catalog/matrix/contents.rs` | "", 한글, 피부색·ZWJ 이모지, 결합 문자(e\u{301}), RTL, 폭 0 문자, 탭·개행·제어 문자, 약 1000자, 항목 0/1/200개. 크기는 40×10, 포커스 없음, 직접 경로 | 11 | 1,441 |
+| 1c 쌍 | `tests/widget/catalog/matrix/pairwise.rs` | {크기 7개} × {내용 4개} × {포커스 켬/끔} × {직접/앱 경로}의 모든 쌍 | 28 | 3,668 |
 
 합계 6,419 케이스, 디버그 빌드에서 약 1.5초(기본 기능은 0.3초).
 
@@ -61,17 +61,17 @@ underflow로 패닉하는지는 아무도 모른다. 매트릭스는 모든 공�
 ## 돌리는 법
 
 ```bash
-cargo test --test widget_matrix                    # 기본 기능
-cargo test --all-features --test widget_matrix     # CI와 같은 위젯 집합
-cargo test --all-features --test widget_matrix -- --nocapture   # 층별 요약 출력
-WIDGET_MATRIX_DUMP=/tmp/m cargo test --all-features --test widget_matrix  # 실패 전체를 층별 TSV로
+cargo test --test widget catalog::matrix                    # 기본 기능
+cargo test --all-features --test widget catalog::matrix     # CI와 같은 위젯 집합
+cargo test --all-features --test widget catalog::matrix -- --nocapture   # 층별 요약 출력
+WIDGET_MATRIX_DUMP=/tmp/m cargo test --all-features --test widget catalog::matrix  # 실패 전체를 층별 TSV로
 ```
 
 CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다.
 
 ## 래칫 규칙
 
-알려진 실패는 `tests/matrix/known_failures.rs`의 `KNOWN` 한 곳에 있다. 항목은
+알려진 실패는 `tests/widget/catalog/matrix/known_failures.rs`의 `KNOWN` 한 곳에 있다. 항목은
 (층, 위젯, 종류, 원인 한 줄, 케이스 키 목록)이고, 케이스 키는
 `"<영역> <내용> <plain|focus> <direct|app>"`이다.
 

@@ -1039,7 +1039,7 @@ mod tests {
         assert_eq!(picker.start_cursor_day, original_start_day);
     }
 
-    // Found by tests/event_sequences.rs: the shrunk sequence was `'j'` from
+    // Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was `'j'` from
     // a range starting Jan 31 - moving a week down into February kept the
     // stored day 31.
     #[test]

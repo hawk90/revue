@@ -664,7 +664,7 @@ fn test_keyboard_reorder_callback_reports_display_positions() {
     assert_eq!(*moved.borrow(), Some((2, 1)));
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
 // `Ctrl+End <drop rows>` - after the rows shrank, recompute_cache() left the
 // selection on a row that no longer existed.
 #[test]

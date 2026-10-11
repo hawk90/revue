@@ -513,7 +513,7 @@ mod tests {
         assert_eq!(t.len(), 1);
     }
 
-    // Found by tests/event_sequences.rs: the shrunk sequence was `'0'`.
+    // Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was `'0'`.
     #[test]
     fn test_tabs_zero_key_is_ignored() {
         let mut t = Tabs::new().tabs(vec!["One", "Two"]).selected(1);

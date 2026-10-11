@@ -16,7 +16,7 @@
 ## 층
 
 층마다 파일 하나를 두어 실패 메시지가 층 이름을 단다. 다섯 층 모두 테스트 타깃
-`tests/fault_injection.rs` 하나(`mod fault;`)에 들어 있다. 4d와 4e는 아래
+`tests/fault.rs` 하나(`mod fault;`)에 들어 있다. 4d와 4e는 아래
 [4d 외부 자원](#4d-외부-자원--파일클립보드감시http)과 [4e 동시성](#4e-동시성--태스크워커잠금반응형플러그인)에서
 따로 다룬다.
 
@@ -167,10 +167,10 @@ proptest는 고정된 ChaCha 시드와 명시적인 `Config`로 돈다. 그래�
 ## 돌리는 법
 
 ```bash
-cargo test --test fault_injection                       # 기본 기능
-cargo test --all-features --test fault_injection        # CI와 같은 대상 집합(markdown 포함)
-cargo test --no-default-features --test fault_injection
-cargo test --all-features --test fault_injection -- --nocapture   # 층별 요약 출력
+cargo test --test fault fault::                       # 기본 기능
+cargo test --all-features --test fault fault::        # CI와 같은 대상 집합(markdown 포함)
+cargo test --no-default-features --test fault fault::
+cargo test --all-features --test fault fault:: -- --nocapture   # 층별 요약 출력
 ```
 
 CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다. 자식 프로세스는
@@ -491,7 +491,7 @@ test와 nextest 어느 쪽에서도 같게 동작한다.
 Feature Combinations 잡에 붙이지 않고 따로 두었다. 기능을 바꾸는 PR은 `Cargo.toml`을
 건드리므로 그 PR에서는 여전히 돈다. 기능 게이트만 바뀌는 `src/` 변경은 주간 실행이 잡는다.
 
-### 3b. 런타임 스위치 조합 — `tests/config_matrix.rs`
+### 3b. 런타임 스위치 조합 — `tests/e2e/config_matrix.rs`
 
 | 요인 | 값 |
 |---|---|
@@ -519,11 +519,11 @@ Feature Combinations 잡에 붙이지 않고 따로 두었다. 기능을 바꾸�
    `incremental_dom(true)`로 돌린 것, `layout_engine(false)`로 돌린 것 모두 세 프레임이
    칸 단위로(글자·색·modifier) 같아야 한다.
 
-래칫은 다른 층과 같고, 목록(`tests/config_matrix.rs`의 `KNOWN`)은 지금 비어 있다.
+래칫은 다른 층과 같고, 목록(`tests/e2e/config_matrix.rs`의 `KNOWN`)은 지금 비어 있다.
 
 ```bash
-cargo test --test config_matrix                        # 기본 기능
-cargo test --no-default-features --test config_matrix  # 기능 없이
+cargo test --test e2e config_matrix                        # 기본 기능
+cargo test --no-default-features --test e2e config_matrix  # 기능 없이
 ```
 
 #### 발견하고 고친 것
@@ -539,7 +539,7 @@ cargo test --no-default-features --test config_matrix  # 기능 없이
 `.huge { width: 500 }` 같은 크기가 컨테이너가 준 슬롯보다 크면, `box_model::apply`가 상자를
 슬롯 밖으로 키운다. 그러면 위젯이 이웃이나 화면 가장자리 위에 그린다.
 
-이것은 CSS의 기본값 `overflow: visible`이다. `tests/css_card_and_overflow.rs`의
+이것은 CSS의 기본값 `overflow: visible`이다. `tests/widget/traits/css/card_and_overflow.rs`의
 `a_child_can_paint_outside_its_container`가 이 동작을 못박아 두었다. 이 동작이 없으면
 `overflow: hidden`도 관찰할 수 없다. 슬롯으로 잘라내는 수정을 시험해 봤지만 그 테스트를
 깨서 되돌렸다. 대신 매트릭스는 **넘친 것이 모두 `overflow: hidden` 상자 안에 갇히는지**를
@@ -556,7 +556,7 @@ cargo test --no-default-features --test config_matrix  # 기능 없이
 `put_sequence`가 모두 클립 밖 칸을 건드리지 않는다. 클립이 반으로 자를 넓은 문자와 OSC 66
 시퀀스는 아예 쓰지 않는다. 클립된 하위 트리 안의 패닉이 클립 복원을 건너뛰어도
 `ErrorBoundary`가 복원한 뒤 대체 화면을 그린다. 오버레이(드롭다운, 툴팁, 토스트)는 트리
-다음에 그리므로 잘리지 않는다. 테스트는 `tests/overflow_clips_direct_writers.rs`와
+다음에 그리므로 잘리지 않는다. 테스트는 `tests/widget/traits/render_context/clip.rs`와
 `render::buffer::clip_tests`다.
 
 #### 견딘 것

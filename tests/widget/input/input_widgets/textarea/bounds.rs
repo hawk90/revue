@@ -99,7 +99,7 @@ fn test_replace_multiline() {
     assert!(ta.get_content().contains("Row"));
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
 // `<set content> Enter PageUp <add cursor below> Delete` - edits move only
 // the primary cursor, so when Delete merged the line below into the
 // current one, the cursor added on that line was left past the text.

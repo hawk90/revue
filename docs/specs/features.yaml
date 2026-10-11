@@ -41,7 +41,7 @@ items:
     evidence:
       - src/runtime/dom/selector/parser.rs
       - src/runtime/dom/selector/mod.rs::test_selector_part_class
-      - tests/css_reaches_the_screen.rs::color_reaches_the_cell
+      - tests/widget/traits/css/reaches_the_screen.rs::color_reaches_the_cell
       - tests/runtime/dom/selector/lists.rs
     source:
       - FEATURES.md §1 CSS Styling / Selectors
@@ -123,7 +123,7 @@ items:
       - nested var() fallback chain
     evidence:
       - src/runtime/style/parser/vars.rs::resolve_var
-      - tests/e2e_scenarios.rs::test_css_variable_fallback_chain
+      - tests/e2e/scenarios.rs::test_css_variable_fallback_chain
       - src/runtime/style/parser/mod.rs::test_var_fallback_inside_shorthand
       - src/runtime/style/parser/mod.rs::test_var_fallback_that_is_a_var
     source:
@@ -141,8 +141,8 @@ items:
       - transparent keyword yields a transparent color
     evidence:
       - src/runtime/style/parser/value_parsers.rs::parse_color
-      - tests/css_reaches_the_screen.rs::a_three_digit_hex_color_reaches_the_cell
-      - tests/css_reaches_the_screen.rs::an_rgb_color_reaches_the_cell
+      - tests/widget/traits/css/reaches_the_screen.rs::a_three_digit_hex_color_reaches_the_cell
+      - tests/widget/traits/css/reaches_the_screen.rs::an_rgb_color_reaches_the_cell
     source:
       - FEATURES.md §1 CSS Styling / Color Formats
       - FEATURES.md §1 CSS Styling / Colors
@@ -160,7 +160,7 @@ items:
       - gray/grey aliases
     evidence:
       - src/runtime/style/parser/value_parsers.rs::parse_named_color
-      - tests/css_reaches_the_screen.rs::a_named_color_reaches_the_cell
+      - tests/widget/traits/css/reaches_the_screen.rs::a_named_color_reaches_the_cell
     source:
       - FEATURES.md §1 CSS Styling / Color Formats
   - id: CSS-010
@@ -191,12 +191,12 @@ items:
         (fill_box_background) outranks it
     evidence:
       - src/widget/traits/render_context/css.rs::css_color
-      - tests/css_background.rs::background_fills_the_cells_the_widget_left_empty
-      - tests/css_background.rs::a_widgets_own_fill_beats_the_stylesheet
-      - tests/css_reaches_the_screen.rs::font_weight_bold_reaches_the_cell
-      - tests/css_reaches_the_screen.rs::visibility_hidden_stops_the_paint
-      - tests/css_reaches_the_screen.rs::text_align_center_moves_the_text
-      - tests/css_defaults.rs::a_rule_on_a_nested_widget_applies_by_default
+      - tests/widget/traits/css/background.rs::background_fills_the_cells_the_widget_left_empty
+      - tests/widget/traits/css/background.rs::a_widgets_own_fill_beats_the_stylesheet
+      - tests/widget/traits/css/reaches_the_screen.rs::font_weight_bold_reaches_the_cell
+      - tests/widget/traits/css/reaches_the_screen.rs::visibility_hidden_stops_the_paint
+      - tests/widget/traits/css/reaches_the_screen.rs::text_align_center_moves_the_text
+      - tests/widget/traits/css/defaults.rs::a_rule_on_a_nested_widget_applies_by_default
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
       - PR #676
@@ -214,8 +214,8 @@ items:
       - 'border-style: none removes a builder border; silent stylesheet keeps it'
     evidence:
       - src/widget/traits/render_context/css.rs::css_border_style
-      - tests/css_border_reaches_the_screen.rs::border_style_none_removes_a_builders_border
-      - tests/css_card_and_overflow.rs::border_style_reaches_a_card
+      - tests/widget/traits/css/border.rs::border_style_none_removes_a_builders_border
+      - tests/widget/traits/css/card_and_overflow.rs::border_style_reaches_a_card
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
   - id: CSS-013
@@ -229,10 +229,10 @@ items:
       - every RenderContext drawing primitive honors the clip, text and single characters included
       - widgets writing to ctx.buffer directly (canvases, Alert border, GradientBox, user widgets) are clipped too
     evidence:
-      - tests/css_card_and_overflow.rs::overflow_hidden_clips_a_child_to_its_container
+      - tests/widget/traits/css/card_and_overflow.rs::overflow_hidden_clips_a_child_to_its_container
       - src/widget/traits/render_context/tests.rs::test_clip_text_primitives
-      - tests/overflow_clips_direct_writers.rs::a_widget_writing_to_the_buffer_is_clipped
-      - tests/config_matrix.rs::every_screen_survives_every_combination_of_switches
+      - tests/widget/traits/render_context/clip.rs::a_widget_writing_to_the_buffer_is_clipped
+      - tests/e2e/config_matrix.rs::every_screen_survives_every_combination_of_switches
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
     notes: scroll/auto parse but behave like visible/hidden; no CSS-driven scrolling. The default stays visible (CSS), so a box sized past its slot paints over its neighbors unless a container says overflow hidden.
@@ -249,7 +249,7 @@ items:
       - padding is not applied (it would move a widget's own border)
     evidence:
       - src/core/app/builder.rs::css_layout
-      - tests/css_defaults.rs::both_are_on_by_default
+      - tests/widget/traits/css/defaults.rs::both_are_on_by_default
       - tests/runtime/layout/css_layout.rs::it_can_be_turned_off
       - tests/runtime/layout/css_layout.rs::display_none_hides_a_widget
       - tests/runtime/layout/css_layout.rs::max_width_clamps_and_min_width_floors
@@ -287,7 +287,7 @@ items:
     evidence:
       - src/runtime/style/parser/apply.rs
       - src/widget/traits/render_context/css.rs::css_flex_wrap
-      - tests/flex_wrap_content_sized.rs::a_wrapped_line_is_as_tall_as_its_tallest_item
+      - tests/widget/layout/stack/content_sized/flex_wrap.rs::a_wrapped_line_is_as_tall_as_its_tallest_item
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
     notes: 'Doc table lists them as supported, doc note says they are not applied. Code: all parse; only flex-wrap is read
@@ -472,25 +472,25 @@ items:
     evidence:
       - src/widget/traits/view.rs::measure
       - src/widget/layout/stack/mod.rs::content_sized
-      - tests/content_sized_stack.rs::a_column_stacks_text_line_after_line
-      - tests/content_sized_stack.rs::every_constructor_is_content_sized_by_default
-      - tests/content_sized_stack.rs::turning_the_flag_off_shares_equally
-      - tests/content_sized_stack.rs::a_body_too_tall_shrinks_instead_of_pushing_the_footer_off
-      - tests/content_sized_stack.rs::a_child_that_fills_gets_what_the_measured_ones_leave
-      - tests/content_sized_stack.rs::a_switch_and_its_label_sit_side_by_side
-      - tests/widget_measure.rs::assert_measures_paint
+      - tests/widget/layout/stack/content_sized/mod.rs::a_column_stacks_text_line_after_line
+      - tests/widget/layout/stack/content_sized/mod.rs::every_constructor_is_content_sized_by_default
+      - tests/widget/layout/stack/content_sized/mod.rs::turning_the_flag_off_shares_equally
+      - tests/widget/layout/stack/content_sized/mod.rs::a_body_too_tall_shrinks_instead_of_pushing_the_footer_off
+      - tests/widget/layout/stack/content_sized/mod.rs::a_child_that_fills_gets_what_the_measured_ones_leave
+      - tests/widget/layout/stack/content_sized/mod.rs::a_switch_and_its_label_sit_side_by_side
+      - tests/widget/traits/view/measure.rs::assert_measures_paint
       - src/widget/traits/view.rs::fills
-      - tests/content_sized_stack.rs::a_progress_bar_takes_the_row_the_brackets_leave
-      - tests/content_sized_stack.rs::two_fillers_in_a_row_split_the_leftover
-      - tests/content_sized_css.rs::an_explicit_width_beats_a_child_that_fills_the_row
-      - tests/widget_size_agreement.rs::measure_answers_with_the_height_helpers
-      - tests/content_sized_css.rs::a_margin_top_pushes_the_text_down_and_keeps_it_visible
-      - tests/content_sized_css.rs::a_height_reserves_its_rows_and_the_next_sibling_starts_after_them
-      - tests/content_sized_css.rs::a_hidden_child_takes_no_space
-      - tests/content_sized_nested_css.rs::the_inner_stacks_css_gap_is_reserved
-      - tests/content_sized_nested_css.rs::spacing_two_levels_down_is_reserved
-      - tests/content_sized_nested_css.rs::a_wrapper_around_styled_spacing_fills_instead_of_clipping
-      - tests/flex_wrap_content_sized.rs::a_wrapping_row_takes_as_many_lines_as_it_needs
+      - tests/widget/layout/stack/content_sized/mod.rs::a_progress_bar_takes_the_row_the_brackets_leave
+      - tests/widget/layout/stack/content_sized/mod.rs::two_fillers_in_a_row_split_the_leftover
+      - tests/widget/layout/stack/content_sized/css.rs::an_explicit_width_beats_a_child_that_fills_the_row
+      - tests/widget/traits/view/size_agreement.rs::measure_answers_with_the_height_helpers
+      - tests/widget/layout/stack/content_sized/css.rs::a_margin_top_pushes_the_text_down_and_keeps_it_visible
+      - tests/widget/layout/stack/content_sized/css.rs::a_height_reserves_its_rows_and_the_next_sibling_starts_after_them
+      - tests/widget/layout/stack/content_sized/css.rs::a_hidden_child_takes_no_space
+      - tests/widget/layout/stack/content_sized/nested_css.rs::the_inner_stacks_css_gap_is_reserved
+      - tests/widget/layout/stack/content_sized/nested_css.rs::spacing_two_levels_down_is_reserved
+      - tests/widget/layout/stack/content_sized/nested_css.rs::a_wrapper_around_styled_spacing_fills_instead_of_clipping
+      - tests/widget/layout/stack/content_sized/flex_wrap.rs::a_wrapping_row_takes_as_many_lines_as_it_needs
     source:
       - PR #687
     notes: Opt-in in 2.x; on by default since 3.0 (docs/migration/v3.0.0.md section 2). Widgets without an obvious
@@ -599,7 +599,7 @@ items:
       - class() for styling
     evidence:
       - src/widget/mod.rs::text
-      - tests/widget/display/text.rs
+      - tests/widget/display/text/mod.rs
     source:
       - FEATURES.md §4 Widgets / Basic Widgets / Text
   - id: WID-003
@@ -614,7 +614,7 @@ items:
     evidence:
       - src/widget/data/list.rs::list
       - src/widget/data/list.rs::select_next
-      - tests/data_widgets_read_css.rs
+      - tests/widget/traits/css/widgets/data.rs
     source:
       - FEATURES.md §4 Widgets / Basic Widgets / List
     notes: Doc API .on_select(closure) does not exist; selection is state (selected/selected_index/handle_key), the app reacts
@@ -664,7 +664,7 @@ items:
       - open/close, searchable
     evidence:
       - src/widget/input/input_widgets/select/mod.rs::select
-      - tests/widget_interaction_tests.rs
+      - tests/e2e/widget_interaction.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / Select
     notes: No .on_change; state-based.
@@ -790,7 +790,7 @@ items:
       - keyboard next/prev
     evidence:
       - src/widget/layout/tabs.rs::tabs
-      - tests/e2e_scenarios.rs
+      - tests/e2e/scenarios.rs
     source:
       - FEATURES.md §4 Widgets / Navigation Widgets / Tabs
     notes: Doc .active()/.on_change()/.content() do not exist (selected/selected_index/select); the app renders the tab body.
@@ -823,7 +823,7 @@ items:
       - collapsible + expanded
     evidence:
       - src/widget/layout/card/helper.rs::card
-      - tests/css_card_and_overflow.rs
+      - tests/widget/traits/css/card_and_overflow.rs
       - examples/card.rs
     source:
       - FEATURES.md §4 Widgets / Layout Widgets / Card
@@ -840,7 +840,7 @@ items:
     evidence:
       - src/widget/feedback/modal/mod.rs::modal
       - src/widget/feedback/modal/key_handling.rs::handle_key
-      - tests/rendering_overlap_tests.rs
+      - tests/widget/traits/view/overlap.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / Modal
   - id: WID-017
@@ -870,7 +870,7 @@ items:
       - optional percentage label
     evidence:
       - src/widget/display/progress.rs::progress
-      - tests/display_widgets_read_css.rs
+      - tests/widget/traits/css/widgets/display.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / Progress
     notes: Doc .max(100).label(..) do not exist; value is a 0.0–1.0 fraction, show_percentage(true).
@@ -1092,7 +1092,7 @@ items:
       - interactive color selection
     evidence:
       - src/widget/input/input_widgets/color_picker/helper.rs::color_picker
-      - tests/picker_widgets_read_css.rs
+      - tests/widget/traits/css/widgets/picker.rs
     source:
       - FEATURES.md §Advanced Widgets / Color Picker
     notes: No .on_change.
@@ -1150,7 +1150,7 @@ items:
       - value/max, keyboard change
     evidence:
       - src/widget/input/input_widgets/rating.rs::rating
-      - tests/input_widgets_read_css.rs
+      - tests/widget/traits/css/widgets/input.rs
     source:
       - FEATURES.md §Advanced Widgets / Rating
     notes: No .interactive()/.on_change.
@@ -1180,7 +1180,7 @@ items:
       - placeholder, query input
     evidence:
       - src/widget/input/input_widgets/search_bar.rs::search_bar
-      - tests/input_widgets_read_css.rs
+      - tests/widget/traits/css/widgets/input.rs
     source:
       - FEATURES.md §Advanced Widgets / Search Bar
     notes: Doc .suggestions()/.on_select() do not exist on SearchBar; suggestion lists are the Autocomplete/Combobox widgets.
@@ -1237,7 +1237,7 @@ items:
     evidence:
       - src/widget/display/tag.rs::tag
       - src/widget/display/tag.rs::chip
-      - tests/display_widgets_read_css.rs
+      - tests/widget/traits/css/widgets/display.rs
     source:
       - FEATURES.md §Advanced Widgets / Tag/Chip
   - id: WID-041
@@ -1294,10 +1294,10 @@ items:
       - fallback view shown with the error
     evidence:
       - src/widget/feedback/error_boundary.rs::error_boundary
-      - tests/invariants.rs::inv09_a_panic_revue_catches_does_not_restore_the_terminal
+      - tests/e2e/invariants.rs::inv09_a_panic_revue_catches_does_not_restore_the_terminal
     source:
       - FEATURES.md §7 Developer Experience / Error Handling
-    notes: Catches a child's render panic without restoring the terminal (tests/invariants.rs); no test checks the fallback content. Doc .fallback(|err| ..) takes a closure; real
+    notes: Catches a child's render panic without restoring the terminal (tests/e2e/invariants.rs); no test checks the fallback content. Doc .fallback(|err| ..) takes a closure; real
       fallback() takes a View.
   - id: WID-045
     title: Split view holding widgets (resizable, collapsible panes)
@@ -1601,11 +1601,11 @@ items:
       - typing, Backspace/Delete, undo and search over Hangul or CJK do not panic
     evidence:
       - src/widget/traits/render_context/edit_line.rs
-      - tests/wide_char_placement.rs
+      - tests/widget/traits/view/wide_chars/mod.rs
       - tests/widget/layout/border.rs::wide_title_truncates_by_columns
       - tests/widget/input/input_widgets/wide_chars.rs
       - tests/widget/developer/code_editor/wide_chars.rs
-      - tests/text_fields_wide_chars.rs
+      - tests/widget/traits/view/wide_chars/text_fields.rs
     source:
       - PR #684
       - PR #690
@@ -1690,7 +1690,7 @@ items:
     evidence:
       - src/testing/test_app.rs::send_key
       - src/testing/test_app.rs::screen_text
-      - tests/snapshots_widget.rs
+      - tests/e2e/screens.rs
     source:
       - FEATURES.md §7 Developer Experience / Testing
   - id: THEME-001

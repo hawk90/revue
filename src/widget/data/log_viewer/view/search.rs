@@ -169,7 +169,7 @@ mod tests {
         assert_eq!(ranges(&viewer), vec![(0, 0, 9), (0, 10, 19)]);
     }
 
-    // Found by tests/event_sequences.rs: the shrunk sequence was
+    // Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
     // `<search 'e'> 'n' <clear> <push>` - the current match stayed at the
     // old index after the entries were cleared and a new one matched.
     #[test]

@@ -1,5 +1,6 @@
 //! Splitter widget tests
 
+mod boundary;
 mod drag;
 mod render;
 
@@ -380,4 +381,82 @@ fn test_mixed_korean_ascii_in_pane() {
     // Position 6 onward should be empty
     let outside = buffer.get(6, 0).unwrap();
     assert!(outside.symbol == ' ' || outside.symbol == '\0');
+}
+
+mod float_inputs {
+    //! NaN, infinite, negative and out-of-range floats do not overflow the
+    //! `f32 as u16` conversions.
+
+    use revue::layout::Rect;
+    use revue::widget::{HSplit, VSplit};
+
+    #[test]
+    fn test_hsplit_negative_ratio() {
+        let split = HSplit::new(-0.5);
+        let area = Rect::new(0, 0, 100, 50);
+        let (left, right) = split.areas(area);
+
+        // Ratio clamped to 0.1, but min_left (5) and min_right (5) also apply
+        // Available = 99, clamped ratio gives 0.1, but min constraints apply
+        assert!(left.width >= 5);
+        assert!(right.width >= 5);
+        assert_eq!(left.width + right.width + 1, 100); // Total width preserved
+    }
+
+    #[test]
+    fn test_hsplit_greater_than_one_ratio() {
+        let split = HSplit::new(1.5);
+        let area = Rect::new(0, 0, 100, 50);
+        let (left, right) = split.areas(area);
+
+        // Ratio clamped to 0.9, but min constraints apply
+        assert!(left.width >= 5);
+        assert!(right.width >= 5);
+        assert_eq!(left.width + right.width + 1, 100);
+    }
+
+    #[test]
+    fn test_hsplit_zero_ratio() {
+        let split = HSplit::new(0.0);
+        let area = Rect::new(0, 0, 100, 50);
+        let (left, right) = split.areas(area);
+
+        // Ratio clamped to 0.1, but min constraints apply
+        assert!(left.width >= 5);
+        assert!(right.width >= 5);
+        assert_eq!(left.width + right.width + 1, 100);
+    }
+
+    #[test]
+    fn test_hsplit_nan_ratio() {
+        let split = HSplit::new(f32::NAN);
+        let area = Rect::new(0, 0, 100, 50);
+        let (left, _right) = split.areas(area);
+
+        // NaN should be handled by clamp in new()
+        // Minimum width should still apply
+        assert!(left.width >= 5); // min_left default is 5
+    }
+
+    #[test]
+    fn test_vsplit_negative_ratio() {
+        let split = VSplit::new(-0.5);
+        let area = Rect::new(0, 0, 100, 50);
+        let (top, bottom) = split.areas(area);
+
+        // Ratio should be clamped
+        assert!(top.height >= 3); // min_top default is 3
+        assert!(bottom.height >= 3); // min_bottom default is 3
+    }
+
+    #[test]
+    fn test_vsplit_greater_than_one_ratio() {
+        let split = VSplit::new(1.5);
+        let area = Rect::new(0, 0, 100, 50);
+        let (top, bottom) = split.areas(area);
+
+        // Ratio should be clamped
+        assert!(top.height <= 47); // 50 - min_bottom - 1
+        assert!(bottom.height >= 3);
+    }
 }

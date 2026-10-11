@@ -194,7 +194,7 @@ fn test_input_undo_history_keeps_last_100_edits() {
     assert_eq!(input.text(), "a".repeat(50));
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
 // `Shift+Right Backspace` at the end of the text. Shift+Right there leaves
 // an empty selection (anchor at the cursor); Backspace deleted the last
 // character but kept the anchor, which became a selection past the end.

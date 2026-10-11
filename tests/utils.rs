@@ -12,7 +12,7 @@ mod browser;
 mod clipboard;
 #[path = "utils/debounce.rs"]
 mod debounce;
-#[path = "utils/diff.rs"]
+#[path = "utils/diff/mod.rs"]
 mod diff;
 #[path = "utils/easing/mod.rs"]
 mod easing;

@@ -895,3 +895,51 @@ fn test_scroll_percentage_tracking() {
     sv.scroll_to_bottom(20);
     assert_eq!(sv.scroll_percentage(20), 1.0);
 }
+
+mod float_inputs {
+    //! NaN, infinite, negative and out-of-range floats do not overflow the
+    //! `f32 as u16` conversions.
+
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::RenderContext;
+    use revue::widget::ScrollView;
+
+    #[test]
+    fn test_scroll_view_nan_percentage() {
+        let sv = ScrollView::new().content_height(100).scroll_offset(50);
+
+        let percentage = sv.scroll_percentage(20);
+        // With offset 50, max_offset = 80, percentage should be 0.625
+        assert!((percentage - 0.625).abs() < 0.01);
+
+        // Edge case: zero content height
+        let sv_zero = ScrollView::new().content_height(0).scroll_offset(0);
+
+        let percentage = sv_zero.scroll_percentage(20);
+        assert_eq!(percentage, 0.0);
+    }
+
+    #[test]
+    fn test_scroll_view_max_values() {
+        let sv = ScrollView::new()
+            .content_height(u16::MAX)
+            .scroll_offset(u16::MAX - 20);
+
+        let percentage = sv.scroll_percentage(20);
+        // Should not panic
+        assert!((0.0..=1.0).contains(&percentage));
+    }
+
+    #[test]
+    fn test_scroll_view_thumb_calculation() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let sv = ScrollView::new().content_height(100).scroll_offset(0);
+
+        // Should not panic when rendering scrollbar
+        sv.render_scrollbar(&mut ctx);
+    }
+}

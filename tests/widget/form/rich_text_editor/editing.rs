@@ -1,7 +1,7 @@
 //! Toolbar actions of the rich text editor
 //!
 //! Bold, Italic, Code, Heading1, Quote, BulletList, Undo and Redo are
-//! covered by tests/rich_text_editor/toolbar.rs and the in-source toolbar
+//! covered by tests/widget/form/rich_text_editor/toolbar.rs and the in-source toolbar
 //! tests; these are the remaining actions.
 
 use revue::widget::{BlockType, RichTextEditor, ToolbarAction};

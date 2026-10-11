@@ -1360,7 +1360,7 @@ fn test_clip_get_mut() {
 
 /// Every text primitive honors the clip, not just `set` and `put_str`: a
 /// `Button` label (`draw_text_bg`) given an area below an `overflow: hidden`
-/// box used to paint outside it (`tests/config_matrix.rs`).
+/// box used to paint outside it (`tests/e2e/config_matrix.rs`).
 #[test]
 fn test_clip_text_primitives() {
     type Draw = fn(&mut RenderContext);

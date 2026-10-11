@@ -988,7 +988,7 @@ fn test_datetime_picker_clone() {
     assert_same_render(&original_buf, &render_picker(&original));
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was `'j'` from
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was `'j'` from
 // Jan 31 - moving into February kept the stored day 31.
 #[test]
 fn test_month_navigation_keeps_a_real_date() {
@@ -1006,7 +1006,7 @@ fn test_month_navigation_keeps_a_real_date() {
     assert_eq!(picker.get_date(), Date::new(2024, 2, 29));
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was `Up` from
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was `Up` from
 // Oct 7 with the range Oct 1..=Oct 20 - navigation moved the stored date
 // to September, outside the range. It stops at the limit now, as in
 // RangePicker.

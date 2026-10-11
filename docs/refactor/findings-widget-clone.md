@@ -13,7 +13,7 @@
 
 - **68개에 `#[derive(Clone)]` 추가.** 필드가 전부 이미 `Clone`이었다.
 - **`Splitter`도.** 막고 있던 건 단순 데이터인 `Pane`의 빠진 derive였다.
-- `tests/widget_clone.rs`가 공개 위젯 105개의 `Clone`을 컴파일 시점에 확인한다.
+- `tests/widget/clone.rs`가 공개 위젯 105개의 `Clone`을 컴파일 시점에 확인한다.
   derive가 빠지거나 `Clone`이 아닌 필드가 들어오면 이 테스트가 깨진다. 기능
   플래그 뒤의 위젯(`Markdown`, `Image`, `QrCodeWidget`, `DiffViewer`,
   `MarkdownPresentation`)은 해당 `cfg`로 감쌌다.
@@ -58,7 +58,7 @@
 ### 2. 앞으로 위젯에 콜백을 넣을 때의 규칙
 
 `Clone`을 공개 API로 약속했으니 `Clone` 위젯에 `Box<dyn Fn>`을 넣으면 그 약속이
-깨지고 `tests/widget_clone.rs`가 실패한다. 콜백은 `Arc<dyn Fn>`으로 넣는다는 규칙을
+깨지고 `tests/widget/clone.rs`가 실패한다. 콜백은 `Arc<dyn Fn>`으로 넣는다는 규칙을
 정할지는 1번과 함께 결정한다.
 
 ### 3. `DockManager`/`DockArea`가 외부에서 보이지 않는다

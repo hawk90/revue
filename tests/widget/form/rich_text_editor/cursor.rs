@@ -161,7 +161,7 @@ fn test_cursor_wrap_between_blocks() {
     assert_eq!(editor.cursor_position(), (0, 2));
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
 // `<empty content> '한' Ctrl+Right Tab` - the cursor column counts
 // characters, but the end of a block was measured in bytes, so Right walked
 // past a wide character's end and the next insert sliced out of range.

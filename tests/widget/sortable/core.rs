@@ -160,7 +160,7 @@ fn test_sortable_list_single_item() {
     assert_eq!(list.items()[0].original_index, 0);
 }
 
-// Found by tests/event_sequences.rs (a deeper run): the shrunk sequence was
+// Found by tests/widget/catalog/sequences/mod.rs (a deeper run): the shrunk sequence was
 // `Down(Left)@(+0,start) Drag(Left)@(start,mid) <remove 0>
 // Up(Left)@(start,start)` - an item removed during a drag left the drag's
 // indices pointing into the old list, and dropping inserted out of range.

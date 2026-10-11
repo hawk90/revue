@@ -82,7 +82,7 @@ fn test_slider_increment_stops_at_bounds() {
     assert_eq!(s.get_value(), 0.0);
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was `<set NaN>` -
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was `<set NaN>` -
 // NaN clamps to NaN, so the value left the range for good (stepping from
 // NaN gives NaN again).
 #[test]

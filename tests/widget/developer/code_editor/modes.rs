@@ -134,7 +134,7 @@ fn test_close_find() {
     assert!(!editor.is_find_active());
 }
 
-// Found by tests/event_sequences.rs: the shrunk sequence was
+// Found by tests/widget/catalog/sequences/mod.rs: the shrunk sequence was
 // `<find 'n'> Backspace 'n' <set content> Enter` - the find matches were
 // positions in the old text, so Enter jumped the cursor past the end of
 // the new one.

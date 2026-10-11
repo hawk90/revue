@@ -445,5 +445,5 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// - [`worker::WorkerPool`], [`worker::WorkerHandle`] - Background tasks
 pub mod prelude;
 
-// Tests extracted to tests/lib_tests.rs
+// Tests: tests/lib.rs
 // All tests use only public constants, functions, and types from revue

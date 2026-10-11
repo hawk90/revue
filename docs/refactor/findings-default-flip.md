@@ -53,7 +53,7 @@ TUI가 아닌 `version`, `store`, `test_helper_functions`와 벤치용 `benchmar
 - `background`는 상속되지 않으므로 규칙 없는 자식은 아무것도 채우지 않고 부모의 것이 보인다
 
 고친 뒤 `dashboard`는 위젯이 다른 색을 직접 지정한 칸을 빼고 전부 채워진다. 다른 예제는
-바뀌지 않았고 전경색 변화도 없다. 계약은 `tests/css_background.rs`.
+바뀌지 않았고 전경색 변화도 없다. 계약은 `tests/widget/traits/css/background.rs`.
 
 CSS 배경 채우기는 `dom_from_render`에서만 동작한다 — 루트 아래 노드에 스타일이 닿는
 경로가 그것뿐이다.
