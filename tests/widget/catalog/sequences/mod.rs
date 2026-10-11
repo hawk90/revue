@@ -36,9 +36,6 @@ pub mod keys;
 pub mod known_failures;
 pub mod mouse;
 
-#[path = "../matrix/sentinel.rs"]
-pub mod sentinel;
-
 use std::collections::BTreeSet;
 use std::fmt;
 use std::sync::mpsc;
@@ -50,8 +47,8 @@ use proptest::test_runner::{Config, RngAlgorithm, TestCaseError, TestRng, TestRu
 use revue::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use revue::layout::Rect;
 
+use super::matrix::sentinel::{catch, render_checked};
 use catalog::Entry;
-use sentinel::{catch, render_checked};
 
 // ─── Steps ──────────────────────────────────────────────────────────────────
 
