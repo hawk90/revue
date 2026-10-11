@@ -323,7 +323,8 @@ On unix, `App::run` treats `SIGTERM` (`kill`), `SIGHUP` (the terminal window
 closed) and `SIGINT` (`kill -INT`) as a quit: the event loop stops, plugins'
 `on_unmount` runs, the terminal is restored, and `run` returns `Ok(())` - the
 same path as `app.quit()`. Ctrl+C is unaffected: in raw mode it is a key event,
-not a signal.
+not a signal. It quits as a default action that the handler can skip with
+`app.prevent_default()` (see [App Builder](app-builder.md#default-actions-and-prevent_default)).
 
 - A second signal while that shutdown is still running kills the process.
 - Outside `App::run`, the signals keep their default behavior.

@@ -18,6 +18,13 @@ impl App {
     /// * `view` - The root view component to render
     /// * `handler` - Callback for handling events, returns whether to redraw
     ///
+    /// # Default actions
+    ///
+    /// After the handler returns, Ctrl+C quits, and with
+    /// [`tab_navigation`](crate::core::app::AppBuilder::tab_navigation) Tab and
+    /// Shift+Tab move focus. A handler that used the key itself calls
+    /// [`prevent_default`](Self::prevent_default) to skip that for the event.
+    ///
     /// # Shutdown
     ///
     /// `run` returns `Ok(())` after [`quit`](Self::quit), after plugins have
@@ -166,10 +173,12 @@ impl App {
         V: View,
         H: FnMut(&Event, &mut V, &mut Self) -> bool,
     {
+        self.default_prevented = false;
         let mut should_draw = handler(&event, view, self);
+        let prevented = std::mem::take(&mut self.default_prevented);
 
         match event {
-            Event::Key(key) if is_quit_key(&key) => {
+            Event::Key(key) if !prevented && is_quit_key(&key) => {
                 self.quit();
                 return false;
             }
@@ -181,7 +190,7 @@ impl App {
                 self.needs_layout_rebuild = true; // Resize requires full layout rebuild
                 should_draw = true;
             }
-            Event::Key(key) if self.tab_navigation && is_tab_key(&key) => {
+            Event::Key(key) if !prevented && self.tab_navigation && is_tab_key(&key) => {
                 should_draw |= self.track_tab_focus(&key);
             }
             Event::Mouse(ref mouse) => {
@@ -280,6 +289,20 @@ impl App {
     /// event entirely.
     pub(crate) fn dispatch_for_test<V: View>(&mut self, event: Event, view: &mut V) -> bool {
         let mut handler = |_: &Event, _: &mut V, _: &mut Self| false;
+        self.handle_event(event, view, &mut handler)
+    }
+
+    /// [`dispatch_for_test`](Self::dispatch_for_test) with the app's own handler.
+    pub(crate) fn dispatch_with_for_test<V, H>(
+        &mut self,
+        event: Event,
+        view: &mut V,
+        mut handler: H,
+    ) -> bool
+    where
+        V: View,
+        H: FnMut(&Event, &mut V, &mut Self) -> bool,
+    {
         self.handle_event(event, view, &mut handler)
     }
 

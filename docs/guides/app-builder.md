@@ -224,7 +224,8 @@ with a shift flag are read that way.
 
 It is off by default because Tab is a key an existing application may already
 handle itself, and the runtime taking it would be a silent behavior change. The
-application's own handler runs first either way.
+application's own handler runs first either way, and can keep a Tab for itself
+with `app.prevent_default()` (see [Default actions](#default-actions-and-prevent_default)).
 
 This sets `NodeState.focused` and nothing else. Widgets still read their own
 `focused` field, so no widget *behavior* changes — what changes is that
@@ -288,17 +289,17 @@ Starts the event loop with full event handling. The handler receives all events 
 ```rust
 app.run(MyView, |event, view, app| {
     match event {
-        Event::Key(key) => {
-            match key.key {
-                Key::Char('q') => false,  // Return false to quit
-                Key::Up => {
-                    view.move_up();
-                    true  // Return true to request redraw
-                }
-                _ => true,
+        Event::Key(key) => match key.key {
+            Key::Char('q') => {
+                app.quit(); // stop the event loop
+                false
             }
-        }
-        Event::Resize(_, _) => true,  // Redraw on resize
+            Key::Up => {
+                view.move_up();
+                true // redraw
+            }
+            _ => false,
+        },
         _ => false,
     }
 });
@@ -306,18 +307,49 @@ app.run(MyView, |event, view, app| {
 
 **Parameters:**
 - `view`: Your view implementation (implements `View` trait)
-- `handler`: Event handler closure that returns `bool` (true = continue/keep running, false = quit)
+- `handler`: Event handler closure. It returns `bool`: `true` asks for a redraw. The return value never quits the app; call `app.quit()` for that.
 
 **Returns:** `Result<()>`
 
-### run_with_handler<V, H>(view, handler)
+### Default actions and `prevent_default()`
 
-Simplified version for keyboard-only apps. The handler receives only key events and the view — no app instance or mouse/resize events.
+After the handler returns, revue acts on some keys itself:
+
+- **Ctrl+C** quits the app.
+- **Tab / Shift+Tab** move `:focus`, when [`tab_navigation`](#tab_navigationenabled) is on.
+
+To keep one of these keys for the app, call `app.prevent_default()` from the handler. It applies to the current event only, like `preventDefault()` in the DOM:
 
 ```rust
-app.run_with_handler(MyView, |key, view| {
-    matches!(key.key, Key::Char('q') | Key::Escape)
-});
+app.run(view, |event, view, app| match event {
+    // First Ctrl+C cancels the running task; the next one quits
+    Event::Key(k) if k.is_ctrl_c() && view.task_running() => {
+        view.cancel_task();
+        app.prevent_default();
+        true
+    }
+    // A key the focused input used is not acted on again
+    Event::Key(k) => {
+        let used = view.input.handle_key_event(k);
+        if used {
+            app.prevent_default();
+        }
+        used
+    }
+    _ => false,
+})
+```
+
+`Input` uses Ctrl+C only to copy a selection. Without a selection it leaves the key alone, and Ctrl+C quits as usual.
+
+Signals are separate. In raw mode Ctrl+C is a key, not `SIGINT`. `SIGTERM`, `SIGHUP` and an external `SIGINT` always shut the app down cleanly (see [Error Handling](error-handling.md#termination-signals)).
+
+### run_with_handler<V, H>(view, handler)
+
+Simplified version for keyboard-only apps. The handler receives only key events and the view — no app instance or mouse/resize events. It returns whether to redraw. Ctrl+C still quits, and there is no `app` to call `prevent_default()` on; use `run()` for that.
+
+```rust
+app.run_with_handler(MyView, |key, view| view.handle_key(&key.key));
 ```
 
 ## Common Patterns
@@ -329,8 +361,11 @@ use revue::prelude::*;
 
 fn main() -> Result<()> {
     let mut app = App::builder().build();
-    app.run(HelloWorld, |event, _, _| {
-        !matches!(event, Event::Key(k) if k.key == Key::Char('q'))
+    app.run(HelloWorld, |event, _, app| {
+        if matches!(event, Event::Key(k) if k.key == Key::Char('q')) {
+            app.quit();
+        }
+        false
     })
 }
 ```

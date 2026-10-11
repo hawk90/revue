@@ -793,6 +793,15 @@ mod tests {
     }
 
     #[test]
+    fn test_input_handle_key_event_ctrl_c_without_selection_is_left_to_the_app() {
+        let mut input = Input::new().value("hello");
+        let event = KeyEvent::ctrl(Key::Char('c'));
+        assert!(!input.handle_key_event(&event));
+        assert_eq!(input.clipboard, None);
+        assert_eq!(input.text(), "hello", "Ctrl+C typed a letter");
+    }
+
+    #[test]
     fn test_input_handle_key_event_ctrl_x_cut() {
         let mut input = Input::new().value("hello");
         input.select_all();

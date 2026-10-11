@@ -52,7 +52,7 @@ impl Default for Input {
 /// | Key | Action |
 /// |-----|--------|
 /// | `Ctrl+A` | Select all text |
-/// | `Ctrl+C` | Copy selection to clipboard |
+/// | `Ctrl+C` | Copy selection to clipboard (with no selection the key is left to the app) |
 /// | `Ctrl+X` | Cut selection to clipboard |
 /// | `Ctrl+V` | Paste from clipboard |
 /// | `Ctrl+Z` | Undo last edit |

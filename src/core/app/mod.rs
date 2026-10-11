@@ -28,10 +28,12 @@
 //!    └─ Restore terminal
 //!
 //! 3. EVENT HANDLING (handle_event)
-//!    ├─ Quit keys (Ctrl+C, 'q') → stop running
+//!    ├─ User handler → custom application logic, may call prevent_default
+//!    ├─ Default actions, unless prevented:
+//!    │   ├─ Ctrl+C → stop running
+//!    │   └─ Tab/Shift+Tab → move focus (with tab_navigation)
 //!    ├─ Resize events → update buffers, rebuild layout
-//!    ├─ Tick events → update transitions, tick plugins
-//!    └─ User handler → custom application logic
+//!    └─ Tick events → update transitions, tick plugins
 //!
 //! 4. DRAW CYCLE (draw)
 //!    ├─ Update DOM (if needed)
@@ -227,6 +229,8 @@ pub struct App {
     /// Tab moves `:focus` between focusable nodes (see
     /// [`AppBuilder::tab_navigation`](crate::core::app::AppBuilder::tab_navigation))
     tab_navigation: bool,
+    /// The handler called [`App::prevent_default`] for the current event
+    default_prevented: bool,
     /// Run [`LayoutEngine`] every frame. Off unless something will read its
     /// output - and nothing in the render path does: containers compute their
     /// own geometry. See `docs/refactor/findings-layout.md`.
@@ -268,7 +272,8 @@ impl App {
             needs_dom_rebuild: true,  // Initial render needs DOM root creation
             incremental_dom: false,   // Opt-in until the benches say otherwise
             tab_navigation: false,    // Opt-in: Tab may already be the app's key
-            layout_engine: false,     // Nothing reads it yet
+            default_prevented: false,
+            layout_engine: false, // Nothing reads it yet
             plugins,
             devtools_enabled,
             #[cfg(feature = "hot-reload")]
@@ -304,6 +309,7 @@ impl App {
             needs_dom_rebuild: true,
             incremental_dom: false,
             tab_navigation: false,
+            default_prevented: false,
             layout_engine: false,
             plugins,
             devtools_enabled,
@@ -372,6 +378,17 @@ impl App {
     /// Stop the application event loop
     pub fn quit(&mut self) {
         self.running = false;
+    }
+
+    /// Skip revue's default action for the event the handler is handling.
+    ///
+    /// After the `run` handler returns, revue acts on some keys itself:
+    /// Ctrl+C quits, and with [`tab_navigation`](crate::core::app::AppBuilder::tab_navigation)
+    /// Tab and Shift+Tab move focus. Call this from the handler when the app
+    /// or one of its widgets used the key, and revue leaves it alone. It
+    /// applies to the current event only.
+    pub fn prevent_default(&mut self) {
+        self.default_prevented = true;
     }
 
     /// Buffer that was most recently presented to the terminal.
@@ -743,6 +760,93 @@ mod tests {
         let event = Event::Key(KeyEvent::ctrl(Key::Char('c')));
         let _ = app.handle_event(event, &mut view, &mut handler);
         assert!(!app.is_running());
+    }
+
+    #[test]
+    fn test_handle_event_ctrl_c_prevented_keeps_running() {
+        let mut app = create_test_app();
+        app.running = true;
+        let mut view = TestView;
+        let mut handler = |_: &Event, _: &mut TestView, app: &mut App| {
+            app.prevent_default();
+            false
+        };
+
+        let event = Event::Key(KeyEvent::ctrl(Key::Char('c')));
+        let _ = app.handle_event(event, &mut view, &mut handler);
+        assert!(app.is_running());
+    }
+
+    #[test]
+    fn test_handle_event_prevent_default_covers_one_event() {
+        let mut app = create_test_app();
+        app.running = true;
+        let mut view = TestView;
+        let mut prevent = |_: &Event, _: &mut TestView, app: &mut App| {
+            app.prevent_default();
+            false
+        };
+        let mut plain = |_: &Event, _: &mut TestView, _: &mut App| false;
+
+        let _ = app.handle_event(
+            Event::Key(KeyEvent::new(Key::Char('x'))),
+            &mut view,
+            &mut prevent,
+        );
+        let _ = app.handle_event(
+            Event::Key(KeyEvent::ctrl(Key::Char('c'))),
+            &mut view,
+            &mut plain,
+        );
+        assert!(
+            !app.is_running(),
+            "the previous event's prevent_default leaked"
+        );
+    }
+
+    /// The handler an app with a focused `Input` writes: the key goes to the
+    /// input, and a key the input used is not acted on again.
+    fn input_handler(event: &Event, input: &mut crate::widget::Input, app: &mut App) -> bool {
+        match event {
+            Event::Key(key) => {
+                let used = input.handle_key_event(key);
+                if used {
+                    app.prevent_default();
+                }
+                used
+            }
+            _ => false,
+        }
+    }
+
+    #[test]
+    fn test_handle_event_ctrl_c_copies_from_input_and_keeps_running() {
+        use crate::widget::Input;
+        let mut app = create_test_app();
+        app.running = true;
+        let mut view = Input::new().value("hello").focused(true);
+        view.select_all();
+
+        let event = Event::Key(KeyEvent::ctrl(Key::Char('c')));
+        let _ = app.handle_event(event, &mut view, &mut input_handler);
+        assert!(app.is_running());
+
+        view.handle_key(&Key::End);
+        view.handle_key_event(&KeyEvent::ctrl(Key::Char('v')));
+        assert_eq!(view.text(), "hellohello", "Ctrl+C did not copy");
+    }
+
+    #[test]
+    fn test_handle_event_ctrl_c_in_input_without_selection_quits() {
+        use crate::widget::Input;
+        let mut app = create_test_app();
+        app.running = true;
+        let mut view = Input::new().value("hello").focused(true);
+
+        let event = Event::Key(KeyEvent::ctrl(Key::Char('c')));
+        let _ = app.handle_event(event, &mut view, &mut input_handler);
+        assert!(!app.is_running());
+        assert_eq!(view.text(), "hello");
     }
 
     #[test]

@@ -1517,9 +1517,11 @@ items:
       - disabled widgets skipped
       - left click focuses nearest focusable ancestor
       - needs dom_from_render (on by default)
+      - a handler calling app.prevent_default() keeps that Tab
     evidence:
       - src/core/app/builder.rs::tab_navigation
       - tests/runtime/event/tab_navigation.rs::tab_moves_to_the_next_control_in_document_order
+      - tests/runtime/event/tab_navigation.rs::a_handler_that_prevents_default_keeps_tab
       - tests/runtime/event/click.rs::clicking_a_control_focuses_it
     source:
       - FEATURES.md §5 Navigation / Focus Management
@@ -1758,8 +1760,11 @@ items:
     acceptance:
       - app.run(view, |event, view, app| -> bool) receives every event
       - app.quit()
+      - app.prevent_default() keeps Ctrl+C from quitting for that event
     evidence:
       - src/core/app/event_loop.rs::run
+      - src/core/app/mod.rs::prevent_default
+      - src/core/app/mod.rs::test_handle_event_ctrl_c_prevented_keeps_running
     source:
       - FEATURES.md §10 Keyboard Shortcuts / Global Shortcuts
   - id: KEY-003
