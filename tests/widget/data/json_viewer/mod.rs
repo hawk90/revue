@@ -292,6 +292,30 @@ fn test_json_node_is_container() {
     assert!(!str_node.is_container());
 }
 
+#[test]
+fn test_json_node_child_count() {
+    let mut node = JsonNode::new("", "$", JsonType::Object, 0);
+    assert_eq!(node.child_count(), 0);
+
+    node.children
+        .push(JsonNode::new("a", "$.a", JsonType::String, 1));
+    assert_eq!(node.child_count(), 1);
+}
+
+/// collapse/expand on a nested object (the root toggle is covered above)
+#[test]
+fn test_json_viewer_collapse_expand_nested() {
+    let mut viewer = JsonViewer::from_content(r#"{"obj": {"nested": true}}"#);
+    assert_eq!(viewer.visible_count(), 3);
+
+    viewer.select_down(); // "obj"
+    viewer.collapse();
+    assert_eq!(viewer.visible_count(), 2);
+
+    viewer.expand();
+    assert_eq!(viewer.visible_count(), 3);
+}
+
 // =========================================================================
 // Primitive value parsing tests
 // =========================================================================
@@ -370,6 +394,8 @@ fn test_collapse_all_keeps_the_selection_visible() {
 fn test_json_viewer_new() {
     let viewer = JsonViewer::new();
     assert!(!viewer.has_data());
+    assert_eq!(viewer.visible_count(), 0);
+    assert_eq!(viewer.selected_index(), 0);
 }
 
 #[test]
