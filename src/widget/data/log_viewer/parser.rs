@@ -110,91 +110,16 @@ impl LogParser {
             return None;
         }
 
+        let fields = json_pairs(&trimmed[1..trimmed.len() - 1]);
+        if fields.is_empty() {
+            return None;
+        }
         let mut entry = LogEntry::new(raw, 0);
-        let mut fields = Vec::new();
-
-        // Extract key-value pairs (simplified JSON parsing)
-        let content = &trimmed[1..trimmed.len() - 1];
-        let mut in_string = false;
-        let mut escape_next = false;
-        let mut current_key = String::new();
-        let mut current_value = String::new();
-        let mut parsing_key = true;
-        let mut depth = 0;
-
-        for ch in content.chars() {
-            if escape_next {
-                if parsing_key {
-                    current_key.push(ch);
-                } else {
-                    current_value.push(ch);
-                }
-                escape_next = false;
-                continue;
-            }
-
-            match ch {
-                '\\' => {
-                    escape_next = true;
-                }
-                '"' if depth == 0 => {
-                    in_string = !in_string;
-                }
-                ':' if !in_string && depth == 0 && parsing_key => {
-                    parsing_key = false;
-                }
-                ',' if !in_string && depth == 0 => {
-                    // End of key-value pair
-                    let key = current_key.trim().trim_matches('"').to_string();
-                    let value = current_value.trim().trim_matches('"').to_string();
-
-                    if !key.is_empty() {
-                        self.apply_json_field(&mut entry, &key, &value);
-                        fields.push((key, value));
-                    }
-
-                    current_key.clear();
-                    current_value.clear();
-                    parsing_key = true;
-                }
-                '{' | '[' => {
-                    depth += 1;
-                    if !parsing_key {
-                        current_value.push(ch);
-                    }
-                }
-                '}' | ']' => {
-                    if depth > 0 {
-                        depth -= 1;
-                    }
-                    if !parsing_key {
-                        current_value.push(ch);
-                    }
-                }
-                _ => {
-                    if parsing_key {
-                        current_key.push(ch);
-                    } else {
-                        current_value.push(ch);
-                    }
-                }
-            }
+        for (key, value) in &fields {
+            self.apply_json_field(&mut entry, key, value);
         }
-
-        // Handle last pair
-        if !current_key.is_empty() {
-            let key = current_key.trim().trim_matches('"').to_string();
-            let value = current_value.trim().trim_matches('"').to_string();
-            self.apply_json_field(&mut entry, &key, &value);
-            fields.push((key, value));
-        }
-
-        if !fields.is_empty() {
-            entry.json_fields = Some(fields);
-            Some(entry)
-        } else {
-            None
-        }
+        entry.json_fields = Some(fields);
+        Some(entry)
     }
 
     /// Apply JSON field to entry based on configured field names
@@ -398,6 +323,85 @@ impl LogParser {
 
         None
     }
+}
+
+/// The top-level `key: value` pairs of a JSON object's inside (without the
+/// braces), quotes trimmed; nested objects and arrays stay as raw text
+fn json_pairs(content: &str) -> Vec<(String, String)> {
+    let mut fields = Vec::new();
+    let mut in_string = false;
+    let mut escape_next = false;
+    let mut current_key = String::new();
+    let mut current_value = String::new();
+    let mut parsing_key = true;
+    let mut depth = 0;
+
+    for ch in content.chars() {
+        if escape_next {
+            if parsing_key {
+                current_key.push(ch);
+            } else {
+                current_value.push(ch);
+            }
+            escape_next = false;
+            continue;
+        }
+
+        match ch {
+            '\\' => {
+                escape_next = true;
+            }
+            '"' if depth == 0 => {
+                in_string = !in_string;
+            }
+            ':' if !in_string && depth == 0 && parsing_key => {
+                parsing_key = false;
+            }
+            ',' if !in_string && depth == 0 => {
+                // End of key-value pair
+                let key = current_key.trim().trim_matches('"').to_string();
+                let value = current_value.trim().trim_matches('"').to_string();
+
+                if !key.is_empty() {
+                    fields.push((key, value));
+                }
+
+                current_key.clear();
+                current_value.clear();
+                parsing_key = true;
+            }
+            '{' | '[' => {
+                depth += 1;
+                if !parsing_key {
+                    current_value.push(ch);
+                }
+            }
+            '}' | ']' => {
+                if depth > 0 {
+                    depth -= 1;
+                }
+                if !parsing_key {
+                    current_value.push(ch);
+                }
+            }
+            _ => {
+                if parsing_key {
+                    current_key.push(ch);
+                } else {
+                    current_value.push(ch);
+                }
+            }
+        }
+    }
+
+    // Handle last pair
+    if !current_key.is_empty() {
+        let key = current_key.trim().trim_matches('"').to_string();
+        let value = current_value.trim().trim_matches('"').to_string();
+        fields.push((key, value));
+    }
+
+    fields
 }
 
 /// Trait for setting line number on log entries
