@@ -1,6 +1,6 @@
 //! Advanced Log Viewer widget
 //!
-//! Provides a feature-rich log viewer with regex search, filtering, bookmarks,
+//! Provides a feature-rich log viewer with case-insensitive text search, filtering, bookmarks,
 //! JSON log parsing, live tail mode, and timestamp navigation.
 
 mod entry;

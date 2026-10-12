@@ -27,7 +27,7 @@ pub struct LogViewer {
     selected: usize,
     /// Current filter
     filter: LogFilter,
-    /// Search query (regex pattern)
+    /// Search query (matched case-insensitively as plain text)
     search_query: String,
     /// Search matches
     search_matches: Vec<SearchMatch>,
