@@ -46,30 +46,25 @@ impl JsonViewer {
 
     /// Toggle selected node expansion
     pub fn toggle(&mut self) {
-        if let Some(node) = self.get_visible_nodes().get(self.selected) {
-            if node.is_container() {
-                let path = node.path.clone();
-                if self.collapsed.contains(&path) {
-                    self.collapsed.remove(&path);
-                } else {
-                    self.collapsed.insert(path);
-                }
+        if let Some(node) = self.selected_node() {
+            if node.is_container() && !self.collapsed.remove(&node.path) {
+                self.collapsed.insert(node.path);
             }
         }
     }
 
     /// Expand selected node
     pub fn expand(&mut self) {
-        if let Some(node) = self.get_visible_nodes().get(self.selected) {
+        if let Some(node) = self.selected_node() {
             self.collapsed.remove(&node.path);
         }
     }
 
     /// Collapse selected node
     pub fn collapse(&mut self) {
-        if let Some(node) = self.get_visible_nodes().get(self.selected) {
+        if let Some(node) = self.selected_node() {
             if node.is_container() {
-                self.collapsed.insert(node.path.clone());
+                self.collapsed.insert(node.path);
             }
         }
     }
