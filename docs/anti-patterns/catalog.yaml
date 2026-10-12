@@ -1254,7 +1254,7 @@ entries:
       - "revue에는 공통 model `utils::Selection`이 있다: offset과 visible을 `Cell`에 두고 render에서 `set_visible(height)`로 갱신하므로 선택이 위아래 어느 쪽으로 나가도 따라가고 offset은 `len - visible`에서 멈춘다. 새로 손으로 scroll을 짜지 말고 이것을 쓴다."
       - "Selection이 감당하지 못하는 경우(선택과 무관한 scroll, tail, 가변 높이 행)는 위젯에서 따로 짜지 말고 Selection을 확장한다."
     observed:
-      - "2026-10-12 기준 Selection을 쓰는 widget 10개, 자기 `Cell`로 따로 짠 widget 4개(datagrid, textarea, input, code_editor), 선택이 있는데 scroll을 그냥 `usize`로 둔 widget 13개, 선택 없이 내용만 scroll하는 widget 5개. 목록은 #973."
+      - "2026-10-12 기준 Selection을 가진 widget 10개 중 offset으로 scroll까지 하는 것은 command_palette, list, table 3개뿐이다. tree, select, autocomplete는 Selection을 들고도 offset을 무시하고 첫 행부터 그린다. 그 밖에 자기 `Cell`로 따로 짠 widget 4개(datagrid, textarea, input, code_editor), 선택이 있는데 scroll을 그냥 `usize`로 둔 widget 13개, 선택 없이 내용만 scroll하는 widget 5개. 목록은 #973."
       - "같은 결함이 widget마다 따로 이슈로 올라왔다: #858 (log_viewer), #882 (Select 등 5개), #967 3번 (filetree), #969 3번 (csv_viewer). Table은 #925에서 Selection으로 옮겨 고쳤다."
     source_labels: ["결과"]
   - id: REV-WIDGET-009
