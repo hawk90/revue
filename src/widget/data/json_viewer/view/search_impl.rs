@@ -34,26 +34,30 @@ impl Search for JsonViewer {
     }
 
     fn next_match(&mut self) {
-        if !self.search_state.search_matches.is_empty() {
-            self.search_state.current_match =
-                (self.search_state.current_match + 1) % self.search_state.search_matches.len();
-            self.go_to_match();
-        }
+        self.step_match(true);
     }
 
     fn prev_match(&mut self) {
-        if !self.search_state.search_matches.is_empty() {
-            self.search_state.current_match = self
-                .search_state
-                .current_match
-                .checked_sub(1)
-                .unwrap_or(self.search_state.search_matches.len() - 1);
-            self.go_to_match();
-        }
+        self.step_match(false);
     }
 }
 
 impl JsonViewer {
+    /// Move to the next or previous match, wrapping at either end
+    fn step_match(&mut self, forward: bool) {
+        let count = self.search_state.search_matches.len();
+        if count == 0 {
+            return;
+        }
+        let current = self.search_state.current_match;
+        self.search_state.current_match = if forward {
+            (current + 1) % count
+        } else {
+            current.checked_sub(1).unwrap_or(count - 1)
+        };
+        self.go_to_match();
+    }
+
     fn go_to_match(&mut self) {
         let root = &self.root;
         self.search_state

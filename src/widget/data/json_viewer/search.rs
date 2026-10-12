@@ -42,15 +42,9 @@ impl SearchState {
     }
 
     pub fn search_recursive(&mut self, node: &JsonNode) {
-        // Check key
-        if node.key.to_lowercase().contains(&self.search_query) {
+        let matches = |text: &str| text.to_lowercase().contains(&self.search_query);
+        if matches(&node.key) || node.value.as_deref().is_some_and(matches) {
             self.search_matches.push(node.path.clone());
-        }
-        // Check value
-        else if let Some(value) = &node.value {
-            if value.to_lowercase().contains(&self.search_query) {
-                self.search_matches.push(node.path.clone());
-            }
         }
 
         for child in &node.children {

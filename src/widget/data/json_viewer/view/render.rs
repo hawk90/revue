@@ -163,26 +163,8 @@ impl JsonViewer {
     ) -> Option<(String, Option<Color>)> {
         let collapsed = self.collapsed.contains(&node.path);
         match &node.value_type {
-            JsonType::Object => {
-                let text = if collapsed {
-                    format!("{{...}} ({} items)", node.child_count())
-                } else if node.children.is_empty() {
-                    "{}".to_string()
-                } else {
-                    "{".to_string()
-                };
-                Some((text, self.bracket_fg))
-            }
-            JsonType::Array => {
-                let text = if collapsed {
-                    format!("[...] ({} items)", node.child_count())
-                } else if node.children.is_empty() {
-                    "[]".to_string()
-                } else {
-                    "[".to_string()
-                };
-                Some((text, self.bracket_fg))
-            }
+            JsonType::Object => Some((container_text(node, collapsed, '{', '}'), self.bracket_fg)),
+            JsonType::Array => Some((container_text(node, collapsed, '[', ']'), self.bracket_fg)),
             JsonType::String => node.value.as_ref().map(|value| {
                 let display = format!("\"{}\"", value);
                 let truncated: String = display
@@ -195,6 +177,18 @@ impl JsonViewer {
             JsonType::Boolean => node.value.clone().map(|value| (value, self.bool_fg)),
             JsonType::Null => Some(("null".to_string(), self.null_fg)),
         }
+    }
+}
+
+/// A container's brackets: the opening one while it is expanded, both when
+/// it is empty, and a summary with its item count when it is collapsed
+fn container_text(node: &JsonNode, collapsed: bool, open: char, close: char) -> String {
+    if collapsed {
+        format!("{open}...{close} ({} items)", node.child_count())
+    } else if node.children.is_empty() {
+        format!("{open}{close}")
+    } else {
+        open.to_string()
     }
 }
 
