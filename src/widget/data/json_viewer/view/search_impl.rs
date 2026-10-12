@@ -14,10 +14,8 @@ impl Search for JsonViewer {
             return;
         }
 
-        if let Some(root) = self.root.clone() {
-            self.sync_collapsed_to_search();
-            self.search_state.search_recursive(&root);
-            self.sync_collapsed_from_search();
+        if let Some(root) = &self.root {
+            self.search_state.search_recursive(root);
         }
     }
 
@@ -57,25 +55,12 @@ impl Search for JsonViewer {
 
 impl JsonViewer {
     fn go_to_match(&mut self) {
-        self.sync_collapsed_to_search();
-        self.search_state.go_to_match(&mut self.selected, |state| {
-            let collapsed = state.collapsed.clone();
-            if let Some(root) = &self.root {
-                flatten_tree(root, &collapsed)
-            } else {
-                Vec::new()
-            }
-        });
-        self.sync_collapsed_from_search();
-    }
-
-    /// Sync collapsed set to search state
-    fn sync_collapsed_to_search(&mut self) {
-        self.search_state.collapsed = self.collapsed.clone();
-    }
-
-    /// Sync collapsed set from search state
-    fn sync_collapsed_from_search(&mut self) {
-        self.collapsed = self.search_state.collapsed.clone();
+        let root = &self.root;
+        self.search_state
+            .go_to_match(&mut self.collapsed, &mut self.selected, |collapsed| {
+                root.as_ref()
+                    .map(|root| flatten_tree(root, collapsed))
+                    .unwrap_or_default()
+            });
     }
 }

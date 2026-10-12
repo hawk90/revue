@@ -30,7 +30,6 @@ pub struct SearchState {
     pub search_query: String,
     pub search_matches: Vec<String>,
     pub current_match: usize,
-    pub collapsed: HashSet<String>,
 }
 
 impl SearchState {
@@ -39,7 +38,6 @@ impl SearchState {
             search_query: String::new(),
             search_matches: Vec::new(),
             current_match: 0,
-            collapsed: HashSet::new(),
         }
     }
 
@@ -60,10 +58,13 @@ impl SearchState {
         }
     }
 
+    /// Expand the ancestors of the current match in `collapsed` and select
+    /// it among the rows that leaves visible
     pub fn go_to_match(
-        &mut self,
+        &self,
+        collapsed: &mut HashSet<String>,
         selected: &mut usize,
-        get_visible_nodes: impl Fn(&Self) -> Vec<JsonNode>,
+        get_visible_nodes: impl Fn(&HashSet<String>) -> Vec<JsonNode>,
     ) {
         if let Some(path) = self.search_matches.get(self.current_match) {
             // Expand all ancestors
@@ -74,11 +75,11 @@ impl SearchState {
                     current_path.push('.');
                 }
                 current_path.push_str(part);
-                self.collapsed.remove(&current_path);
+                collapsed.remove(&current_path);
             }
 
             // Find and select the node
-            let visible = get_visible_nodes(self);
+            let visible = get_visible_nodes(collapsed);
             for (idx, node) in visible.iter().enumerate() {
                 if &node.path == path {
                     *selected = idx;
