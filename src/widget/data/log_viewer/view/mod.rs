@@ -1,5 +1,7 @@
 //! Log Viewer widget implementation
 
+mod entries;
+mod export;
 mod handler;
 mod navigation;
 mod render;
@@ -25,7 +27,7 @@ pub struct LogViewer {
     selected: usize,
     /// Current filter
     filter: LogFilter,
-    /// Search query (regex pattern)
+    /// Search query (matched case-insensitively as plain text)
     search_query: String,
     /// Search matches
     search_matches: Vec<SearchMatch>,
@@ -92,64 +94,6 @@ impl LogViewer {
             bookmark_fg: Color::rgb(255, 200, 50),
             selected_bg: Color::rgb(50, 50, 80),
             props: WidgetProps::new(),
-        }
-    }
-
-    /// Load log content from string (parses each line)
-    pub fn load(&mut self, content: &str) {
-        self.entries.clear();
-        for (i, line) in content.lines().enumerate() {
-            if !line.is_empty() {
-                let entry = self.parser.parse(line, i + 1);
-                self.entries.push(entry);
-            }
-        }
-        self.update_search();
-        if self.tail_mode {
-            self.scroll_to_bottom();
-        }
-    }
-
-    /// Add a single log line
-    pub fn push(&mut self, line: &str) {
-        let line_number = self.entries.len() + 1;
-        let entry = self.parser.parse(line, line_number);
-        self.entries.push(entry);
-
-        // Trim old entries if needed
-        if self.max_entries > 0 && self.entries.len() > self.max_entries {
-            let excess = self.entries.len() - self.max_entries;
-            self.entries.drain(0..excess);
-            self.scroll = self.scroll.saturating_sub(excess);
-        }
-
-        // Update search if active
-        if !self.search_query.is_empty() {
-            self.update_search();
-        }
-
-        // Auto-scroll in tail mode
-        if self.tail_mode {
-            self.scroll_to_bottom();
-        }
-    }
-
-    /// Add a pre-built log entry
-    pub fn push_entry(&mut self, entry: LogEntry) {
-        self.entries.push(entry);
-
-        if self.max_entries > 0 && self.entries.len() > self.max_entries {
-            let excess = self.entries.len() - self.max_entries;
-            self.entries.drain(0..excess);
-            self.scroll = self.scroll.saturating_sub(excess);
-        }
-
-        if !self.search_query.is_empty() {
-            self.update_search();
-        }
-
-        if self.tail_mode {
-            self.scroll_to_bottom();
         }
     }
 
@@ -234,51 +178,12 @@ impl LogViewer {
 
     /// Get selected entry text (for copying)
     pub fn selected_text(&self) -> Option<String> {
-        let filtered: Vec<_> = self.filtered_entries().collect();
-        filtered.get(self.selected).map(|(idx, _)| {
-            let entry = &self.entries[*idx];
-            entry.raw.clone()
-        })
+        self.selected_entry().map(|entry| entry.raw.clone())
     }
 
     /// Get selected entry
     pub fn selected_entry(&self) -> Option<&LogEntry> {
-        let filtered: Vec<_> = self.filtered_entries().collect();
-        filtered
-            .get(self.selected)
-            .map(|(idx, _)| &self.entries[*idx])
-    }
-
-    /// Export filtered entries as text
-    pub fn export_filtered(&self) -> String {
-        self.filtered_entries()
-            .map(|(_, entry)| entry.raw.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-
-    /// Export filtered entries with formatting
-    pub fn export_formatted(&self) -> String {
-        self.filtered_entries()
-            .map(|(_, entry)| {
-                let mut parts = Vec::new();
-
-                if let Some(ref ts) = entry.timestamp {
-                    parts.push(format!("[{}]", ts));
-                }
-
-                parts.push(format!("[{}]", entry.level.label()));
-
-                if let Some(ref src) = entry.source {
-                    parts.push(format!("[{}]", src));
-                }
-
-                parts.push(entry.message.clone());
-
-                parts.join(" ")
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
+        self.selected_entry_index().map(|idx| &self.entries[idx])
     }
 
     /// Get filtered entries iterator
@@ -289,21 +194,19 @@ impl LogViewer {
             .filter(|(_, entry)| self.filter.matches(entry))
     }
 
+    /// Index into `entries` of the selected row
+    fn selected_entry_index(&self) -> Option<usize> {
+        self.filtered_entries()
+            .nth(self.selected)
+            .map(|(idx, _)| idx)
+    }
+
     /// Ensure index is visible
     fn ensure_visible(&mut self, idx: usize) {
         if idx < self.scroll {
             self.scroll = idx;
         }
         // Note: actual visible height depends on render area
-    }
-
-    /// Clear all entries
-    pub fn clear(&mut self) {
-        self.entries.clear();
-        self.scroll = 0;
-        self.selected = 0;
-        self.search_matches.clear();
-        self.search_index = 0;
     }
 
     /// Get total entry count
@@ -357,14 +260,8 @@ impl LogViewer {
 
     /// Toggle expanded state of selected entry
     pub fn toggle_selected_expanded(&mut self) {
-        let entry_idx = {
-            let filtered: Vec<_> = self.filtered_entries().collect();
-            filtered.get(self.selected).map(|(idx, _)| *idx)
-        };
-        if let Some(idx) = entry_idx {
-            if let Some(entry) = self.entries.get_mut(idx) {
-                entry.toggle_expanded();
-            }
+        if let Some(idx) = self.selected_entry_index() {
+            self.entries[idx].toggle_expanded();
         }
     }
 }

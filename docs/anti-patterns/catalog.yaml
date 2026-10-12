@@ -17,7 +17,7 @@ meta:
   status: draft            # 코드베이스 대조 검증 전
   counts:
     categories: 24
-    entries: 154
+    entries: 155
 
 # ---------------------------------------------------------------------------
 # 코드 리뷰 태그 (커밋/PR/리뷰 코멘트 접두사로 사용)
@@ -211,7 +211,7 @@ categories:
     tag: WIDGET
     title: "Widget design"
     title_ko: "Widget 설계 안티패턴"
-    entries: 10
+    entries: 11
   - id: async
     order: 9
     tag: ASYNC
@@ -277,7 +277,7 @@ categories:
     tag: TEST
     title: "Testing"
     title_ko: "테스트 안티패턴"
-    entries: 6
+    entries: 10
   - id: api
     order: 20
     tag: API
@@ -793,6 +793,15 @@ entries:
       - "깨진 cursor 위치"
       - "diff renderer 불일치"
       - "buffer가 continuation cell 개념을 가져야 한다."
+    detect:
+      - "`for ch in text.chars() { ctx.set(x, y, Cell::new(ch)); x += char_width(ch) }`처럼 글자마다 `ctx.set`을 부르고 continuation cell을 쓰지 않는 루프"
+      - "x를 글자 폭만큼 옳게 옮겨도 깨진다: 그 칸에는 앞서 채운 공백이 남고, terminal 출력은 continuation이 아닌 cell을 모두 쓰므로 wide glyph의 오른쪽 절반 위에 공백을 다시 쓴다"
+    fix:
+      - "revue의 buffer에는 continuation cell이 이미 있다(`Cell::continuation`, `Buffer::set`이 잘린 반쪽을 비운다). 문제는 widget이 그것을 쓰지 않는 것이다."
+      - "글자는 `RenderContext::draw_text_clipped*`(폭을 알고, continuation을 쓰고, 경계에서 wide glyph를 반으로 자르지 않는다)로 그린다. 한 글자씩 직접 그려야 하면 폭 2인 글자 다음 칸에 `Cell::continuation()`을 쓴다."
+    observed:
+      - "log_viewer에 \"한글ab\"를 그려 terminal 출력을 보면 `한` 다음에 커서를 그 오른쪽 절반으로 옮겨 공백을 쓴다(`ESC[1;4H `): glyph가 지워진다."
+      - "같은 패턴의 루프가 src/widget 아래 52개 파일에 있다(ASCII만 그리는 곳은 무해). 목록은 #974. filetree (#968), csv_viewer (#970), virtuallist (#972)는 감사 중에 고쳤다."
     source_labels: ["결과"]
   - id: REV-RENDER-007
     title: "Paint Without Clipping"
@@ -1241,6 +1250,17 @@ entries:
       - "page up/down 의미가 다름"
       - "nested scroll 처리 불가"
       - "공통 scroll model을 제공해야 한다."
+    detect:
+      - "widget이 scroll 위치를 그냥 `usize` 필드로 들고 있고 `render(&self)`는 그 값을 바꿀 수 없다"
+      - "render가 매 프레임 scroll 위치를 지역 변수로 다시 계산하고 버린다: 선택이 화면 안에서 움직여도 화면이 튄다"
+      - "`ensure_visible`이 위쪽으로만 scroll하거나 viewport 높이를 몰라서 아무것도 안 한다"
+      - "tail/scroll_to_bottom이 `len - 1`로 scroll해서 마지막 한 줄만 보인다"
+    fix:
+      - "revue에는 공통 model `utils::Selection`이 있다: offset과 visible을 `Cell`에 두고 render에서 `set_visible(height)`로 갱신하므로 선택이 위아래 어느 쪽으로 나가도 따라가고 offset은 `len - visible`에서 멈춘다. 새로 손으로 scroll을 짜지 말고 이것을 쓴다."
+      - "Selection이 감당하지 못하는 경우(선택과 무관한 scroll, tail, 가변 높이 행)는 위젯에서 따로 짜지 말고 Selection을 확장한다."
+    observed:
+      - "2026-10-12 기준 Selection을 가진 widget 10개 중 offset으로 scroll까지 하는 것은 command_palette, list, table 3개뿐이다. tree, select, autocomplete는 Selection을 들고도 offset을 무시하고 첫 행부터 그린다. 그 밖에 자기 `Cell`로 따로 짠 widget 4개(datagrid, textarea, input, code_editor), 선택이 있는데 scroll을 그냥 `usize`로 둔 widget 13개, 선택 없이 내용만 scroll하는 widget 5개. 목록은 #973."
+      - "같은 결함이 widget마다 따로 이슈로 올라왔다: #858 (log_viewer), #882 (Select 등 5개), #967 3번 (filetree), #969 3번 (csv_viewer). Table은 #925에서 Selection으로 옮겨 고쳤다."
     source_labels: ["결과"]
   - id: REV-WIDGET-009
     title: "Visual Variant as New Widget"
@@ -1266,6 +1286,23 @@ entries:
       - "Experimental"
       - "Deprecated"
     source_labels: ["권장 구분"]
+  - id: REV-WIDGET-011
+    title: "Selection Kept as a Position"
+    category: widget
+    review_tag: WIDGET
+    summary: "collection widget이 선택을 항목의 식별자가 아니라 화면상의 위치(index)로만 들고, 목록이 바뀔 때(정렬, 필터, 삽입, 오래된 항목 잘라내기, 펼치기·접기) 그 위치를 다시 계산하지 않는다."
+    problem:
+      - "목록이 바뀐 뒤 같은 위치에 있는 다른 항목이 선택된다. 사용자는 선택을 옮긴 적이 없다."
+      - "선택한 항목에 대한 동작(복사, 북마크, 펼치기)이 다른 항목에 적용된다."
+      - "검색 결과나 다중 선택처럼 위치로 저장한 다른 상태도 같이 어긋난다."
+    detect:
+      - "`selected: usize`만 있고, `sort`/`set_filter`/`push`(최대 개수로 자르기)/`expand`/`collapse`가 그 값을 건드리지 않는다"
+      - "검증 입력: 항목을 선택한 뒤 정렬·필터 해제·앞쪽 항목 제거·위쪽 노드 펼치기를 하고 `selected_*()`가 같은 항목을 돌려주는지 본다"
+    fix:
+      - "선택은 항목의 안정된 식별자(key)로 들거나, 위치로 들 때는 목록을 바꾸는 모든 경로에서 선택한 항목의 새 위치를 다시 계산한다(Qt의 selection model이 persistent index로 정렬·삽입 뒤에도 같은 행을 따라가는 것과 같은 원리)."
+      - "그 항목이 사라졌으면 가장 가까운 항목으로 옮기고, 사라진 것을 선택한 채로 두지 않는다."
+    observed:
+      - "csv_viewer 정렬 뒤 선택과 검색 결과 (#856, #970에서 고침), tree 펼치기·접기 뒤 다중 선택과 검색 결과 (#859), log_viewer 오래된 항목 잘라내기와 `clear_filter` 뒤 선택 (#975)."
   - id: REV-ASYNC-001
     title: "Polling `try_join()` Every Frame"
     category: async
