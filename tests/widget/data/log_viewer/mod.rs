@@ -10,6 +10,7 @@ mod navigation;
 mod parser;
 mod search;
 mod tail;
+mod view;
 
 use revue::event::Key;
 use revue::layout::Rect;

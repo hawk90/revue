@@ -6,14 +6,8 @@ use crate::widget::data::log_viewer::entry::LogEntry;
 impl LogViewer {
     /// Bookmark selected entry
     pub fn toggle_bookmark(&mut self) {
-        let entry_idx = {
-            let filtered: Vec<_> = self.filtered_entries().collect();
-            filtered.get(self.selected).map(|(idx, _)| *idx)
-        };
-        if let Some(idx) = entry_idx {
-            if let Some(entry) = self.entries.get_mut(idx) {
-                entry.toggle_bookmark();
-            }
+        if let Some(idx) = self.selected_entry_index() {
+            self.entries[idx].toggle_bookmark();
         }
     }
 
@@ -24,57 +18,35 @@ impl LogViewer {
 
     /// Jump to next bookmark
     pub fn next_bookmark(&mut self) {
-        let filtered: Vec<_> = self.filtered_entries().collect();
-        let start = self.selected + 1;
-
-        // Search from current position to end
-        for i in start..filtered.len() {
-            if let Some((entry_idx, _)) = filtered.get(i) {
-                if self.entries[*entry_idx].bookmarked {
-                    self.selected = i;
-                    self.ensure_visible(i);
-                    return;
-                }
-            }
-        }
-
-        // Wrap around to beginning
-        for i in 0..start {
-            if let Some((entry_idx, _)) = filtered.get(i) {
-                if self.entries[*entry_idx].bookmarked {
-                    self.selected = i;
-                    self.ensure_visible(i);
-                    return;
-                }
-            }
+        let marks = self.bookmarked_positions();
+        let target = marks.iter().find(|&&i| i > self.selected).or(marks.first());
+        if let Some(&i) = target {
+            self.selected = i;
+            self.ensure_visible(i);
         }
     }
 
     /// Jump to previous bookmark
     pub fn prev_bookmark(&mut self) {
-        let filtered: Vec<_> = self.filtered_entries().collect();
-
-        // Search from current position to beginning
-        for i in (0..self.selected).rev() {
-            if let Some((entry_idx, _)) = filtered.get(i) {
-                if self.entries[*entry_idx].bookmarked {
-                    self.selected = i;
-                    self.ensure_visible(i);
-                    return;
-                }
-            }
+        let marks = self.bookmarked_positions();
+        let target = marks
+            .iter()
+            .rev()
+            .find(|&&i| i < self.selected)
+            .or(marks.last());
+        if let Some(&i) = target {
+            self.selected = i;
+            self.ensure_visible(i);
         }
+    }
 
-        // Wrap around to end
-        for i in (self.selected..filtered.len()).rev() {
-            if let Some((entry_idx, _)) = filtered.get(i) {
-                if self.entries[*entry_idx].bookmarked {
-                    self.selected = i;
-                    self.ensure_visible(i);
-                    return;
-                }
-            }
-        }
+    /// Positions in the filtered view of the bookmarked entries, in order
+    fn bookmarked_positions(&self) -> Vec<usize> {
+        self.filtered_entries()
+            .enumerate()
+            .filter(|(_, (_, entry))| entry.bookmarked)
+            .map(|(pos, _)| pos)
+            .collect()
     }
 
     /// Jump to timestamp
