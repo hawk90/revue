@@ -1,6 +1,7 @@
 //! JsonViewer widget tests
 
 mod helpers;
+mod view;
 
 use revue::layout::Rect;
 use revue::render::Buffer;
