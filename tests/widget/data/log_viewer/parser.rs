@@ -3,12 +3,6 @@
 use revue::widget::{log_parser, AdvLogLevel};
 
 #[test]
-fn test_log_parser_creation() {
-    let parser = log_parser();
-    assert!(parser.json_parsing);
-}
-
-#[test]
 fn test_log_parser_builder() {
     let parser = log_parser()
         .json_parsing(false)

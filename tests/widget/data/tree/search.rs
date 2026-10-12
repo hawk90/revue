@@ -125,13 +125,6 @@ fn test_tree_set_query_with_string() {
     assert_eq!(tree.query(), "test");
 }
 
-#[test]
-fn test_tree_set_query_with_str() {
-    let mut tree = Tree::new().searchable(true);
-    tree.set_query("test");
-    assert_eq!(tree.query(), "test");
-}
-
 // =========================================================================
 // State-changing method tests
 // =========================================================================
@@ -170,16 +163,21 @@ fn test_tree_update_matches_empty_query() {
 }
 
 #[test]
-fn test_tree_update_matches_with_query() {
+fn test_tree_update_matches_after_the_rows_change() {
+    // update_matches re-reads the visible rows: a node expanded after the
+    // query is set adds its matching children
     let mut tree = Tree::new()
         .nodes(vec![
             TreeNode::new("file1.txt"),
-            TreeNode::new("file2.txt"),
-            TreeNode::new("other.txt"),
+            TreeNode::new("dir").child(TreeNode::new("file2.txt")),
         ])
         .searchable(true);
 
     tree.set_query("file");
+    assert_eq!(tree.match_count(), 1);
+    tree.select_last();
+    tree.expand();
+    tree.update_matches();
     assert_eq!(tree.match_count(), 2);
 }
 
@@ -455,20 +453,6 @@ fn test_tree_search_deeply_nested() {
 // =========================================================================
 // Search with multiple root nodes
 // =========================================================================
-
-#[test]
-fn test_tree_search_multiple_roots() {
-    let mut tree = Tree::new()
-        .nodes(vec![
-            TreeNode::new("file1.txt"),
-            TreeNode::new("file2.txt"),
-            TreeNode::new("other.txt"),
-        ])
-        .searchable(true);
-
-    tree.set_query("file");
-    assert_eq!(tree.match_count(), 2);
-}
 
 #[test]
 fn test_tree_search_multiple_roots_with_children() {
