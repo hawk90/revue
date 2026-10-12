@@ -1,6 +1,5 @@
 //! Fuzzy search methods for Tree widget
 
-use super::types::TreeNode;
 use super::Tree;
 use crate::utils::{fuzzy_match, FuzzyMatch};
 
@@ -53,31 +52,14 @@ impl Tree {
             return;
         }
 
-        // Find all visible nodes that match
-        fn find_matches(
-            nodes: &[TreeNode],
-            query: &str,
-            visible_index: &mut usize,
-            matches: &mut Vec<usize>,
-        ) {
-            for node in nodes {
-                if fuzzy_match(query, &node.label).is_some() {
-                    matches.push(*visible_index);
-                }
-                *visible_index += 1;
-                if node.expanded && !node.children.is_empty() {
-                    find_matches(&node.children, query, visible_index, matches);
-                }
-            }
-        }
-
-        let mut visible_index = 0;
-        find_matches(
-            &self.root,
-            &self.query,
-            &mut visible_index,
-            &mut self.matches,
-        );
+        let query = &self.query;
+        self.matches = self
+            .rows()
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| fuzzy_match(query, &row.node.label).is_some())
+            .map(|(index, _)| index)
+            .collect();
 
         // Jump to first match
         if let Some(&first) = self.matches.first() {

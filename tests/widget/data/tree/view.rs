@@ -435,3 +435,92 @@ fn test_tree_render_many_siblings() {
     }
     assert_eq!(row(&buffer, 15), "  └─ Child 14");
 }
+
+// =========================================================================
+// Edges
+// =========================================================================
+
+/// A wide character that would cross the area edge is left out whole.
+#[test]
+fn test_tree_render_wide_label_is_cut_before_a_half_character() {
+    let tree = Tree::new().node(TreeNode::new("가나다"));
+    let buffer = render(&tree, 4, 1);
+    // indicator at 0, "가" at 1-2, "나" would need 3-4
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, '가');
+    assert_ne!(buffer.get(3, 0).unwrap().symbol, '나');
+}
+
+#[test]
+fn test_tree_render_highlight_at_both_ends() {
+    let mut tree = Tree::new()
+        .nodes(vec![TreeNode::new("first"), TreeNode::new("last")])
+        .selected_style(Color::BLACK, Color::CYAN);
+    let lit = |tree: &Tree| -> Vec<u16> {
+        let buffer = render(tree, 10, 2);
+        (0..2)
+            .filter(|&y| buffer.get(9, y).unwrap().bg == Some(Color::CYAN))
+            .collect()
+    };
+    assert_eq!(lit(&tree), [0]);
+    tree.select_last();
+    assert_eq!(lit(&tree), [1]);
+}
+
+// =========================================================================
+// Cross-module
+// =========================================================================
+
+/// Inside a vstack with a sibling, through the stylesheet and DOM path:
+/// unselected rows take `color` and `background`, the selected row keeps
+/// its highlight, and the sibling stays below.
+#[test]
+fn test_tree_in_a_stack_with_a_stylesheet() {
+    use revue::prelude::*;
+    use revue::testing::PipelineHarness;
+
+    struct Screen;
+    impl View for Screen {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .child(
+                    Tree::new()
+                        .node(
+                            TreeNode::new("src")
+                                .expanded(true)
+                                .child(TreeNode::new("main.rs")),
+                        )
+                        .node(TreeNode::new("README"))
+                        .selected_style(Color::BLACK, Color::CYAN)
+                        .element_id("tree"),
+                )
+                .child(Text::new("footer"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Screen"
+        }
+    }
+
+    let ink = Color::rgb(17, 34, 51);
+    let paper = Color::rgb(200, 210, 220);
+    let mut h = PipelineHarness::with_css(
+        "#tree { color: #112233; background: #c8d2dc; height: 3; }",
+        20,
+        5,
+    )
+    .dom_from_render(true);
+    h.draw(&Screen);
+    let buffer = h.buffer();
+    let shown: Vec<String> = (0..5).map(|y| row(buffer, y)).collect();
+    // The `│` under a root carries on to the next root
+    assert_eq!(
+        &shown[..3],
+        ["▼src", "│ └─ main.rs", " README"],
+        "{shown:#?}"
+    );
+    assert_eq!(shown[3], "footer", "{shown:#?}");
+    assert_eq!(buffer.get(1, 0).unwrap().bg, Some(Color::CYAN), "selected");
+    assert_eq!(buffer.get(5, 1).unwrap().symbol, 'm');
+    assert_eq!(buffer.get(5, 1).unwrap().fg, Some(ink));
+    assert_eq!(buffer.get(5, 1).unwrap().bg, Some(paper));
+}
