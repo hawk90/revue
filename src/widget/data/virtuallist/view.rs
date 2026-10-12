@@ -86,3 +86,48 @@ impl<T: ToString + Clone> View for VirtualList<T> {
         }
     }
 }
+
+impl<T: ToString + Clone> VirtualList<T> {
+    /// Render item text
+    pub fn render_item(&self, item: &T, index: usize, is_selected: bool) -> String {
+        if let Some(ref renderer) = self.renderer {
+            renderer(item, index, is_selected)
+        } else {
+            item.to_string()
+        }
+    }
+
+    /// Render scrollbar
+    pub fn render_scrollbar(&self, ctx: &mut RenderContext, viewport_height: u16) {
+        let area = ctx.area;
+        let scrollbar_x = area.width - 1;
+
+        // Calculate thumb position and size
+        let total = self.items.len() as f32;
+        let visible = (viewport_height / self.item_height) as f32;
+
+        if total <= visible {
+            // No scrollbar needed
+            return;
+        }
+
+        let thumb_size = ((visible / total) * viewport_height as f32).max(1.0) as u16;
+        let scroll_range = viewport_height.saturating_sub(thumb_size);
+        let thumb_pos =
+            ((self.scroll_offset as f32 / (total - visible)) * scroll_range as f32) as u16;
+
+        // Draw scrollbar track
+        for y in 0..viewport_height {
+            if y < area.height {
+                let in_thumb = y >= thumb_pos && y < thumb_pos + thumb_size;
+                let ch = if in_thumb { '█' } else { '░' };
+                let color = if in_thumb {
+                    self.scrollbar_fg
+                } else {
+                    self.scrollbar_bg
+                };
+                ctx.set(scrollbar_x, y, Cell::new(ch).fg(color));
+            }
+        }
+    }
+}
