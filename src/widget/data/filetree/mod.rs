@@ -12,6 +12,7 @@ use crate::style::Color;
 use crate::utils::natural_cmp;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
+use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 
 /// File tree widget
@@ -39,7 +40,6 @@ pub struct FileTree {
     pub(crate) selected_bg: Color,
     pub(crate) selected_fg: Color,
     pub(crate) dir_fg: Color,
-    pub(crate) _file_fg: Color,
     /// Indent size
     pub(crate) indent: u16,
     /// Height limit (0 = unlimited)
@@ -64,7 +64,6 @@ impl FileTree {
             selected_bg: Color::rgb(60, 100, 180),
             selected_fg: Color::WHITE,
             dir_fg: Color::CYAN,
-            _file_fg: Color::WHITE,
             indent: 2,
             height: 0,
             props: WidgetProps::new(),
@@ -131,35 +130,51 @@ impl FileTree {
         self
     }
 
-    /// Get all visible entries
+    /// Rows in the order they are shown: each directory's children are
+    /// filtered and sorted among themselves, then placed right after it, so
+    /// a child never leaves its directory and a hidden directory takes its
+    /// subtree with it.
     pub(crate) fn visible_entries(&self) -> Vec<&FileEntry> {
-        let mut entries = Vec::new();
-        for root in &self.root {
-            entries.extend(root.visible_entries());
+        let mut rows = Vec::new();
+        self.push_visible(&self.root, &mut rows);
+        rows
+    }
+
+    fn push_visible<'a>(&self, level: &'a [FileEntry], rows: &mut Vec<&'a FileEntry>) {
+        for entry in self.ordered(level) {
+            rows.push(entry);
+            if entry.expanded {
+                self.push_visible(&entry.children, rows);
+            }
         }
-        if !self.show_hidden {
-            entries.retain(|e| e.file_type != FileType::Hidden && !e.name.starts_with('.'));
-        }
-        // Apply sorting
+    }
+
+    /// One level's entries, hidden ones dropped, in display order
+    fn ordered<'a>(&self, level: &'a [FileEntry]) -> Vec<&'a FileEntry> {
+        let mut entries: Vec<&FileEntry> = level
+            .iter()
+            .filter(|e| self.show_hidden || !is_hidden(e))
+            .collect();
         if self.natural_sort || self.dirs_first {
-            entries.sort_by(|a, b| {
-                // Directories first if enabled
-                if self.dirs_first {
-                    match (a.is_dir(), b.is_dir()) {
-                        (true, false) => return std::cmp::Ordering::Less,
-                        (false, true) => return std::cmp::Ordering::Greater,
-                        _ => {}
-                    }
-                }
-                // Natural sort if enabled, otherwise ASCII
-                if self.natural_sort {
-                    natural_cmp(&a.name, &b.name)
-                } else {
-                    a.name.cmp(&b.name)
-                }
-            });
+            entries.sort_by(|a, b| self.compare(a, b));
         }
         entries
+    }
+
+    /// Directories first if enabled, then natural or ASCII name order
+    fn compare(&self, a: &FileEntry, b: &FileEntry) -> Ordering {
+        let dirs = if self.dirs_first {
+            b.is_dir().cmp(&a.is_dir())
+        } else {
+            Ordering::Equal
+        };
+        dirs.then_with(|| {
+            if self.natural_sort {
+                natural_cmp(&a.name, &b.name)
+            } else {
+                a.name.cmp(&b.name)
+            }
+        })
     }
 
     /// Get selected entry
@@ -275,6 +290,10 @@ impl FileTree {
             _ => false,
         }
     }
+}
+
+fn is_hidden(entry: &FileEntry) -> bool {
+    entry.file_type == FileType::Hidden || entry.name.starts_with('.')
 }
 
 impl Default for FileTree {
@@ -1303,10 +1322,4 @@ mod tests {
 
         assert_eq!(tree.root[0].children.len(), 100);
     }
-}
-
-#[test]
-fn test_file_tree_render_private() {
-    // KEEP HERE: accesses private fields - Test private render methods
-    let _t = FileTree::new().entry(FileEntry::file("test.txt", "/test.txt"));
 }
