@@ -4,6 +4,7 @@ mod calendar;
 mod chart;
 mod csv_viewer;
 mod datagrid;
+mod filetree;
 mod json_viewer;
 mod list;
 mod log_viewer;
