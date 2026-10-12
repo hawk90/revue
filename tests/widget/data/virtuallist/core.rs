@@ -811,19 +811,20 @@ fn test_rebuild_height_cache() {
 #[test]
 fn test_with_string_items() {
     let list = VirtualList::new(vec!["Hello".to_string(), "World".to_string()]);
-    assert_eq!(list.len(), 2);
+    assert_eq!(list.render_item(&list.items[1], 1, false), "World");
 }
 
 #[test]
 fn test_with_number_items() {
-    let list = VirtualList::new(vec![1, 2, 3, 4, 5]);
-    assert_eq!(list.len(), 5);
+    let list = VirtualList::new(vec![10, 20, 30]);
+    assert_eq!(list.render_item(&list.items[2], 2, false), "30");
+    assert_eq!(list.selected_item(), Some(&10));
 }
 
 #[test]
-fn test_with_tuple_items() {
+fn test_with_str_items() {
     let list = VirtualList::new(vec!["1-A", "2-B"]);
-    assert_eq!(list.len(), 2);
+    assert_eq!(list.render_item(&list.items[0], 0, true), "1-A");
 }
 
 // =========================================================================

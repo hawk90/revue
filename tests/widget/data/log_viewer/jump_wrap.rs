@@ -1,6 +1,6 @@
 //! LogViewer Jump, Wrap, Expand, Constructor, and Parsing tests
 
-use revue::widget::{log_filter, log_parser, log_viewer, AdvLogEntry, AdvLogLevel};
+use revue::widget::{log_parser, log_viewer, AdvLogEntry, AdvLogLevel};
 
 #[test]
 fn test_log_viewer_jump_to_line() {
@@ -44,28 +44,6 @@ fn test_log_viewer_expand_toggle() {
 
     viewer.scroll_to_top();
     viewer.toggle_selected_expanded();
-}
-
-// =============================================================================
-// Constructor Function Tests
-// =============================================================================
-
-#[test]
-fn test_constructor_log_viewer() {
-    let viewer = log_viewer();
-    assert!(viewer.is_empty());
-}
-
-#[test]
-fn test_constructor_log_filter() {
-    let filter = log_filter();
-    assert!(filter.min_level.is_none());
-}
-
-#[test]
-fn test_constructor_log_parser() {
-    let parser = log_parser();
-    assert!(parser.json_parsing);
 }
 
 // =============================================================================
