@@ -4,8 +4,10 @@
 
 /// Core virtual list implementation
 pub mod core;
+mod height;
 /// Helper functions for creating virtual lists
 pub mod helper;
+mod scroll;
 /// Traits for virtual list behavior
 pub mod traits;
 /// Type definitions for virtual list

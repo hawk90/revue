@@ -1,9 +1,7 @@
 use super::types::*;
-use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::theme::DARK_BG;
-use crate::widget::traits::{RenderContext, WidgetProps};
-use std::ops::Range;
+use crate::widget::traits::WidgetProps;
 
 /// A virtual list that only renders visible items
 pub struct VirtualList<T> {
@@ -154,169 +152,6 @@ impl<T: ToString + Clone> VirtualList<T> {
         self
     }
 
-    /// Rebuild the height cache for variable-height mode
-    fn rebuild_height_cache(&mut self) {
-        if let Some(ref calc) = self.height_calculator {
-            self.height_cache.clear();
-            self.cumulative_heights.clear();
-
-            let mut cumulative: u32 = 0;
-            for (idx, item) in self.items.iter().enumerate() {
-                let height = calc(item, idx).max(1);
-                self.height_cache.push(height);
-                cumulative += height as u32;
-                self.cumulative_heights.push(cumulative);
-            }
-        }
-    }
-
-    /// Get height of item at index
-    #[cfg(test)]
-    fn get_item_height(&self, index: usize) -> u16 {
-        if self.height_calculator.is_some() && index < self.height_cache.len() {
-            self.height_cache[index]
-        } else {
-            self.item_height
-        }
-    }
-
-    /// Get total height of all items
-    fn total_height(&self) -> u32 {
-        if self.height_calculator.is_some() && !self.cumulative_heights.is_empty() {
-            *self.cumulative_heights.last().unwrap_or(&0)
-        } else {
-            self.items.len() as u32 * self.item_height as u32
-        }
-    }
-
-    /// Find item index at given row offset (for variable heights)
-    fn index_at_row(&self, row: u32) -> usize {
-        if self.height_calculator.is_none() || self.cumulative_heights.is_empty() {
-            return (row / self.item_height as u32) as usize;
-        }
-
-        // Binary search for the item containing this row
-        match self.cumulative_heights.binary_search(&row) {
-            Ok(idx) => idx + 1, // Exact match means we're at the start of next item
-            Err(idx) => idx,    // Insert position is the item index
-        }
-        .min(self.items.len().saturating_sub(1))
-    }
-
-    /// Get row offset of item at index (for variable heights)
-    fn row_of_index(&self, index: usize) -> u32 {
-        if self.height_calculator.is_none() || self.cumulative_heights.is_empty() {
-            return index as u32 * self.item_height as u32;
-        }
-
-        if index == 0 {
-            0
-        } else if index <= self.cumulative_heights.len() {
-            self.cumulative_heights[index - 1]
-        } else {
-            *self.cumulative_heights.last().unwrap_or(&0)
-        }
-    }
-
-    /// Jump to a specific index with alignment
-    pub fn jump_to(&mut self, index: usize) {
-        self.jump_to_with_alignment(index, ScrollAlignment::Start);
-    }
-
-    /// Jump to index with specific alignment
-    pub fn jump_to_with_alignment(&mut self, index: usize, alignment: ScrollAlignment) {
-        if index >= self.items.len() {
-            return;
-        }
-
-        self.selected = Some(index);
-        // The actual scroll adjustment happens in ensure_visible during render
-        // For now, just set the scroll offset directly
-        self.scroll_offset = index;
-        self.scroll_sub_offset = 0;
-
-        // Store alignment preference (would need viewport height for proper calculation)
-        match alignment {
-            ScrollAlignment::Start => {
-                self.scroll_offset = index;
-            }
-            ScrollAlignment::Center => {
-                // Will be handled in ensure_visible with viewport height
-                self.scroll_offset = index.saturating_sub(5);
-            }
-            ScrollAlignment::End => {
-                self.scroll_offset = index;
-            }
-            ScrollAlignment::Nearest => {
-                // Just set to index, ensure_visible will handle it
-                self.scroll_offset = index;
-            }
-        }
-    }
-
-    /// Scroll by a number of rows (for smooth scrolling)
-    pub fn scroll_by(&mut self, rows: i32) {
-        if self.height_calculator.is_some() {
-            // Variable height mode - scroll by rows
-            let current_row =
-                self.row_of_index(self.scroll_offset) as i32 + self.scroll_sub_offset as i32;
-            let new_row = (current_row + rows).max(0) as u32;
-            let max_row = self.total_height().saturating_sub(1);
-            let clamped_row = new_row.min(max_row);
-
-            self.scroll_offset = self.index_at_row(clamped_row);
-            let item_start = self.row_of_index(self.scroll_offset);
-            self.scroll_sub_offset = (clamped_row - item_start) as u16;
-        } else {
-            // Uniform height mode
-            let total_rows = rows.unsigned_abs() as u16 / self.item_height;
-            let sub_rows = rows.unsigned_abs() as u16 % self.item_height;
-
-            if rows > 0 {
-                let new_sub = self.scroll_sub_offset + sub_rows;
-                if new_sub >= self.item_height {
-                    self.scroll_offset = self.scroll_offset.saturating_add(total_rows as usize + 1);
-                    self.scroll_sub_offset = new_sub - self.item_height;
-                } else {
-                    self.scroll_offset = self.scroll_offset.saturating_add(total_rows as usize);
-                    self.scroll_sub_offset = new_sub;
-                }
-            } else if sub_rows > self.scroll_sub_offset {
-                self.scroll_offset = self.scroll_offset.saturating_sub(total_rows as usize + 1);
-                self.scroll_sub_offset = self.item_height - (sub_rows - self.scroll_sub_offset);
-            } else {
-                self.scroll_offset = self.scroll_offset.saturating_sub(total_rows as usize);
-                self.scroll_sub_offset -= sub_rows;
-            }
-
-            // Clamp scroll offset
-            let max_offset = self.items.len().saturating_sub(1);
-            self.scroll_offset = self.scroll_offset.min(max_offset);
-        }
-    }
-
-    /// Get scroll position as percentage (0.0 - 1.0)
-    pub fn scroll_position(&self) -> f32 {
-        if self.items.is_empty() {
-            return 0.0;
-        }
-
-        let max = self.items.len().saturating_sub(1) as f32;
-        if max == 0.0 {
-            0.0
-        } else {
-            self.scroll_offset as f32 / max
-        }
-    }
-
-    /// Set scroll position by percentage (0.0 - 1.0)
-    pub fn set_scroll_position(&mut self, position: f32) {
-        let position = position.clamp(0.0, 1.0);
-        let max = self.items.len().saturating_sub(1);
-        self.scroll_offset = (position * max as f32) as usize;
-        self.scroll_sub_offset = 0;
-    }
-
     /// Get total item count
     pub fn len(&self) -> usize {
         self.items.len()
@@ -340,6 +175,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     /// Set items (replacing all)
     pub fn set_items(&mut self, items: Vec<T>) {
         self.items = items;
+        self.rebuild_height_cache();
         // Adjust selection if out of bounds
         if let Some(idx) = self.selected {
             if idx >= self.items.len() {
@@ -358,6 +194,12 @@ impl<T: ToString + Clone> VirtualList<T> {
 
     /// Add item to the end
     pub fn push(&mut self, item: T) {
+        if let Some(ref calc) = self.height_calculator {
+            let height = calc(&item, self.items.len()).max(1);
+            let total = self.cumulative_heights.last().copied().unwrap_or(0);
+            self.height_cache.push(height);
+            self.cumulative_heights.push(total + u32::from(height));
+        }
         self.items.push(item);
     }
 
@@ -365,6 +207,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     pub fn remove(&mut self, index: usize) -> Option<T> {
         if index < self.items.len() {
             let item = self.items.remove(index);
+            self.rebuild_height_cache();
             // Adjust selection
             if let Some(sel) = self.selected {
                 if sel >= self.items.len() {
@@ -386,6 +229,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     /// Clear all items
     pub fn clear(&mut self) {
         self.items.clear();
+        self.rebuild_height_cache();
         self.selected = None;
         self.scroll_offset = 0;
     }
@@ -445,7 +289,7 @@ impl<T: ToString + Clone> VirtualList<T> {
 
     /// Page down
     pub fn page_down(&mut self, viewport_height: u16) {
-        let page_size = (viewport_height / self.item_height) as usize;
+        let page_size = self.visible_count(viewport_height);
         if let Some(idx) = self.selected {
             let new_idx = (idx + page_size).min(self.items.len().saturating_sub(1));
             self.selected = Some(new_idx);
@@ -454,167 +298,9 @@ impl<T: ToString + Clone> VirtualList<T> {
 
     /// Page up
     pub fn page_up(&mut self, viewport_height: u16) {
-        let page_size = (viewport_height / self.item_height) as usize;
+        let page_size = self.visible_count(viewport_height);
         if let Some(idx) = self.selected {
             self.selected = Some(idx.saturating_sub(page_size));
         }
-    }
-
-    /// Scroll to make selected item visible
-    pub fn ensure_visible(&mut self, viewport_height: u16) {
-        let visible_count = (viewport_height / self.item_height) as usize;
-        if let Some(idx) = self.selected {
-            if idx < self.scroll_offset {
-                self.scroll_offset = idx;
-            } else if idx >= self.scroll_offset + visible_count {
-                self.scroll_offset = idx.saturating_sub(visible_count - 1);
-            }
-        }
-    }
-
-    /// Get visible item range
-    pub fn visible_range(&self, viewport_height: u16) -> Range<usize> {
-        let visible_count = (viewport_height / self.item_height) as usize;
-        let start = self.scroll_offset.saturating_sub(self.overscan);
-        let end = (self.scroll_offset + visible_count + self.overscan).min(self.items.len());
-        start..end
-    }
-
-    /// Render item text
-    pub fn render_item(&self, item: &T, index: usize, is_selected: bool) -> String {
-        if let Some(ref renderer) = self.renderer {
-            renderer(item, index, is_selected)
-        } else {
-            item.to_string()
-        }
-    }
-
-    /// Render scrollbar
-    pub fn render_scrollbar(&self, ctx: &mut RenderContext, viewport_height: u16) {
-        let area = ctx.area;
-        let scrollbar_x = area.width - 1;
-
-        // Calculate thumb position and size
-        let total = self.items.len() as f32;
-        let visible = (viewport_height / self.item_height) as f32;
-
-        if total <= visible {
-            // No scrollbar needed
-            return;
-        }
-
-        let thumb_size = ((visible / total) * viewport_height as f32).max(1.0) as u16;
-        let scroll_range = viewport_height.saturating_sub(thumb_size);
-        let thumb_pos =
-            ((self.scroll_offset as f32 / (total - visible)) * scroll_range as f32) as u16;
-
-        // Draw scrollbar track
-        for y in 0..viewport_height {
-            if y < area.height {
-                let in_thumb = y >= thumb_pos && y < thumb_pos + thumb_size;
-                let ch = if in_thumb { '█' } else { '░' };
-                let color = if in_thumb {
-                    self.scrollbar_fg
-                } else {
-                    self.scrollbar_bg
-                };
-                ctx.set(scrollbar_x, y, Cell::new(ch).fg(color));
-            }
-        }
-    }
-}
-
-// KEEP HERE: tests access private fields/methods (total_height, index_at_row, row_of_index)
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // =========================================================================
-    // VirtualList::total_height tests
-    // =========================================================================
-
-    #[test]
-    fn test_total_height_uniform() {
-        let list = VirtualList::new(vec![1, 2, 3, 4, 5]).item_height(2);
-        assert_eq!(list.total_height(), 10); // 5 items * 2 height
-    }
-
-    #[test]
-    fn test_total_height_variable() {
-        let list =
-            VirtualList::new(vec!["A", "BB", "CCC"]).variable_height(|item, _| item.len() as u16);
-        assert_eq!(list.total_height(), 6); // 1 + 2 + 3
-    }
-
-    #[test]
-    fn test_total_height_empty() {
-        let list: VirtualList<&str> = VirtualList::new(vec![]);
-        assert_eq!(list.total_height(), 0);
-    }
-
-    // =========================================================================
-    // VirtualList::index_at_row tests
-    // =========================================================================
-
-    #[test]
-    fn test_index_at_row_uniform() {
-        let list = VirtualList::new(vec![1, 2, 3, 4, 5]).item_height(2);
-        assert_eq!(list.index_at_row(0), 0);
-        assert_eq!(list.index_at_row(1), 0);
-        assert_eq!(list.index_at_row(2), 1);
-        assert_eq!(list.index_at_row(3), 1);
-        assert_eq!(list.index_at_row(4), 2);
-    }
-
-    #[test]
-    fn test_index_at_row_variable() {
-        let list =
-            VirtualList::new(vec!["A", "BB", "CCC"]).variable_height(|item, _| item.len() as u16);
-        assert_eq!(list.index_at_row(0), 0);
-        assert_eq!(list.index_at_row(1), 1); // Start of BB
-        assert_eq!(list.index_at_row(2), 1);
-        assert_eq!(list.index_at_row(3), 2); // Start of CCC
-    }
-
-    // =========================================================================
-    // VirtualList::row_of_index tests
-    // =========================================================================
-
-    #[test]
-    fn test_row_of_index_uniform() {
-        let list = VirtualList::new(vec![1, 2, 3, 4]).item_height(3);
-        assert_eq!(list.row_of_index(0), 0);
-        assert_eq!(list.row_of_index(1), 3);
-        assert_eq!(list.row_of_index(2), 6);
-    }
-
-    #[test]
-    fn test_row_of_index_variable() {
-        let list =
-            VirtualList::new(vec!["A", "BB", "CCC"]).variable_height(|item, _| item.len() as u16);
-        assert_eq!(list.row_of_index(0), 0);
-        assert_eq!(list.row_of_index(1), 1);
-        assert_eq!(list.row_of_index(2), 3);
-    }
-
-    // =========================================================================
-    // VirtualList::get_item_height tests
-    // KEEP HERE: accesses private method get_item_height (test-only, not public)
-    // =========================================================================
-
-    #[test]
-    fn test_get_item_height_uniform() {
-        let list = VirtualList::new(vec!["A", "B"]).item_height(3);
-        assert_eq!(list.get_item_height(0), 3);
-        assert_eq!(list.get_item_height(1), 3);
-    }
-
-    #[test]
-    fn test_get_item_height_variable() {
-        let list =
-            VirtualList::new(vec!["A", "BB", "CCC"]).variable_height(|item, _| item.len() as u16);
-        assert_eq!(list.get_item_height(0), 1);
-        assert_eq!(list.get_item_height(1), 2);
-        assert_eq!(list.get_item_height(2), 3);
     }
 }
