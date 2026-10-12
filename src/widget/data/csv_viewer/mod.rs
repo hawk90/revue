@@ -11,6 +11,9 @@
 
 mod core;
 mod helpers;
+mod parse;
+mod search;
+mod sort;
 mod types;
 mod view;
 
@@ -23,7 +26,7 @@ crate::impl_props_builders!(CsvViewer);
 
 #[cfg(test)]
 mod tests {
-    use super::core::{MAX_CSV_COLS, MAX_CSV_ROWS};
+    use super::parse::{MAX_CSV_COLS, MAX_CSV_ROWS};
     use super::*;
 
     fn sample_csv() -> &'static str {
