@@ -825,3 +825,51 @@ fn test_with_tuple_items() {
     let list = VirtualList::new(vec!["1-A", "2-B"]);
     assert_eq!(list.len(), 2);
 }
+
+// =========================================================================
+// The height cache follows the items
+// =========================================================================
+
+fn by_length(items: Vec<&'static str>) -> VirtualList<&'static str> {
+    VirtualList::new(items).variable_height(|s, _| s.len() as u16)
+}
+
+fn assert_cache(list: &VirtualList<&str>) {
+    let heights: Vec<u16> = list.items.iter().map(|s| s.len() as u16).collect();
+    let cumulative: Vec<u32> = heights
+        .iter()
+        .scan(0u32, |sum, &h| {
+            *sum += u32::from(h);
+            Some(*sum)
+        })
+        .collect();
+    assert_eq!(list.height_cache, heights);
+    assert_eq!(list.cumulative_heights, cumulative);
+}
+
+#[test]
+fn test_height_cache_follows_push() {
+    let mut list = by_length(vec!["A", "BB"]);
+    list.push("CCC");
+    assert_cache(&list);
+    list.scroll_by(4); // row 4 is inside CCC (rows 3..6)
+    assert_eq!((list.scroll_offset, list.scroll_sub_offset), (2, 1));
+}
+
+#[test]
+fn test_height_cache_follows_remove() {
+    let mut list = by_length(vec!["AAA", "B"]);
+    list.remove(0);
+    assert_cache(&list);
+    list.scroll_by(2);
+    assert_eq!((list.scroll_offset, list.scroll_sub_offset), (0, 0));
+}
+
+#[test]
+fn test_height_cache_follows_set_items_and_clear() {
+    let mut list = by_length(vec!["A"]);
+    list.set_items(vec!["BB", "CCC", "D"]);
+    assert_cache(&list);
+    list.clear();
+    assert_cache(&list);
+}

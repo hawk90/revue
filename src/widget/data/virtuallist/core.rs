@@ -175,6 +175,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     /// Set items (replacing all)
     pub fn set_items(&mut self, items: Vec<T>) {
         self.items = items;
+        self.rebuild_height_cache();
         // Adjust selection if out of bounds
         if let Some(idx) = self.selected {
             if idx >= self.items.len() {
@@ -193,6 +194,12 @@ impl<T: ToString + Clone> VirtualList<T> {
 
     /// Add item to the end
     pub fn push(&mut self, item: T) {
+        if let Some(ref calc) = self.height_calculator {
+            let height = calc(&item, self.items.len()).max(1);
+            let total = self.cumulative_heights.last().copied().unwrap_or(0);
+            self.height_cache.push(height);
+            self.cumulative_heights.push(total + u32::from(height));
+        }
         self.items.push(item);
     }
 
@@ -200,6 +207,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     pub fn remove(&mut self, index: usize) -> Option<T> {
         if index < self.items.len() {
             let item = self.items.remove(index);
+            self.rebuild_height_cache();
             // Adjust selection
             if let Some(sel) = self.selected {
                 if sel >= self.items.len() {
@@ -221,6 +229,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     /// Clear all items
     pub fn clear(&mut self) {
         self.items.clear();
+        self.rebuild_height_cache();
         self.selected = None;
         self.scroll_offset = 0;
     }
@@ -280,7 +289,7 @@ impl<T: ToString + Clone> VirtualList<T> {
 
     /// Page down
     pub fn page_down(&mut self, viewport_height: u16) {
-        let page_size = (viewport_height / self.item_height) as usize;
+        let page_size = self.visible_count(viewport_height);
         if let Some(idx) = self.selected {
             let new_idx = (idx + page_size).min(self.items.len().saturating_sub(1));
             self.selected = Some(new_idx);
@@ -289,7 +298,7 @@ impl<T: ToString + Clone> VirtualList<T> {
 
     /// Page up
     pub fn page_up(&mut self, viewport_height: u16) {
-        let page_size = (viewport_height / self.item_height) as usize;
+        let page_size = self.visible_count(viewport_height);
         if let Some(idx) = self.selected {
             self.selected = Some(idx.saturating_sub(page_size));
         }

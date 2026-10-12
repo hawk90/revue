@@ -9,7 +9,6 @@
 //! - **Jump-to-index**: Quickly scroll to any item by index
 //! - **Smooth scrolling**: Configurable scroll behavior
 //! - **Overscan**: Render extra items for smoother scrolling
-//! - **Async loading**: Support for lazy-loaded data sources
 //!
 //! # Example
 //!

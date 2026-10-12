@@ -2,6 +2,7 @@
 
 mod core;
 mod types;
+mod view;
 
 use revue::layout::Rect;
 use revue::render::Buffer;

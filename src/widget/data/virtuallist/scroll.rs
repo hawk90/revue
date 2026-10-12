@@ -104,21 +104,31 @@ impl<T: ToString + Clone> VirtualList<T> {
         self.scroll_sub_offset = 0;
     }
 
+    /// Items that fit in `viewport_height` rows; at least one, so an item
+    /// taller than the viewport still shows its top
+    pub(super) fn visible_count(&self, viewport_height: u16) -> usize {
+        usize::from(viewport_height / self.item_height).max(1)
+    }
+
+    /// The scroll offset that keeps the selection in view, moved as little
+    /// as possible from the current one
+    pub(super) fn offset_showing_selection(&self, viewport_height: u16) -> usize {
+        let visible = self.visible_count(viewport_height);
+        match self.selected {
+            Some(idx) if idx < self.scroll_offset => idx,
+            Some(idx) if idx >= self.scroll_offset + visible => idx + 1 - visible,
+            _ => self.scroll_offset,
+        }
+    }
+
     /// Scroll to make selected item visible
     pub fn ensure_visible(&mut self, viewport_height: u16) {
-        let visible_count = (viewport_height / self.item_height) as usize;
-        if let Some(idx) = self.selected {
-            if idx < self.scroll_offset {
-                self.scroll_offset = idx;
-            } else if idx >= self.scroll_offset + visible_count {
-                self.scroll_offset = idx.saturating_sub(visible_count - 1);
-            }
-        }
+        self.scroll_offset = self.offset_showing_selection(viewport_height);
     }
 
     /// Get visible item range
     pub fn visible_range(&self, viewport_height: u16) -> Range<usize> {
-        let visible_count = (viewport_height / self.item_height) as usize;
+        let visible_count = self.visible_count(viewport_height);
         let start = self.scroll_offset.saturating_sub(self.overscan);
         let end = (self.scroll_offset + visible_count + self.overscan).min(self.items.len());
         start..end
