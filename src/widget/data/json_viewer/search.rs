@@ -30,7 +30,6 @@ pub struct SearchState {
     pub search_query: String,
     pub search_matches: Vec<String>,
     pub current_match: usize,
-    pub collapsed: HashSet<String>,
 }
 
 impl SearchState {
@@ -39,20 +38,13 @@ impl SearchState {
             search_query: String::new(),
             search_matches: Vec::new(),
             current_match: 0,
-            collapsed: HashSet::new(),
         }
     }
 
     pub fn search_recursive(&mut self, node: &JsonNode) {
-        // Check key
-        if node.key.to_lowercase().contains(&self.search_query) {
+        let matches = |text: &str| text.to_lowercase().contains(&self.search_query);
+        if matches(&node.key) || node.value.as_deref().is_some_and(matches) {
             self.search_matches.push(node.path.clone());
-        }
-        // Check value
-        else if let Some(value) = &node.value {
-            if value.to_lowercase().contains(&self.search_query) {
-                self.search_matches.push(node.path.clone());
-            }
         }
 
         for child in &node.children {
@@ -60,10 +52,13 @@ impl SearchState {
         }
     }
 
+    /// Expand the ancestors of the current match in `collapsed` and select
+    /// it among the rows that leaves visible
     pub fn go_to_match(
-        &mut self,
+        &self,
+        collapsed: &mut HashSet<String>,
         selected: &mut usize,
-        get_visible_nodes: impl Fn(&Self) -> Vec<JsonNode>,
+        get_visible_nodes: impl Fn(&HashSet<String>) -> Vec<JsonNode>,
     ) {
         if let Some(path) = self.search_matches.get(self.current_match) {
             // Expand all ancestors
@@ -74,11 +69,11 @@ impl SearchState {
                     current_path.push('.');
                 }
                 current_path.push_str(part);
-                self.collapsed.remove(&current_path);
+                collapsed.remove(&current_path);
             }
 
             // Find and select the node
-            let visible = get_visible_nodes(self);
+            let visible = get_visible_nodes(collapsed);
             for (idx, node) in visible.iter().enumerate() {
                 if &node.path == path {
                     *selected = idx;

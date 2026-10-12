@@ -2,8 +2,9 @@
 
 use super::JsonViewer;
 use crate::render::{Cell, Modifier};
+use crate::style::Color;
 use crate::widget::data::json_viewer::helpers::line_number_width;
-use crate::widget::data::json_viewer::types::JsonType;
+use crate::widget::data::json_viewer::types::{JsonNode, JsonType};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for JsonViewer {
@@ -14,9 +15,7 @@ impl View for JsonViewer {
         }
 
         let nodes = self.get_visible_nodes();
-        let total_lines = nodes.len();
-        let line_num_width = line_number_width(self.show_line_numbers, total_lines);
-        let content_start_x = line_num_width;
+        let line_num_width = line_number_width(self.show_line_numbers, nodes.len());
         let content_width = area.width.saturating_sub(line_num_width);
 
         // Adjust scroll to keep selection visible
@@ -33,222 +32,198 @@ impl View for JsonViewer {
             if y >= area.height {
                 break;
             }
-
             let line_idx = scroll + visible_idx;
-            let is_selected = line_idx == self.selected;
-            let is_match = self.search_state.search_matches.contains(&node.path);
-
-            // Line number
-            if self.show_line_numbers {
-                let num_str = format!(
-                    "{:>width$}",
-                    line_idx + 1,
-                    width = (line_num_width - 1) as usize
-                );
-                for (i, ch) in num_str.chars().enumerate() {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = self.line_number_fg;
-                    cell.bg = if is_selected {
-                        self.selected_bg
-                    } else {
-                        self.bg
-                    };
-                    ctx.set(i as u16, y, cell);
-                }
-            }
-
-            // Indent
-            let indent = (node.depth as u16) * self.indent_size;
-            let mut x = content_start_x + indent;
-
-            // Draw collapse indicator for containers
-            if node.is_container() {
-                let indicator = if self.collapsed.contains(&node.path) {
-                    "▶ "
-                } else {
-                    "▼ "
-                };
-                for ch in indicator.chars() {
-                    if x < area.width {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = self.bracket_fg;
-                        cell.bg = if is_selected {
-                            self.selected_bg
-                        } else {
-                            self.bg
-                        };
-                        ctx.set(x, y, cell);
-                        x += 1;
-                    }
-                }
-            }
-
-            // Determine colors
-            let (fg, bg) = if is_selected {
-                (self.selected_fg, self.selected_bg)
-            } else if is_match {
-                (self.match_fg, self.match_bg)
-            } else {
-                // The base row takes the stylesheet; selection, matches and the
-                // per-token colors keep theirs.
-                (
-                    self.fg.or_else(|| ctx.css_color_if_set()),
-                    self.bg.or_else(|| ctx.css_background_if_set()),
-                )
-            };
-
-            // Draw key if present
-            if !node.key.is_empty() {
-                let key_display = format!("\"{}\"", node.key);
-                for ch in key_display.chars() {
-                    if x < area.width {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = if is_selected { fg } else { self.key_fg };
-                        cell.bg = bg;
-                        ctx.set(x, y, cell);
-                        x += 1;
-                    }
-                }
-
-                // Colon separator
-                let sep = ": ";
-                for ch in sep.chars() {
-                    if x < area.width {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = fg.or(self.fg);
-                        cell.bg = bg;
-                        ctx.set(x, y, cell);
-                        x += 1;
-                    }
-                }
-            }
-
-            // Draw value or container brackets
-            match &node.value_type {
-                JsonType::Object => {
-                    let text = if self.collapsed.contains(&node.path) {
-                        format!("{{...}} ({} items)", node.child_count())
-                    } else if node.children.is_empty() {
-                        "{}".to_string()
-                    } else {
-                        "{".to_string()
-                    };
-                    for ch in text.chars() {
-                        if x < area.width {
-                            let mut cell = Cell::new(ch);
-                            cell.fg = if is_selected { fg } else { self.bracket_fg };
-                            cell.bg = bg;
-                            ctx.set(x, y, cell);
-                            x += 1;
-                        }
-                    }
-                }
-                JsonType::Array => {
-                    let text = if self.collapsed.contains(&node.path) {
-                        format!("[...] ({} items)", node.child_count())
-                    } else if node.children.is_empty() {
-                        "[]".to_string()
-                    } else {
-                        "[".to_string()
-                    };
-                    for ch in text.chars() {
-                        if x < area.width {
-                            let mut cell = Cell::new(ch);
-                            cell.fg = if is_selected { fg } else { self.bracket_fg };
-                            cell.bg = bg;
-                            ctx.set(x, y, cell);
-                            x += 1;
-                        }
-                    }
-                }
-                JsonType::String => {
-                    if let Some(value) = &node.value {
-                        let display = format!("\"{}\"", value);
-                        let truncated: String = display
-                            .chars()
-                            .take((content_width.saturating_sub(indent + 2)) as usize)
-                            .collect();
-                        for ch in truncated.chars() {
-                            if x < area.width {
-                                let mut cell = Cell::new(ch);
-                                cell.fg = if is_selected { fg } else { self.string_fg };
-                                cell.bg = bg;
-                                ctx.set(x, y, cell);
-                                x += 1;
-                            }
-                        }
-                    }
-                }
-                JsonType::Number => {
-                    if let Some(value) = &node.value {
-                        for ch in value.chars() {
-                            if x < area.width {
-                                let mut cell = Cell::new(ch);
-                                cell.fg = if is_selected { fg } else { self.number_fg };
-                                cell.bg = bg;
-                                ctx.set(x, y, cell);
-                                x += 1;
-                            }
-                        }
-                    }
-                }
-                JsonType::Boolean => {
-                    if let Some(value) = &node.value {
-                        for ch in value.chars() {
-                            if x < area.width {
-                                let mut cell = Cell::new(ch);
-                                cell.fg = if is_selected { fg } else { self.bool_fg };
-                                cell.bg = bg;
-                                ctx.set(x, y, cell);
-                                x += 1;
-                            }
-                        }
-                    }
-                }
-                JsonType::Null => {
-                    for ch in "null".chars() {
-                        if x < area.width {
-                            let mut cell = Cell::new(ch);
-                            cell.fg = if is_selected { fg } else { self.null_fg };
-                            cell.bg = bg;
-                            ctx.set(x, y, cell);
-                            x += 1;
-                        }
-                    }
-                }
-            }
-
-            // Type badge after the value
-            if self.show_type_badges {
-                let badge = match node.value_type {
-                    JsonType::Object => "object",
-                    JsonType::Array => "array",
-                    JsonType::String => "string",
-                    JsonType::Number => "number",
-                    JsonType::Boolean => "boolean",
-                    JsonType::Null => "null",
-                };
-                for ch in std::iter::once(' ').chain(badge.chars()) {
-                    if x < area.width {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = if is_selected { fg } else { self.line_number_fg };
-                        cell.bg = bg;
-                        cell.modifier |= Modifier::DIM;
-                        ctx.set(x, y, cell);
-                        x += 1;
-                    }
-                }
-            }
-
-            // Fill rest of line with background
-            while x < area.width {
-                let mut cell = Cell::new(' ');
-                cell.bg = bg;
-                ctx.set(x, y, cell);
-                x += 1;
-            }
+            self.render_row(ctx, node, line_idx, y, line_num_width, content_width);
         }
     }
 
     crate::impl_view_meta!("JsonViewer");
+}
+
+impl JsonViewer {
+    /// One node on row `y`: line number, indicator, key, value, type badge,
+    /// then the row's background to the edge
+    fn render_row(
+        &self,
+        ctx: &mut RenderContext,
+        node: &JsonNode,
+        line_idx: usize,
+        y: u16,
+        line_num_width: u16,
+        content_width: u16,
+    ) {
+        let is_selected = line_idx == self.selected;
+        let is_match = self.search_state.search_matches.contains(&node.path);
+        let plain_bg = if is_selected {
+            self.selected_bg
+        } else {
+            self.bg
+        };
+
+        if self.show_line_numbers {
+            let num_str = format!(
+                "{:>width$}",
+                line_idx + 1,
+                width = (line_num_width - 1) as usize
+            );
+            put(
+                ctx,
+                0,
+                y,
+                &num_str,
+                self.line_number_fg,
+                plain_bg,
+                Modifier::empty(),
+            );
+        }
+
+        let indent = (node.depth as u16) * self.indent_size;
+        let mut x = line_num_width + indent;
+
+        if node.is_container() {
+            let indicator = if self.collapsed.contains(&node.path) {
+                "▶ "
+            } else {
+                "▼ "
+            };
+            x = put(
+                ctx,
+                x,
+                y,
+                indicator,
+                self.bracket_fg,
+                plain_bg,
+                Modifier::empty(),
+            );
+        }
+
+        let (fg, bg) = if is_selected {
+            (self.selected_fg, self.selected_bg)
+        } else if is_match {
+            (self.match_fg, self.match_bg)
+        } else {
+            // The base row takes the stylesheet; selection, matches and the
+            // per-token colors keep theirs.
+            (
+                self.fg.or_else(|| ctx.css_color_if_set()),
+                self.bg.or_else(|| ctx.css_background_if_set()),
+            )
+        };
+        // Tokens keep their own colors unless the row is selected
+        let token = |own: Option<Color>| if is_selected { fg } else { own };
+
+        if !node.key.is_empty() {
+            let key_display = format!("\"{}\"", node.key);
+            x = put(
+                ctx,
+                x,
+                y,
+                &key_display,
+                token(self.key_fg),
+                bg,
+                Modifier::empty(),
+            );
+            x = put(ctx, x, y, ": ", fg.or(self.fg), bg, Modifier::empty());
+        }
+
+        if let Some((text, own_fg)) = self.value_text(node, content_width, indent) {
+            x = put(ctx, x, y, &text, token(own_fg), bg, Modifier::empty());
+        }
+
+        if self.show_type_badges {
+            let badge = format!(" {}", type_name(&node.value_type));
+            x = put(
+                ctx,
+                x,
+                y,
+                &badge,
+                token(self.line_number_fg),
+                bg,
+                Modifier::DIM,
+            );
+        }
+
+        let width = ctx.area.width;
+        while x < width {
+            let mut cell = Cell::new(' ');
+            cell.bg = bg;
+            ctx.set(x, y, cell);
+            x += 1;
+        }
+    }
+
+    /// The text shown for a node's value, with its type's color: brackets
+    /// (or a collapsed summary) for containers, the quoted string cut to the
+    /// content width, the number, boolean or `null`
+    fn value_text(
+        &self,
+        node: &JsonNode,
+        content_width: u16,
+        indent: u16,
+    ) -> Option<(String, Option<Color>)> {
+        let collapsed = self.collapsed.contains(&node.path);
+        match &node.value_type {
+            JsonType::Object => Some((container_text(node, collapsed, '{', '}'), self.bracket_fg)),
+            JsonType::Array => Some((container_text(node, collapsed, '[', ']'), self.bracket_fg)),
+            JsonType::String => node.value.as_ref().map(|value| {
+                let display = format!("\"{}\"", value);
+                let truncated: String = display
+                    .chars()
+                    .take((content_width.saturating_sub(indent + 2)) as usize)
+                    .collect();
+                (truncated, self.string_fg)
+            }),
+            JsonType::Number => node.value.clone().map(|value| (value, self.number_fg)),
+            JsonType::Boolean => node.value.clone().map(|value| (value, self.bool_fg)),
+            JsonType::Null => Some(("null".to_string(), self.null_fg)),
+        }
+    }
+}
+
+/// A container's brackets: the opening one while it is expanded, both when
+/// it is empty, and a summary with its item count when it is collapsed
+fn container_text(node: &JsonNode, collapsed: bool, open: char, close: char) -> String {
+    if collapsed {
+        format!("{open}...{close} ({} items)", node.child_count())
+    } else if node.children.is_empty() {
+        format!("{open}{close}")
+    } else {
+        open.to_string()
+    }
+}
+
+fn type_name(value_type: &JsonType) -> &'static str {
+    match value_type {
+        JsonType::Object => "object",
+        JsonType::Array => "array",
+        JsonType::String => "string",
+        JsonType::Number => "number",
+        JsonType::Boolean => "boolean",
+        JsonType::Null => "null",
+    }
+}
+
+/// `text` from column `x`, one cell per character, dropping the characters
+/// past the area's right edge; returns the column after the last one drawn
+fn put(
+    ctx: &mut RenderContext,
+    x: u16,
+    y: u16,
+    text: &str,
+    fg: Option<Color>,
+    bg: Option<Color>,
+    modifier: Modifier,
+) -> u16 {
+    let mut x = x;
+    for ch in text.chars() {
+        if x < ctx.area.width {
+            let mut cell = Cell::new(ch);
+            cell.fg = fg;
+            cell.bg = bg;
+            cell.modifier |= modifier;
+            ctx.set(x, y, cell);
+            x += 1;
+        }
+    }
+    x
 }

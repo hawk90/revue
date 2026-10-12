@@ -186,16 +186,12 @@ impl JsonViewer {
 
     /// Get selected node path
     pub fn selected_path(&self) -> Option<String> {
-        self.get_visible_nodes()
-            .get(self.selected)
-            .map(|n| n.path.clone())
+        self.selected_node().map(|n| n.path)
     }
 
     /// Get selected value
     pub fn selected_value(&self) -> Option<String> {
-        self.get_visible_nodes()
-            .get(self.selected)
-            .and_then(|n| n.value.clone())
+        self.selected_node().and_then(|n| n.value)
     }
 
     /// Check if node is collapsed
@@ -236,6 +232,11 @@ impl JsonViewer {
     // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
+
+    /// The visible node at the selection
+    fn selected_node(&self) -> Option<JsonNode> {
+        self.get_visible_nodes().into_iter().nth(self.selected)
+    }
 
     /// Get flattened list of visible nodes
     fn get_visible_nodes(&self) -> Vec<JsonNode> {
