@@ -920,6 +920,11 @@ entries:
       - "checked arithmetic"
       - "zero-sized rect"
       - "terminal resize 중 transient state"
+    detect:
+      - "widget이 사용자가 정하는 크기(indent, depth, 폭, 항목 높이)로 `u16` 열 위치를 `*`, `+`, `-`로 바로 계산한다"
+      - "검증 입력: `indent(u16::MAX)` 같은 큰 옵션 값, 폭 0·1인 영역, viewport보다 큰 항목. offset 영역에 그리는 `render_stays_inside_its_area` proptest에 큰 값을 넣으면 바로 드러난다"
+    observed:
+      - "filetree `depth * indent` overflow (#967), tree 행의 열 합산이 depth × indent가 65535에 가까워지면 overflow(`indent(u16::MAX)`는 depth 1, `indent(40000)`은 depth 2), filetree 크기 열 `width - len - 1` underflow (#855, #968에서 고침), virtuallist `visible_count - 1` underflow (#857, #972에서 고침). 목록은 #978."
   - id: REV-LAYOUT-007
     title: "Hidden Widgets Still Participate"
     category: layout
