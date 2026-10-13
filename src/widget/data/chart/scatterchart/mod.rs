@@ -169,20 +169,4 @@ mod tests {
         assert_eq!(series.color, Some(Color::RED));
         assert_eq!(series.marker, Marker::Star);
     }
-
-    #[test]
-    fn test_scatter_chart_legend() {
-        let chart = ScatterChart::new().legend(Legend::bottom_left());
-        assert_eq!(chart.legend.position, LegendPosition::BottomLeft);
-
-        let chart = ScatterChart::new().no_legend();
-        assert!(!chart.legend.is_visible());
-    }
-
-    #[test]
-    fn test_scatter_chart_grid() {
-        let chart = ScatterChart::new().grid(ChartGrid::y_only());
-        assert!(!chart.grid.x);
-        assert!(chart.grid.y);
-    }
 }

@@ -110,6 +110,33 @@ fn test_scatter_no_legend() {
 }
 
 #[test]
+fn test_scatter_legend_bottom_left() {
+    // 50x25: the legend box sits one cell in from the left edge, its bottom
+    // border on the row above the x labels
+    let chart = ScatterChart::new()
+        .grid(ChartGrid::new())
+        .series(ScatterSeries::new("Series A").points(&[(1.0, 1.0), (2.0, 2.0)]))
+        .legend(Legend::bottom_left());
+    let rows = render_rows(&chart, 50, 25);
+    assert!(rows[21].starts_with(" ┌──────────┐ "), "{:?}", rows[21]);
+    assert!(rows[22].starts_with(" │■ Series A│ "), "{:?}", rows[22]);
+    assert!(rows[23].starts_with(" └──────────┘ "), "{:?}", rows[23]);
+}
+
+#[test]
+fn test_scatter_grid_y_only() {
+    // Horizontal lines only: no vertical lines or tick marks
+    let chart = ScatterChart::new()
+        .no_legend()
+        .series(ScatterSeries::new("D").points(&[(1.0, 1.0), (2.0, 2.0)]))
+        .grid(ChartGrid::y_only());
+    let buffer = render(&chart, 40, 20);
+    assert!(count_char(&buffer, '─') > 0);
+    assert_eq!(count_char(&buffer, '│'), 0);
+    assert_eq!(count_char(&buffer, '┴'), 0);
+}
+
+#[test]
 fn test_scatter_grid() {
     let series = || ScatterSeries::new("D").points(&[(5.0, 5.0)]);
     let with_grid = render(
