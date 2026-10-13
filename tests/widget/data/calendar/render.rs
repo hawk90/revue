@@ -3,6 +3,7 @@
 
 use super::{cell, screen, screen_in};
 use super::{header_fg, render, row_text};
+use proptest::prelude::*;
 use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};
 use revue::style::Color;
@@ -241,5 +242,41 @@ fn test_weekend_columns_monday_first() {
             Some(Color::CYAN),
             "column {column}"
         );
+    }
+}
+
+#[test]
+fn test_calendar_draws_the_same_when_offset() {
+    let cal = Calendar::new(2025, 3)
+        .first_day(FirstDayOfWeek::Monday)
+        .week_numbers(true)
+        .border(Color::WHITE)
+        .focused(true)
+        .selected(Date::new(2025, 3, 12))
+        .today(Date::new(2025, 3, 14));
+    super::super::chart::assert_same_when_offset(cal, 30, 11);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// For any month, the days 1..=last appear in order, each in the column
+    /// of its weekday, a week per row.
+    #[test]
+    fn test_calendar_days_sit_in_their_weekday_column(
+        year in 1600i32..2400,
+        month in 1u32..=12,
+        monday_first in any::<bool>(),
+    ) {
+        let first = if monday_first { FirstDayOfWeek::Monday } else { FirstDayOfWeek::Sunday };
+        let rows = screen_in(&Calendar::new(year, month).first_day(first), 30, 10);
+        let offset = Date::new(year, month, 1).weekday();
+        let offset = if monday_first { (offset + 6) % 7 } else { offset };
+        for day in 1..=days_in_month(year, month) {
+            let index = offset + day - 1;
+            let (x, y) = ((index % 7) as usize * 3, 3 + (index / 7) as usize);
+            let text: String = rows[y].chars().skip(x).take(2).collect();
+            prop_assert_eq!(text.trim(), day.to_string(), "{}-{} row {}", year, month, y);
+        }
     }
 }

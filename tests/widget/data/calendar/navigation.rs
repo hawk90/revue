@@ -1,6 +1,7 @@
 //! Calendar navigation tests: months, years, the selected date and the keys
 
 use super::header;
+use proptest::prelude::*;
 use revue::event::Key;
 use revue::widget::{Calendar, Date};
 
@@ -460,4 +461,61 @@ fn test_calendar_clear_then_select() {
     // 선택 후 탐색 가능 (Can navigate after selection)
     cal.handle_key(&Key::Right);
     assert!(cal.get_selected().is_some());
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Any sequence of arrow and vim keys moves the selection by the sum
+    /// of their steps (±1 day, ±7 days), and the selection stays a real date.
+    /// With nothing selected, the first day step selects day 1 of the shown
+    /// month, so the first key moves one day less than its step.
+    #[test]
+    fn test_calendar_keys_move_by_days(
+        year in 1900i32..2100,
+        month in 1u32..=12,
+        keys in prop::collection::vec(0usize..8, 1..60),
+    ) {
+        let keys_steps = [
+            (Key::Left, -1i64), (Key::Right, 1), (Key::Up, -7), (Key::Down, 7),
+            (Key::Char('h'), -1), (Key::Char('l'), 1), (Key::Char('k'), -7), (Key::Char('j'), 7),
+        ];
+        let mut cal = Calendar::new(year, month).focused(true);
+        let mut net = 0i64;
+        for (i, &k) in keys.iter().enumerate() {
+            let (key, step) = &keys_steps[k];
+            prop_assert!(cal.handle_key(key));
+            net += if i == 0 { step - step.signum() } else { *step };
+        }
+        let start = Date::new(year, month, 1);
+        let expected = if net >= 0 {
+            start.add_days(net as u32)
+        } else {
+            start.subtract_days((-net) as u32)
+        };
+        let selected = cal.get_selected().unwrap();
+        prop_assert!(selected.is_valid());
+        prop_assert_eq!(selected, expected);
+    }
+
+    /// Going forward n months and back n months returns to the same month,
+    /// and n months forward shows the month n later.
+    #[test]
+    fn test_calendar_month_steps(year in 1900i32..2100, month in 1u32..=12, n in 0u32..40) {
+        let names = [
+            "January", "February", "March", "April", "May", "June", "July", "August",
+            "September", "October", "November", "December",
+        ];
+        let mut cal = Calendar::new(year, month);
+        for _ in 0..n {
+            cal.next_month();
+        }
+        let index = (month - 1 + n) as i32;
+        let later = format!("{} {}", names[(index % 12) as usize], year + index / 12);
+        prop_assert_eq!(header(&cal), later);
+        for _ in 0..n {
+            cal.prev_month();
+        }
+        prop_assert_eq!(header(&cal), format!("{} {}", names[month as usize - 1], year));
+    }
 }
