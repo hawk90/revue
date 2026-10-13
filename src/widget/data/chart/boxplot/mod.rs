@@ -3,19 +3,20 @@
 //! Displays median, quartiles, and outliers for comparing distributions across categories.
 
 use super::chart_common::{Axis, ChartGrid, ChartOrientation, ColorScheme, Legend};
-use super::chart_render::{fill_background, render_title};
-use crate::layout::Rect;
 use crate::style::Color;
-use crate::utils::display_width;
-use crate::widget::traits::{RenderContext, View, WidgetProps};
+use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
+mod axes;
+mod boxes;
 mod group;
 mod render;
-mod types;
+mod scale;
+mod stats;
+mod view;
 
 pub use group::BoxGroup;
-pub use types::{BoxStats, WhiskerStyle};
+pub use stats::{BoxStats, WhiskerStyle};
 
 /// Box plot widget
 #[derive(Clone)]
@@ -186,119 +187,6 @@ impl BoxPlot {
     pub fn bg(mut self, color: Color) -> Self {
         self.bg_color = Some(color);
         self
-    }
-
-    /// Compute value bounds
-    fn compute_bounds(&self) -> (f64, f64) {
-        let mut min = f64::INFINITY;
-        let mut max = f64::NEG_INFINITY;
-
-        for group in &self.groups {
-            if let Some(stats) = group.get_stats(self.whisker_style) {
-                min = min.min(stats.whisker_low);
-                max = max.max(stats.whisker_high);
-                for &outlier in &stats.outliers {
-                    min = min.min(outlier);
-                    max = max.max(outlier);
-                }
-            }
-        }
-
-        // Apply axis overrides
-        let min = self.value_axis.min.unwrap_or(min);
-        let max = self.value_axis.max.unwrap_or(max);
-
-        // Add padding
-        let range = (max - min).max(1.0);
-        let padding = range * 0.1;
-
-        (min - padding, max + padding)
-    }
-}
-
-impl View for BoxPlot {
-    crate::impl_view_meta!("BoxPlot");
-
-    fn render(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
-
-        if area.width < 10 || area.height < 8 {
-            return;
-        }
-
-        // Use relative area (0,0 origin) for shared functions that use ctx.set()
-        let rel_area = Rect::new(0, 0, area.width, area.height);
-
-        // Fill background using shared function
-        if let Some(bg) = self.bg_color {
-            fill_background(ctx, rel_area, bg);
-        }
-
-        // Draw title using shared function
-        let title_offset = render_title(ctx, rel_area, self.title.as_deref(), Color::WHITE);
-
-        let horizontal = self.orientation == ChartOrientation::Horizontal;
-
-        // Calculate chart area (relative coordinates)
-        let chart_area = if horizontal {
-            // Group labels on the left (as wide as the longest label, up to a
-            // third of the width), value labels on the bottom row
-            let label_width = self
-                .groups
-                .iter()
-                .map(|g| display_width(&g.label) as u16)
-                .max()
-                .unwrap_or(0)
-                .clamp(1, area.width / 3);
-            let x = label_width + 1;
-            Rect {
-                x,
-                y: title_offset,
-                width: area.width.saturating_sub(x + 1),
-                height: area.height.saturating_sub(title_offset + 1),
-            }
-        } else {
-            let y_label_width = 6u16;
-            let x_label_height = 1u16;
-            Rect {
-                x: y_label_width,
-                y: title_offset,
-                width: area.width.saturating_sub(y_label_width + 1),
-                height: area
-                    .height
-                    .saturating_sub(title_offset + x_label_height + 1),
-            }
-        };
-
-        if chart_area.width < 5 || chart_area.height < 5 {
-            return;
-        }
-
-        let bounds = self.compute_bounds();
-
-        // Render using render module
-        let render_state = render::BoxPlotRender::new(
-            &self.groups,
-            bounds,
-            chart_area,
-            self.box_width,
-            self.whisker_style,
-            self.show_outliers,
-            self.notched,
-        );
-
-        if horizontal {
-            render_state.render_boxes_horizontal(ctx, &self.colors);
-            render_state.render_axes_horizontal(
-                ctx,
-                rel_area,
-                &self.value_axis,
-                &self.category_axis,
-            );
-        } else {
-            render_state.render_boxes(ctx, &self.colors);
-            render_state.render_axes(ctx, rel_area, &self.value_axis, &self.category_axis);
-        }
     }
 }
 

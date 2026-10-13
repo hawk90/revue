@@ -1,4 +1,4 @@
-//! Box plot types and statistics
+//! Box plot statistics: quartiles, whiskers and outliers
 
 use super::super::chart_stats::percentile;
 
