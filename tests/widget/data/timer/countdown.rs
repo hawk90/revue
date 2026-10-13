@@ -8,6 +8,30 @@ use revue::widget::{Timer, TimerFormat, TimerState, View};
 use std::thread;
 use std::time::{Duration, Instant};
 
+/// `view` drawn in a `width` x `height` area
+fn draw(view: &impl View, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+    view.render(&mut ctx);
+    buffer
+}
+
+/// Each row of `buffer` as text
+fn rows_of(buffer: &Buffer) -> Vec<String> {
+    (0..buffer.height())
+        .map(|y| {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect()
+        })
+        .collect()
+}
+
+/// Each row of `view` drawn in a `width` x `height` area
+fn screen(view: &impl View, width: u16, height: u16) -> Vec<String> {
+    rows_of(&draw(view, width, height))
+}
+
 /// Poll for a condition with a timeout, returning when the condition becomes true
 /// or the timeout elapses. Returns true if condition was met, false on timeout.
 fn poll_until<F>(mut condition: F, timeout_ms: u64) -> bool
@@ -58,24 +82,20 @@ fn test_timer_countdown_large() {
 fn test_timer_pomodoro() {
     let timer = Timer::pomodoro();
     assert_eq!(timer.remaining_seconds(), 25 * 60);
-    // Cannot directly access private fields like title, warning_threshold, danger_threshold
-    // These are set by the pomodoro() constructor but verified through behavior
+    assert_eq!(screen(&timer, 30, 4)[0].trim(), "Pomodoro");
 }
-
 #[test]
 fn test_timer_short_break() {
     let timer = Timer::short_break();
     assert_eq!(timer.remaining_seconds(), 5 * 60);
-    // Cannot directly access private fields
+    assert_eq!(screen(&timer, 30, 4)[0].trim(), "Short Break");
 }
-
 #[test]
 fn test_timer_long_break() {
     let timer = Timer::long_break();
     assert_eq!(timer.remaining_seconds(), 15 * 60);
-    // Cannot directly access private fields
+    assert_eq!(screen(&timer, 30, 4)[0].trim(), "Long Break");
 }
-
 // =============================================================================
 // Builder Methods Tests
 // =============================================================================
@@ -133,63 +153,71 @@ fn test_timer_format_compact_seconds() {
 
 #[test]
 fn test_timer_show_progress() {
-    // Builder methods work, but cannot directly access private fields
-    let _timer = Timer::countdown(60).show_progress(false);
-    let _timer2 = Timer::countdown(60).show_progress(true);
-    // show_progress affects rendering, verified through render tests
+    let on = screen(&Timer::countdown(60).show_progress(true), 30, 4);
+    assert!(on[1].starts_with('░'), "{on:#?}");
+    let off = screen(&Timer::countdown(60).show_progress(false), 30, 4);
+    assert_eq!(off[1].trim(), "Stopped");
 }
-
 #[test]
 fn test_timer_progress_width() {
-    // Builder method works, but cannot directly access private fields
-    let _timer = Timer::countdown(60).progress_width(50);
-    // progress_width affects rendering, verified through render tests
+    let rows = screen(&Timer::countdown(60).progress_width(10), 30, 4);
+    assert_eq!(rows[1].trim_end(), "░".repeat(10));
 }
-
 #[test]
 fn test_timer_fg() {
-    // Builder method works, but cannot directly access private fields
-    let _timer = Timer::countdown(60).fg(Color::BLUE);
-    // fg affects rendering, verified through render tests
+    // Above the warning threshold the time takes `fg`
+    let buffer = draw(&Timer::countdown(120).fg(Color::BLUE), 30, 4);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::BLUE));
 }
-
 #[test]
 fn test_timer_warning_threshold() {
-    // Builder method works, but cannot directly access private fields
-    let _timer = Timer::countdown(60).warning_threshold(30);
-    // warning_threshold affects color behavior, verified indirectly
+    // 60 s left: the default threshold (60 s) colors it, 30 s does not
+    let default = draw(&Timer::countdown(60), 30, 4);
+    assert_eq!(default.get(0, 0).unwrap().fg, Some(Color::YELLOW));
+    let lower = draw(&Timer::countdown(60).warning_threshold(30), 30, 4);
+    assert_eq!(lower.get(0, 0).unwrap().fg, Some(Color::WHITE));
 }
-
 #[test]
 fn test_timer_danger_threshold() {
-    // Builder method works, but cannot directly access private fields
-    let _timer = Timer::countdown(60).danger_threshold(15);
-    // danger_threshold affects color behavior, verified indirectly
+    // 60 s left: past the warning threshold, and past a danger threshold of 60
+    let warning = draw(&Timer::countdown(60).danger_threshold(15), 30, 4);
+    assert_eq!(warning.get(0, 0).unwrap().fg, Some(Color::YELLOW));
+    let danger = draw(&Timer::countdown(60).danger_threshold(60), 30, 4);
+    assert_eq!(danger.get(0, 0).unwrap().fg, Some(Color::RED));
 }
-
 #[test]
 fn test_timer_title() {
-    // Builder method works, but cannot directly access private fields
-    let _timer = Timer::countdown(60).title("Test Timer");
-    // title affects rendering, verified through render tests
+    let rows = screen(&Timer::countdown(60).title("Test Timer"), 30, 4);
+    assert_eq!(rows[0].trim(), "Test Timer");
+    assert_eq!(rows[1].trim(), "00:01:00");
 }
-
 #[test]
 fn test_timer_large_digits() {
-    // Builder method works, but cannot directly access private fields
-    let _timer = Timer::countdown(60).large_digits(true);
-    let _timer2 = Timer::countdown(60).large_digits(false);
-    // large_digits affects rendering, verified through render tests
+    let large = screen(&Timer::countdown(60).large_digits(true), 40, 6);
+    // Three rows of block digits for 00:01:00
+    assert!(
+        large[..3]
+            .iter()
+            .all(|r| r.contains('█') || r.contains('▀')),
+        "{large:#?}"
+    );
+    assert!(large[3].starts_with('░'));
+    let plain = screen(&Timer::countdown(60).large_digits(false), 40, 6);
+    assert_eq!(plain[0].trim(), "00:01:00");
 }
-
 #[test]
 fn test_timer_auto_restart_builder() {
-    // Builder method works, but cannot directly access private fields
-    let _timer = Timer::countdown(60).auto_restart(true);
-    let _timer2 = Timer::countdown(60).auto_restart(false);
-    // auto_restart affects behavior, verified through state tests
-}
+    // A zero-length timer completes on its first update, unless it restarts
+    let mut timer = Timer::countdown(0).auto_restart(true);
+    timer.start();
+    timer.update();
+    assert_eq!(timer.state(), TimerState::Running);
 
+    let mut timer = Timer::countdown(0).auto_restart(false);
+    timer.start();
+    timer.update();
+    assert_eq!(timer.state(), TimerState::Completed);
+}
 #[test]
 fn test_timer_element_id() {
     let timer = Timer::countdown(60).element_id("my-timer");
@@ -498,13 +526,6 @@ fn test_timer_color_danger() {
     assert!(timer.remaining_seconds() <= 15); // At or below danger threshold
 }
 
-#[test]
-fn test_timer_color_custom() {
-    // Builder method works, but cannot directly access private fields
-    let _timer = Timer::countdown(60).fg(Color::CYAN);
-    // fg affects rendering, verified through render tests
-}
-
 // =============================================================================
 // Rendering Tests
 // =============================================================================
@@ -652,53 +673,17 @@ fn test_timer_render_completed_state() {
 }
 
 #[test]
-fn test_timer_render_without_progress() {
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let timer = Timer::countdown(60).show_progress(false);
-    timer.render(&mut ctx);
-
-    // Should render without panic
-}
-
-#[test]
-fn test_timer_render_with_progress() {
-    let mut buffer = Buffer::new(30, 5);
-    let area = Rect::new(0, 0, 30, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let timer = Timer::countdown(60).show_progress(true).progress_width(20);
-    timer.render(&mut ctx);
-
-    // Should render without panic
-}
-
-#[test]
 fn test_timer_render_small_buffer() {
-    let mut buffer = Buffer::new(5, 3);
-    let area = Rect::new(0, 0, 5, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let timer = Timer::countdown(60);
-    timer.render(&mut ctx);
-
-    // Should not panic with small buffer
+    let rows = screen(&timer, 5, 3);
+    assert_eq!(rows[0], "00:01");
+    assert_eq!(rows[1], "░░░░░");
 }
-
 #[test]
 fn test_timer_render_with_offset() {
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(10, 3, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let timer = Timer::countdown(60);
-    timer.render(&mut ctx);
-
-    // Should render without panic at offset
+    let timer = Timer::countdown(60).title("Tea").progress_width(12);
+    super::super::chart::assert_same_when_offset(timer, 20, 5);
 }
-
 // =============================================================================
 // Helper Functions Tests
 // =============================================================================
@@ -889,12 +874,6 @@ fn test_timer_view_id_none() {
 }
 
 #[test]
-fn test_timer_view_id_some() {
-    let timer = Timer::countdown(60).element_id("my-timer");
-    assert_eq!(View::id(&timer), Some("my-timer"));
-}
-
-#[test]
 fn test_timer_view_classes_empty() {
     let timer = Timer::countdown(60);
     assert!(View::classes(&timer).is_empty());
@@ -997,46 +976,46 @@ fn test_timer_default_format() {
 
 #[test]
 fn test_timer_default_show_progress() {
-    // Default show_progress cannot be directly tested (private field)
-    // Verified through render tests
-    let _timer = Timer::countdown(60);
+    assert!(screen(&Timer::countdown(60), 30, 4)[1].starts_with('░'));
 }
-
 #[test]
 fn test_timer_default_progress_width() {
-    // Default progress_width cannot be directly tested (private field)
-    // Verified through render tests
-    let _timer = Timer::countdown(60);
+    // 0: the bar takes the whole width
+    assert_eq!(screen(&Timer::countdown(60), 30, 4)[1], "░".repeat(30));
 }
-
 #[test]
 fn test_timer_default_warning_threshold() {
-    // Default warning_threshold cannot be directly tested (private field)
-    // Verified through behavior tests
-    let _timer = Timer::countdown(60);
+    assert_eq!(
+        draw(&Timer::countdown(60), 30, 4).get(0, 0).unwrap().fg,
+        Some(Color::YELLOW)
+    );
+    assert_eq!(
+        draw(&Timer::countdown(61), 30, 4).get(0, 0).unwrap().fg,
+        Some(Color::WHITE)
+    );
 }
-
 #[test]
 fn test_timer_default_danger_threshold() {
-    // Default danger_threshold cannot be directly tested (private field)
-    // Verified through behavior tests
-    let _timer = Timer::countdown(60);
+    assert_eq!(
+        draw(&Timer::countdown(10), 30, 4).get(0, 0).unwrap().fg,
+        Some(Color::RED)
+    );
+    assert_eq!(
+        draw(&Timer::countdown(11), 30, 4).get(0, 0).unwrap().fg,
+        Some(Color::YELLOW)
+    );
 }
-
 #[test]
 fn test_timer_default_large_digits() {
-    // Default large_digits cannot be directly tested (private field)
-    // Verified through render tests
-    let _timer = Timer::countdown(60);
+    assert_eq!(screen(&Timer::countdown(60), 30, 4)[0].trim(), "00:01:00");
 }
-
 #[test]
 fn test_timer_default_auto_restart() {
-    // Default auto_restart cannot be directly tested (private field)
-    // Verified through behavior tests
-    let _timer = Timer::countdown(60);
+    let mut timer = Timer::countdown(0);
+    timer.start();
+    timer.update();
+    assert!(timer.is_completed());
 }
-
 // =============================================================================
 // Tick Behavior Integration Tests
 // =============================================================================
@@ -1217,16 +1196,8 @@ fn test_timer_progress_calculation() {
 }
 
 #[test]
-fn test_timer_progress_zero_total() {
-    let timer = Timer::countdown(0);
-    assert_eq!(timer.progress(), 1.0);
-}
-
-#[test]
 fn test_timer_builder() {
-    // Test builder pattern - we can't directly access private fields
-    // but we can verify the timer was created successfully
-    let _timer = Timer::countdown(60)
+    let timer = Timer::countdown(60)
         .format(TimerFormat::Compact)
         .show_progress(false)
         .progress_width(50)
@@ -1236,10 +1207,15 @@ fn test_timer_builder() {
         .title("Test Timer")
         .large_digits(true)
         .auto_restart(true);
-
-    // If we get here without panicking, the builder works
+    // Title, the large digits of "1m 0s" in the fg color (60 s is above
+    // both thresholds), no progress bar
+    let buffer = draw(&timer, 30, 6);
+    let rows = rows_of(&buffer);
+    assert_eq!(rows[0].trim(), "Test Timer");
+    assert_eq!(buffer.get(1, 1).unwrap().fg, Some(Color::CYAN));
+    assert!(rows[1].contains('▀'), "{rows:#?}");
+    assert!(rows.iter().all(|r| !r.contains('░')));
 }
-
 mod snapshots {
 
     use revue::testing::{Pilot, TestApp, TestConfig};
