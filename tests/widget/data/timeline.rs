@@ -3,12 +3,55 @@
 use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};
 use revue::style::Color;
+use revue::widget::theme::{DARK_GRAY, LIGHT_GRAY, MUTED_TEXT};
 use revue::widget::traits::{RenderContext, StyledView};
 use revue::widget::View;
 use revue::widget::{
     timeline, timeline_event, EventType, Timeline, TimelineEvent, TimelineOrientation,
     TimelineStyle,
 };
+
+/// Three vertical events: two with timestamps, the first with a description
+fn three() -> Timeline {
+    Timeline::new()
+        .event(
+            TimelineEvent::new("Event 1")
+                .timestamp("10:00")
+                .description("first"),
+        )
+        .event(TimelineEvent::new("Event 2").timestamp("11:00"))
+        .event(TimelineEvent::new("Event 3"))
+}
+
+/// `tl` drawn in a `width` x `height` area
+fn draw(tl: &Timeline, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+    tl.render(&mut ctx);
+    buffer
+}
+
+/// Each row of `tl` drawn in a `width` x `height` area
+fn screen(tl: &Timeline, width: u16, height: u16) -> Vec<String> {
+    let buffer = draw(tl, width, height);
+    (0..height)
+        .map(|y| (0..width).map(|x| sym(&buffer, x, y)).collect())
+        .collect()
+}
+
+fn sym(buffer: &Buffer, x: u16, y: u16) -> char {
+    buffer.get(x, y).unwrap().symbol
+}
+
+/// Columns `from..to` of `row`
+fn cut(row: &str, from: usize, to: usize) -> String {
+    row.chars().take(to).skip(from).collect()
+}
+
+/// Nothing drawn anywhere in `buffer`
+fn blank(buffer: &Buffer) -> bool {
+    (0..buffer.height()).all(|y| (0..buffer.width()).all(|x| sym(buffer, x, y) == ' '))
+}
 
 // =============================================================================
 // Constructor Tests
@@ -223,122 +266,106 @@ fn test_timeline_events_multiple() {
 
 #[test]
 fn test_timeline_orientation_vertical() {
-    let tl = Timeline::new().orientation(TimelineOrientation::Vertical);
-    // Orientation is internal, verify it renders without panicking
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().orientation(TimelineOrientation::Vertical);
+    // Icons stacked in column 12, right of the timestamps
+    let rows = screen(&tl, 40, 10);
+    let icons: String = rows.iter().map(|r| r.chars().nth(12).unwrap()).collect();
+    assert_eq!(icons.trim_end(), "●││●│●");
 }
-
 #[test]
 fn test_timeline_orientation_horizontal() {
-    let tl = Timeline::new().orientation(TimelineOrientation::Horizontal);
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().orientation(TimelineOrientation::Horizontal);
+    assert_eq!(screen(&tl, 50, 4), screen(&three().horizontal(), 50, 4));
 }
-
 #[test]
 fn test_timeline_vertical() {
-    let tl = Timeline::new().vertical();
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().horizontal().vertical();
+    assert_eq!(screen(&tl, 40, 10), screen(&three(), 40, 10));
 }
-
 #[test]
 fn test_timeline_horizontal() {
-    let tl = Timeline::new().horizontal();
-    let mut buffer = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().horizontal();
+    // Titles above, the line with an icon every 15 columns, timestamps below
+    let rows = screen(&tl, 50, 4);
+    assert_eq!(
+        rows[0].trim_end(),
+        "    Event 1        Event 2        Event 3"
+    );
+    assert_eq!(
+        rows[1],
+        "───────●──────────────●──────────────●────────────"
+    );
+    assert_eq!(rows[2].trim_end(), "     10:00          11:00");
 }
-
 #[test]
 fn test_timeline_style_line() {
-    let tl = Timeline::new().style(TimelineStyle::Line);
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().style(TimelineStyle::Line);
+    let buffer = draw(&tl, 40, 10);
+    assert_eq!(sym(&buffer, 13, 0), '─'); // connector
+    assert_eq!(sym(&buffer, 12, 1), '│'); // line down to the next event
 }
-
 #[test]
 fn test_timeline_style_boxed() {
-    let tl = Timeline::new().style(TimelineStyle::Boxed);
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    // Boxed draws the line and the connectors (#799: it draws the same as Line)
+    let tl = three().style(TimelineStyle::Boxed);
+    let buffer = draw(&tl, 40, 10);
+    assert_eq!(sym(&buffer, 13, 0), '─');
+    assert_eq!(sym(&buffer, 12, 1), '│');
 }
-
 #[test]
 fn test_timeline_style_minimal() {
-    let tl = Timeline::new().style(TimelineStyle::Minimal);
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().style(TimelineStyle::Minimal);
+    let rows = screen(&tl, 40, 10);
+    assert!(
+        rows.iter().all(|r| !r.contains('│') && !r.contains('─')),
+        "{rows:#?}"
+    );
+    assert_eq!(rows[0].trim_end(), "10:00       ●  Event 1");
 }
-
 #[test]
 fn test_timeline_style_alternating() {
-    let tl = Timeline::new().style(TimelineStyle::Alternating);
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    // Alternating draws the line and the connectors (#799: it draws the same as Line)
+    let tl = three().style(TimelineStyle::Alternating);
+    let buffer = draw(&tl, 40, 10);
+    assert_eq!(sym(&buffer, 13, 0), '─');
+    assert_eq!(sym(&buffer, 12, 1), '│');
 }
-
 #[test]
 fn test_timeline_timestamps_show() {
-    let tl = Timeline::new().timestamps(true);
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().timestamps(true);
+    let rows = screen(&tl, 40, 10);
+    assert!(rows[0].starts_with("10:00       ●"), "{:?}", rows[0]);
+    assert!(rows[3].starts_with("11:00       ●"), "{:?}", rows[3]);
 }
-
 #[test]
 fn test_timeline_timestamps_hide() {
-    let tl = Timeline::new().timestamps(false);
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().timestamps(false);
+    let rows = screen(&tl, 40, 10);
+    // No timestamp column: the icons move to column 0
+    assert_eq!(rows[0].trim_end(), "●─ Event 1");
+    assert!(rows.iter().all(|r| !r.contains("10:00")));
 }
-
 #[test]
 fn test_timeline_descriptions_show() {
-    let tl = Timeline::new().descriptions(true);
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().descriptions(true);
+    let rows = screen(&tl, 40, 10);
+    assert_eq!(rows[1].trim_end(), "            │  first");
 }
-
 #[test]
 fn test_timeline_descriptions_hide() {
-    let tl = Timeline::new().descriptions(false);
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().descriptions(false);
+    let rows = screen(&tl, 40, 10);
+    assert!(rows.iter().all(|r| !r.contains("first")), "{rows:#?}");
+    // The next event moves up into the description's row
+    assert!(rows[2].starts_with("11:00       ●"), "{rows:#?}");
 }
-
 #[test]
 fn test_timeline_line_color() {
-    let tl = Timeline::new().line_color(Color::MAGENTA);
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let tl = three().line_color(Color::MAGENTA);
+    let buffer = draw(&tl, 40, 10);
+    assert_eq!(buffer.get(13, 0).unwrap().fg, Some(Color::MAGENTA)); // connector
+    assert_eq!(buffer.get(12, 1).unwrap().fg, Some(Color::MAGENTA)); // line
 }
-
 #[test]
 fn test_timeline_builder_chain() {
     let tl = Timeline::new()
@@ -531,13 +558,8 @@ fn test_timeline_clear_with_selection() {
 #[test]
 fn test_timeline_render_vertical_empty() {
     let tl = Timeline::new();
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should not panic with empty timeline
+    assert!(blank(&draw(&tl, 40, 10)));
 }
-
 #[test]
 fn test_timeline_render_vertical_single_event() {
     let tl = Timeline::new().event(TimelineEvent::new("Single Event").timestamp("10:00"));
@@ -655,15 +677,17 @@ fn test_timeline_render_vertical_with_selection() {
 
     tl.select(Some(1));
 
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-
-    // Verify rendering completes without crash
-    assert!(buffer.get(12, area.y + 1).is_some());
+    let buffer = draw(&tl, 40, 10);
+    // Event 2 (row 2): icon and title bold, the title in the event color
+    let icon = buffer.get(12, 2).unwrap();
+    let title = buffer.get(15, 2).unwrap();
+    assert!(icon.modifier.contains(Modifier::BOLD));
+    assert!(title.modifier.contains(Modifier::BOLD));
+    assert_eq!(title.fg, icon.fg);
+    // Event 1 is plain
+    assert!(!buffer.get(15, 0).unwrap().modifier.contains(Modifier::BOLD));
+    assert_eq!(buffer.get(15, 0).unwrap().fg, Some(Color::WHITE));
 }
-
 #[test]
 fn test_timeline_render_vertical_small_height() {
     let tl = Timeline::new()
@@ -672,13 +696,11 @@ fn test_timeline_render_vertical_small_height() {
         .event(TimelineEvent::new("Event 3"))
         .event(TimelineEvent::new("Event 4"));
 
-    let mut buffer = Buffer::new(40, 3);
-    let area = Rect::new(0, 0, 40, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should not panic, just render what fits
+    let rows = screen(&tl, 40, 3);
+    assert_eq!(rows[0].trim(), "●─ Event 1");
+    assert_eq!(rows[1].trim(), "│");
+    assert_eq!(rows[2].trim(), "●─ Event 2");
 }
-
 #[test]
 fn test_timeline_render_vertical_line_style() {
     let tl = Timeline::new()
@@ -721,37 +743,10 @@ fn test_timeline_render_vertical_event_types() {
         .event(TimelineEvent::new("Warning").event_type(EventType::Warning))
         .event(TimelineEvent::new("Error").event_type(EventType::Error));
 
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-
-    // Implementation renders timeline - verify it doesn't crash
-    // Icons may be rendered differently depending on style
-    // Just verify events are present in the output
-    let mut _found_info = false;
-    let mut _found_success = false;
-    let mut _found_warning = false;
-    let mut _found_error = false;
-
-    for y in 0..10 {
-        for x in 0..40 {
-            if let Some(cell) = buffer.get(x, y) {
-                match cell.symbol {
-                    '●' => _found_info = true,
-                    '✓' => _found_success = true,
-                    '⚠' => _found_warning = true,
-                    '✗' => _found_error = true,
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    // At least verify rendering completed without crash
-    assert!(buffer.get(12, area.y).is_some());
+    let buffer = draw(&tl, 40, 10);
+    let icons: Vec<char> = [0, 2, 4, 6].iter().map(|&y| sym(&buffer, 12, y)).collect();
+    assert_eq!(icons, ['●', '✓', '⚠', '✗']);
 }
-
 #[test]
 fn test_timeline_render_vertical_custom_event_icon() {
     let tl = Timeline::new().event(TimelineEvent::new("Custom").event_type(EventType::Custom('★')));
@@ -771,13 +766,8 @@ fn test_timeline_render_vertical_custom_event_icon() {
 #[test]
 fn test_timeline_render_horizontal_empty() {
     let tl = Timeline::new().horizontal();
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should not panic with empty timeline
+    assert!(blank(&draw(&tl, 40, 5)));
 }
-
 #[test]
 fn test_timeline_render_horizontal_single_event() {
     let tl = Timeline::new()
@@ -820,13 +810,11 @@ fn test_timeline_render_horizontal_small_width() {
         .event(TimelineEvent::new("Event 2"))
         .event(TimelineEvent::new("Event 3"));
 
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should not panic, just render what fits
+    // The first event takes 15 columns; the rest is cut at the edge
+    let rows = screen(&tl, 20, 5);
+    assert_eq!(rows[0], "    Event 1        E");
+    assert_eq!(rows[1], "───────●────────────");
 }
-
 #[test]
 fn test_timeline_render_horizontal_without_timestamps() {
     let tl = Timeline::new()
@@ -834,64 +822,54 @@ fn test_timeline_render_horizontal_without_timestamps() {
         .timestamps(false)
         .event(TimelineEvent::new("Event 1").timestamp("Hidden"));
 
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should render without timestamps
+    let rows = screen(&tl, 40, 5);
+    assert!(rows[2].trim().is_empty(), "{:?}", rows[2]);
+    assert!(rows.iter().all(|r| !r.contains("Hidden")));
 }
-
 // =============================================================================
 // Edge Cases
 // =============================================================================
 
 #[test]
 fn test_timeline_zero_area() {
-    let tl = Timeline::new().event(TimelineEvent::new("Event 1"));
-    let mut buffer = Buffer::new(0, 0);
-    let area = Rect::new(0, 0, 0, 0);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should not panic
+    let tl = Timeline::new().event(TimelineEvent::new("Event 1").timestamp("10:00"));
+    for tl in [tl.clone(), tl.horizontal()] {
+        for (w, h) in [(0, 0), (0, 10), (10, 0)] {
+            let mut buffer = Buffer::new(10, 10);
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+            tl.render(&mut ctx);
+            assert!(blank(&buffer), "{w}x{h}");
+        }
+    }
 }
-
 #[test]
 fn test_timeline_very_long_title() {
     let long_title = "This is a very long title that exceeds the available width";
     let tl = Timeline::new().event(TimelineEvent::new(long_title));
 
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should truncate title
+    // Cut to the 15 columns right of the icon (30 - 12 - 3)
+    let rows = screen(&tl, 30, 10);
+    assert_eq!(cut(&rows[0], 15, 30), "This is a very ");
 }
-
 #[test]
 fn test_timeline_very_long_description() {
     let long_desc =
         "This is a very long description that exceeds the available width and should be truncated";
     let tl = Timeline::new().event(TimelineEvent::new("Event").description(long_desc));
 
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should truncate description
+    let rows = screen(&tl, 30, 10);
+    assert_eq!(cut(&rows[1], 15, usize::MAX), "This is a very ");
+    assert!(rows[2].trim().is_empty());
 }
-
 #[test]
 fn test_timeline_very_long_timestamp() {
     let long_ts = "2024-01-15 10:30:45.123456";
     let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp(long_ts));
 
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should truncate timestamp
+    // Cut to 11 columns, leaving column 11 free before the icon
+    let rows = screen(&tl, 40, 10);
+    assert_eq!(cut(&rows[0], 0, 13), "2024-01-15  ●");
 }
-
 #[test]
 fn test_timeline_select_out_of_bounds() {
     let mut tl = Timeline::new()
@@ -920,21 +898,6 @@ fn test_timeline_empty_select_operations() {
 }
 
 #[test]
-fn test_timeline_render_with_custom_colors() {
-    let tl = Timeline::new()
-        .line_color(Color::MAGENTA)
-        .event(TimelineEvent::new("Event 1"));
-
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-
-    // Verify rendering completes - custom colors may or may not be applied
-    assert!(buffer.get(12, area.y + 1).is_some());
-}
-
-#[test]
 fn test_timeline_render_with_event_custom_color() {
     let tl = Timeline::new().event(TimelineEvent::new("Event 1").color(Color::YELLOW));
 
@@ -946,72 +909,6 @@ fn test_timeline_render_with_event_custom_color() {
     // Icon should have custom color
     let cell = buffer.get(12, area.y).unwrap();
     assert_eq!(cell.fg, Some(Color::YELLOW));
-}
-
-#[test]
-fn test_timeline_all_styles_render() {
-    let styles = [
-        TimelineStyle::Line,
-        TimelineStyle::Boxed,
-        TimelineStyle::Minimal,
-        TimelineStyle::Alternating,
-    ];
-
-    for style in styles {
-        let tl = Timeline::new()
-            .style(style)
-            .event(TimelineEvent::new("Event 1"))
-            .event(TimelineEvent::new("Event 2"));
-
-        let mut buffer = Buffer::new(40, 10);
-        let area = Rect::new(0, 0, 40, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        tl.render(&mut ctx);
-        // Should not panic for any style
-    }
-}
-
-#[test]
-fn test_timeline_all_orientations_render() {
-    let orientations = [
-        TimelineOrientation::Vertical,
-        TimelineOrientation::Horizontal,
-    ];
-
-    for orientation in orientations {
-        let tl = Timeline::new()
-            .orientation(orientation)
-            .event(TimelineEvent::new("Event 1"))
-            .event(TimelineEvent::new("Event 2"));
-
-        let mut buffer = Buffer::new(40, 10);
-        let area = Rect::new(0, 0, 40, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        tl.render(&mut ctx);
-        // Should not panic for any orientation
-    }
-}
-
-#[test]
-fn test_timeline_all_event_types_render() {
-    let event_types = [
-        EventType::Info,
-        EventType::Success,
-        EventType::Warning,
-        EventType::Error,
-        EventType::Custom('★'),
-    ];
-
-    for (i, event_type) in event_types.iter().enumerate() {
-        let tl = Timeline::new()
-            .event(TimelineEvent::new(format!("Event {}", i)).event_type(*event_type));
-
-        let mut buffer = Buffer::new(40, 10);
-        let area = Rect::new(0, 0, 40, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        tl.render(&mut ctx);
-        // Should not panic for any event type
-    }
 }
 
 // =============================================================================
@@ -1197,13 +1094,10 @@ fn test_timeline_orientation_preserved_after_clear() {
         .event(TimelineEvent::new("Event"));
 
     tl.clear();
-    // Orientation preserved after clear - verify via render (no panic)
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    assert!(blank(&draw(&tl, 40, 5)));
+    tl.push(TimelineEvent::new("Again"));
+    assert!(screen(&tl, 40, 5)[1].starts_with("───────●"));
 }
-
 #[test]
 fn test_timeline_style_preserved_after_clear() {
     let mut tl = Timeline::new()
@@ -1211,13 +1105,12 @@ fn test_timeline_style_preserved_after_clear() {
         .event(TimelineEvent::new("Event"));
 
     tl.clear();
-    // Style preserved after clear - verify via render (no panic)
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    tl.push(TimelineEvent::new("Again"));
+    tl.push(TimelineEvent::new("More"));
+    let rows = screen(&tl, 40, 10);
+    assert_eq!(rows[0].trim(), "●  Again");
+    assert!(rows.iter().all(|r| !r.contains('│')));
 }
-
 #[test]
 fn test_timeline_selection_cleared_on_clear() {
     let mut tl = Timeline::new()
@@ -1301,13 +1194,13 @@ fn test_timeline_render_unicode_content() {
             .timestamp("10:00"),
     );
 
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should not panic with Unicode content
+    let buffer = draw(&tl, 40, 10);
+    // The emoji takes two columns; the title goes on after it
+    assert_eq!(sym(&buffer, 15, 0), '🎉');
+    assert_eq!(sym(&buffer, 18, 0), 'C');
+    assert_eq!(sym(&buffer, 15, 1), '한');
+    assert_eq!(sym(&buffer, 17, 1), '글');
 }
-
 #[test]
 fn test_timeline_multiple_emoji_in_title() {
     let event = TimelineEvent::new("🎉🎊🎈 Celebration Time");
@@ -1365,14 +1258,8 @@ fn test_timeline_empty_metadata_value() {
 #[test]
 fn test_timeline_render_empty_title() {
     let tl = Timeline::new().event(TimelineEvent::new("").timestamp("10:00"));
-
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should render without panicking
+    assert_eq!(screen(&tl, 40, 10)[0].trim_end(), "10:00       ●─");
 }
-
 // =============================================================================
 // Timeline Event Type Equality Tests
 // =============================================================================
@@ -1479,13 +1366,12 @@ fn test_timeline_default_colors() {
             .timestamp("10:00")
             .description("Desc"),
     );
-    // Verify default colors are applied by rendering without panic
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let buffer = draw(&tl, 40, 10);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(LIGHT_GRAY)); // timestamp
+    assert_eq!(buffer.get(13, 0).unwrap().fg, Some(DARK_GRAY)); // connector
+    assert_eq!(buffer.get(15, 0).unwrap().fg, Some(Color::WHITE)); // title
+    assert_eq!(buffer.get(15, 1).unwrap().fg, Some(MUTED_TEXT)); // description
 }
-
 #[test]
 fn test_timeline_event_color_priority_over_type() {
     let event = TimelineEvent::new("Event")
@@ -1573,39 +1459,14 @@ fn test_timeline_render_horizontal_line_spans_width() {
 }
 
 #[test]
-fn test_timeline_render_connector_characters() {
-    let tl = Timeline::new()
-        .style(TimelineStyle::Line)
-        .timestamps(true)
-        .event(TimelineEvent::new("Event 1").timestamp("10:00"));
-
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-
-    // Check for connector character (─) right after icon
-    let connector_cell = buffer.get(13, area.y); // icon_x + 1 = 12 + 1
-    assert!(connector_cell.is_some());
-    // Connector should exist in Line style
-}
-
-#[test]
-fn test_timeline_render_timestamp_right_aligned() {
+fn test_timeline_render_timestamp_left_aligned() {
     let tl = Timeline::new()
         .timestamps(true)
         .event(TimelineEvent::new("Event").timestamp("10:00"));
 
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-
-    // Timestamp should be at the beginning
-    let cell = buffer.get(0, area.y);
-    assert!(cell.is_some());
+    // The timestamp starts at column 0 of its 12-column gutter
+    assert!(screen(&tl, 40, 10)[0].starts_with("10:00       ●"));
 }
-
 // =============================================================================
 // Selection Boundary Tests
 // =============================================================================
@@ -1821,21 +1682,6 @@ fn test_timeline_minimal_style_no_lines() {
 // =============================================================================
 
 #[test]
-fn test_timeline_alternating_style_renders() {
-    let tl = Timeline::new()
-        .style(TimelineStyle::Alternating)
-        .event(TimelineEvent::new("Event 1").timestamp("10:00"))
-        .event(TimelineEvent::new("Event 2").timestamp("11:00"))
-        .event(TimelineEvent::new("Event 3").timestamp("12:00"));
-
-    let mut buffer = Buffer::new(50, 15);
-    let area = Rect::new(0, 0, 50, 15);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should render without panicking
-}
-
-#[test]
 fn test_timeline_alternating_style_has_lines() {
     let tl = Timeline::new()
         .style(TimelineStyle::Alternating)
@@ -1856,36 +1702,6 @@ fn test_timeline_alternating_style_has_lines() {
 // Boxed Style Tests
 // =============================================================================
 
-#[test]
-fn test_timeline_boxed_style_renders() {
-    let tl = Timeline::new()
-        .style(TimelineStyle::Boxed)
-        .event(TimelineEvent::new("Event 1").timestamp("10:00"))
-        .event(TimelineEvent::new("Event 2").timestamp("11:00"));
-
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should render without panicking
-}
-
-#[test]
-fn test_timeline_boxed_style_has_connectors() {
-    let tl = Timeline::new()
-        .style(TimelineStyle::Boxed)
-        .event(TimelineEvent::new("Event 1").timestamp("10:00"));
-
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-
-    // Boxed style should have connector character
-    let cell = buffer.get(13, area.y); // icon_x + 1
-    assert!(cell.is_some());
-}
-
 // =============================================================================
 // Multi-Line Description Tests
 // =============================================================================
@@ -1900,25 +1716,25 @@ fn test_timeline_multiline_description_rendered() {
             .timestamp("10:00"),
     );
 
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should truncate, not wrap
+    // Cut to one row of 25 columns, not wrapped
+    let rows = screen(&tl, 40, 10);
+    assert_eq!(cut(&rows[1], 15, usize::MAX), "This is a long descriptio");
+    assert!(rows[2].trim().is_empty());
 }
-
 #[test]
 fn test_timeline_description_with_newlines() {
     let desc_with_newlines = "Line 1\nLine 2\nLine 3";
     let tl = Timeline::new().event(TimelineEvent::new("Event").description(desc_with_newlines));
 
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should handle newlines gracefully
+    // Drawn on its one row, from the first line
+    let rows = screen(&tl, 40, 10);
+    assert!(
+        cut(&rows[1], 15, usize::MAX).starts_with("Line 1"),
+        "{:?}",
+        rows[1]
+    );
+    assert!(rows[2].trim().is_empty());
 }
-
 // =============================================================================
 // Timestamp Format Tests
 // =============================================================================
@@ -1926,33 +1742,18 @@ fn test_timeline_description_with_newlines() {
 #[test]
 fn test_timeline_iso_timestamp() {
     let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("2024-01-15T10:30:00Z"));
-
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    assert!(screen(&tl, 40, 10)[0].starts_with("2024-01-15T ●"));
 }
-
 #[test]
 fn test_timeline_time_only_timestamp() {
     let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("10:30:45"));
-
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    assert!(screen(&tl, 40, 10)[0].starts_with("10:30:45    ●"));
 }
-
 #[test]
 fn test_timeline_relative_timestamp() {
     let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("2 hours ago"));
-
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    assert!(screen(&tl, 40, 10)[0].starts_with("2 hours ago ●"));
 }
-
 // =============================================================================
 // Large Event List Tests
 // =============================================================================
@@ -1973,13 +1774,12 @@ fn test_timeline_render_many_events_small_area() {
         tl = tl.event(TimelineEvent::new(format!("Event {}", i)).timestamp(format!("{}:00", i)));
     }
 
-    let mut buffer = Buffer::new(40, 5); // Small height
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should only render what fits
+    // The first three events fit
+    let rows = screen(&tl, 40, 5);
+    assert_eq!(rows[0].trim_end(), "0:00        ●─ Event 0");
+    assert_eq!(rows[2].trim_end(), "1:00        ●─ Event 1");
+    assert_eq!(rows[4].trim_end(), "2:00        ●─ Event 2");
 }
-
 #[test]
 fn test_timeline_navigation_through_many_events() {
     let mut tl = Timeline::new();
@@ -2009,12 +1809,15 @@ fn test_timeline_mixed_timestamp_visibility() {
         .event(TimelineEvent::new("Event 2")) // No timestamp
         .event(TimelineEvent::new("Event 3").timestamp("12:00"));
 
-    let mut buffer = Buffer::new(40, 15);
-    let area = Rect::new(0, 0, 40, 15);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let rows = screen(&tl, 40, 15);
+    assert!(rows[0].starts_with("10:00"));
+    assert!(
+        rows[2].starts_with("            ●─ Event 2"),
+        "{:?}",
+        rows[2]
+    );
+    assert!(rows[4].starts_with("12:00"));
 }
-
 #[test]
 fn test_timeline_mixed_description_visibility() {
     let tl = Timeline::new()
@@ -2022,12 +1825,23 @@ fn test_timeline_mixed_description_visibility() {
         .event(TimelineEvent::new("Event 2")) // No description
         .event(TimelineEvent::new("Event 3").description("Also has description"));
 
-    let mut buffer = Buffer::new(40, 15);
-    let area = Rect::new(0, 0, 40, 15);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let rows: Vec<String> = screen(&tl, 40, 15)
+        .iter()
+        .map(|r| r.trim().to_string())
+        .collect();
+    assert_eq!(
+        rows[..7],
+        [
+            "●─ Event 1",
+            "│  Has description",
+            "│",
+            "●─ Event 2",
+            "│",
+            "●─ Event 3",
+            "Also has description"
+        ]
+    );
 }
-
 #[test]
 fn test_timeline_mixed_event_types() {
     let tl = Timeline::new()
@@ -2037,12 +1851,13 @@ fn test_timeline_mixed_event_types() {
         .event(TimelineEvent::new("Error Event").error())
         .event(TimelineEvent::new("Custom Event").event_type(EventType::Custom('★')));
 
-    let mut buffer = Buffer::new(40, 15);
-    let area = Rect::new(0, 0, 40, 15);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let buffer = draw(&tl, 40, 15);
+    let icons: Vec<char> = [0, 2, 4, 6, 8]
+        .iter()
+        .map(|&y| sym(&buffer, 12, y))
+        .collect();
+    assert_eq!(icons, ['●', '✓', '⚠', '✗', '★']);
 }
-
 #[test]
 fn test_timeline_mixed_colors() {
     let tl = Timeline::new()
@@ -2051,12 +1866,21 @@ fn test_timeline_mixed_colors() {
         .event(TimelineEvent::new("Blue").color(Color::BLUE))
         .event(TimelineEvent::new("Yellow").color(Color::YELLOW));
 
-    let mut buffer = Buffer::new(40, 15);
-    let area = Rect::new(0, 0, 40, 15);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    let buffer = draw(&tl, 40, 15);
+    let colors: Vec<_> = [0, 2, 4, 6]
+        .iter()
+        .map(|&y| buffer.get(12, y).unwrap().fg)
+        .collect();
+    assert_eq!(
+        colors,
+        [
+            Some(Color::RED),
+            Some(Color::GREEN),
+            Some(Color::BLUE),
+            Some(Color::YELLOW)
+        ]
+    );
 }
-
 // =============================================================================
 // Property Combination Tests
 // =============================================================================
@@ -2080,14 +1904,12 @@ fn test_timeline_all_combinations_vertical() {
                 .descriptions(true)
                 .event(TimelineEvent::new("Test").description("Test description"));
 
-            let mut buffer = Buffer::new(40, 10);
-            let area = Rect::new(0, 0, 40, 10);
-            let mut ctx = RenderContext::new(&mut buffer, area);
-            tl.render(&mut ctx);
+            let rows = screen(&tl, 40, 10);
+            assert_eq!(cut(&rows[0], 15, 19), "Test", "{style:?}");
+            assert_eq!(cut(&rows[1], 15, 31), "Test description", "{style:?}");
         }
     }
 }
-
 #[test]
 fn test_timeline_all_combinations_horizontal() {
     let orientations = [TimelineOrientation::Horizontal];
@@ -2106,14 +1928,13 @@ fn test_timeline_all_combinations_horizontal() {
                 .timestamps(true)
                 .event(TimelineEvent::new("Test"));
 
-            let mut buffer = Buffer::new(60, 5);
-            let area = Rect::new(0, 0, 60, 5);
-            let mut ctx = RenderContext::new(&mut buffer, area);
-            tl.render(&mut ctx);
+            // The horizontal layout draws the same for every style
+            let rows = screen(&tl, 60, 5);
+            assert_eq!(rows[0].trim(), "Test", "{style:?}");
+            assert!(rows[1].starts_with("───────●───"), "{style:?}");
         }
     }
 }
-
 // =============================================================================
 // Event Content Edge Cases
 // =============================================================================
@@ -2128,14 +1949,16 @@ fn test_timeline_title_with_tabs() {
 
 #[test]
 fn test_timeline_description_with_tabs() {
-    let _tl = Timeline::new().event(TimelineEvent::new("Event").description("Desc\twith\ttabs"));
+    let tl = Timeline::new().event(TimelineEvent::new("Event").description("Desc\twith\ttabs"));
+    assert!(cut(&screen(&tl, 40, 3)[1], 15, usize::MAX).starts_with("Desc"));
 }
-
 #[test]
 fn test_timeline_timestamp_with_tabs() {
-    let _tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("10:\t00"));
+    let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("10:\t00"));
+    let rows = screen(&tl, 40, 3);
+    assert!(rows[0].starts_with("10:"));
+    assert_eq!(sym(&draw(&tl, 40, 3), 12, 0), '●');
 }
-
 #[test]
 fn test_timeline_title_with_special_symbols() {
     let event = TimelineEvent::new("♠♥♦♣ ★☆☀☁");
@@ -2146,14 +1969,14 @@ fn test_timeline_title_with_special_symbols() {
 
 #[test]
 fn test_timeline_mathematical_symbols() {
-    let _tl = Timeline::new().event(TimelineEvent::new("∑ ∫ ∞ √ ≠ ≈ ≤ ≥"));
+    let tl = Timeline::new().event(TimelineEvent::new("∑ ∫ ∞ √ ≠ ≈ ≤ ≥"));
+    assert!(screen(&tl, 40, 3)[0].ends_with("∑ ∫ ∞ √ ≠ ≈ ≤ ≥          "));
 }
-
 #[test]
 fn test_timeline_arrows_and_directions() {
-    let _tl = Timeline::new().event(TimelineEvent::new("← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙"));
+    let tl = Timeline::new().event(TimelineEvent::new("← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙"));
+    assert!(screen(&tl, 40, 3)[0].contains("●─ ← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙"));
 }
-
 // =============================================================================
 // Builder Pattern Idempotency Tests
 // =============================================================================
@@ -2218,7 +2041,7 @@ fn test_timeline_multiple_timestamps_calls() {
 
 #[test]
 fn test_timeline_multiple_descriptions_calls() {
-    // Last descriptions call wins - verify descriptions(true) shows description in render
+    // Last descriptions call wins
     let tl = Timeline::new()
         .descriptions(true)
         .descriptions(false)
@@ -2229,14 +2052,8 @@ fn test_timeline_multiple_descriptions_calls() {
                 .timestamp("10:00"),
         );
 
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
-    // Should render description - verify no panic
-    assert!(buffer.get(15, area.y + 1).is_some());
+    assert_eq!(cut(&screen(&tl, 40, 10)[1], 15, 27), "Visible desc");
 }
-
 #[test]
 fn test_timeline_multiple_color_calls() {
     // Last line_color call wins - verify via render (no panic with the final color)
@@ -2372,36 +2189,26 @@ fn test_timeline_selected_title_uses_event_color() {
 
 #[test]
 fn test_timeline_very_narrow_width() {
-    let tl = Timeline::new().event(TimelineEvent::new("Event"));
-
-    let mut buffer = Buffer::new(5, 10); // Very narrow
-    let area = Rect::new(0, 0, 5, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    // Without timestamps the icon, connector and two title columns fit
+    let tl = Timeline::new()
+        .timestamps(false)
+        .event(TimelineEvent::new("Event"));
+    assert_eq!(screen(&tl, 5, 10)[0], "●─ Ev");
 }
-
 #[test]
 fn test_timeline_very_short_height() {
     let tl = Timeline::new()
         .event(TimelineEvent::new("Event 1"))
         .event(TimelineEvent::new("Event 2"));
 
-    let mut buffer = Buffer::new(40, 1); // Very short
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    // Fewer than 2 rows: nothing is drawn
+    assert!(blank(&draw(&tl, 40, 1)));
 }
-
 #[test]
 fn test_timeline_single_cell_area() {
     let tl = Timeline::new().event(TimelineEvent::new("E"));
-
-    let mut buffer = Buffer::new(1, 1);
-    let area = Rect::new(0, 0, 1, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    assert!(blank(&draw(&tl, 1, 1)));
 }
-
 // =============================================================================
 // Integration with CSS/Styling System
 // =============================================================================
@@ -2430,12 +2237,10 @@ fn test_timeline_classes_builder_renders() {
         .classes(vec!["a", "b", "c"])
         .event(TimelineEvent::new("Event"));
 
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    tl.render(&mut ctx);
+    assert!(tl.has_class("b"));
+    let plain = timeline().event(TimelineEvent::new("Event"));
+    assert_eq!(screen(&tl, 40, 10), screen(&plain, 40, 10));
 }
-
 // =============================================================================
 // View Trait Implementation Tests
 // =============================================================================

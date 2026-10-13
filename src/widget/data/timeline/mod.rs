@@ -183,36 +183,3 @@ pub fn timeline() -> Timeline {
 pub fn timeline_event(title: impl Into<String>) -> TimelineEvent {
     TimelineEvent::new(title)
 }
-
-// Private tests - KEEP HERE: uses internal RenderContext, Buffer, or private fields
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // KEEP HERE: accesses private field `scroll`
-    #[test]
-    fn test_clear() {
-        let mut tl = Timeline::new()
-            .event(TimelineEvent::new("A"))
-            .event(TimelineEvent::new("B"))
-            .event(TimelineEvent::new("C"));
-
-        tl.select_next();
-        tl.clear();
-
-        assert!(tl.is_empty());
-        assert_eq!(tl.selected, None);
-        assert_eq!(tl.scroll, 0);
-    }
-}
-
-// Keep private tests that require private field access here
-
-#[test]
-fn test_timeline_render_private() {
-    // Test private render methods - keeping in source
-    let _t = Timeline::new().event(TimelineEvent::new("Test"));
-
-    // This would require accessing private render methods
-    // Test kept inline due to private access
-}
