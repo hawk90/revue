@@ -407,8 +407,9 @@ fn test_combobox_get_match_fuzzy_mode() {
         .filter_mode(FilterMode::Fuzzy)
         .value("hw");
 
-    let match_result = cb.get_match("Hello World");
-    assert!(match_result.is_some());
+    // "h" and "w" match the first letters of the two words
+    let match_result = cb.get_match("Hello World").unwrap();
+    assert_eq!(match_result.indices, vec![0, 6]);
 }
 
 #[test]
