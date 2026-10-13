@@ -3,7 +3,10 @@
 //! Geometry used below: a 40x20 chart without title is centered on
 //! (20, 10). Slices are drawn clockwise from `start_angle` (-90 = top).
 
-use super::{count_char, render, render_rows, rows};
+use super::{
+    assert_same_when_offset, assert_zero_areas_draw_nothing, count_char, render, render_rows, rows,
+};
+use proptest::prelude::*;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::data::chart::{
@@ -256,4 +259,57 @@ fn test_pie_empty_and_zero_total_render_nothing() {
 fn test_pie_tiny_area_renders_nothing() {
     let buffer = render(&PieChart::new().slice("A", 100.0), 2, 2);
     assert!(rows(&buffer).iter().all(|r| r.trim().is_empty()));
+}
+
+#[test]
+fn test_pie_zero_area_draws_nothing() {
+    let pie = halves().title("T").labels(PieLabelStyle::Label);
+    assert_zero_areas_draw_nothing(&pie);
+}
+
+#[test]
+fn test_pie_draws_the_same_when_offset() {
+    let pie = pie_chart()
+        .title("Share")
+        .slice("a", 3.0)
+        .slice("b", 2.0)
+        .slice("c", 1.0)
+        .explode(1)
+        .labels(PieLabelStyle::Percent);
+    assert_same_when_offset(pie.clone(), 40, 20);
+    assert_same_when_offset(pie.donut(0.5), 40, 20);
+}
+
+/// Positions of every '█' cell, whatever its color.
+fn filled(buffer: &Buffer) -> Vec<(u16, u16)> {
+    let mut out = Vec::new();
+    for y in 0..buffer.height() {
+        for x in 0..buffer.width() {
+            if buffer.get(x, y).unwrap().symbol == '█' {
+                out.push((x, y));
+            }
+        }
+    }
+    out
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Any positive slices together cover exactly the disk of a one-slice
+    /// pie of the same size: no gaps between slices and nothing outside.
+    #[test]
+    fn test_pie_slices_cover_the_disk(
+        values in prop::collection::vec(0.01f64..100.0, 1..7),
+        w in 10u16..60,
+        h in 6u16..30,
+        start in -360.0f64..360.0,
+    ) {
+        let mut pie = pie_chart().no_legend().start_angle(start);
+        for (i, &v) in values.iter().enumerate() {
+            pie = pie.slice(format!("s{i}"), v);
+        }
+        let disk = pie_chart().no_legend().start_angle(start).slice("all", 1.0);
+        prop_assert_eq!(filled(&render(&pie, w, h)), filled(&render(&disk, w, h)));
+    }
 }

@@ -1,6 +1,7 @@
 //! BoxPlot widget tests (BoxPlot, BoxGroup, BoxStats, WhiskerStyle)
 
-use super::{count_char, render, rows};
+use super::{assert_same_when_offset, assert_zero_areas_draw_nothing, count_char, render, rows};
+use proptest::prelude::*;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::data::chart::{
@@ -597,4 +598,60 @@ fn test_boxplot_notch_needs_sample_size() {
         20,
     ));
     assert_eq!(plain, notched);
+}
+
+#[test]
+fn test_boxplot_zero_area_draws_nothing() {
+    let bp = BoxPlot::new().title("T").group("A", &[1.0, 2.0, 3.0]);
+    assert_zero_areas_draw_nothing(&bp);
+    assert_zero_areas_draw_nothing(&bp.horizontal());
+}
+
+#[test]
+fn test_boxplot_draws_the_same_when_offset() {
+    let mut data: Vec<f64> = (0..20).map(|x| x as f64).collect();
+    data.push(100.0);
+    let bp = BoxPlot::new()
+        .title("Distribution")
+        .group("A", &data)
+        .group("B", &[3.0, 4.0, 5.0, 6.0, 7.0])
+        .notched(true);
+    assert_same_when_offset(bp.clone(), 40, 20);
+    assert_same_when_offset(bp.horizontal(), 40, 20);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Boxes, medians and outliers stay inside the plot for any finite data,
+    /// group count, size and orientation. Vertical: columns 6..w-1, rows
+    /// 0..h-2. Horizontal: right of the group-label column and its gap,
+    /// rows 0..h-1.
+    #[test]
+    fn test_boxplot_marks_stay_in_the_plot(
+        groups in prop::collection::vec(prop::collection::vec(-1e6f64..1e6, 1..20), 1..4),
+        w in 10u16..80,
+        h in 8u16..30,
+        horizontal in any::<bool>(),
+    ) {
+        let mut bp = BoxPlot::new();
+        for (i, data) in groups.iter().enumerate() {
+            bp = bp.group(format!("g{i}"), data);
+        }
+        if horizontal {
+            bp = bp.horizontal();
+        }
+        let buffer = render(&bp, w, h);
+        let (left, bottom) = if horizontal { (2u16.min(w / 3).max(1) + 1, h - 1) } else { (6, h - 2) };
+        for y in 0..h {
+            for x in 0..w {
+                if matches!(
+                    buffer.get(x, y).unwrap().symbol,
+                    '┌' | '┐' | '└' | '┘' | '├' | '┤' | '┬' | '┴' | '○' | '╲' | '╱'
+                ) {
+                    prop_assert!((left..w - 1).contains(&x) && y < bottom, "mark at ({x}, {y})");
+                }
+            }
+        }
+    }
 }

@@ -1,16 +1,15 @@
 //! HeatMap widget tests
 //!
-//! This is the surviving copy of the in-source heatmap tests
-//! (src/widget/data/chart/heatmap/tests.rs). Assertions that read private
-//! fields go through normalize()/color_for()/render_cell() or the rendered
-//! buffer instead.
+//! Assertions go through normalize()/color_for()/render_cell() or the
+//! rendered buffer, not private fields.
 //!
-//! HeatMap lays itself out with stacks, which in 2.x give every child an
-//! equal share of the area. Cell-layout tests therefore render into an area
-//! that exactly fits the cells (columns x cell_width by rows x cell_height),
-//! where an equal share is the cell's own size.
+//! HeatMap lays itself out with stacks and gives every line one row and every
+//! piece of a line exactly its text's width, so the cells start at the top
+//! left (after the title, column labels and row labels) in any area large
+//! enough to hold them.
 
-use super::{render, render_rows, rows};
+use super::{assert_same_when_offset, assert_zero_areas_draw_nothing, render, render_rows, rows};
+use proptest::prelude::*;
 use revue::render::{Buffer, Modifier};
 use revue::style::Color;
 use revue::widget::data::chart::{contribution_map, heatmap, CellDisplay, ColorScale, HeatMap};
@@ -501,5 +500,60 @@ fn test_contribution_map() {
             fg(&buffer, 0, 1),
             Some(ColorScale::Green.color_at(1.0 / 9.0))
         );
+    }
+}
+
+#[test]
+fn test_heatmap_zero_area_draws_nothing() {
+    let hm = heatmap(vec![vec![0.0, 1.0], vec![0.5, 0.2]])
+        .title("T")
+        .col_labels(vec!["a".into(), "b".into()])
+        .show_legend(true);
+    assert_zero_areas_draw_nothing(&hm);
+}
+
+#[test]
+fn test_heatmap_draws_the_same_when_offset() {
+    let hm = heatmap(vec![vec![0.0, 1.0], vec![0.5, 0.2]])
+        .title("T")
+        .row_labels(vec!["r1".into(), "r2".into()])
+        .col_labels(vec!["a".into(), "b".into()])
+        .highlight(1, 0)
+        .show_legend(true);
+    assert_same_when_offset(hm.clone(), 40, 8);
+    assert_same_when_offset(hm.show_values(true), 40, 8);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Every cell of any grid is drawn at its row and column, in the color
+    /// `color_for` gives its value.
+    #[test]
+    fn test_heatmap_cells_match_color_for(
+        grid in (1usize..6, 1usize..7).prop_flat_map(|(r, c)| {
+            prop::collection::vec(prop::collection::vec(-1e3f64..1e3, c), r)
+        }),
+    ) {
+        let hm = heatmap(grid.clone());
+        let (rows_n, cols_n) = (grid.len() as u16, grid[0].len() as u16);
+        let buffer = render(&hm, cols_n * 2 + 3, rows_n + 2);
+        for (r, row) in grid.iter().enumerate() {
+            for (c, &value) in row.iter().enumerate() {
+                for dx in 0..2 {
+                    let (x, y) = (c as u16 * 2 + dx, r as u16);
+                    prop_assert_eq!(buffer.get(x, y).unwrap().symbol, '█');
+                    prop_assert_eq!(fg(&buffer, x, y), Some(hm.color_for(value)), "({}, {})", x, y);
+                }
+            }
+        }
+        // Nothing to the right of or below the grid
+        for y in 0..rows_n + 2 {
+            for x in 0..cols_n * 2 + 3 {
+                if x >= cols_n * 2 || y >= rows_n {
+                    prop_assert_eq!(buffer.get(x, y).unwrap().symbol, ' ');
+                }
+            }
+        }
     }
 }

@@ -3,7 +3,10 @@
 //! Layout used below: a 40x20 histogram without title has its plot area at
 //! x=6..39, y=0..18, Y labels in columns 0..6 and X labels on row 19.
 
-use super::{count_char, render, render_rows, rows};
+use super::{
+    assert_same_when_offset, assert_zero_areas_draw_nothing, count_char, render, render_rows, rows,
+};
+use proptest::prelude::*;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::data::chart::{histogram, BinConfig, ChartGrid, Histogram};
@@ -268,4 +271,40 @@ fn test_histogram_render_with_grid() {
         }
     }
     assert!(has_content);
+}
+
+#[test]
+fn test_histogram_zero_area_draws_nothing() {
+    assert_zero_areas_draw_nothing(&three_bins().title("T").show_stats(true));
+}
+
+#[test]
+fn test_histogram_draws_the_same_when_offset() {
+    let hist = three_bins().title("Distribution").show_stats(true);
+    assert_same_when_offset(hist.clone(), 40, 20);
+    assert_same_when_offset(hist.horizontal(), 40, 20);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Bars stay inside the plot (columns 6..w-1, rows 0..h-2 without a
+    /// title) for any finite data, size and orientation.
+    #[test]
+    fn test_histogram_bars_stay_in_the_plot(
+        data in prop::collection::vec(-1e6f64..1e6, 1..40),
+        w in 15u16..80,
+        h in 5u16..30,
+        horizontal in any::<bool>(),
+    ) {
+        let hist = if horizontal { histogram(&data).horizontal() } else { histogram(&data) };
+        let buffer = render(&hist, w, h);
+        for y in 0..h {
+            for x in 0..w {
+                if matches!(sym(&buffer, x, y), '█' | '▀' | '▌') {
+                    prop_assert!((6..w - 1).contains(&x) && y < h - 2, "bar at ({x}, {y})");
+                }
+            }
+        }
+    }
 }
