@@ -1341,6 +1341,28 @@ entries:
       - "counter와 badge는 같은 분할에서 자기 줄이나 열을 받거나, border나 status 줄로 옮긴다."
     observed:
       - "2026-10-13 기준 chrome이 내용과 겹치는 widget 6개: DataGrid 행 표시, LogViewer scroll marker와 TAIL badge, RichLog scroll marker, Terminal `↑N`, MarkdownPresentation PREVIEW, Table scrollbar(고정 너비 column이 영역을 다 채울 때). 칸을 먼저 빼 두는 widget: ScrollView, VirtualList, Combobox, CodeEditor. 목록은 #988."
+      - "chart 감사(2026-10-13): Chart와 ScatterChart의 범례 상자가 plot 안에 그려져 그 아래 선과 점을 가린다 (#988, #990)."
+  - id: REV-WIDGET-014
+    title: "Every Chart Has Its Own Axis"
+    category: widget
+    review_tag: WIDGET
+    summary: "차트 widget마다 범위 계산, 값→칸 변환, 눈금, 눈금 라벨, 격자, 축 제목, 범례 배치를 따로 짠다. 공통 틀이 있어도 일부만 쓰므로 같은 `Axis` 설정이 차트마다 다른 뜻이 되고 같은 버그가 차트마다 다른 모양으로 반복된다."
+    problem:
+      - "`Axis::ticks(0)`이 어떤 차트에서는 panic, 어떤 차트에서는 `NaN` 라벨, 어떤 차트에서는 무시된다."
+      - "범위가 작을 때 `.max(1.0)`으로 막은 차트는 데이터가 한쪽으로 찌그러지는데 라벨은 실제 범위를 표시한다."
+      - "라벨 행과 데이터 행, 마지막 눈금 위치가 차트마다 한 칸씩 다르게 어긋난다."
+      - "축 밖 값을 차트마다 다르게 다룬다: 잘라 내거나, 가장자리에 붙이거나, `u16` 뺄셈에서 panic한다."
+      - "같은 데이터를 두 차트(Chart의 scatter와 ScatterChart)로 그리면 눈금 위치와 라벨 형식이 다르다."
+    detect:
+      - "차트 파일 안에 `i as u16 * width / ticks`, `/ 4.0`, `(max - min).max(1.0)` 같은 눈금·범위 계산이 있다"
+      - "`chart_render`를 import하지 않거나 `render_title`/`fill_background`만 쓰는 차트"
+      - "검증 입력: `ticks(0)`과 큰 `ticks`, 데이터 한 개, 같은 값만 있는 데이터, 범위 1 미만, 고정 범위 밖의 값, 빈 데이터, 좁은 폭"
+    fix:
+      - "범위(유한 값만, 0 범위 넓히기, 여백 규칙 하나), 값→칸 변환(`f64`로 하고 범위 밖은 자르거나 버림), 눈금(`ticks` ≥ 1, 양 끝 포함), 라벨(`Axis::format_value`), 배치(제목·라벨·범례 칸을 먼저 떼고 남은 곳이 plot)를 `chart_common`의 모델 하나로 둔다."
+      - "`chart_render`가 그 모델로 격자, 라벨, 제목, 범례를 그리고 각 차트는 자기 mark만 그린다."
+      - "새 차트를 만들 때 축 그리기를 따로 짜지 않는다. 모델이 감당하지 못하는 경우(시간 축, 범주 축)는 모델을 넓힌다."
+    observed:
+      - "2026-10-13 기준 축이 있는 차트 9개 중 공통 틀을 대부분 쓰는 것은 ScatterChart 하나다. Histogram·BoxPlot·PieChart는 제목과 배경만, Chart·TimeSeries·CandleChart·BarChart·Sparkline·Waveline은 하나도 쓰지 않는다. 공통 틀 자체에도 버그가 있다(마지막 x 라벨이 영역 밖, 축 제목이 x 라벨을 덮음, 배경을 box 배경으로 등록하지 않음). 목록은 #990."
   - id: REV-ASYNC-001
     title: "Polling `try_join()` Every Frame"
     category: async

@@ -46,7 +46,7 @@ unwrap을 쓰지 말 것
 
 | 파일 | 대상 | 내용 |
 |---|---|---|
-| [`catalog.yaml`](catalog.yaml) | LLM / 스크립트 | 157개 항목의 기계 판독용 원본. **single source of truth** |
+| [`catalog.yaml`](catalog.yaml) | LLM / 스크립트 | 158개 항목의 기계 판독용 원본. **single source of truth** |
 | `README.md` (이 파일) | 사람 | 카테고리·우선순위·invariant 요약과 전체 ID 색인 |
 | [`architecture-review.md`](architecture-review.md) | 사람 | "지금 아키텍처가 맞나?" 논의와 대안 스택 3안 |
 
@@ -69,7 +69,7 @@ unwrap을 쓰지 말 것
 
 ### LLM: 코드 리뷰 프롬프트
 
-`catalog.yaml`을 컨텍스트로 넣고 스코프를 좁혀서 물어본다. 전체 157개를 한 번에
+`catalog.yaml`을 컨텍스트로 넣고 스코프를 좁혀서 물어본다. 전체 158개를 한 번에
 적용하려 하면 정확도가 떨어지므로, 변경된 파일의 subsystem에 해당하는 카테고리만 필터링한다.
 
 ```bash
@@ -115,7 +115,7 @@ diff에서 실제로 해당하는 항목만 골라 id, 파일:줄, 근거를 제
 | `LAYOUT` | Layout | 레이아웃 안티패턴 | 7 | `REV-LAYOUT-001` – `REV-LAYOUT-007` |
 | `STYLE` | CSS / style engine | CSS 및 스타일 엔진 안티패턴 | 9 | `REV-STYLE-001` – `REV-STYLE-009` |
 | `EVENT` | Event system | 이벤트 시스템 안티패턴 | 8 | `REV-EVENT-001` – `REV-EVENT-008` |
-| `WIDGET` | Widget design | Widget 설계 안티패턴 | 13 | `REV-WIDGET-001` – `REV-WIDGET-013` |
+| `WIDGET` | Widget design | Widget 설계 안티패턴 | 14 | `REV-WIDGET-001` – `REV-WIDGET-014` |
 | `ASYNC` | Worker pool / async | Worker Pool 및 비동기 안티패턴 | 7 | `REV-ASYNC-001` – `REV-ASYNC-007` |
 | `ANIM` | Animation | Animation 안티패턴 | 5 | `REV-ANIM-001` – `REV-ANIM-005` |
 | `HOT` | Hot reload | Hot Reload 안티패턴 | 4 | `REV-HOT-001` – `REV-HOT-004` |
@@ -286,6 +286,7 @@ ADR · performance budgets · migration guides · fuzz/property testing.
 - **`REV-WIDGET-011`** Selection Kept as a Position — collection widget이 선택을 위치로만 들고, 목록이 바뀔 때 다시 계산하지 않는다.
 - **`REV-WIDGET-012`** Every Widget Has Its Own Line Editor — 텍스트 칸이 있는 widget마다 한 줄 편집을 따로 짜고, 공통 `utils::TextBuffer`는 아무도 쓰지 않는다.
 - **`REV-WIDGET-013`** Chrome Drawn Over Content — scrollbar, scroll marker, 위치 표시, badge를 내용 영역에서 칸을 빼 두지 않고 그 위에 덧그린다.
+- **`REV-WIDGET-014`** Every Chart Has Its Own Axis — 차트마다 범위, 눈금, 라벨, 격자, 범례 배치를 따로 짜서 같은 `Axis` 설정이 차트마다 다르게 동작한다.
 
 ### 9. Worker pool / async — Worker Pool 및 비동기 안티패턴
 
