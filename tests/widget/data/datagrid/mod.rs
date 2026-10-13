@@ -1,19 +1,26 @@
 //! DataGrid public API tests
 
+mod columns {
+    mod freeze;
+    mod reorder;
+    mod resize;
+    mod width;
+}
 mod core;
-mod editing;
 mod export;
-mod filter;
 mod footer;
-mod freeze;
-mod keys;
-mod mouse;
-mod navigation;
-mod render;
-mod reorder;
-mod resize;
-mod sort;
-mod tree;
+mod input {
+    mod editing;
+    mod keys;
+    mod mouse;
+}
+mod rows {
+    mod aggregate;
+    mod filter;
+    mod sort;
+    mod tree;
+}
+mod selection;
 mod types {
     mod aggregation;
     mod colors;
@@ -23,7 +30,7 @@ mod types {
     mod options;
     mod row;
 }
-mod width;
+mod view;
 
 use revue::layout::Rect;
 use revue::render::Buffer;

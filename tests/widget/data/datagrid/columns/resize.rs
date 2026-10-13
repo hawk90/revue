@@ -1,6 +1,6 @@
 //! DataGrid column resize tests
 
-use super::render_to;
+use super::super::render_to;
 use revue::event::MouseEventKind;
 use revue::layout::Rect;
 use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};

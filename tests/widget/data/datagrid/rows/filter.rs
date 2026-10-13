@@ -2,7 +2,7 @@
 //!
 //! Verifies that filtering resets selection to prevent OOB access.
 
-use super::footer_cells;
+use super::super::footer_cells;
 use proptest::prelude::*;
 use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
 

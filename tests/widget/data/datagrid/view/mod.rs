@@ -1,5 +1,7 @@
 //! DataGrid rendering tests
 
+mod footer;
+
 use super::{render_to, row_text};
 use revue::event::Key;
 use revue::layout::Rect;

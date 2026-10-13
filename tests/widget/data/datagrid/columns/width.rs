@@ -3,7 +3,7 @@
 //! Width calculation is private; the widths are read back from where
 //! render() draws each column's trailing `│` separator in a data row.
 
-use super::{render_to, row_text};
+use super::super::{render_to, row_text};
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};

@@ -1,6 +1,6 @@
 //! DataGrid column freeze and horizontal scroll tests
 
-use super::{render_to, row_text};
+use super::super::{render_to, row_text};
 use proptest::prelude::*;
 use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
 
