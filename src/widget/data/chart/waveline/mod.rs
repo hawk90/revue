@@ -23,8 +23,10 @@
 //! ```
 
 mod generators;
-mod render;
+mod scale;
+mod shapes;
 mod types;
+mod view;
 
 pub use generators::{sawtooth_wave, sine_wave, square_wave};
 pub use types::{Interpolation, WaveStyle};
