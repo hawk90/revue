@@ -2,8 +2,11 @@
 //!
 //! Displays chronological events with timestamps and icons.
 
-mod render;
+mod horizontal;
+mod selection;
 mod types;
+mod vertical;
+mod view;
 
 pub use types::{EventType, TimelineEvent, TimelineOrientation, TimelineStyle};
 
@@ -112,33 +115,6 @@ impl Timeline {
     pub fn line_color(mut self, color: Color) -> Self {
         self.line_color = color;
         self
-    }
-
-    /// Select an event
-    pub fn select(&mut self, index: Option<usize>) {
-        self.selected = index;
-    }
-
-    /// Select next event
-    pub fn select_next(&mut self) {
-        match self.selected {
-            Some(i) if i < self.events.len() - 1 => self.selected = Some(i + 1),
-            None if !self.events.is_empty() => self.selected = Some(0),
-            _ => {}
-        }
-    }
-
-    /// Select previous event
-    pub fn select_prev(&mut self) {
-        match self.selected {
-            Some(i) if i > 0 => self.selected = Some(i - 1),
-            _ => {}
-        }
-    }
-
-    /// Get selected event
-    pub fn selected_event(&self) -> Option<&TimelineEvent> {
-        self.selected.and_then(|i| self.events.get(i))
     }
 
     /// Clear events
