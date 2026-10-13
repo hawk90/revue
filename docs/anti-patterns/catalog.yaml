@@ -1304,6 +1304,7 @@ entries:
       - "그 항목이 사라졌으면 가장 가까운 항목으로 옮기고, 사라진 것을 선택한 채로 두지 않는다."
     observed:
       - "csv_viewer 정렬 뒤 선택과 검색 결과 (#856, #970에서 고침), tree 펼치기·접기 뒤 다중 선택과 검색 결과 (#859), log_viewer 오래된 항목 잘라내기와 `clear_filter` 뒤 선택 (#975), datagrid 정렬 뒤 선택 (#975)."
+      - "timeline 감사(2026-10-13): Timeline의 `select(Some(i))`는 범위 밖 번호도 그대로 두고, 빈 목록에서 `select_next`가 `len() - 1`을 계산해 debug에서 panic한다 (#975 댓글)."
   - id: REV-WIDGET-012
     title: "Every Widget Has Its Own Line Editor"
     category: widget
@@ -2092,6 +2093,8 @@ entries:
     category: security
     review_tag: SEC
     summary: "사용자 문자열을 sanitize하지 않고 terminal에 출력한다. 로그·채팅·파일 viewer에서 escape sequence가 실행될 수 있다. 모든 외부 text는 control character 정책을 통과해야 한다."
+    observed:
+      - "2026-10-13 기준 control character 정책이 없다. 문자를 하나씩 그리는 widget은 `char_width`가 0인 `\\n`·`\\t`를 다음 문자로 덮어써 앞뒤 단어가 붙는다(Timeline 설명 `Line 1Line 2`). 정책은 공통 text helper 한 곳에 두는 것이 맞다 (#982 댓글)."
   - id: REV-SEC-002
     title: "OSC Sequence Trust"
     category: security
