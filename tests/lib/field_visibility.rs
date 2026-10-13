@@ -54,7 +54,6 @@ const OPEN_FIELDS: &[(&str, &str, usize)] = &[
     ("widget/input/input_widgets/combobox/mod.rs", "Combobox", 26),
     ("widget/input/input_widgets/input/types.rs", "Input", 15),
     ("widget/input/input_widgets/select/mod.rs", "Select", 18),
-    ("widget/input/input_widgets/textarea/mod.rs", "TextArea", 26),
     ("widget/layout/accordion/mod.rs", "Accordion", 10),
     ("widget/layout/sidebar/mod.rs", "Sidebar", 25),
     ("widget/multi_select/types.rs", "MultiSelect", 13),

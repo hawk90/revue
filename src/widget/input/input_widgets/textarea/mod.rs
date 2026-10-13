@@ -35,7 +35,7 @@ use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Maximum undo history size
-pub(super) const MAX_UNDO_HISTORY: usize = 100;
+const MAX_UNDO_HISTORY: usize = 100;
 
 /// A multi-line text editor widget
 ///
@@ -76,60 +76,60 @@ pub(super) const MAX_UNDO_HISTORY: usize = 100;
 #[derive(Clone)]
 pub struct TextArea {
     /// Lines of text
-    pub(super) lines: Vec<String>,
+    lines: Vec<String>,
     /// Multiple cursors (primary cursor is at index 0)
-    pub(super) cursors: CursorSet,
+    cursors: CursorSet,
     /// First visible line, kept between renders so the view only moves
     /// when the cursor would leave it
-    pub(super) scroll: std::cell::Cell<usize>,
+    scroll: std::cell::Cell<usize>,
     /// Horizontal scroll in terminal COLUMNS when not wrapping, kept between
     /// renders so the view only moves when the cursor would leave it
-    pub(super) scroll_x: std::cell::Cell<usize>,
+    scroll_x: std::cell::Cell<usize>,
     /// Undo history
-    pub(super) undo_stack: Vec<edit::EditOperation>,
+    undo_stack: Vec<edit::EditOperation>,
     /// Redo history
-    pub(super) redo_stack: Vec<edit::EditOperation>,
+    redo_stack: Vec<edit::EditOperation>,
     /// Show line numbers
-    pub(super) show_line_numbers: bool,
+    show_line_numbers: bool,
     /// Enable word wrap
-    pub(super) wrap: bool,
+    wrap: bool,
     /// Read-only mode
-    pub(super) read_only: bool,
+    read_only: bool,
     /// Focused state
-    pub(super) focused: bool,
+    focused: bool,
     /// Tab width
-    pub(super) tab_width: usize,
+    tab_width: usize,
     /// Placeholder text
-    pub(super) placeholder: Option<String>,
+    placeholder: Option<String>,
     /// Maximum lines (0 = unlimited)
-    pub(super) max_lines: usize,
+    max_lines: usize,
     /// Minimum height in rows (0 = no constraint). Defaults to 3.
-    pub(super) min_height: u16,
+    min_height: u16,
     /// Text color
-    pub(super) fg: Option<Color>,
+    fg: Option<Color>,
     /// Background color
-    pub(super) bg: Option<Color>,
+    bg: Option<Color>,
     /// Cursor color
-    pub(super) cursor_fg: Option<Color>,
+    cursor_fg: Option<Color>,
     /// Selection color
-    pub(super) selection_bg: Option<Color>,
+    selection_bg: Option<Color>,
     /// Line number color
-    pub(super) line_number_fg: Option<Color>,
+    line_number_fg: Option<Color>,
     /// Syntax highlighter for code coloring
-    pub(super) highlighter: Option<SyntaxHighlighter>,
+    highlighter: Option<SyntaxHighlighter>,
     /// Find/Replace state
-    pub(super) find_replace: Option<FindReplaceState>,
+    find_replace: Option<FindReplaceState>,
     /// Match highlight color
-    pub(super) match_highlight_bg: Option<Color>,
+    match_highlight_bg: Option<Color>,
     /// Current match highlight color
-    pub(super) current_match_bg: Option<Color>,
+    current_match_bg: Option<Color>,
     /// CSS styling properties (id, classes)
-    pub(super) props: WidgetProps,
+    props: WidgetProps,
     /// Last known viewport height (lines visible), updated during render
-    pub(super) last_viewport_height: std::cell::Cell<usize>,
+    last_viewport_height: std::cell::Cell<usize>,
     /// Last known text width in columns, updated during render: where lines
     /// wrap when paging (0 before the first render: no wrapping)
-    pub(super) last_text_width: std::cell::Cell<u16>,
+    last_text_width: std::cell::Cell<u16>,
 }
 
 impl TextArea {
