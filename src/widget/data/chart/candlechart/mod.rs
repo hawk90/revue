@@ -19,10 +19,15 @@
 //!     .show_volume(true);
 //! ```
 
-mod render;
-mod types;
+mod axis;
+mod candle;
+mod column;
+mod scale;
+mod series;
+mod view;
+mod volume;
 
-pub use types::{Candle, ChartStyle};
+pub use candle::{Candle, ChartStyle};
 
 use crate::style::Color;
 use crate::widget::theme::LIGHT_GRAY;
@@ -179,25 +184,6 @@ impl CandleChart {
     pub fn scroll(mut self, offset: usize) -> Self {
         self.offset = offset;
         self
-    }
-
-    /// Get current price (last close)
-    pub fn current_price(&self) -> Option<f64> {
-        self.data.last().map(|c| c.close)
-    }
-
-    /// Get price change
-    pub fn price_change(&self) -> Option<(f64, f64)> {
-        if self.data.len() < 2 {
-            return None;
-        }
-
-        let prev = self.data[self.data.len() - 2].close;
-        let curr = self.data.last()?.close;
-        let change = curr - prev;
-        let percent = (change / prev) * 100.0;
-
-        Some((change, percent))
     }
 }
 
