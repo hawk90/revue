@@ -1,69 +1,11 @@
 //! DataGrid core structure and builders
 
-use super::editing::EditState;
-use super::types::{
-    AggregationType, FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection,
+use crate::widget::data::datagrid::input::editing::EditState;
+use crate::widget::data::datagrid::rows::tree::TreeNodeInfo;
+use crate::widget::data::datagrid::types::{
+    FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection,
 };
-use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
-
-/// Tree node info for flattened display
-#[derive(Clone, Debug)]
-pub struct TreeNodeInfo {
-    /// Original row index in tree (path from root)
-    pub path: Vec<usize>,
-    /// Nesting depth (0 = root level)
-    pub depth: usize,
-    /// Has child rows
-    pub has_children: bool,
-    /// Currently expanded
-    pub is_expanded: bool,
-    /// Is last child at this level (for tree line rendering)
-    pub is_last_child: bool,
-}
-
-/// Cell position for rendering
-pub(super) struct CellPos {
-    pub x: u16,
-    pub y: u16,
-    pub width: u16,
-}
-
-/// Cell state for rendering
-pub(super) struct CellState {
-    pub row_bg: Color,
-    pub is_selected: bool,
-    pub is_editing: bool,
-}
-
-/// A column positioned in the rendered viewport, after applying column freeze
-/// and horizontal scroll.
-///
-/// `x` is absolute and already accounts for the row-number gutter. Columns are
-/// laid out as: left-frozen (pinned left) · scrollable middle (offset by
-/// `scroll_col`) · right-frozen (pinned right).
-pub(super) struct ColumnSlot<'a> {
-    /// Index into `self.columns`.
-    pub orig_idx: usize,
-    /// The column.
-    pub col: &'a GridColumn,
-    /// Position in display order (index into the full `visible_cols` list).
-    pub display_idx: usize,
-    /// Absolute x of the column's first cell.
-    pub x: u16,
-    /// Column width (excluding the trailing separator).
-    pub width: u16,
-}
-
-/// Row rendering parameters
-pub(super) struct RowRenderParams<'a, 'b> {
-    pub slots: &'b [ColumnSlot<'a>],
-    pub area_x: u16,
-    pub content_end: u16,
-    pub start_y: u16,
-    pub row_num_width: u16,
-    pub visible_height: usize,
-}
 
 /// DataGrid widget
 pub struct DataGrid {
@@ -281,16 +223,6 @@ impl DataGrid {
         &mut self.options
     }
 
-    /// Recompute the filtered rows cache (called on mutation)
-    pub fn recompute_cache(&mut self) {
-        self.filtered_cache = self.compute_filtered_indices();
-        // Fewer rows than before (rows removed, an edit that no longer
-        // matches the filter): keep the selection and scroll on a row
-        let last = self.filtered_cache.len().saturating_sub(1);
-        self.selected_row = self.selected_row.min(last);
-        self.scroll_row = self.scroll_row.min(last);
-    }
-
     /// Add a column
     pub fn column(mut self, col: GridColumn) -> Self {
         self.columns.push(col);
@@ -390,158 +322,13 @@ impl DataGrid {
     // Column Resize API
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Set callback for when a column is resized
-    pub fn on_column_resize<F>(mut self, callback: F) -> Self
-    where
-        F: FnMut(usize, u16) + 'static,
-    {
-        self.on_column_resize = Some(Box::new(callback));
-        self
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
     // Column Reorder API
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Enable or disable column reordering via drag and drop
-    pub fn reorderable(mut self, enable: bool) -> Self {
-        self.reorderable = enable;
-        self
-    }
-
-    /// Set callback for when columns are reordered
-    pub fn on_column_reorder<F>(mut self, callback: F) -> Self
-    where
-        F: FnMut(usize, usize) + 'static,
-    {
-        self.on_column_reorder = Some(Box::new(callback));
-        self
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
     // Column Freeze API
     // ─────────────────────────────────────────────────────────────────────────
-
-    /// Freeze N columns on the left (they stay visible during horizontal scroll)
-    pub fn freeze_columns_left(mut self, count: usize) -> Self {
-        self.frozen_left = count;
-        self
-    }
-
-    /// Freeze N columns on the right (they stay visible during horizontal scroll)
-    pub fn freeze_columns_right(mut self, count: usize) -> Self {
-        self.frozen_right = count;
-        self
-    }
-
-    /// Compute aggregation value for a column
-    pub(super) fn compute_aggregation(
-        &self,
-        column_key: &str,
-        agg_type: AggregationType,
-    ) -> Option<f64> {
-        let values: Vec<f64> = self
-            .filtered_indices()
-            .iter()
-            .filter_map(|&idx| {
-                self.rows
-                    .get(idx)
-                    .and_then(|r| r.get(column_key))
-                    .and_then(|v| v.parse::<f64>().ok())
-            })
-            .collect();
-
-        if values.is_empty() {
-            return None;
-        }
-
-        Some(match agg_type {
-            AggregationType::Sum => values.iter().sum(),
-            AggregationType::Average => values.iter().sum::<f64>() / values.len() as f64,
-            AggregationType::Count => values.len() as f64,
-            AggregationType::Min => values.iter().cloned().fold(f64::INFINITY, f64::min),
-            AggregationType::Max => values.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
-        })
-    }
-
-    /// Get computed footer values for rendering
-    pub(super) fn get_footer_values(&self, footer: &FooterRow) -> Vec<(String, String)> {
-        let mut values = Vec::new();
-
-        for agg in &footer.aggregations {
-            let label = agg
-                .label
-                .clone()
-                .unwrap_or_else(|| agg.agg_type.label().to_string());
-
-            let value = self
-                .compute_aggregation(&agg.column_key, agg.agg_type)
-                .map(|v| {
-                    if v.fract() == 0.0 {
-                        format!("{:.0}", v)
-                    } else {
-                        format!("{:.2}", v)
-                    }
-                })
-                .unwrap_or_else(|| "—".to_string());
-
-            values.push((agg.column_key.clone(), format!("{}: {}", label, value)));
-        }
-
-        values
-    }
-
-    /// Compute filtered row indices (internal)
-    pub(super) fn compute_filtered_indices(&self) -> Vec<usize> {
-        if self.filter.is_empty() {
-            (0..self.rows.len()).collect()
-        } else {
-            self.rows
-                .iter()
-                .enumerate()
-                .filter(|(_, row)| match self.filter_column {
-                    Some(col_idx) => {
-                        if let Some(col) = self.columns.get(col_idx).filter(|c| c.filterable) {
-                            row.get(&col.key)
-                                .map(|v| v.to_lowercase().contains(&self.filter))
-                                .unwrap_or(false)
-                        } else {
-                            false
-                        }
-                    }
-                    None => row.data.iter().any(|(k, v)| {
-                        let filterable = self
-                            .columns
-                            .iter()
-                            .find(|c| &c.key == k)
-                            .is_none_or(|c| c.filterable);
-                        filterable && v.to_lowercase().contains(&self.filter)
-                    }),
-                })
-                .map(|(i, _)| i)
-                .collect()
-        }
-    }
-
-    /// Get cached filtered row indices (zero-cost, no allocation)
-    #[inline]
-    pub fn filtered_indices(&self) -> &[usize] {
-        &self.filtered_cache
-    }
-
-    /// Get filtered rows count (uses cache)
-    pub fn filtered_count(&self) -> usize {
-        self.filtered_indices().len()
-    }
-
-    /// Get filtered rows (uses cached indices)
-    /// Note: For large datasets, prefer using filtered_indices() with index-based access
-    pub fn filtered_rows(&self) -> Vec<&GridRow> {
-        self.filtered_indices()
-            .iter()
-            .filter_map(|&i| self.rows.get(i))
-            .collect()
-    }
 }
 
 impl Default for DataGrid {

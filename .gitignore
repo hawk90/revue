@@ -39,10 +39,10 @@ test-artifacts/
 *.rlib
 *.rmeta
 
-# Example build outputs
-badge
-spinner
-tabs
-types
-test_path
-test_selection
+# Example build outputs (at the root only; src/ and tests/ have tabs/ and types/ folders)
+/badge
+/spinner
+/tabs
+/types
+/test_path
+/test_selection

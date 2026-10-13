@@ -404,3 +404,76 @@ fn test_grid_row_mixed_expansion_states() {
     assert!(!row.children[1].expanded);
     assert!(!row.children[2].expanded);
 }
+
+#[test]
+fn test_grid_row() {
+    let row = GridRow::new().cell("name", "John").cell("age", "30");
+
+    assert_eq!(row.get("name"), Some("John"));
+    assert_eq!(row.get("age"), Some("30"));
+    assert_eq!(row.get("unknown"), None);
+}
+
+#[test]
+fn test_grid_row_default() {
+    let row = GridRow::default();
+    assert!(row.data.is_empty());
+    assert!(!row.selected);
+    assert!(!row.expanded);
+    assert!(row.children.is_empty());
+}
+
+#[test]
+fn test_grid_row_debug_clone() {
+    let row = GridRow::new().cell("key", "value");
+    let cloned = row.clone();
+    assert_eq!(row.get("key"), cloned.get("key"));
+    let _ = format!("{:?}", row);
+}
+
+#[test]
+fn test_grid_row_new() {
+    let row = GridRow::new();
+    assert!(row.data.is_empty());
+    assert!(!row.selected);
+    assert!(!row.expanded);
+    assert!(row.children.is_empty());
+}
+
+#[test]
+fn test_grid_row_cell() {
+    let row = GridRow::new().cell("name", "Alice").cell("age", "30");
+    assert_eq!(row.data.len(), 2);
+    assert_eq!(row.get("name"), Some("Alice"));
+    assert_eq!(row.get("age"), Some("30"));
+}
+
+#[test]
+fn test_grid_row_get_not_found() {
+    let row = GridRow::new().cell("name", "Alice");
+    assert!(row.get("email").is_none());
+}
+
+#[test]
+fn test_grid_row_child() {
+    let parent = GridRow::new()
+        .cell("name", "Parent")
+        .child(GridRow::new().cell("name", "Child"));
+    assert_eq!(parent.children.len(), 1);
+    assert!(parent.has_children());
+}
+
+#[test]
+fn test_grid_row_expanded() {
+    let row = GridRow::new().expanded(true);
+    assert!(row.expanded);
+}
+
+#[test]
+fn test_grid_row_has_children() {
+    let row = GridRow::new();
+    assert!(!row.has_children());
+
+    let parent = GridRow::new().child(GridRow::new());
+    assert!(parent.has_children());
+}

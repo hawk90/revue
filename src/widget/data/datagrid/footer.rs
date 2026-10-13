@@ -1,7 +1,7 @@
 //! DataGrid aggregation footer functionality
 
-use super::core::DataGrid;
-use super::types::{AggregationType, ColumnAggregation, FooterRow};
+use crate::widget::data::datagrid::types::{AggregationType, ColumnAggregation, FooterRow};
+use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
     /// Add a footer row
@@ -47,5 +47,3 @@ impl DataGrid {
         self
     }
 }
-
-// # KEEP HERE - Private tests for internal functionality

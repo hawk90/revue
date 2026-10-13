@@ -1,8 +1,6 @@
 //! DataGrid footer functionality tests
 
-use revue::widget::data::datagrid::AggregationType;
-use revue::widget::data::datagrid::DataGrid;
-use revue::widget::data::datagrid::{FooterRow, GridColumn, GridRow};
+use revue::widget::data::datagrid::{AggregationType, DataGrid, FooterRow, GridColumn, GridRow};
 
 #[test]
 fn test_footer_adds_footer_row() {
@@ -233,4 +231,14 @@ fn test_footer_builder_pattern() {
 
     assert_eq!(grid.footer_rows.len(), 1);
     assert!(grid.show_footer);
+}
+
+#[test]
+fn test_show_footer_toggle() {
+    let grid = DataGrid::new()
+        .column(GridColumn::new("a", "A"))
+        .add_sum("a")
+        .show_footer(false);
+
+    assert!(!grid.show_footer);
 }

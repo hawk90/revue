@@ -1,7 +1,7 @@
 //! DataGrid export functionality
 
-use super::core::DataGrid;
-use super::types::{ExportFormat, ExportOptions};
+use crate::widget::data::datagrid::types::{ExportFormat, ExportOptions};
+use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
     /// Export grid data with options

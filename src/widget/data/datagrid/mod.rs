@@ -2,25 +2,15 @@
 //!
 //! A feature-rich data grid with sorting, filtering, and cell editing.
 
+mod columns;
 mod core;
-mod editing;
 mod export;
-mod filter;
 mod footer;
-mod freeze;
-mod layout;
-mod mouse;
-mod navigation;
-mod render;
-mod reorder;
-mod resize;
-mod tree;
+mod input;
+mod rows;
+mod selection;
 mod types;
-mod width;
-
-// KEEP HERE - Private implementation tests in tests/ directory (accesses private fields of DataGrid)
-#[cfg(test)]
-mod tests;
+mod view;
 
 // Re-export all types (explicit to avoid conflict with mod export)
 #[allow(unused_imports)]

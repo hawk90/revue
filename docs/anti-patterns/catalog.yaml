@@ -1302,7 +1302,45 @@ entries:
       - "선택은 항목의 안정된 식별자(key)로 들거나, 위치로 들 때는 목록을 바꾸는 모든 경로에서 선택한 항목의 새 위치를 다시 계산한다(Qt의 selection model이 persistent index로 정렬·삽입 뒤에도 같은 행을 따라가는 것과 같은 원리)."
       - "그 항목이 사라졌으면 가장 가까운 항목으로 옮기고, 사라진 것을 선택한 채로 두지 않는다."
     observed:
-      - "csv_viewer 정렬 뒤 선택과 검색 결과 (#856, #970에서 고침), tree 펼치기·접기 뒤 다중 선택과 검색 결과 (#859), log_viewer 오래된 항목 잘라내기와 `clear_filter` 뒤 선택 (#975)."
+      - "csv_viewer 정렬 뒤 선택과 검색 결과 (#856, #970에서 고침), tree 펼치기·접기 뒤 다중 선택과 검색 결과 (#859), log_viewer 오래된 항목 잘라내기와 `clear_filter` 뒤 선택 (#975), datagrid 정렬 뒤 선택 (#975)."
+  - id: REV-WIDGET-012
+    title: "Every Widget Has Its Own Line Editor"
+    category: widget
+    review_tag: WIDGET
+    summary: "텍스트 칸이 있는 widget마다 한 줄 편집(문자 삽입, 삭제, 커서 이동, char→byte 변환)을 따로 짠다. 공통 model `utils::TextBuffer`가 있는데 쓰는 widget이 없다."
+    problem:
+      - "같은 키가 widget마다 다르게 동작한다: 제어 문자를 넣는 곳과 버리는 곳, Ctrl+글자를 입력하는 곳과 앱에 넘기는 곳, 단어 이동·선택·undo가 있는 곳(Input)과 없는 곳."
+      - "한 widget에서 고친 편집 결함이 다른 widget에는 그대로 남는다."
+      - "char→byte 변환도 여러 벌이라 byte index 실수가 widget마다 따로 생길 수 있다."
+    detect:
+      - "widget에 `String` 값과 `cursor: usize`가 있고 `Key::Char`/`Key::Backspace`/`Key::Delete`를 직접 처리한다"
+      - "`char_indices().nth(cursor)`를 인라인으로 쓰거나 `char_to_byte_index`를 widget 안에 다시 정의한다"
+      - "검증 입력: 같은 키 열(제어 문자, Ctrl+글자, ←→ Home End, 넓은 글자, 칸보다 긴 값)을 여러 widget에 넣고 결과를 비교한다"
+    fix:
+      - "편집은 `utils::TextBuffer` 하나로 한다. 표준 키 처리(삽입 규칙, 삭제, 이동, 단어 단위, 선택)를 TextBuffer에 두고 widget은 그 결과로 다시 그릴지만 정한다."
+      - "그리기는 이미 공통인 `put_edit_line`/`scroll_to_cursor`(#695)로 해서 긴 값도 커서를 따라 scroll한다."
+      - "widget 고유 규칙(NumberInput의 숫자만 받기, spin button의 Home/End)은 TextBuffer 바깥에서 감싼다."
+    observed:
+      - "2026-10-13 기준 커서가 있는 한 줄 편집기 7개(Input, Combobox, Autocomplete, SearchBar, MaskedInput, NumberInput, DataGrid 셀 편집)가 모두 따로 짜여 있고 TextBuffer를 쓰는 widget은 0개다. char→byte 변환은 4가지 방식이 섞여 있다. 목록은 #985."
+  - id: REV-WIDGET-013
+    title: "Chrome Drawn Over Content"
+    category: widget
+    review_tag: WIDGET
+    summary: "scrollbar, scroll marker, 위치 표시(n/total), mode badge 같은 chrome을 widget이 내용 영역 안에 덧그린다. chrome 칸을 내용 영역에서 먼저 빼 두지 않아서 chrome이 내용을 가리거나 내용이 chrome을 덮는다."
+    problem:
+      - "긴 값이나 줄바꿈한 줄의 끝이 badge나 marker에 가려 보이지 않는다."
+      - "그리는 순서에 따라 반대로 내용이 scrollbar를 지운다."
+      - "chrome이 행의 배경을 모르고 자기 배경으로 칠해서 선택 행 위에서 어색하게 보인다."
+    detect:
+      - "`ctx.set(area.width - 1, ..)`나 `width - len - 1`에 chrome을 그리는데, 같은 줄의 내용 너비는 `width - prefix`처럼 마지막 열까지 쓴다"
+      - "scrollbar 칸을 일부 경우(auto 너비 column이 있을 때)에만 빼 둔다"
+      - "검증 입력: 마지막 열까지 닿는 값, 스크롤이 생길 만큼 많은 행, tail/preview/scrolled-back 같은 상태 표시가 켜진 상태에서 chrome 칸의 symbol을 확인한다"
+    fix:
+      - "chrome 칸을 먼저 떼어 내고 남은 영역에 내용을 그린다 (`ScrollView::content_area`, VirtualList의 `width - 1` content가 이미 이렇게 한다)."
+      - "scrollbar와 gutter는 공통 helper 하나로 그리고 widget마다 thumb 계산이나 칸 예약을 손으로 짜지 않는다 (#973의 `utils::Selection` 옆)."
+      - "counter와 badge는 같은 분할에서 자기 줄이나 열을 받거나, border나 status 줄로 옮긴다."
+    observed:
+      - "2026-10-13 기준 chrome이 내용과 겹치는 widget 6개: DataGrid 행 표시, LogViewer scroll marker와 TAIL badge, RichLog scroll marker, Terminal `↑N`, MarkdownPresentation PREVIEW, Table scrollbar(고정 너비 column이 영역을 다 채울 때). 칸을 먼저 빼 두는 widget: ScrollView, VirtualList, Combobox, CodeEditor. 목록은 #988."
   - id: REV-ASYNC-001
     title: "Polling `try_join()` Every Frame"
     category: async
@@ -1706,6 +1744,14 @@ entries:
     category: rust
     review_tag: RUST
     summary: "CSS, terminal capability, malformed event, template 입력 오류에 `unwrap()`이나 `expect()`를 사용한다. framework는 사용자 애플리케이션보다 더 강한 panic discipline이 필요하다."
+    detect:
+      - "호출자 데이터의 float을 `sort_by(|a, b| a.partial_cmp(b).unwrap())`나 `.unwrap_or(Ordering::Equal)`로 정렬한다. `unwrap_or(Equal)`은 안전해 보이지만 NaN이 있으면 total order가 아니고, Rust 1.81부터 표준 sort가 이를 감지하면 panic한다"
+      - "검증 입력: 정렬하는 값 수십 개 중 몇 개를 NaN으로 바꿔 넣는다 (`\"NaN\".parse::<f64>()`는 Ok다)"
+    fix:
+      - "float 정렬은 `f64::total_cmp`/`f32::total_cmp`로 한다. NaN은 한쪽 끝으로 간다."
+      - "NaN이 의미가 없는 값(위치, 시간)은 받을 때 거르거나 거부한다."
+    observed:
+      - "datagrid 숫자 컬럼, gradient stop 위치, streamline layer 정렬이 NaN에서 total order panic, keyframe 시간은 `unwrap()` panic (#986). chart 통계는 NaN을 먼저 걸러서 안전하다."
   - id: REV-RUST-008
     title: "Error String Erasure"
     category: rust
