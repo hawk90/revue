@@ -17,7 +17,7 @@ impl DataGrid {
     }
 
     /// Compute filtered row indices (internal)
-    pub(crate) fn compute_filtered_indices(&self) -> Vec<usize> {
+    pub(in crate::widget::data::datagrid) fn compute_filtered_indices(&self) -> Vec<usize> {
         if self.filter.is_empty() {
             (0..self.rows.len()).collect()
         } else {

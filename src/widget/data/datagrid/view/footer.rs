@@ -12,7 +12,7 @@ use crate::widget::traits::RenderContext;
 impl DataGrid {
     /// Render one footer row: each aggregation in its column, and the row
     /// label in the first column when that column has no aggregation.
-    pub(crate) fn render_footer(
+    pub(in crate::widget::data::datagrid) fn render_footer(
         &self,
         ctx: &mut RenderContext,
         footer: &FooterRow,

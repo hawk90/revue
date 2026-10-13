@@ -10,7 +10,7 @@ use crate::widget::traits::RenderContext;
 
 impl DataGrid {
     /// Render the header row
-    pub(crate) fn render_header(
+    pub(in crate::widget::data::datagrid) fn render_header(
         &self,
         ctx: &mut RenderContext,
         slots: &[ColumnSlot<'_>],
