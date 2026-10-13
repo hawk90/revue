@@ -508,106 +508,122 @@ mod tests {
     #[test]
     fn test_textarea_handle_key_char() {
         let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Char('a'));
-        assert!(handled);
+        assert!(textarea.handle_key(&Key::Char('a')));
+        assert_eq!(textarea.get_content(), "a");
+        assert_eq!(textarea.cursor_position(), (0, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_enter() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Enter);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        textarea.set_cursor(0, 1);
+        assert!(textarea.handle_key(&Key::Enter));
+        assert_eq!(textarea.get_content(), "a\nb");
+        assert_eq!(textarea.cursor_position(), (1, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_tab() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Tab);
-        assert!(handled);
+        let mut textarea = TextArea::new().tab_width(3).focused(true);
+        assert!(textarea.handle_key(&Key::Tab));
+        assert_eq!(textarea.get_content(), "   ");
+        assert_eq!(textarea.cursor_position(), (0, 3));
     }
 
     #[test]
     fn test_textarea_handle_key_backspace() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Backspace);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        textarea.set_cursor(0, 2);
+        assert!(textarea.handle_key(&Key::Backspace));
+        assert_eq!(textarea.get_content(), "a");
+        assert_eq!(textarea.cursor_position(), (0, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_delete() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Delete);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        assert!(textarea.handle_key(&Key::Delete));
+        assert_eq!(textarea.get_content(), "b");
+        assert_eq!(textarea.cursor_position(), (0, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_left() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Left);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        textarea.set_cursor(0, 2);
+        assert!(textarea.handle_key(&Key::Left));
+        assert_eq!(textarea.cursor_position(), (0, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_right() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Right);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        assert!(textarea.handle_key(&Key::Right));
+        assert_eq!(textarea.cursor_position(), (0, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_up() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Up);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab\ncd").focused(true);
+        textarea.set_cursor(1, 1);
+        assert!(textarea.handle_key(&Key::Up));
+        assert_eq!(textarea.cursor_position(), (0, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_down() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Down);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab\ncd").focused(true);
+        textarea.set_cursor(0, 1);
+        assert!(textarea.handle_key(&Key::Down));
+        assert_eq!(textarea.cursor_position(), (1, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_home() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Home);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        textarea.set_cursor(0, 2);
+        assert!(textarea.handle_key(&Key::Home));
+        assert_eq!(textarea.cursor_position(), (0, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_end() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::End);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        assert!(textarea.handle_key(&Key::End));
+        assert_eq!(textarea.cursor_position(), (0, 2));
     }
 
     #[test]
     fn test_textarea_handle_key_page_up() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::PageUp);
-        assert!(handled);
+        let text: Vec<String> = (0..30).map(|i| i.to_string()).collect();
+        let mut textarea = TextArea::new().content(text.join("\n")).focused(true);
+        textarea.set_cursor(20, 0);
+        assert!(textarea.handle_key(&Key::PageUp));
+        assert_eq!(textarea.cursor_position(), (10, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_page_down() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::PageDown);
-        assert!(handled);
+        let text: Vec<String> = (0..30).map(|i| i.to_string()).collect();
+        let mut textarea = TextArea::new().content(text.join("\n")).focused(true);
+        assert!(textarea.handle_key(&Key::PageDown));
+        assert_eq!(textarea.cursor_position(), (10, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_unknown() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Escape);
-        assert!(!handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        assert!(!textarea.handle_key(&Key::Escape));
+        assert_eq!(textarea.get_content(), "ab");
+        assert_eq!(textarea.cursor_position(), (0, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_f1() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::F(1));
-        assert!(!handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        assert!(!textarea.handle_key(&Key::F(1)));
+        assert_eq!(textarea.get_content(), "ab");
+        assert_eq!(textarea.cursor_position(), (0, 0));
     }
 
     #[test]
