@@ -11,7 +11,7 @@ use crate::widget::traits::RenderContext;
 
 impl DataGrid {
     /// Render rows using virtual scrolling (index-based, no allocation)
-    pub(crate) fn render_rows_virtual(
+    pub(in crate::widget::data::datagrid) fn render_rows_virtual(
         &self,
         ctx: &mut RenderContext,
         render_start: usize,

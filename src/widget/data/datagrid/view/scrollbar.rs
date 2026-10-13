@@ -10,7 +10,7 @@ use crate::widget::traits::RenderContext;
 
 impl DataGrid {
     /// Render scrollbar and row indicator
-    pub(crate) fn render_scrollbar(
+    pub(in crate::widget::data::datagrid) fn render_scrollbar(
         &self,
         ctx: &mut RenderContext,
         total_rows: usize,

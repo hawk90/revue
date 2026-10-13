@@ -5,7 +5,7 @@ use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
     /// Compute aggregation value for a column
-    pub(crate) fn compute_aggregation(
+    pub(in crate::widget::data::datagrid) fn compute_aggregation(
         &self,
         column_key: &str,
         agg_type: AggregationType,
@@ -35,7 +35,10 @@ impl DataGrid {
     }
 
     /// Get computed footer values for rendering
-    pub(crate) fn get_footer_values(&self, footer: &FooterRow) -> Vec<(String, String)> {
+    pub(in crate::widget::data::datagrid) fn get_footer_values(
+        &self,
+        footer: &FooterRow,
+    ) -> Vec<(String, String)> {
         let mut values = Vec::new();
 
         for agg in &footer.aggregations {
