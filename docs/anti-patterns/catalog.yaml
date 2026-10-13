@@ -1322,6 +1322,25 @@ entries:
       - "widget 고유 규칙(NumberInput의 숫자만 받기, spin button의 Home/End)은 TextBuffer 바깥에서 감싼다."
     observed:
       - "2026-10-13 기준 커서가 있는 한 줄 편집기 7개(Input, Combobox, Autocomplete, SearchBar, MaskedInput, NumberInput, DataGrid 셀 편집)가 모두 따로 짜여 있고 TextBuffer를 쓰는 widget은 0개다. char→byte 변환은 4가지 방식이 섞여 있다. 목록은 #985."
+  - id: REV-WIDGET-013
+    title: "Chrome Drawn Over Content"
+    category: widget
+    review_tag: WIDGET
+    summary: "scrollbar, scroll marker, 위치 표시(n/total), mode badge 같은 chrome을 widget이 내용 영역 안에 덧그린다. chrome 칸을 내용 영역에서 먼저 빼 두지 않아서 chrome이 내용을 가리거나 내용이 chrome을 덮는다."
+    problem:
+      - "긴 값이나 줄바꿈한 줄의 끝이 badge나 marker에 가려 보이지 않는다."
+      - "그리는 순서에 따라 반대로 내용이 scrollbar를 지운다."
+      - "chrome이 행의 배경을 모르고 자기 배경으로 칠해서 선택 행 위에서 어색하게 보인다."
+    detect:
+      - "`ctx.set(area.width - 1, ..)`나 `width - len - 1`에 chrome을 그리는데, 같은 줄의 내용 너비는 `width - prefix`처럼 마지막 열까지 쓴다"
+      - "scrollbar 칸을 일부 경우(auto 너비 column이 있을 때)에만 빼 둔다"
+      - "검증 입력: 마지막 열까지 닿는 값, 스크롤이 생길 만큼 많은 행, tail/preview/scrolled-back 같은 상태 표시가 켜진 상태에서 chrome 칸의 symbol을 확인한다"
+    fix:
+      - "chrome 칸을 먼저 떼어 내고 남은 영역에 내용을 그린다 (`ScrollView::content_area`, VirtualList의 `width - 1` content가 이미 이렇게 한다)."
+      - "scrollbar와 gutter는 공통 helper 하나로 그리고 widget마다 thumb 계산이나 칸 예약을 손으로 짜지 않는다 (#973의 `utils::Selection` 옆)."
+      - "counter와 badge는 같은 분할에서 자기 줄이나 열을 받거나, border나 status 줄로 옮긴다."
+    observed:
+      - "2026-10-13 기준 chrome이 내용과 겹치는 widget 6개: DataGrid 행 표시, LogViewer scroll marker와 TAIL badge, RichLog scroll marker, Terminal `↑N`, MarkdownPresentation PREVIEW, Table scrollbar(고정 너비 column이 영역을 다 채울 때). 칸을 먼저 빼 두는 widget: ScrollView, VirtualList, Combobox, CodeEditor. 목록은 #988."
   - id: REV-ASYNC-001
     title: "Polling `try_join()` Every Frame"
     category: async
