@@ -1,4 +1,4 @@
-use super::core::Autocomplete;
+use super::Autocomplete;
 
 /// Helper function to create an autocomplete widget
 pub fn autocomplete() -> Autocomplete {

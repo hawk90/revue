@@ -46,7 +46,7 @@ unwrap을 쓰지 말 것
 
 | 파일 | 대상 | 내용 |
 |---|---|---|
-| [`catalog.yaml`](catalog.yaml) | LLM / 스크립트 | 158개 항목의 기계 판독용 원본. **single source of truth** |
+| [`catalog.yaml`](catalog.yaml) | LLM / 스크립트 | 159개 항목의 기계 판독용 원본. **single source of truth** |
 | `README.md` (이 파일) | 사람 | 카테고리·우선순위·invariant 요약과 전체 ID 색인 |
 | [`architecture-review.md`](architecture-review.md) | 사람 | "지금 아키텍처가 맞나?" 논의와 대안 스택 3안 |
 
@@ -69,7 +69,7 @@ unwrap을 쓰지 말 것
 
 ### LLM: 코드 리뷰 프롬프트
 
-`catalog.yaml`을 컨텍스트로 넣고 스코프를 좁혀서 물어본다. 전체 158개를 한 번에
+`catalog.yaml`을 컨텍스트로 넣고 스코프를 좁혀서 물어본다. 전체 159개를 한 번에
 적용하려 하면 정확도가 떨어지므로, 변경된 파일의 subsystem에 해당하는 카테고리만 필터링한다.
 
 ```bash
@@ -123,7 +123,7 @@ diff에서 실제로 해당하는 항목만 골라 id, 파일:줄, 근거를 제
 | `PLUGIN` | Plugin / extension | Plugin 및 Extension 안티패턴 | 5 | `REV-PLUGIN-001` – `REV-PLUGIN-005` |
 | `CLI` | CLI / templates | CLI 및 Template 안티패턴 | 4 | `REV-CLI-001` – `REV-CLI-004` |
 | `PERF` | Performance measurement | 성능 측정 안티패턴 | 6 | `REV-PERF-001` – `REV-PERF-006` |
-| `RUST` | Rust-specific | Rust 특화 안티패턴 | 10 | `REV-RUST-001` – `REV-RUST-010` |
+| `RUST` | Rust-specific | Rust 특화 안티패턴 | 11 | `REV-RUST-001` – `REV-RUST-011` |
 | `MEM` | Memory / resources | 메모리 및 Resource 안티패턴 | 5 | `REV-MEM-001` – `REV-MEM-005` |
 | `DEV` | DevTools | DevTools 안티패턴 | 4 | `REV-DEV-001` – `REV-DEV-004` |
 | `TEST` | Testing | 테스트 안티패턴 | 10 | `REV-TEST-001` – `REV-TEST-010` |
@@ -357,6 +357,7 @@ ADR · performance budgets · migration guides · fuzz/property testing.
 - **`REV-RUST-008`** Error String Erasure — 모든 오류를 `anyhow::Error`나 문자열 하나로만 노출한다.
 - **`REV-RUST-009`** Feature Flag Combinatorial Failure — feature가 많지만 일부 조합은 build되지 않는다.
 - **`REV-RUST-010`** MSRV Declaration Without Enforcement — Rust 1.
+- **`REV-RUST-011`** Visibility Widened to Make a Split Compile — 메서드를 형제 파일로 나누면서 모듈 배치 대신 private 필드를 `pub(super)`·`pub(crate)`로 연다. 타입을 `mod.rs`에 두고 새 파일을 하위 모듈로 만든다. 공개 타입 30개의 열린 필드 313개는 `tests/lib/field_visibility.rs`가 줄어들기만 하게 지킨다.
 
 ### 17. Memory / resources — 메모리 및 Resource 안티패턴
 

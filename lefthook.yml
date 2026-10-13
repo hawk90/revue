@@ -19,6 +19,11 @@ pre-commit:
       run: cargo check --all-features
       fail_text: "Compilation errors found."
 
+    field-visibility:
+      glob: "*.rs"
+      run: scripts/check-field-visibility.sh
+      fail_text: "A private struct field was widened. Make the new files child modules of the type's module instead (REV-RUST-011), or set ALLOW_FIELD_WIDENING=1 for a deliberate API change and say why in the commit."
+
 commit-msg:
   commands:
     commitlint:

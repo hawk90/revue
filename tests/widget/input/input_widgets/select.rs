@@ -1,11 +1,37 @@
 //! Select widget tests
 
+use crate::traits::placement::assert_same_when_offset;
+use proptest::prelude::*;
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
 use revue::widget::{select, Select, StyledView, View};
+
+/// `view` drawn in a `width` x `height` area
+fn draw(view: &impl View, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+    view.render(&mut ctx);
+    buffer
+}
+
+/// Each row of `buffer` as text
+fn rows_of(buffer: &Buffer) -> Vec<String> {
+    (0..buffer.height())
+        .map(|y| {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect()
+        })
+        .collect()
+}
+
+/// Each row of `view` drawn in a `width` x `height` area
+fn screen(view: &impl View, width: u16, height: u16) -> Vec<String> {
+    rows_of(&draw(view, width, height))
+}
 
 // ==================== Constructor Tests ====================
 
@@ -73,37 +99,46 @@ fn test_select_searchable() {
 
 #[test]
 fn test_select_width() {
-    let _s = Select::new().width(20);
-    // Private field - just verify it compiles
+    // The header is as wide as `width`: the option is cut to fit
+    let s = Select::new().option("Banana split").width(8);
+    assert_eq!(screen(&s, 30, 2)[0].trim_end(), "▼ Banana");
 }
-
 #[test]
 fn test_select_fg() {
-    let _s = Select::new().fg(Color::WHITE);
-    // Private field - just verify it compiles
+    let s = Select::new().option("A").fg(Color::WHITE);
+    assert_eq!(draw(&s, 20, 2).get(2, 0).unwrap().fg, Some(Color::WHITE));
 }
-
 #[test]
 fn test_select_bg() {
-    let _s = Select::new().bg(Color::BLACK);
-    // Private field - just verify it compiles
+    let s = Select::new().option("A").bg(Color::BLACK);
+    assert_eq!(draw(&s, 20, 2).get(2, 0).unwrap().bg, Some(Color::BLACK));
 }
-
 #[test]
 fn test_select_selected_style() {
-    let _s = Select::new().selected_style(Color::CYAN, Color::BLUE);
-    // Private fields - just verify it compiles
+    let mut s = Select::new()
+        .options(vec!["A", "B"])
+        .selected_style(Color::CYAN, Color::BLUE);
+    s.open();
+    // The highlighted option (A, row 1)
+    let cell = *draw(&s, 20, 4).get(2, 1).unwrap();
+    assert_eq!((cell.fg, cell.bg), (Some(Color::CYAN), Some(Color::BLUE)));
 }
-
 #[test]
 fn test_select_highlight_fg() {
-    let _s = Select::new().highlight_fg(Color::YELLOW);
-    // Private field - just verify it compiles
+    let mut s = Select::new()
+        .options(vec!["Apple", "Banana"])
+        .searchable(true)
+        .highlight_fg(Color::YELLOW);
+    s.open();
+    s.set_query("an");
+    // The matched letters of Banana
+    let buffer = draw(&s, 20, 4);
+    assert_eq!(buffer.get(3, 1).unwrap().fg, Some(Color::YELLOW));
+    assert_eq!(buffer.get(4, 1).unwrap().fg, Some(Color::YELLOW));
 }
-
 #[test]
 fn test_select_builder_chain() {
-    let _s = Select::new()
+    let mut s = Select::new()
         .options(vec!["A", "B"])
         .selected(0)
         .placeholder("Select...")
@@ -113,9 +148,12 @@ fn test_select_builder_chain() {
         .bg(Color::BLACK)
         .selected_style(Color::CYAN, Color::BLUE)
         .highlight_fg(Color::YELLOW);
-    // Just verify it compiles
+    assert_eq!(screen(&s, 30, 3)[0].trim_end(), "▼ A");
+    s.open();
+    let buffer = draw(&s, 30, 4);
+    assert_eq!(buffer.get(2, 1).unwrap().bg, Some(Color::BLUE));
+    assert_eq!(buffer.get(2, 0).unwrap().bg, Some(Color::BLACK));
 }
-
 // ==================== Navigation Tests ====================
 
 #[test]
@@ -146,12 +184,13 @@ fn test_select_navigation() {
 #[test]
 fn test_select_navigation_empty() {
     let mut s = Select::new();
-    s.select_next(); // Should not panic
-    s.select_prev(); // Should not panic
-    s.select_first(); // Should not panic
-    s.select_last(); // Should not panic
+    s.select_next();
+    s.select_prev();
+    s.select_first();
+    s.select_last();
+    assert_eq!(s.selected_index(), 0);
+    assert_eq!(s.value(), None);
 }
-
 #[test]
 fn test_select_navigation_single() {
     let mut s = Select::new().option("Only");
@@ -298,37 +337,32 @@ fn test_select_render_open() {
 
 #[test]
 fn test_select_render_empty() {
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Select::new();
-    s.render(&mut ctx);
-    // Should render without panic
+    // No options: the default placeholder
+    assert_eq!(screen(&Select::new(), 20, 5)[0].trim_end(), "▼ Select...");
 }
-
 #[test]
 fn test_select_render_zero_area() {
-    let mut buffer = Buffer::new(10, 5);
-    let area = Rect::new(0, 0, 0, 0);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Select::new().option("Test");
-    s.render(&mut ctx);
-    // Should handle zero area gracefully
+    let mut s = Select::new().option("Test");
+    s.open();
+    for (w, h) in [(0, 0), (0, 5), (10, 0)] {
+        let mut buffer = Buffer::new(10, 5);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+        s.render(&mut ctx);
+        assert!(
+            rows_of(&buffer).iter().all(|r| r.trim().is_empty()),
+            "{w}x{h}"
+        );
+    }
 }
-
 #[test]
 fn test_select_render_too_narrow() {
-    let mut buffer = Buffer::new(10, 5);
-    let area = Rect::new(0, 0, 2, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Select::new().option("Test");
-    s.render(&mut ctx);
-    // Should handle narrow area gracefully
+    // Two columns: the arrow and the space after it, nothing more
+    let rows = screen(&Select::new().option("Test"), 2, 5);
+    assert!(
+        rows.iter().all(|r| r.trim().is_empty() || r == "▼ "),
+        "{rows:#?}"
+    );
 }
-
 // ==================== Value Tests ====================
 
 #[test]
@@ -683,21 +717,18 @@ fn test_select_search_backspace_empty_query() {
 
 #[test]
 fn test_select_render_with_colors() {
-    let mut buffer = Buffer::new(30, 5);
-    let area = Rect::new(0, 0, 30, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Select::new()
+    let mut s = Select::new()
         .options(vec!["Option 1", "Option 2"])
         .fg(Color::WHITE)
         .bg(Color::BLACK)
         .selected_style(Color::CYAN, Color::BLUE)
         .highlight_fg(Color::YELLOW);
-
-    s.render(&mut ctx);
-    // Should render with colors
+    s.open();
+    let buffer = draw(&s, 30, 5);
+    assert_eq!(buffer.get(2, 0).unwrap().bg, Some(Color::BLACK)); // header
+    assert_eq!(buffer.get(2, 1).unwrap().bg, Some(Color::BLUE)); // highlighted
+    assert_ne!(buffer.get(2, 2).unwrap().bg, Some(Color::BLUE)); // the other
 }
-
 #[test]
 fn test_select_render_with_placeholder() {
     let mut buffer = Buffer::new(30, 5);
@@ -716,67 +747,39 @@ fn test_select_render_with_placeholder() {
 
 #[test]
 fn test_select_render_custom_width() {
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Select::new()
         .options(vec!["Option 1", "Option 2"])
         .width(30);
-
-    s.render(&mut ctx);
-    // Should respect custom width
+    // The header spans `width` columns of the background
+    let buffer = draw(&s, 40, 5);
+    assert_eq!(buffer.get(29, 0).unwrap().bg, buffer.get(2, 0).unwrap().bg);
+    assert_eq!(screen(&s, 40, 5)[0].trim_end(), "▼ Option 1");
 }
-
 #[test]
 fn test_select_render_long_option_truncated() {
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Select::new().option("This is a very long option text");
-    s.render(&mut ctx);
-    // Should handle long options gracefully
+    assert_eq!(screen(&s, 20, 5)[0], "▼ This is a very lon");
 }
-
 #[test]
 fn test_select_render_very_short_area() {
-    let mut buffer = Buffer::new(5, 3);
-    let area = Rect::new(0, 0, 5, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Select::new().options(vec!["A", "B"]);
-    s.render(&mut ctx);
-    // Should handle very short area
+    let rows = screen(&s, 5, 3);
+    assert_eq!(rows[0], "▼ A  ");
+    assert!(rows[1..].iter().all(|r| r.trim().is_empty()));
 }
-
 #[test]
 fn test_select_render_selected_highlight() {
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut s = Select::new()
         .options(vec!["Apple", "Banana", "Cherry"])
         .selected(1);
     s.open();
-
-    s.render(&mut ctx);
-    // Second option (Banana) should be highlighted
+    let rows = screen(&s, 20, 10);
+    assert_eq!(rows[0].trim_end(), "▲ Banana");
+    assert_eq!(rows[1].trim_end(), "  Apple");
+    assert_eq!(rows[2].trim_end(), "› Banana");
+    assert_eq!(rows[3].trim_end(), "  Cherry");
 }
-
 // ==================== State Transition Edge Cases ====================
-
-#[test]
-fn test_select_select_with_empty() {
-    let mut s = Select::new();
-    s.select_next();
-    s.select_prev();
-    s.select_first();
-    s.select_last();
-    // Should not panic
-}
-
 #[test]
 fn test_select_selected_out_of_bounds() {
     let s = Select::new().options(vec!["A", "B"]).selected(5);
@@ -872,35 +875,32 @@ fn test_select_handle_key_page_up_down() {
         .options((0..20).map(|i| format!("Option {}", i)).collect())
         .focused(true);
     s.open();
-
-    let _initial = s.selected_index();
-    s.handle_key(&Key::PageDown);
-    // PageDown should move selection
-
-    s.handle_key(&Key::PageUp);
-    // PageUp should move selection back
+    s.handle_key(&Key::Down);
+    // PageUp and PageDown are not bound: not handled, the selection stays
+    assert!(!s.handle_key(&Key::PageDown));
+    assert_eq!(s.selected_index(), 1);
+    assert!(!s.handle_key(&Key::PageUp));
+    assert_eq!(s.selected_index(), 1);
 }
-
 #[test]
 fn test_select_handle_key_tab() {
     let mut s = Select::new().options(vec!["A", "B"]).focused(true);
     s.open();
-
-    s.handle_key(&Key::Tab);
-    // Tab might close or navigate away
+    // Tab is left to focus navigation: not handled, the list stays open
+    assert!(!s.handle_key(&Key::Tab));
+    assert!(s.is_open());
 }
-
 #[test]
 fn test_select_handle_key_unknown_chars() {
     let mut s = Select::new().options(vec!["A", "B"]).focused(true);
     s.open();
-
     // Unknown characters should be ignored when not searchable
-    s.handle_key(&Key::Char('x'));
-    s.handle_key(&Key::Char('z'));
-    // Should not change state
+    assert!(!s.handle_key(&Key::Char('x')));
+    assert!(!s.handle_key(&Key::Char('z')));
+    assert_eq!(s.selected_index(), 0);
+    assert_eq!(s.query(), "");
+    assert!(s.is_open());
 }
-
 // ==================== Placeholder Edge Cases ====================
 
 #[test]
@@ -929,14 +929,12 @@ fn test_select_placeholder_unicode() {
 fn test_select_placeholder_very_long() {
     let long_placeholder = "This is a very long placeholder text that exceeds normal width";
     let s = Select::new().placeholder(long_placeholder);
-
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    s.render(&mut ctx);
-    // Should handle long placeholder
+    // Cut at the area's edge
+    assert_eq!(
+        screen(&s, 40, 5)[0],
+        "▼ This is a very long placeholder text t"
+    );
 }
-
 // ==================== Options Edge Cases ====================
 
 #[test]
@@ -989,27 +987,30 @@ fn test_select_select_at_bounds() {
 fn test_select_selection_after_search() {
     let mut s = Select::new()
         .options(vec!["Apple", "Apricot", "Banana"])
-        .searchable(true);
-
+        .searchable(true)
+        .focused(true);
     s.open();
     s.set_query("ap");
-    s.select_next();
-    // Should navigate within filtered results
+    assert_eq!(s.filtered_options(), &[0, 1]);
+    // Down moves within the matches and wraps
+    s.handle_key(&Key::Down);
+    assert_eq!(s.value(), Some("Apricot"));
+    s.handle_key(&Key::Down);
+    assert_eq!(s.value(), Some("Apple"));
 }
-
 #[test]
 fn test_select_selection_after_clear_search() {
     let mut s = Select::new()
         .options(vec!["Apple", "Apricot", "Banana"])
         .searchable(true);
-
     s.open();
     s.set_query("ap");
     s.select_next();
     s.clear_query();
-    // Selection should be preserved or reset appropriately
+    // The selection is kept; every option is listed again
+    assert_eq!(s.value(), Some("Apricot"));
+    assert_eq!(s.filtered_options(), &[0, 1, 2]);
 }
-
 // ==================== Search Edge Cases ====================
 
 #[test]
@@ -1027,11 +1028,10 @@ fn test_select_search_consecutive_spaces() {
     let mut s = Select::new()
         .options(vec!["Two  Spaces", "One Space"])
         .searchable(true);
-
     s.set_query("  ");
-    // Should handle consecutive spaces
+    // Only the option with two spaces in a row matches
+    assert_eq!(s.filtered_options(), &[0]);
 }
-
 #[test]
 fn test_select_search_leading_trailing_spaces() {
     let mut s = Select::new()
@@ -1050,68 +1050,47 @@ fn test_select_render_with_scroll() {
     let options: Vec<_> = (0..50).map(|i| format!("Option {}", i)).collect();
     let mut s = Select::new().options(options);
     s.open();
-
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    s.render(&mut ctx);
-    // Should handle scrolling
+    // The header and the first 10 options
+    let rows = screen(&s, 20, 12);
+    assert_eq!(rows[1].trim_end(), "› Option 0");
+    assert_eq!(rows[10].trim_end(), "  Option 9");
+    assert!(rows[11].trim().is_empty());
 }
-
 #[test]
 fn test_select_render_offset_area() {
-    let mut buffer = Buffer::new(50, 20);
-    let area = Rect::new(10, 5, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut s = Select::new().options(vec!["A", "B", "C"]);
     s.open();
-    s.render(&mut ctx);
-    // Should render at offset
+    assert_same_when_offset(s, 20, 5);
 }
-
 #[test]
 fn test_select_render_closed_after_open() {
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-
     let mut s = Select::new().options(vec!["A", "B"]);
     s.open();
-
-    {
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        s.render(&mut ctx);
-    }
-
-    buffer.clear();
-
+    assert_eq!(screen(&s, 20, 10)[1].trim_end(), "› A");
     s.close();
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    s.render(&mut ctx);
-    // Should render both states
+    let rows = screen(&s, 20, 10);
+    assert_eq!(rows[0].trim_end(), "▼ A");
+    assert!(rows[1..].iter().all(|r| r.trim().is_empty()));
 }
-
 // ==================== Width Edge Cases ====================
 
 #[test]
 fn test_select_very_narrow_width() {
-    let _s = Select::new().width(1);
-    // Width should be clamped to minimum
+    // A width below the arrow and one letter is raised to them
+    let s = Select::new().option("Apple").width(1);
+    assert_eq!(screen(&s, 40, 2)[0].trim_end(), "▼ A");
 }
-
 #[test]
 fn test_select_very_wide_width() {
-    let _s = Select::new().width(1000);
-    // Very wide width should be handled
+    // A width past the area is cut to the area
+    let s = Select::new().option("Apple").width(1000);
+    assert_eq!(screen(&s, 40, 2)[0].trim_end(), "▼ Apple");
 }
-
 #[test]
 fn test_select_zero_width() {
-    let _s = Select::new().width(0);
-    // Zero width should be handled
+    let s = Select::new().option("Apple").width(0);
+    assert_eq!(screen(&s, 40, 2)[0].trim_end(), "▼ A");
 }
-
 // ==================== Combined Feature Tests ====================
 
 #[test]
@@ -1129,15 +1108,15 @@ fn test_select_searchable_with_placeholder() {
 #[test]
 fn test_select_searchable_with_selected() {
     let mut s = Select::new()
+        .options(vec!["Apple", "Banana", "Cherry"])
         .selected(1)
-        .searchable(true)
-        .options(vec!["Apple", "Banana", "Cherry"]);
-
+        .searchable(true);
     s.open();
     s.set_query("a");
-    // Search should work with pre-selected item
+    // Apple and Banana match; searching highlights the best match
+    assert_eq!(s.filtered_options(), &[0, 1]);
+    assert_eq!(s.value(), Some("Apple"));
 }
-
 #[test]
 fn test_select_with_all_builder_options() {
     let s = Select::new()
@@ -1153,6 +1132,40 @@ fn test_select_with_all_builder_options() {
 
     // Just verify it compiles and works
     assert_eq!(s.selected_index(), 1);
+}
+
+#[test]
+fn test_select_zero_area_draws_nothing() {
+    let mut s = Select::new().options(vec!["A", "B"]).searchable(true);
+    s.open();
+    crate::traits::placement::assert_zero_areas_draw_nothing(&s);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Any sequence of Up, Down, Home and End on an open list keeps the
+    /// selection on an option; Home goes to the first and End to the last.
+    #[test]
+    fn test_select_keys_keep_the_selection_on_an_option(
+        n in 1usize..30,
+        keys in prop::collection::vec(0usize..4, 0..60),
+    ) {
+        let mut s = Select::new()
+            .options((0..n).map(|i| format!("O{i}")).collect())
+            .focused(true);
+        s.open();
+        for k in keys {
+            let key = [Key::Up, Key::Down, Key::Home, Key::End][k];
+            s.handle_key(&key);
+            prop_assert!(s.selected_index() < n);
+            match key {
+                Key::Home => prop_assert_eq!(s.selected_index(), 0),
+                Key::End => prop_assert_eq!(s.selected_index(), n - 1),
+                _ => {}
+            }
+        }
+    }
 }
 
 mod snapshots {
