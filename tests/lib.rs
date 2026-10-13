@@ -2,6 +2,9 @@
 //!
 //! All tests use only public constants, functions, and types from revue.
 
+#[path = "lib/field_visibility.rs"]
+mod field_visibility;
+
 use revue::{is_dev_build, Error, Result, GIT_SHA, VERSION};
 use std::io;
 

@@ -357,7 +357,7 @@ ADR · performance budgets · migration guides · fuzz/property testing.
 - **`REV-RUST-008`** Error String Erasure — 모든 오류를 `anyhow::Error`나 문자열 하나로만 노출한다.
 - **`REV-RUST-009`** Feature Flag Combinatorial Failure — feature가 많지만 일부 조합은 build되지 않는다.
 - **`REV-RUST-010`** MSRV Declaration Without Enforcement — Rust 1.
-- **`REV-RUST-011`** Visibility Widened to Make a Split Compile — 메서드를 형제 파일로 나누면서 모듈 배치 대신 private 필드를 `pub(super)`·`pub(crate)`로 연다. 타입을 `mod.rs`에 두고 새 파일을 하위 모듈로 만든다.
+- **`REV-RUST-011`** Visibility Widened to Make a Split Compile — 메서드를 형제 파일로 나누면서 모듈 배치 대신 private 필드를 `pub(super)`·`pub(crate)`로 연다. 타입을 `mod.rs`에 두고 새 파일을 하위 모듈로 만든다. 공개 타입 30개의 열린 필드 313개는 `tests/lib/field_visibility.rs`가 줄어들기만 하게 지킨다.
 
 ### 17. Memory / resources — 메모리 및 Resource 안티패턴
 
