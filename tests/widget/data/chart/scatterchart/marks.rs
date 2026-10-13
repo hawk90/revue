@@ -2,8 +2,9 @@
 
 use super::super::{count_char, render};
 use super::bare;
+use proptest::prelude::*;
 use revue::style::Color;
-use revue::widget::data::chart::{ColorScheme, ScatterSeries};
+use revue::widget::data::chart::{ColorScheme, Marker, ScatterSeries};
 
 #[test]
 fn test_scatter_default_marker_is_filled_circle() {
@@ -53,4 +54,30 @@ fn test_scatter_small_bubbles_still_draw_one_cell() {
 fn test_scatter_empty_draws_no_points() {
     let buffer = render(&bare(), 30, 15);
     assert_eq!(count_char(&buffer, '●'), 0);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Any finite points with auto bounds: at least one marker is drawn and
+    /// every marker sits inside the chart area (columns 8..w-1, rows ..h-2)
+    #[test]
+    fn test_scatter_points_land_inside_the_chart_area(
+        points in prop::collection::vec((-1e6f64..1e6, -1e6f64..1e6), 1..20),
+        w in 15u16..80,
+        h in 8u16..30,
+    ) {
+        let chart = bare().series(ScatterSeries::new("s").data(points).marker(Marker::Star));
+        let buffer = render(&chart, w, h);
+        let mut stars = 0;
+        for y in 0..h {
+            for x in 0..w {
+                if buffer.get(x, y).unwrap().symbol == '★' {
+                    prop_assert!(x >= 8 && x < w - 1 && y < h - 2, "point at ({}, {}) in {}x{}", x, y, w, h);
+                    stars += 1;
+                }
+            }
+        }
+        prop_assert!(stars >= 1);
+    }
 }

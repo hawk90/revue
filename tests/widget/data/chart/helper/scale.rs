@@ -2,6 +2,7 @@
 
 use super::super::{count_char, render, rows};
 use super::{flat, plain, plot_line_cells, sym};
+use proptest::prelude::*;
 use revue::style::Color;
 use revue::widget::data::chart::{Axis, Marker, Series};
 
@@ -147,4 +148,38 @@ fn test_chart_axis_bounds_override() {
     assert!(rows[17].starts_with("      0"), "{:?}", rows[17]);
     assert!(rows[0].starts_with("     30"), "{:?}", rows[0]);
     assert!(rows[18].trim_end().ends_with("20"), "{:?}", rows[18]);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Any finite points with auto bounds: every point is drawn inside the
+    /// plot (columns 8.., rows ..h-2 for a chart without title or border), and
+    /// the x bounds are the data's own, so the smallest x lands in the plot's
+    /// first column and the largest in its last
+    #[test]
+    fn test_chart_points_land_inside_the_plot(
+        points in prop::collection::vec((-1e6f64..1e6, -1e6f64..1e6), 1..20),
+        w in 13u16..80,
+        h in 5u16..30,
+    ) {
+        let series = Series::new("s").data(points.clone()).scatter().marker(Marker::Star);
+        let buffer = render(&plain().series(series), w, h);
+        let mut stars = 0;
+        for y in 0..h {
+            for x in 0..w {
+                if buffer.get(x, y).unwrap().symbol == '★' {
+                    prop_assert!(x >= 8 && y < h - 2, "point at ({}, {}) in {}x{}", x, y, w, h);
+                    stars += 1;
+                }
+            }
+        }
+        prop_assert!(stars >= 1);
+        let x_spread = points.iter().any(|p| p.0 != points[0].0);
+        if x_spread {
+            let in_col = |x: u16| (0..h).any(|y| buffer.get(x, y).unwrap().symbol == '★');
+            prop_assert!(in_col(8), "nothing in the first plot column");
+            prop_assert!(in_col(w - 1), "nothing in the last plot column");
+        }
+    }
 }
