@@ -175,3 +175,81 @@ fn test_calculate_chart_area() {
     let tiny = calculate_chart_area(Rect::new(0, 0, 5, 2), true, 8, 2);
     assert_eq!((tiny.width, tiny.height), (0, 0));
 }
+
+#[test]
+fn test_render_title_long() {
+    let mut buffer = Buffer::new(10, 5);
+    let area = Rect::new(0, 0, 10, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let offset = render_title(&mut ctx, area, Some("Very Long Title"), Color::WHITE);
+    assert_eq!(offset, 1);
+}
+
+#[test]
+fn test_render_grid_only_x() {
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let grid = ChartGrid::x_only();
+    render_grid(&mut ctx, area, &grid, 5, 0);
+
+    // Should only have vertical lines
+    let mut found_vertical = false;
+    for y in 0..10 {
+        for x in 0..20 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.symbol == '│' {
+                    found_vertical = true;
+                    break;
+                }
+            }
+        }
+    }
+    assert!(found_vertical);
+}
+
+#[test]
+fn test_render_grid_only_y() {
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let grid = ChartGrid::y_only();
+    render_grid(&mut ctx, area, &grid, 0, 5);
+
+    // Should only have horizontal lines
+    let mut found_horizontal = false;
+    for y in 0..10 {
+        for x in 0..20 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.symbol == '─' || cell.symbol == '├' {
+                    found_horizontal = true;
+                    break;
+                }
+            }
+        }
+    }
+    assert!(found_horizontal);
+}
+
+#[test]
+fn test_fill_background_zero_area() {
+    let mut buffer = Buffer::new(10, 5);
+    let area = Rect::new(0, 0, 0, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    fill_background(&mut ctx, area, Color::RED);
+    // Should not crash
+}
+
+#[test]
+fn test_calculate_chart_area_no_labels() {
+    let area = Rect::new(0, 0, 100, 50);
+    let chart_area = calculate_chart_area(area, false, 0, 0);
+    assert_eq!(chart_area.x, 0);
+    assert_eq!(chart_area.y, 0);
+    assert_eq!(chart_area.width, 99);
+    assert_eq!(chart_area.height, 49);
+}

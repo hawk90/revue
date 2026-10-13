@@ -195,4 +195,38 @@ mod tests {
         assert_eq!(legend1.position, legend2.position);
         assert_eq!(legend1.orientation, legend2.orientation);
     }
+
+    #[test]
+    fn test_legend_visibility() {
+        assert!(!Legend::none().is_visible());
+        assert!(!Legend::hidden().is_visible());
+        assert!(Legend::top_left().is_visible());
+        assert!(Legend::bottom_right().is_visible());
+    }
+
+    #[test]
+    fn test_legend_orientation_by_position() {
+        let legend = Legend::left();
+        assert_eq!(legend.position, LegendPosition::Left);
+        assert_eq!(legend.orientation, LegendOrientation::Vertical);
+
+        let legend = Legend::right();
+        assert_eq!(legend.orientation, LegendOrientation::Vertical);
+
+        let legend = Legend::top_left();
+        assert_eq!(legend.orientation, LegendOrientation::Horizontal);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_legend_builder() {
+        let legend = Legend::new()
+            .position(LegendPosition::BottomCenter)
+            .orientation(LegendOrientation::Vertical)
+            .interactive(true);
+
+        assert_eq!(legend.position, LegendPosition::BottomCenter);
+        assert_eq!(legend.orientation, LegendOrientation::Vertical);
+        assert!(legend.interactive);
+    }
 }

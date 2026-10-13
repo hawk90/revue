@@ -164,4 +164,16 @@ mod tests {
         assert_eq!(axis1.min, axis2.min);
         assert_eq!(axis1.max, axis2.max);
     }
+
+    #[test]
+    fn test_axis_format_value() {
+        let axis = Axis::new().format(AxisFormat::Fixed(2));
+        assert_eq!(axis.format_value(1.23456), "1.23");
+
+        let axis = Axis::new().format(AxisFormat::Percent);
+        assert_eq!(axis.format_value(0.5), "50%");
+
+        let axis = Axis::new().format(AxisFormat::Integer);
+        assert_eq!(axis.format_value(42.7), "43");
+    }
 }

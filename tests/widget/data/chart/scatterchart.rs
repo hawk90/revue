@@ -198,3 +198,16 @@ fn test_scatter_empty_draws_no_points() {
     let buffer = render(&bare(), 30, 15);
     assert_eq!(count_char(&buffer, '●'), 0);
 }
+
+#[test]
+fn test_scatter_series() {
+    let series = ScatterSeries::new("Test")
+        .points(&[(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)])
+        .color(Color::RED)
+        .marker(Marker::Star);
+
+    assert_eq!(series.name, "Test");
+    assert_eq!(series.data.len(), 3);
+    assert_eq!(series.color, Some(Color::RED));
+    assert_eq!(series.marker, Marker::Star);
+}

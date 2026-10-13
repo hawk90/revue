@@ -109,4 +109,27 @@ mod tests {
         assert!(matches!(&format1, ChartTooltipFormat::Custom(f) if f == "test"));
         assert!(matches!(&format2, ChartTooltipFormat::Custom(f) if f == "test"));
     }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_tooltip_new_fields() {
+        let tooltip = ChartTooltip::new();
+        assert!(!tooltip.enabled);
+        assert!(matches!(tooltip.format, ChartTooltipFormat::Auto));
+        assert_eq!(tooltip.position, ChartTooltipPosition::Follow);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_tooltip_enabled() {
+        let tooltip = ChartTooltip::enabled();
+        assert!(tooltip.enabled);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_tooltip_format_auto() {
+        let tooltip = ChartTooltip::new().format(ChartTooltipFormat::Auto);
+        assert!(matches!(tooltip.format, ChartTooltipFormat::Auto));
+    }
 }
