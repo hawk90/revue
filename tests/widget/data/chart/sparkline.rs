@@ -1,6 +1,7 @@
 //! Sparkline widget tests
 
 use super::{render, render_rows};
+use proptest::prelude::*;
 use revue::style::Color;
 use revue::widget::data::chart::{sparkline, Sparkline, SparklineStyle};
 
@@ -207,6 +208,52 @@ fn test_sparkline_zero_area() {
     let sl = Sparkline::new(vec![1.0, 2.0]);
     assert_eq!(render(&sl, 0, 1).width(), 0);
     assert_eq!(render(&sl, 4, 0).height(), 0);
+}
+
+#[test]
+fn test_sparkline_zero_area_draws_nothing() {
+    super::assert_zero_areas_draw_nothing(&Sparkline::new(vec![1.0, 2.0]).show_bounds(true));
+}
+
+#[test]
+fn test_sparkline_draws_the_same_when_offset() {
+    let sl = Sparkline::new(vec![1.0, 4.0, 2.0, 8.0])
+        .show_bounds(true)
+        .bg(Color::BLACK);
+    super::assert_same_when_offset(sl, 12, 2);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// A larger value never draws a lower level than a smaller one, for any
+    /// finite data and style.
+    #[test]
+    fn test_sparkline_levels_follow_the_values(
+        data in prop::collection::vec(-1e6f64..1e6, 1..40),
+        style in 0usize..3,
+    ) {
+        let style = [SparklineStyle::Block, SparklineStyle::Braille, SparklineStyle::Ascii][style];
+        let levels: Vec<char> = match style {
+            SparklineStyle::Block => "▁▂▃▄▅▆▇█",
+            SparklineStyle::Braille => "⠀⣀⣤⣶⣿⣿⣿⣿",
+            SparklineStyle::Ascii => "_.-=+*#@",
+        }
+        .chars()
+        .collect();
+        let width = data.len() as u16;
+        let drawn: Vec<usize> = line(&Sparkline::new(data.clone()).style(style), width)
+            .chars()
+            .map(|c| levels.iter().position(|&l| l == c).unwrap())
+            .collect();
+        for (i, a) in data.iter().enumerate() {
+            for (j, b) in data.iter().enumerate() {
+                if a > b {
+                    prop_assert!(drawn[i] >= drawn[j], "{a} at level {} below {b} at {}", drawn[i], drawn[j]);
+                }
+            }
+        }
+    }
 }
 
 mod snapshots {

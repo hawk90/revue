@@ -1,6 +1,7 @@
 //! BarChart widget tests
 
 use super::{count_char, render, render_rows, rows};
+use proptest::prelude::*;
 use revue::style::Color;
 use revue::widget::data::chart::barchart::Bar;
 use revue::widget::data::chart::{barchart, BarChart, BarOrientation};
@@ -363,6 +364,55 @@ fn test_barchart_vertical_bars_beyond_width_are_dropped() {
     // A at 0..3, B at 4..7, C would need 8..11
     let rows = render_rows(&chart, 10, 5);
     assert_eq!(rows[4].trim_end(), "A   B");
+}
+
+// =========================================================================
+// Areas and placement
+// =========================================================================
+
+#[test]
+fn test_barchart_zero_area_draws_nothing() {
+    let chart = BarChart::new().bar("A", 50.0).bar("B", 20.0);
+    super::assert_zero_areas_draw_nothing(&chart);
+    super::assert_zero_areas_draw_nothing(&chart.vertical());
+}
+
+#[test]
+fn test_barchart_draws_the_same_when_offset() {
+    let chart = BarChart::new()
+        .bar("Mon", 10.0)
+        .bar_colored("Tue", -20.0, Color::RED)
+        .bar("수", 15.0)
+        .bar_width(2);
+    super::assert_same_when_offset(chart.clone(), 30, 10);
+    super::assert_same_when_offset(chart.vertical(), 30, 10);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Horizontal bars are as long as their magnitude allows: never past
+    /// the area, and a larger magnitude never draws a shorter bar.
+    #[test]
+    fn test_barchart_bar_lengths_follow_the_values(
+        values in prop::collection::vec(-1e6f64..1e6, 1..10),
+        w in 12u16..80,
+    ) {
+        let chart = BarChart::new()
+            .data(values.iter().map(|&v| ("x", v)))
+            .gap(0)
+            .show_values(false);
+        let rows = render_rows(&chart, w, values.len() as u16);
+        let lengths: Vec<usize> = rows.iter().map(|r| r.chars().filter(|&c| c == '█').count()).collect();
+        for (i, a) in values.iter().enumerate() {
+            prop_assert!(lengths[i] < w as usize);
+            for (j, b) in values.iter().enumerate() {
+                if a.abs() > b.abs() {
+                    prop_assert!(lengths[i] >= lengths[j], "{a} drew {} and {b} drew {}", lengths[i], lengths[j]);
+                }
+            }
+        }
+    }
 }
 
 mod snapshots {

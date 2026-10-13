@@ -1,6 +1,7 @@
 //! TimeSeries widget tests
 
 use super::{render, render_rows};
+use proptest::prelude::*;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
@@ -536,6 +537,56 @@ fn test_time_series_render_filled() {
     assert_eq!(buffer.get(37, 9).unwrap().bg, shade);
     assert_eq!(buffer.get(9, 9).unwrap().bg, shade);
     assert_eq!(buffer.get(9, 2).unwrap().bg, None);
+}
+
+// ========================================================================
+// Areas and placement
+// ========================================================================
+
+#[test]
+fn test_time_series_zero_area_draws_nothing() {
+    let chart = TimeSeries::new().title("T").series(two_points());
+    super::assert_zero_areas_draw_nothing(&chart);
+}
+
+#[test]
+fn test_time_series_draws_the_same_when_offset() {
+    let chart = TimeSeries::new()
+        .title("T")
+        .y_label("%")
+        .series(two_points().filled())
+        .series(
+            TimeSeriesData::new("Step")
+                .point(1200, 60.0)
+                .point(1800, 55.0)
+                .line_style(TimeLineStyle::Step),
+        )
+        .marker(TimeMarker::new(1500, "Event"))
+        .bg(Color::BLACK);
+    super::assert_same_when_offset(chart, 40, 16);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Every point lands in the plot: right of the 8-column value labels,
+    /// below the legend row and above the time labels.
+    #[test]
+    fn test_time_series_points_stay_in_the_plot(
+        points in prop::collection::vec((0u64..1_000_000, -1e6f64..1e6), 1..30),
+        w in 15u16..80,
+        h in 7u16..30,
+    ) {
+        let chart = TimeSeries::new().series(TimeSeriesData::new("s").points(points));
+        let buffer = render(&chart, w, h);
+        for y in 0..h {
+            for x in 0..w {
+                if buffer.get(x, y).unwrap().symbol == '●' {
+                    prop_assert!((8..w - 1).contains(&x) && (1..h - 2).contains(&y), "point at ({x}, {y})");
+                }
+            }
+        }
+    }
 }
 
 mod snapshots {

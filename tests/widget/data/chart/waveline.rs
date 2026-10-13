@@ -5,6 +5,7 @@
 //! 0.0 is row 2 and -1.0 is row 4.
 
 use super::{count_char, render, render_rows, rows};
+use proptest::prelude::*;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::data::chart::{
@@ -351,6 +352,67 @@ fn test_square_wave() {
 fn test_sawtooth_wave() {
     assert_eq!(sawtooth_wave(4, 1.0, 1.0), vec![-1.0, -0.5, 0.0, 0.5]);
     assert_eq!(sawtooth_wave(2, 1.0, 2.0), vec![-2.0, 0.0]);
+}
+
+// =========================================================================
+// Areas and placement
+// =========================================================================
+
+#[test]
+fn test_waveline_zero_area_draws_nothing() {
+    for style in [
+        WaveStyle::Line,
+        WaveStyle::Filled,
+        WaveStyle::Mirrored,
+        WaveStyle::Bars,
+        WaveStyle::Dots,
+    ] {
+        let wave = waveline(sine_wave(20, 1.0, 1.0))
+            .style(style)
+            .label("sig")
+            .bg(Color::BLACK);
+        super::assert_zero_areas_draw_nothing(&wave);
+    }
+}
+
+#[test]
+fn test_waveline_draws_the_same_when_offset() {
+    for style in [
+        WaveStyle::Line,
+        WaveStyle::Filled,
+        WaveStyle::Mirrored,
+        WaveStyle::Bars,
+        WaveStyle::Dots,
+    ] {
+        let wave = waveline(sine_wave(30, 2.0, 1.0))
+            .style(style)
+            .label("sig")
+            .show_baseline(true)
+            .gradient(Color::BLUE, Color::RED);
+        super::assert_same_when_offset(wave, 24, 8);
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// For any finite data, every style draws inside the area below the
+    /// label row.
+    #[test]
+    fn test_waveline_stays_below_the_label(
+        data in prop::collection::vec(-10f64..10.0, 1..60),
+        style in 0usize..5,
+        baseline in 0.0f64..1.0,
+        w in 2u16..40,
+        h in 2u16..12,
+    ) {
+        let style = [WaveStyle::Line, WaveStyle::Filled, WaveStyle::Mirrored, WaveStyle::Bars, WaveStyle::Dots][style];
+        let wave = waveline(data).style(style).baseline(baseline).label("L");
+        let buffer = render(&wave, w, h);
+        // Row 0 holds only the label
+        let top: String = (0..w).map(|x| sym(&buffer, x, 0)).collect();
+        prop_assert_eq!(top.trim_end(), "L");
+    }
 }
 
 mod snapshots {

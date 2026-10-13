@@ -1,6 +1,7 @@
 //! CandleChart widget tests
 
 use super::{render, render_rows};
+use proptest::prelude::*;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
@@ -959,4 +960,61 @@ fn test_zero_volume() {
     // No volume to draw: no separator and no bars
     let rows = render_rows(&chart, 80, 30);
     assert!(rows[15..].iter().all(|r| r.trim().is_empty()), "{rows:#?}");
+}
+
+// ============================================================================
+// Areas and placement
+// ============================================================================
+
+#[test]
+fn test_candlechart_zero_area_draws_nothing() {
+    let chart = CandleChart::new(sample_data_with_volume())
+        .title("AAPL")
+        .show_volume(true)
+        .crosshair(1);
+    super::assert_zero_areas_draw_nothing(&chart);
+}
+
+#[test]
+fn test_candlechart_draws_the_same_when_offset() {
+    let full = || {
+        CandleChart::new(sample_data_with_volume())
+            .title("AAPL")
+            .show_volume(true)
+            .crosshair(1)
+            .height(8)
+    };
+    super::assert_same_when_offset(full(), 30, 16);
+    super::assert_same_when_offset(full().style(CandleStyle::Ohlc).show_axis(false), 30, 16);
+    super::assert_same_when_offset(full().style(CandleStyle::HeikinAshi), 30, 16);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Without the axis, any candles take one column each (up to the
+    /// chart width) and stay inside the chart height.
+    #[test]
+    fn test_candles_take_one_column_each(
+        prices in prop::collection::vec((1.0f64..1e6, 0.0f64..1.0, 0.0f64..1.0, 0.0f64..1.0), 1..30),
+        width in 1usize..40,
+        height in 2u16..20,
+        style in 0usize..4,
+    ) {
+        // low <= open, close <= high
+        let data: Vec<Candle> = prices
+            .iter()
+            .map(|&(low, a, b, span)| {
+                let high = low * (1.0 + span);
+                let at = |t: f64| low + (high - low) * t;
+                Candle::new(at(a), high, low, at(b))
+            })
+            .collect();
+        let style = [CandleStyle::Candle, CandleStyle::Ohlc, CandleStyle::Hollow, CandleStyle::HeikinAshi][style];
+        let chart = CandleChart::new(data.clone()).style(style).size(width, height);
+        let rows = plot_rows(chart, 50, 25);
+        prop_assert_eq!(glyph_columns(&rows), data.len().min(width));
+        let last = last_drawn_row(&rows).unwrap_or(0);
+        prop_assert!(last < height as usize, "row {} of {}", last, height);
+    }
 }
