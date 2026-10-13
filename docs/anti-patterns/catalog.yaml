@@ -1363,6 +1363,7 @@ entries:
       - "새 차트를 만들 때 축 그리기를 따로 짜지 않는다. 모델이 감당하지 못하는 경우(시간 축, 범주 축)는 모델을 넓힌다."
     observed:
       - "2026-10-13 기준 축이 있는 차트 9개 중 공통 틀을 대부분 쓰는 것은 ScatterChart 하나다. Histogram·BoxPlot·PieChart는 제목과 배경만, Chart·TimeSeries·CandleChart·BarChart·Sparkline·Waveline은 하나도 쓰지 않는다. 공통 틀 자체에도 버그가 있다(마지막 x 라벨이 영역 밖, 축 제목이 x 라벨을 덮음, 배경을 box 배경으로 등록하지 않음). 목록은 #990."
+      - "chart 감사 3(2026-10-13): CandleChart는 라벨이 있는 행(9칸)과 없는 행(10칸)의 축 폭이 달라 그 행의 캔들이 한 칸 왼쪽에 그려지고, `height(1)`이면 라벨이 `NaN`이다. TimeSeries는 한쪽만 준 범위가 데이터를 넘으면 축이 뒤집히고, 값 라벨을 격자와 함께 그려서 `show_grid(false)`면 라벨도 사라지며, 마커 라벨이 시간 라벨에 덮인다. Sparkline은 non-finite bound를, Waveline은 NaN 값을 거르지 않는다 (#990)."
   - id: REV-ASYNC-001
     title: "Polling `try_join()` Every Frame"
     category: async

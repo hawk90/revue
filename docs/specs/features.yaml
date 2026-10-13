@@ -1386,7 +1386,7 @@ items:
       - sparkline
     evidence:
       - src/widget/data/chart/helper/mod.rs::line_chart
-      - src/widget/data/chart/barchart.rs::barchart
+      - src/widget/data/chart/barchart/mod.rs::barchart
       - src/widget/data/chart/sparkline.rs::sparkline
     source:
       - FEATURES.md §Overview
@@ -1488,7 +1488,7 @@ items:
       - candle_chart(data) with title
     evidence:
       - src/widget/data/chart/candlechart/mod.rs::candle_chart
-      - tests/widget/data/chart/candlechart.rs
+      - tests/widget/data/chart/candlechart
     source:
       - FEATURES.md §Advanced Widgets / Advanced Charts
   - id: NAV-001
