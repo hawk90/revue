@@ -1404,7 +1404,7 @@ items:
     evidence:
       - src/widget/data/chart/piechart/mod.rs::pie_chart
       - src/widget/data/chart/piechart/mod.rs::donut_chart
-      - tests/widget/data/chart/piechart.rs
+      - tests/widget/data/chart/piechart
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / PieChart
     notes: Doc .donut_ratio(0.5) is .donut(ratio).
@@ -1420,9 +1420,9 @@ items:
       - markers
       - auto-scaled axes
     evidence:
-      - src/widget/data/chart/scatterchart.rs::scatter_chart
-      - src/widget/data/chart/scatterchart.rs::bubble_chart
-      - tests/widget/data/chart/scatterchart.rs
+      - src/widget/data/chart/scatterchart/mod.rs::scatter_chart
+      - src/widget/data/chart/scatterchart/mod.rs::bubble_chart
+      - tests/widget/data/chart/scatterchart
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / ScatterChart
   - id: CHART-005
@@ -1439,7 +1439,7 @@ items:
     evidence:
       - src/widget/data/chart/histogram/mod.rs::histogram
       - src/widget/data/chart/histogram/mod.rs::show_stats
-      - tests/widget/data/chart/histogram.rs
+      - tests/widget/data/chart/histogram
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / Histogram
       - FEATURES.md §Advanced Widgets / Advanced Charts
@@ -1456,8 +1456,8 @@ items:
       - notched box shows the median CI
     evidence:
       - src/widget/data/chart/boxplot/mod.rs::boxplot
-      - tests/widget/data/chart/boxplot.rs::test_boxplot_horizontal_layout
-      - tests/widget/data/chart/boxplot.rs::test_boxplot_notch_layout
+      - tests/widget/data/chart/boxplot/boxes.rs::test_boxplot_horizontal_layout
+      - tests/widget/data/chart/boxplot/boxes.rs::test_boxplot_notch_layout
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / BoxPlot
       - FEATURES.md §Advanced Widgets / Advanced Charts
@@ -1474,7 +1474,7 @@ items:
     evidence:
       - src/widget/data/chart/heatmap/mod.rs::heatmap
       - src/widget/data/chart/heatmap/mod.rs::color_scale
-      - tests/widget/data/chart/heatmap.rs
+      - tests/widget/data/chart/heatmap
     source:
       - FEATURES.md §Overview
       - FEATURES.md §Advanced Widgets / Advanced Charts
