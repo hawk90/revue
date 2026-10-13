@@ -2,8 +2,11 @@
 //!
 //! Displays chronological events with timestamps and icons.
 
-mod render;
+mod horizontal;
+mod selection;
 mod types;
+mod vertical;
+mod view;
 
 pub use types::{EventType, TimelineEvent, TimelineOrientation, TimelineStyle};
 
@@ -114,33 +117,6 @@ impl Timeline {
         self
     }
 
-    /// Select an event
-    pub fn select(&mut self, index: Option<usize>) {
-        self.selected = index;
-    }
-
-    /// Select next event
-    pub fn select_next(&mut self) {
-        match self.selected {
-            Some(i) if i < self.events.len() - 1 => self.selected = Some(i + 1),
-            None if !self.events.is_empty() => self.selected = Some(0),
-            _ => {}
-        }
-    }
-
-    /// Select previous event
-    pub fn select_prev(&mut self) {
-        match self.selected {
-            Some(i) if i > 0 => self.selected = Some(i - 1),
-            _ => {}
-        }
-    }
-
-    /// Get selected event
-    pub fn selected_event(&self) -> Option<&TimelineEvent> {
-        self.selected.and_then(|i| self.events.get(i))
-    }
-
     /// Clear events
     pub fn clear(&mut self) {
         self.events.clear();
@@ -182,37 +158,4 @@ pub fn timeline() -> Timeline {
 /// Create a new timeline event with title
 pub fn timeline_event(title: impl Into<String>) -> TimelineEvent {
     TimelineEvent::new(title)
-}
-
-// Private tests - KEEP HERE: uses internal RenderContext, Buffer, or private fields
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // KEEP HERE: accesses private field `scroll`
-    #[test]
-    fn test_clear() {
-        let mut tl = Timeline::new()
-            .event(TimelineEvent::new("A"))
-            .event(TimelineEvent::new("B"))
-            .event(TimelineEvent::new("C"));
-
-        tl.select_next();
-        tl.clear();
-
-        assert!(tl.is_empty());
-        assert_eq!(tl.selected, None);
-        assert_eq!(tl.scroll, 0);
-    }
-}
-
-// Keep private tests that require private field access here
-
-#[test]
-fn test_timeline_render_private() {
-    // Test private render methods - keeping in source
-    let _t = Timeline::new().event(TimelineEvent::new("Test"));
-
-    // This would require accessing private render methods
-    // Test kept inline due to private access
 }
