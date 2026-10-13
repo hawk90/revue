@@ -1,5 +1,6 @@
 //! TimeSeries widget tests
 
+use super::{render, render_rows};
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
@@ -110,33 +111,6 @@ fn test_time_format_variants() {
 }
 
 // ========================================================================
-// TimeRange tests
-// ========================================================================
-
-#[test]
-fn test_time_range_default() {
-    matches!(TimeRange::default(), TimeRange::All);
-}
-
-#[test]
-fn test_time_range_variants() {
-    let range = TimeRange::LastSeconds(60);
-    matches!(range, TimeRange::LastSeconds(60));
-
-    let range = TimeRange::Range {
-        start: 1000,
-        end: 2000,
-    };
-    matches!(
-        range,
-        TimeRange::Range {
-            start: 1000,
-            end: 2000
-        }
-    );
-}
-
-// ========================================================================
 // TimeMarker tests
 // ========================================================================
 
@@ -174,31 +148,6 @@ fn test_marker_style_default() {
 // ========================================================================
 
 #[test]
-fn test_time_series_new() {
-    // Verify construction and default state via render (fields are private)
-    let chart = TimeSeries::new();
-    let mut buffer = Buffer::new(60, 20);
-    let area = Rect::new(0, 0, 60, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    chart.render(&mut ctx);
-}
-
-#[test]
-fn test_time_series_default() {
-    // Default produces a chart with no title (verified via Debug output)
-    let chart = TimeSeries::default();
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("title: None"));
-}
-
-#[test]
-fn test_time_series_title() {
-    let chart = TimeSeries::new().title("CPU Usage");
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("CPU Usage"));
-}
-
-#[test]
 fn test_time_series_series() {
     // Verify series are stored by checking get_value_bounds works with data
     let chart = TimeSeries::new()
@@ -230,13 +179,6 @@ fn test_time_series_time_range() {
 }
 
 #[test]
-fn test_time_series_y_label() {
-    let chart = TimeSeries::new().y_label("%");
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("\"%\"") || debug.contains("Some(\"%\")"));
-}
-
-#[test]
 fn y_label_is_drawn_above_the_value_axis() {
     let chart = TimeSeries::new()
         .series(TimeSeriesData::new("Mem").point(0, 1.0).point(10, 4.0))
@@ -251,20 +193,6 @@ fn y_label_is_drawn_above_the_value_axis() {
         .map(|x| buffer.get(x, 0).map(|c| c.symbol).unwrap_or(' '))
         .collect();
     assert!(top.starts_with("GB"), "y label not drawn: {top:?}");
-}
-
-#[test]
-fn test_time_series_show_grid() {
-    let chart = TimeSeries::new().show_grid(false);
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("show_grid: false"));
-}
-
-#[test]
-fn test_time_series_show_legend() {
-    let chart = TimeSeries::new().show_legend(false);
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("show_legend: false"));
 }
 
 #[test]
@@ -283,54 +211,9 @@ fn test_time_series_y_range() {
     assert_eq!(max, 50.0);
 }
 
-#[test]
-fn test_time_series_marker() {
-    // Verify markers are accepted without panic via render
-    let chart = TimeSeries::new()
-        .series(
-            TimeSeriesData::new("Data")
-                .point(1000, 50.0)
-                .point(2000, 75.0),
-        )
-        .marker(TimeMarker::new(1000, "Event1"))
-        .marker(TimeMarker::new(2000, "Event2"));
-    let mut buffer = Buffer::new(60, 20);
-    let area = Rect::new(0, 0, 60, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    chart.render(&mut ctx);
-}
-
-#[test]
-fn test_time_series_bg() {
-    let chart = TimeSeries::new().bg(Color::BLACK);
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("bg_color"));
-}
-
-#[test]
-fn test_time_series_grid_color() {
-    let chart = TimeSeries::new().grid_color(Color::WHITE);
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("grid_color"));
-}
-
-#[test]
-fn test_time_series_height() {
-    let chart = TimeSeries::new().height(20);
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("height: Some(20)"));
-}
-
 // ========================================================================
 // Helper function tests
 // ========================================================================
-
-#[test]
-fn test_time_series_helper() {
-    let chart = time_series();
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("title: None"));
-}
 
 #[test]
 fn test_time_series_with_data_helper() {
@@ -341,11 +224,177 @@ fn test_time_series_with_data_helper() {
     assert!(max >= 50.0);
 }
 
+// ========================================================================
+// Builders, checked on the screen
+// ========================================================================
+
+/// A series from (1000, 50) to (2000, 75)
+fn two_points() -> TimeSeriesData {
+    TimeSeriesData::new("Data")
+        .point(1000, 50.0)
+        .point(2000, 75.0)
+}
+
+/// A fixed hour, so charts without data do not read the clock
+fn fixed_range() -> TimeRange {
+    TimeRange::Range {
+        start: 0,
+        end: 3600,
+    }
+}
+
+#[test]
+fn test_time_range_default() {
+    assert!(matches!(TimeRange::default(), TimeRange::All));
+}
+
+#[test]
+fn test_time_range_variants() {
+    let range = TimeRange::LastSeconds(60);
+    assert!(matches!(range, TimeRange::LastSeconds(60)));
+
+    let range = TimeRange::Range {
+        start: 1000,
+        end: 2000,
+    };
+    assert!(matches!(
+        range,
+        TimeRange::Range {
+            start: 1000,
+            end: 2000
+        }
+    ));
+}
+
+#[test]
+fn test_time_series_new() {
+    // No series: no legend and no points, but the grid and the value
+    // labels of the default range 0..100, padded by 10%
+    let chart = TimeSeries::new();
+    let rows = render_rows(&chart, 60, 20);
+    assert_eq!(
+        rows[0].split_whitespace().next(),
+        Some("110.0"),
+        "{rows:#?}"
+    );
+    assert!(rows[0].contains('┄'));
+    assert!(!rows.iter().any(|r| r.contains('●')));
+}
+
+#[test]
+fn test_time_series_default() {
+    assert_eq!(
+        render_rows(&TimeSeries::default().time_range(fixed_range()), 60, 20),
+        render_rows(&TimeSeries::new().time_range(fixed_range()), 60, 20)
+    );
+}
+
+#[test]
+fn test_time_series_title() {
+    let chart = TimeSeries::new().title("CPU Usage");
+    let rows = render_rows(&chart, 40, 20);
+    // Centered: (40 - 9) / 2
+    assert_eq!(rows[0].find("CPU Usage"), Some(15), "{:?}", rows[0]);
+}
+
+#[test]
+fn test_time_series_show_grid() {
+    let rows = render_rows(&TimeSeries::new().series(two_points()), 40, 12);
+    assert!(rows.iter().any(|r| r.contains('┄')));
+
+    let chart = TimeSeries::new().series(two_points()).show_grid(false);
+    let rows = render_rows(&chart, 40, 12);
+    assert!(!rows.iter().any(|r| r.contains('┄')), "{rows:#?}");
+    assert_eq!(super::count_char(&render(&chart, 40, 12), '●'), 2);
+}
+
+#[test]
+fn test_time_series_show_legend() {
+    let rows = render_rows(&TimeSeries::new().series(two_points()), 40, 12);
+    assert_eq!(rows[0].trim(), "─ Data");
+
+    let chart = TimeSeries::new().series(two_points()).show_legend(false);
+    let rows = render_rows(&chart, 40, 12);
+    assert!(!rows.iter().any(|r| r.contains("Data")), "{rows:#?}");
+}
+
+#[test]
+fn test_time_series_marker() {
+    // Markers at the first and last timestamp: lines in the plot's
+    // first and last column
+    let chart = TimeSeries::new()
+        .series(
+            TimeSeriesData::new("Data")
+                .point(1000, 50.0)
+                .point(2000, 75.0),
+        )
+        .marker(TimeMarker::new(1000, "Event1"))
+        .marker(TimeMarker::new(2000, "Event2"));
+    let buffer = render(&chart, 60, 20);
+    // The plot spans columns 8..59, rows 1..18
+    for x in [8, 58] {
+        let marked = (1..18)
+            .filter(|&y| buffer.get(x, y).unwrap().fg == Some(Color::YELLOW))
+            .count();
+        assert!(marked >= 15, "column {x}: {marked}");
+    }
+}
+
+#[test]
+fn test_time_series_bg() {
+    let chart = TimeSeries::new().series(two_points()).bg(Color::BLACK);
+    let buffer = render(&chart, 40, 12);
+    // The background covers the whole chart, under the text too
+    for y in [0, 11] {
+        for x in [0, 20, 39] {
+            assert_eq!(
+                buffer.get(x, y).unwrap().bg,
+                Some(Color::BLACK),
+                "({x}, {y})"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_time_series_grid_color() {
+    let chart = TimeSeries::new()
+        .series(two_points())
+        .grid_color(Color::MAGENTA);
+    let buffer = render(&chart, 40, 12);
+    let grid: Vec<_> = (0..12)
+        .flat_map(|y| (0..40).map(move |x| (x, y)))
+        .filter_map(|(x, y)| buffer.get(x, y))
+        .filter(|c| c.symbol == '┄')
+        .collect();
+    assert!(!grid.is_empty());
+    assert!(grid.iter().all(|c| c.fg == Some(Color::MAGENTA)));
+}
+
+#[test]
+fn test_time_series_height() {
+    let chart = TimeSeries::new().series(two_points()).height(8);
+    let rows = render_rows(&chart, 40, 12);
+    // The time labels end the 8 rows; nothing below
+    assert!(rows[7].contains(':'), "{rows:#?}");
+    assert!(rows[8..].iter().all(|r| r.trim().is_empty()), "{rows:#?}");
+}
+
+#[test]
+fn test_time_series_helper() {
+    assert_eq!(
+        render_rows(&time_series().time_range(fixed_range()), 60, 20),
+        render_rows(&TimeSeries::new().time_range(fixed_range()), 60, 20)
+    );
+}
+
 #[test]
 fn test_cpu_chart_helper() {
     let chart = cpu_chart(vec![(1000, 50.0), (2000, 60.0)]);
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("CPU Usage"));
+    let rows = render_rows(&chart, 40, 12);
+    assert_eq!(rows[0].trim(), "CPU Usage");
+    assert_eq!(rows[1].trim(), "─ CPU");
+    assert_eq!(rows[2].trim(), "%");
     // y_range is set to 0..100
     let (min, max) = chart.get_value_bounds();
     assert_eq!(min, 0.0);
@@ -355,15 +404,19 @@ fn test_cpu_chart_helper() {
 #[test]
 fn test_memory_chart_helper() {
     let chart = memory_chart(vec![(1000, 4.0), (2000, 5.0)]);
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("Memory Usage"));
+    let rows = render_rows(&chart, 40, 12);
+    assert_eq!(rows[0].trim(), "Memory Usage");
+    assert_eq!(rows[1].trim(), "─ Memory");
+    assert_eq!(rows[2].trim(), "GB");
 }
 
 #[test]
 fn test_network_chart_helper() {
     let chart = network_chart(vec![(1000, 100.0)], vec![(1000, 50.0)]);
-    let debug = format!("{:?}", chart);
-    assert!(debug.contains("Network Traffic"));
+    let rows = render_rows(&chart, 40, 12);
+    assert_eq!(rows[0].trim(), "Network Traffic");
+    assert_eq!(rows[1].trim(), "─ RX   ─ TX");
+    assert_eq!(rows[2].trim(), "Mbps");
     // Two series: RX and TX
     let (min, max) = chart.get_value_bounds();
     assert!(min <= 50.0);
@@ -376,64 +429,62 @@ fn test_network_chart_helper() {
 
 #[test]
 fn test_time_series_render() {
-    let mut buffer = Buffer::new(60, 20);
-    let area = Rect::new(0, 0, 60, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let chart = TimeSeries::new().title("Test").series(
         TimeSeriesData::new("Data")
             .point(1000, 50.0)
             .point(2000, 75.0),
     );
-
-    chart.render(&mut ctx);
-}
-
-#[test]
-fn test_time_series_render_empty() {
-    let mut buffer = Buffer::new(60, 20);
-    let area = Rect::new(0, 0, 60, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let chart = TimeSeries::new();
-    chart.render(&mut ctx);
+    let rows = render_rows(&chart, 60, 20);
+    assert_eq!(rows[0].trim(), "Test");
+    assert_eq!(rows[1].trim(), "─ Data");
+    // The two points, joined by a line
+    assert_eq!(super::count_char(&render(&chart, 60, 20), '●'), 2);
+    assert!(rows[2..18].iter().any(|r| r.contains("──")), "{rows:#?}");
 }
 
 #[test]
 fn test_time_series_render_small_area() {
-    let mut buffer = Buffer::new(5, 3);
-    let area = Rect::new(0, 0, 5, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let chart = TimeSeries::new().series(TimeSeriesData::new("Data").point(1000, 50.0));
-
-    chart.render(&mut ctx);
-    // Should handle small area gracefully
+    assert!(render_rows(&chart, 5, 3)
+        .iter()
+        .all(|r| r.trim().is_empty()));
+    // The smallest area that draws: 10 columns, 5 rows
+    assert!(render_rows(&chart, 9, 5)
+        .iter()
+        .all(|r| r.trim().is_empty()));
+    assert!(render_rows(&chart, 10, 4)
+        .iter()
+        .all(|r| r.trim().is_empty()));
+    assert!(render_rows(&chart, 40, 12).iter().any(|r| r.contains('●')));
 }
 
 #[test]
 fn test_time_series_render_with_markers() {
-    let mut buffer = Buffer::new(60, 20);
-    let area = Rect::new(0, 0, 60, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let chart = TimeSeries::new()
-        .series(
-            TimeSeriesData::new("Data")
-                .point(1000, 50.0)
-                .point(2000, 75.0),
-        )
-        .marker(TimeMarker::new(1500, "Event"));
-
-    chart.render(&mut ctx);
+        .series(two_points())
+        .marker(TimeMarker::new(1500, "Event"))
+        .marker(TimeMarker::new(1200, "P").style(MarkerStyle::Point));
+    let rows = render_rows(&chart, 40, 12);
+    // A line marker halfway through the plot (columns 8..38), a point
+    // marker on its top row, and both labels under the plot
+    let line_x = 8 + 15;
+    let column: String = rows[1..10]
+        .iter()
+        .map(|r| r.chars().nth(line_x).unwrap())
+        .collect();
+    assert!(
+        column.chars().filter(|&c| c == '│').count() >= 7,
+        "{rows:#?}"
+    );
+    assert!(rows[1].contains('▼'), "{rows:#?}");
+    assert!(
+        rows[11].contains("Event") && rows[11].contains('P'),
+        "{rows:#?}"
+    );
 }
 
 #[test]
 fn test_time_series_render_multiple_series() {
-    let mut buffer = Buffer::new(60, 20);
-    let area = Rect::new(0, 0, 60, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let chart = TimeSeries::new()
         .series(TimeSeriesData::new("Series1").point(1000, 50.0))
         .series(
@@ -441,40 +492,50 @@ fn test_time_series_render_multiple_series() {
                 .point(1000, 75.0)
                 .color(Color::RED),
         );
-
-    chart.render(&mut ctx);
+    let buffer = render(&chart, 60, 20);
+    assert_eq!(super::rows(&buffer)[0].trim(), "─ Series1   ─ Series2");
+    let points: Vec<_> = (0..20)
+        .flat_map(|y| (0..60).map(move |x| (x, y)))
+        .filter_map(|(x, y)| buffer.get(x, y))
+        .filter(|c| c.symbol == '●')
+        .map(|c| c.fg)
+        .collect();
+    assert_eq!(points, [Some(Color::RED), Some(Color::CYAN)]);
 }
 
 #[test]
 fn test_time_series_render_step_line() {
-    let mut buffer = Buffer::new(60, 20);
-    let area = Rect::new(0, 0, 60, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let chart = TimeSeries::new().series(
         TimeSeriesData::new("Data")
             .line_style(TimeLineStyle::Step)
             .point(1000, 50.0)
             .point(2000, 75.0),
     );
-
-    chart.render(&mut ctx);
+    let rows = render_rows(&chart, 40, 12);
+    assert_eq!(rows[0].trim(), "┐ Data");
+    // Flat at the first value, then straight up at the second timestamp
+    assert!(rows[9].contains("●────"), "{rows:#?}");
+    let riser: String = rows[3..10]
+        .iter()
+        .map(|r| r.chars().nth(38).unwrap())
+        .collect();
+    assert_eq!(riser, "│││││││");
 }
 
 #[test]
 fn test_time_series_render_filled() {
-    let mut buffer = Buffer::new(60, 20);
-    let area = Rect::new(0, 0, 60, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let chart = TimeSeries::new().series(
         TimeSeriesData::new("Data")
             .filled()
             .point(1000, 50.0)
             .point(2000, 75.0),
     );
-
-    chart.render(&mut ctx);
+    let buffer = render(&chart, 40, 12);
+    // The area under the line takes a dark shade of the series color
+    let shade = Some(Color::rgb(0, 76, 76));
+    assert_eq!(buffer.get(37, 9).unwrap().bg, shade);
+    assert_eq!(buffer.get(9, 9).unwrap().bg, shade);
+    assert_eq!(buffer.get(9, 2).unwrap().bg, None);
 }
 
 mod snapshots {

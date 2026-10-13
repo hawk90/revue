@@ -4,8 +4,6 @@
 //! auto-scaling, and support for multiple series.
 
 mod helpers;
-#[cfg(test)]
-mod tests;
 mod types;
 mod view;
 
