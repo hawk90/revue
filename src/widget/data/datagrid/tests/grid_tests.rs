@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::*;
+use super::{render_to, row_text};
 use crate::style::Color;
 
 // ==================== DataGrid Builder Tests ====================
@@ -69,6 +70,6 @@ fn test_datagrid_multi_select() {
 #[test]
 fn test_calculate_widths_empty() {
     let grid = DataGrid::new();
-    let widths = grid.calculate_widths(80);
-    assert!(widths.is_empty());
+    let buf = render_to(&grid, 80, 5);
+    assert!(!row_text(&buf, 0, 80).contains('│'));
 }

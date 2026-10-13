@@ -1,6 +1,8 @@
 #![allow(unused_imports)]
 
 use super::super::*;
+use super::header_separators;
+use crate::event::MouseEventKind;
 use crate::layout::Rect;
 
 #[test]
@@ -68,13 +70,11 @@ fn test_get_display_widths() {
         .row(GridRow::new().cell("a", "1").cell("b", "2"));
 
     // Before any custom widths, should use calculated widths
-    let widths = grid.get_display_widths(100);
-    assert_eq!(widths.len(), 2);
+    assert_eq!(header_separators(&grid, 100), vec![10, 26]);
 
     // After setting custom width
     grid.set_column_width(0, 20);
-    let widths = grid.get_display_widths(100);
-    assert_eq!(widths[0], 20);
+    assert_eq!(header_separators(&grid, 100)[0], 20);
 }
 
 #[test]
@@ -92,14 +92,14 @@ fn test_hit_test_resize_handle() {
 
     // First column ends at x=10, separator at x=11
     // hit_test checks col_x after adding width+1, so border at col_x=11
-    let hit = grid.hit_test_resize_handle(11, 0, area);
-    assert_eq!(hit, Some(0)); // First column border
+    grid.handle_mouse(MouseEventKind::Move, 11, 0, area);
+    assert_eq!(grid.hovered_resize, Some(0)); // First column border
 
     // Second column ends at x=11+15=26, separator at x=27
-    let hit = grid.hit_test_resize_handle(27, 0, area);
-    assert_eq!(hit, Some(1)); // Second column border
+    grid.handle_mouse(MouseEventKind::Move, 27, 0, area);
+    assert_eq!(grid.hovered_resize, Some(1)); // Second column border
 
     // Not on border
-    let hit = grid.hit_test_resize_handle(5, 0, area);
-    assert!(hit.is_none());
+    grid.handle_mouse(MouseEventKind::Move, 5, 0, area);
+    assert!(grid.hovered_resize.is_none());
 }

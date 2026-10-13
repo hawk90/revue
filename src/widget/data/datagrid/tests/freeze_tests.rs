@@ -1,25 +1,10 @@
 #![allow(unused_imports)]
 
 use super::super::*;
+use super::{render_to, row_text};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::widget::traits::{RenderContext, View};
-
-/// Render a grid into a fresh buffer of the given size.
-fn render_to(grid: &DataGrid, w: u16, h: u16) -> Buffer {
-    let mut buffer = Buffer::new(w, h);
-    let area = Rect::new(0, 0, w, h);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    grid.render(&mut ctx);
-    buffer
-}
-
-/// Read a full row of rendered symbols as a string.
-fn row_text(buf: &Buffer, y: u16, w: u16) -> String {
-    (0..w)
-        .map(|x| buf.get(x, y).map(|c| c.symbol).unwrap_or(' '))
-        .collect()
-}
 
 /// Six fixed-width columns "C0".."C5" so positions are deterministic.
 fn six_col_grid() -> DataGrid {

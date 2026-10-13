@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::*;
+use crate::event::{MouseButton, MouseEventKind};
 
 #[test]
 fn test_reorderable() {
@@ -27,7 +28,12 @@ fn test_column_order() {
     // Simulate drag reorder (move column 0 to position 2)
     grid.dragging_col = Some(0);
     grid.drop_target_col = Some(2);
-    grid.end_column_drag();
+    grid.handle_mouse(
+        MouseEventKind::Up(MouseButton::Left),
+        0,
+        0,
+        crate::layout::Rect::new(0, 0, 80, 24),
+    );
 
     // Check new order
     assert_eq!(grid.column_order, vec![1, 0, 2]);
@@ -109,14 +115,16 @@ fn test_hit_test_header() {
     let area = crate::layout::Rect::new(0, 0, 80, 24);
 
     // Test hit on first column header (y=0, x within first column 0-9)
-    let hit = grid.hit_test_header(5, 0, area);
-    assert_eq!(hit, Some(0)); // First column header
+    grid.handle_mouse(MouseEventKind::Down(MouseButton::Left), 5, 0, area);
+    assert_eq!(grid.dragging_col, Some(0)); // First column header
+    grid.handle_mouse(MouseEventKind::Up(MouseButton::Left), 5, 0, area);
 
     // Test hit on second column header (x=11-25)
-    let hit = grid.hit_test_header(15, 0, area);
-    assert_eq!(hit, Some(1)); // Second column header
+    grid.handle_mouse(MouseEventKind::Down(MouseButton::Left), 15, 0, area);
+    assert_eq!(grid.dragging_col, Some(1)); // Second column header
+    grid.handle_mouse(MouseEventKind::Up(MouseButton::Left), 15, 0, area);
 
     // Test hit on data row (y=1) - should return None
-    let hit = grid.hit_test_header(5, 1, area);
-    assert!(hit.is_none());
+    assert!(!grid.handle_mouse(MouseEventKind::Down(MouseButton::Left), 5, 1, area));
+    assert!(grid.dragging_col.is_none());
 }

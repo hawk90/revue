@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::*;
+use super::{footer_cells, render_to, row_text};
 
 #[test]
 fn test_footer_sum() {
@@ -14,8 +15,7 @@ fn test_footer_sum() {
     assert!(grid.show_footer);
     assert_eq!(grid.footer_rows.len(), 1);
 
-    let sum = grid.compute_aggregation("value", AggregationType::Sum);
-    assert_eq!(sum, Some(60.0));
+    assert_eq!(footer_cells(&grid, 0)[0], "Sum: 60");
 }
 
 #[test]
@@ -27,8 +27,7 @@ fn test_footer_average() {
         .row(GridRow::new().cell("value", "30"))
         .add_average("value");
 
-    let avg = grid.compute_aggregation("value", AggregationType::Average);
-    assert_eq!(avg, Some(20.0));
+    assert_eq!(footer_cells(&grid, 0)[0], "Avg: 20");
 }
 
 #[test]
@@ -37,10 +36,10 @@ fn test_footer_count() {
         .column(GridColumn::new("value", "Value"))
         .row(GridRow::new().cell("value", "10"))
         .row(GridRow::new().cell("value", "20"))
-        .row(GridRow::new().cell("value", "30"));
+        .row(GridRow::new().cell("value", "30"))
+        .footer(FooterRow::new("").count("value"));
 
-    let count = grid.compute_aggregation("value", AggregationType::Count);
-    assert_eq!(count, Some(3.0));
+    assert_eq!(footer_cells(&grid, 0)[0], "Count: 3");
 }
 
 #[test]
@@ -49,13 +48,13 @@ fn test_footer_min_max() {
         .column(GridColumn::new("value", "Value"))
         .row(GridRow::new().cell("value", "5"))
         .row(GridRow::new().cell("value", "15"))
-        .row(GridRow::new().cell("value", "10"));
+        .row(GridRow::new().cell("value", "10"))
+        .footer(FooterRow::new("").min("value"))
+        .footer(FooterRow::new("").max("value"));
 
-    let min = grid.compute_aggregation("value", AggregationType::Min);
-    assert_eq!(min, Some(5.0));
+    assert_eq!(footer_cells(&grid, 1)[0], "Min: 5");
 
-    let max = grid.compute_aggregation("value", AggregationType::Max);
-    assert_eq!(max, Some(15.0));
+    assert_eq!(footer_cells(&grid, 0)[0], "Max: 15");
 }
 
 #[test]
@@ -79,18 +78,17 @@ fn test_footer_with_filter() {
         .column(GridColumn::new("value", "Value"))
         .row(GridRow::new().cell("name", "Apple").cell("value", "10"))
         .row(GridRow::new().cell("name", "Banana").cell("value", "20"))
-        .row(GridRow::new().cell("name", "Cherry").cell("value", "30"));
+        .row(GridRow::new().cell("name", "Cherry").cell("value", "30"))
+        .add_sum("value");
 
     // Sum all
-    let sum_all = grid.compute_aggregation("value", AggregationType::Sum);
-    assert_eq!(sum_all, Some(60.0));
+    assert_eq!(footer_cells(&grid, 0)[1], "Sum: 60");
 
     // Filter to "Ap" items (only Apple matches)
     grid.set_filter("Ap");
 
     // Sum only filtered items (Apple=10)
-    let sum_filtered = grid.compute_aggregation("value", AggregationType::Sum);
-    assert_eq!(sum_filtered, Some(10.0));
+    assert_eq!(footer_cells(&grid, 0)[1], "Sum: 10");
 }
 
 #[test]
@@ -98,11 +96,11 @@ fn test_aggregation_non_numeric() {
     let grid = DataGrid::new()
         .column(GridColumn::new("name", "Name"))
         .row(GridRow::new().cell("name", "Alice"))
-        .row(GridRow::new().cell("name", "Bob"));
+        .row(GridRow::new().cell("name", "Bob"))
+        .add_sum("name");
 
     // Non-numeric values should return None for sum/avg
-    let sum = grid.compute_aggregation("name", AggregationType::Sum);
-    assert!(sum.is_none());
+    assert_eq!(footer_cells(&grid, 0)[0], "Sum: —");
 }
 
 #[test]
@@ -113,9 +111,7 @@ fn test_footer_values() {
         .row(GridRow::new().cell("value", "20"))
         .footer(FooterRow::new("Totals").sum("value"));
 
-    let values = grid.get_footer_values(&grid.footer_rows[0]);
-    assert_eq!(values.len(), 1);
-    assert!(values[0].1.contains("30")); // Sum of 10+20
+    assert_eq!(footer_cells(&grid, 0)[0], "Sum: 30"); // Sum of 10+20
 }
 
 #[test]
@@ -128,8 +124,7 @@ fn test_footer_values_with_label() {
                 .aggregation(ColumnAggregation::new("value", AggregationType::Sum).label("Total")),
         );
 
-    let values = grid.get_footer_values(&grid.footer_rows[0]);
-    assert!(values[0].1.contains("Total"));
+    assert_eq!(footer_cells(&grid, 0)[0], "Total: 100");
 }
 
 #[test]
@@ -162,29 +157,15 @@ fn test_show_footer_toggle() {
 
 #[test]
 fn test_aggregation_empty_data() {
-    let grid = DataGrid::new().column(GridColumn::new("value", "Value"));
+    let grid = DataGrid::new()
+        .column(GridColumn::new("value", "Value"))
+        .add_sum("value");
 
     // No rows, should return None
-    let sum = grid.compute_aggregation("value", AggregationType::Sum);
-    assert!(sum.is_none());
+    assert_eq!(footer_cells(&grid, 0)[0], "Sum: —");
 }
 
 // --- Rendering: the footer row ---
-
-fn render_to(grid: &DataGrid, w: u16, h: u16) -> crate::render::Buffer {
-    use crate::widget::traits::{RenderContext, View};
-    let mut buffer = crate::render::Buffer::new(w, h);
-    let area = crate::layout::Rect::new(0, 0, w, h);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    grid.render(&mut ctx);
-    buffer
-}
-
-fn row_text(buf: &crate::render::Buffer, y: u16, w: u16) -> String {
-    (0..w)
-        .map(|x| buf.get(x, y).map(|c| c.symbol).unwrap_or(' '))
-        .collect()
-}
 
 fn numbered_grid(rows: usize) -> DataGrid {
     let mut grid = DataGrid::new()
