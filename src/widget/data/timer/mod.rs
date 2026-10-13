@@ -169,14 +169,12 @@ mod tests {
     #[test]
     fn test_render_large_time_with_colon() {
         let result = render_large_time("1:23");
-        assert_eq!(result.len(), 3);
-        // Each digit is 4 chars (3 pattern + 1 space), colon is 2 chars
-        // "1" (4) + ":" (2) + "2" (4) + "3" (4) = 14 chars roughly
-        assert!(!result[0].is_empty());
-        assert!(!result[1].is_empty());
-        assert!(!result[2].is_empty());
+        // Each digit is 3 columns plus a space; the colon is 1 plus a space
+        assert_eq!(
+            result,
+            [" ▀█   ▀▀█ ▀▀█ ", "  █ • █▀▀  ▀█ ", "  ▀   ▀▀▀ ▀▀▀ "]
+        );
     }
-
     // KEEP HERE: calls private function render_large_time
     #[test]
     fn test_render_large_time_empty() {
@@ -190,8 +188,8 @@ mod tests {
     // KEEP HERE: calls private function render_large_time
     #[test]
     fn test_render_large_time_invalid_chars() {
-        let result = render_large_time("ab:cd");
-        // Invalid chars should be skipped
-        assert_eq!(result.len(), 3);
+        // Characters other than digits and ':' are skipped
+        assert_eq!(render_large_time("ab:cd"), render_large_time(":"));
+        assert_eq!(render_large_time("1a"), render_large_time("1"));
     }
 }

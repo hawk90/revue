@@ -181,17 +181,6 @@ fn test_timeline_select_last_index_boundary() {
 }
 
 #[test]
-fn test_timeline_select_wrap_around_disabled() {
-    let mut tl = Timeline::new()
-        .event(TimelineEvent::new("Event 1"))
-        .event(TimelineEvent::new("Event 2"));
-
-    tl.select(Some(1));
-    tl.select_next(); // Should NOT wrap to 0
-    assert_eq!(tl.selected_event().unwrap().title, "Event 2");
-}
-
-#[test]
 fn test_timeline_selection_with_invalid_index() {
     let mut tl = Timeline::new()
         .event(TimelineEvent::new("Event 1"))

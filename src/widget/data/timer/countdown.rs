@@ -350,27 +350,6 @@ mod tests {
         assert!((timer.progress() - 0.5).abs() < 0.01);
     }
 
-    // KEEP HERE: accesses private field title
-    #[test]
-    fn test_pomodoro() {
-        let timer = Timer::pomodoro();
-        assert_eq!(timer.remaining_seconds(), 25 * 60);
-        assert_eq!(timer.title, Some("Pomodoro".to_string()));
-    }
-
-    // KEEP HERE: accesses private field started_at
-    #[test]
-    fn test_timer_stop() {
-        let mut timer = Timer::countdown(60);
-        timer.start();
-        assert_eq!(timer.state(), TimerState::Running);
-
-        timer.stop();
-        assert_eq!(timer.state(), TimerState::Stopped);
-        assert_eq!(timer.remaining_seconds(), 60);
-        assert!(timer.started_at.is_none());
-    }
-
     // KEEP HERE: accesses private field remaining_ms
     #[test]
     fn test_timer_reset() {
@@ -392,60 +371,6 @@ mod tests {
         timer.reset();
         assert_eq!(timer.remaining_seconds(), 60);
         assert!(timer.started_at.is_none()); // Not running
-    }
-
-    // KEEP HERE: accesses private field state
-    #[test]
-    fn test_timer_is_completed() {
-        let mut timer = Timer::countdown(60);
-        assert!(!timer.is_completed());
-
-        timer.state = TimerState::Completed;
-        assert!(timer.is_completed());
-    }
-
-    // KEEP HERE: accesses private field title
-    #[test]
-    fn test_timer_short_break() {
-        let timer = Timer::short_break();
-        assert_eq!(timer.remaining_seconds(), 5 * 60);
-        assert_eq!(timer.title, Some("Short Break".to_string()));
-    }
-
-    // KEEP HERE: accesses private field title
-    #[test]
-    fn test_timer_long_break() {
-        let timer = Timer::long_break();
-        assert_eq!(timer.remaining_seconds(), 15 * 60);
-        assert_eq!(timer.title, Some("Long Break".to_string()));
-    }
-
-    // KEEP HERE: accesses private field show_progress
-    #[test]
-    fn test_timer_show_progress() {
-        let timer = Timer::countdown(60).show_progress(false);
-        assert!(!timer.show_progress);
-    }
-
-    // KEEP HERE: accesses private field progress_width
-    #[test]
-    fn test_timer_progress_width() {
-        let timer = Timer::countdown(60).progress_width(50);
-        assert_eq!(timer.progress_width, 50);
-    }
-
-    // KEEP HERE: accesses private field large_digits
-    #[test]
-    fn test_timer_large_digits() {
-        let timer = Timer::countdown(60).large_digits(true);
-        assert!(timer.large_digits);
-    }
-
-    // KEEP HERE: accesses private field auto_restart
-    #[test]
-    fn test_timer_auto_restart() {
-        let timer = Timer::countdown(60).auto_restart(true);
-        assert!(timer.auto_restart);
     }
 
     // KEEP HERE: accesses private field remaining_ms

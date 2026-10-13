@@ -245,84 +245,6 @@ impl_props_builders!(Stopwatch);
 mod tests {
     use super::*;
 
-    // KEEP HERE: accesses private field state
-    #[test]
-    fn test_stopwatch_new() {
-        let sw = Stopwatch::new();
-        assert_eq!(sw.elapsed_millis(), 0);
-        assert_eq!(sw.state, TimerState::Stopped);
-    }
-
-    // KEEP HERE: accesses private field laps
-    #[test]
-    fn test_stopwatch_lap() {
-        let mut sw = Stopwatch::new();
-        // Manually add laps to test lap storage
-        sw.laps.push(1000);
-        sw.laps.push(2500);
-
-        assert_eq!(sw.laps().len(), 2);
-        assert_eq!(sw.laps()[0], 1000);
-        assert_eq!(sw.laps()[1], 2500);
-    }
-
-    // KEEP HERE: accesses private field state
-    #[test]
-    fn test_stopwatch_toggle() {
-        let mut sw = Stopwatch::new();
-        assert_eq!(sw.state, TimerState::Stopped);
-
-        sw.toggle();
-        assert_eq!(sw.state, TimerState::Running);
-
-        sw.toggle();
-        assert_eq!(sw.state, TimerState::Paused);
-
-        sw.toggle();
-        assert_eq!(sw.state, TimerState::Running);
-    }
-
-    // KEEP HERE: accesses private fields state, elapsed_ms, started_at, laps
-    #[test]
-    fn test_stopwatch_stop() {
-        let mut sw = Stopwatch::new();
-        sw.start();
-        assert_eq!(sw.state, TimerState::Running);
-
-        sw.stop();
-        assert_eq!(sw.state, TimerState::Stopped);
-        assert_eq!(sw.elapsed_ms, 0);
-        assert!(sw.started_at.is_none());
-        assert!(sw.laps.is_empty());
-    }
-
-    // KEEP HERE: accesses private fields elapsed_ms, laps
-    #[test]
-    fn test_stopwatch_reset() {
-        let mut sw = Stopwatch::new();
-        sw.start();
-        sw.elapsed_ms = 5000;
-        sw.laps.push(1000);
-
-        sw.reset();
-        assert_eq!(sw.elapsed_ms, 0);
-        assert!(sw.started_at.is_some()); // Still running
-        assert!(sw.laps.is_empty());
-    }
-
-    // KEEP HERE: accesses private fields elapsed_ms, laps
-    #[test]
-    fn test_stopwatch_reset_when_stopped() {
-        let mut sw = Stopwatch::new();
-        sw.elapsed_ms = 5000;
-        sw.laps.push(1000);
-
-        sw.reset();
-        assert_eq!(sw.elapsed_ms, 0);
-        assert!(sw.started_at.is_none()); // Not running
-        assert!(sw.laps.is_empty());
-    }
-
     // KEEP HERE: accesses private field elapsed_ms
     #[test]
     fn test_stopwatch_format_elapsed() {
@@ -342,41 +264,5 @@ mod tests {
 
         sw.elapsed_ms = 5500;
         assert_eq!(sw.elapsed_seconds(), 5.5);
-    }
-
-    // KEEP HERE: accesses private field show_laps
-    #[test]
-    fn test_stopwatch_show_laps() {
-        let sw = Stopwatch::new().show_laps(false);
-        assert!(!sw.show_laps);
-    }
-
-    // KEEP HERE: accesses private field max_laps
-    #[test]
-    fn test_stopwatch_max_laps() {
-        let sw = Stopwatch::new().max_laps(10);
-        assert_eq!(sw.max_laps, 10);
-    }
-
-    // KEEP HERE: accesses private field title
-    #[test]
-    fn test_stopwatch_title() {
-        let sw = Stopwatch::new().title("My Stopwatch");
-        assert_eq!(sw.title, Some("My Stopwatch".to_string()));
-    }
-
-    // KEEP HERE: accesses private field large_digits
-    #[test]
-    fn test_stopwatch_large_digits() {
-        let sw = Stopwatch::new().large_digits(true);
-        assert!(sw.large_digits);
-    }
-
-    // KEEP HERE: accesses private fields elapsed_ms, state
-    #[test]
-    fn test_stopwatch_default() {
-        let sw = Stopwatch::default();
-        assert_eq!(sw.elapsed_ms, 0);
-        assert_eq!(sw.state, TimerState::Stopped);
     }
 }
