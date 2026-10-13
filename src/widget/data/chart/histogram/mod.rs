@@ -2,7 +2,11 @@
 //!
 //! Supports automatic binning, density normalization, cumulative histograms, and statistics overlay.
 
-mod render;
+mod axes;
+mod bars;
+mod scale;
+mod stats;
+mod view;
 
 use super::chart_common::{Axis, ChartGrid, ChartOrientation, Legend};
 use super::chart_stats::{self, mean, median};

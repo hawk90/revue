@@ -1,6 +1,6 @@
 //! Box plot group data
 
-use super::types::{BoxStats, WhiskerStyle};
+use super::stats::{BoxStats, WhiskerStyle};
 use crate::style::Color;
 
 /// A box plot group

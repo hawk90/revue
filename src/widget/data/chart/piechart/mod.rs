@@ -2,8 +2,10 @@
 //!
 //! Supports standard pie charts, donut charts, labels, legends, and exploded segments.
 
-mod render;
+mod labels;
+mod slices;
 mod types;
+mod view;
 
 pub use types::{PieLabelStyle, PieSlice, PieStyle};
 

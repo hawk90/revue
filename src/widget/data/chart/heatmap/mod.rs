@@ -3,6 +3,7 @@
 //! Displays 2D data as a color-coded grid, useful for visualizing matrices,
 //! activity patterns, correlation data, and more.
 
+mod cell;
 mod types;
 mod view;
 
@@ -232,57 +233,6 @@ impl HeatMap {
     pub fn highlight(mut self, row: usize, col: usize) -> Self {
         self.highlighted = Some((row, col));
         self
-    }
-
-    /// Normalize value to 0.0-1.0
-    pub fn normalize(&self, value: f64) -> f64 {
-        if self.max_val == self.min_val {
-            0.5
-        } else {
-            (value - self.min_val) / (self.max_val - self.min_val)
-        }
-    }
-
-    /// Get color for value
-    pub fn color_for(&self, value: f64) -> Color {
-        let normalized = self.normalize(value);
-
-        if let (ColorScale::Custom, Some((low, high))) = (self.color_scale, &self.custom_colors) {
-            // Linear interpolation
-            Color::rgb(
-                (low.r as f64 + normalized * (high.r as f64 - low.r as f64)) as u8,
-                (low.g as f64 + normalized * (high.g as f64 - low.g as f64)) as u8,
-                (low.b as f64 + normalized * (high.b as f64 - low.b as f64)) as u8,
-            )
-        } else {
-            self.color_scale.color_at(normalized)
-        }
-    }
-
-    /// Render cell content
-    pub fn render_cell(&self, value: f64) -> String {
-        if self.show_values {
-            format!(
-                "{:>width$.prec$}",
-                value,
-                width = self.cell_width,
-                prec = self.value_decimals
-            )
-        } else {
-            match self.cell_display {
-                CellDisplay::Block => "█".repeat(self.cell_width),
-                CellDisplay::HalfBlock => "▀".repeat(self.cell_width),
-                CellDisplay::Value => {
-                    format!(
-                        "{:>width$.prec$}",
-                        value,
-                        width = self.cell_width,
-                        prec = self.value_decimals
-                    )
-                }
-                CellDisplay::Custom => "■".repeat(self.cell_width),
-            }
-        }
     }
 }
 
