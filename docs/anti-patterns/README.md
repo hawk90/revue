@@ -386,7 +386,7 @@ ADR · performance budgets · migration guides · fuzz/property testing.
 - **`REV-TEST-008`** Duplicate Test Binary — `mod x;` 한 줄짜리 파일이 같은 테스트를 한 번 더 돌린다. *(관찰: #929, #932)*
 - **`REV-TEST-009`** Unbounded CPU-Bound Test Next to Wall-Clock Tests — CPU를 독점하는 테스트 옆에서 시간 제한 테스트가 버그 없이 실패한다. *(관찰: #929, #931, #938)*
 - **`REV-TEST-010`** Same Body, Different Names — 이름이 약속하는 검사를 본문이 하지 않는다. *(관찰: #930)*
-- **`REV-TEST-011`** Behaviour Changed Inside a Split — 파일 분리 커밋이 기본값이나 동작을 같이 바꾼다. 분리 전후 덤프를 비교하고, 동작 변경은 따로 낸다. *(관찰: #271의 TextArea 기본값, #1007)*
+- **`REV-TEST-011`** Behavior Changed Inside a Split — 파일 분리 커밋이 기본값이나 동작을 같이 바꾼다. 분리 전후 덤프를 비교하고, 동작 변경은 따로 낸다. *(관찰: #271의 TextArea 기본값, #1007)*
 
 ### 20. Public API / SemVer — API 및 SemVer 안티패턴
 

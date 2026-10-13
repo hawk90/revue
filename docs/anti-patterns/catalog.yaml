@@ -2021,7 +2021,7 @@ entries:
     observed:
       - "#930: 위젯 테스트 정리(W1~W7)에서 76개 묶음을 찾아 위젯별로 기록"
   - id: REV-TEST-011
-    title: "Behaviour Changed Inside a Split"
+    title: "Behavior Changed Inside a Split"
     category: testing
     review_tag: TEST
     summary: "파일을 나누는 리팩터링 커밋이 기본값이나 동작을 같이 바꾼다. 리뷰는 코드가 옮겨졌다는 것만 보고, 바뀐 값은 큰 diff에 묻힌다. 분리 전후가 같다는 증명이 없으면 회귀가 '리팩터링'으로 들어간다."
