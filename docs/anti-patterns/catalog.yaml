@@ -1806,6 +1806,26 @@ entries:
     category: rust
     review_tag: RUST
     summary: "Rust 1.87+ 등을 선언하지만 CI가 실제 최소 버전에서 build하지 않는다. MSRV는 문서가 아니라 테스트 계약이어야 한다."
+  - id: REV-RUST-011
+    title: "Visibility Widened to Make a Split Compile"
+    category: rust
+    review_tag: RUST
+    summary: "타입의 메서드를 다른 파일로 나눌 때, 새 파일이 타입의 private 필드를 못 보면 모듈 배치를 고치지 않고 필드를 `pub(super)`·`pub(crate)`·`pub`로 연다. 컴파일은 되지만 캡슐화가 그 모듈 전체, 크레이트 전체로 새고, SRP 분리가 오히려 불변식을 지키는 경계를 지운다."
+    problem:
+      - "필드를 연 뒤로는 같은 모듈의 어느 파일이든 필드를 직접 바꿀 수 있어서, setter나 메서드가 지키던 불변식(커서는 글자 수 이하, 선택은 목록 안)을 우회한다."
+      - "`pub(crate)`는 위젯과 무관한 모듈에서도 필드를 쓰게 만들고, 나중에 필드를 바꾸기 어렵게 한다."
+      - "분리 PR은 동작이 같다는 것만 검증하므로, 넓어진 가시성은 리뷰에서 눈에 잘 띄지 않는다."
+    detect:
+      - "분리 커밋의 diff에서 같은 필드가 `-    name:`에서 `+    pub(super) name:`로 바뀐다"
+      - "타입은 `core.rs` 같은 형제 파일에 있고, 그 메서드를 담은 새 파일들이 같은 층의 형제 모듈이다"
+      - "`scripts/check-field-visibility.sh`(pre-commit)가 스테이징된 변경에서 이것을 찾는다"
+    fix:
+      - "타입(과 빌더)을 `mod.rs`에 두고 새 파일을 그 하위 모듈로 만든다. Rust에서 하위 모듈은 부모의 private 필드를 볼 수 있다 (Combobox, 감사 후 Autocomplete가 이 모양)."
+      - "파일 사이에서 불러야 하는 것은 메서드뿐이면 메서드에만 `pub(super)`를 붙이고 필드는 private으로 둔다."
+      - "여러 파일이 같이 쓰는 그리기 상태는 필드를 여는 대신 값 타입(예: TimeSeries의 `Plot`)으로 만들어 넘긴다."
+      - "공개 API를 일부러 바꾸는 경우만 `ALLOW_FIELD_WIDENING=1`로 검사를 넘기고, 커밋 메시지에 이유를 쓴다."
+    observed:
+      - "autocomplete 감사(2026-10-13): `core.rs`의 `Autocomplete`를 `filter`/`input`/`view`로 나누면서 모든 필드를 `pub(super)`로 열자는 변경이 나왔고, 사용자가 커밋 전에 막았다. 구조체를 `mod.rs`로 옮겨 필드를 private으로 두고 나눴다 (#1003). #925 이후 감사 커밋 14개를 구조체 정의 전후로 비교한 결과, 기존 private 필드를 넓힌 경우는 없었다."
   - id: REV-MEM-001
     title: "Arena Without Generation"
     category: memory
