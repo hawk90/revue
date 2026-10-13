@@ -172,11 +172,14 @@ impl DataGrid {
 
             // Fill the content background first so any gap between the scrolled
             // middle and the right-frozen columns is covered.
-            for gx in (params.area_x + params.row_num_width)..params.content_end {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(row_bg);
-                ctx.set(gx, row_y, cell);
-            }
+            let content_start = params.area_x + params.row_num_width;
+            ctx.fill_bg(
+                content_start,
+                row_y,
+                params.content_end.saturating_sub(content_start),
+                1,
+                row_bg,
+            );
 
             // Draw cells from the positioned column slots.
             for slot in params.slots {
@@ -216,11 +219,13 @@ impl DataGrid {
     ) {
         // Fill the header background first so gaps (from horizontal scroll with
         // frozen-right columns) are covered.
-        for gx in row_num_width..content_end {
-            let mut cell = Cell::new(' ');
-            cell.bg = Some(self.colors.header_bg);
-            ctx.set(gx, y, cell);
-        }
+        ctx.fill_bg(
+            row_num_width,
+            y,
+            content_end.saturating_sub(row_num_width),
+            1,
+            self.colors.header_bg,
+        );
 
         for slot in slots {
             let (orig_idx, col) = (slot.orig_idx, slot.col);
@@ -245,11 +250,7 @@ impl DataGrid {
             } else {
                 self.colors.header_bg
             };
-            for dx in 0..w {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(bg);
-                ctx.set(x + dx, y, cell);
-            }
+            ctx.fill_bg(x, y, w, 1, bg);
 
             // Draw title with sort indicator
             let mut title = col.title.clone();
@@ -342,11 +343,7 @@ impl DataGrid {
         y: u16,
     ) {
         let bg = self.colors.header_bg;
-        for gx in 0..content_end {
-            let mut cell = Cell::new(' ');
-            cell.bg = Some(bg);
-            ctx.set(gx, y, cell);
-        }
+        ctx.fill_bg(0, y, content_end, 1, bg);
 
         let values = self.get_footer_values(footer);
         for (i, slot) in slots.iter().enumerate() {
@@ -421,11 +418,7 @@ impl DataGrid {
         };
 
         // Fill background
-        for dx in 0..pos.width {
-            let mut cell = Cell::new(' ');
-            cell.bg = Some(cell_bg);
-            ctx.set(pos.x + dx, pos.y, cell);
-        }
+        ctx.fill_bg(pos.x, pos.y, pos.width, 1, cell_bg);
 
         // Draw value or edit buffer
         if state.is_editing {
