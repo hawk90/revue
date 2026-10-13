@@ -1774,6 +1774,7 @@ entries:
       - "NaN이 의미가 없는 값(위치, 시간)은 받을 때 거르거나 거부한다."
     observed:
       - "datagrid 숫자 컬럼, gradient stop 위치, streamline layer 정렬이 NaN에서 total order panic, keyframe 시간은 `unwrap()` panic (#986). chart 통계는 NaN을 먼저 걸러서 안전하다."
+      - "`HeatMap::from_flat`이 행×열보다 짧은 데이터에서 slice index panic (#993)."
   - id: REV-RUST-008
     title: "Error String Erasure"
     category: rust
@@ -2073,6 +2074,12 @@ entries:
     category: ux
     review_tag: UX
     summary: "텍스트가 잘렸지만 ellipsis나 scroll 가능 여부가 표시되지 않는다."
+    detect:
+      - "숫자를 칸 폭에 맞춰 뒷자리부터 자른다. 잘린 숫자는 다른 숫자로 읽힌다 (155123 → `15512`)"
+    fix:
+      - "숫자는 자르지 말고 칸에 맞는 표기(`k`/`M` 접미사, 지수)를 고른다."
+    observed:
+      - "Histogram·BoxPlot 축 라벨이 5~6칸으로 잘려 다른 값을 보인다 (#990)."
   - id: REV-UX-007
     title: "Mouse Hover as Persistent State"
     category: ux
