@@ -1,7 +1,11 @@
 //! Helper functions for chart widget
 
+mod axes;
 mod geometry;
+mod legend;
+mod marks;
 mod render;
+mod scale;
 
 use super::chart_common::{Axis, LegendPosition};
 use super::types::Series;
