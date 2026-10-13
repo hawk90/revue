@@ -158,3 +158,17 @@ fn test_date_marker_symbol_variants() {
     let check = DateMarker::new(date, Color::GREEN).symbol('✔');
     assert_eq!(check.symbol, Some('✔'));
 }
+
+#[test]
+fn test_date_marker_new() {
+    let marker = DateMarker::new(Date::new(2025, 1, 1), Color::RED);
+    assert_eq!(marker.date, Date::new(2025, 1, 1));
+    assert_eq!(marker.color, Color::RED);
+    assert_eq!(marker.symbol, None);
+}
+
+#[test]
+fn test_date_marker_symbol() {
+    let marker = DateMarker::new(Date::new(2025, 1, 1), Color::RED).symbol('★');
+    assert_eq!(marker.symbol, Some('★'));
+}

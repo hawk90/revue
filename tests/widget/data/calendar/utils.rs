@@ -117,3 +117,20 @@ fn test_first_day_of_month_march_leap_year() {
     let day = first_day_of_month(2000, 3);
     assert_eq!(day, 3);
 }
+
+#[test]
+fn test_days_in_month_all_months() {
+    assert_eq!(days_in_month(2025, 1), 31); // January
+    assert_eq!(days_in_month(2025, 2), 28); // February (non-leap)
+    assert_eq!(days_in_month(2024, 2), 29); // February (leap)
+    assert_eq!(days_in_month(2025, 3), 31); // March
+    assert_eq!(days_in_month(2025, 4), 30); // April
+    assert_eq!(days_in_month(2025, 5), 31); // May
+    assert_eq!(days_in_month(2025, 6), 30); // June
+    assert_eq!(days_in_month(2025, 7), 31); // July
+    assert_eq!(days_in_month(2025, 8), 31); // August
+    assert_eq!(days_in_month(2025, 9), 30); // September
+    assert_eq!(days_in_month(2025, 10), 31); // October
+    assert_eq!(days_in_month(2025, 11), 30); // November
+    assert_eq!(days_in_month(2025, 12), 31); // December
+}

@@ -8,6 +8,7 @@
 //! - Date navigation (prev_day, next_day)
 
 use revue::widget::data::calendar::Date;
+use revue::widget::Calendar;
 
 #[test]
 fn test_is_valid_true() {
@@ -261,4 +262,146 @@ fn test_is_valid_year_boundary() {
     // Negative year is valid
     let date = Date::new(-100, 6, 15);
     assert!(date.is_valid());
+}
+
+#[test]
+fn test_date_new() {
+    let date = Date::new(2025, 6, 15);
+    assert_eq!(date.year, 2025);
+    assert_eq!(date.month, 6);
+    assert_eq!(date.day, 15);
+}
+
+#[test]
+fn test_date_default() {
+    let date = Date::default();
+    assert_eq!(date.year, 2025);
+    assert_eq!(date.month, 1);
+    assert_eq!(date.day, 1);
+}
+
+#[test]
+fn test_date_today() {
+    let date = Date::today();
+    assert_eq!(date, Date::new(2025, 1, 1));
+}
+
+#[test]
+fn test_date_valid() {
+    assert!(Date::new(2025, 1, 1).is_valid());
+    assert!(Date::new(2025, 2, 28).is_valid());
+    assert!(Date::new(2024, 2, 29).is_valid()); // 윤년 (Leap year)
+    assert!(!Date::new(2025, 2, 29).is_valid()); // 윤년 아님 (Not leap year)
+    assert!(!Date::new(2025, 13, 1).is_valid());
+    assert!(!Date::new(2025, 1, 32).is_valid());
+    assert!(!Date::new(2025, 4, 31).is_valid());
+}
+
+#[test]
+fn test_date_weekday() {
+    // 2025년 1월 1일은 수요일 (3 = Wednesday)
+    assert_eq!(Date::new(2025, 1, 1).weekday(), 3);
+}
+
+#[test]
+fn test_date_prev_day() {
+    let date = Date::new(2025, 1, 1);
+    let prev = date.prev_day();
+    assert_eq!(prev, Date::new(2024, 12, 31));
+}
+
+#[test]
+fn test_date_prev_day_month_boundary() {
+    let date = Date::new(2025, 3, 1);
+    let prev = date.prev_day();
+    assert_eq!(prev, Date::new(2025, 2, 28));
+}
+
+#[test]
+fn test_date_prev_day_leap_year() {
+    let date = Date::new(2024, 3, 1);
+    let prev = date.prev_day();
+    assert_eq!(prev, Date::new(2024, 2, 29));
+}
+
+#[test]
+fn test_date_next_day() {
+    let date = Date::new(2025, 1, 31);
+    let next = date.next_day();
+    assert_eq!(next, Date::new(2025, 2, 1));
+}
+
+#[test]
+fn test_date_next_day_year_boundary() {
+    let date = Date::new(2025, 12, 31);
+    let next = date.next_day();
+    assert_eq!(next, Date::new(2026, 1, 1));
+}
+
+#[test]
+fn test_date_subtract_days() {
+    let date = Date::new(2025, 1, 10);
+    let result = date.subtract_days(5);
+    assert_eq!(result, Date::new(2025, 1, 5));
+}
+
+#[test]
+fn test_date_subtract_days_cross_month() {
+    let date = Date::new(2025, 2, 5);
+    let result = date.subtract_days(10);
+    assert_eq!(result, Date::new(2025, 1, 26));
+}
+
+#[test]
+fn test_date_add_days() {
+    let date = Date::new(2025, 1, 10);
+    let result = date.add_days(5);
+    assert_eq!(result, Date::new(2025, 1, 15));
+}
+
+#[test]
+fn test_date_add_days_cross_month() {
+    let date = Date::new(2025, 1, 28);
+    let result = date.add_days(5);
+    assert_eq!(result, Date::new(2025, 2, 2));
+}
+
+#[test]
+fn test_date_ordering() {
+    let date1 = Date::new(2025, 1, 10);
+    let date2 = Date::new(2025, 1, 15);
+    let date3 = Date::new(2025, 1, 15);
+
+    assert!(date1 < date2);
+    assert!(date2 > date1);
+    assert!(date2 <= date3);
+    assert!(date2 >= date3);
+    assert!(date2 == date3);
+}
+
+#[test]
+fn test_leap_year_divisible_by_4() {
+    let mut cal = Calendar::new(2024, 2);
+    // 2024는 윤년 (2024 is a leap year)
+    cal.select(Date::new(2024, 2, 29));
+    assert!(Date::new(2024, 2, 29).is_valid());
+}
+
+#[test]
+fn test_leap_year_divisible_by_100() {
+    // 1900은 윤년이 아님 (1900 is not a leap year)
+    assert!(!Date::new(1900, 2, 29).is_valid());
+}
+
+#[test]
+fn test_leap_year_divisible_by_400() {
+    // 2000은 윤년 (2000 is a leap year)
+    assert!(Date::new(2000, 2, 29).is_valid());
+}
+
+#[test]
+fn test_february_29_is_invalid_in_a_common_year() {
+    // 2025는 윤년이 아님 (2025 is not a leap year)
+    assert!(!Date::new(2025, 2, 29).is_valid());
+    assert!(Date::new(2025, 2, 28).is_valid());
 }
