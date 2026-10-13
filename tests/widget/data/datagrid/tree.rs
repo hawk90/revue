@@ -278,4 +278,6 @@ fn test_toggle_expand_out_of_bounds() {
 
     // Should not panic
     grid.toggle_expand();
+    assert_eq!(grid.tree_cache.len(), 1);
+    assert!(!grid.rows[0].expanded);
 }

@@ -99,14 +99,21 @@ fn test_hit_test_resize_handle() {
 
     let area = Rect::new(0, 0, 80, 24);
 
-    // First column ends at x=10, separator at x=11
-    // hit_test checks col_x after adding width+1, so border at col_x=11
-    grid.handle_mouse(MouseEventKind::Move, 11, 0, area);
-    assert_eq!(grid.hovered_resize, Some(0)); // First column border
-
-    // Second column ends at x=11+15=26, separator at x=27
-    grid.handle_mouse(MouseEventKind::Move, 27, 0, area);
-    assert_eq!(grid.hovered_resize, Some(1)); // Second column border
+    // The handle is the separator after a column and the cell after it:
+    // x = 10..=11 for the first column, 26..=27 for the second
+    for (x, hovered) in [
+        (9, None),
+        (10, Some(0)),
+        (11, Some(0)),
+        (12, None),
+        (25, None),
+        (26, Some(1)),
+        (27, Some(1)),
+        (28, None),
+    ] {
+        grid.handle_mouse(MouseEventKind::Move, x, 0, area);
+        assert_eq!(grid.hovered_resize, hovered, "x = {x}");
+    }
 
     // Not on border
     grid.handle_mouse(MouseEventKind::Move, 5, 0, area);

@@ -33,7 +33,8 @@ fn test_render() {
         .row(GridRow::new().cell("name", "Test"));
 
     grid.render(&mut ctx);
-    // Smoke test
+    assert_eq!(text(&buffer, 0, 5), "Name ");
+    assert_eq!(text(&buffer, 1, 5), "Test ");
 }
 
 #[test]
@@ -47,7 +48,8 @@ fn test_render_small_area() {
         .row(GridRow::new().cell("a", "test"));
 
     grid.render(&mut ctx);
-    // Should not panic with small area
+    // Below the 10x3 minimum nothing is drawn
+    assert!((0..2).all(|y| text(&buffer, y, 5) == "     "));
 }
 
 #[test]
@@ -62,6 +64,8 @@ fn test_render_with_row_numbers() {
         .row(GridRow::new().cell("a", "test"));
 
     grid.render(&mut ctx);
+    assert_eq!(text(&buffer, 0, 4), "   A");
+    assert_eq!(text(&buffer, 1, 7), "1  test");
 }
 
 #[test]
@@ -76,6 +80,9 @@ fn test_render_no_header() {
         .row(GridRow::new().cell("a", "test"));
 
     grid.render(&mut ctx);
+    // The first row is data, the next one is empty
+    assert_eq!(text(&buffer, 0, 4), "test");
+    assert_eq!(text(&buffer, 1, 4), "    ");
 }
 
 #[test]
@@ -90,6 +97,7 @@ fn test_render_non_virtual_scroll() {
         .row(GridRow::new().cell("a", "test"));
 
     grid.render(&mut ctx);
+    assert_eq!(text(&buffer, 1, 4), "test");
 }
 
 #[test]
@@ -105,6 +113,9 @@ fn test_render_with_sorting() {
 
     grid.sort(0);
     grid.render(&mut ctx);
+    assert_eq!(text(&buffer, 0, 3), "A ▲");
+    assert_eq!(text(&buffer, 1, 1), "A");
+    assert_eq!(text(&buffer, 2, 1), "B");
 }
 
 #[test]
@@ -127,7 +138,9 @@ fn test_render_with_column_features() {
         );
 
     grid.render(&mut ctx);
-    // Smoke test - just ensure render doesn't panic
+    // Fixed widths 5, 15 and 10, each followed by a separator
+    assert_eq!(text(&buffer, 0, 33), "ID   │Name           │Value     │");
+    assert_eq!(text(&buffer, 1, 33), "1    │Test           │100       │");
 }
 
 #[test]
