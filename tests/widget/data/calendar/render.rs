@@ -324,3 +324,27 @@ fn test_week_numbers_shift_the_grid() {
     assert_eq!(buffer.get(0, 2).unwrap().symbol, 'W');
     assert_eq!(row_text(&buffer, 2, 24), "W   Su Mo Tu We Th Fr Sa");
 }
+
+#[test]
+fn test_week_numbers_53_week_year_and_new_year() {
+    // 2020 has 53 ISO weeks: Thursday 2020-12-31 is in week 53
+    assert_eq!(
+        week_numbers(2020, 12, FirstDayOfWeek::Monday),
+        vec![49, 50, 51, 52, 53]
+    );
+    // Monday 2019-12-30 starts week 1 of 2020
+    assert_eq!(
+        week_numbers(2019, 12, FirstDayOfWeek::Monday),
+        vec![48, 49, 50, 51, 52, 1]
+    );
+    // Friday 2021-01-01 is still in week 53 of 2020
+    assert_eq!(
+        week_numbers(2021, 1, FirstDayOfWeek::Monday),
+        vec![53, 1, 2, 3, 4]
+    );
+    // Wednesday 2025-01-01 is in week 1; Monday the 6th starts week 2
+    assert_eq!(
+        week_numbers(2025, 1, FirstDayOfWeek::Monday),
+        vec![1, 2, 3, 4, 5]
+    );
+}
