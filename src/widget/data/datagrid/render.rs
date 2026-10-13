@@ -44,19 +44,7 @@ impl View for DataGrid {
 
         let row_num_width = self.row_number_gutter_width();
         let header_height: u16 = if self.options.show_header { 1 } else { 0 };
-        // The footer takes its rows from the bottom of the viewport, as long
-        // as at least one data row still fits above it.
-        let footer_rows: &[super::types::FooterRow] = if self.show_footer {
-            &self.footer_rows
-        } else {
-            &[]
-        };
-        let footer_height = footer_rows.len() as u16;
-        let footer_rows = if header_height + footer_height < area.height {
-            footer_rows
-        } else {
-            &[]
-        };
+        let footer_rows = self.footer_rows_that_fit(area.height - header_height);
         let footer_height = footer_rows.len() as u16;
 
         // Position columns for this viewport, applying column freeze and
@@ -81,15 +69,7 @@ impl View for DataGrid {
             / self.options.row_height.max(1) as usize;
         self.last_viewport_height.set(visible_height);
 
-        // Virtual scroll: calculate render range with overscan
-        let (render_start, render_end) = if self.options.virtual_scroll {
-            let overscan = self.options.overscan;
-            let start = self.scroll_row.saturating_sub(overscan);
-            let end = (self.scroll_row + visible_height + overscan).min(total_rows);
-            (start, end)
-        } else {
-            (0, total_rows)
-        };
+        let (render_start, render_end) = self.render_range(total_rows, visible_height);
 
         let params = RowRenderParams {
             slots: &slots,
@@ -147,64 +127,103 @@ impl DataGrid {
             }
 
             let row_y = params.start_y + (viewport_offset as u16 * self.options.row_height);
-            let is_selected = render_idx == self.selected_row;
-            let is_alt = self.options.zebra && render_idx % 2 == 1;
+            self.render_row(ctx, render_idx, row, row_y, params);
+        }
+    }
 
-            let row_bg = if is_selected {
-                self.colors.selected_bg
-            } else if is_alt {
-                self.colors.alt_row_bg
-            } else {
-                self.colors.row_bg
-            };
+    /// The footer rows to draw: they take rows from the bottom of the
+    /// viewport, all of them or none, as long as at least one data row still
+    /// fits above them. `height` excludes the header.
+    fn footer_rows_that_fit(&self, height: u16) -> &[super::types::FooterRow] {
+        if self.show_footer && (self.footer_rows.len() as u16) < height {
+            &self.footer_rows
+        } else {
+            &[]
+        }
+    }
 
-            // Draw row number
-            if self.options.show_row_numbers {
-                self.render_row_number(
-                    ctx,
-                    params.area_x,
-                    row_y,
-                    render_idx + 1,
-                    params.row_num_width,
-                    row_bg,
-                );
-            }
+    /// Filtered-row positions to walk for this frame: the viewport plus
+    /// `overscan` rows on each side with virtual scrolling, every row without
+    fn render_range(&self, total_rows: usize, visible_height: usize) -> (usize, usize) {
+        if self.options.virtual_scroll {
+            let overscan = self.options.overscan;
+            let start = self.scroll_row.saturating_sub(overscan);
+            let end = (self.scroll_row + visible_height + overscan).min(total_rows);
+            (start, end)
+        } else {
+            (0, total_rows)
+        }
+    }
 
-            // Fill the content background first so any gap between the scrolled
-            // middle and the right-frozen columns is covered.
-            let content_start = params.area_x + params.row_num_width;
-            ctx.fill_bg(
-                content_start,
+    /// Background of the row at filtered position `render_idx`
+    fn row_bg(&self, render_idx: usize) -> Color {
+        if render_idx == self.selected_row {
+            self.colors.selected_bg
+        } else if self.options.zebra && render_idx % 2 == 1 {
+            self.colors.alt_row_bg
+        } else {
+            self.colors.row_bg
+        }
+    }
+
+    /// Draw one data row at `row_y`: its number, background and cells
+    fn render_row(
+        &self,
+        ctx: &mut RenderContext,
+        render_idx: usize,
+        row: &super::types::GridRow,
+        row_y: u16,
+        params: &RowRenderParams<'_, '_>,
+    ) {
+        let is_selected = render_idx == self.selected_row;
+        let row_bg = self.row_bg(render_idx);
+
+        // Draw row number
+        if self.options.show_row_numbers {
+            self.render_row_number(
+                ctx,
+                params.area_x,
                 row_y,
-                params.content_end.saturating_sub(content_start),
-                1,
+                render_idx + 1,
+                params.row_num_width,
                 row_bg,
             );
+        }
 
-            // Draw cells from the positioned column slots.
-            for slot in params.slots {
-                let is_editing = self.edit_state.active
-                    && render_idx == self.selected_row
-                    && slot.orig_idx == self.edit_state.col;
+        // Fill the content background first so any gap between the scrolled
+        // middle and the right-frozen columns is covered.
+        let content_start = params.area_x + params.row_num_width;
+        ctx.fill_bg(
+            content_start,
+            row_y,
+            params.content_end.saturating_sub(content_start),
+            1,
+            row_bg,
+        );
 
-                let pos = CellPos {
-                    x: slot.x,
-                    y: row_y,
-                    width: slot.width,
-                };
-                let state = CellState {
-                    row_bg,
-                    is_selected,
-                    is_editing,
-                };
-                self.render_cell(ctx, row, slot.col, &pos, &state);
+        // Draw cells from the positioned column slots.
+        for slot in params.slots {
+            let is_editing = self.edit_state.active
+                && render_idx == self.selected_row
+                && slot.orig_idx == self.edit_state.col;
 
-                // Draw separator
-                let mut sep = Cell::new('│');
-                sep.fg = Some(self.colors.border_color);
-                sep.bg = Some(row_bg);
-                ctx.set(slot.x + slot.width, row_y, sep);
-            }
+            let pos = CellPos {
+                x: slot.x,
+                y: row_y,
+                width: slot.width,
+            };
+            let state = CellState {
+                row_bg,
+                is_selected,
+                is_editing,
+            };
+            self.render_cell(ctx, row, slot.col, &pos, &state);
+
+            // Draw separator
+            let mut sep = Cell::new('│');
+            sep.fg = Some(self.colors.border_color);
+            sep.bg = Some(row_bg);
+            ctx.set(slot.x + slot.width, row_y, sep);
         }
     }
 
@@ -232,7 +251,6 @@ impl DataGrid {
             let x = slot.x;
             let w = slot.width;
             let col_idx = slot.display_idx;
-            let is_sort_col = self.sort_column == Some(orig_idx);
             let is_selected = orig_idx == self.selected_col;
             let is_dragging = self.dragging_col == Some(orig_idx);
 
@@ -252,20 +270,7 @@ impl DataGrid {
             };
             ctx.fill_bg(x, y, w, 1, bg);
 
-            // Draw title with sort indicator
-            let mut title = col.title.clone();
-            if !self.sort_columns.is_empty() {
-                // Multi-column sort: show priority number
-                if let Some(pos) = self.sort_columns.iter().position(|(c, _)| *c == orig_idx) {
-                    let (_, dir) = self.sort_columns[pos];
-                    title.push(' ');
-                    title.push(dir.icon());
-                    title.push_str(&(pos + 1).to_string());
-                }
-            } else if is_sort_col {
-                title.push(' ');
-                title.push(self.sort_direction.icon());
-            }
+            let title = self.header_title(orig_idx, &col.title);
 
             // Dim text if this column is being dragged
             let fg = if is_dragging {
@@ -293,21 +298,7 @@ impl DataGrid {
                 dx += cw;
             }
 
-            // Draw separator with resize indicator
-            let is_resize_hover = self.hovered_resize == Some(orig_idx);
-            let is_resizing = self.resizing_col == Some(orig_idx);
-            let sep_char = if is_resize_hover || is_resizing {
-                '⇔'
-            } else {
-                '│'
-            };
-            let sep_color = if is_resizing {
-                Color::CYAN
-            } else if is_resize_hover {
-                Color::YELLOW
-            } else {
-                self.colors.border_color
-            };
+            let (sep_char, sep_color) = self.header_separator(orig_idx);
 
             let mut sep = Cell::new(sep_char);
             sep.fg = Some(sep_color);
@@ -330,6 +321,45 @@ impl DataGrid {
                 ctx.set(end_x.saturating_sub(1), y, cell);
             }
         }
+    }
+
+    /// Column title with its sort indicator: the direction and priority
+    /// number under a multi-column sort, the direction alone under a
+    /// single-column sort
+    fn header_title(&self, orig_idx: usize, title: &str) -> String {
+        let mut title = title.to_string();
+        if !self.sort_columns.is_empty() {
+            if let Some(pos) = self.sort_columns.iter().position(|(c, _)| *c == orig_idx) {
+                let (_, dir) = self.sort_columns[pos];
+                title.push(' ');
+                title.push(dir.icon());
+                title.push_str(&(pos + 1).to_string());
+            }
+        } else if self.sort_column == Some(orig_idx) {
+            title.push(' ');
+            title.push(self.sort_direction.icon());
+        }
+        title
+    }
+
+    /// Glyph and color of the separator after a header cell: a resize handle
+    /// while the column is hovered or being resized
+    fn header_separator(&self, orig_idx: usize) -> (char, Color) {
+        let is_resize_hover = self.hovered_resize == Some(orig_idx);
+        let is_resizing = self.resizing_col == Some(orig_idx);
+        let sep_char = if is_resize_hover || is_resizing {
+            '⇔'
+        } else {
+            '│'
+        };
+        let sep_color = if is_resizing {
+            Color::CYAN
+        } else if is_resize_hover {
+            Color::YELLOW
+        } else {
+            self.colors.border_color
+        };
+        (sep_char, sep_color)
     }
 
     /// Render one footer row: each aggregation in its column, and the row
