@@ -1,6 +1,7 @@
 //! Autocomplete key tests: editing the value, moving the cursor, moving through and accepting suggestions
 
 use super::{dropdown, fruits, key, type_str};
+use proptest::prelude::*;
 use revue::event::Key;
 use revue::widget::autocomplete::Autocomplete;
 
@@ -369,4 +370,58 @@ fn test_autocomplete_type_then_set_value() {
     type_str(&mut a, "x");
     a.set_value("y");
     assert_eq!(a.get_value(), "y");
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Any sequence of typing and editing keys leaves the same value as a
+    /// char-by-char model of the text and the cursor.
+    #[test]
+    fn test_autocomplete_edits_match_a_char_model(ops in prop::collection::vec(0usize..9, 0..60)) {
+        let mut a = Autocomplete::new().suggestions(["alpha", "한글", "beta"]);
+        a.focus();
+        let mut text: Vec<char> = Vec::new();
+        let mut cursor = 0usize;
+        for op in ops {
+            match op {
+                0..=2 => {
+                    let c = ['a', '한', 'Z'][op];
+                    key(&mut a, Key::Char(c));
+                    text.insert(cursor, c);
+                    cursor += 1;
+                }
+                3 => {
+                    key(&mut a, Key::Backspace);
+                    if cursor > 0 {
+                        cursor -= 1;
+                        text.remove(cursor);
+                    }
+                }
+                4 => {
+                    key(&mut a, Key::Delete);
+                    if cursor < text.len() {
+                        text.remove(cursor);
+                    }
+                }
+                5 => {
+                    key(&mut a, Key::Left);
+                    cursor = cursor.saturating_sub(1);
+                }
+                6 => {
+                    key(&mut a, Key::Right);
+                    cursor = (cursor + 1).min(text.len());
+                }
+                7 => {
+                    key(&mut a, Key::Home);
+                    cursor = 0;
+                }
+                _ => {
+                    key(&mut a, Key::End);
+                    cursor = text.len();
+                }
+            }
+            prop_assert_eq!(a.get_value(), text.iter().collect::<String>());
+        }
+    }
 }

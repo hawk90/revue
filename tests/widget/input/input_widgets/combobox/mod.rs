@@ -2,6 +2,8 @@
 
 mod option;
 
+use crate::traits::placement::{assert_same_when_offset, assert_zero_areas_draw_nothing};
+use proptest::prelude::*;
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
@@ -789,4 +791,39 @@ fn test_select_current_with_empty_filtered_no_panic() {
     c.set_input("zzzzz");
     let result = c.select_current();
     assert!(!result);
+}
+
+#[test]
+fn test_combobox_zero_area_draws_nothing() {
+    let mut cb = combobox()
+        .options(vec!["Apple", "Banana"])
+        .placeholder("Type");
+    cb.handle_key(&Key::Down);
+    assert_zero_areas_draw_nothing(&cb);
+}
+
+#[test]
+fn test_combobox_draws_the_same_when_offset() {
+    let mut cb = combobox().options(vec!["Apple", "Banana", "Cherry"]);
+    cb.handle_key(&Key::Char('a'));
+    cb.handle_key(&Key::Down);
+    assert_same_when_offset(cb, 20, 6);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// In Contains mode the options shown are exactly those whose label
+    /// contains the typed text, ignoring case.
+    #[test]
+    fn test_combobox_contains_filter_is_exact(query in "[aenp]{0,3}") {
+        let options = ["Apple", "Banana", "Cherry", "Pineapple", "Grape", "Melon", "Lemon"];
+        let mut cb = combobox().options(options.to_vec()).filter_mode(FilterMode::Contains);
+        cb.set_input(query.clone());
+        let expected = options
+            .iter()
+            .filter(|o| o.to_lowercase().contains(&query.to_lowercase()))
+            .count();
+        prop_assert_eq!(cb.filtered_count(), expected);
+    }
 }

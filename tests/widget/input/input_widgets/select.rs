@@ -1,6 +1,7 @@
 //! Select widget tests
 
 use crate::traits::placement::assert_same_when_offset;
+use proptest::prelude::*;
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
@@ -1131,6 +1132,40 @@ fn test_select_with_all_builder_options() {
 
     // Just verify it compiles and works
     assert_eq!(s.selected_index(), 1);
+}
+
+#[test]
+fn test_select_zero_area_draws_nothing() {
+    let mut s = Select::new().options(vec!["A", "B"]).searchable(true);
+    s.open();
+    crate::traits::placement::assert_zero_areas_draw_nothing(&s);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Any sequence of Up, Down, Home and End on an open list keeps the
+    /// selection on an option; Home goes to the first and End to the last.
+    #[test]
+    fn test_select_keys_keep_the_selection_on_an_option(
+        n in 1usize..30,
+        keys in prop::collection::vec(0usize..4, 0..60),
+    ) {
+        let mut s = Select::new()
+            .options((0..n).map(|i| format!("O{i}")).collect())
+            .focused(true);
+        s.open();
+        for k in keys {
+            let key = [Key::Up, Key::Down, Key::Home, Key::End][k];
+            s.handle_key(&key);
+            prop_assert!(s.selected_index() < n);
+            match key {
+                Key::Home => prop_assert_eq!(s.selected_index(), 0),
+                Key::End => prop_assert_eq!(s.selected_index(), n - 1),
+                _ => {}
+            }
+        }
+    }
 }
 
 mod snapshots {

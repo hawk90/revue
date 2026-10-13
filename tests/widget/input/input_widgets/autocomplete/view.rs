@@ -1,6 +1,7 @@
 //! Autocomplete rendering tests: the input row, the cursor, the dropdown, colors and areas
 
 use super::{dropdown, fruits, key, render, render_rows, row, type_str};
+use crate::traits::placement::assert_same_when_offset;
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
@@ -204,4 +205,12 @@ fn test_autocomplete_render_offset_area() {
     a.render(&mut ctx);
     assert_eq!(row(&buffer, 2, 50)[10..14].to_string(), "test");
     assert_eq!(row(&buffer, 0, 50).trim(), "");
+}
+
+#[test]
+fn test_autocomplete_draws_the_same_when_offset() {
+    let mut a = Autocomplete::new().suggestions(["alpha", "beta", "albatross"]);
+    a.focus();
+    type_str(&mut a, "al");
+    assert_same_when_offset(a, 20, 5);
 }
