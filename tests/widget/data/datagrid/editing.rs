@@ -1,5 +1,6 @@
 //! DataGrid cell editing tests
 
+use proptest::prelude::*;
 use revue::event::Key;
 use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
 
@@ -152,4 +153,61 @@ fn test_edit_add_new_cell() {
     grid.commit_edit();
 
     assert_eq!(grid.rows[0].get("a"), Some("X"));
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Typing and cursor keys edit the cell like a plain char-indexed model,
+    /// and Enter writes the result into the cell
+    #[test]
+    fn edit_keys_follow_a_char_model(
+        initial in "[a-zé한]{0,6}",
+        keys in prop::collection::vec(prop_oneof![
+            "[a-zé한]".prop_map(|s| Key::Char(s.chars().next().unwrap())),
+            Just(Key::Left),
+            Just(Key::Right),
+            Just(Key::Home),
+            Just(Key::End),
+            Just(Key::Backspace),
+            Just(Key::Delete),
+        ], 0..30),
+    ) {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name").editable(true))
+            .row(GridRow::new().cell("name", initial.clone()));
+        prop_assert!(grid.start_edit());
+
+        let mut text: Vec<char> = initial.chars().collect();
+        let mut cursor = text.len();
+        for key in &keys {
+            grid.handle_key(key);
+            match key {
+                Key::Char(c) => {
+                    text.insert(cursor, *c);
+                    cursor += 1;
+                }
+                Key::Left => cursor = cursor.saturating_sub(1),
+                Key::Right => cursor = (cursor + 1).min(text.len()),
+                Key::Home => cursor = 0,
+                Key::End => cursor = text.len(),
+                Key::Backspace if cursor > 0 => {
+                    cursor -= 1;
+                    text.remove(cursor);
+                }
+                Key::Delete if cursor < text.len() => {
+                    text.remove(cursor);
+                }
+                _ => {}
+            }
+            let model: String = text.iter().collect();
+            prop_assert_eq!(grid.edit_buffer(), Some(model.as_str()));
+            prop_assert_eq!(grid.edit_state.cursor, cursor);
+        }
+
+        grid.handle_key(&Key::Enter);
+        let model: String = text.into_iter().collect();
+        prop_assert!(!grid.is_editing());
+        prop_assert_eq!(grid.rows[0].get("name"), Some(model.as_str()));
+    }
 }

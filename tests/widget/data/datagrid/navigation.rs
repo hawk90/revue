@@ -1,6 +1,9 @@
 //! DataGrid row and column selection tests
 
-use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
+use super::{render_to, row_text};
+use proptest::prelude::*;
+use revue::event::Key;
+use revue::widget::data::datagrid::{DataGrid, GridColors, GridColumn, GridRow};
 
 #[test]
 fn test_navigation() {
@@ -158,4 +161,37 @@ fn test_selected_rows() {
 
     let selected = grid.selected_rows();
     assert_eq!(selected.len(), 2);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// With a render between keys, the selected row is always drawn, with
+    /// the selection background, in the viewport
+    #[test]
+    fn the_selected_row_stays_on_screen(
+        rows in 1usize..60,
+        height in 3u16..15,
+        keys in prop::collection::vec(0usize..6, 0..40),
+    ) {
+        let moves = [Key::Up, Key::Down, Key::PageUp, Key::PageDown, Key::Home, Key::End];
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .rows((0..rows).map(|i| GridRow::new().cell("a", format!("r{i}"))).collect());
+        render_to(&grid, 20, height);
+        for k in keys {
+            grid.handle_key(&moves[k]);
+            render_to(&grid, 20, height);
+        }
+
+        let buffer = render_to(&grid, 20, height);
+        prop_assert!(grid.selected_row < rows);
+        prop_assert!(grid.scroll_row <= grid.selected_row);
+        let y = 1 + (grid.selected_row - grid.scroll_row) as u16;
+        prop_assert!(y < height, "selected {} scroll {}", grid.selected_row, grid.scroll_row);
+        let line = row_text(&buffer, y, 20);
+        let expected = format!("r{} ", grid.selected_row);
+        prop_assert!(line.starts_with(&expected), "{:?}", line);
+        prop_assert_eq!(buffer.get(0, y).unwrap().bg, Some(GridColors::default().selected_bg));
+    }
 }

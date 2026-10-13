@@ -1,8 +1,10 @@
 //! DataGrid rendering tests
 
+use super::{render_to, row_text};
+use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
+use revue::widget::data::datagrid::{DataGrid, GridColors, GridColumn, GridRow};
 use revue::widget::traits::{RenderContext, View};
 
 fn row_numbers_grid(rows: usize) -> Buffer {
@@ -268,4 +270,218 @@ fn test_row_numbers_right_aligned() {
     assert_eq!(text(&buffer, 1, 5), " 1  v");
     assert_eq!(text(&buffer, 10, 5), "10  v");
     assert_eq!(text(&buffer, 12, 5), "12  v");
+}
+
+// =========================================================================
+// Empty input
+// =========================================================================
+
+/// No columns and no rows: nothing but blanks at any size
+#[test]
+fn test_datagrid_empty_draws_only_blanks() {
+    let grid = DataGrid::new();
+    for (w, h) in [(1, 1), (9, 2), (10, 3), (40, 8)] {
+        let buffer = render_to(&grid, w, h);
+        for y in 0..h {
+            assert_eq!(row_text(&buffer, y, w).trim(), "", "{w}x{h} row {y}");
+        }
+    }
+}
+
+/// No columns and no rows: no key moves the selection or starts an edit,
+/// and there is nothing to copy
+#[test]
+fn test_datagrid_empty_ignores_every_action() {
+    let mut grid = DataGrid::new();
+    render_to(&grid, 40, 8);
+    for key in [
+        Key::Up,
+        Key::Down,
+        Key::Left,
+        Key::Right,
+        Key::PageUp,
+        Key::PageDown,
+        Key::Home,
+        Key::End,
+        Key::Enter,
+        Key::Char(' '),
+    ] {
+        grid.handle_key(&key);
+    }
+    grid.sort(0);
+    grid.add_sort(0);
+    grid.set_filter("x");
+    grid.toggle_selection();
+    assert_eq!(
+        (grid.selected_row, grid.selected_col, grid.scroll_row),
+        (0, 0, 0)
+    );
+    assert!(!grid.start_edit());
+    assert!(!grid.is_editing());
+    assert_eq!(grid.copy_cell(), "");
+    assert!(grid.selected_rows().is_empty());
+    assert_eq!(grid.filtered_count(), 0);
+}
+
+/// Columns without rows: the header is drawn, no data row and no
+/// scrollbar; the keys change nothing and the export is the header line
+#[test]
+fn test_datagrid_columns_without_rows() {
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("a", "A"))
+        .column(GridColumn::new("b", "B"));
+    let buffer = render_to(&grid, 20, 4);
+    assert_eq!(row_text(&buffer, 0, 20), "A       │B       │  ");
+    for y in 1..4 {
+        assert_eq!(row_text(&buffer, y, 20).trim(), "", "row {y}");
+    }
+    for key in [Key::Down, Key::End, Key::Enter] {
+        grid.handle_key(&key);
+    }
+    assert_eq!(grid.selected_row, 0);
+    assert!(!grid.is_editing());
+    assert_eq!(grid.export_csv(), "A,B\n");
+}
+
+// =========================================================================
+// Edge values
+// =========================================================================
+
+/// The grid draws from 10x3 up; one column or one row less draws nothing
+#[test]
+fn test_datagrid_minimum_area_is_10_by_3() {
+    let grid = DataGrid::new()
+        .column(GridColumn::new("n", "Name"))
+        .row(GridRow::new().cell("n", "v"));
+    for (w, h) in [(9, 3), (10, 2)] {
+        let buffer = render_to(&grid, w, h);
+        assert!(
+            (0..h).all(|y| row_text(&buffer, y, w).trim().is_empty()),
+            "{w}x{h}"
+        );
+    }
+    let buffer = render_to(&grid, 10, 3);
+    assert_eq!(row_text(&buffer, 0, 10), "Name    │ ");
+    assert_eq!(row_text(&buffer, 1, 10), "v       │ ");
+}
+
+/// A value longer than its column is cut to the width less one; right and
+/// center alignment keep one blank before the separator
+#[test]
+fn test_datagrid_values_are_cut_and_aligned_in_their_column() {
+    let grid = DataGrid::new()
+        .column(GridColumn::new("a", "A").width(6))
+        .column(GridColumn::new("b", "B").width(8).right())
+        .column(GridColumn::new("c", "C").width(8).center())
+        .row(
+            GridRow::new()
+                .cell("a", "abcdefghij")
+                .cell("b", "ab")
+                .cell("c", "ab"),
+        );
+    let buffer = render_to(&grid, 30, 3);
+    assert_eq!(row_text(&buffer, 1, 25), "abcde │     ab │   ab   │");
+}
+
+/// row_height(2): each row starts two lines below the previous one
+#[test]
+fn test_datagrid_row_height_spaces_the_rows() {
+    let grid = DataGrid::new()
+        .row_height(2)
+        .column(GridColumn::new("a", "A"))
+        .rows(
+            (0..3)
+                .map(|i| GridRow::new().cell("a", format!("r{i}")))
+                .collect(),
+        );
+    let buffer = render_to(&grid, 12, 7);
+    for (y, text) in [(1, "r0"), (3, "r1"), (5, "r2")] {
+        assert_eq!(&row_text(&buffer, y, 12)[..2], text, "row {y}");
+    }
+}
+
+/// With 100 rows the row-number gutter holds three right-aligned digits
+#[test]
+fn test_datagrid_row_number_gutter_grows_to_three_digits() {
+    let grid = DataGrid::new()
+        .row_numbers(true)
+        .column(GridColumn::new("a", "A"))
+        .rows((0..100).map(|_| GridRow::new().cell("a", "v")).collect());
+    let buffer = render_to(&grid, 20, 4);
+    assert_eq!(&row_text(&buffer, 0, 20)[..6], "     A");
+    assert_eq!(&row_text(&buffer, 1, 20)[..6], "  1  v");
+}
+
+/// The selected row, the striped odd rows and the plain even rows take
+/// their colors; more rows than fit bring a scrollbar and the position
+#[test]
+fn test_datagrid_row_colors_and_scrollbar() {
+    let grid = DataGrid::new().column(GridColumn::new("a", "A")).rows(
+        (0..30)
+            .map(|i| GridRow::new().cell("a", format!("r{i}")))
+            .collect(),
+    );
+    let colors = GridColors::default();
+    let buffer = render_to(&grid, 20, 6);
+    for (y, bg) in [
+        (1, colors.selected_bg),
+        (2, colors.alt_row_bg),
+        (3, colors.row_bg),
+    ] {
+        assert_eq!(buffer.get(0, y).unwrap().bg, Some(bg), "row {y}");
+    }
+    assert_eq!(buffer.get(0, 1).unwrap().fg, Some(colors.selected_fg));
+    let bar: String = (1..6).map(|y| buffer.get(19, y).unwrap().symbol).collect();
+    assert_eq!(bar, "█░░░░");
+    assert!((0..6).any(|y| row_text(&buffer, y, 20).contains(" 1/30 ")));
+}
+
+// =========================================================================
+// Cross-module
+// =========================================================================
+
+/// Inside a vstack with a sibling, through the stylesheet and DOM path: an
+/// ordinary cell takes `color`, the selected row keeps its highlight, and
+/// the sibling starts below the grid's height
+#[test]
+fn test_datagrid_in_a_stack_with_a_stylesheet() {
+    use revue::prelude::*;
+    use revue::testing::PipelineHarness;
+
+    struct Screen;
+    impl View for Screen {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .child(
+                    DataGrid::new()
+                        .column(GridColumn::new("a", "A"))
+                        .rows(
+                            (0..3)
+                                .map(|i| GridRow::new().cell("a", format!("r{i}")))
+                                .collect(),
+                        )
+                        .element_id("grid"),
+                )
+                .child(Text::new("footer"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Screen"
+        }
+    }
+
+    let ink = Color::rgb(200, 210, 220);
+    let mut h = PipelineHarness::with_css("#grid { color: #c8d2dc; height: 4; }", 20, 6)
+        .dom_from_render(true);
+    h.draw(&Screen);
+    let buffer = h.buffer();
+    let colors = GridColors::default();
+    assert_eq!(
+        buffer.get(0, 1).unwrap().fg,
+        Some(colors.selected_fg),
+        "selected"
+    );
+    assert_eq!(buffer.get(0, 2).unwrap().fg, Some(ink), "ordinary cell");
+    assert_eq!(&row_text(buffer, 3, 2), "r2");
+    assert_eq!(&row_text(buffer, 4, 6), "footer");
 }

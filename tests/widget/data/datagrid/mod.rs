@@ -64,3 +64,13 @@ fn test_grid_row_helper() {
     let row = grid_row();
     assert!(row.data.is_empty());
 }
+
+/// The cells of a footer row drawn into a 40x8 grid, `from_bottom` rows
+/// above the last one, split at the column separators and trimmed.
+pub(super) fn footer_cells(grid: &DataGrid, from_bottom: u16) -> Vec<String> {
+    let buf = render_to(grid, 40, 8);
+    row_text(&buf, 7 - from_bottom, 40)
+        .split('│')
+        .map(|cell| cell.trim().to_string())
+        .collect()
+}

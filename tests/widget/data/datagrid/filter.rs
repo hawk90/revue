@@ -2,6 +2,8 @@
 //!
 //! Verifies that filtering resets selection to prevent OOB access.
 
+use super::footer_cells;
+use proptest::prelude::*;
 use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
 
 fn make_grid() -> DataGrid {
@@ -193,4 +195,40 @@ fn test_datagrid_filtered_rows() {
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].get("a"), Some("x"));
     assert_eq!(rows[1].get("a"), Some("y"));
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// The filter keeps the rows with a cell that contains the text, case
+    /// insensitively, in their order; the footer sum covers only those rows
+    #[test]
+    fn filter_keeps_the_matching_rows_and_the_footer_follows(
+        rows in prop::collection::vec(("[a-cA-C]{0,4}", 0u32..100), 0..30),
+        needle in "[a-cA-C]{0,2}",
+    ) {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name").width(10))
+            .column(GridColumn::new("value", "Value").width(20))
+            .rows(
+                rows.iter()
+                    .map(|(name, value)| GridRow::new().cell("name", name.clone()).cell("value", value.to_string()))
+                    .collect(),
+            )
+            .add_sum("value");
+        grid.set_filter(needle.clone());
+
+        let needle = needle.to_lowercase();
+        let expected: Vec<usize> = rows
+            .iter()
+            .enumerate()
+            .filter(|(_, (name, value))| name.to_lowercase().contains(&needle) || value.to_string().contains(&needle))
+            .map(|(i, _)| i)
+            .collect();
+        prop_assert_eq!(grid.filtered_indices(), &expected[..]);
+
+        let sum: u32 = expected.iter().map(|&i| rows[i].1).sum();
+        let footer = if expected.is_empty() { "Sum: —".to_string() } else { format!("Sum: {sum}") };
+        prop_assert_eq!(&footer_cells(&grid, 0)[1], &footer);
+    }
 }

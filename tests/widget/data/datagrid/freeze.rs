@@ -1,6 +1,7 @@
 //! DataGrid column freeze and horizontal scroll tests
 
 use super::{render_to, row_text};
+use proptest::prelude::*;
 use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
 
 /// Six fixed-width columns "C0".."C5" so positions are deterministic.
@@ -169,4 +170,47 @@ fn column_marked_frozen_survives_horizontal_scroll() {
     );
     assert!(!header.contains("C1"), "scrolled col shown: {header:?}");
     assert!(header.contains("C2"), "post-scroll col missing: {header:?}");
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Any widths, freeze counts and horizontal scroll: the left-frozen
+    /// columns keep their place, the right-frozen block ends at the right edge
+    /// when there is room, and the drawn titles run left to right in column
+    /// order
+    #[test]
+    fn frozen_columns_keep_their_place(
+        widths in prop::collection::vec(3u16..8, 6),
+        left in 0usize..3,
+        right in 0usize..3,
+        scroll in 0usize..6,
+        width in 30u16..60,
+    ) {
+        let mut grid = DataGrid::new().freeze_columns_left(left).freeze_columns_right(right);
+        for (i, w) in widths.iter().enumerate() {
+            grid = grid.column(GridColumn::new(format!("c{i}"), format!("C{i}")).width(*w));
+        }
+        let mut grid = grid.row(GridRow::new());
+        for _ in 0..scroll {
+            grid.scroll_col_right();
+        }
+        let buffer = render_to(&grid, width, 4);
+        let header: Vec<char> = (0..width).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+        let x_of = |i: usize| (0..header.len().saturating_sub(1))
+            .find(|&x| header[x] == 'C' && header[x + 1] == char::from(b'0' + i as u8));
+
+        let mut x = 0;
+        for (i, w) in widths.iter().enumerate().take(left) {
+            prop_assert_eq!(x_of(i), Some(x as usize), "left-frozen C{}", i);
+            x += w + 1;
+        }
+        let spans: u16 = widths[..left].iter().chain(&widths[6 - right..]).map(|w| w + 1).sum();
+        if right > 0 && spans <= width {
+            // the right-frozen block ends flush with the right edge
+            prop_assert_eq!(header[width as usize - 1], '│', "{:?}", header);
+        }
+        let drawn: Vec<usize> = (0..6).filter_map(x_of).collect();
+        prop_assert!(drawn.windows(2).all(|w| w[0] < w[1]), "{:?}", drawn);
+    }
 }
