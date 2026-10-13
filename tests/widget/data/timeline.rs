@@ -1,5 +1,6 @@
 //! Timeline widget tests
 
+use proptest::prelude::*;
 use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};
 use revue::style::Color;
@@ -2275,6 +2276,64 @@ fn test_timeline_view_classes_multiple() {
     let tl = timeline().classes(vec!["a", "b"]);
     let classes = View::classes(&tl);
     assert_eq!(classes.len(), 2);
+}
+
+// =============================================================================
+// Placement and matrices
+// =============================================================================
+
+#[test]
+fn test_timeline_draws_the_same_when_offset() {
+    let mut tl = three().line_color(Color::YELLOW);
+    tl.select(Some(1));
+    super::chart::assert_same_when_offset(tl.clone(), 40, 10);
+    super::chart::assert_same_when_offset(tl.horizontal(), 40, 4);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// Any sequence of select_next / select_prev on a non-empty timeline
+    /// keeps the selection on an event: None until the first next, then
+    /// moving by one and stopping at both ends.
+    #[test]
+    fn test_timeline_selection_moves_and_stops(
+        len in 1usize..20,
+        moves in prop::collection::vec(any::<bool>(), 0..60),
+    ) {
+        let mut tl = Timeline::new().events((0..len).map(|i| TimelineEvent::new(format!("E{i}"))).collect());
+        let mut model: Option<usize> = None;
+        for next in moves {
+            if next {
+                tl.select_next();
+                model = Some(model.map_or(0, |i| (i + 1).min(len - 1)));
+            } else {
+                tl.select_prev();
+                model = model.map(|i| i.saturating_sub(1));
+            }
+            let selected = tl.selected_event().map(|e| e.title.clone());
+            prop_assert_eq!(selected, model.map(|i| format!("E{i}")));
+        }
+    }
+
+    /// Without timestamps and descriptions, event i is drawn on row 2i with
+    /// its title, for every event that fits the height.
+    #[test]
+    fn test_timeline_vertical_rows(n in 1usize..15, h in 2u16..30, minimal in any::<bool>()) {
+        let style = if minimal { TimelineStyle::Minimal } else { TimelineStyle::Line };
+        let tl = Timeline::new()
+            .timestamps(false)
+            .style(style)
+            .events((0..n).map(|i| TimelineEvent::new(format!("E{i}"))).collect());
+        let rows = screen(&tl, 20, h);
+        for i in 0..n {
+            let y = 2 * i;
+            if y < h as usize {
+                let want = if minimal { format!("●  E{i}") } else { format!("●─ E{i}") };
+                prop_assert_eq!(rows[y].trim_end(), want);
+            }
+        }
+    }
 }
 
 mod snapshots {
