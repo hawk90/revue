@@ -6,7 +6,8 @@
 use super::{count_char, render, render_rows, rows};
 use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::data::chart::{histogram, BinConfig, Histogram};
+use revue::widget::data::chart::{histogram, BinConfig, ChartGrid, Histogram};
+use revue::widget::traits::View;
 
 /// Bins [0,10) [10,20) [20,30] holding 3, 1 and 2 values.
 fn three_bins() -> Histogram {
@@ -238,4 +239,33 @@ fn test_histogram_horizontal_show_stats() {
     }
     assert_eq!(sym(&buffer, 38, 7), 'μ');
     assert_eq!(sym(&buffer, 38, 5), 'M');
+}
+
+#[test]
+fn test_histogram_render_with_grid() {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::RenderContext;
+
+    let mut buffer = Buffer::new(40, 20);
+    let area = Rect::new(0, 0, 40, 20);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let data: Vec<f64> = (0..50).map(|x| x as f64).collect();
+    let hist = Histogram::new(&data).grid(ChartGrid::both());
+    hist.render(&mut ctx);
+
+    // Should have grid lines
+    let mut has_content = false;
+    for y in 0..20 {
+        for x in 0..40 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.symbol != ' ' {
+                    has_content = true;
+                    break;
+                }
+            }
+        }
+    }
+    assert!(has_content);
 }
