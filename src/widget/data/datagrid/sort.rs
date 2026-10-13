@@ -8,13 +8,8 @@ use std::cmp::Ordering;
 impl DataGrid {
     /// Sort by a single column (cancels any active edit and clears multi-sort)
     pub fn sort(&mut self, column: usize) {
-        if column >= self.columns.len() || !self.columns[column].sortable {
+        if !self.begin_sort(column) {
             return;
-        }
-
-        // Cancel any active edit before sorting (row indices will change)
-        if self.edit_state.active {
-            self.cancel_edit();
         }
 
         // Clear multi-column sort when using single sort
@@ -27,38 +22,7 @@ impl DataGrid {
             self.sort_direction = SortDirection::Ascending;
         }
 
-        let key = &self.columns[column].key;
-        let col_type = self.columns[column].col_type;
-        let ascending = self.sort_direction == SortDirection::Ascending;
-        let use_natural = self.options.use_natural_sort;
-
-        self.rows.sort_by(|a, b| {
-            let va = a.get(key).unwrap_or("");
-            let vb = b.get(key).unwrap_or("");
-
-            let cmp = match col_type {
-                super::types::ColumnType::Number => {
-                    let na: f64 = va.parse().unwrap_or(0.0);
-                    let nb: f64 = vb.parse().unwrap_or(0.0);
-                    na.partial_cmp(&nb).unwrap_or(Ordering::Equal)
-                }
-                super::types::ColumnType::Text | super::types::ColumnType::Custom => {
-                    if use_natural {
-                        natural_cmp(va, vb)
-                    } else {
-                        va.cmp(vb)
-                    }
-                }
-                _ => va.cmp(vb),
-            };
-
-            if ascending {
-                cmp
-            } else {
-                cmp.reverse()
-            }
-        });
-        self.recompute_cache();
+        self.sort_rows_by(&[(column, self.sort_direction)]);
     }
 
     /// Add or toggle a column in the multi-column sort stack
@@ -67,13 +31,8 @@ impl DataGrid {
     /// If it is not in the stack, it is appended with ascending direction.
     /// Clears the single-column sort state (`sort_column`).
     pub fn add_sort(&mut self, column: usize) {
-        if column >= self.columns.len() || !self.columns[column].sortable {
+        if !self.begin_sort(column) {
             return;
-        }
-
-        // Cancel any active edit before sorting
-        if self.edit_state.active {
-            self.cancel_edit();
         }
 
         // Clear single-column sort
@@ -116,9 +75,28 @@ impl DataGrid {
             return;
         }
 
-        // Build sort spec: (key, col_type, ascending, use_natural)
-        let sort_spec: Vec<_> = self
-            .sort_columns
+        let keys = self.sort_columns.clone();
+        self.sort_rows_by(&keys);
+    }
+
+    /// Whether `column` can be sorted; cancels an active edit first, since
+    /// sorting moves the rows under it
+    fn begin_sort(&mut self, column: usize) -> bool {
+        if column >= self.columns.len() || !self.columns[column].sortable {
+            return false;
+        }
+        if self.edit_state.active {
+            self.cancel_edit();
+        }
+        true
+    }
+
+    /// Stable-sort the rows by `keys` in priority order: a later key only
+    /// breaks ties of the earlier ones. Single and multi-column sorting both
+    /// go through here.
+    fn sort_rows_by(&mut self, keys: &[(usize, SortDirection)]) {
+        // Build sort spec: (key, col_type, ascending)
+        let sort_spec: Vec<_> = keys
             .iter()
             .filter_map(|&(col_idx, dir)| {
                 self.columns.get(col_idx).map(|col| {
