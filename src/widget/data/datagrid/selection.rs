@@ -1,6 +1,7 @@
 //! DataGrid row/column selection and navigation
 
-use super::core::DataGrid;
+use crate::widget::data::datagrid::types::GridRow;
+use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
     /// Select next row (with auto-scroll)
@@ -133,7 +134,7 @@ impl DataGrid {
     }
 
     /// Get selected rows
-    pub fn selected_rows(&self) -> Vec<&super::types::GridRow> {
+    pub fn selected_rows(&self) -> Vec<&GridRow> {
         self.rows.iter().filter(|r| r.selected).collect()
     }
 }

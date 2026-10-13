@@ -1,8 +1,8 @@
 //! DataGrid mouse event handling
 
-use super::core::DataGrid;
 use crate::event::{MouseButton, MouseEventKind};
 use crate::layout::Rect;
+use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
     /// Handle mouse event for column resize, reorder, etc.
@@ -61,7 +61,7 @@ impl DataGrid {
     ///
     /// Uses the renderer's geometry (row-number gutter, column freeze and
     /// horizontal scroll), so a click lands on the column that is drawn there.
-    pub(super) fn header_slots_by_x(&self, area: Rect) -> Vec<(usize, u16, u16)> {
+    pub(crate) fn header_slots_by_x(&self, area: Rect) -> Vec<(usize, u16, u16)> {
         let visible_cols = self.visible_columns_in_order();
         let mut slots: Vec<(usize, u16, u16)> = self
             .layout_column_slots(&visible_cols, area)

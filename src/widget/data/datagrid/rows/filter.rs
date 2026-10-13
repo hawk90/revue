@@ -1,7 +1,6 @@
 //! DataGrid filtering
 
-use super::core::DataGrid;
-use super::types::GridRow;
+use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
     /// Set filter (cancels any active edit)
@@ -18,7 +17,7 @@ impl DataGrid {
     }
 
     /// Compute filtered row indices (internal)
-    pub(super) fn compute_filtered_indices(&self) -> Vec<usize> {
+    pub(crate) fn compute_filtered_indices(&self) -> Vec<usize> {
         if self.filter.is_empty() {
             (0..self.rows.len()).collect()
         } else {
@@ -47,25 +46,5 @@ impl DataGrid {
                 .map(|(i, _)| i)
                 .collect()
         }
-    }
-
-    /// Get cached filtered row indices (zero-cost, no allocation)
-    #[inline]
-    pub fn filtered_indices(&self) -> &[usize] {
-        &self.filtered_cache
-    }
-
-    /// Get filtered rows count (uses cache)
-    pub fn filtered_count(&self) -> usize {
-        self.filtered_indices().len()
-    }
-
-    /// Get filtered rows (uses cached indices)
-    /// Note: For large datasets, prefer using filtered_indices() with index-based access
-    pub fn filtered_rows(&self) -> Vec<&GridRow> {
-        self.filtered_indices()
-            .iter()
-            .filter_map(|&i| self.rows.get(i))
-            .collect()
     }
 }

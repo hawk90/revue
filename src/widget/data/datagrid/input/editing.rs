@@ -1,7 +1,7 @@
 //! DataGrid cell editing
 
-use super::core::DataGrid;
 use crate::event::Key;
+use crate::widget::data::datagrid::DataGrid;
 
 /// Cell editing state
 #[derive(Clone, Debug, Default)]
@@ -108,7 +108,7 @@ impl DataGrid {
     }
 
     /// Handle key input in edit mode
-    pub(super) fn handle_edit_key(&mut self, key: &Key) -> bool {
+    pub(crate) fn handle_edit_key(&mut self, key: &Key) -> bool {
         match key {
             Key::Escape => {
                 self.cancel_edit();

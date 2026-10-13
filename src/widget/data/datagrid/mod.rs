@@ -2,23 +2,15 @@
 //!
 //! A feature-rich data grid with sorting, filtering, and cell editing.
 
+mod columns;
 mod core;
-mod editing;
 mod export;
-mod filter;
 mod footer;
-mod freeze;
-mod keys;
-mod layout;
-mod mouse;
-mod navigation;
-mod render;
-mod reorder;
-mod resize;
-mod sort;
-mod tree;
+mod input;
+mod rows;
+mod selection;
 mod types;
-mod width;
+mod view;
 
 // Re-export all types (explicit to avoid conflict with mod export)
 #[allow(unused_imports)]

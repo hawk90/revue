@@ -1,8 +1,8 @@
 //! DataGrid sorting
 
-use super::core::DataGrid;
-use super::types::SortDirection;
 use crate::utils::natural_cmp;
+use crate::widget::data::datagrid::types::{ColumnType, SortDirection};
+use crate::widget::data::datagrid::DataGrid;
 use std::cmp::Ordering;
 
 impl DataGrid {
@@ -117,12 +117,12 @@ impl DataGrid {
                 let vb = b.get(key).unwrap_or("");
 
                 let cmp = match col_type {
-                    super::types::ColumnType::Number => {
+                    ColumnType::Number => {
                         let na: f64 = va.parse().unwrap_or(0.0);
                         let nb: f64 = vb.parse().unwrap_or(0.0);
                         na.partial_cmp(&nb).unwrap_or(Ordering::Equal)
                     }
-                    super::types::ColumnType::Text | super::types::ColumnType::Custom => {
+                    ColumnType::Text | ColumnType::Custom => {
                         if use_natural {
                             natural_cmp(va, vb)
                         } else {

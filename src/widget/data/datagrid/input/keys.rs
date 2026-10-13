@@ -1,7 +1,7 @@
 //! DataGrid key handling
 
-use super::core::DataGrid;
 use crate::event::Key;
+use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
     /// Handle key input

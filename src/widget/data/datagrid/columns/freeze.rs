@@ -1,9 +1,21 @@
-//! DataGrid column freeze functionality
+//! DataGrid column freeze and horizontal scroll
 
-use super::core::DataGrid;
-use super::types::GridColumn;
+use crate::widget::data::datagrid::types::GridColumn;
+use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
+    /// Freeze N columns on the left (they stay visible during horizontal scroll)
+    pub fn freeze_columns_left(mut self, count: usize) -> Self {
+        self.frozen_left = count;
+        self
+    }
+
+    /// Freeze N columns on the right (they stay visible during horizontal scroll)
+    pub fn freeze_columns_right(mut self, count: usize) -> Self {
+        self.frozen_right = count;
+        self
+    }
+
     /// Scroll columns left
     pub fn scroll_col_left(&mut self) {
         if self.scroll_col > 0 {
@@ -25,12 +37,12 @@ impl DataGrid {
     /// Left-frozen column count as laid out: `frozen_left`, widened so that
     /// every visible column marked `GridColumn::frozen` (and every column
     /// before it in display order) is pinned too.
-    pub(super) fn effective_frozen_left(&self) -> usize {
+    pub(crate) fn effective_frozen_left(&self) -> usize {
         self.frozen_left_for(&self.visible_columns_in_order())
     }
 
     /// `effective_frozen_left` for an already computed display order.
-    pub(super) fn frozen_left_for(&self, visible_cols: &[(usize, &GridColumn)]) -> usize {
+    pub(crate) fn frozen_left_for(&self, visible_cols: &[(usize, &GridColumn)]) -> usize {
         let by_column = visible_cols
             .iter()
             .rposition(|(_, c)| c.frozen)

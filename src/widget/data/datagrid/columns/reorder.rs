@@ -1,11 +1,26 @@
-//! DataGrid column reorder functionality
+//! DataGrid column reorder (drag and keyboard)
 
-use super::core::DataGrid;
 use crate::layout::Rect;
+use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
+    /// Enable or disable column reordering via drag and drop
+    pub fn reorderable(mut self, enable: bool) -> Self {
+        self.reorderable = enable;
+        self
+    }
+
+    /// Set callback for when columns are reordered
+    pub fn on_column_reorder<F>(mut self, callback: F) -> Self
+    where
+        F: FnMut(usize, usize) + 'static,
+    {
+        self.on_column_reorder = Some(Box::new(callback));
+        self
+    }
+
     /// Start dragging a column (`col` indexes `columns`)
-    pub(super) fn start_column_drag(&mut self, col: usize) {
+    pub(crate) fn start_column_drag(&mut self, col: usize) {
         if !self.reorderable || col >= self.columns.len() {
             return;
         }
@@ -18,7 +33,7 @@ impl DataGrid {
     ///
     /// The target is a display position: the dragged column goes before the
     /// visible column drawn at that position.
-    pub(super) fn update_drop_target(&mut self, x: u16, area: Rect) {
+    pub(crate) fn update_drop_target(&mut self, x: u16, area: Rect) {
         if self.dragging_col.is_none() {
             return;
         }
@@ -46,20 +61,13 @@ impl DataGrid {
     /// display position, so both are mapped onto `column_order`. Only
     /// `column_order` changes: `columns` (and everything indexed like it,
     /// such as `column_widths`, `selected_col` and the sort columns) stays put.
-    pub(super) fn end_column_drag(&mut self) {
+    pub(crate) fn end_column_drag(&mut self) {
         if let (Some(col), Some(to)) = (self.dragging_col, self.drop_target_col) {
             self.move_column_to_display_position(col, to);
         }
 
         self.dragging_col = None;
         self.drop_target_col = None;
-    }
-
-    /// Display position (among visible columns) of column `col`
-    fn display_position(&self, col: usize) -> Option<usize> {
-        self.visible_columns_in_order()
-            .iter()
-            .position(|&(orig, _)| orig == col)
     }
 
     /// Move column `col` (index into `columns`) so it is drawn before the

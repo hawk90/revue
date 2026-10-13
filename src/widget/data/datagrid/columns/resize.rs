@@ -1,11 +1,20 @@
-//! DataGrid column resize functionality
+//! DataGrid column resize
 
-use super::core::DataGrid;
 use crate::layout::Rect;
+use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
+    /// Set callback for when a column is resized
+    pub fn on_column_resize<F>(mut self, callback: F) -> Self
+    where
+        F: FnMut(usize, u16) + 'static,
+    {
+        self.on_column_resize = Some(Box::new(callback));
+        self
+    }
+
     /// Start resizing a column
-    pub(super) fn start_resize(&mut self, col: usize, x: u16, area: Rect) {
+    pub(crate) fn start_resize(&mut self, col: usize, x: u16, area: Rect) {
         if col >= self.columns.len() || !self.columns[col].resizable {
             return;
         }
@@ -21,7 +30,7 @@ impl DataGrid {
     }
 
     /// Apply resize delta
-    pub(super) fn apply_resize_delta(&mut self, current_x: u16) {
+    pub(crate) fn apply_resize_delta(&mut self, current_x: u16) {
         let col_idx = match self.resizing_col {
             Some(idx) => idx,
             None => return,
@@ -52,7 +61,7 @@ impl DataGrid {
     }
 
     /// End resizing
-    pub(super) fn end_resize(&mut self) {
+    pub(crate) fn end_resize(&mut self) {
         self.resizing_col = None;
     }
 

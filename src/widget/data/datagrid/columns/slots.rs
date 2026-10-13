@@ -1,8 +1,8 @@
-//! DataGrid column geometry: display order, row-number gutter and column slots
+//! DataGrid column geometry: the row-number gutter and the column slots of a viewport
 
-use super::core::DataGrid;
-use super::types::GridColumn;
 use crate::layout::Rect;
+use crate::widget::data::datagrid::types::GridColumn;
+use crate::widget::data::datagrid::DataGrid;
 
 /// A column positioned in the rendered viewport, after applying column freeze
 /// and horizontal scroll.
@@ -10,7 +10,7 @@ use crate::layout::Rect;
 /// `x` is absolute and already accounts for the row-number gutter. Columns are
 /// laid out as: left-frozen (pinned left) · scrollable middle (offset by
 /// `scroll_col`) · right-frozen (pinned right).
-pub(super) struct ColumnSlot<'a> {
+pub(crate) struct ColumnSlot<'a> {
     /// Index into `self.columns`.
     pub orig_idx: usize,
     /// The column.
@@ -24,31 +24,9 @@ pub(super) struct ColumnSlot<'a> {
 }
 
 impl DataGrid {
-    /// Visible columns in display order (respecting `column_order`), each
-    /// paired with its index into `self.columns`.
-    pub(super) fn visible_columns_in_order(&self) -> Vec<(usize, &GridColumn)> {
-        if self.column_order.is_empty() {
-            self.columns
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| c.visible)
-                .collect()
-        } else {
-            self.column_order
-                .iter()
-                .filter_map(|&orig_idx| {
-                    self.columns
-                        .get(orig_idx)
-                        .filter(|c| c.visible)
-                        .map(|c| (orig_idx, c))
-                })
-                .collect()
-        }
-    }
-
     /// Width of the row-number gutter as drawn: digits for the row count,
     /// a space and a separator. Zero when row numbers are off.
-    pub(super) fn row_number_gutter_width(&self) -> u16 {
+    pub(crate) fn row_number_gutter_width(&self) -> u16 {
         if self.options.show_row_numbers {
             let total = self.filtered_count().max(1);
             let digits = format!("{}", total).len() as u16;
@@ -61,7 +39,7 @@ impl DataGrid {
     /// The column slots for a grid drawn into `area`, in `area`'s coordinate
     /// space. This is the single source of column geometry: `render()` draws
     /// from it and the mouse hit-tests against it.
-    pub(super) fn layout_column_slots<'a>(
+    pub(crate) fn layout_column_slots<'a>(
         &self,
         visible_cols: &[(usize, &'a GridColumn)],
         area: Rect,
@@ -86,7 +64,7 @@ impl DataGrid {
     ///
     /// `widths` is parallel to `visible_cols` (display order). Returned slots
     /// carry absolute x positions including the `row_num_width` gutter.
-    pub(super) fn compute_column_slots<'a>(
+    pub(crate) fn compute_column_slots<'a>(
         &self,
         visible_cols: &[(usize, &'a GridColumn)],
         widths: &[u16],

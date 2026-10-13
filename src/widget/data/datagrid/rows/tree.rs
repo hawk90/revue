@@ -1,6 +1,7 @@
 //! DataGrid tree mode functionality
 
-use super::core::DataGrid;
+use crate::widget::data::datagrid::types::GridRow;
+use crate::widget::data::datagrid::DataGrid;
 
 /// Tree node info for flattened display
 #[derive(Clone, Debug)]
@@ -42,7 +43,7 @@ impl DataGrid {
     /// Recursively flatten rows into tree_cache
     fn flatten_rows(
         &mut self,
-        rows: &[super::types::GridRow],
+        rows: &[GridRow],
         depth: usize,
         path: &mut Vec<usize>,
         parent_is_last: &[bool],
@@ -72,13 +73,13 @@ impl DataGrid {
     }
 
     /// Get row by path through tree
-    pub fn get_row_by_path(&self, path: &[usize]) -> Option<&super::types::GridRow> {
+    pub fn get_row_by_path(&self, path: &[usize]) -> Option<&GridRow> {
         if path.is_empty() {
             return None;
         }
 
         let mut current_rows = &self.rows;
-        let mut row: Option<&super::types::GridRow> = None;
+        let mut row: Option<&GridRow> = None;
 
         for &idx in path {
             if idx >= current_rows.len() {
@@ -92,7 +93,7 @@ impl DataGrid {
     }
 
     /// Get mutable row by path through tree
-    pub fn get_row_by_path_mut(&mut self, path: &[usize]) -> Option<&mut super::types::GridRow> {
+    pub fn get_row_by_path_mut(&mut self, path: &[usize]) -> Option<&mut GridRow> {
         if path.is_empty() {
             return None;
         }
@@ -189,7 +190,7 @@ impl DataGrid {
     }
 
     /// Recursively set expanded state for all rows
-    fn set_expanded_recursive(rows: &mut [super::types::GridRow], expanded: bool) {
+    fn set_expanded_recursive(rows: &mut [GridRow], expanded: bool) {
         for row in rows.iter_mut() {
             if !row.children.is_empty() {
                 row.expanded = expanded;

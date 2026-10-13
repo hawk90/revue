@@ -1,6 +1,6 @@
-//! DataGrid width calculation
+//! DataGrid column widths
 
-use super::core::DataGrid;
+use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
     /// Widths of the visible columns in display order, using user-set widths
@@ -8,7 +8,7 @@ impl DataGrid {
     ///
     /// `column_widths` is indexed like `columns`; a column it does not cover
     /// gets width 0.
-    pub(super) fn get_display_widths(&self, available: u16) -> Vec<u16> {
+    pub(crate) fn get_display_widths(&self, available: u16) -> Vec<u16> {
         if !self.column_widths.is_empty() {
             self.visible_columns_in_order()
                 .iter()
@@ -21,7 +21,7 @@ impl DataGrid {
 
     /// Widths of every column, indexed like `columns`: the displayed width for
     /// visible columns and the configured width for hidden ones
-    pub(super) fn widths_by_column(&self, available: u16) -> Vec<u16> {
+    pub(crate) fn widths_by_column(&self, available: u16) -> Vec<u16> {
         let mut widths: Vec<u16> = self
             .columns
             .iter()

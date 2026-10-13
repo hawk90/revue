@@ -1,8 +1,10 @@
 //! DataGrid core structure and builders
 
-use super::editing::EditState;
-use super::tree::TreeNodeInfo;
-use super::types::{FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection};
+use crate::widget::data::datagrid::input::editing::EditState;
+use crate::widget::data::datagrid::rows::tree::TreeNodeInfo;
+use crate::widget::data::datagrid::types::{
+    FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection,
+};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// DataGrid widget
@@ -221,16 +223,6 @@ impl DataGrid {
         &mut self.options
     }
 
-    /// Recompute the filtered rows cache (called on mutation)
-    pub fn recompute_cache(&mut self) {
-        self.filtered_cache = self.compute_filtered_indices();
-        // Fewer rows than before (rows removed, an edit that no longer
-        // matches the filter): keep the selection and scroll on a row
-        let last = self.filtered_cache.len().saturating_sub(1);
-        self.selected_row = self.selected_row.min(last);
-        self.scroll_row = self.scroll_row.min(last);
-    }
-
     /// Add a column
     pub fn column(mut self, col: GridColumn) -> Self {
         self.columns.push(col);
@@ -330,49 +322,13 @@ impl DataGrid {
     // Column Resize API
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Set callback for when a column is resized
-    pub fn on_column_resize<F>(mut self, callback: F) -> Self
-    where
-        F: FnMut(usize, u16) + 'static,
-    {
-        self.on_column_resize = Some(Box::new(callback));
-        self
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
     // Column Reorder API
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Enable or disable column reordering via drag and drop
-    pub fn reorderable(mut self, enable: bool) -> Self {
-        self.reorderable = enable;
-        self
-    }
-
-    /// Set callback for when columns are reordered
-    pub fn on_column_reorder<F>(mut self, callback: F) -> Self
-    where
-        F: FnMut(usize, usize) + 'static,
-    {
-        self.on_column_reorder = Some(Box::new(callback));
-        self
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
     // Column Freeze API
     // ─────────────────────────────────────────────────────────────────────────
-
-    /// Freeze N columns on the left (they stay visible during horizontal scroll)
-    pub fn freeze_columns_left(mut self, count: usize) -> Self {
-        self.frozen_left = count;
-        self
-    }
-
-    /// Freeze N columns on the right (they stay visible during horizontal scroll)
-    pub fn freeze_columns_right(mut self, count: usize) -> Self {
-        self.frozen_right = count;
-        self
-    }
 }
 
 impl Default for DataGrid {
