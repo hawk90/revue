@@ -4,6 +4,7 @@ mod css;
 mod element;
 mod event;
 mod focus_handlers;
+pub mod placement;
 mod render_context;
 mod selectable;
 mod symbols;
