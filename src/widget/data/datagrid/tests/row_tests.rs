@@ -20,14 +20,3 @@ fn test_grid_row_debug_clone() {
     assert_eq!(row.get("key"), cloned.get("key"));
     let _ = format!("{:?}", row);
 }
-
-#[test]
-fn test_grid_row_children() {
-    let row = GridRow::new()
-        .cell("name", "Parent")
-        .child(GridRow::new().cell("name", "Child 1"))
-        .child(GridRow::new().cell("name", "Child 2"));
-
-    assert!(row.has_children());
-    assert_eq!(row.children.len(), 2);
-}

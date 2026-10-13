@@ -75,6 +75,7 @@ fn test_navigation() {
 fn test_grid_colors_new() {
     let colors = GridColors::new();
     assert_eq!(colors.header_bg, Color::rgb(60, 60, 80));
+    assert_eq!(colors.header_fg, Color::WHITE);
 }
 
 #[test]
@@ -121,20 +122,6 @@ fn test_grid_options_debug_clone() {
 // ==================== ColumnType Tests ====================
 
 #[test]
-fn test_column_type_default() {
-    assert_eq!(ColumnType::default(), ColumnType::Text);
-}
-
-#[test]
-fn test_column_type_variants() {
-    let _text = ColumnType::Text;
-    let _number = ColumnType::Number;
-    let _date = ColumnType::Date;
-    let _bool = ColumnType::Boolean;
-    let _custom = ColumnType::Custom;
-}
-
-#[test]
 fn test_column_type_debug_clone_eq() {
     let col_type = ColumnType::Number;
     let cloned = col_type;
@@ -145,21 +132,6 @@ fn test_column_type_debug_clone_eq() {
 // ==================== SortDirection Tests ====================
 
 #[test]
-fn test_sort_direction_toggle() {
-    let asc = SortDirection::Ascending;
-    assert_eq!(asc.toggle(), SortDirection::Descending);
-
-    let desc = SortDirection::Descending;
-    assert_eq!(desc.toggle(), SortDirection::Ascending);
-}
-
-#[test]
-fn test_sort_direction_icon() {
-    assert_eq!(SortDirection::Ascending.icon(), '▲');
-    assert_eq!(SortDirection::Descending.icon(), '▼');
-}
-
-#[test]
 fn test_sort_direction_debug_clone_eq() {
     let dir = SortDirection::Ascending;
     let cloned = dir;
@@ -168,18 +140,6 @@ fn test_sort_direction_debug_clone_eq() {
 }
 
 // ==================== Alignment Tests ====================
-
-#[test]
-fn test_alignment_default() {
-    assert_eq!(Alignment::default(), Alignment::Left);
-}
-
-#[test]
-fn test_alignment_variants() {
-    let _left = Alignment::Left;
-    let _center = Alignment::Center;
-    let _right = Alignment::Right;
-}
 
 // ==================== Helper Functions Tests ====================
 

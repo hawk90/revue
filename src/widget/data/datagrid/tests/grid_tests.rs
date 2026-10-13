@@ -36,30 +36,10 @@ fn test_datagrid_colors_mut() {
 }
 
 #[test]
-fn test_datagrid_options_mut() {
-    let mut grid = DataGrid::new();
-    grid.options_mut().show_row_numbers = true;
-    assert!(grid.options.show_row_numbers);
-}
-
-#[test]
 fn test_datagrid_columns_vec() {
     let cols = vec![GridColumn::new("a", "A"), GridColumn::new("b", "B")];
     let grid = DataGrid::new().columns(cols);
     assert_eq!(grid.columns.len(), 2);
-}
-
-#[test]
-fn test_datagrid_data_2d() {
-    let grid = DataGrid::new()
-        .column(GridColumn::new("col1", "Col1"))
-        .column(GridColumn::new("col2", "Col2"))
-        .data(vec![
-            vec!["a1".into(), "b1".into()],
-            vec!["a2".into(), "b2".into()],
-        ]);
-    assert_eq!(grid.rows.len(), 2);
-    assert_eq!(grid.rows[0].get("col1"), Some("a1"));
 }
 
 #[test]

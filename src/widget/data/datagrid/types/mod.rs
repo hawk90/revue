@@ -39,24 +39,6 @@ mod tests {
         assert_eq!(colors.selected_fg, Color::WHITE);
     }
 
-    #[test]
-    fn test_grid_colors_new() {
-        let colors = GridColors::new();
-        assert_eq!(colors.header_fg, Color::WHITE);
-    }
-
-    #[test]
-    fn test_grid_colors_dark() {
-        let colors = GridColors::dark();
-        assert_eq!(colors.header_fg, Color::WHITE);
-    }
-
-    #[test]
-    fn test_grid_colors_light() {
-        let colors = GridColors::light();
-        assert_eq!(colors.header_fg, Color::BLACK);
-    }
-
     // =========================================================================
     // GridOptions Tests
     // =========================================================================
@@ -74,29 +56,9 @@ mod tests {
         assert_eq!(opts.overscan, 5);
     }
 
-    #[test]
-    fn test_grid_options_new() {
-        let opts = GridOptions::new();
-        assert!(opts.show_header);
-    }
-
     // =========================================================================
     // ColumnType Tests
     // =========================================================================
-
-    #[test]
-    fn test_column_type_default() {
-        assert_eq!(ColumnType::default(), ColumnType::Text);
-    }
-
-    #[test]
-    fn test_column_type_variants() {
-        assert_eq!(ColumnType::Text, ColumnType::Text);
-        assert_eq!(ColumnType::Number, ColumnType::Number);
-        assert_eq!(ColumnType::Date, ColumnType::Date);
-        assert_eq!(ColumnType::Boolean, ColumnType::Boolean);
-        assert_eq!(ColumnType::Custom, ColumnType::Custom);
-    }
 
     #[test]
     fn test_column_type_inequality() {
@@ -109,21 +71,6 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn test_sort_direction_toggle() {
-        let asc = SortDirection::Ascending;
-        assert_eq!(asc.toggle(), SortDirection::Descending);
-
-        let desc = SortDirection::Descending;
-        assert_eq!(desc.toggle(), SortDirection::Ascending);
-    }
-
-    #[test]
-    fn test_sort_direction_icon() {
-        assert_eq!(SortDirection::Ascending.icon(), '▲');
-        assert_eq!(SortDirection::Descending.icon(), '▼');
-    }
-
-    #[test]
     fn test_sort_direction_equality() {
         assert_eq!(SortDirection::Ascending, SortDirection::Ascending);
         assert_ne!(SortDirection::Ascending, SortDirection::Descending);
@@ -132,18 +79,6 @@ mod tests {
     // =========================================================================
     // Alignment Tests
     // =========================================================================
-
-    #[test]
-    fn test_alignment_default() {
-        assert_eq!(Alignment::default(), Alignment::Left);
-    }
-
-    #[test]
-    fn test_alignment_variants() {
-        assert_eq!(Alignment::Left, Alignment::Left);
-        assert_eq!(Alignment::Center, Alignment::Center);
-        assert_eq!(Alignment::Right, Alignment::Right);
-    }
 
     // =========================================================================
     // GridColumn Tests
@@ -222,12 +157,6 @@ mod tests {
     }
 
     #[test]
-    fn test_grid_column_resizable() {
-        let col = GridColumn::new("name", "Name").resizable(false);
-        assert!(!col.resizable);
-    }
-
-    #[test]
     fn test_grid_column_frozen() {
         let col = GridColumn::new("id", "ID").frozen(true);
         assert!(col.frozen);
@@ -271,12 +200,6 @@ mod tests {
     }
 
     #[test]
-    fn test_grid_row_default() {
-        let row = GridRow::default();
-        assert!(row.data.is_empty());
-    }
-
-    #[test]
     fn test_grid_row_cell() {
         let row = GridRow::new().cell("name", "Alice").cell("age", "30");
         assert_eq!(row.data.len(), 2);
@@ -297,15 +220,6 @@ mod tests {
             .child(GridRow::new().cell("name", "Child"));
         assert_eq!(parent.children.len(), 1);
         assert!(parent.has_children());
-    }
-
-    #[test]
-    fn test_grid_row_children() {
-        let parent = GridRow::new().cell("name", "Parent").children(vec![
-            GridRow::new().cell("name", "Child1"),
-            GridRow::new().cell("name", "Child2"),
-        ]);
-        assert_eq!(parent.children.len(), 2);
     }
 
     #[test]

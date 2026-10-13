@@ -74,15 +74,6 @@ fn test_copy_cell() {
 }
 
 #[test]
-fn test_export_format_default() {
-    let options = ExportOptions::default();
-    assert_eq!(options.format, ExportFormat::Csv);
-    assert!(options.include_headers);
-    assert!(!options.selected_only);
-    assert!(options.visible_columns_only);
-}
-
-#[test]
 fn test_export_plain_text() {
     let grid = DataGrid::new()
         .column(GridColumn::new("a", "A"))

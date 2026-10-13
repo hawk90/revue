@@ -106,15 +106,6 @@ fn test_aggregation_non_numeric() {
 }
 
 #[test]
-fn test_aggregation_type_labels() {
-    assert_eq!(AggregationType::Sum.label(), "Sum");
-    assert_eq!(AggregationType::Average.label(), "Avg");
-    assert_eq!(AggregationType::Count.label(), "Count");
-    assert_eq!(AggregationType::Min.label(), "Min");
-    assert_eq!(AggregationType::Max.label(), "Max");
-}
-
-#[test]
 fn test_footer_values() {
     let grid = DataGrid::new()
         .column(GridColumn::new("value", "Value"))

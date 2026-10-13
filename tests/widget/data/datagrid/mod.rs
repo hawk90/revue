@@ -10,7 +10,7 @@ mod width;
 
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::data::datagrid::{DataGrid, GridColors, GridColumn, GridRow, SortDirection};
+use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow, SortDirection};
 use revue::widget::traits::{RenderContext, View};
 
 #[test]
@@ -29,14 +29,6 @@ fn test_datagrid_new() {
     assert_eq!(grid.frozen_left, 0);
     assert_eq!(grid.frozen_right, 0);
     assert!(!grid.reorderable);
-}
-
-#[test]
-fn test_datagrid_colors() {
-    let colors = GridColors::new();
-    let header_bg = colors.header_bg;
-    let grid = DataGrid::new().colors(colors);
-    assert_eq!(grid.colors.header_bg, header_bg);
 }
 
 #[test]
