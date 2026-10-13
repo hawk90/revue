@@ -67,5 +67,3 @@ impl Default for GridRow {
         Self::new()
     }
 }
-
-// # KEEP HERE - Private tests for internal functionality

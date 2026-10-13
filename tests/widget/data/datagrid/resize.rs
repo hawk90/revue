@@ -1,9 +1,18 @@
-#![allow(unused_imports)]
+//! DataGrid column resize tests
 
-use super::super::*;
-use super::header_separators;
-use crate::event::MouseEventKind;
-use crate::layout::Rect;
+use super::render_to;
+use revue::event::MouseEventKind;
+use revue::layout::Rect;
+use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
+
+/// The x of each column separator in the header row of a grid drawn
+/// `width` columns wide.
+pub(super) fn header_separators(grid: &DataGrid, width: u16) -> Vec<u16> {
+    let buf = render_to(grid, width, 5);
+    (0..width)
+        .filter(|&x| buf.get(x, 0).map(|c| c.symbol) == Some('│'))
+        .collect()
+}
 
 #[test]
 fn test_column_resize_state() {

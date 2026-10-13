@@ -54,5 +54,3 @@ pub enum Alignment {
     /// Right-aligned text
     Right,
 }
-
-// # KEEP HERE - Private tests for internal functionality

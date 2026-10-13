@@ -20,10 +20,6 @@ mod tree;
 mod types;
 mod width;
 
-// KEEP HERE - Private implementation tests in tests/ directory (accesses private fields of DataGrid)
-#[cfg(test)]
-mod tests;
-
 // Re-export all types (explicit to avoid conflict with mod export)
 #[allow(unused_imports)]
 pub use types::{

@@ -3,6 +3,7 @@
 //! Width calculation is private; the widths are read back from where
 //! render() draws each column's trailing `│` separator in a data row.
 
+use super::{render_to, row_text};
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
@@ -205,4 +206,11 @@ fn test_zero_width_column_with_a_value() {
     let mut grid = DataGrid::new().column(col("a")).column(col("b"));
     grid.set_column_widths(vec![0, 10]);
     assert_eq!(rendered_widths(grid, 100, 0), vec![0, 10]);
+}
+
+#[test]
+fn test_calculate_widths_empty() {
+    let grid = DataGrid::new();
+    let buf = render_to(&grid, 80, 5);
+    assert!(!row_text(&buf, 0, 80).contains('│'));
 }

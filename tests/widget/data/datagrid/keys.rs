@@ -1,7 +1,7 @@
-#![allow(unused_imports)]
+//! DataGrid key handling tests
 
-use super::super::*;
-use crate::event::Key;
+use revue::event::Key;
+use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
 
 #[test]
 fn test_handle_key_navigation() {

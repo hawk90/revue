@@ -1,6 +1,6 @@
-#![allow(unused_imports)]
+//! DataGrid sorting tests
 
-use super::super::*;
+use revue::widget::data::datagrid::{ColumnType, DataGrid, GridColumn, GridRow, SortDirection};
 
 #[test]
 fn test_sorting() {

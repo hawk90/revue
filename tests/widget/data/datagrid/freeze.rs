@@ -1,10 +1,7 @@
-#![allow(unused_imports)]
+//! DataGrid column freeze and horizontal scroll tests
 
-use super::super::*;
 use super::{render_to, row_text};
-use crate::layout::Rect;
-use crate::render::Buffer;
-use crate::widget::traits::{RenderContext, View};
+use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
 
 /// Six fixed-width columns "C0".."C5" so positions are deterministic.
 fn six_col_grid() -> DataGrid {
@@ -70,8 +67,6 @@ fn test_horizontal_scroll() {
     grid.scroll_col_left();
     assert_eq!(grid.scroll_col, 0);
 }
-
-// --- Rendering: column freeze + horizontal scroll ---
 
 #[test]
 fn all_columns_render_without_freeze() {

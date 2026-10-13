@@ -1,6 +1,6 @@
-#![allow(unused_imports)]
+//! DataGrid tree mode tests
 
-use super::super::*;
+use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
 
 #[test]
 fn test_tree_grid_basic() {
