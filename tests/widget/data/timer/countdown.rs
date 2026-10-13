@@ -1,5 +1,6 @@
 //! Timer (countdown) widget tests
 
+use proptest::prelude::*;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
@@ -1216,6 +1217,35 @@ fn test_timer_builder() {
     assert!(rows[1].contains('▀'), "{rows:#?}");
     assert!(rows.iter().all(|r| !r.contains('░')));
 }
+
+#[test]
+fn test_timer_zero_area_draws_nothing() {
+    super::super::chart::assert_zero_areas_draw_nothing(
+        &Timer::countdown(90).title("Tea").large_digits(true),
+    );
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    /// For any duration, each format shows the hours, minutes and seconds
+    /// of the full time before the timer starts.
+    #[test]
+    fn test_timer_formats_any_duration(secs in 0u64..400_000) {
+        let (h, m, s) = (secs / 3600, (secs / 60) % 60, secs % 60);
+        let timer = |format| Timer::countdown(secs).format(format).format_remaining();
+        prop_assert_eq!(timer(TimerFormat::Full), format!("{h:02}:{m:02}:{s:02}"));
+        let short = if h > 0 { format!("{h:02}:{m:02}:{s:02}") } else { format!("{m:02}:{s:02}") };
+        prop_assert_eq!(timer(TimerFormat::Short), short);
+        prop_assert_eq!(timer(TimerFormat::Precise), format!("{m:02}:{s:02}.000"));
+        let compact = if h > 0 { format!("{h}h {m}m") } else if m > 0 { format!("{m}m {s}s") } else { format!("{s}s") };
+        prop_assert_eq!(timer(TimerFormat::Compact), compact);
+        // The first row shows it
+        let rows = screen(&Timer::countdown(secs), 40, 3);
+        prop_assert_eq!(rows[0].trim(), format!("{h:02}:{m:02}:{s:02}"));
+    }
+}
+
 mod snapshots {
 
     use revue::testing::{Pilot, TestApp, TestConfig};

@@ -153,6 +153,23 @@ fn test_stopwatch_laps_shown() {
     assert!(rows.iter().all(|r| !r.contains("Laps")));
 }
 
+#[test]
+fn test_stopwatch_zero_area_draws_nothing() {
+    let mut sw = Stopwatch::new().title("SW");
+    sw.start();
+    sw.lap();
+    super::super::chart::assert_zero_areas_draw_nothing(&sw);
+}
+
+#[test]
+fn test_stopwatch_draws_the_same_when_offset() {
+    let mut sw = Stopwatch::new().title("SW");
+    sw.start();
+    sw.lap();
+    sw.pause();
+    super::super::chart::assert_same_when_offset(sw, 20, 6);
+}
+
 mod snapshots {
 
     use revue::testing::{Pilot, TestApp, TestConfig};
