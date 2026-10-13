@@ -1,8 +1,27 @@
 //! DataGrid column geometry: display order, row-number gutter and column slots
 
-use super::core::{ColumnSlot, DataGrid};
+use super::core::DataGrid;
 use super::types::GridColumn;
 use crate::layout::Rect;
+
+/// A column positioned in the rendered viewport, after applying column freeze
+/// and horizontal scroll.
+///
+/// `x` is absolute and already accounts for the row-number gutter. Columns are
+/// laid out as: left-frozen (pinned left) · scrollable middle (offset by
+/// `scroll_col`) · right-frozen (pinned right).
+pub(super) struct ColumnSlot<'a> {
+    /// Index into `self.columns`.
+    pub orig_idx: usize,
+    /// The column.
+    pub col: &'a GridColumn,
+    /// Position in display order (index into the full `visible_cols` list).
+    pub display_idx: usize,
+    /// Absolute x of the column's first cell.
+    pub x: u16,
+    /// Column width (excluding the trailing separator).
+    pub width: u16,
+}
 
 impl DataGrid {
     /// Visible columns in display order (respecting `column_order`), each

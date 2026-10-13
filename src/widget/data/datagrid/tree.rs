@@ -1,6 +1,21 @@
 //! DataGrid tree mode functionality
 
-use super::core::{DataGrid, TreeNodeInfo};
+use super::core::DataGrid;
+
+/// Tree node info for flattened display
+#[derive(Clone, Debug)]
+pub struct TreeNodeInfo {
+    /// Original row index in tree (path from root)
+    pub path: Vec<usize>,
+    /// Nesting depth (0 = root level)
+    pub depth: usize,
+    /// Has child rows
+    pub has_children: bool,
+    /// Currently expanded
+    pub is_expanded: bool,
+    /// Is last child at this level (for tree line rendering)
+    pub is_last_child: bool,
+}
 
 #[allow(dead_code)]
 impl DataGrid {

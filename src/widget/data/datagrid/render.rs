@@ -1,12 +1,37 @@
 //! DataGrid rendering
 
-use super::core::{CellPos, CellState, ColumnSlot, DataGrid, RowRenderParams};
+use super::core::DataGrid;
+use super::layout::ColumnSlot;
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::{char_width, display_width, truncate_to_width};
 use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View};
+
+/// Cell position for rendering
+pub(super) struct CellPos {
+    pub x: u16,
+    pub y: u16,
+    pub width: u16,
+}
+
+/// Cell state for rendering
+pub(super) struct CellState {
+    pub row_bg: Color,
+    pub is_selected: bool,
+    pub is_editing: bool,
+}
+
+/// Row rendering parameters
+pub(super) struct RowRenderParams<'a, 'b> {
+    pub slots: &'b [ColumnSlot<'a>],
+    pub area_x: u16,
+    pub content_end: u16,
+    pub start_y: u16,
+    pub row_num_width: u16,
+    pub visible_height: usize,
+}
 
 impl View for DataGrid {
     crate::impl_view_meta!("DataGrid");
