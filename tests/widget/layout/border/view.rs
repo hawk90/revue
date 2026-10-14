@@ -5,8 +5,9 @@ use proptest::prelude::*;
 use revue::layout::Rect;
 use revue::render::{Buffer, Cell};
 use revue::style::Color;
+use revue::testing::PipelineHarness;
 use revue::widget::traits::{RenderContext, View};
-use revue::widget::{draw_border, vstack, Border, BorderType, Text};
+use revue::widget::{draw_border, hstack, vstack, Border, BorderType, Text};
 
 use crate::traits::placement::assert_zero_areas_draw_nothing;
 
@@ -214,6 +215,54 @@ fn test_border_measure_adds_the_frame_to_the_child() {
             .measure(80, 24),
         Some((9, 3))
     );
+}
+
+/// A child that writes 20 cells from its origin straight into the buffer,
+/// past its own area.
+struct Spill;
+
+impl View for Spill {
+    fn render(&self, ctx: &mut RenderContext) {
+        let (x, y) = (ctx.area.x, ctx.area.y);
+        for i in 0..20 {
+            ctx.buffer.set(x + i, y, Cell::new('#'));
+        }
+    }
+}
+
+/// An 8-column border `#b` around `Spill`, on a 20-column screen.
+struct Narrow;
+
+impl View for Narrow {
+    fn render(&self, ctx: &mut RenderContext) {
+        hstack()
+            .child_sized(Border::new().child(Spill).element_id("b"), 8)
+            .render(ctx);
+    }
+    fn widget_type(&self) -> &'static str {
+        "Narrow"
+    }
+    fn id(&self) -> Option<&str> {
+        Some("root")
+    }
+}
+
+/// The columns right of the border that the child wrote to.
+fn spilled(css: &str) -> Vec<u16> {
+    let mut h = PipelineHarness::with_css(css, 20, 4).dom_from_render(true);
+    h.draw(&Narrow);
+    (8..20)
+        .filter(|&x| h.buffer().get(x, 1).unwrap().symbol == '#')
+        .collect()
+}
+
+/// `overflow: hidden` on the border keeps a child that writes to the buffer
+/// directly inside the border's box.
+#[test]
+fn test_border_overflow_hidden_clips_the_child_at_the_border() {
+    // Without it the child spills, or the check below would prove nothing.
+    assert_eq!(spilled(""), (8..20).collect::<Vec<_>>());
+    assert_eq!(spilled("#b { overflow: hidden; }"), Vec::<u16>::new());
 }
 
 proptest! {
