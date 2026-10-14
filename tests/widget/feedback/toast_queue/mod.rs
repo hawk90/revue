@@ -9,6 +9,8 @@ use revue::widget::{
 use std::thread::sleep;
 use std::time::Duration;
 
+mod view;
+
 fn messages(entries: &[ToastEntry]) -> Vec<&str> {
     entries.iter().map(|e| e.message.as_str()).collect()
 }
