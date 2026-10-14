@@ -1096,8 +1096,7 @@ fn test_render_tabs_in_text() {
 
     rt.render(&mut ctx);
     // The words stay apart. What the tab itself becomes is not checked:
-    // it is written into a cell as a raw control character (see the #982
-    // comment draft from this audit, draft-rt-c982).
+    // it is written into a cell as a raw control character (#982).
     let text = row(&buffer, 0, 20);
     assert!(text.starts_with("Item"), "{text:?}");
     let tabbed = text.find("Tabbed").expect("Tabbed is drawn");

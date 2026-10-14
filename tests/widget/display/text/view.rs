@@ -132,7 +132,7 @@ fn test_text_justify_takes_the_stylesheet_attributes() {
         Modifier::BOLD | Modifier::UNDERLINE | Modifier::CROSSED_OUT
     );
     // The stylesheet `color` and `background` are not checked here: the
-    // justified path paints only the builder's colors (draft-rt-1).
+    // justified path paints only the builder's colors (#1068).
 }
 
 #[test]

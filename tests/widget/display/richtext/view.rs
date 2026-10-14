@@ -214,9 +214,8 @@ proptest! {
             if y < height as usize && x < width as usize {
                 if w == 2 && x + 1 == width as usize {
                     // A wide glyph starting in the last column is drawn there
-                    // with no room for its right half (the #974 comment
-                    // draft from this audit, draft-rt-c974); that cell is
-                    // not checked.
+                    // with no room for its right half (#974);
+                    // that cell is not checked.
                     skip[y][x] = true;
                 } else {
                     want[y][x] = c;
