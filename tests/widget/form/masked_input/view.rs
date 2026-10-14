@@ -113,7 +113,7 @@ fn test_masked_input_wide_glyphs_fill_two_columns_of_the_field() {
         assert_eq!(buffer.get(x, 0).unwrap().symbol, ' ', "x={x}");
     }
     // A glyph cut at the edge is left out whole (the field is then a
-    // column short, a bug kept out of this test).
+    // column short, #1073, kept out of this test).
     let mut input = MaskedInput::new()
         .value("비밀번호")
         .allow_reveal(true)

@@ -505,8 +505,8 @@ proptest! {
         width in 5u16..32,
         height in 3u16..22,
     ) {
-        // Without inline errors the helper text is not drawn either, a bug
-        // not fixed here; keep helpers out of those cases so the model does
+        // Without inline errors the helper text is not drawn either (#1072);
+        // keep helpers out of those cases so the model does
         // not encode it.
         let mut specs = specs;
         if !show_errors || style == ErrorDisplayStyle::Summary {
