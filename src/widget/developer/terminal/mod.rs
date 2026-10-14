@@ -2,139 +2,187 @@
 //!
 //! Provides an embedded terminal with ANSI color support and scrollback.
 
-pub use core::{terminal, Terminal};
 pub use types::{CursorStyle, TermCell, TermLine, TerminalAction};
 
 mod ansi;
-mod core;
-// KEEP HERE - These tests require public API getters for terminal state
-// Tests are placeholder as private fields cannot be tested directly
-
+mod input;
+mod screen;
+mod scroll;
 #[cfg(test)]
-mod tests {
-    //! Tests for terminal widget
+mod tests;
+mod types;
+mod view;
 
-    #![allow(unused_imports)]
+use crate::style::Color;
+use crate::widget::theme::{EDITOR_BG, MUTED_TEXT, SECONDARY_TEXT};
+use crate::widget::traits::WidgetProps;
+use crate::{impl_props_builders, impl_styled_view};
+use ansi::AnsiParser;
 
-    use super::*;
-    use crate::event::{Key, KeyEvent};
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-    use crate::style::Color;
-    use crate::widget::traits::RenderContext;
+/// Embedded terminal widget
+#[derive(Clone)]
+pub struct Terminal {
+    /// Terminal lines (scrollback + visible)
+    lines: Vec<TermLine>,
+    /// Current cursor row (relative to lines)
+    cursor_row: usize,
+    /// Current cursor column
+    cursor_col: usize,
+    /// Scroll offset (0 = at bottom, showing latest)
+    scroll_offset: usize,
+    /// Maximum scrollback lines
+    max_scrollback: usize,
+    /// Terminal width
+    width: u16,
+    /// Terminal height
+    height: u16,
+    /// ANSI parser
+    parser: AnsiParser,
+    /// Default foreground color
+    /// The color the builder named, if it named one - see #656.
+    default_fg: Option<Color>,
+    /// Default background color
+    /// The color the builder named, if it named one - see #656.
+    default_bg: Option<Color>,
+    /// Show cursor
+    show_cursor: bool,
+    /// Cursor style
+    cursor_style: CursorStyle,
+    /// Title
+    title: Option<String>,
+    /// Input buffer for command mode
+    input_buffer: String,
+    /// Command history
+    history: Vec<String>,
+    /// History position
+    history_pos: usize,
+    /// Is focused
+    focused: bool,
+    /// CSS styling properties (id, classes)
+    props: WidgetProps,
+}
 
-    #[test]
-    fn test_terminal_new() {
-        let _term = Terminal::new(80, 24);
-        // Private fields - can't test directly
-    }
-
-    #[test]
-    fn test_terminal_write() {
-        let mut term = Terminal::new(80, 24);
-        term.write("Hello, World!");
-        // Private fields - can't test directly
-    }
-
-    #[test]
-    fn test_terminal_writeln() {
-        let mut term = Terminal::new(80, 24);
-        term.writeln("Line 1");
-        term.writeln("Line 2");
-        // Private field - can't test directly
-    }
-
-    #[test]
-    fn test_terminal_ansi_colors() {
-        let mut term = Terminal::new(80, 24);
-        term.write("\x1b[31mRed\x1b[0m Normal");
-        // Private fields - can't test directly
-    }
-
-    #[test]
-    fn test_terminal_scroll() {
-        let mut term = Terminal::new(80, 5);
-        for i in 0..10 {
-            term.writeln(&format!("Line {}", i));
+impl Terminal {
+    /// Create a new terminal
+    pub fn new(width: u16, height: u16) -> Self {
+        // Clamp to reasonable terminal dimensions to prevent excessive allocation
+        let width = width.min(1000);
+        let height = height.min(1000);
+        let mut lines = Vec::with_capacity(height as usize);
+        for _ in 0..height {
+            lines.push(TermLine::with_capacity(width as usize));
         }
 
-        term.scroll_up(3);
-        term.scroll_down(2);
-        term.scroll_to_bottom();
-        // Private field - can't test directly
+        Self {
+            lines,
+            cursor_row: 0,
+            cursor_col: 0,
+            scroll_offset: 0,
+            max_scrollback: 10000,
+            width,
+            height,
+            parser: AnsiParser::new(),
+            default_fg: None,
+            default_bg: None,
+            show_cursor: true,
+            cursor_style: CursorStyle::Block,
+            title: None,
+            input_buffer: String::new(),
+            history: Vec::new(),
+            history_pos: 0,
+            focused: false,
+            props: WidgetProps::new(),
+        }
     }
 
-    #[test]
-    fn test_terminal_clear() {
-        let mut term = Terminal::new(80, 24);
-        term.writeln("Some text");
-        term.clear();
-        // Private fields - can't test directly
+    /// Set maximum scrollback lines
+    pub fn max_scrollback(mut self, lines: usize) -> Self {
+        self.max_scrollback = lines;
+        self
     }
 
-    #[test]
-    fn test_terminal_input() {
-        let mut term = Terminal::new(80, 24);
-
-        term.handle_key(KeyEvent::new(Key::Char('h')));
-        term.handle_key(KeyEvent::new(Key::Char('i')));
-
-        assert_eq!(term.get_input(), "hi");
-
-        let action = term.handle_key(KeyEvent::new(Key::Enter));
-        assert_eq!(action, Some(TerminalAction::Submit("hi".to_string())));
-        assert_eq!(term.get_input(), "");
+    /// Set default foreground color
+    pub fn default_fg(mut self, color: Color) -> Self {
+        self.default_fg = Some(color);
+        self.parser.reset_fg(color);
+        self
     }
 
-    #[test]
-    fn test_terminal_history() {
-        let mut term = Terminal::new(80, 24);
-
-        term.handle_key(KeyEvent::new(Key::Char('a')));
-        term.handle_key(KeyEvent::new(Key::Enter));
-
-        term.handle_key(KeyEvent::new(Key::Char('b')));
-        term.handle_key(KeyEvent::new(Key::Enter));
-
-        term.handle_key(KeyEvent::new(Key::Up));
-        assert_eq!(term.get_input(), "b");
-
-        term.handle_key(KeyEvent::new(Key::Up));
-        assert_eq!(term.get_input(), "a");
+    /// Set default background color
+    pub fn default_bg(mut self, color: Color) -> Self {
+        self.default_bg = Some(color);
+        self.parser.reset_bg(color);
+        self
     }
 
-    #[test]
-    fn test_terminal_render() {
-        // Terminal::render doesn't exist - remove test
+    /// Show/hide cursor
+    pub fn show_cursor(mut self, show: bool) -> Self {
+        self.show_cursor = show;
+        self
     }
 
-    #[test]
-    fn test_terminal_256_color() {
-        let mut term = Terminal::new(80, 24);
-        term.write("\x1b[38;5;196mRed256\x1b[0m");
-        // Private fields - can't test directly
+    /// Set cursor style
+    pub fn cursor_style(mut self, style: CursorStyle) -> Self {
+        self.cursor_style = style;
+        self
     }
 
-    #[test]
-    fn test_terminal_rgb_color() {
-        let mut term = Terminal::new(80, 24);
-        term.write("\x1b[38;2;255;128;64mOrange\x1b[0m");
-        // Private fields - can't test directly
+    /// Set title
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = Some(title.into());
+        self
     }
 
-    #[test]
-    fn test_terminal_presets() {
-        let _shell = Terminal::shell(80, 24);
-        // Private field - can't test directly
-
-        let _log = Terminal::log_viewer(80, 24);
-        // Private field - can't test directly
+    /// Get title
+    pub fn get_title(&self) -> Option<&str> {
+        self.title.as_deref()
     }
 
-    #[test]
-    fn test_terminal_helper() {
-        let _term = super::terminal(120, 40);
-        // Private fields - can't test directly
+    /// Focus the terminal
+    pub fn focus(&mut self) {
+        self.focused = true;
+    }
+
+    /// Unfocus the terminal
+    pub fn blur(&mut self) {
+        self.focused = false;
+    }
+
+    /// Check if focused
+    pub fn is_focused(&self) -> bool {
+        self.focused
+    }
+
+    // Presets
+
+    /// Create a shell-style terminal
+    pub fn shell(width: u16, height: u16) -> Self {
+        Self::new(width, height)
+            .default_fg(SECONDARY_TEXT)
+            .default_bg(EDITOR_BG)
+            .cursor_style(CursorStyle::Block)
+    }
+
+    /// Create a log viewer terminal
+    pub fn log_viewer(width: u16, height: u16) -> Self {
+        Self::new(width, height)
+            .default_fg(MUTED_TEXT)
+            .default_bg(Color::rgb(20, 20, 20))
+            .show_cursor(false)
+            .max_scrollback(50000)
     }
 }
-mod types;
+
+impl Default for Terminal {
+    fn default() -> Self {
+        Self::new(80, 24)
+    }
+}
+
+impl_styled_view!(Terminal);
+impl_props_builders!(Terminal);
+
+/// Helper function to create a terminal widget
+pub fn terminal(width: u16, height: u16) -> Terminal {
+    Terminal::new(width, height)
+}

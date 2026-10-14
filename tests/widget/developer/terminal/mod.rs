@@ -3,7 +3,9 @@
 //! Tests for ANSI parsing, SGR sequences, colors, and terminal behavior.
 
 mod ansi;
+mod model;
 mod types;
+mod view;
 
 use revue::event::{Key, KeyEvent};
 use revue::layout::Rect;
@@ -11,6 +13,21 @@ use revue::render::{Buffer, Modifier};
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{CursorStyle, Terminal, TerminalAction};
+
+/// `term` drawn into a `width`x`height` buffer at the origin
+fn screen(term: &Terminal, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+    term.render(&mut ctx);
+    buffer
+}
+
+/// Row `y` of `buffer` as text
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect()
+}
 
 // =============================================================================
 // ANSI Parser Tests (via rendering)
@@ -516,12 +533,25 @@ fn test_terminal_resize_preserve_content() {
 
 #[test]
 fn test_terminal_cursor_style_all() {
-    let styles = [CursorStyle::Block, CursorStyle::Underline, CursorStyle::Bar];
+    let styles = [
+        (CursorStyle::Block, '█'),
+        (CursorStyle::Underline, '_'),
+        (CursorStyle::Bar, '│'),
+    ];
 
-    for style in styles {
-        let term = Terminal::new(80, 24).cursor_style(style);
-        // Just verify it compiles and doesn't panic
-        let _ = term;
+    for (style, glyph) in styles {
+        let mut term = Terminal::new(80, 24).cursor_style(style);
+        term.focus();
+        term.write("Test");
+        let buffer = screen(&term, 80, 24);
+        // Drawn after the text, in the default foreground
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, glyph, "{style:?}");
+        assert_eq!(
+            buffer.get(4, 0).unwrap().fg,
+            Some(Color::WHITE),
+            "{style:?}"
+        );
+        assert_eq!(row(&buffer, 0).trim_end(), format!("Test{glyph}"));
     }
 }
 
@@ -529,34 +559,31 @@ fn test_terminal_cursor_style_all() {
 fn test_terminal_zero_dimensions() {
     let mut term = Terminal::new(0, 0);
 
+    // Zero columns: every character fills the line and wraps
     term.write("Test");
 
     // Should handle gracefully
     term.resize(80, 24);
 
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    term.render(&mut ctx);
-
-    // Should not panic
+    let buffer = screen(&term, 80, 24);
+    for (y, ch) in "Test".chars().enumerate() {
+        assert_eq!(row(&buffer, y as u16).trim_end(), ch.to_string(), "row {y}");
+    }
+    assert_eq!(row(&buffer, 4).trim_end(), "");
 }
 
 #[test]
 fn test_terminal_newline() {
     let mut term = Terminal::new(80, 24);
+    term.focus();
 
-    term.writeln("Line 1");
-    term.writeln("Line 2");
+    // A `\n` inside written text starts the next row at column 0
+    term.write("Line 1\nLine 2");
 
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    term.render(&mut ctx);
-
-    // Should have two lines
-    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'L');
-    assert_eq!(buffer.get(0, 1).unwrap().symbol, 'L');
+    let buffer = screen(&term, 80, 24);
+    assert_eq!(row(&buffer, 0).trim_end(), "Line 1");
+    assert_eq!(row(&buffer, 1).trim_end(), "Line 2█");
+    assert_eq!(row(&buffer, 2).trim_end(), "");
 }
 
 #[test]
@@ -691,18 +718,14 @@ fn test_terminal_scroll_to_bottom() {
     term.scroll_up(5);
     term.scroll_to_bottom();
 
-    let mut buffer = Buffer::new(80, 10);
-    let area = Rect::new(0, 0, 80, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    term.render(&mut ctx);
+    let buffer = screen(&term, 80, 10);
 
-    // No scroll indicator at bottom
-    // No scroll indicator at bottom
-    for x in 70..80 {
-        if buffer.get(x, 0).unwrap().symbol == '↑' {
-            panic!("Found scroll indicator when there should be none");
-        }
-    }
+    // The latest lines (the last row is the empty line after "Line 19"),
+    // and no scroll indicator
+    assert_eq!(row(&buffer, 0).trim_end(), "Line 11");
+    assert_eq!(row(&buffer, 8).trim_end(), "Line 19");
+    assert_eq!(row(&buffer, 9).trim_end(), "");
+    assert!(!row(&buffer, 0).contains('↑'));
 }
 
 #[test]
@@ -737,12 +760,14 @@ fn test_terminal_scroll_to_top() {
 #[test]
 fn test_terminal_show_cursor() {
     // Show cursor
-    let term = Terminal::new(80, 24).show_cursor(true);
-    let _ = term; // Just verify it compiles
+    let mut term = Terminal::new(80, 24).show_cursor(true);
+    term.focus();
+    assert_eq!(screen(&term, 80, 24).get(0, 0).unwrap().symbol, '█');
 
     // Hide cursor
-    let term = Terminal::new(80, 24).show_cursor(false);
-    let _ = term;
+    let mut term = Terminal::new(80, 24).show_cursor(false);
+    term.focus();
+    assert_eq!(screen(&term, 80, 24).get(0, 0).unwrap().symbol, ' ');
 }
 
 #[test]
@@ -764,8 +789,23 @@ fn test_terminal_focus_blur() {
 
 #[test]
 fn test_terminal_max_scrollback() {
-    let term = Terminal::new(80, 24).max_scrollback(1000);
-    let _ = term; // Just verify it compiles
+    // Lines kept: the height plus the scrollback; older lines are dropped
+    let mut term = Terminal::new(10, 2).max_scrollback(3);
+    for i in 0..10 {
+        term.writeln(&format!("s{i}"));
+    }
+    term.scroll_to_top();
+    let buffer = screen(&term, 10, 2);
+    assert!(row(&buffer, 0).starts_with("s6 "), "{:?}", row(&buffer, 0));
+    assert_eq!(row(&buffer, 1).trim_end(), "s7");
+
+    // A scrollback of 1000 keeps all ten
+    let mut term = Terminal::new(10, 2).max_scrollback(1000);
+    for i in 0..10 {
+        term.writeln(&format!("s{i}"));
+    }
+    term.scroll_to_top();
+    assert!(row(&screen(&term, 10, 2), 0).starts_with("s0 "));
 }
 
 #[test]
@@ -785,11 +825,32 @@ fn test_terminal_default_fg_bg() {
 
 #[test]
 fn test_terminal_presets() {
-    let shell = Terminal::shell(80, 24);
-    let _ = shell; // Verify it compiles
+    use revue::widget::theme::{EDITOR_BG, MUTED_TEXT, SECONDARY_TEXT};
 
-    let log = Terminal::log_viewer(80, 24);
-    let _ = log; // Verify it compiles
+    // shell: secondary text on the editor background, block cursor
+    let mut shell = Terminal::shell(80, 24);
+    shell.focus();
+    shell.write("$");
+    let buffer = screen(&shell, 80, 24);
+    let prompt = buffer.get(0, 0).unwrap();
+    assert_eq!(
+        (prompt.fg, prompt.bg),
+        (Some(SECONDARY_TEXT), Some(EDITOR_BG))
+    );
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, '█');
+    assert_eq!(buffer.get(40, 10).unwrap().bg, Some(EDITOR_BG));
+
+    // log_viewer: muted text on near-black, no cursor even when focused
+    let mut log = Terminal::log_viewer(80, 24);
+    log.focus();
+    log.write("x");
+    let buffer = screen(&log, 80, 24);
+    let x = buffer.get(0, 0).unwrap();
+    assert_eq!(
+        (x.fg, x.bg),
+        (Some(MUTED_TEXT), Some(Color::rgb(20, 20, 20)))
+    );
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, ' ');
 }
 
 #[test]
@@ -919,14 +980,15 @@ fn test_terminal_page_down() {
     }
 
     term.scroll_up(5);
+    let scrolled = row(&screen(&term, 80, 10), 0);
+    assert!(scrolled.starts_with("Line 6 "), "{scrolled:?}");
+    assert!(scrolled.contains("↑5"), "{scrolled:?}");
+    // Half the height (5 lines) down: back at the bottom
     term.handle_key(KeyEvent::new(Key::PageDown));
 
-    let mut buffer = Buffer::new(80, 10);
-    let area = Rect::new(0, 0, 80, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    term.render(&mut ctx);
-
-    // Scroll indicator should be reduced or gone
+    let buffer = screen(&term, 80, 10);
+    assert_eq!(row(&buffer, 0).trim_end(), "Line 11");
+    assert!(!row(&buffer, 0).contains('↑'));
 }
 
 #[test]
@@ -954,18 +1016,12 @@ fn test_terminal_end_key() {
     term.scroll_up(5);
     term.handle_key(KeyEvent::new(Key::End));
 
-    let mut buffer = Buffer::new(80, 10);
-    let area = Rect::new(0, 0, 80, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    term.render(&mut ctx);
+    let buffer = screen(&term, 80, 10);
 
-    // No scroll indicator at bottom
-    // No scroll indicator at bottom
-    for x in 70..80 {
-        if buffer.get(x, 0).unwrap().symbol == '↑' {
-            panic!("Found scroll indicator when there should be none");
-        }
-    }
+    // Back at the latest lines, no scroll indicator
+    assert_eq!(row(&buffer, 0).trim_end(), "Line 11");
+    assert_eq!(row(&buffer, 8).trim_end(), "Line 19");
+    assert!(!row(&buffer, 0).contains('↑'));
 }
 
 #[test]
@@ -1003,13 +1059,14 @@ fn test_terminal_render_with_cursor() {
     term.focus();
     term.write("Test");
 
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    let buffer = screen(&term, 80, 24);
 
-    term.render(&mut ctx);
+    assert_eq!(row(&buffer, 0).trim_end(), "Test█");
+    assert_eq!(buffer.get(4, 0).unwrap().fg, Some(Color::WHITE));
 
-    // Should render without panic
+    // Not drawn when blurred
+    term.blur();
+    assert_eq!(row(&screen(&term, 80, 24), 0).trim_end(), "Test");
 }
 
 #[test]
@@ -1065,14 +1122,30 @@ fn test_terminal_render_input() {
 
 #[test]
 fn test_terminal_helper_function() {
-    let term = revue::widget::terminal(120, 40);
-    let _ = term; // Just verify it compiles
+    let mut term = revue::widget::terminal(120, 40);
+    // 120 columns: the 121st character wraps
+    term.write(&"x".repeat(121));
+    let buffer = screen(&term, 120, 40);
+    assert_eq!(row(&buffer, 0), "x".repeat(120));
+    assert_eq!(row(&buffer, 1).trim_end(), "x");
 }
 
 #[test]
 fn test_terminal_default() {
-    let term = Terminal::default();
-    let _ = term; // Just verify it compiles
+    let mut term = Terminal::default();
+    // 80x24: the 81st character wraps, and 24 rows show
+    term.write(&"y".repeat(81));
+    for i in 0..30 {
+        term.write(&format!("\n{i}"));
+    }
+    let buffer = screen(&term, 80, 24);
+    assert_eq!(row(&buffer, 23).trim_end(), "29");
+    assert_eq!(row(&buffer, 0).trim_end(), "6");
+    let mut term = Terminal::default();
+    term.write(&"y".repeat(81));
+    let buffer = screen(&term, 80, 24);
+    assert_eq!(row(&buffer, 0), "y".repeat(80));
+    assert_eq!(row(&buffer, 1).trim_end(), "y");
 }
 
 #[test]
