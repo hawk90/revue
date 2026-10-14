@@ -12,7 +12,8 @@ fn test_stack_render_empty_no_panic() {
     let area = Rect::new(0, 0, 80, 24);
     let mut ctx = RenderContext::new(&mut buf, area);
     let s = Stack::new();
-    s.render(&mut ctx); // Should not panic
+    s.render(&mut ctx);
+    assert!((0..24).all(|y| (0..80).all(|x| buf.get(x, y).unwrap().symbol == ' ')));
 }
 
 #[test]
@@ -21,7 +22,8 @@ fn test_stack_render_zero_area_no_panic() {
     let area = Rect::new(0, 0, 0, 0);
     let mut ctx = RenderContext::new(&mut buf, area);
     let s = Stack::new().child(Text::new("A"));
-    s.render(&mut ctx); // Should not panic
+    s.render(&mut ctx);
+    assert!((0..24).all(|y| (0..80).all(|x| buf.get(x, y).unwrap().symbol == ' ')));
 }
 
 #[test]
