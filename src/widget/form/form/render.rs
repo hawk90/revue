@@ -1,7 +1,7 @@
-//! Drawing the form and its fields: border, title, field rows and status line
+//! Drawing the form: border, title, one block of rows per field and the status line
 
-use super::{ErrorDisplayStyle, Form, FormFieldWidget, InputType};
-use crate::patterns::form::{FieldType, FormState};
+use super::{ErrorDisplayStyle, Form};
+use crate::patterns::form::{FieldType, FormField};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::theme::{DISABLED_FG, SECONDARY_TEXT, SUBTLE_GRAY};
@@ -48,52 +48,18 @@ impl Form {
             cell
         });
     }
-}
 
-/// Draw `text` at `(x, y)` up to column `max_x` (exclusive), in terminal
-/// columns: a wide glyph (Hangul, CJK, emoji) takes two cells.
-fn put_text(
-    ctx: &mut RenderContext,
-    x: u16,
-    y: u16,
-    text: &str,
-    max_x: u16,
-    fg: Color,
-    modifier: Modifier,
-) {
-    ctx.put_edit_line(x, y, text, 0, max_x.saturating_sub(x), |_, ch| {
-        let mut cell = Cell::new(ch);
-        cell.fg = Some(fg);
-        cell.modifier |= modifier;
-        cell
-    });
-}
-
-impl View for Form {
-    crate::impl_view_meta!("Form");
-
-    fn render(&self, ctx: &mut RenderContext) {
+    /// Render the fields inside the border, from the top down
+    ///
+    /// Each field takes 3 rows: label (row 0), value (row 1), helper/error
+    /// (row 2), plus 1 row gap between fields. A field cut by the bottom
+    /// keeps the rows that fit.
+    fn render_fields(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-
-        // Render border
-        self.render_border(ctx);
-
-        // Render title
-        self.render_title(ctx);
-
-        // Render form fields inside the border
-        // Each field takes 3 rows: label (row 0), value (row 1), helper/error (row 2)
-        // Plus 1 row gap between fields
         let content_x: u16 = 2;
-        if area.width <= 4 {
-            return;
-        }
         let content_width = area.width - 4;
         let max_x = content_x + content_width;
         let mut current_y: u16 = 1;
-        if area.height <= 2 {
-            return;
-        }
         let max_y = area.height - 2;
         let show_inline = self.error_style == ErrorDisplayStyle::Inline
             || self.error_style == ErrorDisplayStyle::Both;
@@ -104,46 +70,14 @@ impl View for Form {
             }
 
             // Row 0: Label
-            let label = &field.label;
-            if !label.is_empty() {
-                put_text(
-                    ctx,
-                    content_x,
-                    current_y,
-                    label,
-                    max_x,
-                    SECONDARY_TEXT,
-                    Modifier::empty(),
-                );
-            }
+            render_field_label(ctx, field, content_x, current_y, max_x);
             current_y += 1;
             if current_y >= max_y {
                 break;
             }
 
             // Row 1: Value or placeholder
-            let value = field.value();
-            let (display_text, text_color) = if value.is_empty() {
-                (field.placeholder.clone(), SUBTLE_GRAY)
-            } else if field.field_type == FieldType::Password {
-                // One bullet per char, never the text itself.
-                (
-                    "•".repeat(value.chars().count()),
-                    ctx.css_color(Color::WHITE),
-                )
-            } else {
-                (value, ctx.css_color(Color::WHITE))
-            };
-
-            put_text(
-                ctx,
-                content_x,
-                current_y,
-                &display_text,
-                max_x,
-                text_color,
-                Modifier::empty(),
-            );
+            render_field_value(ctx, field, content_x, current_y, max_x);
             current_y += 1;
             if current_y >= max_y {
                 break;
@@ -151,41 +85,19 @@ impl View for Form {
 
             // Row 2: Error text (red, dim) if touched+errors, otherwise helper text (gray, dim)
             if show_inline && self.show_errors {
-                let show_error = field.is_touched() && field.has_errors();
-                if show_error {
-                    if let Some(error_msg) = field.first_error() {
-                        let error_color = Color::rgb(200, 80, 80);
-                        put_text(
-                            ctx,
-                            content_x,
-                            current_y,
-                            &error_msg,
-                            max_x,
-                            error_color,
-                            Modifier::DIM,
-                        );
-                    }
-                } else {
-                    let helper = field.helper_text();
-                    if !helper.is_empty() {
-                        let helper_color = Color::rgb(140, 140, 140);
-                        put_text(
-                            ctx,
-                            content_x,
-                            current_y,
-                            helper,
-                            max_x,
-                            helper_color,
-                            Modifier::DIM,
-                        );
-                    }
-                }
+                render_field_message(ctx, field, content_x, current_y, max_x);
             }
             current_y += 1;
 
             // 1 row gap between fields
             current_y += 1;
         }
+    }
+
+    /// Render the status line above the bottom border: "Valid", or the
+    /// error count when the error style shows a summary
+    fn render_status(&self, ctx: &mut RenderContext) {
+        let area = ctx.area;
 
         // Render validation summary at bottom if Summary or Both style
         let show_summary = self.error_style == ErrorDisplayStyle::Summary
@@ -223,163 +135,95 @@ impl View for Form {
     }
 }
 
-#[allow(dead_code)]
-impl FormFieldWidget {
-    /// Render the field label at the current area position
-    fn render_label(&self, form_state: &FormState, ctx: &mut RenderContext) {
-        let area = ctx.area;
-        if let Some(field) = form_state.get(&self.name) {
-            let label = &field.label;
-
-            put_text(
-                ctx,
-                0,
-                0,
-                label,
-                area.width,
-                SECONDARY_TEXT,
-                Modifier::empty(),
-            );
-        }
-    }
-
-    /// Render the field value at the current area position
-    fn render_value(&self, form_state: &FormState, ctx: &mut RenderContext) {
-        let area = ctx.area;
-        let value = form_state.value(&self.name).unwrap_or_default();
-
-        // Display value or placeholder
-        let display_text = if value.is_empty() {
-            self.placeholder.clone()
-        } else {
-            match self.input_type {
-                InputType::Password => "•".repeat(value.chars().count().min(20)),
-                _ => value.clone(),
-            }
-        };
-
-        let text_color = if value.is_empty() {
-            SUBTLE_GRAY // Gray for placeholder
-        } else {
-            Color::WHITE
-        };
-
-        put_text(
-            ctx,
-            0,
-            0,
-            &display_text,
-            area.width,
-            text_color,
-            Modifier::empty(),
-        );
-    }
-
-    /// Render helper text below the field (gray, dim)
-    fn render_helper_text(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
-        if self.helper_text.is_empty() {
-            return;
-        }
-
-        let helper_color = Color::rgb(140, 140, 140);
-
-        put_text(
-            ctx,
-            0,
-            0,
-            &self.helper_text,
-            area.width,
-            helper_color,
-            Modifier::DIM,
-        );
-    }
-
-    /// Render validation errors at the current area position
-    fn render_errors(&self, form_state: &FormState, ctx: &mut RenderContext) {
-        if !self.show_errors {
-            return;
-        }
-
-        let field = match form_state.get(&self.name) {
-            Some(f) => f,
-            None => return,
-        };
-
-        let error_msg = match field.first_error() {
-            Some(err) => err,
-            None => return,
-        };
-
-        let area = ctx.area;
-        let error_color = Color::rgb(200, 80, 80);
-
-        put_text(
-            ctx,
-            0,
-            0,
-            &error_msg,
-            area.width,
-            error_color,
-            Modifier::DIM,
-        );
+/// Row 0 of a field: its label, when it has one
+fn render_field_label(ctx: &mut RenderContext, field: &FormField, x: u16, y: u16, max_x: u16) {
+    let label = &field.label;
+    if !label.is_empty() {
+        put_text(ctx, x, y, label, max_x, SECONDARY_TEXT, Modifier::empty());
     }
 }
 
-impl View for FormFieldWidget {
-    crate::impl_view_meta!("FormField");
+/// Row 1 of a field: its value (one bullet per char for a password), or
+/// the placeholder in gray while it is empty
+fn render_field_value(ctx: &mut RenderContext, field: &FormField, x: u16, y: u16, max_x: u16) {
+    let value = field.value();
+    let (display_text, text_color) = if value.is_empty() {
+        (field.placeholder.clone(), SUBTLE_GRAY)
+    } else if field.field_type == FieldType::Password {
+        // One bullet per char, never the text itself.
+        (
+            "•".repeat(value.chars().count()),
+            ctx.css_color(Color::WHITE),
+        )
+    } else {
+        (value, ctx.css_color(Color::WHITE))
+    };
+
+    put_text(
+        ctx,
+        x,
+        y,
+        &display_text,
+        max_x,
+        text_color,
+        Modifier::empty(),
+    );
+}
+
+/// Row 2 of a field: its first error once it is touched, otherwise its
+/// helper text
+fn render_field_message(ctx: &mut RenderContext, field: &FormField, x: u16, y: u16, max_x: u16) {
+    let show_error = field.is_touched() && field.has_errors();
+    if show_error {
+        if let Some(error_msg) = field.first_error() {
+            let error_color = Color::rgb(200, 80, 80);
+            put_text(ctx, x, y, &error_msg, max_x, error_color, Modifier::DIM);
+        }
+    } else {
+        let helper = field.helper_text();
+        if !helper.is_empty() {
+            let helper_color = Color::rgb(140, 140, 140);
+            put_text(ctx, x, y, helper, max_x, helper_color, Modifier::DIM);
+        }
+    }
+}
+
+/// Draw `text` at `(x, y)` up to column `max_x` (exclusive), in terminal
+/// columns: a wide glyph (Hangul, CJK, emoji) takes two cells.
+pub(super) fn put_text(
+    ctx: &mut RenderContext,
+    x: u16,
+    y: u16,
+    text: &str,
+    max_x: u16,
+    fg: Color,
+    modifier: Modifier,
+) {
+    ctx.put_edit_line(x, y, text, 0, max_x.saturating_sub(x), |_, ch| {
+        let mut cell = Cell::new(ch);
+        cell.fg = Some(fg);
+        cell.modifier |= modifier;
+        cell
+    });
+}
+
+impl View for Form {
+    crate::impl_view_meta!("Form");
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
 
-        // Row 0: Label (field name). The label takes `color`, as a
-        // `Checkbox`'s does; the placeholder and helper text keep their grays,
-        // which say "nothing entered" and "aside".
-        let label_fg = ctx.css_color(SECONDARY_TEXT);
-        if self.show_label && area.height >= 1 && area.width > 0 {
-            put_text(
-                ctx,
-                0,
-                0,
-                &self.name,
-                area.width,
-                label_fg,
-                Modifier::empty(),
-            );
-        }
+        // Render border
+        self.render_border(ctx);
 
-        // Row 1: Value/placeholder
-        if area.height >= 2 {
-            let display_text = if self.placeholder.is_empty() {
-                &self.name
-            } else {
-                &self.placeholder
-            };
+        // Render title
+        self.render_title(ctx);
 
-            let text_color = SUBTLE_GRAY;
-            put_text(
-                ctx,
-                0,
-                1,
-                display_text,
-                area.width,
-                text_color,
-                Modifier::empty(),
-            );
+        // Render form fields inside the border
+        if area.width <= 4 || area.height <= 2 {
+            return;
         }
-
-        // Row 2: Helper text (gray, dim)
-        if area.height >= 3 && !self.helper_text.is_empty() {
-            let helper_color = Color::rgb(140, 140, 140);
-            put_text(
-                ctx,
-                0,
-                2,
-                &self.helper_text,
-                area.width,
-                helper_color,
-                Modifier::DIM,
-            );
-        }
+        self.render_fields(ctx);
+        self.render_status(ctx);
     }
 }

@@ -24,6 +24,7 @@
 //!     .child(Button::new("Submit").submit());
 //! ```
 
+mod field_render;
 mod render;
 
 use crate::impl_props_builders;
