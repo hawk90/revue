@@ -59,13 +59,20 @@ fn key() -> impl Strategy<Value = Key> {
 }
 
 proptest! {
-    /// Any keys leave the text a char model gives, and the cursor where the
-    /// model has it (checked by typing a marker at the end); the query and
-    /// the error follow `Query::parse` of the text after every key.
+    /// From a valid or an invalid query, any keys leave the text a char
+    /// model gives, and the cursor where the model has it (checked by
+    /// typing a marker at the end); the query and the error follow
+    /// `Query::parse` of the text after every key.
     #[test]
-    fn prop_search_bar_keys_follow_the_model(keys in prop::collection::vec(key(), 0..60)) {
+    fn prop_search_bar_keys_follow_the_model(
+        // Only a sort with a bad direction or no field is invalid, which
+        // single keys rarely type: start from one, or a valid query
+        start in prop_oneof![Just(""), Just("sort:"), Just("sort:a:x"), Just("sort:a:asc"), Just("a:>1")],
+        keys in prop::collection::vec(key(), 0..60),
+    ) {
         let mut s = SearchBar::new();
-        let mut model = Model::default();
+        s.set_query(start);
+        let mut model = Model { text: start.chars().collect(), cursor: start.chars().count() };
         for k in &keys {
             prop_assert_eq!(s.handle_key(k), model.key(k), "{:?}", k);
             let text: String = model.text.iter().collect();
