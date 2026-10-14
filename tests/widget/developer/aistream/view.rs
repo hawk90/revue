@@ -194,7 +194,10 @@ fn stream_cursor_none_draws_no_cursor() {
         .cursor(StreamCursor::None)
         .typing_speed(0)
         .content("abcd");
-    assert_eq!(screen(&stream, 5, 1)[0], "     ");
+    let buffer = draw(&stream, 5, 1);
+    assert_eq!(rows(&buffer)[0], "     ");
+    // not even a blank in the cursor color where the cursor would be
+    assert_eq!(buffer.get(0, 0).unwrap().fg, None);
 }
 
 #[test]
@@ -264,6 +267,13 @@ fn the_background_covers_the_glyphs_only() {
 #[test]
 fn a_wide_glyph_that_does_not_fit_wraps_whole() {
     assert_eq!(screen(&shown("a世"), 2, 2), ["a ", "世"]);
+}
+
+#[test]
+fn a_wide_glyph_in_a_one_column_area_takes_its_own_row() {
+    // It cannot be drawn; it does not push the text after it down a
+    // second row
+    assert_eq!(screen(&shown("世a"), 1, 3), [" ", "a", " "]);
 }
 
 #[test]
