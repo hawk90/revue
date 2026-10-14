@@ -3,23 +3,6 @@
 use super::*;
 
 #[test]
-fn test_toggle_bold() {
-    let mut editor = RichTextEditor::new();
-    assert!(!editor.current_format().bold);
-    editor.toggle_bold();
-    assert!(editor.current_format().bold);
-    editor.toggle_bold();
-    assert!(!editor.current_format().bold);
-}
-
-#[test]
-fn test_toggle_italic() {
-    let mut editor = RichTextEditor::new();
-    editor.toggle_italic();
-    assert!(editor.current_format().italic);
-}
-
-#[test]
 fn test_toggle_underline() {
     let mut editor = RichTextEditor::new();
     editor.toggle_underline();

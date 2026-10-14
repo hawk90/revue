@@ -24,8 +24,10 @@ fn test_get_selection_single_line() {
     editor.set_cursor(0, 0);
     editor.start_selection();
     editor.set_cursor(0, 5);
-    // Note: anchor is at (0,0), cursor at (0,5)
-    // But cursor movement clears selection, so we need different approach
+    // set_cursor keeps the anchor; the arrow keys would clear it
+    assert_eq!(editor.get_selection().as_deref(), Some("Hello"));
+    editor.set_cursor(0, 11);
+    assert_eq!(editor.get_selection().as_deref(), Some("Hello World"));
 }
 
 #[test]

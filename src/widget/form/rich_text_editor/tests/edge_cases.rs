@@ -21,8 +21,17 @@ fn test_undo_on_empty_stack() {
 
 #[test]
 fn test_redo_on_empty_stack() {
-    let mut editor = RichTextEditor::new();
+    let mut editor = RichTextEditor::new().content("ab");
+    editor.set_cursor(0, 1);
     editor.redo(); // Should not panic
+    assert_eq!(editor.get_content(), "ab");
+    assert_eq!(editor.cursor_position(), (0, 1));
+    // An undone edit is redone once; the second redo has nothing left
+    editor.insert_char('x');
+    editor.undo();
+    editor.redo();
+    editor.redo();
+    assert_eq!(editor.get_content(), "axb");
 }
 
 #[test]
