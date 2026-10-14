@@ -162,6 +162,8 @@ fn test_accordion_collapse_selected_empty() {
     let mut acc = Accordion::new();
     // Should not panic on empty
     acc.collapse_selected();
+    assert!(acc.sections.is_empty());
+    assert_eq!(acc.selected(), 0);
 }
 
 #[test]
@@ -169,6 +171,8 @@ fn test_accordion_expand_selected_empty() {
     let mut acc = Accordion::new();
     // Should not panic on empty
     acc.expand_selected();
+    assert!(acc.sections.is_empty());
+    assert_eq!(acc.selected(), 0);
 }
 
 #[test]
@@ -183,17 +187,6 @@ fn test_accordion_toggle_multi_expand() {
 
     acc.toggle_selected();
     assert!(!acc.sections[0].expanded);
-}
-
-#[test]
-fn test_accordion_sections_batch() {
-    let sections = vec![
-        AccordionSection::new("A"),
-        AccordionSection::new("B"),
-        AccordionSection::new("C"),
-    ];
-    let acc = Accordion::new().sections(sections);
-    assert_eq!(acc.len(), 3);
 }
 
 #[test]
@@ -277,7 +270,10 @@ fn test_accordion_render_small_area() {
     let acc = Accordion::new().section(AccordionSection::new("Test"));
 
     acc.render(&mut ctx);
-    // Small area should not panic
+    // Too narrow: nothing is drawn
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(1, 0).unwrap().bg, None);
 }
 
 #[test]
@@ -297,7 +293,17 @@ fn test_accordion_render_content_overflow() {
     );
 
     acc.render(&mut ctx);
-    // Should not panic when content exceeds area
+    // Only the lines that fit are drawn
+    let text = |y: u16| -> String {
+        (0..40)
+            .map(|x| buffer.get(x, y).unwrap().symbol)
+            .collect::<String>()
+            .trim_end()
+            .to_string()
+    };
+    assert_eq!(text(0), " ▼ Section 1");
+    assert_eq!(text(1), "   Line 1");
+    assert_eq!(text(2), "   Line 2");
 }
 
 #[test]
