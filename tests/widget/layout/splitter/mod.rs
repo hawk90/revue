@@ -1,15 +1,43 @@
 //! Splitter widget tests
 
 mod boundary;
-mod drag;
+mod input;
+mod layout;
 mod render;
+mod two_pane;
 
+use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
 use revue::widget::View;
 use revue::widget::{HSplit, Pane, RichText, SplitOrientation, Splitter, VSplit};
+
+/// Render `view` into a fresh `w` x `h` buffer
+fn render(view: &impl View, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    view.render(&mut ctx);
+    buffer
+}
+
+/// The rows `view` draws in a `w` x `h` area
+fn rows(view: &impl View, w: u16, h: u16) -> Vec<String> {
+    let buffer = render(view, w, h);
+    (0..h)
+        .map(|y| (0..w).map(|x| buffer.get(x, y).unwrap().symbol).collect())
+        .collect()
+}
+
+/// Pane widths in a `w`-column area
+fn widths(splitter: &Splitter, w: u16) -> Vec<u16> {
+    splitter
+        .pane_areas(Rect::new(0, 0, w, 1))
+        .iter()
+        .map(|(_, r)| r.width)
+        .collect()
+}
 
 #[test]
 fn test_pane_new() {
@@ -64,88 +92,158 @@ fn test_pane_toggle_collapse() {
 
 #[test]
 fn test_splitter_new() {
-    let _splitter = Splitter::new();
+    let mut splitter = Splitter::new();
 
-    // Splitter created successfully
+    // No panes: no areas, no focus, nothing drawn
+    assert!(splitter.pane_areas(Rect::new(0, 0, 20, 5)).is_empty());
+    assert_eq!(splitter.focused(), None);
+    assert_eq!(rows(&splitter, 20, 5), vec![" ".repeat(20); 5]);
+    // Tab is taken (it would move focus) but changes nothing
+    assert!(splitter.handle_key(&Key::Tab));
+    assert_eq!(splitter.focused(), None);
 }
 
 #[test]
 fn test_splitter_with_pane() {
     let pane = Pane::new("pane1");
-    let _splitter = Splitter::new().pane(pane);
+    let splitter = Splitter::new().pane(pane);
 
-    // Pane added successfully
+    // A lone pane takes the whole area and has the focus
+    let area = Rect::new(2, 1, 20, 5);
+    assert_eq!(splitter.pane_areas(area), vec![("pane1".to_string(), area)]);
+    assert_eq!(splitter.focused(), Some("pane1"));
 }
 
 #[test]
 fn test_splitter_with_panes() {
     let panes = vec![Pane::new("pane1").ratio(0.3), Pane::new("pane2").ratio(0.7)];
-    let _splitter = Splitter::new().panes(panes);
+    let splitter = Splitter::new().panes(panes);
 
-    // Panes added successfully
+    // 100 columns for the panes, 30:70
+    assert_eq!(widths(&splitter, 101), vec![30, 70]);
 }
 
 #[test]
 fn test_splitter_horizontal() {
-    let _splitter = Splitter::new().horizontal();
+    let splitter = Splitter::new()
+        .vertical()
+        .horizontal()
+        .pane(Pane::new("a"))
+        .pane(Pane::new("b"));
 
-    // Horizontal orientation was set
+    // Side by side: same rows, the second right of the first
+    let areas = splitter.pane_areas(Rect::new(0, 0, 21, 4));
+    assert_eq!(areas[0].1, Rect::new(0, 0, 10, 4));
+    assert_eq!(areas[1].1, Rect::new(11, 0, 10, 4));
 }
 
 #[test]
 fn test_splitter_vertical() {
-    let _splitter = Splitter::new().vertical();
+    let splitter = Splitter::new()
+        .vertical()
+        .pane(Pane::new("a"))
+        .pane(Pane::new("b"));
 
-    // Vertical orientation was set
+    // Stacked: same columns, the second below the first
+    let areas = splitter.pane_areas(Rect::new(0, 0, 4, 21));
+    assert_eq!(areas[0].1, Rect::new(0, 0, 4, 10));
+    assert_eq!(areas[1].1, Rect::new(0, 11, 4, 10));
 }
 
 #[test]
 fn test_splitter_orientation() {
-    let _splitter = Splitter::new().orientation(SplitOrientation::Vertical);
-
-    // Orientation was set
+    let panes = || vec![Pane::new("a"), Pane::new("b")];
+    let area = Rect::new(0, 0, 21, 21);
+    let by_enum = Splitter::new()
+        .orientation(SplitOrientation::Vertical)
+        .panes(panes());
+    let by_method = Splitter::new().vertical().panes(panes());
+    assert_eq!(by_enum.pane_areas(area), by_method.pane_areas(area));
+    assert_eq!(rows(&by_enum, 21, 21), rows(&by_method, 21, 21));
+    assert_eq!(rows(&by_enum, 21, 21)[10], "─".repeat(21));
 }
 
 #[test]
 fn test_splitter_color() {
-    let _splitter = Splitter::new().color(Color::CYAN);
+    let splitter = Splitter::new()
+        .color(Color::MAGENTA)
+        .pane(Pane::new("a"))
+        .pane(Pane::new("b"));
 
-    // Color was set
+    let buffer = render(&splitter, 21, 2);
+    for y in 0..2 {
+        let cell = buffer.get(10, y).unwrap();
+        assert_eq!((cell.symbol, cell.fg), ('│', Some(Color::MAGENTA)));
+    }
 }
 
 #[test]
 fn test_splitter_active_color() {
-    let _splitter = Splitter::new().active_color(Color::YELLOW);
+    let mut splitter = Splitter::new()
+        .active_color(Color::YELLOW)
+        .pane(Pane::new("a"))
+        .pane(Pane::new("b"));
 
-    // Active color was set
+    // Idle, the divider is not in the active color; while resizing it is
+    assert_ne!(
+        render(&splitter, 21, 1).get(10, 0).unwrap().fg,
+        Some(Color::YELLOW)
+    );
+    splitter.start_resize(0);
+    assert_eq!(
+        render(&splitter, 21, 1).get(10, 0).unwrap().fg,
+        Some(Color::YELLOW)
+    );
 }
 
 #[test]
 fn test_hsplit_new() {
-    let _hsplit = HSplit::new(0.5);
+    let hsplit = HSplit::new(0.5);
 
-    // Horizontal split with 50% ratio created
+    assert_eq!(hsplit.ratio, 0.5);
+    assert_eq!((hsplit.min_left, hsplit.min_right), (5, 5));
+    assert!(hsplit.show_splitter);
+    let (left, right) = hsplit.areas(Rect::new(0, 0, 21, 3));
+    assert_eq!(left, Rect::new(0, 0, 10, 3));
+    assert_eq!(right, Rect::new(11, 0, 10, 3));
 }
 
 #[test]
 fn test_hsplit_with_min_widths() {
-    let _hsplit = HSplit::new(0.5).min_widths(10, 20);
+    let hsplit = HSplit::new(0.5).min_widths(10, 20);
 
-    // Min widths were set
+    assert_eq!((hsplit.min_left, hsplit.min_right), (10, 20));
+    // 40 columns: half would be 20 for each; the right one needs 20
+    let (left, right) = hsplit.areas(Rect::new(0, 0, 41, 1));
+    assert_eq!((left.width, right.width), (20, 20));
+    // A small ratio is raised to the left minimum
+    let (left, right) = HSplit::new(0.1)
+        .min_widths(10, 20)
+        .areas(Rect::new(0, 0, 41, 1));
+    assert_eq!((left.width, right.width), (10, 30));
 }
 
 #[test]
 fn test_hsplit_hide_splitter() {
-    let _hsplit = HSplit::new(0.5).hide_splitter();
+    let hsplit = HSplit::new(0.5).hide_splitter();
 
-    // Hide splitter was set
+    assert!(!hsplit.show_splitter);
+    // No divider column: the panes touch, and nothing is drawn
+    let (left, right) = hsplit.areas(Rect::new(0, 0, 20, 3));
+    assert_eq!((left.width, right.x, right.width), (10, 10, 10));
+    assert_eq!(rows(&hsplit, 20, 3), vec![" ".repeat(20); 3]);
 }
 
 #[test]
 fn test_vsplit_new() {
-    let _vsplit = VSplit::new(0.5);
+    let vsplit = VSplit::new(0.5);
 
-    // Vertical split with 50% ratio created
+    assert_eq!(vsplit.ratio, 0.5);
+    assert_eq!((vsplit.min_top, vsplit.min_bottom), (3, 3));
+    let (top, bottom) = vsplit.areas(Rect::new(0, 0, 4, 21));
+    assert_eq!(top, Rect::new(0, 0, 4, 10));
+    assert_eq!(bottom, Rect::new(0, 11, 4, 10));
+    assert_eq!(rows(&vsplit, 4, 21)[10], "────");
 }
 
 #[test]
@@ -165,29 +263,52 @@ fn test_pane_complete_builder() {
 
 #[test]
 fn test_splitter_builder_pattern() {
-    let _splitter = Splitter::new()
+    let mut splitter = Splitter::new()
         .horizontal()
         .color(Color::CYAN)
-        .active_color(Color::YELLOW);
+        .active_color(Color::YELLOW)
+        .pane(Pane::new("a"))
+        .pane(Pane::new("b"))
+        .pane(Pane::new("c"));
+    splitter.start_resize(1);
 
-    // Builder pattern works
+    // Dividers after 10 and 21 of 32 columns: the idle one cyan, the
+    // resized one yellow
+    let buffer = render(&splitter, 32, 1);
+    assert_eq!(buffer.get(10, 0).unwrap().fg, Some(Color::CYAN));
+    assert_eq!(buffer.get(21, 0).unwrap().fg, Some(Color::YELLOW));
 }
 
 #[test]
 fn test_splitter_with_collapsible_pane() {
-    let _splitter = Splitter::new().pane(Pane::new("sidebar").collapsible());
+    let mut splitter = Splitter::new()
+        .pane(Pane::new("sidebar").collapsible())
+        .pane(Pane::new("main"));
 
-    // Collapsible pane added
+    splitter.toggle_pane(0);
+    // The collapsed sidebar leaves the main pane the whole area, no divider
+    let area = Rect::new(0, 0, 20, 2);
+    assert_eq!(splitter.pane_areas(area), vec![("main".to_string(), area)]);
+    assert_eq!(rows(&splitter, 20, 2), vec![" ".repeat(20); 2]);
+    splitter.toggle_pane(0);
+    assert_eq!(splitter.pane_areas(area).len(), 2);
 }
 
 #[test]
 fn test_splitter_multiple_panes_builder() {
-    let _splitter = Splitter::new()
+    let splitter = Splitter::new()
         .pane(Pane::new("left").ratio(0.3))
         .pane(Pane::new("middle").ratio(0.4))
         .pane(Pane::new("right").ratio(0.3));
 
-    // Multiple panes configured
+    // 100 columns for the panes, 30:40:30
+    assert_eq!(widths(&splitter, 102), vec![30, 40, 30]);
+    let ids: Vec<String> = splitter
+        .pane_areas(Rect::new(0, 0, 102, 1))
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
+    assert_eq!(ids, vec!["left", "middle", "right"]);
 }
 
 // =========================================================================
