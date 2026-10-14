@@ -125,8 +125,8 @@ proptest! {
         let mut digits = 0;
         for k in &keys {
             // Backspace on a one-char command line or pattern leaves the
-            // mode instead of keeping the empty line open (the vim issue
-            // filed from this audit); skip it rather than encode it.
+            // mode instead of keeping the empty line open (#1081);
+            // skip it rather than encode it.
             if *k == Key::Backspace
                 && ((model.mode == VimMode::Command && model.command.chars().count() == 1)
                     || (model.mode == VimMode::Search && model.search.chars().count() == 1))

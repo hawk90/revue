@@ -111,8 +111,7 @@ fn test_render_with_minimap() {
     assert_eq!(minimap(2), "▪         ");
     assert_eq!(minimap(3), "          ");
     // Every row shows lines in view: all on the visible-area color (checked
-    // between the marks, which are drawn without it: see the minimap issue
-    // filed from this audit)
+    // between the marks, which are drawn without it: #1082)
     for y in 0..10 {
         for x in 50..60 {
             if buffer.get(x, y).unwrap().symbol == ' ' {

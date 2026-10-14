@@ -52,7 +52,7 @@ fn test_code_editor_whitespace_markers() {
         ..Default::default()
     };
     // Spaces only: a tab is drawn zero columns wide, so its `→` never shows
-    // (the tab issue filed from this audit)
+    // (#982)
     let editor = CodeEditor::new()
         .content("x a  b")
         .line_numbers(false)
