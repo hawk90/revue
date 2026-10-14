@@ -3,7 +3,7 @@
 use super::{SelectionList, SelectionStyle};
 use crate::style::Color;
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
-use crate::widget::{RenderContext, View};
+use crate::widget::{RenderContext, Text, View};
 
 impl SelectionList {
     /// Get item prefix based on style
@@ -41,6 +41,54 @@ impl SelectionList {
         }
     }
 
+    /// Item `i`'s row, and its description's row when shown
+    fn item_rows(&self, i: usize, ctx: &RenderContext) -> Vec<Text> {
+        let mut rows = Vec::with_capacity(2);
+        let item = &self.items[i];
+        let prefix = self.item_prefix(i);
+        let suffix = self.item_suffix(i);
+
+        let icon = item.icon.as_deref().unwrap_or("");
+        let text = format!("{}{}{}{}", prefix, icon, item.text, suffix);
+
+        let is_highlighted = i == self.highlighted && self.focused;
+        let is_selected = self.is_selected(i);
+
+        let fg = if item.disabled {
+            DISABLED_FG
+        } else if is_highlighted {
+            self.highlighted_fg.unwrap_or(Color::CYAN)
+        } else if is_selected {
+            self.selected_fg.unwrap_or(Color::GREEN)
+        } else {
+            self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE))
+        };
+
+        let mut text_widget = Text::new(&text).fg(fg);
+        if let Some(bg) = self.bg {
+            text_widget = text_widget.bg(bg);
+        }
+
+        if is_highlighted {
+            text_widget = text_widget.bold();
+        }
+
+        rows.push(text_widget);
+
+        // Show description
+        if self.show_descriptions {
+            if let Some(desc) = &item.description {
+                let desc_text = format!("    {}", desc);
+                let mut desc_widget = Text::new(desc_text).fg(PLACEHOLDER_FG);
+                if let Some(bg) = self.bg {
+                    desc_widget = desc_widget.bg(bg);
+                }
+                rows.push(desc_widget);
+            }
+        }
+        rows
+    }
+
     /// Get item suffix based on style
     fn item_suffix(&self, index: usize) -> String {
         if self.style == SelectionStyle::Bracket && self.is_selected(index) {
@@ -54,7 +102,6 @@ impl SelectionList {
 impl View for SelectionList {
     fn render(&self, ctx: &mut RenderContext) {
         use crate::widget::stack::vstack;
-        use crate::widget::Text;
 
         let mut content = vstack();
 
@@ -90,47 +137,8 @@ impl View for SelectionList {
 
         // Render items
         for i in start..end {
-            let item = &self.items[i];
-            let prefix = self.item_prefix(i);
-            let suffix = self.item_suffix(i);
-
-            let icon = item.icon.as_deref().unwrap_or("");
-            let text = format!("{}{}{}{}", prefix, icon, item.text, suffix);
-
-            let is_highlighted = i == self.highlighted && self.focused;
-            let is_selected = self.is_selected(i);
-
-            let fg = if item.disabled {
-                DISABLED_FG
-            } else if is_highlighted {
-                self.highlighted_fg.unwrap_or(Color::CYAN)
-            } else if is_selected {
-                self.selected_fg.unwrap_or(Color::GREEN)
-            } else {
-                self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE))
-            };
-
-            let mut text_widget = Text::new(&text).fg(fg);
-            if let Some(bg) = self.bg {
-                text_widget = text_widget.bg(bg);
-            }
-
-            if is_highlighted {
-                text_widget = text_widget.bold();
-            }
-
-            content = content.child(text_widget);
-
-            // Show description
-            if self.show_descriptions {
-                if let Some(desc) = &item.description {
-                    let desc_text = format!("    {}", desc);
-                    let mut desc_widget = Text::new(desc_text).fg(PLACEHOLDER_FG);
-                    if let Some(bg) = self.bg {
-                        desc_widget = desc_widget.bg(bg);
-                    }
-                    content = content.child(desc_widget);
-                }
+            for row in self.item_rows(i, ctx) {
+                content = content.child(row);
             }
         }
 
