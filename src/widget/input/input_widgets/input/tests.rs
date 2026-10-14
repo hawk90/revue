@@ -449,7 +449,20 @@ fn test_input_css_colors_from_context() {
 
     let mut ctx = RenderContext::with_style(&mut buffer, area, &style);
     input.render(&mut ctx);
-    // Input should use CSS colors for non-cursor/non-selected text
+    // The text takes the stylesheet's colors; the cursor, past the end,
+    // keeps its own
+    let t = buffer.get(1, 1).unwrap();
+    assert_eq!(
+        (t.symbol, t.fg, t.bg),
+        ('t', Some(Color::CYAN), Some(Color::rgb(40, 40, 40)))
+    );
+    let cursor = buffer.get(5, 1).unwrap();
+    assert_eq!((cursor.fg, cursor.bg), (input.cursor_fg, input.cursor_bg));
+    // A builder color wins over the stylesheet
+    let input = input.fg(Color::RED);
+    let mut ctx = RenderContext::with_style(&mut buffer, area, &style);
+    input.render(&mut ctx);
+    assert_eq!(buffer.get(1, 1).unwrap().fg, Some(Color::RED));
 }
 
 // =========================================================================
@@ -1336,15 +1349,6 @@ fn test_input_clear_history_clears_undo_stack() {
     input.handle_key(&Key::Char('b'));
     input.clear_history();
     assert!(!input.can_undo());
-}
-
-#[test]
-fn test_input_clear_history_clears_redo_stack() {
-    let mut input = Input::new();
-    input.handle_key(&Key::Char('a'));
-    input.undo();
-    input.clear_history();
-    assert!(!input.can_redo());
 }
 
 #[test]

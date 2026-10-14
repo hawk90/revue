@@ -2,6 +2,7 @@
 //! through its public API. The in-source tests in
 //! src/widget/input/input_widgets/input/mod.rs cover the rest.
 
+mod edit;
 mod render;
 
 use revue::event::Key;
