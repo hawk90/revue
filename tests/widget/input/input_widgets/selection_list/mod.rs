@@ -9,6 +9,8 @@ use revue::widget::{
     selection_item, selection_list, SelectionItem, SelectionList, SelectionStyle, StyledView, View,
 };
 
+mod view;
+
 // =============================================================================
 // 생성자 및 빌더 메서드 테스트
 // =============================================================================
@@ -47,12 +49,16 @@ fn test_selection_list_selected_builder() {
 
 #[test]
 fn test_selection_list_style_builder() {
-    let list = SelectionList::new(vec!["A", "B"]).style(SelectionStyle::Checkbox);
-    // Style affects rendering - verify through render
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    list.render(&mut ctx);
+    let list = SelectionList::new(vec!["A", "B"]).selected(vec![1]);
+    for (style, a, b) in [
+        (SelectionStyle::Checkbox, "[ ] A", "[x] B"),
+        (SelectionStyle::Bullet, "○ A", "● B"),
+        (SelectionStyle::Highlight, "  A", "▸ B"),
+        (SelectionStyle::Bracket, " A", "[B]"),
+    ] {
+        let shown = rows(&list.clone().style(style));
+        assert_eq!(shown, vec![a.to_string(), b.to_string()], "{style:?}");
+    }
 }
 
 #[test]
@@ -72,12 +78,13 @@ fn test_selection_list_show_checkboxes_true() {
 
 #[test]
 fn test_selection_list_show_checkboxes_false() {
-    let list = SelectionList::new(vec!["A", "B"]).show_checkboxes(false);
-    // Should use Highlight style (no brackets)
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    list.render(&mut ctx);
+    // No checkboxes: the Highlight style, a marker only on selected items
+    let list = SelectionList::new(vec!["A", "B"])
+        .selected(vec![0])
+        .show_checkboxes(false);
+    assert_eq!(rows(&list), vec!["▸ A", "  B"]);
+    let list = list.show_checkboxes(true);
+    assert_eq!(first_row(&list), "[x] A");
 }
 
 #[test]
@@ -148,12 +155,13 @@ fn test_selection_list_title() {
 
 #[test]
 fn test_selection_list_focused() {
+    // Focused: the highlighted item in cyan and bold, and the help line
     let list = SelectionList::new(vec!["A", "B"]).focused(true);
-    // focused is a builder method - verify through rendering
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    list.render(&mut ctx);
+    let buffer = render(&list, 50, 3);
+    assert_eq!(row_fg(&buffer, 50, 3, "[ ] A"), Some(Color::CYAN));
+    assert!(rows(&list).last().unwrap().starts_with("↑↓: Navigate"));
+    let unfocused = SelectionList::new(vec!["A", "B"]);
+    assert_eq!(rows(&unfocused), vec!["[ ] A", "[ ] B"]);
 }
 
 #[test]
@@ -194,8 +202,10 @@ fn test_selection_item_helper() {
 
 #[test]
 fn test_selection_item_from_string() {
-    let item: SelectionItem = "Test".into();
+    // From an owned String (test_selection_item_from_str covers &str)
+    let item: SelectionItem = String::from("Test").into();
     assert_eq!(item.text, "Test");
+    assert!(item.value.is_none() && !item.disabled);
 }
 
 #[test]
@@ -515,35 +525,50 @@ fn test_selection_list_get_selected_items_empty() {
 #[test]
 fn test_selection_list_highlight_navigation() {
     let mut list = SelectionList::new(vec!["A", "B", "C"]);
-
-    // Test navigation methods don't panic
+    assert_eq!(highlighted(&list), Some(0));
     list.highlight_next();
+    assert_eq!(highlighted(&list), Some(1));
     list.highlight_previous();
-    list.highlight_first();
+    assert_eq!(highlighted(&list), Some(0));
     list.highlight_last();
+    assert_eq!(highlighted(&list), Some(2));
+    list.highlight_next();
+    assert_eq!(highlighted(&list), Some(2));
+    list.highlight_first();
+    assert_eq!(highlighted(&list), Some(0));
 }
 
 #[test]
 fn test_selection_list_highlight_empty_list() {
-    let mut list: SelectionList = SelectionList::new(Vec::<String>::new());
-    // Should not panic on empty list
+    let mut list: SelectionList = SelectionList::new(Vec::<String>::new()).focused(true);
     list.highlight_next();
     list.highlight_previous();
     list.highlight_first();
     list.highlight_last();
+    // Nothing to toggle and no item rows (the scroll marker shown here is
+    // #973)
+    assert_eq!(highlighted(&list), None);
+    let shown = rows(&list);
+    assert!(shown.iter().any(|r| r.starts_with("↑↓: Navigate")));
+    assert!(shown.iter().all(|r| !r.contains("[ ]")));
 }
 
 #[test]
 fn test_selection_list_highlight_with_scrolling() {
     let mut list = SelectionList::new(vec!["A", "B", "C", "D", "E"]).max_visible(3);
-    // Navigate and ensure scrolling works
+    assert_eq!(rows(&list), vec!["[ ] A", "[ ] B", "[ ] C", "  ↓ more..."]);
+    // To the last item: the window follows it
     for _ in 0..5 {
         list.highlight_next();
     }
+    assert_eq!(highlighted(&list), Some(4));
+    assert_eq!(rows(&list), vec!["  ↑ more...", "[ ] C", "[ ] D", "[ ] E"]);
     list.highlight_first();
+    assert_eq!(rows(&list)[0], "[ ] A");
     for _ in 0..5 {
         list.highlight_previous();
     }
+    assert_eq!(highlighted(&list), Some(0));
 }
 
 // =============================================================================
@@ -585,7 +610,8 @@ fn test_selection_list_render_empty() {
     let area = Rect::new(0, 0, 20, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    list.render(&mut ctx); // Should not panic
+    list.render(&mut ctx);
+    assert!((0..3).all(|y| (0..20).all(|x| buffer.get(x, y).unwrap().symbol == ' ')));
 }
 
 // =============================================================================
@@ -1014,12 +1040,16 @@ fn test_selection_list_navigation_and_selection() {
 
     // Toggle highlighted
     list.toggle_highlighted();
+    assert_eq!(list.get_selected(), &[2]);
 
     // Navigate further (should scroll)
     list.highlight_next();
 
     // Toggle new highlighted
     list.toggle_highlighted();
+    assert_eq!(list.get_selected(), &[2, 3]);
+    let shown = rows(&list);
+    assert_eq!(&shown[..4], ["  ↑ more...", "[ ] B", "[x] C", "[x] D"]);
 }
 
 #[test]
@@ -1073,6 +1103,10 @@ fn test_selection_list_single_item() {
     let area = Rect::new(0, 0, 20, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
     list.render(&mut ctx);
+    let row: String = (0..20).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert_eq!(row.trim_end(), "[ ] Only Item");
+    // Nothing below the one-row area
+    assert!((0..20).all(|x| buffer.get(x, 1).unwrap().symbol == ' '));
 }
 
 #[test]
@@ -1084,6 +1118,9 @@ fn test_selection_list_long_text() {
     let area = Rect::new(0, 0, 30, 3);
     let mut ctx = RenderContext::new(&mut buffer, area);
     list.render(&mut ctx);
+    // Cut at the area's 30 columns
+    let row: String = (0..30).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert_eq!(row, format!("[ ] {}", &long_text[..26]));
 }
 
 #[test]
