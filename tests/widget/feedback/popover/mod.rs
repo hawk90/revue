@@ -12,6 +12,9 @@ use revue::widget::{
     View,
 };
 
+mod props;
+mod view;
+
 fn render(p: &Popover) -> Buffer {
     let mut buffer = Buffer::new(40, 20);
     let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 40, 20));
@@ -425,6 +428,10 @@ fn test_anchor_at_the_far_corner_does_not_overflow() {
     ] {
         let mut p = Popover::new("content").position(position).open(true);
         p.set_anchor(u16::MAX, u16::MAX);
-        render(&p);
+        // The 11 x 3 box is pushed into the bottom-right corner, whole
+        let buffer = render(&p);
+        assert_eq!(corner(&buffer), Some((29, 17)), "{position:?}");
+        assert_eq!(symbol(&buffer, 39, 19), '┘', "{position:?}");
+        assert!(row(&buffer, 18).ends_with("│ content │"), "{position:?}");
     }
 }

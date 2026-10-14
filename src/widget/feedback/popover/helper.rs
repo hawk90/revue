@@ -1,6 +1,4 @@
-use super::core::Popover;
-
-crate::impl_widget_builders!(Popover);
+use super::Popover;
 
 /// Helper function to create a popover
 pub fn popover(content: impl Into<String>) -> Popover {
