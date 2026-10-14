@@ -1,6 +1,7 @@
 //! Text widget tests
 
 mod boundary;
+mod view;
 
 use revue::layout::Rect;
 use revue::render::Buffer;
@@ -72,8 +73,13 @@ fn test_text_plain_has_no_modifiers() {
 
 #[test]
 fn test_text_new() {
-    let _text = Text::new("Hello");
-    // Text was created successfully
+    let text = Text::new("Hello");
+    assert_eq!(text.content(), "Hello");
+    let buffer = render(&text, 8);
+    assert_eq!(row(&buffer), "Hello   ");
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!((cell.fg, cell.bg), (None, None));
+    assert!(cell.modifier.is_empty());
 }
 
 #[test]
@@ -86,96 +92,132 @@ fn test_text_content() {
 fn test_text_heading() {
     let text = Text::heading("Title");
     assert_eq!(text.content(), "Title");
+    let cell = *render(&text, 8).get(0, 0).unwrap();
+    assert_eq!(cell.fg, Some(Color::WHITE));
+    assert_eq!(cell.modifier, Modifier::BOLD);
 }
 
 #[test]
 fn test_text_muted() {
     let text = Text::muted("Secondary info");
     assert_eq!(text.content(), "Secondary info");
+    let cell = *render(&text, 20).get(0, 0).unwrap();
+    assert_eq!(cell.fg, Some(revue::widget::PLACEHOLDER_FG));
+    assert!(cell.modifier.is_empty());
 }
 
 #[test]
 fn test_text_error() {
     let text = Text::error("Error message");
     assert_eq!(text.content(), "Error message");
+    assert_eq!(render(&text, 20).get(0, 0).unwrap().fg, Some(Color::RED));
 }
 
 #[test]
 fn test_text_success() {
     let text = Text::success("Success!");
     assert_eq!(text.content(), "Success!");
+    assert_eq!(render(&text, 20).get(0, 0).unwrap().fg, Some(Color::GREEN));
 }
 
 #[test]
 fn test_text_warning() {
     let text = Text::warning("Warning!");
     assert_eq!(text.content(), "Warning!");
+    assert_eq!(render(&text, 20).get(0, 0).unwrap().fg, Some(Color::YELLOW));
 }
 
 #[test]
 fn test_text_info() {
     let text = Text::info("Info");
     assert_eq!(text.content(), "Info");
+    assert_eq!(render(&text, 20).get(0, 0).unwrap().fg, Some(Color::CYAN));
 }
 
 #[test]
 fn test_text_label() {
     let text = Text::label("Label:");
     assert_eq!(text.content(), "Label:");
+    let cell = *render(&text, 20).get(0, 0).unwrap();
+    assert_eq!(cell.fg, None);
+    assert_eq!(cell.modifier, Modifier::BOLD);
 }
 
 #[test]
 fn test_text_fg() {
-    let _text = Text::new("Colored").fg(Color::CYAN);
-    // Foreground color was set successfully
+    let buffer = render(&Text::new("Colored").fg(Color::CYAN), 10);
+    for x in 0..7 {
+        assert_eq!(buffer.get(x, 0).unwrap().fg, Some(Color::CYAN), "{x}");
+    }
+    // Past the text nothing is painted
+    assert_eq!(buffer.get(7, 0).unwrap().fg, None);
 }
 
 #[test]
 fn test_text_bg() {
-    let _text = Text::new("Background").bg(Color::BLUE);
-    // Background color was set successfully
+    let buffer = render(&Text::new("Back ground").bg(Color::BLUE), 14);
+    for x in 0..11 {
+        assert_eq!(buffer.get(x, 0).unwrap().bg, Some(Color::BLUE), "{x}");
+    }
+    assert_eq!(buffer.get(11, 0).unwrap().bg, None);
 }
 
 #[test]
 fn test_text_bold() {
-    let _text = Text::new("Bold").bold();
-    // Bold was set successfully
+    let buffer = render(&Text::new("Bold").bold(), 6);
+    assert_eq!(buffer.get(3, 0).unwrap().modifier, Modifier::BOLD);
 }
 
 #[test]
 fn test_text_italic() {
-    let _text = Text::new("Italic").italic();
-    // Italic was set successfully
+    let buffer = render(&Text::new("Italic").italic(), 8);
+    assert_eq!(buffer.get(5, 0).unwrap().modifier, Modifier::ITALIC);
 }
 
 #[test]
 fn test_text_underline() {
-    let _text = Text::new("Underline").underline();
-    // Underline was set successfully
+    let buffer = render(&Text::new("Underline").underline(), 10);
+    assert_eq!(buffer.get(8, 0).unwrap().modifier, Modifier::UNDERLINE);
 }
 
 #[test]
 fn test_text_reverse() {
-    let _text = Text::new("Reverse").reverse();
-    // Reverse was set successfully
+    let buffer = render(&Text::new("Reverse").reverse(), 8);
+    assert_eq!(buffer.get(6, 0).unwrap().modifier, Modifier::REVERSE);
 }
 
 #[test]
 fn test_text_helper() {
-    let _text = text("Hello World");
-    // Helper function works
+    let text = text("Hello World");
+    assert_eq!(text.content(), "Hello World");
+    assert_eq!(row(&render(&text, 12)), "Hello World ");
 }
 
 #[test]
 fn test_text_empty() {
     let text = Text::new("");
     assert_eq!(text.content(), "");
+    // Nothing to draw, but still one row: an empty text is a spacer
+    assert_eq!(text.measure(10, 10), Some((0, 1)));
+    assert_eq!(row(&render(&text, 5)), "     ");
 }
 
 #[test]
 fn test_text_multiline() {
     let text = Text::new("Line 1\nLine 2\nLine 3");
     assert_eq!(text.content(), "Line 1\nLine 2\nLine 3");
+    // Each line starts its own row at the left edge
+    let mut buffer = Buffer::new(8, 4);
+    text.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 8, 4)));
+    for (y, line) in ["Line 1  ", "Line 2  ", "Line 3  ", "        "]
+        .iter()
+        .enumerate()
+    {
+        let got: String = (0..8)
+            .map(|x| buffer.get(x, y as u16).unwrap().symbol)
+            .collect();
+        assert_eq!(&got, line, "row {y}");
+    }
 }
 
 #[test]

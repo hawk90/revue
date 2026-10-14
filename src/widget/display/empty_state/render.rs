@@ -35,17 +35,61 @@ impl View for EmptyState {
     }
 }
 
+/// Draw `text` from column `x` of row `y`, stopping at the first character
+/// that would cross the right edge
+fn draw_clipped(
+    ctx: &mut RenderContext,
+    x: u16,
+    y: u16,
+    text: &str,
+    fg: Color,
+    modifier: Modifier,
+) {
+    let area = ctx.area;
+    let mut dx: u16 = 0;
+    for ch in text.chars() {
+        let cw = char_width(ch) as u16;
+        if x + dx + cw > area.width {
+            break;
+        }
+        let mut cell = Cell::new(ch);
+        cell.fg = Some(fg);
+        cell.modifier |= modifier;
+        ctx.set(x + dx, y, cell);
+        dx += cw;
+    }
+}
+
+/// The column that centers `text` in `width`
+fn centered_x(width: u16, text: &str) -> u16 {
+    let len = display_width(text) as u16;
+    width.saturating_sub(len) / 2
+}
+
 impl EmptyState {
     /// Get the icon to display
     fn get_icon(&self) -> char {
         self.custom_icon.unwrap_or_else(|| self.state_type.icon())
     }
 
-    fn render_full(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
+    /// The color of the icon and the action
+    fn accent(&self, ctx: &RenderContext) -> Color {
         // The state palette is this widget's own default; a rule naming
         // this node outranks it.
-        let accent = ctx.css_color(self.state_type.color());
+        ctx.css_color(self.state_type.color())
+    }
+
+    /// Draw the icon at (`x`, `y`)
+    fn draw_icon(&self, ctx: &mut RenderContext, x: u16, y: u16, accent: Color) {
+        let icon = self.get_icon();
+        let mut cell = Cell::new(icon);
+        cell.fg = Some(accent);
+        ctx.set(x, y, cell);
+    }
+
+    fn render_full(&self, ctx: &mut RenderContext) {
+        let area = ctx.area;
+        let accent = self.accent(ctx);
 
         // Calculate vertical centering
         let content_height = self.height();
@@ -59,49 +103,22 @@ impl EmptyState {
 
         // Icon (centered, large)
         if self.show_icon && y < area.height {
-            let icon = self.get_icon();
-            let icon_x = area.width / 2;
-            let mut cell = Cell::new(icon);
-            cell.fg = Some(accent);
-            ctx.set(icon_x, y, cell);
+            self.draw_icon(ctx, area.width / 2, y, accent);
             y += 2;
         }
 
         // Title (centered, bold)
         if y < area.height {
-            let title_len = display_width(&self.title) as u16;
-            let title_x = area.width.saturating_sub(title_len) / 2;
-            let mut dx: u16 = 0;
-            for ch in self.title.chars() {
-                let cw = char_width(ch) as u16;
-                if title_x + dx + cw > area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
-                cell.modifier |= Modifier::BOLD;
-                ctx.set(title_x + dx, y, cell);
-                dx += cw;
-            }
+            let title_x = centered_x(area.width, &self.title);
+            draw_clipped(ctx, title_x, y, &self.title, Color::WHITE, Modifier::BOLD);
             y += 1;
         }
 
         // Description (centered, dimmed)
         if let Some(ref desc) = self.description {
             if y < area.height {
-                let desc_len = display_width(desc) as u16;
-                let desc_x = area.width.saturating_sub(desc_len) / 2;
-                let mut dx: u16 = 0;
-                for ch in desc.chars() {
-                    let cw = char_width(ch) as u16;
-                    if desc_x + dx + cw > area.width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(LIGHT_GRAY);
-                    ctx.set(desc_x + dx, y, cell);
-                    dx += cw;
-                }
+                let desc_x = centered_x(area.width, desc);
+                draw_clipped(ctx, desc_x, y, desc, LIGHT_GRAY, Modifier::empty());
                 y += 2;
             }
         }
@@ -110,69 +127,34 @@ impl EmptyState {
         if let Some(ref action_text) = self.action {
             if y < area.height {
                 let btn_text = format!("[ {} ]", action_text);
-                let btn_len = display_width(&btn_text) as u16;
-                let btn_x = area.width.saturating_sub(btn_len) / 2;
-                let mut dx: u16 = 0;
-                for ch in btn_text.chars() {
-                    let cw = char_width(ch) as u16;
-                    if btn_x + dx + cw > area.width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(accent);
-                    ctx.set(btn_x + dx, y, cell);
-                    dx += cw;
-                }
+                let btn_x = centered_x(area.width, &btn_text);
+                draw_clipped(ctx, btn_x, y, &btn_text, accent, Modifier::empty());
             }
         }
     }
 
     fn render_compact(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        // The state palette is this widget's own default; a rule naming
-        // this node outranks it.
-        let accent = ctx.css_color(self.state_type.color());
+        let accent = self.accent(ctx);
         let mut y: u16 = 0;
 
         // Icon + Title on same line
         let mut x: u16 = 0;
         if self.show_icon {
-            let icon = self.get_icon();
-            let mut cell = Cell::new(icon);
-            cell.fg = Some(accent);
-            ctx.set(x, y, cell);
+            self.draw_icon(ctx, x, y, accent);
             x += 2;
         }
 
-        let mut dx: u16 = 0;
-        for ch in self.title.chars() {
-            let cw = char_width(ch) as u16;
-            if x + dx + cw > area.width {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::WHITE);
-            cell.modifier |= Modifier::BOLD;
-            ctx.set(x + dx, y, cell);
-            dx += cw;
-        }
+        draw_clipped(ctx, x, y, &self.title, Color::WHITE, Modifier::BOLD);
         y += 1;
+
+        // Description and action sit under the title, past the icon
+        let indent: u16 = if self.show_icon { 2 } else { 0 };
 
         // Description
         if let Some(ref desc) = self.description {
             if y < area.height {
-                let desc_x: u16 = if self.show_icon { 2 } else { 0 };
-                let mut dx: u16 = 0;
-                for ch in desc.chars() {
-                    let cw = char_width(ch) as u16;
-                    if desc_x + dx + cw > area.width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(LIGHT_GRAY);
-                    ctx.set(desc_x + dx, y, cell);
-                    dx += cw;
-                }
+                draw_clipped(ctx, indent, y, desc, LIGHT_GRAY, Modifier::empty());
                 y += 1;
             }
         }
@@ -180,50 +162,23 @@ impl EmptyState {
         // Action
         if let Some(ref action_text) = self.action {
             if y < area.height {
-                let action_x: u16 = if self.show_icon { 2 } else { 0 };
                 let btn_text = format!("[{}]", action_text);
-                let mut dx: u16 = 0;
-                for ch in btn_text.chars() {
-                    let cw = char_width(ch) as u16;
-                    if action_x + dx + cw > area.width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(accent);
-                    ctx.set(action_x + dx, y, cell);
-                    dx += cw;
-                }
+                draw_clipped(ctx, indent, y, &btn_text, accent, Modifier::empty());
             }
         }
     }
 
     fn render_minimal(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
-        // The state palette is this widget's own default; a rule naming
-        // this node outranks it.
-        let accent = ctx.css_color(self.state_type.color());
+        let accent = self.accent(ctx);
         let mut x: u16 = 0;
 
         // Icon
         if self.show_icon {
-            let icon = self.get_icon();
-            let mut cell = Cell::new(icon);
-            cell.fg = Some(accent);
-            ctx.set(x, 0, cell);
+            self.draw_icon(ctx, x, 0, accent);
             x += 2;
         }
 
         // Title
-        let mut dx: u16 = 0;
-        for ch in self.title.chars() {
-            let cw = char_width(ch) as u16;
-            if x + dx + cw > area.width {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(LIGHT_GRAY);
-            ctx.set(x + dx, 0, cell);
-            dx += cw;
-        }
+        draw_clipped(ctx, x, 0, &self.title, LIGHT_GRAY, Modifier::empty());
     }
 }
