@@ -5,11 +5,14 @@
 mod command;
 mod helper;
 mod impls;
+mod props;
+mod view;
 
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
+use revue::widget::theme::{DISABLED_FG, SUBTLE_GRAY};
 use revue::widget::traits::RenderContext;
 use revue::widget::View;
 use revue::widget::{Command, CommandPalette};
@@ -119,57 +122,124 @@ fn test_command_palette_commands_builder() {
 
 #[test]
 fn test_command_palette_width() {
-    // Width is clamped to minimum of 30 - can't test directly
-    // Just verify the builder accepts the value
-    let _palette = CommandPalette::new().width(80);
-    let _palette_min = CommandPalette::new().width(10);
+    let mut palette = CommandPalette::new()
+        .width(80)
+        .commands(vec![Command::new("a", "A"), Command::new("b", "B")]);
+    palette.show();
+    // An 80-column frame in a 100-column area: columns 10..90.
+    let b = view::render(&palette, 100, 12);
+    assert_eq!(b.get(9, 2).unwrap().symbol, ' ');
+    assert_eq!(b.get(10, 2).unwrap().symbol, '╭');
+    assert_eq!(b.get(89, 2).unwrap().symbol, '╮');
+    assert_eq!(b.get(90, 2).unwrap().symbol, ' ');
 }
 
 #[test]
 fn test_command_palette_max_visible() {
-    // Max visible is clamped to minimum of 3 - can't test directly
-    // Just verify the builder accepts the value
-    let _palette = CommandPalette::new().max_visible(15);
-    let _palette_min = CommandPalette::new().max_visible(1);
+    let commands: Vec<_> = (0..20)
+        .map(|i| Command::new(format!("c{i}"), format!("Command {i}")))
+        .collect();
+    let mut palette = CommandPalette::new().max_visible(15).commands(commands);
+    palette.show();
+    for _ in 0..15 {
+        palette.select_next();
+    }
+    // The sixteenth command scrolls the list by one.
+    assert_eq!(palette.selection.offset(), 1);
+    let b = view::render(&palette, 70, 24);
+    assert!(
+        view::row(&b, 5).contains("Command 1 "),
+        "{}",
+        view::row(&b, 5)
+    );
+    // Rows 5..19 hold 15 commands; the last of them is under the bottom
+    // border (draft-cmd-1), so only 14 are checked.
+    assert!(
+        view::row(&b, 18).contains("Command 14 "),
+        "{}",
+        view::row(&b, 18)
+    );
 }
 
 #[test]
 fn test_command_palette_placeholder() {
-    // Placeholder is private - tested indirectly via rendering
-    let _palette = CommandPalette::new().placeholder("Search commands...");
+    let mut palette = CommandPalette::new()
+        .placeholder("Run a command...")
+        .command(Command::new("a", "A"));
+    palette.show();
+    // The first letter is under the cursor (draft-cmd-1).
+    let text = view::row(&view::render(&palette, 70, 12), 3);
+    assert!(text.contains("un a command..."), "{text}");
+    assert!(!text.contains("Type to search"), "{text}");
 }
 
 #[test]
 fn test_command_palette_title() {
-    // Title is private - tested indirectly via rendering
-    let _palette = CommandPalette::new().title("Command Palette");
+    let mut palette = CommandPalette::new().title("Command Palette");
+    palette.show();
+    let b = view::render(&palette, 70, 12);
+    assert!(
+        view::row(&b, 3).contains("│ Command Palette "),
+        "{}",
+        view::row(&b, 3)
+    );
+    assert_eq!(b.get(7, 4).unwrap().symbol, '🔍');
 }
 
 #[test]
 fn test_command_palette_show_descriptions() {
-    // show_descriptions is private - tested indirectly via rendering
-    let _palette = CommandPalette::new().show_descriptions(false);
-    let _palette_default = CommandPalette::new();
+    let mut palette = CommandPalette::new()
+        .command(Command::new("a", "Alpha").description("first"))
+        .command(Command::new("b", "Beta"));
+    palette.show();
+    // "Alpha" at column 9, two blanks, then the dimmed description.
+    let b = view::render(&palette, 70, 12);
+    let desc: String = (16..21).map(|x| b.get(x, 5).unwrap().symbol).collect();
+    assert_eq!(desc, "first");
+    assert_eq!(b.get(16, 5).unwrap().fg, Some(SUBTLE_GRAY));
 }
 
 #[test]
 fn test_command_palette_show_shortcuts() {
-    // show_shortcuts is private - tested indirectly via rendering
-    let _palette = CommandPalette::new().show_shortcuts(false);
-    let _palette_default = CommandPalette::new();
+    let make = |show: bool| {
+        let mut p = CommandPalette::new()
+            .show_shortcuts(show)
+            .command(Command::new("a", "Alpha").shortcut("Ctrl+K"))
+            .command(Command::new("b", "Beta"));
+        p.show();
+        view::row(&view::render(&p, 70, 12), 5)
+    };
+    assert!(make(true).contains("Ctrl+K │"), "{}", make(true));
+    assert!(!make(false).contains("Ctrl+K"), "{}", make(false));
 }
 
 #[test]
 fn test_command_palette_show_icons() {
-    // show_icons is private - tested indirectly via rendering
-    let _palette = CommandPalette::new().show_icons(false);
-    let _palette_default = CommandPalette::new();
+    let make = |show: bool| {
+        let mut p = CommandPalette::new()
+            .show_icons(show)
+            .command(Command::new("a", "Alpha").icon('@'))
+            .command(Command::new("b", "Beta"));
+        p.show();
+        view::row(&view::render(&p, 70, 12), 5)
+    };
+    assert!(make(true).contains("│ @ Alpha"), "{}", make(true));
+    assert!(make(false).contains("│ Alpha"), "{}", make(false));
+    assert!(!make(false).contains('@'), "{}", make(false));
 }
 
 #[test]
 fn test_command_palette_colors() {
-    // Colors are private - tested indirectly via rendering
-    let _palette = CommandPalette::new().colors(Color::RED, Color::GREEN, Color::BLUE);
+    let mut palette = CommandPalette::new()
+        .colors(Color::RED, Color::GREEN, Color::BLUE)
+        .commands(vec![Command::new("a", "A"), Command::new("b", "B")]);
+    palette.show();
+    let b = view::render(&palette, 70, 12);
+    // The frame's background and its border.
+    assert_eq!(b.get(6, 3).unwrap().bg, Some(Color::RED));
+    for (x, y) in [(5, 2), (6, 2), (64, 2), (5, 3), (5, 4), (64, 5)] {
+        assert_eq!(b.get(x, y).unwrap().fg, Some(Color::GREEN), "({x}, {y})");
+    }
 }
 
 #[test]
@@ -261,12 +331,6 @@ fn test_command_palette_show_resets_selection() {
 // =============================================================================
 
 #[test]
-fn test_command_palette_get_query() {
-    let palette = CommandPalette::new();
-    assert_eq!(palette.get_query(), "");
-}
-
-#[test]
 fn test_command_palette_set_query() {
     let mut palette = CommandPalette::new();
     palette.set_query("save");
@@ -291,13 +355,6 @@ fn test_command_palette_backspace() {
     palette.backspace();
 
     assert_eq!(palette.get_query(), "tes");
-}
-
-#[test]
-fn test_command_palette_backspace_empty() {
-    let mut palette = CommandPalette::new();
-    palette.backspace();
-    assert_eq!(palette.get_query(), "");
 }
 
 #[test]
@@ -817,8 +874,7 @@ fn test_command_palette_render_hidden() {
 
     palette.render(&mut ctx);
 
-    // When hidden, should not render anything visible
-    // Just verify it doesn't crash
+    assert!((0..24).all(|y| view::row(&buffer, y).trim().is_empty()));
 }
 
 #[test]
@@ -886,31 +942,33 @@ fn test_command_palette_render_with_title() {
 
 #[test]
 fn test_command_palette_render_with_icons() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let mut palette = CommandPalette::new().command(Command::new("save", "Save File").icon('💾'));
+    let mut palette = CommandPalette::new()
+        .command(Command::new("save", "Save File").icon('💾'))
+        .command(Command::new("quit", "Quit"));
 
     palette.show();
-    palette.render(&mut ctx);
+    let b = view::render(&palette, 80, 24);
 
-    // Just verify it renders without crashing - icon rendering is internal
+    // An 80-column area puts the 60-column frame at column 10.
+    assert_eq!(b.get(12, 5).unwrap().symbol, '💾');
+    assert_eq!(b.get(12, 5).unwrap().fg, Some(Color::CYAN));
+    assert_eq!(b.get(14, 5).unwrap().symbol, 'S');
 }
 
 #[test]
 fn test_command_palette_render_with_shortcuts() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let mut palette =
-        CommandPalette::new().command(Command::new("save", "Save File").shortcut("Ctrl+S"));
+    let mut palette = CommandPalette::new()
+        .command(Command::new("save", "Save File").shortcut("Ctrl+S"))
+        .command(Command::new("quit", "Quit"));
 
     palette.show();
-    palette.render(&mut ctx);
+    let b = view::render(&palette, 80, 24);
 
-    // Just verify it renders without crashing - shortcut rendering is internal
+    // Right-aligned: it ends one blank column before the right border (69).
+    let shortcut: String = (62..68).map(|x| b.get(x, 5).unwrap().symbol).collect();
+    assert_eq!(shortcut, "Ctrl+S");
+    assert_eq!(b.get(68, 5).unwrap().symbol, ' ');
+    assert_eq!(b.get(69, 5).unwrap().symbol, '│');
 }
 
 #[test]
@@ -945,56 +1003,57 @@ fn test_command_palette_render_query() {
 
 #[test]
 fn test_command_palette_render_placeholder() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut palette = CommandPalette::new()
-        .placeholder("Search...")
+        .placeholder("Go to...")
         .command(Command::new("test", "Test"));
 
     palette.show();
-    palette.render(&mut ctx);
+    let b = view::render(&palette, 80, 24);
 
-    // Just verify it renders without crashing - placeholder rendering is internal
+    // After the cursor at column 14 (draft-cmd-1), in the disabled grey.
+    let text: String = (15..22).map(|x| b.get(x, 3).unwrap().symbol).collect();
+    assert_eq!(text, "o to...");
+    assert!((15..22).all(|x| b.get(x, 3).unwrap().fg == Some(DISABLED_FG)));
 }
 
 #[test]
 fn test_command_palette_render_custom_colors() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut palette = CommandPalette::new()
         .colors(Color::RED, Color::GREEN, Color::BLUE)
-        .command(Command::new("test", "Test"));
+        .commands(vec![
+            Command::new("test", "Test"),
+            Command::new("other", "Other"),
+            Command::new("last", "Last"),
+        ]);
 
     palette.show();
-    palette.render(&mut ctx);
+    palette.select_next();
+    let b = view::render(&palette, 80, 24);
 
-    // Just verify it renders without crashing - color rendering is internal
+    // The selected second row takes the selection color, the first keeps
+    // the background.
+    assert!((11..69).all(|x| b.get(x, 6).unwrap().bg == Some(Color::BLUE)));
+    assert!((11..69).all(|x| b.get(x, 5).unwrap().bg == Some(Color::RED)));
 }
 
 #[test]
 fn test_command_palette_render_selected_item() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let mut palette = CommandPalette::new().command(Command::new("test", "Test Command"));
+    let mut palette = CommandPalette::new().commands(vec![
+        Command::new("test", "Test Command"),
+        Command::new("other", "Other"),
+    ]);
 
     palette.show();
-    palette.render(&mut ctx);
+    let b = view::render(&palette, 80, 24);
 
-    // Just verify it renders without crashing - selection rendering is internal
+    let selected = Color::rgb(50, 80, 120);
+    assert!(view::row(&b, 5).contains("Test Command"));
+    assert!((11..69).all(|x| b.get(x, 5).unwrap().bg == Some(selected)));
+    assert_eq!(b.get(14, 5).unwrap().fg, Some(Color::WHITE));
 }
 
 #[test]
 fn test_command_palette_render_many_commands() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let commands: Vec<_> = (0..20)
         .map(|i| Command::new(format!("cmd{}", i), format!("Command {}", i)))
         .collect();
@@ -1002,9 +1061,22 @@ fn test_command_palette_render_many_commands() {
     let mut palette = CommandPalette::new().commands(commands).max_visible(10);
 
     palette.show();
-    palette.render(&mut ctx);
+    let b = view::render(&palette, 80, 24);
 
-    // Should render without crashing, respecting max_visible
+    // The first rows in order; no row past the tenth command. The tenth row
+    // is under the bottom border (draft-cmd-1).
+    for i in 0..9u16 {
+        let text = view::row(&b, 5 + i);
+        assert!(text.contains(&format!("Command {i} ")), "{text}");
+    }
+    for y in 0..24 {
+        let text = view::row(&b, y);
+        assert!(
+            (10..20).all(|i| !text.contains(&format!("Command {i}"))),
+            "{text}"
+        );
+    }
+    assert!(view::row(&b, 14).contains("20/20"), "{}", view::row(&b, 14));
 }
 
 #[test]
@@ -1068,16 +1140,22 @@ fn test_command_palette_render_no_results() {
 
 #[test]
 fn test_command_palette_render_small_area() {
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let mut palette = CommandPalette::new().command(Command::new("test", "Test"));
+    let mut palette = CommandPalette::new().commands(vec![
+        Command::new("test", "Test"),
+        Command::new("other", "Other"),
+    ]);
 
     palette.show();
-    palette.render(&mut ctx);
+    let b = view::render(&palette, 40, 10);
 
-    // Should handle smaller areas
+    // The frame narrows to the 40-column area.
+    assert_eq!(b.get(0, 2).unwrap().symbol, '╭');
+    assert_eq!(b.get(39, 2).unwrap().symbol, '╮');
+    assert!(
+        view::row(&b, 5).contains("│   Test "),
+        "{}",
+        view::row(&b, 5)
+    );
 }
 
 // =============================================================================
@@ -1128,16 +1206,17 @@ fn test_command_palette_unicode_label() {
 #[test]
 fn test_command_palette_very_long_label() {
     let long_label = "This is a very long command label that exceeds normal width";
-    let mut palette = CommandPalette::new().command(Command::new("test", long_label));
+    let mut palette = CommandPalette::new()
+        .command(Command::new("test", long_label))
+        .command(Command::new("other", "Other"));
 
     palette.show();
+    let b = view::render(&palette, 80, 24);
 
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    palette.render(&mut ctx);
-    // Should render without crashing
+    // The label runs from column 14 up to the label column's end (55).
+    let text: String = (14..56).map(|x| b.get(x, 5).unwrap().symbol).collect();
+    let want: String = long_label.chars().take(41).collect();
+    assert_eq!(text, format!("{want} "));
 }
 
 #[test]
@@ -1184,14 +1263,34 @@ fn test_command_palette_query_updates_filter() {
 
 #[test]
 fn test_command_palette_width_clamping() {
-    // Width is clamped to minimum of 30 - tested by verifying builder works
-    let _palette = CommandPalette::new().width(10);
+    let mut palette = CommandPalette::new()
+        .width(10)
+        .commands(vec![Command::new("a", "A"), Command::new("b", "B")]);
+    palette.show();
+    // At least 30 columns: 20..50 in a 70-column area.
+    let b = view::render(&palette, 70, 12);
+    assert_eq!(b.get(20, 2).unwrap().symbol, '╭');
+    assert_eq!(b.get(49, 2).unwrap().symbol, '╮');
 }
 
 #[test]
 fn test_command_palette_max_visible_clamping() {
-    // Max visible is clamped to minimum of 3 - tested by verifying builder works
-    let _palette = CommandPalette::new().max_visible(1);
+    let commands: Vec<_> = (0..6)
+        .map(|i| Command::new(format!("c{i}"), format!("Command {i}")))
+        .collect();
+    let mut palette = CommandPalette::new().max_visible(1).commands(commands);
+    palette.show();
+    // At least three rows: the fourth command scrolls by one.
+    for _ in 0..3 {
+        palette.select_next();
+    }
+    assert_eq!(palette.selection.offset(), 1);
+    let b = view::render(&palette, 70, 12);
+    assert!(
+        view::row(&b, 5).contains("Command 1 "),
+        "{}",
+        view::row(&b, 5)
+    );
 }
 
 #[test]
