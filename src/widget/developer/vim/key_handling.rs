@@ -1,147 +1,10 @@
 //! Turning key events into vim actions, per mode
 
+use super::normal::basic_motion;
 use super::{VimAction, VimMode, VimMotion, VimState};
 use crate::event::{Key, KeyEvent};
 
 impl VimState {
-    /// Handle key event in normal mode
-    fn handle_normal(&mut self, key: &KeyEvent) -> VimAction {
-        // Handle digits for count. A leading `0` is not a count digit: as in
-        // vim, it moves to the line start unless a count is already being typed.
-        if let Key::Char(ch) = key.key {
-            if let Some(digit) = ch.to_digit(10).filter(|&d| d != 0 || self.count.is_some()) {
-                let digit = digit as usize;
-                self.count = Some(self.count.unwrap_or(0) * 10 + digit);
-                return VimAction::None;
-            }
-        }
-
-        // Handle operator pending
-        if let Some(op) = self.operator {
-            if let Key::Char(ch) = key.key {
-                let motion = self.char_to_motion(ch);
-                if motion.is_some() {
-                    self.operator = None;
-                    return match op {
-                        'd' => VimAction::Delete(motion),
-                        'y' => VimAction::Yank(motion),
-                        'c' => VimAction::Change(motion),
-                        _ => VimAction::None,
-                    };
-                }
-            }
-        }
-
-        match key.key {
-            // Mode changes
-            Key::Char('i') => {
-                self.set_mode(VimMode::Insert);
-                VimAction::Insert
-            }
-            Key::Char('I') => {
-                self.set_mode(VimMode::Insert);
-                VimAction::InsertStart
-            }
-            Key::Char('a') => {
-                self.set_mode(VimMode::Insert);
-                VimAction::Append
-            }
-            Key::Char('A') => {
-                self.set_mode(VimMode::Insert);
-                VimAction::AppendEnd
-            }
-            Key::Char('o') => {
-                self.set_mode(VimMode::Insert);
-                VimAction::OpenBelow
-            }
-            Key::Char('O') => {
-                self.set_mode(VimMode::Insert);
-                VimAction::OpenAbove
-            }
-            Key::Char('v') => {
-                self.set_mode(VimMode::Visual);
-                VimAction::EnterVisual
-            }
-            Key::Char('V') => {
-                self.set_mode(VimMode::VisualLine);
-                VimAction::EnterVisualLine
-            }
-            Key::Char(':') => {
-                self.set_mode(VimMode::Command);
-                self.command_buffer.clear();
-                VimAction::EnterCommand
-            }
-            Key::Char('/') => {
-                self.set_mode(VimMode::Search);
-                self.search_pattern.clear();
-                self.search_forward = true;
-                VimAction::EnterSearch
-            }
-            Key::Char('?') => {
-                self.set_mode(VimMode::Search);
-                self.search_pattern.clear();
-                self.search_forward = false;
-                VimAction::EnterSearch
-            }
-
-            // Motions
-            Key::Char('h') | Key::Left => VimAction::Move(VimMotion::Left),
-            Key::Char('j') | Key::Down => VimAction::Move(VimMotion::Down),
-            Key::Char('k') | Key::Up => VimAction::Move(VimMotion::Up),
-            Key::Char('l') | Key::Right => VimAction::Move(VimMotion::Right),
-            Key::Char('w') => VimAction::Move(VimMotion::Word),
-            Key::Char('b') => VimAction::Move(VimMotion::WordBack),
-            Key::Char('e') => VimAction::Move(VimMotion::WordEnd),
-            Key::Char('0') => VimAction::Move(VimMotion::LineStart),
-            Key::Char('$') => VimAction::Move(VimMotion::LineEnd),
-            Key::Char('^') => VimAction::Move(VimMotion::FirstNonBlank),
-            Key::Char('G') => VimAction::Move(VimMotion::GoToLine(self.count)),
-            Key::Char('g') => {
-                self.key_buffer.push('g');
-                VimAction::None
-            }
-            Key::Char('{') => VimAction::Move(VimMotion::ParagraphBack),
-            Key::Char('}') => VimAction::Move(VimMotion::ParagraphForward),
-            Key::Char('%') => VimAction::Move(VimMotion::MatchBracket),
-            Key::Char('n') => VimAction::Move(VimMotion::SearchNext),
-            Key::Char('N') => VimAction::Move(VimMotion::SearchPrev),
-
-            // Operators
-            Key::Char('d') => {
-                self.operator = Some('d');
-                VimAction::None
-            }
-            Key::Char('y') => {
-                self.operator = Some('y');
-                VimAction::None
-            }
-            Key::Char('c') => {
-                self.operator = Some('c');
-                VimAction::None
-            }
-
-            // Actions
-            Key::Char('x') => VimAction::Delete(Some(VimMotion::Right)),
-            Key::Char('X') => VimAction::Delete(Some(VimMotion::Left)),
-            Key::Char('p') => VimAction::PasteAfter,
-            Key::Char('P') => VimAction::PasteBefore,
-            Key::Char('u') => VimAction::Undo,
-            Key::Char('r') if key.ctrl => VimAction::Redo,
-            Key::Char('.') => VimAction::Repeat,
-            Key::Char('J') => VimAction::JoinLines,
-            Key::Char('>') => VimAction::Indent,
-            Key::Char('<') => VimAction::Outdent,
-
-            Key::Escape => {
-                self.count = None;
-                self.operator = None;
-                VimAction::Escape
-            }
-
-            _ => VimAction::None,
-        }
-    }
-
     /// Handle key event in insert mode
     fn handle_insert(&mut self, key: &KeyEvent) -> VimAction {
         match key.key {
@@ -173,13 +36,7 @@ impl VimState {
                 VimAction::Change(None)
             }
             // Movement in visual mode
-            Key::Char('h') | Key::Left => VimAction::Move(VimMotion::Left),
-            Key::Char('j') | Key::Down => VimAction::Move(VimMotion::Down),
-            Key::Char('k') | Key::Up => VimAction::Move(VimMotion::Up),
-            Key::Char('l') | Key::Right => VimAction::Move(VimMotion::Right),
-            Key::Char('w') => VimAction::Move(VimMotion::Word),
-            Key::Char('b') => VimAction::Move(VimMotion::WordBack),
-            _ => VimAction::None,
+            ref other => basic_motion(other).map_or(VimAction::None, VimAction::Move),
         }
     }
 
@@ -243,26 +100,17 @@ impl VimState {
         }
     }
 
-    /// Convert character to motion
-    fn char_to_motion(&self, ch: char) -> Option<VimMotion> {
-        match ch {
-            'h' => Some(VimMotion::Left),
-            'j' => Some(VimMotion::Down),
-            'k' => Some(VimMotion::Up),
-            'l' => Some(VimMotion::Right),
-            'w' => Some(VimMotion::Word),
-            'b' => Some(VimMotion::WordBack),
-            'e' => Some(VimMotion::WordEnd),
-            '0' => Some(VimMotion::LineStart),
-            '$' => Some(VimMotion::LineEnd),
-            '^' => Some(VimMotion::FirstNonBlank),
-            'G' => Some(VimMotion::GoToLine(None)),
-            '{' => Some(VimMotion::ParagraphBack),
-            '}' => Some(VimMotion::ParagraphForward),
-            '%' => Some(VimMotion::MatchBracket),
-            // Same key repeats = line
-            'd' | 'y' | 'c' => Some(VimMotion::Down),
-            _ => None,
+    /// Handle key event in replace mode: a char replaces the one under the
+    /// cursor
+    fn handle_replace(&mut self, key: &KeyEvent) -> VimAction {
+        if let Key::Char(ch) = key.key {
+            self.set_mode(VimMode::Normal);
+            VimAction::ReplaceChar(ch)
+        } else if key.key == Key::Escape {
+            self.set_mode(VimMode::Normal);
+            VimAction::Escape
+        } else {
+            VimAction::None
         }
     }
 
@@ -285,22 +133,24 @@ impl VimState {
             VimMode::Visual | VimMode::VisualLine | VimMode::VisualBlock => self.handle_visual(key),
             VimMode::Command => self.handle_command(key),
             VimMode::Search => self.handle_search(key),
-            VimMode::Replace => {
-                if let Key::Char(ch) = key.key {
-                    self.set_mode(VimMode::Normal);
-                    VimAction::ReplaceChar(ch)
-                } else if key.key == Key::Escape {
-                    self.set_mode(VimMode::Normal);
-                    VimAction::Escape
-                } else {
-                    VimAction::None
-                }
-            }
+            VimMode::Replace => self.handle_replace(key),
         };
 
+        self.remember_for_repeat(&action);
+
+        // Reset count after action
+        if action != VimAction::None {
+            self.count = None;
+        }
+
+        action
+    }
+
+    /// Keep an edit or insert action for `.`
+    fn remember_for_repeat(&mut self, action: &VimAction) {
         // Save for repeat
-        if action != VimAction::None
-            && action != VimAction::Escape
+        if *action != VimAction::None
+            && *action != VimAction::Escape
             && matches!(
                 action,
                 VimAction::Delete(_)
@@ -314,17 +164,10 @@ impl VimState {
         {
             self.last_action = Some(action.clone());
         }
-
-        // Reset count after action
-        if action != VimAction::None {
-            self.count = None;
-        }
-
-        action
     }
 }
 
-// KEEP HERE - Private field access tests (tests note operator field is private)
+// KEEP HERE - Private field access tests (the pending operator and count are private)
 
 #[cfg(test)]
 mod tests {
@@ -337,8 +180,17 @@ mod tests {
     #[test]
     fn test_set_mode_from_insert_clears_operator() {
         let mut vim = VimState::new();
+        vim.handle_key(&KeyEvent::new(Key::Char('3')));
+        vim.handle_key(&KeyEvent::new(Key::Char('d')));
+        assert_eq!((vim.operator, vim.count), (Some('d'), Some(3)));
+        // Insert mode keeps them; going back to Normal drops both
+        vim.set_mode(VimMode::Insert);
+        assert_eq!((vim.operator, vim.count), (Some('d'), Some(3)));
+        vim.set_mode(VimMode::Normal);
+        assert_eq!((vim.operator, vim.count), (None, None));
+        // `d` typed in insert mode is text, not an operator
         vim.set_mode(VimMode::Insert);
         vim.handle_key(&KeyEvent::new(Key::Char('d')));
-        // Can't test operator directly as it's private
+        assert_eq!(vim.operator, None);
     }
 }
