@@ -7,6 +7,33 @@ use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView};
 use revue::widget::{collapsible, Collapsible, View};
 
+/// Render `c` into a fresh `w` x `h` buffer.
+fn draw(c: &Collapsible, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    c.render(&mut ctx);
+    buffer
+}
+
+/// Row `y` of `buffer` as text, trailing blanks trimmed.
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect::<String>()
+        .trim_end()
+        .to_string()
+}
+
+/// Whether no cell of `buffer` was drawn.
+fn blank(buffer: &Buffer) -> bool {
+    (0..buffer.height()).all(|y| {
+        (0..buffer.width()).all(|x| {
+            let c = buffer.get(x, y).unwrap();
+            c.symbol == ' ' && c.fg.is_none() && c.bg.is_none()
+        })
+    })
+}
+
 // =============================================================================
 // Constructor Tests
 // =============================================================================
@@ -680,97 +707,89 @@ fn test_collapsible_render_small_area() {
 
 #[test]
 fn test_collapsible_render_zero_width() {
-    let mut buffer = Buffer::new(0, 5);
+    let mut buffer = Buffer::new(5, 5);
     let area = Rect::new(0, 0, 0, 5);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let c = Collapsible::new("Test");
+    let c = Collapsible::new("Test").content("x").expanded(true);
     c.render(&mut ctx);
-    // Should not panic
+    assert!(blank(&buffer));
 }
 
 #[test]
 fn test_collapsible_render_zero_height() {
-    let mut buffer = Buffer::new(30, 0);
+    let mut buffer = Buffer::new(30, 3);
     let area = Rect::new(0, 0, 30, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let c = Collapsible::new("Test");
+    let c = Collapsible::new("Test").content("x").expanded(true);
     c.render(&mut ctx);
-    // Should not panic
+    assert!(blank(&buffer));
 }
 
 #[test]
 fn test_collapsible_render_too_small_area() {
-    let mut buffer = Buffer::new(3, 1);
-    let area = Rect::new(0, 0, 3, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // Below 4 columns nothing is drawn; at 4 the header is.
     let c = Collapsible::new("Test");
-    c.render(&mut ctx);
-    // Should not panic (width < 4 check)
+    assert!(blank(&draw(&c, 3, 1)));
+    assert_eq!(row(&draw(&c, 4, 1), 0), "▶ T");
 }
 
 #[test]
 fn test_collapsible_render_long_title() {
-    let mut buffer = Buffer::new(20, 3);
-    let area = Rect::new(0, 0, 20, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // The title is cut to the width less the icon, its space and one column.
     let c = Collapsible::new("This is a very long title that exceeds the area");
-    c.render(&mut ctx);
-
-    // Should truncate title
-    assert_eq!(buffer.get(0, 0).unwrap().symbol, '▶');
+    let buffer = draw(&c, 20, 3);
+    assert_eq!(row(&buffer, 0), "▶ This is a very lo");
+    assert_eq!(buffer.get(19, 0).unwrap().symbol, ' ');
 }
 
 #[test]
 fn test_collapsible_render_long_content() {
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let long_line = "This is a very long content line that should be truncated";
     let c = Collapsible::new("Info")
         .content(long_line)
         .expanded(true)
         .border(true);
-    c.render(&mut ctx);
+    let buffer = draw(&c, 40, 5);
 
-    // Should render without panic
-    assert_eq!(buffer.get(0, 0).unwrap().symbol, '▼');
+    // Text from column 2 up to the last column but one
+    assert_eq!(row(&buffer, 1), "│ This is a very long content line that");
+    assert_eq!(buffer.get(39, 1).unwrap().symbol, ' ');
+    assert_eq!(row(&buffer, 2).chars().next(), Some('└'));
 }
 
 #[test]
 fn test_collapsible_render_content_clipped() {
-    let mut buffer = Buffer::new(30, 3);
-    let area = Rect::new(0, 0, 30, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // Three rows: the header, one content line, and the bottom border
     let c = Collapsible::new("Clipped")
         .content("Line 1\nLine 2\nLine 3\nLine 4\nLine 5")
         .expanded(true)
         .border(true);
-    c.render(&mut ctx);
+    let buffer = draw(&c, 30, 3);
 
-    // Should clip content to available area
-    assert_eq!(buffer.get(0, 0).unwrap().symbol, '▼');
+    assert_eq!(row(&buffer, 0), "▼ Clipped");
+    assert_eq!(row(&buffer, 1), "│ Line 1");
+    assert_eq!(row(&buffer, 2), format!("└{}", "─".repeat(28)));
+
+    // Without the border the third row is the second line
+    let buffer = draw(&c.clone().border(false), 30, 3);
+    assert_eq!(row(&buffer, 1), " Line 1");
+    assert_eq!(row(&buffer, 2), " Line 2");
 }
 
 #[test]
 fn test_collapsible_render_empty_content() {
-    let mut buffer = Buffer::new(30, 5);
-    let area = Rect::new(0, 0, 30, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let c = Collapsible::new("Empty")
         .content("")
         .expanded(true)
         .border(true);
-    c.render(&mut ctx);
+    let buffer = draw(&c, 30, 5);
 
-    // Should render header and border only
-    assert_eq!(buffer.get(0, 0).unwrap().symbol, '▼');
+    // The header, then the bottom border right under it
+    assert_eq!(row(&buffer, 0), "▼ Empty");
+    assert_eq!(row(&buffer, 1), format!("└{}", "─".repeat(28)));
+    assert_eq!(row(&buffer, 2), "");
 }
 
 // =============================================================================
@@ -963,22 +982,21 @@ fn test_collapsible_empty_title() {
     let c = Collapsible::new("");
     assert!(!c.is_expanded());
 
-    let mut buffer = Buffer::new(20, 3);
-    let area = Rect::new(0, 0, 20, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    c.render(&mut ctx);
-    // Should not panic
+    let buffer = draw(&c, 20, 3);
+    assert_eq!(row(&buffer, 0), "▶");
+    assert_eq!(row(&buffer, 1), "");
 }
 
 #[test]
 fn test_collapsible_unicode_title() {
     let c = Collapsible::new("한글 제목");
+    let buffer = draw(&c, 20, 3);
 
-    let mut buffer = Buffer::new(20, 3);
-    let area = Rect::new(0, 0, 20, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    c.render(&mut ctx);
-    // Should not panic
+    // Two columns per glyph
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '한');
+    assert_eq!(buffer.get(4, 0).unwrap().symbol, '글');
+    assert_eq!(buffer.get(7, 0).unwrap().symbol, '제');
+    assert_eq!(buffer.get(9, 0).unwrap().symbol, '목');
 }
 
 #[test]
@@ -1004,7 +1022,8 @@ fn test_collapsible_very_long_single_line() {
     let long_line = "A".repeat(1000);
     let c = Collapsible::new("Long").content(&long_line).expanded(true);
 
-    assert!(c.height() >= 2);
+    // One line however long: header + line + bottom border
+    assert_eq!(c.height(), 3);
 }
 
 #[test]
@@ -1014,8 +1033,8 @@ fn test_collapsible_many_empty_lines() {
         .expanded(true)
         .border(true);
 
-    // Splits by newlines, creating empty strings
-    assert!(c.height() > 2);
+    // Five newlines are five empty lines: header + 5 + bottom border
+    assert_eq!(c.height(), 7);
 }
 
 #[test]
@@ -1067,3 +1086,5 @@ fn test_collapsible_render_expanded_icon() {
 }
 
 // =============================================================================
+
+mod view;

@@ -27,16 +27,6 @@ fn test_collapsible_expand_collapse() {
 }
 
 #[test]
-fn test_collapsible_toggle() {
-    let mut c = Collapsible::new("Info");
-    assert!(!c.is_expanded());
-    c.toggle();
-    assert!(c.is_expanded());
-    c.toggle();
-    assert!(!c.is_expanded());
-}
-
-#[test]
 fn test_collapsible_content() {
     let c = Collapsible::new("Info")
         .content("Line 1\nLine 2\nLine 3")
@@ -123,6 +113,11 @@ fn test_collapsible_render_small_area_no_panic() {
     let mut ctx = RenderContext::new(&mut buf, area);
     let c = Collapsible::new("Long Title").expanded(true);
     c.render(&mut ctx); // Width < 4, should return early
+    for y in 0..5 {
+        for x in 0..10 {
+            assert_eq!(buf.get(x, y).unwrap().symbol, ' ');
+        }
+    }
 }
 
 #[test]
