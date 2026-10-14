@@ -304,7 +304,7 @@ proptest! {
         let first_row = 2 + 3 + u16::from(titled);
         let shown = m.filtered.len().min(max_visible as usize);
         // The last row is left out: the bottom border is drawn over it
-        // (draft-cmd-1).
+        // (#1091).
         for r in 0..shown.saturating_sub(1) {
             let y = first_row + r as u16;
             let cmd = &m.commands[m.filtered[m.offset + r]];

@@ -153,7 +153,7 @@ fn test_command_palette_max_visible() {
         view::row(&b, 5)
     );
     // Rows 5..19 hold 15 commands; the last of them is under the bottom
-    // border (draft-cmd-1), so only 14 are checked.
+    // border (#1091), so only 14 are checked.
     assert!(
         view::row(&b, 18).contains("Command 14 "),
         "{}",
@@ -167,7 +167,7 @@ fn test_command_palette_placeholder() {
         .placeholder("Run a command...")
         .command(Command::new("a", "A"));
     palette.show();
-    // The first letter is under the cursor (draft-cmd-1).
+    // The first letter is under the cursor (#1091).
     let text = view::row(&view::render(&palette, 70, 12), 3);
     assert!(text.contains("un a command..."), "{text}");
     assert!(!text.contains("Type to search"), "{text}");
@@ -1010,7 +1010,7 @@ fn test_command_palette_render_placeholder() {
     palette.show();
     let b = view::render(&palette, 80, 24);
 
-    // After the cursor at column 14 (draft-cmd-1), in the disabled grey.
+    // After the cursor at column 14 (#1091), in the disabled grey.
     let text: String = (15..22).map(|x| b.get(x, 3).unwrap().symbol).collect();
     assert_eq!(text, "o to...");
     assert!((15..22).all(|x| b.get(x, 3).unwrap().fg == Some(DISABLED_FG)));
@@ -1064,7 +1064,7 @@ fn test_command_palette_render_many_commands() {
     let b = view::render(&palette, 80, 24);
 
     // The first rows in order; no row past the tenth command. The tenth row
-    // is under the bottom border (draft-cmd-1).
+    // is under the bottom border (#1091).
     for i in 0..9u16 {
         let text = view::row(&b, 5 + i);
         assert!(text.contains(&format!("Command {i} ")), "{text}");

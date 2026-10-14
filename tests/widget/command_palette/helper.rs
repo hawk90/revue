@@ -94,7 +94,7 @@ fn test_command_palette_initial_placeholder() {
     let mut cp = command_palette();
     assert_eq!(cp.placeholder, "Type to search...");
     cp.show();
-    // The first letter is under the cursor (draft-cmd-1).
+    // The first letter is under the cursor (#1091).
     assert!(row(&render(&cp, 70, 12), 3).contains("ype to search..."));
 }
 
@@ -110,7 +110,7 @@ fn test_command_palette_initial_show_descriptions() {
     let mut cp = command_palette()
         .command(Command::new("a", "Alpha").description("first"))
         .command(Command::new("z", "Zed"));
-    // Two commands: the last row is under the bottom border (draft-cmd-1).
+    // Two commands: the last row is under the bottom border (#1091).
     assert!(cp.show_descriptions);
     cp.show();
     assert!(row(&render(&cp, 70, 12), 5).contains("Alpha  first"));

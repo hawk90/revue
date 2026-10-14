@@ -127,7 +127,7 @@ fn the_search_line_shows_the_icon_the_query_and_a_cursor_after_it() {
 
 /// The placeholder is drawn in the disabled grey. Its first column is left
 /// out: the cursor is drawn over the placeholder's first letter
-/// (draft-cmd-1).
+/// (#1091).
 #[test]
 fn the_placeholder_is_grey() {
     let mut p = CommandPalette::new().placeholder("Find a command");
@@ -187,7 +187,7 @@ fn the_selected_row_takes_the_selection_background() {
 #[test]
 fn query_matches_are_bold_in_the_match_color() {
     // Two matches with the same letters: the last row is under the bottom
-    // border (draft-cmd-1).
+    // border (#1091).
     let mut p = shown(vec![
         Command::new("a", "Save File").icon('S'),
         Command::new("b", "Save Files").icon('S'),
@@ -247,7 +247,7 @@ fn shortcuts_end_before_the_border_and_descriptions_follow_the_label() {
 
 #[test]
 fn a_description_stops_before_the_shortcut() {
-    // A second command: the last row is under the bottom border (draft-cmd-1).
+    // A second command: the last row is under the bottom border (#1091).
     let p = shown(vec![
         Command::new("a", "A")
             .description("d".repeat(80))
@@ -307,7 +307,7 @@ fn an_empty_palette_draws_its_frame_and_a_zero_count() {
 fn a_palette_taller_than_the_area_draws_nothing() {
     let p = shown(sample());
     // Three commands: the frame's height is computed as 3 + 3, and two rows
-    // above it make 8 (draft-cmd-1 counts one row short); 7 do not fit.
+    // above it make 8 (#1091 counts one row short); 7 do not fit.
     let b = render(&p, 70, 8);
     assert_eq!(cell(&b, X, 2).symbol, '╭');
     let b = render(&p, 70, 7);
@@ -327,7 +327,7 @@ fn rows_scroll_with_the_selection() {
     assert_eq!(p.selection.offset(), 3);
     let b = render(&p, 70, 14);
     // Rows 5.. show commands from the offset on. The fifth row is left out:
-    // the bottom border covers it (draft-cmd-1).
+    // the bottom border covers it (#1091).
     for i in 0..4 {
         let text = row(&b, 5 + i);
         assert!(text.contains(&format!("Command {} ", 3 + i)), "{text}");
