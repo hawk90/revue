@@ -8,11 +8,15 @@ use revue::widget::credit_card_input;
 use revue::widget::masked_input;
 use revue::widget::password_input;
 use revue::widget::pin_input;
+use revue::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
 use revue::widget::traits::RenderContext;
 use revue::widget::traits::View;
 use revue::widget::MaskStyle;
 use revue::widget::MaskedInput;
 use revue::widget::ValidationState;
+
+mod edit;
+mod view;
 
 // =============================================================================
 // Constructor and Builder Tests (생성자 및 빌더 테스트)
@@ -991,6 +995,10 @@ fn test_masked_input_render_basic() {
 
     let input = MaskedInput::new().value("test").focused(false);
     View::render(&input, &mut ctx);
+    // Four masks in a 20-column field, no cursor, nothing below
+    assert_eq!(view::row(&buffer, 0), "[●●●●                ]");
+    assert!(view::cursor_cells(&buffer, 0).is_empty());
+    assert_eq!(view::row(&buffer, 1), "");
 }
 
 #[test]
@@ -1001,6 +1009,11 @@ fn test_masked_input_render_focused() {
 
     let input = MaskedInput::new().value("test").focused(true);
     View::render(&input, &mut ctx);
+    // The cursor on the blank after the value; cyan brackets
+    assert_eq!(view::row(&buffer, 0), "[●●●●                ]");
+    assert_eq!(view::cursor_cells(&buffer, 0), vec![5]);
+    assert_eq!(view::fg(&buffer, 0, 0), Some(Color::CYAN));
+    assert_eq!(view::fg(&buffer, 21, 0), Some(Color::CYAN));
 }
 
 #[test]
@@ -1011,6 +1024,8 @@ fn test_masked_input_render_with_label() {
 
     let input = MaskedInput::new().label("Password").value("test");
     View::render(&input, &mut ctx);
+    assert_eq!(view::row(&buffer, 0), "Password");
+    assert_eq!(view::row(&buffer, 1), "[●●●●                ]");
 }
 
 #[test]
@@ -1023,6 +1038,11 @@ fn test_masked_input_render_with_placeholder() {
         .placeholder("Enter password")
         .focused(false);
     View::render(&input, &mut ctx);
+    // The placeholder is shown as text, not masked, in gray
+    assert_eq!(view::row(&buffer, 0), "[Enter password      ]");
+    for x in 1..15 {
+        assert_eq!(view::fg(&buffer, x, 0), Some(PLACEHOLDER_FG), "x={x}");
+    }
 }
 
 #[test]
@@ -1033,6 +1053,8 @@ fn test_masked_input_render_with_strength() {
 
     let input = MaskedInput::new().show_strength(true).value("password");
     View::render(&input, &mut ctx);
+    // Eight lowercase letters: strength 1
+    assert_eq!(view::row(&buffer, 1), "██░░░ Weak");
 }
 
 #[test]
@@ -1043,6 +1065,9 @@ fn test_masked_input_render_disabled() {
 
     let input = MaskedInput::new().disabled(true).value("test");
     View::render(&input, &mut ctx);
+    assert_eq!(view::row(&buffer, 0), "[●●●●                ]");
+    assert_eq!(view::fg(&buffer, 0, 0), Some(DARK_GRAY));
+    assert_eq!(view::fg(&buffer, 1, 0), Some(DISABLED_FG));
 }
 
 #[test]
@@ -1056,6 +1081,16 @@ fn test_masked_input_render_with_colors() {
         .bg(Color::BLACK)
         .value("test");
     View::render(&input, &mut ctx);
+    // The whole field, value and padding, in the given colors
+    for x in [1, 4, 20] {
+        let cell = buffer.get(x, 0).unwrap();
+        assert_eq!(
+            (cell.fg, cell.bg),
+            (Some(Color::CYAN), Some(Color::BLACK)),
+            "x={x}"
+        );
+    }
+    assert_ne!(buffer.get(0, 0).unwrap().bg, Some(Color::BLACK));
 }
 
 #[test]
@@ -1066,6 +1101,9 @@ fn test_masked_input_render_with_custom_width() {
 
     let input = MaskedInput::new().width(35).value("test");
     View::render(&input, &mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '[');
+    assert_eq!(buffer.get(36, 0).unwrap().symbol, ']');
+    assert_eq!(view::row(&buffer, 0).chars().count(), 37);
 }
 
 #[test]
@@ -1076,15 +1114,25 @@ fn test_masked_input_render_with_allow_reveal() {
 
     let input = MaskedInput::new().allow_reveal(true).value("test");
     View::render(&input, &mut ctx);
+    // The indicator follows the field, inside the brackets
+    let row = view::row(&buffer, 0);
+    assert!(row.starts_with("[●●●●                 👁"), "{row:?}");
+    assert!(row.ends_with(']'), "{row:?}");
+
+    // Revealed: the value and the open eye alone
+    let mut input = input;
+    input.toggle_reveal();
+    let buffer = view::screen(&input, 30, 1);
+    assert_eq!(view::row(&buffer, 0), "[test                 👁]");
 }
 
 #[test]
 fn test_masked_input_render_zero_area() {
+    let input = MaskedInput::new().value("test");
+    crate::traits::placement::assert_zero_areas_draw_nothing(&input);
     let mut buffer = Buffer::new(0, 0);
     let area = Rect::new(0, 0, 0, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let input = MaskedInput::new().value("test");
     View::render(&input, &mut ctx);
 }
 
@@ -1096,6 +1144,10 @@ fn test_masked_input_render_long_value() {
 
     let input = MaskedInput::new().value("this_is_a_very_long_password");
     View::render(&input, &mut ctx);
+    // 28 chars in a 20-column field cut by the 20-column area: no bracket fits
+    assert_eq!(view::row(&buffer, 0), "[●●●●●●●●●●●●●●●●●●●");
+    let buffer = view::screen(&input, 30, 1);
+    assert_eq!(view::row(&buffer, 0), "[●●●●●●●●●●●●●●●●●●●●]");
 }
 
 #[test]
@@ -1106,6 +1158,8 @@ fn test_masked_input_render_empty_value() {
 
     let input = MaskedInput::new();
     View::render(&input, &mut ctx);
+    assert_eq!(view::row(&buffer, 0), "[                    ]");
+    assert_eq!(view::row(&buffer, 1), "");
 }
 
 #[test]
@@ -1125,6 +1179,14 @@ fn test_masked_input_render_all_options() {
         .bg(Color::BLACK)
         .width(35);
     View::render(&input, &mut ctx);
+    assert_eq!(view::row(&buffer, 0), "Enter Password");
+    let field = view::row(&buffer, 1);
+    assert!(field.starts_with("[●●●●●●●  "), "{field:?}");
+    assert!(field.contains('👁'), "{field:?}");
+    assert_eq!(view::cursor_cells(&buffer, 1), vec![8]);
+    // Lowercase and digits, seven chars: strength 1
+    assert_eq!(view::row(&buffer, 2), "██░░░ Weak");
+    assert_eq!(view::row(&buffer, 3), "");
 }
 
 // =============================================================================
@@ -1254,11 +1316,15 @@ fn test_masked_input_single_char() {
 
 #[test]
 fn test_masked_input_very_long_value() {
-    let mut input = MaskedInput::new();
-    for _ in 0..100 {
-        input.insert_char('a');
-    }
-    assert_eq!(input.get_value().len(), 100);
+    // 1,000 chars, some wide: counted, masked and cut by chars
+    let value: String = "a한".repeat(500);
+    let mut input = MaskedInput::new().value(value.as_str());
+    assert_eq!(input.get_cursor(), 1000);
+    assert_eq!(input.masked_display().chars().count(), 1000);
+    input.move_start();
+    input.delete_forward();
+    assert_eq!(input.get_value().chars().count(), 999);
+    assert!(input.get_value().starts_with('한'));
 }
 
 #[test]
@@ -1472,7 +1538,10 @@ fn test_masked_input_clone() {
 fn test_masked_input_debug_format() {
     let input = MaskedInput::new().value("test");
     let debug_str = format!("{:?}", input);
-    assert!(debug_str.contains("MaskedInput"));
+    // Debug lists the settings
+    for part in ["mask_style: Full", "mask_char: '●'", "max_length: 0"] {
+        assert!(debug_str.contains(part), "{debug_str}");
+    }
 }
 
 #[test]
@@ -1702,10 +1771,21 @@ fn test_validation_state_invalid_with_message() {
 
 #[test]
 fn test_validation_state_all_variants() {
-    let _ = ValidationState::None;
-    let _ = ValidationState::Valid;
-    let _ = ValidationState::Invalid("error".to_string());
-    let _ = ValidationState::Validating;
+    let all = [
+        ValidationState::None,
+        ValidationState::Valid,
+        ValidationState::Invalid("error".to_string()),
+        ValidationState::Validating,
+    ];
+    for (i, a) in all.iter().enumerate() {
+        for (j, b) in all.iter().enumerate() {
+            assert_eq!(i == j, a == b, "{a:?} vs {b:?}");
+        }
+    }
+    assert_ne!(
+        ValidationState::Invalid("a".to_string()),
+        ValidationState::Invalid("b".to_string())
+    );
 }
 
 // =========================================================================
@@ -2789,7 +2869,9 @@ fn test_masked_input_peek_with_class_operations() {
 fn test_masked_input_set_id_empty_string_getter() {
     let mut input = MaskedInput::new();
     input.set_id("");
+    // Both the getter and the View see the empty id
     assert_eq!(input.get_id(), Some(""));
+    assert_eq!(View::id(&input), Some(""));
 }
 
 // =========================================================================
@@ -2837,50 +2919,58 @@ fn test_masked_input_toggle_reveal() {
     let mut input = MaskedInput::new();
     input.toggle_reveal();
 
-    // Toggle reveal was called successfully
+    // Not allowed: nothing changes
+    assert!(!input.get_revealing());
+    let mut input = input.value("ab");
+    input.toggle_reveal();
+    assert_eq!(input.masked_display(), "●●");
 }
 
 #[test]
 fn test_masked_input_password_strength() {
     let input = MaskedInput::new().value("weak");
 
-    // Password strength can be calculated
-    let _strength = input.password_strength();
+    // Short, lowercase only
+    assert_eq!(input.password_strength(), 0);
 }
 
 #[test]
 fn test_masked_input_strength_label() {
     let input = MaskedInput::new().value("test");
 
-    // Strength label can be retrieved
-    let _label = input.strength_label();
+    assert_eq!(input.strength_label(), "Very Weak");
 }
 
 #[test]
 fn test_masked_input_strength_color() {
     let input = MaskedInput::new().value("test");
 
-    // Strength color can be retrieved
-    let _color = input.strength_color();
-    // Color is valid (not checking specific value as it depends on implementation)
+    assert_eq!(input.strength_color(), Color::RED);
 }
 
 #[test]
 fn test_masked_input_validate() {
-    let input = MaskedInput::new().value("test123");
+    let mut input = MaskedInput::new().value("test123");
 
-    // validate() requires &mut self and modifies internal state
-    // This test verifies the input can be created with the builder
-    assert_eq!(input.get_value(), "test123");
+    // No minimum: any value is valid
+    assert_eq!(input.get_validation(), &ValidationState::None);
+    assert!(input.validate());
+    assert_eq!(input.get_validation(), &ValidationState::Valid);
 }
 
 #[test]
 fn test_masked_input_validate_empty() {
-    let input = MaskedInput::new();
+    // Empty without a minimum is valid; with one it is not
+    let mut input = MaskedInput::new();
+    assert!(input.validate());
+    assert_eq!(input.get_validation(), &ValidationState::Valid);
 
-    // Empty input validation depends on implementation
-    // Just verify the input can be created
-    assert_eq!(input.get_value(), "");
+    let mut input = MaskedInput::new().min_length(1);
+    assert!(!input.validate());
+    assert_eq!(
+        input.get_validation(),
+        &ValidationState::Invalid("Minimum 1 characters required".to_string())
+    );
 }
 
 #[test]
