@@ -143,7 +143,10 @@ fn test_grid_render() {
 
     use crate::widget::traits::View;
     View::render(&g, &mut ctx);
-    // Smoke test
+    // Row-major, 20x10 cells
+    for (x, y, ch) in [(0, 0, 'A'), (20, 0, 'B'), (0, 10, 'C'), (20, 10, 'D')] {
+        assert_eq!(buffer.get(x, y).unwrap().symbol, ch);
+    }
 }
 
 #[test]
@@ -161,6 +164,17 @@ fn test_grid_with_explicit_placement() {
 
     use crate::widget::traits::View;
     View::render(&g, &mut ctx);
+    // Tracks are 13 wide (40 / 3) and 6 tall (20 / 3)
+    let text = |x: u16, y: u16, n: u16| -> String {
+        (x..x + n)
+            .map(|x| buffer.get(x, y).unwrap().symbol)
+            .collect()
+    };
+    assert_eq!(text(0, 0, 6), "Header");
+    assert_eq!(text(0, 6, 7), "Sidebar");
+    assert_eq!(text(13, 6, 7), "Content");
+    // The sidebar's second row is empty, and nothing else was drawn there
+    assert_eq!(text(0, 12, 13), " ".repeat(13));
 }
 
 #[test]
