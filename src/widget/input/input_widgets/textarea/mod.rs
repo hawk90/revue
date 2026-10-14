@@ -17,6 +17,8 @@ mod edit;
 mod editing;
 mod find_impl;
 mod find_replace;
+mod input;
+mod layout;
 mod multi_cursor;
 mod navigation;
 mod selection;
@@ -27,14 +29,13 @@ pub use cursor::{Cursor, CursorPos, CursorSet};
 pub use find_replace::{FindMatch, FindOptions, FindReplaceMode, FindReplaceState};
 pub use selection::Selection;
 
-use crate::event::{Key, KeyEvent};
 use crate::style::Color;
 use crate::widget::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Maximum undo history size
-pub(super) const MAX_UNDO_HISTORY: usize = 100;
+const MAX_UNDO_HISTORY: usize = 100;
 
 /// A multi-line text editor widget
 ///
@@ -75,60 +76,60 @@ pub(super) const MAX_UNDO_HISTORY: usize = 100;
 #[derive(Clone)]
 pub struct TextArea {
     /// Lines of text
-    pub(super) lines: Vec<String>,
+    lines: Vec<String>,
     /// Multiple cursors (primary cursor is at index 0)
-    pub(super) cursors: CursorSet,
+    cursors: CursorSet,
     /// First visible line, kept between renders so the view only moves
     /// when the cursor would leave it
-    pub(super) scroll: std::cell::Cell<usize>,
+    scroll: std::cell::Cell<usize>,
     /// Horizontal scroll in terminal COLUMNS when not wrapping, kept between
     /// renders so the view only moves when the cursor would leave it
-    pub(super) scroll_x: std::cell::Cell<usize>,
+    scroll_x: std::cell::Cell<usize>,
     /// Undo history
-    pub(super) undo_stack: Vec<edit::EditOperation>,
+    undo_stack: Vec<edit::EditOperation>,
     /// Redo history
-    pub(super) redo_stack: Vec<edit::EditOperation>,
+    redo_stack: Vec<edit::EditOperation>,
     /// Show line numbers
-    pub(super) show_line_numbers: bool,
+    show_line_numbers: bool,
     /// Enable word wrap
-    pub(super) wrap: bool,
+    wrap: bool,
     /// Read-only mode
-    pub(super) read_only: bool,
+    read_only: bool,
     /// Focused state
-    pub(super) focused: bool,
+    focused: bool,
     /// Tab width
-    pub(super) tab_width: usize,
+    tab_width: usize,
     /// Placeholder text
-    pub(super) placeholder: Option<String>,
+    placeholder: Option<String>,
     /// Maximum lines (0 = unlimited)
-    pub(super) max_lines: usize,
+    max_lines: usize,
     /// Minimum height in rows (0 = no constraint). Defaults to 3.
-    pub(super) min_height: u16,
+    min_height: u16,
     /// Text color
-    pub(super) fg: Option<Color>,
+    fg: Option<Color>,
     /// Background color
-    pub(super) bg: Option<Color>,
+    bg: Option<Color>,
     /// Cursor color
-    pub(super) cursor_fg: Option<Color>,
+    cursor_fg: Option<Color>,
     /// Selection color
-    pub(super) selection_bg: Option<Color>,
+    selection_bg: Option<Color>,
     /// Line number color
-    pub(super) line_number_fg: Option<Color>,
+    line_number_fg: Option<Color>,
     /// Syntax highlighter for code coloring
-    pub(super) highlighter: Option<SyntaxHighlighter>,
+    highlighter: Option<SyntaxHighlighter>,
     /// Find/Replace state
-    pub(super) find_replace: Option<FindReplaceState>,
+    find_replace: Option<FindReplaceState>,
     /// Match highlight color
-    pub(super) match_highlight_bg: Option<Color>,
+    match_highlight_bg: Option<Color>,
     /// Current match highlight color
-    pub(super) current_match_bg: Option<Color>,
+    current_match_bg: Option<Color>,
     /// CSS styling properties (id, classes)
-    pub(super) props: WidgetProps,
+    props: WidgetProps,
     /// Last known viewport height (lines visible), updated during render
-    pub(super) last_viewport_height: std::cell::Cell<usize>,
+    last_viewport_height: std::cell::Cell<usize>,
     /// Last known text width in columns, updated during render: where lines
     /// wrap when paging (0 before the first render: no wrapping)
-    pub(super) last_text_width: std::cell::Cell<u16>,
+    last_text_width: std::cell::Cell<u16>,
 }
 
 impl TextArea {
@@ -278,190 +279,6 @@ impl TextArea {
     pub fn syntax_with_theme(mut self, language: Language, theme: SyntaxTheme) -> Self {
         self.highlighter = Some(SyntaxHighlighter::with_theme(language, theme));
         self
-    }
-
-    // =========================================================================
-    // Key Handling
-    // =========================================================================
-
-    /// Handle key event
-    pub fn handle_key(&mut self, key: &Key) -> bool {
-        if !self.focused {
-            return false;
-        }
-        match key {
-            Key::Char(ch) => {
-                self.insert_char(*ch);
-                true
-            }
-            Key::Enter => {
-                self.insert_char('\n');
-                true
-            }
-            Key::Tab => {
-                self.insert_char('\t');
-                true
-            }
-            Key::Backspace => {
-                self.delete_char_before();
-                true
-            }
-            Key::Delete => {
-                self.delete_char_at();
-                true
-            }
-            Key::Left => {
-                self.clear_selection();
-                self.move_left();
-                true
-            }
-            Key::Right => {
-                self.clear_selection();
-                self.move_right();
-                true
-            }
-            Key::Up => {
-                self.clear_selection();
-                self.move_up();
-                true
-            }
-            Key::Down => {
-                self.clear_selection();
-                self.move_down();
-                true
-            }
-            Key::Home => {
-                self.clear_selection();
-                self.move_home();
-                true
-            }
-            Key::End => {
-                self.clear_selection();
-                self.move_end();
-                true
-            }
-            Key::PageUp => {
-                let page = self.last_viewport_height.get().max(1);
-                self.page_up(page);
-                true
-            }
-            Key::PageDown => {
-                let page = self.last_viewport_height.get().max(1);
-                self.page_down(page);
-                true
-            }
-            _ => false,
-        }
-    }
-
-    /// Handle a key event, including modifier combinations.
-    ///
-    /// This is the modifier-aware entry point. It wires the find/replace and
-    /// multi-cursor shortcuts (whose logic already exists), then delegates
-    /// unmodified keys to [`handle_key`](Self::handle_key).
-    ///
-    /// Bindings:
-    /// - `Ctrl+F` — open the find panel
-    /// - `Ctrl+H` — open the find/replace panel
-    /// - `Ctrl+D` — select the next occurrence of the word/selection
-    /// - `F3` / `Shift+F3` — jump to the next / previous match
-    /// - `Ctrl+Alt+Up` / `Ctrl+Alt+Down` — add a cursor above / below
-    /// - `Esc` — close the find panel, or collapse to a single cursor
-    ///
-    /// Returns `true` if the event was handled (a redraw may be needed).
-    pub fn handle_key_event(&mut self, event: &KeyEvent) -> bool {
-        if !self.focused {
-            return false;
-        }
-
-        // Ctrl+Alt cursor stacking (multi-cursor).
-        if event.ctrl && event.alt {
-            match event.key {
-                Key::Up => {
-                    self.add_cursor_above();
-                    return true;
-                }
-                Key::Down => {
-                    self.add_cursor_below();
-                    return true;
-                }
-                _ => {}
-            }
-        }
-
-        // Ctrl combinations: find/replace, multi-cursor selection, undo and
-        // line commands.
-        if event.ctrl && !event.alt {
-            match event.key {
-                Key::Char('f') => {
-                    self.open_find();
-                    return true;
-                }
-                Key::Char('h') => {
-                    self.open_replace();
-                    return true;
-                }
-                Key::Char('d') => {
-                    self.select_next_occurrence();
-                    return true;
-                }
-                // Shift may come as the flag, as the capital, or both
-                Key::Char('z' | 'Z') if event.shift => {
-                    self.redo();
-                    return true;
-                }
-                Key::Char('z') => {
-                    self.undo();
-                    return true;
-                }
-                Key::Char('y') => {
-                    self.redo();
-                    return true;
-                }
-                Key::Char('a') => {
-                    self.select_all();
-                    return true;
-                }
-                Key::Char('k' | 'K') if event.shift => {
-                    self.delete_line();
-                    return true;
-                }
-                _ => {}
-            }
-        }
-
-        // Find navigation (works whether or not the panel is focused).
-        if event.key == Key::F(3) {
-            if event.shift {
-                self.find_previous();
-            } else {
-                self.find_next();
-            }
-            return true;
-        }
-
-        // Escape: close the find panel first, then collapse to a single cursor.
-        if event.key == Key::Escape {
-            if self.is_find_open() {
-                self.close_find();
-                return true;
-            }
-            if !self.cursors.is_single() {
-                self.clear_secondary_cursors();
-                return true;
-            }
-            return false;
-        }
-
-        // Ctrl or Alt with a letter is a command, and this one is not
-        // bound: leave it to the app rather than type the letter. Ctrl+Alt
-        // with a letter is text, as Windows reports AltGr.
-        if matches!(event.key, Key::Char(_)) && event.ctrl != event.alt {
-            return false;
-        }
-
-        // Fall back to unmodified key handling.
-        self.handle_key(&event.key)
     }
 }
 
@@ -691,106 +508,122 @@ mod tests {
     #[test]
     fn test_textarea_handle_key_char() {
         let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Char('a'));
-        assert!(handled);
+        assert!(textarea.handle_key(&Key::Char('a')));
+        assert_eq!(textarea.get_content(), "a");
+        assert_eq!(textarea.cursor_position(), (0, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_enter() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Enter);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        textarea.set_cursor(0, 1);
+        assert!(textarea.handle_key(&Key::Enter));
+        assert_eq!(textarea.get_content(), "a\nb");
+        assert_eq!(textarea.cursor_position(), (1, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_tab() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Tab);
-        assert!(handled);
+        let mut textarea = TextArea::new().tab_width(3).focused(true);
+        assert!(textarea.handle_key(&Key::Tab));
+        assert_eq!(textarea.get_content(), "   ");
+        assert_eq!(textarea.cursor_position(), (0, 3));
     }
 
     #[test]
     fn test_textarea_handle_key_backspace() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Backspace);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        textarea.set_cursor(0, 2);
+        assert!(textarea.handle_key(&Key::Backspace));
+        assert_eq!(textarea.get_content(), "a");
+        assert_eq!(textarea.cursor_position(), (0, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_delete() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Delete);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        assert!(textarea.handle_key(&Key::Delete));
+        assert_eq!(textarea.get_content(), "b");
+        assert_eq!(textarea.cursor_position(), (0, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_left() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Left);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        textarea.set_cursor(0, 2);
+        assert!(textarea.handle_key(&Key::Left));
+        assert_eq!(textarea.cursor_position(), (0, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_right() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Right);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        assert!(textarea.handle_key(&Key::Right));
+        assert_eq!(textarea.cursor_position(), (0, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_up() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Up);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab\ncd").focused(true);
+        textarea.set_cursor(1, 1);
+        assert!(textarea.handle_key(&Key::Up));
+        assert_eq!(textarea.cursor_position(), (0, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_down() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Down);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab\ncd").focused(true);
+        textarea.set_cursor(0, 1);
+        assert!(textarea.handle_key(&Key::Down));
+        assert_eq!(textarea.cursor_position(), (1, 1));
     }
 
     #[test]
     fn test_textarea_handle_key_home() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Home);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        textarea.set_cursor(0, 2);
+        assert!(textarea.handle_key(&Key::Home));
+        assert_eq!(textarea.cursor_position(), (0, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_end() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::End);
-        assert!(handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        assert!(textarea.handle_key(&Key::End));
+        assert_eq!(textarea.cursor_position(), (0, 2));
     }
 
     #[test]
     fn test_textarea_handle_key_page_up() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::PageUp);
-        assert!(handled);
+        let text: Vec<String> = (0..30).map(|i| i.to_string()).collect();
+        let mut textarea = TextArea::new().content(text.join("\n")).focused(true);
+        textarea.set_cursor(20, 0);
+        assert!(textarea.handle_key(&Key::PageUp));
+        assert_eq!(textarea.cursor_position(), (10, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_page_down() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::PageDown);
-        assert!(handled);
+        let text: Vec<String> = (0..30).map(|i| i.to_string()).collect();
+        let mut textarea = TextArea::new().content(text.join("\n")).focused(true);
+        assert!(textarea.handle_key(&Key::PageDown));
+        assert_eq!(textarea.cursor_position(), (10, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_unknown() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::Escape);
-        assert!(!handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        assert!(!textarea.handle_key(&Key::Escape));
+        assert_eq!(textarea.get_content(), "ab");
+        assert_eq!(textarea.cursor_position(), (0, 0));
     }
 
     #[test]
     fn test_textarea_handle_key_f1() {
-        let mut textarea = TextArea::new().focused(true);
-        let handled = textarea.handle_key(&Key::F(1));
-        assert!(!handled);
+        let mut textarea = TextArea::new().content("ab").focused(true);
+        assert!(!textarea.handle_key(&Key::F(1)));
+        assert_eq!(textarea.get_content(), "ab");
+        assert_eq!(textarea.cursor_position(), (0, 0));
     }
 
     #[test]

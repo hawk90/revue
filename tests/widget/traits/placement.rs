@@ -34,8 +34,13 @@ pub fn assert_zero_areas_draw_nothing(view: &impl View) {
 /// Assert that `view`, laid out by stacks below a 3-row header and right of
 /// a `width`-column spacer, draws the same cells as `view` drawn alone, moved
 /// by that offset, and nothing outside its own area.
+///
+/// "Alone" is in a one-child stack at the origin, so both renders go through
+/// `render_child`: the background a widget claims with `fill_box_background`
+/// fills the cells it drew without one there, as it does under an app's root,
+/// and not in a bare `render`.
 pub fn assert_same_when_offset<V: View + Clone + 'static>(view: V, width: u16, height: u16) {
-    let alone = render(&view, width, height);
+    let alone = render(&vstack().child_sized(view.clone(), height), width, height);
     let row = hstack()
         .child_sized(Text::new(""), width)
         .child_sized(view, width);
