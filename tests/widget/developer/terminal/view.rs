@@ -162,7 +162,7 @@ fn test_terminal_scroll_indicator_colors_and_count() {
     let buffer = screen(&term, 20, 3);
     let top = row(&buffer, 0);
     // (Where on the row it sits is not checked: it is placed by its byte
-    // length, filed from this audit.)
+    // length, #1087.)
     let x = top.chars().position(|c| c == '↑').expect("indicator") as u16;
     assert_eq!(buffer.get(x + 1, 0).unwrap().symbol, '4');
     for dx in 0..2 {

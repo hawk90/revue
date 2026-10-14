@@ -275,7 +275,7 @@ proptest! {
         let mut term = Terminal::new(width as u16, height as u16).max_scrollback(scrollback);
         let mut grid = Grid::new(width, height, scrollback);
         // A reset first: text before any code gets the parser's
-        // `Color::default()` background, filed from this audit
+        // `Color::default()` background (#1087)
         term.write("\x1b[0m");
         for p in &pieces {
             term.write(&p.bytes());

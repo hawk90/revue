@@ -112,7 +112,7 @@ proptest! {
     /// the whole file's spans; every span is non-empty, inside its line,
     /// and the spans of a line are sorted and do not overlap. (ASCII only,
     /// LF only: offsets are bytes, and a CR is counted into the line, both
-    /// filed from this audit.)
+    /// #1088.)
     #[test]
     fn code_spans_are_the_file_spans_cut_at_line_ends(
         language in prop::sample::select(vec![

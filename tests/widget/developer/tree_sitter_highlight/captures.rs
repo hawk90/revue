@@ -50,7 +50,7 @@ fn each_capture_reaches_its_theme_color_and_style() {
         );
     }
     // Every field is reached but `macro_call` (10): macros take the
-    // function color (#799, from this audit)
+    // function color (#799)
     let mut fields: Vec<u8> = CASES.iter().map(|c| c.3).collect();
     fields.sort();
     fields.dedup();
