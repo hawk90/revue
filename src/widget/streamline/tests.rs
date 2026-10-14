@@ -261,8 +261,15 @@ fn test_streamline_render() {
     let area = Rect::new(0, 0, 50, 15);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    // Should not panic
     s.render(&mut ctx);
+
+    // The legend on row 0, the chart within the first 10 rows
+    let row = |y: u16| -> String { (0..50).map(|x| buffer.get(x, y).unwrap().symbol).collect() };
+    assert!(row(0).starts_with(" █ L1"));
+    assert!((1..10).any(|y| row(y).contains('█')));
+    for y in 10..15 {
+        assert_eq!(row(y).trim(), "", "row {y}");
+    }
 }
 
 #[test]
@@ -273,8 +280,13 @@ fn test_streamline_render_empty() {
     let area = Rect::new(0, 0, 50, 15);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    // Should not panic
     s.render(&mut ctx);
+
+    for y in 0..15 {
+        for x in 0..50 {
+            assert_eq!(buffer.get(x, y).unwrap().symbol, ' ', "({x}, {y})");
+        }
+    }
 }
 
 // =========================================================================
@@ -319,16 +331,28 @@ fn test_stream_layer_chain() {
 // =========================================================================
 
 #[test]
-fn test_stream_baseline_default() {
-    assert_eq!(StreamBaseline::default(), StreamBaseline::Symmetric);
-}
-
-#[test]
 fn test_stream_baseline_variants() {
-    let _ = StreamBaseline::Zero;
-    let _ = StreamBaseline::Symmetric;
-    let _ = StreamBaseline::Wiggle;
-    let _ = StreamBaseline::Expand;
+    // Each baseline stacks the same two layers differently
+    let stacks: Vec<_> = [
+        StreamBaseline::Zero,
+        StreamBaseline::Symmetric,
+        StreamBaseline::Wiggle,
+        StreamBaseline::Expand,
+    ]
+    .into_iter()
+    .map(|b| {
+        Streamline::new()
+            .baseline(b)
+            .layer(StreamLayer::new("A").data(vec![2.0]))
+            .layer(StreamLayer::new("B").data(vec![6.0]))
+            .compute_stacks()
+    })
+    .collect();
+    for i in 0..stacks.len() {
+        for j in i + 1..stacks.len() {
+            assert_ne!(stacks[i], stacks[j], "{i} and {j}");
+        }
+    }
 }
 
 #[test]
@@ -345,16 +369,28 @@ fn test_stream_baseline_traits() {
 }
 
 #[test]
-fn test_stream_order_default() {
-    assert_eq!(StreamOrder::default(), StreamOrder::None);
-}
-
-#[test]
 fn test_stream_order_variants() {
-    let _ = StreamOrder::None;
-    let _ = StreamOrder::Ascending;
-    let _ = StreamOrder::Descending;
-    let _ = StreamOrder::InsideOut;
+    // Each order stacks layers with distinct sums differently
+    let stacks: Vec<_> = [
+        StreamOrder::None,
+        StreamOrder::Ascending,
+        StreamOrder::Descending,
+        StreamOrder::InsideOut,
+    ]
+    .into_iter()
+    .map(|o| {
+        let mut s = Streamline::new().order(o).baseline(StreamBaseline::Zero);
+        for (name, v) in [("A", 2.0), ("B", 4.0), ("C", 1.0), ("D", 3.0)] {
+            s = s.layer(StreamLayer::new(name).data(vec![v]));
+        }
+        s.compute_stacks()
+    })
+    .collect();
+    for i in 0..stacks.len() {
+        for j in i + 1..stacks.len() {
+            assert_ne!(stacks[i], stacks[j], "{i} and {j}");
+        }
+    }
 }
 
 #[test]
@@ -391,14 +427,18 @@ fn test_streamline_clone() {
 
 #[test]
 fn test_streamline_debug() {
-    let s = Streamline::new();
-    let _ = format!("{:?}", s);
+    let s = Streamline::new().title("Debug me");
+    let text = format!("{:?}", s);
+    assert!(text.starts_with("Streamline"));
+    assert!(text.contains("Debug me"));
 }
 
 #[test]
 fn test_stream_layer_debug() {
     let layer = StreamLayer::new("Test").data(vec![1.0, 2.0]);
-    let _ = format!("{:?}", layer);
+    let text = format!("{:?}", layer);
+    assert!(text.contains("\"Test\""));
+    assert!(text.contains("[1.0, 2.0]"));
 }
 
 #[test]
