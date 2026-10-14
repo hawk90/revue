@@ -45,10 +45,13 @@ fn an_empty_line_inside_a_comment_has_no_span() {
     assert_eq!((spans[2][0].start, spans[2][0].end), (0, 4));
 }
 
+/// A span as (start, end, theme field number, bold, italic)
+type Cut = (usize, usize, u8, bool, bool);
+
 /// The plain model: the whole file's spans (as `highlight_line` gives them
 /// for the file in one piece), each cut to every line it touches - the
 /// newline itself belongs to no line - with offsets from the line's start
-fn split_model(code: &str, whole: &[HighlightSpan]) -> Vec<Vec<(usize, usize, u8, bool, bool)>> {
+fn split_model(code: &str, whole: &[HighlightSpan]) -> Vec<Vec<Cut>> {
     let mut starts = vec![0];
     starts.extend(code.match_indices('\n').map(|(i, _)| i + 1));
     let n = code.lines().count();
@@ -122,7 +125,7 @@ proptest! {
         let mut hl = TreeSitterHighlighter::with_theme(language, numbered());
         let whole = hl.highlight_line(&code);
         let lines = hl.highlight_code(&code);
-        let got: Vec<Vec<_>> = lines
+        let got: Vec<Vec<Cut>> = lines
             .iter()
             .map(|l| l.iter().map(|s| (s.start, s.end, s.fg.r, s.bold, s.italic)).collect())
             .collect();
