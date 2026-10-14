@@ -1,5 +1,7 @@
 //! Digits widget tests
 
+mod view;
+
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
@@ -10,6 +12,42 @@ use revue::widget::DigitStyle;
 use revue::widget::Digits;
 use revue::widget::StyledView;
 use revue::widget::View;
+
+/// Block glyph rows, written out here rather than read from the library:
+/// digits, then `:`, `.` and `-`; anything else is three blank columns.
+pub(crate) fn block_glyph(c: char) -> [&'static str; 5] {
+    const DIGITS: [[&str; 5]; 10] = [
+        ["███", "█ █", "█ █", "█ █", "███"],
+        ["  █", "  █", "  █", "  █", "  █"],
+        ["███", "  █", "███", "█  ", "███"],
+        ["███", "  █", "███", "  █", "███"],
+        ["█ █", "█ █", "███", "  █", "  █"],
+        ["███", "█  ", "███", "  █", "███"],
+        ["███", "█  ", "███", "█ █", "███"],
+        ["███", "  █", "  █", "  █", "  █"],
+        ["███", "█ █", "███", "█ █", "███"],
+        ["███", "█ █", "███", "  █", "███"],
+    ];
+    match c {
+        '0'..='9' => DIGITS[c as usize - '0' as usize],
+        ':' => [" ", "█", " ", "█", " "],
+        '.' => [" ", " ", " ", " ", "█"],
+        '-' => ["   ", "   ", "███", "   ", "   "],
+        _ => ["   "; 5],
+    }
+}
+
+/// The five Block rows for `shown`: each glyph followed by one blank column.
+pub(crate) fn block_lines(shown: &str) -> Vec<String> {
+    (0..5)
+        .map(|y| {
+            shown
+                .chars()
+                .map(|c| format!("{} ", block_glyph(c)[y]))
+                .collect()
+        })
+        .collect()
+}
 
 // =========================================================================
 // Digits creation tests
@@ -89,8 +127,9 @@ fn test_digits_negative() {
 
 #[test]
 fn test_digits_decimal_separator() {
-    let d = Digits::new("1234.56").separator(',');
-    assert_eq!(d.format_value(), "1,234.56");
+    // Only the integer part is grouped; the decimals are left alone
+    let d = Digits::new("1234.5678").separator(',');
+    assert_eq!(d.format_value(), "1,234.5678");
 }
 
 #[test]
@@ -311,16 +350,14 @@ fn test_leading_zeros_off_renders_blank_columns() {
 fn test_digits_new_with_integer() {
     // 정수로 생성 테스트
     let d = Digits::new(42);
-    let lines = d.render_lines();
-    assert!(!lines.is_empty());
+    assert_eq!(d.render_lines(), block_lines("42"));
 }
 
 #[test]
 fn test_digits_new_with_string() {
     // 문자열로 생성 테스트
     let d = Digits::new("123");
-    let lines = d.render_lines();
-    assert!(!lines.is_empty());
+    assert_eq!(d.render_lines(), block_lines("123"));
 }
 
 #[test]
@@ -337,16 +374,16 @@ fn test_digits_new_with_negative() {
 fn test_digits_from_int() {
     // from_int 메서드 테스트
     let d = Digits::from_int(999);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.format_value(), "999");
+    assert_eq!(d.render_lines(), block_lines("999"));
 }
 
 #[test]
 fn test_digits_from_float_zero_decimals() {
-    // 소수점 없는 float 테스트
+    // 소수점 없는 float 테스트: no dot is drawn
     let d = Digits::from_float(42.0, 0);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.format_value(), "42");
+    assert_eq!(d.render_lines(), block_lines("42"));
 }
 
 #[test]
@@ -366,72 +403,65 @@ fn test_digits_from_float_rounding() {
 fn test_digits_time_single_digits() {
     // 한 자리 숫자 시간 테스트 (0 패딩)
     let d = Digits::time(5, 7, 9);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.format_value(), "05:07:09");
+    assert_eq!(d.render_lines(), block_lines("05:07:09"));
 }
 
 #[test]
 fn test_digits_time_midnight() {
     // 자정 테스트
     let d = Digits::time(0, 0, 0);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.render_lines(), block_lines("00:00:00"));
 }
 
 #[test]
 fn test_digits_time_max_values() {
     // 최대값 테스트 (23:59:59)
     let d = Digits::time(23, 59, 59);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.render_lines(), block_lines("23:59:59"));
 }
 
 #[test]
 fn test_digits_clock_no_padding_needed() {
     // 패딩이 필요 없는 시간 테스트
     let d = Digits::clock(12, 45);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.format_value(), "12:45");
+    assert_eq!(d.render_lines(), block_lines("12:45"));
 }
 
 #[test]
 fn test_digits_timer_with_hours() {
-    // 시간이 포함된 타이머 테스트
+    // 시간이 포함된 타이머 테스트: two colons
     let d = Digits::timer(3661); // 1시간 1분 1초
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.render_lines(), block_lines("01:01:01"));
 }
 
 #[test]
 fn test_digits_timer_minutes_only() {
     // 분만 있는 타이머 테스트
     let d = Digits::timer(65); // 1분 5초
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.render_lines(), block_lines("01:05"));
 }
 
 #[test]
 fn test_digits_timer_seconds_only() {
     // 초만 있는 타이머 테스트
     let d = Digits::timer(45);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.format_value(), "00:45");
 }
 
 #[test]
 fn test_digits_timer_zero() {
     // 0초 타이머 테스트
     let d = Digits::timer(0);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.render_lines(), block_lines("00:00"));
 }
 
 #[test]
 fn test_digits_timer_large_value() {
     // 큰 타이머 값 테스트
     let d = Digits::timer(86400); // 24시간
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.format_value(), "24:00:00");
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -472,8 +502,10 @@ fn test_digits_style_ascii() {
 fn test_digits_style_braille() {
     // Braille 스타일 테스트
     let d = Digits::new(999).style(DigitStyle::Braille);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 4); // Braille은 4줄
+    assert_eq!(
+        d.render_lines(),
+        ["⣰⣆ ⣰⣆ ⣰⣆ ", "⡧⡦ ⡧⡦ ⡧⡦ ", " ⢸  ⢸  ⢸ ", "⠤⠴ ⠤⠴ ⠤⠴ "]
+    );
 }
 
 #[test]
@@ -524,34 +556,36 @@ fn test_digits_digit_width_braille() {
 fn test_digits_render_lines_single_digit() {
     // 한 자리 숫자 렌더링 테스트
     let d = Digits::new("5").style(DigitStyle::Block);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5); // Block 스타일은 5줄
+    assert_eq!(d.render_lines(), ["███ ", "█   ", "███ ", "  █ ", "███ "]);
 }
 
 #[test]
 fn test_digits_render_lines_multiple_digits() {
-    // 여러 자리 숫자 렌더링 테스트
+    // 여러 자리 숫자 렌더링 테스트: three columns and a space per digit
     let d = Digits::new("123").style(DigitStyle::Block);
     let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-    // 각 줄에는 숫자와 공백이 포함됨
-    assert!(lines[0].len() > 3);
+    assert_eq!(lines, block_lines("123"));
+    assert!(lines.iter().all(|l| l.chars().count() == 12));
 }
 
 #[test]
 fn test_digits_render_lines_with_colon() {
-    // 콜론이 포함된 시간 형식 렌더링 테스트
+    // 콜론이 포함된 시간 형식 렌더링 테스트: one column, dots on rows 1 and 3
     let d = Digits::new("12:34").style(DigitStyle::Block);
     let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(lines, block_lines("12:34"));
+    let colon: String = lines.iter().map(|l| l.chars().nth(8).unwrap()).collect();
+    assert_eq!(colon, " █ █ ");
 }
 
 #[test]
 fn test_digits_render_lines_with_decimal() {
-    // 소수점이 포함된 숫자 렌더링 테스트
+    // 소수점이 포함된 숫자 렌더링 테스트: the dot is on the last row only
     let d = Digits::new("12.5").style(DigitStyle::Block);
     let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(lines, block_lines("12.5"));
+    let dot: String = lines.iter().map(|l| l.chars().nth(8).unwrap()).collect();
+    assert_eq!(dot, "    █");
 }
 
 #[test]
@@ -591,24 +625,23 @@ fn test_digits_render_lines_with_separator_formatted() {
 fn test_helper_digits() {
     // digits() 헬퍼 함수 테스트
     let d = digits(42);
-    let lines = d.render_lines();
-    assert!(!lines.is_empty());
+    assert_eq!(d.format_value(), "42");
+    assert_eq!(d.render_lines(), Digits::new(42).render_lines());
 }
 
 #[test]
 fn test_helper_digits_with_string() {
     // 문자열을 사용한 digits() 헬퍼 함수 테스트
     let d = digits("12345");
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.render_lines(), block_lines("12345"));
 }
 
 #[test]
 fn test_helper_clock() {
     // clock() 헬퍼 함수 테스트
     let c = clock(9, 41);
-    let lines = c.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(c.format_value(), "09:41");
+    assert_eq!(c.render_lines(), Digits::clock(9, 41).render_lines());
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -619,73 +652,74 @@ fn test_helper_clock() {
 fn test_digits_zero_value() {
     // 0 값 테스트
     let d = Digits::new(0);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.render_lines(), ["███ ", "█ █ ", "█ █ ", "█ █ ", "███ "]);
 }
 
 #[test]
 fn test_digits_large_number() {
-    // 큰 숫자 테스트
+    // 큰 숫자 테스트: nine glyphs, four columns each
     let d = Digits::new(999999999);
     let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(lines, block_lines("999999999"));
+    assert_eq!(lines[0].chars().count(), 36);
 }
 
 #[test]
 fn test_digits_very_large_negative() {
-    // 매우 큰 음수 테스트
+    // 매우 큰 음수 테스트: the minus is the middle row of the first glyph
     let d = Digits::new(-999999999);
     let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(lines, block_lines("-999999999"));
+    assert!(lines[2].starts_with("███ "));
+    assert!(lines[0].starts_with("    "));
 }
 
 #[test]
 fn test_digits_float_with_many_decimals() {
     // 많은 소수점을 가진 float 테스트
     let d = Digits::from_float(1.0, 10);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.format_value(), "1.0000000000");
+    assert_eq!(d.render_lines(), block_lines("1.0000000000"));
 }
 
 #[test]
 fn test_digits_time_boundary_values() {
-    // 시간 경계값 테스트
+    // 시간 경계값 테스트: the display keeps its width from 00:00:00 to 23:59:59
     let d1 = Digits::time(0, 0, 0);
     let lines1 = d1.render_lines();
-    assert_eq!(lines1.len(), 5);
-
     let d2 = Digits::time(23, 59, 59);
     let lines2 = d2.render_lines();
-    assert_eq!(lines2.len(), 5);
+    for (a, b) in lines1.iter().zip(&lines2) {
+        assert_eq!(a.chars().count(), b.chars().count());
+    }
+    assert_ne!(lines1, lines2);
 }
 
 #[test]
 fn test_digits_timer_overflow_day() {
-    // 하루를 넘는 타이머 테스트
+    // 하루를 넘는 타이머 테스트: hours keep counting past 24
     let d = Digits::timer(90000); // 25시간
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.format_value(), "25:00:00");
 }
 
 #[test]
 fn test_digits_all_zeros() {
-    // 모두 0인 숫자 테스트
+    // 모두 0인 숫자 테스트: the zeros are kept, not collapsed
     let d = Digits::new("00000");
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.render_lines(), block_lines("00000"));
+    assert_eq!(d.render_lines()[0], "███ ".repeat(5));
 }
 
 #[test]
 fn test_digits_repeated_nines() {
     // 반복되는 9 테스트
     let d = Digits::new("99999");
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.render_lines()[3], "  █ ".repeat(5));
 }
 
 #[test]
 fn test_digits_clone() {
-    // Digits 복제 테스트
+    // Digits 복제 테스트: the clone draws the same cells
     let d1 = Digits::new(42)
         .style(DigitStyle::Thin)
         .fg(Color::RED)
@@ -694,9 +728,13 @@ fn test_digits_clone() {
         .suffix("%");
 
     let d2 = d1.clone();
-    // 같은 높이와 너비를 가져야 함
-    assert_eq!(d1.height(), d2.height());
-    assert_eq!(d1.digit_width(), d2.digit_width());
+    let (a, b) = (render(&d1, 12, 7), render(&d2, 12, 7));
+    for y in 0..7 {
+        for x in 0..12 {
+            assert_eq!(a.get(x, y), b.get(x, y), "({x}, {y})");
+        }
+    }
+    assert_eq!(row(&b, 5).trim_end(), "$42%");
 }
 
 #[test]
@@ -704,7 +742,10 @@ fn test_digits_time_colon_rendering() {
     // 시간 콜론 렌더링 테스트
     let d = Digits::new("12:34").style(DigitStyle::Block);
     let lines = d.render_lines();
-    assert!(!lines.is_empty());
+    for (y, line) in lines.iter().enumerate() {
+        let want = if y % 2 == 1 { '█' } else { ' ' };
+        assert_eq!(line.chars().nth(8), Some(want), "row {y}");
+    }
 }
 
 #[test]
@@ -712,15 +753,16 @@ fn test_digits_decimal_dot_rendering() {
     // 소수점 점 렌더링 테스트
     let d = Digits::new("3.14").style(DigitStyle::Block);
     let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(lines, block_lines("3.14"));
+    let dot: String = lines.iter().map(|l| l.chars().nth(4).unwrap()).collect();
+    assert_eq!(dot, "    █");
 }
 
 #[test]
 fn test_digits_multiple_special_chars() {
     // 여러 특수 문자가 포함된 값 테스트
     let d = Digits::new("-12.34");
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(d.render_lines(), block_lines("-12.34"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -790,60 +832,51 @@ fn test_digits_builder_chain() {
     assert_eq!(View::id(&d), Some("price"));
     assert!(d.has_class("currency"));
     assert!(d.has_class("large"));
+    // Thin glyphs of the grouped number, in the builder's colors
+    assert_eq!(d.format_value(), "12,345");
+    assert_draws_lines(&d, &buffer, 0, 0);
+    assert!(row(&buffer, 0).starts_with("  │ ──┐"));
+    let cell = buffer.get(2, 0).unwrap();
+    assert_eq!((cell.fg, cell.bg), (Some(Color::CYAN), Some(Color::BLACK)));
+    // The label below
+    assert!(row(&buffer, 5).starts_with("$12345.00"));
+    assert_eq!(buffer.get(0, 5).unwrap().fg, Some(Color::CYAN));
 }
 
 #[test]
 fn test_digits_different_digit_patterns() {
-    // 서로 다른 숫자 패턴 테스트
+    // 서로 다른 숫자 패턴 테스트: no two digits look alike
+    let all: Vec<Vec<String>> = (0..10)
+        .map(|i| Digits::new(i).style(DigitStyle::Block).render_lines())
+        .collect();
     for i in 0..10 {
-        let d = Digits::new(format!("{}", i)).style(DigitStyle::Block);
-        let lines = d.render_lines();
-        assert_eq!(lines.len(), 5);
-        assert!(!lines[0].is_empty());
+        assert_eq!(all[i], block_lines(&i.to_string()));
+        for j in i + 1..10 {
+            assert_ne!(all[i], all[j], "{i} and {j}");
+        }
     }
 }
 
 #[test]
 fn test_digits_timer_edge_cases() {
     // 타이머 엣지 케이스 테스트
-    // 59초 (분만 표시)
-    let d = Digits::timer(59);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-
-    // 60초 (1분)
-    let d = Digits::timer(60);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-
-    // 3599초 (59분 59초)
-    let d = Digits::timer(3599);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-
-    // 3600초 (1시간)
-    let d = Digits::timer(3600);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(Digits::timer(59).format_value(), "00:59");
+    assert_eq!(Digits::timer(60).format_value(), "01:00");
+    assert_eq!(Digits::timer(3599).format_value(), "59:59");
+    // 3600초 (1시간): the hours appear
+    assert_eq!(Digits::timer(3600).format_value(), "01:00:00");
 }
 
 #[test]
 fn test_digits_float_edge_cases() {
     // Float 엣지 케이스 테스트
-    // 0.0
-    let d = Digits::from_float(0.0, 2);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-
-    // 음수 float
-    let d = Digits::from_float(-12.34, 2);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-
-    // 매우 작은 소수
-    let d = Digits::from_float(0.001, 3);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
+    assert_eq!(Digits::from_float(0.0, 2).format_value(), "0.00");
+    assert_eq!(Digits::from_float(-12.34, 2).format_value(), "-12.34");
+    assert_eq!(Digits::from_float(0.001, 3).format_value(), "0.001");
+    assert_eq!(
+        Digits::from_float(-12.34, 2).render_lines(),
+        block_lines("-12.34")
+    );
 }
 
 #[test]
@@ -856,11 +889,13 @@ fn test_digits_empty_string_value() {
 
 #[test]
 fn test_digits_spaces_in_value() {
-    // 값에 공백이 있는 경우 테스트
+    // 값에 공백이 있는 경우 테스트: a space is a blank glyph
     let d = Digits::new("12 34");
     let lines = d.render_lines();
-    // 공백은 공백 패턴으로 렌더링됨
-    assert_eq!(lines.len(), 5);
+    assert_eq!(lines, block_lines("12 34"));
+    assert!(lines
+        .iter()
+        .all(|l| l.chars().skip(8).take(4).all(|c| c == ' ')));
 }
 
 #[test]
@@ -872,21 +907,19 @@ fn test_digits_separator_affects_rendering() {
     let d2 = Digits::new("10000").separator(',');
     let lines2 = d2.render_lines();
 
-    // 구분자가 추가되면 더 많은 공간이 필요함
-    assert_eq!(lines1.len(), lines2.len());
+    // The comma is a blank glyph between "10" and "000"
+    assert_eq!(lines2, block_lines("10,000"));
+    assert_eq!(lines2[0].chars().count(), lines1[0].chars().count() + 4);
 }
 
 #[test]
 fn test_digits_min_width_affects_rendering() {
     // 최소 너비가 렌더링에 영향을 미치는지 테스트
-    let d1 = Digits::new("42");
-    let lines1 = d1.render_lines();
-
     let d2 = Digits::new("42").min_width(5);
     let lines2 = d2.render_lines();
 
-    // 최소 너비가 적용되면 더 많은 숫자가 렌더링됨
-    assert_eq!(lines1.len(), lines2.len());
+    // Three zero glyphs in front of 42
+    assert_eq!(lines2, block_lines("00042"));
 }
 
 #[test]
@@ -919,12 +952,30 @@ fn test_digits_all_styles_have_correct_widths() {
 
 #[test]
 fn test_digits_render_all_digits() {
-    // 모든 숫자(0-9) 렌더링 테스트
-    for digit in 0..=9 {
-        let d = Digits::new(format!("{}", digit)).style(DigitStyle::Block);
-        let lines = d.render_lines();
-        assert_eq!(lines.len(), 5);
-        assert!(!lines[0].is_empty());
+    // 모든 숫자(0-9) 렌더링 테스트: every style draws every digit in its width
+    for style in [
+        DigitStyle::Block,
+        DigitStyle::Thin,
+        DigitStyle::Ascii,
+        DigitStyle::Braille,
+    ] {
+        for digit in 0..=9 {
+            let d = Digits::new(digit).style(style);
+            let lines = d.render_lines();
+            assert_eq!(lines.len(), d.height());
+            for line in &lines {
+                assert_eq!(
+                    line.chars().count(),
+                    d.digit_width() + 1,
+                    "{style:?} {digit}"
+                );
+                assert!(line.ends_with(' '));
+            }
+            assert!(
+                lines.iter().any(|l| l.trim() != ""),
+                "{style:?} {digit} is blank"
+            );
+        }
     }
 }
 
@@ -932,9 +983,16 @@ fn test_digits_render_all_digits() {
 fn test_digits_time_all_components() {
     // 시간의 모든 구성 요소 테스트
     let d = Digits::time(1, 2, 3);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-    // 콜론이 포함되어야 함
+    assert_eq!(d.render_lines(), block_lines("01:02:03"));
+    // 콜론이 포함되어야 함: after "01" and after "01:02"
+    for col in [8, 18] {
+        let colon: String = d
+            .render_lines()
+            .iter()
+            .map(|l| l.chars().nth(col).unwrap())
+            .collect();
+        assert_eq!(colon, " █ █ ", "column {col}");
+    }
 }
 
 #[test]
@@ -987,6 +1045,11 @@ fn test_digits_braille_style_characters() {
     let lines = d.render_lines();
     // Braille 패턴은 유니코드 브라유 문자 사용
     assert_eq!(lines.len(), 4);
+    assert!(lines
+        .iter()
+        .flat_map(|l| l.chars())
+        .all(|c| c == ' ' || ('\u{2800}'..='\u{28FF}').contains(&c)));
+    assert_eq!(lines, ["⣰⣆ ", "⡇⢸ ", "⡇⢸ ", "⠈⠉ "]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

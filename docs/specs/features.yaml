@@ -1221,8 +1221,8 @@ items:
     acceptance:
       - width/height placeholder
     evidence:
-      - src/widget/display/skeleton.rs::skeleton
-      - tests/widget/display/skeleton.rs
+      - src/widget/display/skeleton/mod.rs::skeleton
+      - tests/widget/display/skeleton/view.rs::draws_the_model
     source:
       - FEATURES.md §Advanced Widgets / Skeleton
   - id: WID-040

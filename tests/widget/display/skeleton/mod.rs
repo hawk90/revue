@@ -2,6 +2,8 @@
 //!
 //! 스켈레톤 위젯의 통합 테스트입니다.
 
+mod view;
+
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
@@ -139,12 +141,15 @@ fn test_skeleton_builder_lines() {
 
 #[test]
 fn test_skeleton_builder_no_animate() {
-    let s = Skeleton::new().no_animate();
+    // The builder turns the frame off: the same frame draws '▓' while animated
+    let animated = Skeleton::new().frame(2);
+    let still = Skeleton::new().frame(2).no_animate();
     let mut buffer = Buffer::new(10, 1);
     let area = Rect::new(0, 0, 10, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    s.render(&mut ctx);
-    // No animate always uses '░'
+    animated.render(&mut RenderContext::new(&mut buffer, area));
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '▓');
+    let mut buffer = Buffer::new(10, 1);
+    still.render(&mut RenderContext::new(&mut buffer, area));
     assert_eq!(buffer.get(0, 0).unwrap().symbol, '░');
 }
 
@@ -247,8 +252,7 @@ fn test_skeleton_builder_classes() {
 fn test_skeleton_builder_classes_no_duplicates() {
     let s = Skeleton::new().class("test").classes(vec!["test", "other"]);
     let classes = View::classes(&s);
-    assert!(classes.contains(&"test".to_string()));
-    assert!(classes.contains(&"other".to_string()));
+    assert_eq!(classes, &["test".to_string(), "other".to_string()]);
 }
 
 // =============================================================================
@@ -323,13 +327,32 @@ fn test_skeleton_animate_default_enabled() {
 
 #[test]
 fn test_skeleton_animate_disabled() {
-    let s = Skeleton::new().no_animate();
-    let mut buffer = Buffer::new(10, 1);
-    let area = Rect::new(0, 0, 10, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    s.render(&mut ctx);
-    // No animate always uses '░'
-    assert_eq!(buffer.get(0, 0).unwrap().symbol, '░');
+    // Without animation every frame draws the same character in every shape
+    for shape in [
+        SkeletonShape::Rectangle,
+        SkeletonShape::Circle,
+        SkeletonShape::Paragraph,
+    ] {
+        let draw = |frame: u8| {
+            let mut buffer = Buffer::new(10, 3);
+            let s = Skeleton::new()
+                .shape(shape)
+                .height(3)
+                .frame(frame)
+                .no_animate();
+            s.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 10, 3)));
+            let symbols: String = (0..3)
+                .flat_map(|y| (0..10).map(move |x| (x, y)))
+                .map(|(x, y)| buffer.get(x, y).unwrap().symbol)
+                .collect();
+            symbols
+        };
+        let first = draw(0);
+        assert!(first.contains('░'), "{shape:?}: {first:?}");
+        for frame in 1..=5 {
+            assert_eq!(draw(frame), first, "{shape:?} frame {frame}");
+        }
+    }
 }
 
 #[test]
@@ -391,7 +414,10 @@ fn test_skeleton_skeleton_char_no_animate() {
     let area = Rect::new(0, 0, 10, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
     s.render(&mut ctx);
-    assert_eq!(buffer.get(0, 0).unwrap().symbol, '░');
+    // The still character fills the whole row, not only the first cell
+    for x in 0..10 {
+        assert_eq!(buffer.get(x, 0).unwrap().symbol, '░', "x={x}");
+    }
 }
 
 #[test]
@@ -771,7 +797,9 @@ fn test_skeleton_render_empty_buffer() {
     let s = skeleton().no_animate();
     s.render(&mut ctx);
 
-    // Should not panic
+    // Nothing to draw into, and the buffer stays empty
+    assert_eq!((buffer.width(), buffer.height()), (0, 0));
+    assert!(buffer.get(0, 0).is_none());
 }
 
 #[test]
