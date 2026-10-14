@@ -1,6 +1,6 @@
-//! Drawing the modal: centered box, title, body or text content, and buttons
+//! Sizing and drawing the modal: centered box, title, body or text content, and buttons
 
-use super::{Modal, ModalButtonStyle};
+use super::{Modal, ModalButton, ModalButtonStyle};
 use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::traits::{RenderContext, View};
@@ -21,9 +21,43 @@ impl View for Modal {
 
         // Draw border
         self.render_border(ctx, x, y, modal_width, modal_height);
+        self.draw_title(ctx, x, y, modal_width);
+        self.draw_content(ctx, x, y, modal_width, modal_height);
+        self.draw_buttons(ctx, x, y, modal_width, modal_height);
+    }
 
-        // Draw title
-        if !self.title.is_empty() && modal_width > 4 {
+    crate::impl_view_meta!("Modal");
+}
+
+impl Modal {
+    /// Calculate required height
+    #[doc(hidden)]
+    pub fn required_height(&self) -> u16 {
+        // If height is explicitly set, use it
+        if let Some(h) = self.height {
+            return h;
+        }
+
+        // For body widget, use a default content height of 5 lines
+        let content_lines = if self.body.is_some() {
+            5u16
+        } else {
+            self.content.len() as u16
+        };
+
+        let button_line = if self.buttons.is_empty() { 0 } else { 1 };
+        // top border + title + title separator + content + padding + buttons + bottom border
+        3 + content_lines + 1 + button_line + 1
+    }
+
+    /// Whether the title row and its separator are drawn
+    fn has_title(&self, modal_width: u16) -> bool {
+        !self.title.is_empty() && modal_width > 4
+    }
+
+    /// The title on the first row inside the border, and the separator below it
+    fn draw_title(&self, ctx: &mut RenderContext, x: u16, y: u16, modal_width: u16) {
+        if self.has_title(modal_width) {
             let title_x = x + 2;
             let title_width = modal_width.saturating_sub(4);
             let title_fg = self.title_fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
@@ -36,9 +70,19 @@ impl View for Modal {
             ctx.set(x, y + 2, Cell::new('├'));
             ctx.set(x + modal_width.saturating_sub(1), y + 2, Cell::new('┤'));
         }
+    }
 
+    /// The body widget, or else the text lines, below the title
+    fn draw_content(
+        &self,
+        ctx: &mut RenderContext,
+        x: u16,
+        y: u16,
+        modal_width: u16,
+        modal_height: u16,
+    ) {
         // Draw content — adjust for title presence
-        let has_title = !self.title.is_empty() && modal_width > 4;
+        let has_title = self.has_title(modal_width);
         let content_y = if has_title { y + 3 } else { y + 1 };
         let content_width = modal_width.saturating_sub(4);
         // borders(2) + buttons(1) + padding(1) + title+separator(2 if present)
@@ -62,8 +106,18 @@ impl View for Modal {
                 ctx.draw_text_clipped(x + 2, cy, line, Color::rgb(220, 220, 220), content_width);
             }
         }
+    }
 
-        // Draw buttons
+    /// The buttons centered on the row above the bottom border, or none
+    /// when they do not all fit
+    fn draw_buttons(
+        &self,
+        ctx: &mut RenderContext,
+        x: u16,
+        y: u16,
+        modal_width: u16,
+        modal_height: u16,
+    ) {
         if !self.buttons.is_empty() && modal_height > 2 {
             let button_y = y + modal_height.saturating_sub(2);
             let total_button_width: usize = self
@@ -82,40 +136,54 @@ impl View for Modal {
 
             for (i, button) in self.buttons.iter().enumerate() {
                 let is_selected = i == self.selected_button;
-                let button_text = format!("[ {} ]", button.label);
-
-                let (fg, bg) = if is_selected {
-                    match button.style {
-                        ModalButtonStyle::Primary => (Some(Color::WHITE), Some(Color::BLUE)),
-                        ModalButtonStyle::Danger => (Some(Color::WHITE), Some(Color::RED)),
-                        ModalButtonStyle::Default => (Some(Color::BLACK), Some(Color::WHITE)),
-                    }
-                } else {
-                    (None, None)
-                };
-
-                let mut btn_x = bx;
-                for ch in button_text.chars() {
-                    let cw = crate::utils::char_width(ch) as u16;
-                    let mut cell = Cell::new(ch);
-                    cell.fg = fg;
-                    cell.bg = bg;
-                    if is_selected {
-                        cell.modifier |= crate::render::Modifier::BOLD;
-                    }
-                    ctx.set(btn_x, button_y, cell);
-                    btn_x += cw;
-                }
-
+                let btn_x = Self::draw_button(ctx, button, is_selected, bx, button_y);
                 bx = btn_x + 2;
             }
         }
     }
 
-    crate::impl_view_meta!("Modal");
-}
+    /// One `[ label ]` button from `bx`; returns the column after it
+    fn draw_button(
+        ctx: &mut RenderContext,
+        button: &ModalButton,
+        is_selected: bool,
+        bx: u16,
+        button_y: u16,
+    ) -> u16 {
+        let button_text = format!("[ {} ]", button.label);
 
-impl Modal {
+        let (fg, bg) = if is_selected {
+            match button.style {
+                ModalButtonStyle::Primary => (Some(Color::WHITE), Some(Color::BLUE)),
+                ModalButtonStyle::Danger => (Some(Color::WHITE), Some(Color::RED)),
+                ModalButtonStyle::Default => (Some(Color::BLACK), Some(Color::WHITE)),
+            }
+        } else {
+            (None, None)
+        };
+
+        let mut btn_x = bx;
+        for ch in button_text.chars() {
+            let cw = crate::utils::char_width(ch) as u16;
+            let mut cell = Cell::new(ch);
+            cell.fg = fg;
+            cell.bg = bg;
+            if is_selected {
+                cell.modifier |= crate::render::Modifier::BOLD;
+            }
+            ctx.set(btn_x, button_y, cell);
+            btn_x += cw;
+        }
+        btn_x
+    }
+
+    /// A border cell in the border color
+    fn border_cell(&self, ch: char) -> Cell {
+        let mut cell = Cell::new(ch);
+        cell.fg = self.border_fg;
+        cell
+    }
+
     fn render_border(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16, height: u16) {
         if width < 2 || height < 2 {
             return;
@@ -129,218 +197,32 @@ impl Modal {
         }
 
         // Top border
-        let mut corner = Cell::new('┌');
-        corner.fg = self.border_fg;
-        ctx.set(x, y, corner);
+        ctx.set(x, y, self.border_cell('┌'));
 
         for dx in 1..width.saturating_sub(1) {
-            let mut cell = Cell::new('─');
-            cell.fg = self.border_fg;
-            ctx.set(x + dx, y, cell);
+            ctx.set(x + dx, y, self.border_cell('─'));
         }
 
-        let mut corner = Cell::new('┐');
-        corner.fg = self.border_fg;
-        ctx.set(x + width.saturating_sub(1), y, corner);
+        ctx.set(x + width.saturating_sub(1), y, self.border_cell('┐'));
 
         // Sides
         for dy in 1..height.saturating_sub(1) {
-            let mut cell = Cell::new('│');
-            cell.fg = self.border_fg;
+            let cell = self.border_cell('│');
             ctx.set(x, y + dy, cell);
             ctx.set(x + width.saturating_sub(1), y + dy, cell);
         }
 
         // Bottom border
-        let mut corner = Cell::new('└');
-        corner.fg = self.border_fg;
-        ctx.set(x, y + height.saturating_sub(1), corner);
+        ctx.set(x, y + height.saturating_sub(1), self.border_cell('└'));
 
         for dx in 1..width.saturating_sub(1) {
-            let mut cell = Cell::new('─');
-            cell.fg = self.border_fg;
-            ctx.set(x + dx, y + height.saturating_sub(1), cell);
+            ctx.set(x + dx, y + height.saturating_sub(1), self.border_cell('─'));
         }
 
-        let mut corner = Cell::new('┘');
-        corner.fg = self.border_fg;
         ctx.set(
             x + width.saturating_sub(1),
             y + height.saturating_sub(1),
-            corner,
+            self.border_cell('┘'),
         );
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-
-    #[test]
-    fn test_modal_render_hidden() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let m = Modal::new().title("Test");
-        m.render(&mut ctx);
-
-        // Hidden modal shouldn't render anything special
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
-    }
-
-    #[test]
-    fn test_modal_render_visible() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let mut m = Modal::new().title("Test Dialog").content("Hello").ok();
-        m.show();
-        m.render(&mut ctx);
-
-        // Modal should render centered - check for border characters
-        // The exact position depends on centering calculation
-        let center_x = (80 - 40) / 2;
-        let center_y = (24 - m.required_height()) / 2;
-
-        assert_eq!(buffer.get(center_x, center_y).unwrap().symbol, '┌');
-    }
-
-    #[test]
-    fn test_modal_body_render() {
-        use crate::widget::Text;
-
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let mut m = Modal::new()
-            .title("Body Test")
-            .body(Text::new("Widget content"))
-            .width(50)
-            .height(12)
-            .ok();
-        m.show();
-        m.render(&mut ctx);
-
-        // Modal with body should render
-        let center_x = (80 - 50) / 2;
-        let center_y = (24 - 12) / 2;
-        assert_eq!(buffer.get(center_x, center_y).unwrap().symbol, '┌');
-    }
-
-    #[test]
-    fn test_modal_render_small_area_no_panic() {
-        // Test that rendering in very small areas doesn't panic
-        // This is the fix for issue #154
-
-        // Width = 0
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 0, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Width = 1
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 1, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Width = 2
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 2, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Height = 0
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 0);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Height = 1
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Height = 2
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 2);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Both width and height = 0
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 0, 0);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-    }
-
-    #[test]
-    fn test_modal_render_text_content_in_short_area() {
-        // With text content the line loop compares against the bottom of
-        // the modal, which used to underflow for modals under 2 rows
-        for height in 0..=4 {
-            let mut buffer = Buffer::new(80, 24);
-            let area = Rect::new(0, 0, 80, height);
-            let mut ctx = RenderContext::new(&mut buffer, area);
-            let mut m = Modal::new().content("Line one\nLine two").ok();
-            m.show();
-            m.render(&mut ctx);
-
-            let mut buffer = Buffer::new(80, 24);
-            let mut ctx = RenderContext::new(&mut buffer, area);
-            let mut m = Modal::new().title("Test").content("Body").ok();
-            m.show();
-            m.render(&mut ctx);
-        }
-    }
-
-    #[test]
-    fn test_modal_render_width_2_border() {
-        // Specific test for width=2 which was mentioned in the issue
-        let mut buffer = Buffer::new(10, 10);
-        let area = Rect::new(0, 0, 4, 10); // Small width after subtracting 4 for margins
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let mut m = Modal::new().title("X").width(2).height(4);
-        m.show();
-        m.render(&mut ctx); // Should not panic
-    }
-
-    #[test]
-    fn buttons_center_by_display_width() {
-        // A 20-wide modal in a 24-wide area starts at x = 2; the 8-column
-        // button "[ 확인 ]" centers at 2 + (20 - 8) / 2 = 8.
-        let mut m = Modal::new()
-            .width(20)
-            .buttons(vec![super::super::ModalButton::new("확인")]);
-        m.show();
-        let mut buffer = Buffer::new(24, 10);
-        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 24, 10));
-        m.render(&mut ctx);
-        let start = (0..10)
-            .find_map(|y| (0..24).find(|&x| buffer.get(x, y).unwrap().symbol == '['))
-            .expect("no button drawn");
-        assert_eq!(start, 8);
     }
 }

@@ -853,7 +853,7 @@ items:
       - toast(message) with level and position
       - auto-dismiss duration
     evidence:
-      - src/widget/feedback/toast.rs::toast
+      - src/widget/feedback/toast/mod.rs::toast
       - src/widget/feedback/toast_queue/mod.rs::ToastQueue
       - tests/widget/feedback/toast.rs
     source:

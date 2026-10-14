@@ -80,6 +80,50 @@ impl Alert {
         }
     }
 
+    /// The level's icon (or the custom one) at `(x, y)`
+    fn draw_icon(&self, ctx: &mut RenderContext, x: u16, y: u16, fg: Color, bg: Option<Color>) {
+        let icon = self.get_icon();
+        let mut icon_cell = Cell::new(icon);
+        icon_cell.fg = Some(fg);
+        icon_cell.bg = bg;
+        ctx.set(x, y, icon_cell);
+    }
+
+    /// The dismiss button at `(x, y)`
+    fn draw_dismiss(ctx: &mut RenderContext, x: u16, y: u16, fg: Color, bg: Option<Color>) {
+        let mut x_cell = Cell::new(DISMISS);
+        x_cell.fg = Some(fg);
+        x_cell.bg = bg;
+        ctx.set(x, y, x_cell);
+    }
+
+    /// `text` from `x`, one cell per character, stopping before the
+    /// character that would pass `max_w` columns
+    fn draw_run(
+        ctx: &mut RenderContext,
+        x: u16,
+        y: u16,
+        text: &str,
+        max_w: u16,
+        fg: Color,
+        bold: bool,
+    ) {
+        let mut dx: u16 = 0;
+        for ch in text.chars() {
+            let cw = char_width(ch) as u16;
+            if dx + cw > max_w {
+                break;
+            }
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(fg);
+            if bold {
+                cell.modifier |= Modifier::BOLD;
+            }
+            ctx.set(x + dx, y, cell);
+            dx += cw;
+        }
+    }
+
     fn render_filled(
         &self,
         ctx: &mut RenderContext,
@@ -108,11 +152,7 @@ impl Alert {
 
         // Icon and title/message
         let icon_offset = if self.show_icon {
-            let icon = self.get_icon();
-            let mut icon_cell = Cell::new(icon);
-            icon_cell.fg = Some(accent_color);
-            icon_cell.bg = Some(bg_color);
-            ctx.set(content_x, y, icon_cell);
+            self.draw_icon(ctx, content_x, y, accent_color, Some(bg_color));
             2
         } else {
             0
@@ -141,11 +181,7 @@ impl Alert {
 
         // Dismiss button
         if self.dismissible {
-            let dismiss_x = area.width - 3;
-            let mut x_cell = Cell::new(DISMISS);
-            x_cell.fg = Some(LIGHT_GRAY);
-            x_cell.bg = Some(bg_color);
-            ctx.set(dismiss_x, 1, x_cell);
+            Self::draw_dismiss(ctx, area.width - 3, 1, LIGHT_GRAY, Some(bg_color));
         }
     }
 
@@ -167,10 +203,7 @@ impl Alert {
 
         // Icon
         let icon_offset = if self.show_icon {
-            let icon = self.get_icon();
-            let mut icon_cell = Cell::new(icon);
-            icon_cell.fg = Some(accent_color);
-            ctx.set(content_x, y, icon_cell);
+            self.draw_icon(ctx, content_x, y, accent_color, None);
             2
         } else {
             0
@@ -181,55 +214,21 @@ impl Alert {
             let title_x = content_x + icon_offset;
             let max_w = content_width - icon_offset;
             let title_w = max_w.saturating_sub(self.dismiss_reserve());
-            let mut dx: u16 = 0;
-            for ch in title.chars() {
-                let cw = char_width(ch) as u16;
-                if dx + cw > title_w {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(text_fg);
-                cell.modifier |= Modifier::BOLD;
-                ctx.set(title_x + dx, y, cell);
-                dx += cw;
-            }
+            Self::draw_run(ctx, title_x, y, title, title_w, text_fg, true);
             y += 1;
 
             // Message
             let msg_x = content_x + icon_offset;
-            let mut dx: u16 = 0;
-            for ch in self.message.chars() {
-                let cw = char_width(ch) as u16;
-                if dx + cw > max_w {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(MUTED_TEXT);
-                ctx.set(msg_x + dx, y, cell);
-                dx += cw;
-            }
+            Self::draw_run(ctx, msg_x, y, &self.message, max_w, MUTED_TEXT, false);
         } else {
             let msg_x = content_x + icon_offset;
             let max_w = (content_width - icon_offset).saturating_sub(self.dismiss_reserve());
-            let mut dx: u16 = 0;
-            for ch in self.message.chars() {
-                let cw = char_width(ch) as u16;
-                if dx + cw > max_w {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(text_fg);
-                ctx.set(msg_x + dx, y, cell);
-                dx += cw;
-            }
+            Self::draw_run(ctx, msg_x, y, &self.message, max_w, text_fg, false);
         }
 
         // Dismiss button
         if self.dismissible {
-            let dismiss_x = area.width - 2;
-            let mut x_cell = Cell::new(DISMISS);
-            x_cell.fg = Some(LIGHT_GRAY);
-            ctx.set(dismiss_x, 0, x_cell);
+            Self::draw_dismiss(ctx, area.width - 2, 0, LIGHT_GRAY, None);
         }
     }
 
@@ -243,65 +242,31 @@ impl Alert {
 
         // Icon
         if self.show_icon {
-            let icon = self.get_icon();
-            let mut icon_cell = Cell::new(icon);
-            icon_cell.fg = Some(accent_color);
-            ctx.set(x, y, icon_cell);
+            self.draw_icon(ctx, x, y, accent_color, None);
             x += 2;
         }
 
         // Title or message
         if let Some(ref title) = self.title {
             // Title on first line
-            let mut dx: u16 = 0;
-            for ch in title.chars() {
-                let cw = char_width(ch) as u16;
-                if x + dx + cw > first_row_end {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(accent_color);
-                cell.modifier |= Modifier::BOLD;
-                ctx.set(x + dx, y, cell);
-                dx += cw;
-            }
+            let title_w = first_row_end.saturating_sub(x);
+            Self::draw_run(ctx, x, y, title, title_w, accent_color, true);
 
             // Message on second line
             if area.height > 1 {
                 let msg_x: u16 = if self.show_icon { 2 } else { 0 };
-                let mut dx: u16 = 0;
-                for ch in self.message.chars() {
-                    let cw = char_width(ch) as u16;
-                    if msg_x + dx + cw > area.width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(MUTED_TEXT);
-                    ctx.set(msg_x + dx, y + 1, cell);
-                    dx += cw;
-                }
+                let msg_w = area.width.saturating_sub(msg_x);
+                Self::draw_run(ctx, msg_x, y + 1, &self.message, msg_w, MUTED_TEXT, false);
             }
         } else {
             // Just message
-            let mut dx: u16 = 0;
-            for ch in self.message.chars() {
-                let cw = char_width(ch) as u16;
-                if x + dx + cw > first_row_end {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(text_fg);
-                ctx.set(x + dx, y, cell);
-                dx += cw;
-            }
+            let msg_w = first_row_end.saturating_sub(x);
+            Self::draw_run(ctx, x, y, &self.message, msg_w, text_fg, false);
         }
 
         // Dismiss button
         if self.dismissible {
-            let dismiss_x = area.width - 1;
-            let mut x_cell = Cell::new(DISMISS);
-            x_cell.fg = Some(DISABLED_FG);
-            ctx.set(dismiss_x, y, x_cell);
+            Self::draw_dismiss(ctx, area.width - 1, y, DISABLED_FG, None);
         }
     }
 

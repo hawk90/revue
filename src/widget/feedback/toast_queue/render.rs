@@ -52,97 +52,99 @@ impl ToastQueue {
         let color = entry.level.color();
         let bg = entry.level.bg_color();
 
-        // Draw border
-        // Top
-        let mut top_left = Cell::new('╭');
-        top_left.fg = Some(color);
-        top_left.bg = Some(bg);
-        ctx.set(x, y, top_left);
+        draw_frame(ctx, x, y, toast_w, toast_h, color, bg);
+        draw_content(ctx, entry, x, y, toast_w, color, bg);
+    }
+}
 
-        for i in 1..toast_w.saturating_sub(1) {
-            let mut cell = Cell::new('─');
-            cell.fg = Some(color);
-            cell.bg = Some(bg);
-            ctx.set(x + i, y, cell);
+/// A cell with the toast's background
+fn cell(ch: char, fg: Option<Color>, bg: Color) -> Cell {
+    let mut cell = Cell::new(ch);
+    cell.fg = fg;
+    cell.bg = Some(bg);
+    cell
+}
+
+/// The rounded border, with the inside filled with the background
+fn draw_frame(
+    ctx: &mut RenderContext,
+    x: u16,
+    y: u16,
+    toast_w: u16,
+    toast_h: u16,
+    color: Color,
+    bg: Color,
+) {
+    // Draw border
+    // Top
+    ctx.set(x, y, cell('╭', Some(color), bg));
+
+    for i in 1..toast_w.saturating_sub(1) {
+        ctx.set(x + i, y, cell('─', Some(color), bg));
+    }
+
+    ctx.set(x + toast_w - 1, y, cell('╮', Some(color), bg));
+
+    // Bottom
+    ctx.set(x, y + toast_h - 1, cell('╰', Some(color), bg));
+
+    for i in 1..toast_w.saturating_sub(1) {
+        ctx.set(x + i, y + toast_h - 1, cell('─', Some(color), bg));
+    }
+
+    ctx.set(x + toast_w - 1, y + toast_h - 1, cell('╯', Some(color), bg));
+
+    // Sides and fill
+    for row in 1..toast_h.saturating_sub(1) {
+        ctx.set(x, y + row, cell('│', Some(color), bg));
+        ctx.set(x + toast_w - 1, y + row, cell('│', Some(color), bg));
+
+        for col in 1..toast_w.saturating_sub(1) {
+            ctx.set(x + col, y + row, cell(' ', None, bg));
         }
+    }
+}
 
-        let mut top_right = Cell::new('╮');
-        top_right.fg = Some(color);
-        top_right.bg = Some(bg);
-        ctx.set(x + toast_w - 1, y, top_right);
+/// The icon, the message and, for a dismissible toast, the close mark
+fn draw_content(
+    ctx: &mut RenderContext,
+    entry: &ToastEntry,
+    x: u16,
+    y: u16,
+    toast_w: u16,
+    color: Color,
+    bg: Color,
+) {
+    // Content
+    let content_x = x + 2;
+    let content_y = y + 1;
 
-        // Bottom
-        let mut bottom_left = Cell::new('╰');
-        bottom_left.fg = Some(color);
-        bottom_left.bg = Some(bg);
-        ctx.set(x, y + toast_h - 1, bottom_left);
+    // Icon
+    ctx.set(
+        content_x,
+        content_y,
+        cell(entry.level.icon(), Some(color), bg),
+    );
 
-        for i in 1..toast_w.saturating_sub(1) {
-            let mut cell = Cell::new('─');
-            cell.fg = Some(color);
-            cell.bg = Some(bg);
-            ctx.set(x + i, y + toast_h - 1, cell);
+    // Message
+    let msg_x = content_x + 2;
+    let max_msg_width = toast_w.saturating_sub(5) as usize;
+    let truncated_msg = truncate_to_width(&entry.message, max_msg_width);
+    let mut dx: u16 = 0;
+    for ch in truncated_msg.chars() {
+        let cw = char_width(ch) as u16;
+        if dx + cw > max_msg_width as u16 {
+            break;
         }
+        let fg = ctx.css_color(Color::WHITE);
+        ctx.set(msg_x + dx, content_y, cell(ch, Some(fg), bg));
+        dx += cw;
+    }
 
-        let mut bottom_right = Cell::new('╯');
-        bottom_right.fg = Some(color);
-        bottom_right.bg = Some(bg);
-        ctx.set(x + toast_w - 1, y + toast_h - 1, bottom_right);
-
-        // Sides and fill
-        for row in 1..toast_h.saturating_sub(1) {
-            let mut left = Cell::new('│');
-            left.fg = Some(color);
-            left.bg = Some(bg);
-            ctx.set(x, y + row, left);
-
-            let mut right = Cell::new('│');
-            right.fg = Some(color);
-            right.bg = Some(bg);
-            ctx.set(x + toast_w - 1, y + row, right);
-
-            for col in 1..toast_w.saturating_sub(1) {
-                let mut fill = Cell::new(' ');
-                fill.bg = Some(bg);
-                ctx.set(x + col, y + row, fill);
-            }
-        }
-
-        // Content
-        let content_x = x + 2;
-        let content_y = y + 1;
-
-        // Icon
-        let mut icon_cell = Cell::new(entry.level.icon());
-        icon_cell.fg = Some(color);
-        icon_cell.bg = Some(bg);
-        ctx.set(content_x, content_y, icon_cell);
-
-        // Message
-        let msg_x = content_x + 2;
-        let max_msg_width = toast_w.saturating_sub(5) as usize;
-        let truncated_msg = truncate_to_width(&entry.message, max_msg_width);
-        let mut dx: u16 = 0;
-        for ch in truncated_msg.chars() {
-            let cw = char_width(ch) as u16;
-            if dx + cw > max_msg_width as u16 {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(ctx.css_color(Color::WHITE));
-            cell.bg = Some(bg);
-            ctx.set(msg_x + dx, content_y, cell);
-            dx += cw;
-        }
-
-        // Dismiss hint for dismissible toasts
-        if entry.dismissible && toast_w > 10 {
-            let dismiss_x = x + toast_w - 3;
-            let mut dismiss = Cell::new('×');
-            dismiss.fg = Some(DISABLED_FG);
-            dismiss.bg = Some(bg);
-            ctx.set(dismiss_x, content_y, dismiss);
-        }
+    // Dismiss hint for dismissible toasts
+    if entry.dismissible && toast_w > 10 {
+        let dismiss_x = x + toast_w - 3;
+        ctx.set(dismiss_x, content_y, cell('×', Some(DISABLED_FG), bg));
     }
 }
 
