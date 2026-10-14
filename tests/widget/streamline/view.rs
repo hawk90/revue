@@ -156,6 +156,21 @@ fn stream_label_sits_on_the_widest_point() {
     let cell = buffer.get(18, 5).unwrap();
     assert_eq!((cell.fg, cell.bg), (Some(Color::WHITE), Some(Color::GREEN)));
 
+    // Equal widths: the first widest point wins
+    let flat = Streamline::new()
+        .show_legend(false)
+        .baseline(StreamBaseline::Zero)
+        .layer(StreamLayer::new("Flat").data(vec![4.0, 4.0, 4.0]));
+    let flat_buffer = render(&flat, 41, 11);
+    let starts: Vec<String> = (0..11)
+        .map(|y| {
+            (0..4)
+                .map(|x| flat_buffer.get(x, y).unwrap().symbol)
+                .collect()
+        })
+        .collect();
+    assert!(starts.iter().any(|r| r == "Flat"), "{starts:?}");
+
     let hidden = chart.show_labels(false);
     assert!(!rows_text(&render(&hidden, 41, 11), 41, 11).contains("Peak"));
 }
@@ -191,6 +206,8 @@ fn background_fills_the_chart_rows() {
     // Row 0 is the legend: its gaps and names keep the background
     assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::BLUE));
     assert_eq!(buffer.get(3, 0).unwrap().bg, Some(Color::BLUE));
+    // The last chart row, between two point columns (0, 6, 13, 19)
+    assert_eq!(buffer.get(3, 5).unwrap().bg, Some(Color::BLUE));
     for y in 6..10 {
         assert_eq!(buffer.get(5, y).unwrap().bg, None, "row {y}");
     }

@@ -5,9 +5,10 @@ use crate::traits::placement::{assert_same_when_offset, assert_zero_areas_draw_n
 use proptest::prelude::*;
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::style::{get_theme, use_theme};
+use revue::style::{get_theme, register_theme, set_theme_by_id, use_theme, Theme};
 use revue::widget::traits::RenderContext;
 use revue::widget::{ThemePicker, View};
+use serial_test::serial;
 
 const KNOWN: [&str; 8] = [
     "dark",
@@ -170,10 +171,50 @@ fn the_arrow_follows_the_open_state() {
     assert_eq!(render(&picker, 35, 3).get(arrow, 0).unwrap().symbol, '▲');
 }
 
+#[test]
+fn the_swatch_shows_four_theme_colors_in_order() {
+    let current = use_theme().get();
+    let buffer = render(&ThemePicker::new().compact(true), 20, 1);
+    let colors: Vec<_> = (0..4).map(|x| buffer.get(x, 0).unwrap().bg).collect();
+    assert_eq!(
+        colors,
+        [
+            Some(current.colors.background),
+            Some(current.palette.primary),
+            Some(current.palette.success),
+            Some(current.palette.error),
+        ]
+    );
+}
+
+#[test]
+#[serial]
+fn a_long_name_is_cut_before_the_swatch() {
+    register_theme(
+        "audit-long-name",
+        Theme::custom("Abcdefghijklmnopqrstuvwxyz Abcdefghij").build(),
+    );
+    set_theme_by_id("audit-long-name");
+    let buffer = render(&ThemePicker::new().themes(["audit-long-name"]), 40, 1);
+    let row = rows(&buffer, 40, 1).remove(0);
+    set_theme_by_id("dark");
+
+    // The name is cut, and no letter reaches the six columns before the
+    // 35-column width (the swatch and arrow need more: draft-pk-1)
+    assert!(row.starts_with("Theme: Abcdefghijklmnop"), "{row:?}");
+    for (x, ch) in row.chars().enumerate().skip(29) {
+        assert!(
+            !ch.is_alphabetic(),
+            "name letter {ch:?} at column {x}: {row:?}"
+        );
+    }
+}
+
 proptest! {
     /// The open dropdown, against a plain model: a top border, one row per
     /// theme while a row is left for the bottom border, the marker on the
-    /// selected row, each name cut at the right border.
+    /// selected row, each name cut at the right border. The marker is checked
+    /// only when the selected row fits: the list does not scroll (draft-pk-c973).
     #[test]
     fn open_dropdown_matches_the_model(
         picks in proptest::collection::vec(0..KNOWN.len(), 0..8),
