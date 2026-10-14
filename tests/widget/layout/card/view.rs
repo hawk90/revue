@@ -508,3 +508,19 @@ proptest! {
         prop_assert_eq!(c.is_collapsible(), collapsible);
     }
 }
+
+#[test]
+fn test_card_collapsible_title_is_bold_after_its_icon() {
+    let c = Card::new()
+        .collapsible(true)
+        .title("Title")
+        .title_color(Color::GREEN);
+    let b = render_buffer(&c, 12, 3, None);
+    // The icon takes the title color; the title starts two columns later,
+    // bold like any title
+    let icon = b.get(2, 1).unwrap();
+    assert_eq!((icon.symbol, icon.fg), ('▼', Some(Color::GREEN)));
+    let t = b.get(4, 1).unwrap();
+    assert_eq!((t.symbol, t.fg), ('T', Some(Color::GREEN)));
+    assert!(t.modifier.contains(revue::render::Modifier::BOLD));
+}
