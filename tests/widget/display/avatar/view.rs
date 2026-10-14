@@ -256,8 +256,7 @@ fn color_name(source: &Source) -> &str {
 /// ASCII names: zero to four words of letters (either case), separated by
 /// one or more spaces or tabs, sometimes with leading spaces. Wide glyphs are
 /// left out (#974), and so are letters whose upper case is two letters
-/// ("ß" -> "SS"), which push the second initial out (reported by the avatar
-/// audit, #930).
+/// ("ß" -> "SS"), which push the second initial out (#1057).
 fn name() -> impl Strategy<Value = String> {
     (
         prop::collection::vec(
@@ -302,8 +301,8 @@ proptest! {
         height in 0u16..5,
     ) {
         // Not modeled: in fewer than three rows a large avatar draws one plain
-        // initial rather than the medium form (reported by the avatar audit,
-        // #930), so a large one gets three or four rows.
+        // initial rather than the medium form (#1057),
+        // so a large one gets three or four rows.
         let height = if size == AvatarSize::Large { 3 + height % 2 } else { height };
         let mut a = build(&source).size(size).shape(shape);
         if let Some(c) = status { a = a.status(c); }
