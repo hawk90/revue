@@ -201,8 +201,8 @@ proptest! {
     fn formats_like_the_model(
         (negative, int, frac) in number(),
         // A separator or a width, not both: with both, zero padding counts
-        // the digits and blank padding counts the separators too (reported
-        // from this audit), so the model does not pick a side.
+        // the digits and blank padding counts the separators too (#1066),
+        // so the model does not pick a side.
         (sep, min_width) in prop_oneof![
             Just((None, None)),
             prop::sample::select(vec![',', '.', ' ', '_']).prop_map(|s| (Some(s), None)),
@@ -281,8 +281,8 @@ proptest! {
                     prop_assert_eq!(cell.fg, fg, "fg ({}, {})", x, y);
                     prop_assert_eq!(cell.bg, bg, "bg ({}, {})", x, y);
                 } else if inside {
-                    // The label takes the fg; its bg is left out (reported
-                    // from this audit: the label ignores `bg`).
+                    // The label takes the fg; its bg is left out (#1066:
+                    // the label ignores `bg`).
                     prop_assert_eq!(cell.fg, fg, "label fg ({}, {})", x, y);
                 } else {
                     prop_assert_eq!((cell.fg, cell.bg), (None, None), "({}, {})", x, y);

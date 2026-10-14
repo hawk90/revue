@@ -149,8 +149,8 @@ fn zero_areas_draw_nothing() {
             assert_zero_areas_draw_nothing(&Skeleton::new().shape(shape).height(height));
         }
     }
-    // A circle in a zero-height area panics (`size - 1` underflows; reported
-    // from this audit), so only the zero-width area is checked here.
+    // A circle in a zero-height area panics (`size - 1` underflows;
+    // #1065), so only the zero-width area is checked here.
     for height in [1, 2, 3] {
         let mut buffer = Buffer::new(10, 10);
         let s = Skeleton::new().circle().height(height);
@@ -240,7 +240,7 @@ proptest! {
         aw in 0u16..16,
         ah in 0u16..10,
     ) {
-        // Circle in a zero-height area panics (reported from this audit).
+        // Circle in a zero-height area panics (#1065).
         prop_assume!(!(shape == SkeletonShape::Circle && ah == 0));
         let mut s = Skeleton::new()
             .shape(shape)
