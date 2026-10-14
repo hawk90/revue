@@ -2075,6 +2075,24 @@ entries:
     category: api
     review_tag: API
     summary: "shortcut API가 정상 lifecycle·validation·invalidation 절차를 우회한다. 모든 API는 동일한 내부 transaction path를 통과해야 한다."
+  - id: REV-API-006
+    title: "Builder Result Depends on Call Order"
+    category: api
+    review_tag: API
+    summary: "한 builder가 다른 필드를 기준으로 값을 고치는데(clamp, snap, 덮어쓰기) 그 필드를 바꾸는 builder는 값을 다시 고치지 않는다. 같은 호출을 다른 순서로 하면 다른 위젯이 오류 없이 만들어진다."
+    problem:
+      - "item보다 먼저 준 선택, 범위보다 먼저 준 값은 그 시점의 빈 목록이나 기본 범위로 잘리고, 나중에 item이나 범위가 와도 돌아오지 않는다."
+      - "builder 하나씩 테스트하면 모두 통과한다. 순서를 바꾼 조합은 아무도 쓰지 않는다."
+    detect:
+      - "builder 본문이 `self.<다른 필드>`를 읽어 인자를 clamp·snap·필터하는데, 그 필드의 builder는 저장만 한다"
+      - "`Selection::set`처럼 호출 시점의 길이로 index를 자르는 helper를 빈 상태로 만든 위젯의 builder에서 부른다"
+      - "builder 쌍마다 두 순서로 만든 위젯의 getter나 화면을 비교하는 테스트"
+    fix:
+      - "builder는 받은 값을 그대로 저장하고, 필드가 만나는 곳(읽을 때, 길이·범위가 바뀔 때, 그릴 때)에서 맞춘다."
+      - "선택은 요청한 index를 따로 두고 길이가 바뀔 때 요청에서 다시 계산한다."
+      - "범위·step을 바꾸는 builder는 요청한 값에서 다시 clamp한다."
+    observed:
+      - "slider 감사(#930)에서 13개 위젯을 두 순서로 실행해 확인했다: Select, Tabs, Table, Tree, Stepper, MultiSelect, Slider, Rating, RangePicker(start가 end보다 뒤가 된다), DataGrid(열보다 먼저 준 셀이 버려진다), GridItem, HeatMap, PieChart (#1011, Select는 #1002)."
   - id: REV-UX-001
     title: "Color-Only Meaning"
     category: ux

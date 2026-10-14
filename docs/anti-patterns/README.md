@@ -46,7 +46,7 @@ unwrap을 쓰지 말 것
 
 | 파일 | 대상 | 내용 |
 |---|---|---|
-| [`catalog.yaml`](catalog.yaml) | LLM / 스크립트 | 160개 항목의 기계 판독용 원본. **single source of truth** |
+| [`catalog.yaml`](catalog.yaml) | LLM / 스크립트 | 161개 항목의 기계 판독용 원본. **single source of truth** |
 | `README.md` (이 파일) | 사람 | 카테고리·우선순위·invariant 요약과 전체 ID 색인 |
 | [`architecture-review.md`](architecture-review.md) | 사람 | "지금 아키텍처가 맞나?" 논의와 대안 스택 3안 |
 
@@ -69,7 +69,7 @@ unwrap을 쓰지 말 것
 
 ### LLM: 코드 리뷰 프롬프트
 
-`catalog.yaml`을 컨텍스트로 넣고 스코프를 좁혀서 물어본다. 전체 160개를 한 번에
+`catalog.yaml`을 컨텍스트로 넣고 스코프를 좁혀서 물어본다. 전체 161개를 한 번에
 적용하려 하면 정확도가 떨어지므로, 변경된 파일의 subsystem에 해당하는 카테고리만 필터링한다.
 
 ```bash
@@ -127,7 +127,7 @@ diff에서 실제로 해당하는 항목만 골라 id, 파일:줄, 근거를 제
 | `MEM` | Memory / resources | 메모리 및 Resource 안티패턴 | 5 | `REV-MEM-001` – `REV-MEM-005` |
 | `DEV` | DevTools | DevTools 안티패턴 | 4 | `REV-DEV-001` – `REV-DEV-004` |
 | `TEST` | Testing | 테스트 안티패턴 | 11 | `REV-TEST-001` – `REV-TEST-011` |
-| `API` | Public API / SemVer | API 및 SemVer 안티패턴 | 5 | `REV-API-001` – `REV-API-005` |
+| `API` | Public API / SemVer | API 및 SemVer 안티패턴 | 6 | `REV-API-001` – `REV-API-006` |
 | `UX` | Accessibility / UX | 접근성 및 UX 안티패턴 | 7 | `REV-UX-001` – `REV-UX-007` |
 | `SEC` | Security / robustness | 보안 및 안정성 안티패턴 | 5 | `REV-SEC-001` – `REV-SEC-005` |
 | `DOC` | Documentation | 문서화 안티패턴 | 3 | `REV-DOC-001` – `REV-DOC-003` |
@@ -395,6 +395,7 @@ ADR · performance budgets · migration guides · fuzz/property testing.
 - **`REV-API-003`** Breaking Change Hidden as Fix — 동작 의미 변경을 bug fix release로 배포한다.
 - **`REV-API-004`** Prelude Pollution — 모든 trait, widget, extension을 `prelude::*`에 넣는다.
 - **`REV-API-005`** Convenience API Bypasses Core Invariants — shortcut API가 정상 lifecycle·validation·invalidation 절차를 우회한다.
+- **`REV-API-006`** Builder Result Depends on Call Order — builder가 다른 필드를 기준으로 값을 고치는데 그 필드의 builder는 다시 고치지 않아, 호출 순서에 따라 다른 위젯이 된다. *(관찰: 13개 위젯, #1011)*
 
 ### 21. Accessibility / UX — 접근성 및 UX 안티패턴
 
