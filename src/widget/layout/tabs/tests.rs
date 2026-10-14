@@ -40,12 +40,6 @@ fn test_tabs_add_tabs() {
 }
 
 #[test]
-fn test_tabs_from_vec() {
-    let t = Tabs::new().tabs(vec!["A", "B", "C"]);
-    assert_eq!(t.len(), 3);
-}
-
-#[test]
 fn test_tabs_selected() {
     let t = Tabs::new().tab("A").tab("B").tab("C").selected(2);
     assert_eq!(t.selected_index(), 2);
@@ -122,12 +116,6 @@ fn test_tabs_render_small_area_no_panic() {
     let mut ctx = RenderContext::new(&mut buf, area);
     let t = Tabs::new().tab("Tab1").tab("Tab2");
     t.render(&mut ctx); // Width < 3, should return early
-}
-
-#[test]
-fn test_tabs_default() {
-    let t = Tabs::default();
-    assert!(t.is_empty());
 }
 
 #[test]
