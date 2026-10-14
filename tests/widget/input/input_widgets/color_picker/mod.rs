@@ -1,6 +1,7 @@
 //! Color picker widget tests
 
 mod types;
+mod view;
 
 use revue::event::Key;
 use revue::layout::Rect;
@@ -8,6 +9,38 @@ use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
 use revue::widget::{color_picker, ColorPalette, ColorPicker, ColorPickerMode, StyledView, View};
+
+/// Each row of `cp` drawn in a `w` x `h` area
+fn rows(cp: &ColorPicker, w: u16, h: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    cp.render(&mut ctx);
+    (0..h)
+        .map(|y| (0..w).map(|x| buffer.get(x, y).unwrap().symbol).collect())
+        .collect()
+}
+
+/// The mode, as the first row shows it
+fn shown_mode(cp: &ColorPicker) -> ColorPickerMode {
+    let first = rows(cp, 40, 12).remove(0);
+    if first.starts_with("Hex: #") {
+        ColorPickerMode::Hex
+    } else if first.starts_with("R ") {
+        ColorPickerMode::Rgb
+    } else if first.starts_with("H ") {
+        ColorPickerMode::Hsl
+    } else {
+        ColorPickerMode::Palette
+    }
+}
+
+pub const PALETTES: [ColorPalette; 5] = [
+    ColorPalette::Basic,
+    ColorPalette::Extended,
+    ColorPalette::WebSafe,
+    ColorPalette::Material,
+    ColorPalette::Pastel,
+];
 
 // =========================================================================
 // Constructor and builder tests
@@ -42,46 +75,43 @@ fn test_color_picker_color_builder() {
 
 #[test]
 fn test_color_picker_mode_builder() {
-    // Can only test mode by observing behavior, as field is private
-    let _cp = ColorPicker::new().mode(ColorPickerMode::Rgb);
-    // RGB mode should allow color changes via handle_key
-    // We'll verify through behavior tests
+    for mode in [
+        ColorPickerMode::Palette,
+        ColorPickerMode::Rgb,
+        ColorPickerMode::Hsl,
+        ColorPickerMode::Hex,
+    ] {
+        assert_eq!(shown_mode(&ColorPicker::new().mode(mode)), mode);
+    }
 }
 
 #[test]
 fn test_color_picker_palette_builder() {
-    // Palette affects available colors in palette mode
-    // We'll verify through rendering and behavior tests
-    let _cp = ColorPicker::new().palette(ColorPalette::Basic);
-    let _cp = ColorPicker::new().palette(ColorPalette::Extended);
-    let _cp = ColorPicker::new().palette(ColorPalette::WebSafe);
-    let _cp = ColorPicker::new().palette(ColorPalette::Material);
-    let _cp = ColorPicker::new().palette(ColorPalette::Pastel);
+    // Right from the first swatch selects the palette's second color
+    for palette in PALETTES {
+        let mut cp = ColorPicker::new().palette(palette);
+        cp.handle_key(&Key::Right);
+        assert_eq!(cp.get_color(), palette.colors()[1], "{palette:?}");
+    }
 }
 
 #[test]
 fn test_color_picker_preview_builder() {
-    // These affect rendering, test that they can be set
-    let cp = ColorPicker::new().preview(true);
-    let _cp = ColorPicker::new().preview(false);
-
-    let mut buffer = Buffer::new(40, 12);
-    let area = Rect::new(0, 0, 40, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
+    // The preview: a 6-wide block in the color on the last two rows
+    let cp = ColorPicker::new().color(Color::RED).preview(true);
+    let shown = rows(&cp, 40, 12);
+    assert!(shown[10].starts_with("██████ #FF0000"));
+    assert!(shown[11].starts_with("██████ "));
+    let hidden = rows(&ColorPicker::new().color(Color::RED).preview(false), 40, 12);
+    assert!(hidden[10].trim().is_empty() && hidden[11].trim().is_empty());
 }
 
 #[test]
 fn test_color_picker_hex_builder() {
-    let cp = ColorPicker::new().hex(true);
-    let _cp = ColorPicker::new().hex(false);
-
-    let mut buffer = Buffer::new(40, 12);
-    let area = Rect::new(0, 0, 40, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
+    // The hex value beside the preview
+    let cp = ColorPicker::new().color(Color::rgb(1, 2, 3));
+    assert!(rows(&cp.clone().hex(true), 40, 12)[10].starts_with("██████ #010203"));
+    assert_eq!(rows(&cp.hex(false), 40, 12)[10].trim_end(), "██████");
 }
 
 #[test]
@@ -101,18 +131,11 @@ fn test_color_picker_border_builder() {
 
 #[test]
 fn test_color_picker_size_builder() {
-    let _cp = ColorPicker::new().size(30, 8);
-    let _cp = ColorPicker::new().size(50, 15);
-
-    // Test minimum size enforcement
-    let cp = ColorPicker::new().size(5, 2);
-
-    let mut buffer = Buffer::new(20, 6);
-    let area = Rect::new(0, 0, 20, 6);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    // Should render with minimum size
-    cp.render(&mut ctx);
+    // Stored but not read: the area decides the size (#799)
+    let default = rows(&ColorPicker::new(), 20, 6);
+    for (w, h) in [(30, 8), (50, 15), (5, 2)] {
+        assert_eq!(rows(&ColorPicker::new().size(w, h), 20, 6), default);
+    }
 }
 
 #[test]
@@ -138,15 +161,6 @@ fn test_color_picker_chained_builders() {
 // =========================================================================
 // Color management tests
 // =========================================================================
-
-#[test]
-fn test_color_picker_get_color() {
-    let cp = ColorPicker::new().color(Color::RED);
-    assert_eq!(cp.get_color(), Color::RED);
-
-    let cp = ColorPicker::new().color(Color::rgb(128, 64, 192));
-    assert_eq!(cp.get_color(), Color::rgb(128, 64, 192));
-}
 
 #[test]
 fn test_color_picker_set_color() {
@@ -248,33 +262,30 @@ fn test_color_picker_set_hex_case_insensitive() {
 #[test]
 fn test_color_picker_next_mode() {
     let mut cp = ColorPicker::new();
-
-    // Since mode is private, we verify through behavior changes
-    // Each mode has different key handling behavior
-
-    // Default is Palette mode, navigate should change color
-    cp.handle_key(&Key::Right);
-    // In Palette mode, right arrow changes color
-    // (assuming Basic palette has more than 1 color)
-
-    // Cycle to next mode and verify behavior
-    cp.next_mode();
-    // Now in RGB mode, left/right should adjust RGB values
-    // This is verified through more specific tests below
+    for mode in [
+        ColorPickerMode::Rgb,
+        ColorPickerMode::Hsl,
+        ColorPickerMode::Hex,
+        ColorPickerMode::Palette,
+    ] {
+        cp.next_mode();
+        assert_eq!(shown_mode(&cp), mode);
+    }
 }
 
 #[test]
 fn test_color_picker_mode_cycle_complete() {
-    let mut cp = ColorPicker::new();
-
-    // Test full cycle multiple times
+    // Four steps come back; the color is kept through the cycle
+    let mut cp = ColorPicker::new()
+        .color(Color::rgb(10, 20, 30))
+        .mode(ColorPickerMode::Hsl);
     for _ in 0..3 {
-        cp.next_mode(); // Palette -> Rgb
-        cp.next_mode(); // Rgb -> Hsl
-        cp.next_mode(); // Hsl -> Hex
-        cp.next_mode(); // Hex -> Palette
+        for _ in 0..4 {
+            cp.next_mode();
+        }
+        assert_eq!(shown_mode(&cp), ColorPickerMode::Hsl);
     }
-    // Should complete without panicking
+    assert_eq!(cp.hex_string(), "#0A141E");
 }
 
 // =========================================================================
@@ -367,15 +378,17 @@ fn test_handle_key_palette_down() {
 
 #[test]
 fn test_handle_key_palette_vim_keys() {
+    // h, j, k, l move like the arrows
+    let colors = ColorPalette::Basic.colors();
     let mut cp = ColorPicker::new();
-    let initial_color = cp.get_color();
-
-    // Test vim-style navigation - verify widget doesn't panic
-    let handled = cp.handle_key(&Key::Char('l'));
-    // Just verify the key handling doesn't crash the widget
-    // Actual vim-style navigation behavior may vary by implementation
-    let _ = handled;
-    let _ = initial_color;
+    assert!(cp.handle_key(&Key::Char('l')));
+    assert_eq!(cp.get_color(), colors[1]);
+    assert!(cp.handle_key(&Key::Char('j')));
+    assert_eq!(cp.get_color(), colors[9]);
+    assert!(cp.handle_key(&Key::Char('h')));
+    assert_eq!(cp.get_color(), colors[8]);
+    assert!(cp.handle_key(&Key::Char('k')));
+    assert_eq!(cp.get_color(), colors[0]);
 }
 
 #[test]
@@ -426,19 +439,27 @@ fn test_handle_key_rgb_left_right_changes_color() {
 
 #[test]
 fn test_handle_key_rgb_up_down_changes_slider() {
-    let mut cp = ColorPicker::new();
-    cp.next_mode(); // Switch to RGB mode
-
-    // Up/down should change which component is modified
+    // Down picks the next channel; Right steps it by 5
+    let mut cp = ColorPicker::new()
+        .color(Color::BLACK)
+        .mode(ColorPickerMode::Rgb);
+    cp.handle_key(&Key::Right);
+    assert_eq!(cp.hex_string(), "#050000");
     cp.handle_key(&Key::Down);
     cp.handle_key(&Key::Right);
-
+    assert_eq!(cp.hex_string(), "#050500");
     cp.handle_key(&Key::Down);
     cp.handle_key(&Key::Right);
-    let _after_right_2 = cp.get_color();
-
-    // Colors should differ as we're modifying different components
-    // (though exact values depend on internal state)
+    assert_eq!(cp.hex_string(), "#050505");
+    // Past the last channel Down stays; Up goes back to the first
+    cp.handle_key(&Key::Down);
+    cp.handle_key(&Key::Right);
+    assert_eq!(cp.hex_string(), "#05050A");
+    for _ in 0..5 {
+        cp.handle_key(&Key::Up);
+    }
+    cp.handle_key(&Key::Right);
+    assert_eq!(cp.hex_string(), "#0A050A");
 }
 
 #[test]
@@ -510,23 +531,29 @@ fn test_handle_key_hsl_left_right_changes_color() {
 
 #[test]
 fn test_handle_key_hsl_boundaries() {
-    let mut cp = ColorPicker::new().color(Color::WHITE);
-    cp.next_mode();
-    cp.next_mode(); // Switch to HSL mode
-
-    // Try to increase beyond max
-    for _ in 0..30 {
+    let mut cp = ColorPicker::new()
+        .color(Color::WHITE)
+        .mode(ColorPickerMode::Hsl);
+    // H: up to 360 and down to 0, shown as three digits
+    for _ in 0..100 {
         cp.handle_key(&Key::Right);
     }
-    // Should stay within valid color range
-    let _color = cp.get_color();
-
-    // Decrease multiple times
+    assert!(rows(&cp, 40, 12)[0].ends_with("360"));
     for _ in 0..100 {
         cp.handle_key(&Key::Left);
     }
-    // Should saturate at 0
-    let _color = cp.get_color();
+    assert!(rows(&cp, 40, 12)[0].ends_with("  0"));
+    // L: down to 0 is black, up to 100 is white
+    cp.handle_key(&Key::Down);
+    cp.handle_key(&Key::Down);
+    for _ in 0..30 {
+        cp.handle_key(&Key::Left);
+    }
+    assert_eq!(cp.get_color(), Color::rgb(0, 0, 0));
+    for _ in 0..30 {
+        cp.handle_key(&Key::Right);
+    }
+    assert_eq!(cp.get_color(), Color::rgb(255, 255, 255));
 }
 
 #[test]
@@ -709,43 +736,52 @@ fn test_handle_key_hex_tab() {
 
 #[test]
 fn test_color_picker_render_palette_mode() {
-    let cp = ColorPicker::new();
-    let mut buffer = Buffer::new(40, 12);
-    let area = Rect::new(0, 0, 40, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
-    // Smoke test - should not panic
+    let shown = rows(&ColorPicker::new(), 40, 12);
+    // Basic: 8 swatches of 2 columns per row, the first selected (solid)
+    assert_eq!(shown[0], format!("██{}{}", "▀▄".repeat(7), " ".repeat(24)));
+    assert_eq!(shown[1], format!("{}{}", "▀▄".repeat(8), " ".repeat(24)));
+    assert!(shown[2].trim().is_empty());
 }
 
 #[test]
 fn test_color_picker_render_rgb_mode() {
-    let cp = ColorPicker::new().mode(ColorPickerMode::Rgb);
-    let mut buffer = Buffer::new(40, 12);
-    let area = Rect::new(0, 0, 40, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
+    let cp = ColorPicker::new()
+        .mode(ColorPickerMode::Rgb)
+        .color(Color::rgb(255, 0, 51));
+    let shown = rows(&cp, 40, 12);
+    // A 34-cell track per channel, filled by the value, then the value
+    assert_eq!(shown[0], format!("R {} 255", "█".repeat(34)));
+    assert_eq!(shown[1], format!("G {}   0", "░".repeat(34)));
+    assert_eq!(
+        shown[2],
+        format!("B {}{}  51", "█".repeat(6), "░".repeat(28))
+    );
 }
 
 #[test]
 fn test_color_picker_render_hsl_mode() {
-    let cp = ColorPicker::new().mode(ColorPickerMode::Hsl);
-    let mut buffer = Buffer::new(40, 12);
-    let area = Rect::new(0, 0, 40, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
+    let cp = ColorPicker::new()
+        .mode(ColorPickerMode::Hsl)
+        .color(Color::rgb(255, 0, 0));
+    let shown = rows(&cp, 40, 12);
+    assert!(shown[0].starts_with("H ░") && shown[0].ends_with("  0"));
+    assert_eq!(shown[1], format!("S {} 100", "█".repeat(34)));
+    assert_eq!(
+        shown[2],
+        format!("L {}{}  50", "█".repeat(17), "░".repeat(17))
+    );
 }
 
 #[test]
 fn test_color_picker_render_hex_mode() {
-    let cp = ColorPicker::new().mode(ColorPickerMode::Hex);
-    let mut buffer = Buffer::new(40, 12);
-    let area = Rect::new(0, 0, 40, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
+    let mut cp = ColorPicker::new().mode(ColorPickerMode::Hex);
+    assert!(rows(&cp, 40, 12)[0].starts_with("Hex: #______"));
+    for c in "1A".chars() {
+        cp.handle_key(&Key::Char(c));
+    }
+    let shown = rows(&cp, 40, 12);
+    assert!(shown[0].starts_with("Hex: #1A____"));
+    assert!(shown[2].starts_with("Current: #FFFFFF"));
 }
 
 #[test]
@@ -766,42 +802,40 @@ fn test_color_picker_render_with_border() {
 
 #[test]
 fn test_color_picker_render_with_custom_size() {
+    // The 30x10 area, not the size, places the preview: rows 8 and 9
     let cp = ColorPicker::new().size(30, 10);
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
+    let shown = rows(&cp, 30, 10);
+    assert!(shown[8].starts_with("██████ #FFFFFF"));
+    assert!(shown[9].starts_with("██████"));
 }
 
 #[test]
 fn test_color_picker_render_too_small_width() {
-    let cp = ColorPicker::new();
-    let mut buffer = Buffer::new(5, 10);
-    let area = Rect::new(0, 0, 5, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
+    // Under 10 columns, nothing is drawn
+    assert!(rows(&ColorPicker::new(), 9, 10)
+        .iter()
+        .all(|r| r.trim().is_empty()));
+    assert!(!rows(&ColorPicker::new(), 10, 10)[0].trim().is_empty());
 }
 
 #[test]
 fn test_color_picker_render_too_small_height() {
-    let cp = ColorPicker::new();
-    let mut buffer = Buffer::new(40, 2);
-    let area = Rect::new(0, 0, 40, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
+    // Under 4 rows, nothing is drawn
+    assert!(rows(&ColorPicker::new(), 40, 3)
+        .iter()
+        .all(|r| r.trim().is_empty()));
+    assert!(!rows(&ColorPicker::new(), 40, 4)[0].trim().is_empty());
 }
 
 #[test]
 fn test_color_picker_render_zero_area() {
     let cp = ColorPicker::new();
-    let mut buffer = Buffer::new(0, 0);
+    let mut buffer = Buffer::new(5, 5);
     let area = Rect::new(0, 0, 0, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     cp.render(&mut ctx);
+    assert!((0..5).all(|y| (0..5).all(|x| buffer.get(x, y).unwrap().symbol == ' ')));
 }
 
 #[test]
@@ -812,16 +846,25 @@ fn test_color_picker_render_with_preview_enabled() {
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     cp.render(&mut ctx);
+    // The block is drawn in the color itself
+    for (x, y) in [(0, 10), (5, 11)] {
+        assert_eq!(buffer.get(x, y).unwrap().fg, Some(Color::RED));
+    }
+    assert_eq!(buffer.get(6, 10).unwrap().symbol, ' ');
 }
 
 #[test]
 fn test_color_picker_render_with_preview_disabled() {
-    let cp = ColorPicker::new().preview(false);
-    let mut buffer = Buffer::new(40, 12);
-    let area = Rect::new(0, 0, 40, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
+    // Without the preview the palette may use the last rows (Extended's 16 x 16 grid)
+    let shown = rows(
+        &ColorPicker::new()
+            .palette(ColorPalette::Extended)
+            .preview(false),
+        32,
+        12,
+    );
+    assert!(shown.iter().all(|r| !r.contains('#')));
+    assert!(shown[9].contains('▀'));
 }
 
 #[test]
@@ -832,35 +875,36 @@ fn test_color_picker_render_with_hex_enabled() {
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     cp.render(&mut ctx);
+    let hex: String = (7..14).map(|x| buffer.get(x, 10).unwrap().symbol).collect();
+    assert_eq!(hex, "#FF0000");
+    assert_eq!(buffer.get(7, 10).unwrap().fg, Some(Color::WHITE));
 }
 
 #[test]
 fn test_color_picker_render_with_hex_disabled() {
-    let cp = ColorPicker::new().hex(false);
-    let mut buffer = Buffer::new(40, 12);
-    let area = Rect::new(0, 0, 40, 12);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    cp.render(&mut ctx);
+    // Only the hex text goes; the block stays
+    let shown = rows(&ColorPicker::new().hex(false), 40, 12);
+    assert_eq!(shown[10].trim_end(), "██████");
+    assert!(!shown.iter().any(|r| r.contains('#')));
 }
 
 #[test]
 fn test_color_picker_render_all_palettes() {
-    let palettes = [
-        ColorPalette::Basic,
-        ColorPalette::Extended,
-        ColorPalette::WebSafe,
-        ColorPalette::Material,
-        ColorPalette::Pastel,
-    ];
-
-    for palette in palettes {
-        let cp = ColorPicker::new().palette(palette);
-        let mut buffer = Buffer::new(40, 12);
-        let area = Rect::new(0, 0, 40, 12);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        cp.render(&mut ctx);
+    // Each palette draws its own first row of swatches
+    let firsts: Vec<Vec<Option<Color>>> = PALETTES
+        .iter()
+        .map(|&palette| {
+            let cp = ColorPicker::new().palette(palette);
+            let mut buffer = Buffer::new(40, 12);
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 40, 12));
+            cp.render(&mut ctx);
+            (0..40).map(|x| buffer.get(x, 0).unwrap().fg).collect()
+        })
+        .collect();
+    for (i, a) in firsts.iter().enumerate() {
+        for b in &firsts[i + 1..] {
+            assert_ne!(a, b);
+        }
     }
 }
 
@@ -942,30 +986,28 @@ fn test_color_picker_combined_with_classes() {
 
 #[test]
 fn test_color_picker_multiple_mode_cycles() {
+    // Ten steps from Palette: two cycles and two more, to Hsl
     let mut cp = ColorPicker::new();
-
-    // Cycle through modes multiple times
     for _ in 0..10 {
         cp.next_mode();
     }
-    // Should complete without panicking
+    assert_eq!(shown_mode(&cp), ColorPickerMode::Hsl);
 }
 
 #[test]
 fn test_color_picker_palette_boundary_navigation() {
+    let colors = ColorPalette::Basic.colors();
     let mut cp = ColorPicker::new();
-
-    // Navigate to end
+    // Right stops at the last color, still taking the key
     for _ in 0..30 {
-        cp.handle_key(&Key::Right);
+        assert!(cp.handle_key(&Key::Right));
     }
-    // Should not panic
-
-    // Navigate to start
+    assert_eq!(cp.get_color(), colors[colors.len() - 1]);
+    // Left stops at the first
     for _ in 0..30 {
         cp.handle_key(&Key::Left);
     }
-    // Should return to first color
+    assert_eq!(cp.get_color(), colors[0]);
 }
 
 #[test]
@@ -991,40 +1033,33 @@ fn test_color_picker_rgb_saturating_arithmetic() {
 
 #[test]
 fn test_color_picker_all_modes_render() {
-    let modes = [
-        ColorPickerMode::Palette,
-        ColorPickerMode::Rgb,
-        ColorPickerMode::Hsl,
-        ColorPickerMode::Hex,
-    ];
-
-    for mode in modes {
-        let cp = ColorPicker::new().mode(mode);
-        let mut buffer = Buffer::new(40, 12);
-        let area = Rect::new(0, 0, 40, 12);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        cp.render(&mut ctx);
+    // Each mode's content on row 0, and the preview on rows 10 and 11
+    for (mode, first) in [
+        (ColorPickerMode::Palette, "██▀▄"),
+        (ColorPickerMode::Rgb, "R ███"),
+        (ColorPickerMode::Hsl, "H ░░░"),
+        (ColorPickerMode::Hex, "Hex: #______"),
+    ] {
+        let shown = rows(&ColorPicker::new().mode(mode), 40, 12);
+        assert!(shown[0].starts_with(first), "{mode:?}: {:?}", shown[0]);
+        assert!(shown[10].starts_with("██████ #FFFFFF"), "{mode:?}");
     }
 }
 
 #[test]
 fn test_color_picker_all_palettes_render() {
-    let palettes = [
-        ColorPalette::Basic,
-        ColorPalette::Extended,
-        ColorPalette::WebSafe,
-        ColorPalette::Material,
-        ColorPalette::Pastel,
-    ];
-
-    for palette in palettes {
+    // The first swatch, selected, is drawn solid in the palette's first color
+    for palette in PALETTES {
         let cp = ColorPicker::new().palette(palette);
         let mut buffer = Buffer::new(40, 12);
-        let area = Rect::new(0, 0, 40, 12);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 40, 12));
         cp.render(&mut ctx);
+        let cell = buffer.get(0, 0).unwrap();
+        assert_eq!(
+            (cell.symbol, cell.fg),
+            ('█', Some(palette.colors()[0])),
+            "{palette:?}"
+        );
     }
 }
 
@@ -1084,30 +1119,26 @@ fn test_color_picker_render_with_all_options() {
 
 #[test]
 fn test_color_picker_navigation_with_different_palettes() {
-    let palettes = [
+    // Down moves by the palette's columns, Up comes back
+    for palette in [
         ColorPalette::Basic,
         ColorPalette::Material,
         ColorPalette::Pastel,
-    ];
-
-    for palette in palettes {
+    ] {
+        let colors = palette.colors();
+        let (cols, _) = palette.grid_size();
         let mut cp = ColorPicker::new().palette(palette);
-
-        // Navigate through palette
         for _ in 0..5 {
             cp.handle_key(&Key::Right);
         }
-
-        // Navigate back
         for _ in 0..3 {
             cp.handle_key(&Key::Left);
         }
-
-        // Vertical navigation
+        assert_eq!(cp.get_color(), colors[2], "{palette:?}");
         cp.handle_key(&Key::Down);
+        assert_eq!(cp.get_color(), colors[2 + cols], "{palette:?}");
         cp.handle_key(&Key::Up);
-
-        // Should handle all navigation without panicking
+        assert_eq!(cp.get_color(), colors[2], "{palette:?}");
     }
 }
 
@@ -1159,6 +1190,7 @@ fn test_color_picker_hex_roundtrip() {
 
 #[test]
 fn test_color_picker_all_modes_with_key_input() {
+    // The arrows and Tab are taken in every mode; Tab moves to the next
     let modes = [
         ColorPickerMode::Palette,
         ColorPickerMode::Rgb,
@@ -1168,12 +1200,18 @@ fn test_color_picker_all_modes_with_key_input() {
 
     let keys = vec![Key::Up, Key::Down, Key::Left, Key::Right, Key::Tab];
 
-    for mode in modes {
-        let mut cp = ColorPicker::new().mode(mode);
+    for (i, mode) in modes.iter().enumerate() {
+        let mut cp = ColorPicker::new().mode(*mode);
 
         for key in &keys {
-            let _ = cp.handle_key(key);
+            let used = cp.handle_key(key);
+            // Hex mode takes only hex digits, Backspace, Enter and Tab
+            assert_eq!(
+                used,
+                *mode != ColorPickerMode::Hex || *key == Key::Tab,
+                "{mode:?} {key:?}"
+            );
         }
-        // Should handle all keys without panicking
+        assert_eq!(shown_mode(&cp), modes[(i + 1) % 4]);
     }
 }

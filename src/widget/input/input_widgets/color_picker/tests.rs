@@ -13,18 +13,6 @@ use crate::widget::traits::View;
 // Constructor tests
 // =========================================================================
 
-#[test]
-fn test_color_picker_new() {
-    let cp = ColorPicker::new();
-    assert_eq!(cp.get_color(), Color::WHITE);
-}
-
-#[test]
-fn test_color_picker_default() {
-    let cp = ColorPicker::default();
-    assert_eq!(cp.get_color(), Color::WHITE);
-}
-
 // =========================================================================
 // Builder method tests
 // =========================================================================
@@ -126,12 +114,6 @@ fn test_color_picker_size_minimum() {
 fn test_color_picker_get_color() {
     let cp = ColorPicker::new().color(Color::GREEN);
     assert_eq!(cp.get_color(), Color::GREEN);
-}
-
-#[test]
-fn test_color_picker_get_color_default() {
-    let cp = ColorPicker::new();
-    assert_eq!(cp.get_color(), Color::WHITE);
 }
 
 #[test]
@@ -548,9 +530,18 @@ fn test_render() {
     let area = Rect::new(0, 0, 40, 12);
     let mut ctx = crate::widget::traits::RenderContext::new(&mut buffer, area);
 
-    let cp = ColorPicker::new();
+    // The active slider's label is bold and in its channel color
+    let mut cp = ColorPicker::new().mode(ColorPickerMode::Rgb);
+    cp.active_slider = 1;
     View::render(&cp, &mut ctx);
-    // Smoke test - should not panic
+    let label = buffer.get(0, 1).unwrap();
+    assert_eq!((label.symbol, label.fg), ('G', Some(Color::GREEN)));
+    assert!(label.modifier.contains(crate::render::Modifier::BOLD));
+    assert!(!buffer
+        .get(0, 0)
+        .unwrap()
+        .modifier
+        .contains(crate::render::Modifier::BOLD));
 }
 
 #[test]
