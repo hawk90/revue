@@ -110,6 +110,49 @@ fn test_collapsible_default_colors() {
         .contains(revue::render::Modifier::BOLD));
 }
 
+#[test]
+fn test_collapsible_focused_header_is_bold() {
+    // The widget's own focus and the DOM's both make the whole header bold
+    let bold = |b: &Buffer, x: u16| {
+        b.get(x, 0)
+            .unwrap()
+            .modifier
+            .contains(revue::render::Modifier::BOLD)
+    };
+    let c = Collapsible::new("Title");
+    let buffer = draw(&c.clone().focused(true), 10, 1);
+    assert!(bold(&buffer, 0) && bold(&buffer, 2) && bold(&buffer, 6));
+
+    let style = revue::style::Style::default();
+    let state = revue::dom::NodeState {
+        focused: true,
+        ..Default::default()
+    };
+    let mut buffer = Buffer::new(10, 1);
+    let mut ctx = RenderContext::full(&mut buffer, Rect::new(0, 0, 10, 1), &style, &state);
+    c.render(&mut ctx);
+    assert!(bold(&buffer, 0) && bold(&buffer, 2) && bold(&buffer, 6));
+
+    let buffer = draw(&c, 10, 1);
+    assert!(!bold(&buffer, 0) && !bold(&buffer, 2));
+}
+
+#[test]
+fn test_collapsible_content_background_fills_the_row() {
+    let c = Collapsible::new("T")
+        .content("x")
+        .content_colors(Color::YELLOW, Some(Color::BLUE))
+        .expanded(true);
+    let buffer = draw(&c, 10, 3);
+    // Column 0 is the border cell, which drops the background (a bug
+    // reported from the #930 audit, not checked here)
+    for x in 1..10 {
+        assert_eq!(buffer.get(x, 1).unwrap().bg, Some(Color::BLUE), "x={x}");
+    }
+    // The header row does not take it
+    assert_eq!(buffer.get(5, 0).unwrap().bg, None);
+}
+
 fn key() -> impl Strategy<Value = Key> {
     prop_oneof![
         Just(Key::Enter),
