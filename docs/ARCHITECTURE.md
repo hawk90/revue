@@ -102,6 +102,7 @@ src/widget/
 │   ├── text.rs            #   Text display
 │   ├── richtext/          #   Styled text
 │   ├── bigtext.rs         #   Large ASCII text
+│   ├── digits/            #   Large digit display
 │   ├── badge.rs           #   Badge
 │   ├── tag.rs             #   Tag/chip
 │   ├── avatar/            #   Avatar
@@ -152,7 +153,6 @@ src/widget/
     ├── link.rs            # Clickable links
     ├── pagination.rs      # Pagination
     ├── slides.rs          # Slide widget
-    ├── digits.rs          # Digital display
     ├── theme_picker.rs    # Theme selector
     ├── zen.rs             # Zen mode
     └── debug_overlay/     # Debug overlay
