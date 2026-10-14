@@ -211,7 +211,7 @@ fn overlay_opens_above_the_header_without_room_below() {
     let (b, areas) = render_overlay(&v, 30, 6, Rect::new(0, 3, 20, 1));
     assert_eq!(areas, [Rect::new(0, 0, 10, 3)]);
     assert_eq!(b.get(9, 3).unwrap().symbol, '▲');
-    // (Without room above either it covers the header: draft-ms-3.)
+    // (Without room above either it covers the header: #1095.)
 }
 
 #[test]
@@ -389,7 +389,7 @@ fn stylesheet_colors_reach_the_header_and_the_rows() {
 
 #[test]
 fn a_width_below_three_is_raised_to_three() {
-    // Open, so that no placeholder covers the arrow (draft-ms-1)
+    // Open, so that no placeholder covers the arrow (#1093)
     for w in [0, 1, 2, 3] {
         let mut v = fruits().width(w);
         v.open();
@@ -489,7 +489,7 @@ fn labels_are_cut_at_the_widget_width() {
 
 #[test]
 fn wide_labels_advance_two_columns() {
-    // Only the positions; the continuation cells are #974 (draft-ms-c974)
+    // Only the positions; the continuation cells are #974
     let mut v = multi_select().options(vec!["한글", "ab"]).width(20);
     v.select_option(0);
     let b = render_in(&v, 20, 1);
