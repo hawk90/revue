@@ -54,6 +54,20 @@ fn test_empty_state_stylesheet_color_is_the_accent() {
 }
 
 #[test]
+fn test_empty_state_custom_icon_shows_a_hidden_icon() {
+    // `custom_icon` turns the icon back on after `icon(false)`
+    for variant in VARIANTS {
+        let es = EmptyState::new("T")
+            .variant(variant)
+            .icon(false)
+            .custom_icon('*');
+        let buffer = draw(&es, 20, 3, None);
+        let found = (0..3).any(|y| (0..20).any(|x| buffer.get(x, y).unwrap().symbol == '*'));
+        assert!(found, "{variant:?}");
+    }
+}
+
+#[test]
 fn test_empty_state_measure_is_its_height_across_the_offer() {
     let es = EmptyState::new("T").description("d").action("a");
     assert_eq!(es.measure(30, 100), Some((30, 6)));

@@ -58,6 +58,33 @@ fn test_text_hidden_draws_nothing_in_any_alignment() {
 }
 
 #[test]
+fn test_text_takes_the_stylesheet_colors_under_the_builders() {
+    let mut css = Css::default();
+    css.visual.color = Color::MAGENTA;
+    css.visual.background = Color::rgb(1, 2, 3);
+    for align in [Alignment::Left, Alignment::Center, Alignment::Right] {
+        let plain = draw(&Text::new("ab").align(align), 6, Some(&css));
+        let x = (0..6)
+            .find(|&x| plain.get(x, 0).unwrap().symbol == 'a')
+            .unwrap();
+        let cell = plain.get(x, 0).unwrap();
+        assert_eq!(
+            (cell.fg, cell.bg),
+            (Some(Color::MAGENTA), Some(Color::rgb(1, 2, 3))),
+            "{align:?}"
+        );
+
+        let builder = Text::new("ab").fg(Color::RED).bg(Color::BLUE).align(align);
+        let cell = *draw(&builder, 6, Some(&css)).get(x, 0).unwrap();
+        assert_eq!(
+            (cell.fg, cell.bg),
+            (Some(Color::RED), Some(Color::BLUE)),
+            "{align:?}"
+        );
+    }
+}
+
+#[test]
 fn test_text_justify_paints_the_words_with_the_builder_style() {
     let text = Text::new("ab cd ef")
         .fg(Color::RED)
