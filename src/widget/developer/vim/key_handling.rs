@@ -167,7 +167,7 @@ impl VimState {
     }
 }
 
-// KEEP HERE - Private field access tests (tests note operator field is private)
+// KEEP HERE - Private field access tests (the pending operator and count are private)
 
 #[cfg(test)]
 mod tests {
@@ -180,8 +180,17 @@ mod tests {
     #[test]
     fn test_set_mode_from_insert_clears_operator() {
         let mut vim = VimState::new();
+        vim.handle_key(&KeyEvent::new(Key::Char('3')));
+        vim.handle_key(&KeyEvent::new(Key::Char('d')));
+        assert_eq!((vim.operator, vim.count), (Some('d'), Some(3)));
+        // Insert mode keeps them; going back to Normal drops both
+        vim.set_mode(VimMode::Insert);
+        assert_eq!((vim.operator, vim.count), (Some('d'), Some(3)));
+        vim.set_mode(VimMode::Normal);
+        assert_eq!((vim.operator, vim.count), (None, None));
+        // `d` typed in insert mode is text, not an operator
         vim.set_mode(VimMode::Insert);
         vim.handle_key(&KeyEvent::new(Key::Char('d')));
-        // Can't test operator directly as it's private
+        assert_eq!(vim.operator, None);
     }
 }
