@@ -153,3 +153,21 @@ fn test_filepicker_input_ignored_outside_save_mode() {
     // Open mode never builds a path from typed input.
     assert!(matches!(picker.confirm(), PickerResult::None));
 }
+
+#[test]
+fn test_filepicker_typing_outside_save_mode_is_not_kept() {
+    let dir = fixture();
+    let mut picker = file_picker().start_dir(dir.path());
+    picker.input_char('x');
+    // Switched to save mode afterwards: nothing was typed.
+    let picker = picker.mode(revue::widget::PickerMode::Save);
+    assert!(matches!(picker.confirm(), PickerResult::None));
+
+    let mut picker = file_picker().start_dir(dir.path()).default_name("ab");
+    picker.input_backspace();
+    let picker = picker.mode(revue::widget::PickerMode::Save);
+    match picker.confirm() {
+        PickerResult::Selected(path) => assert_eq!(path, dir.path().join("ab")),
+        other => panic!("expected Selected, got {other:?}"),
+    }
+}

@@ -310,3 +310,16 @@ fn test_filepicker_multi_select_footer_and_marks() {
     assert_eq!(row(&buffer, 5), entry("✓ ", false, "A.rs", "12 B"));
     assert_eq!(row(&buffer, 8), "Selected: 2 files");
 }
+
+#[test]
+fn test_filepicker_shows_fifteen_entries_by_default() {
+    let dir = tempfile::tempdir().unwrap();
+    for i in 0..20 {
+        fs::write(dir.path().join(format!("f{i:02}.txt")), "").unwrap();
+    }
+    let picker = file_picker().start_dir(dir.path());
+    let buffer = draw(&picker, 60, 24);
+    assert_eq!(row(&buffer, 3), entry("  ", false, "f00.txt", "0 B"));
+    assert_eq!(row(&buffer, 17), entry("  ", false, "f14.txt", "0 B"));
+    assert_eq!(row(&buffer, 18), "  ↓ more...");
+}
