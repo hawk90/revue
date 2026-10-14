@@ -1,4 +1,4 @@
-use super::core::NumberInput;
+use super::NumberInput;
 
 // =============================================================================
 // Helper functions
