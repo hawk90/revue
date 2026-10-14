@@ -7,15 +7,15 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Clone)]
 pub struct PerfMetrics {
     /// Frame times (last N frames)
-    pub(super) frame_times: VecDeque<Duration>,
+    frame_times: VecDeque<Duration>,
     /// Last frame start time
-    pub(super) last_frame_start: Option<Instant>,
+    last_frame_start: Option<Instant>,
     /// Layout times
-    pub(super) layout_times: VecDeque<Duration>,
+    layout_times: VecDeque<Duration>,
     /// Render times
-    pub(super) render_times: VecDeque<Duration>,
+    render_times: VecDeque<Duration>,
     /// Maximum samples to keep
-    pub(super) max_samples: usize,
+    max_samples: usize,
 }
 
 impl Default for PerfMetrics {
