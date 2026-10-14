@@ -325,9 +325,9 @@ proptest! {
     ) {
         let open = pick.index(titles.len());
         let x0 = titles[..open].iter().map(|t| display_width(t) as u16 + 2).sum::<u16>();
-        // A dropdown cut to one column with an item row panics (menu-audit
-        // issue about the MenuBar dropdown)
-        prop_assume!(!(w == x0 + 1 && h >= 3));
+        // The first menu's dropdown in a one-column area panics when it has
+        // an item row (menu-audit issue about the MenuBar dropdown)
+        prop_assume!(!(x0 == 0 && w == 1 && h >= 3));
         let width_of = |labels: &[(&str, Option<&str>)]| {
             labels
                 .iter()

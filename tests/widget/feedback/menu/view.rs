@@ -322,3 +322,27 @@ fn test_menu_bar_separators_skipped_both_ways() {
     bar.prev_item();
     assert_eq!(selected_row(&bar), Some(2));
 }
+
+#[test]
+fn test_menu_bar_execute_after_close_does_nothing() {
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let l = log.clone();
+    let mut bar = MenuBar::new()
+        .menu(Menu::new("A").item(MenuItem::new("a").on_select(move || l.borrow_mut().push("a"))));
+    bar.open_menu(0);
+    bar.close();
+    // Closing drops the selected item, so nothing is left to run
+    assert!(!bar.execute_selected());
+    assert!(log.borrow().is_empty());
+}
+
+#[test]
+fn test_menu_bar_separator_only_menu_takes_the_fallback_width() {
+    // Separators have no width of their own; with nothing else the
+    // dropdown falls back to 10 columns
+    let mut bar = MenuBar::new().menu(Menu::new("A").separator());
+    bar.open_menu(0);
+    let b = render(&bar, 14, 4);
+    assert_eq!(row(&b, 1), format!("┌{}┐    ", "─".repeat(8)));
+    assert_eq!(row(&b, 2), format!("├{}┤    ", "─".repeat(8)));
+}
