@@ -1,29 +1,13 @@
 //! HTTP request types
 
-use std::collections::HashMap;
-
 use super::types::HttpMethod;
+use super::HttpRequest;
 
 /// Maximum URL length to prevent DoS
 const MAX_URL_LENGTH: usize = 8192;
 
 /// Allowed URL schemes for security
 const ALLOWED_SCHEMES: &[&str] = &["http://", "https://"];
-
-/// HTTP request builder
-#[derive(Clone, Debug, Default)]
-pub struct HttpRequest {
-    /// HTTP method
-    pub method: HttpMethod,
-    /// Request URL (private: use url() getter for access)
-    pub(crate) url: String,
-    /// Request headers
-    pub headers: HashMap<String, String>,
-    /// Request body
-    pub body: String,
-    /// Query parameters
-    pub params: HashMap<String, String>,
-}
 
 impl HttpRequest {
     /// Create a new request with URL validation

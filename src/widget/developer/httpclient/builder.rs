@@ -2,8 +2,8 @@
 
 use std::io::Write;
 
-use super::request::HttpRequest;
 use super::types::HttpMethod;
+use super::HttpRequest;
 
 /// A fluent request builder for constructing HTTP requests
 ///

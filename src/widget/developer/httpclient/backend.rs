@@ -2,8 +2,8 @@
 
 use std::time::Duration;
 
-use super::request::HttpRequest;
 use super::response::HttpResponse;
+use super::HttpRequest;
 
 /// Trait for HTTP backend implementations
 ///

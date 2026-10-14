@@ -5,7 +5,7 @@
 //! covered by the in-source tests in src/widget/developer/httpclient/
 //! request.rs.
 
-use revue::widget::{HttpMethod, HttpRequest};
+use revue::widget::{HttpClient, HttpMethod, HttpRequest};
 
 fn request(url: &str) -> HttpRequest {
     HttpRequest::new(url).expect("valid URL")
@@ -138,4 +138,23 @@ fn test_http_request_builder_chain() {
     );
     assert_eq!(request.body, "{\"test\":true}");
     assert_eq!(request.full_url(), "https://example.com/api?debug=true");
+}
+
+#[test]
+fn test_http_request_url_length_limit_is_inclusive() {
+    // 8192 characters is the longest URL accepted; one more is refused, by
+    // HttpRequest::new and by the client's URL setters alike.
+    let longest = format!("https://{}", "a".repeat(8192 - 8));
+    let too_long = format!("{longest}a");
+    assert_eq!(longest.len(), 8192);
+    assert_eq!(HttpRequest::new(longest.as_str()).unwrap().url(), longest);
+    assert!(HttpRequest::new(too_long.as_str()).is_none());
+
+    let mut client = HttpClient::new();
+    client.set_url(longest.as_str());
+    assert_eq!(client.request().url(), longest);
+    assert!(client.error().is_none());
+    client.set_url(too_long.as_str());
+    assert_eq!(client.request().url(), longest);
+    assert!(client.error().unwrap().contains("8192"));
 }
