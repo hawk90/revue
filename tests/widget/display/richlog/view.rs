@@ -103,6 +103,19 @@ fn test_richlog_clear_drops_the_selection() {
 }
 
 #[test]
+fn test_richlog_trimming_keeps_the_view_on_the_same_entries() {
+    let mut log = bare().auto_scroll(false).max_entries(5);
+    for i in 0..5 {
+        log.info(format!("m{i}"));
+    }
+    log.scroll_down(2);
+    assert_eq!(text(&log, 10, 2), ["m2", "m3"]);
+    // m0 is dropped; the scroll moves back by one so m2 stays on top
+    log.info("m5");
+    assert_eq!(text(&log, 10, 2), ["m2", "m3"]);
+}
+
+#[test]
 fn test_richlog_level_styles() {
     let mut log = RichLog::new().timestamps(false).sources(false).labels(true);
     for level in [
