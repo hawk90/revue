@@ -373,7 +373,7 @@ proptest! {
 
     /// At the origin the overlay layer draws the same cells as the inline
     /// fallback. (Not in an offset area: there the overlay ignores the
-    /// area's position, a bug reported with this audit.)
+    /// area's position, #1053.)
     #[test]
     fn prop_overlay_at_the_origin_matches_inline(c in case()) {
         let inline = c.render();

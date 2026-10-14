@@ -96,7 +96,7 @@ fn overlay_at_the_origin_draws_what_inline_draws() {
         }
     }
     // Not checked in offset areas: there the overlay ignores the area's
-    // position, a bug reported with this audit.
+    // position (#1053).
 }
 
 #[test]
