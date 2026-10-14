@@ -3,6 +3,7 @@
 mod basic;
 mod events;
 mod state;
+mod view;
 
 /// Test Checkbox edge cases
 mod edge_cases {
@@ -18,6 +19,10 @@ mod edge_cases {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         checkbox.render(&mut ctx);
+        // Just the box; measured without the label's gap
+        let row: String = (0..10).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+        assert_eq!(row.trim_end(), "[ ]");
+        assert_eq!(checkbox.measure(10, 10), Some((3, 1)));
     }
 
     #[test]
@@ -29,6 +34,11 @@ mod edge_cases {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         checkbox.render(&mut ctx);
+        // Clipped at the area: the box, a space and six letters, on one row
+        let row: String = (0..10).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+        assert_eq!(row, "[ ] AAAAAA");
+        assert!((0..10).all(|x| buffer.get(x, 1).unwrap().symbol == ' '));
+        assert_eq!(checkbox.measure(10, 10), Some((10, 1)));
     }
 
     #[test]
@@ -52,6 +62,10 @@ mod edge_cases {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         checkbox.render(&mut ctx);
+        // Wide glyphs: each takes two columns, the second a continuation
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, '✅');
+        assert_eq!(buffer.get(7, 0).unwrap().symbol, '체');
+        assert_eq!(checkbox.measure(20, 10), Some((15, 1)));
     }
 
     #[test]
