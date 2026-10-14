@@ -9,6 +9,8 @@ use sysinfo::System;
 mod navigation;
 mod refresh;
 mod render;
+#[cfg(test)]
+mod tests;
 mod types;
 
 pub use types::{ProcColors, ProcessInfo, ProcessSort, ProcessView};
@@ -69,8 +71,13 @@ impl ProcessMonitor {
         let mut sys = System::new_all();
         sys.refresh_all();
 
+        Self::with_system(sys)
+    }
+
+    /// A monitor reading `system`, with nothing listed yet
+    fn with_system(system: System) -> Self {
         Self {
-            system: sys,
+            system,
             processes: Vec::new(),
             sort: ProcessSort::default(),
             sort_asc: false,
