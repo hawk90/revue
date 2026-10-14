@@ -1,6 +1,12 @@
 //! Stack container widget
 
-mod sizing;
+mod axis_box;
+mod distribute;
+mod layout;
+mod measure;
+#[cfg(test)]
+mod sizing_tests;
+mod view;
 
 use crate::layout::Rect;
 use crate::widget::traits::{View, WidgetProps};

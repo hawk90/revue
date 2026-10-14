@@ -7,9 +7,12 @@ mod helpers;
 mod navigation;
 mod render;
 mod types;
+mod view;
 
 use revue::layout::Rect;
 use revue::render::Buffer;
+use revue::render::Modifier;
+use revue::style::Color;
 use revue::widget::traits::RenderContext;
 use revue::widget::CollapseMode;
 use revue::widget::FlattenedItem;
@@ -17,6 +20,11 @@ use revue::widget::Sidebar;
 use revue::widget::SidebarItem;
 use revue::widget::SidebarSection;
 use revue::widget::View;
+use revue::widget::{DISABLED_FG, PLACEHOLDER_FG};
+
+/// The default bar background and hover background
+const BAR_BG: Color = Color::rgb(30, 30, 40);
+const HOVER_BG: Color = Color::rgb(50, 50, 70);
 
 /// Render `sidebar` into a `width` x `height` buffer and return each row as text.
 fn render_rows(sidebar: &Sidebar, width: u16, height: u16) -> Vec<String> {
@@ -32,6 +40,51 @@ fn render_rows(sidebar: &Sidebar, width: u16, height: u16) -> Vec<String> {
         })
         .collect();
     rows
+}
+
+/// Render `sidebar` into a `width` x `height` buffer.
+fn screen(sidebar: &Sidebar, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+    sidebar.render(&mut ctx);
+    buffer
+}
+
+/// Row `y` of `buffer` as text.
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect()
+}
+
+/// Every row of `buffer` as text.
+fn rows_of(buffer: &Buffer) -> Vec<String> {
+    (0..buffer.height()).map(|y| row(buffer, y)).collect()
+}
+
+/// Whether nothing was drawn: every cell blank with no colors.
+fn is_blank(buffer: &Buffer) -> bool {
+    (0..buffer.height()).all(|y| {
+        (0..buffer.width()).all(|x| {
+            let c = buffer.get(x, y).unwrap();
+            c.symbol == ' ' && c.bg.is_none() && c.fg.is_none()
+        })
+    })
+}
+
+/// The width of the drawn bar: the columns with a background on row 0.
+/// The last one holds the border; everything right of it is untouched.
+fn bar_width(buffer: &Buffer) -> u16 {
+    let width = (0..buffer.width())
+        .take_while(|&x| buffer.get(x, 0).unwrap().bg.is_some())
+        .count() as u16;
+    assert_eq!(buffer.get(width - 1, 0).unwrap().symbol, '│');
+    for y in 0..buffer.height() {
+        for x in width..buffer.width() {
+            assert_eq!(buffer.get(x, y).unwrap().bg, None, "({x}, {y})");
+        }
+    }
+    width
 }
 
 /// Id and depth of each visible item, skipping section rows.
@@ -87,8 +140,14 @@ fn test_sidebar_default_collapse_threshold() {
 
 #[test]
 fn test_sidebar_new_with_collapse_mode() {
-    let sidebar = Sidebar::new().collapse_mode(CollapseMode::Collapsed);
+    let sidebar = Sidebar::new()
+        .collapse_mode(CollapseMode::Collapsed)
+        .items(vec![SidebarItem::new("home", "Home").icon('H')]);
     assert!(sidebar.is_collapsed());
+    // Drawn collapsed: the 4-column bar shows the icon, not the label.
+    let rows = render_rows(&sidebar, 10, 2);
+    assert_eq!(rows[0], " H │      ");
+    assert_eq!(rows[1], "   │      ");
 }
 
 #[test]
@@ -1199,60 +1258,59 @@ fn test_flattened_item_item() {
 
 #[test]
 fn test_sidebar_render_basic() {
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new().items(vec![
-        SidebarItem::new("home", "Home").icon('🏠'),
-        SidebarItem::new("settings", "Settings").icon('⚙'),
+        SidebarItem::new("home", "Home").icon('H'),
+        SidebarItem::new("settings", "Settings").icon('S'),
     ]);
-    sb.render(&mut ctx);
-    // Should not panic
+    let rows = render_rows(&sb, 30, 10);
+    // Icon after the indicator column, then the label; the bar is 24 wide.
+    assert_eq!(rows[0], "   H Home              │      ");
+    assert_eq!(rows[1], "   S Settings          │      ");
+    assert_eq!(rows[9], "                       │      ");
 }
 
 #[test]
 fn test_sidebar_render_with_header() {
-    let mut buffer = Buffer::new(30, 15);
-    let area = Rect::new(0, 0, 30, 15);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new()
         .header("My App")
         .items(vec![SidebarItem::new("home", "Home")]);
-    sb.render(&mut ctx);
+    let buffer = screen(&sb, 30, 15);
+    let rows = rows_of(&buffer);
+    // Centered in the 24-column bar, bold, above a separator line.
+    assert_eq!(rows[0], "         My App        │      ");
+    assert!(buffer.get(9, 0).unwrap().modifier.contains(Modifier::BOLD));
+    assert_eq!(rows[1], "───────────────────────│      ");
+    assert_eq!(rows[2], "   Home                │      ");
 }
 
 #[test]
 fn test_sidebar_render_with_footer() {
-    let mut buffer = Buffer::new(30, 15);
-    let area = Rect::new(0, 0, 30, 15);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new()
         .footer("v1.0.0")
         .items(vec![SidebarItem::new("home", "Home")]);
-    sb.render(&mut ctx);
+    let buffer = screen(&sb, 30, 15);
+    let rows = rows_of(&buffer);
+    assert_eq!(rows[0], "   Home                │      ");
+    // The last two rows: a separator, then the footer centered in the
+    // section color.
+    assert_eq!(rows[13], "───────────────────────│      ");
+    assert_eq!(rows[14], "         v1.0.0        │      ");
+    assert_eq!(buffer.get(9, 14).unwrap().fg, Some(PLACEHOLDER_FG));
 }
 
 #[test]
 fn test_sidebar_render_collapsed() {
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new()
         .collapse_mode(CollapseMode::Collapsed)
-        .items(vec![SidebarItem::new("home", "Home").icon('🏠')]);
-    sb.render(&mut ctx);
+        .items(vec![SidebarItem::new("home", "Home").icon('H')]);
+    let rows = render_rows(&sb, 30, 10);
+    // Icon only, in the 4-column collapsed bar.
+    assert_eq!(rows[0], format!(" H │{}", " ".repeat(26)));
+    assert!(rows.iter().all(|r| !r.contains("Home")));
 }
 
 #[test]
 fn test_sidebar_render_with_sections() {
-    let mut buffer = Buffer::new(30, 15);
-    let area = Rect::new(0, 0, 30, 15);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new()
         .section(SidebarSection::titled(
             "Main",
@@ -1262,81 +1320,89 @@ fn test_sidebar_render_with_sections() {
             "Settings",
             vec![SidebarItem::new("prefs", "Preferences")],
         ));
-    sb.render(&mut ctx);
+    let buffer = screen(&sb, 30, 15);
+    let rows = rows_of(&buffer);
+    // Each title on its own row, in the section color, before its items.
+    assert_eq!(rows[0], " Main                  │      ");
+    assert_eq!(rows[1], "   Home                │      ");
+    assert_eq!(rows[2], " Settings              │      ");
+    assert_eq!(rows[3], "   Preferences         │      ");
+    assert_eq!(buffer.get(1, 2).unwrap().fg, Some(PLACEHOLDER_FG));
 }
 
 #[test]
 fn test_sidebar_render_nested() {
-    let mut buffer = Buffer::new(30, 15);
-    let area = Rect::new(0, 0, 30, 15);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new().items(vec![SidebarItem::new("folder", "Folder")
         .expanded(true)
         .children(vec![SidebarItem::new("file", "File")])]);
-    sb.render(&mut ctx);
+    let rows = render_rows(&sb, 30, 15);
+    // The expanded parent shows ▼; the child is indented two columns.
+    assert_eq!(rows[0], " ▼ Folder              │      ");
+    assert_eq!(rows[1], "     File              │      ");
 }
 
 #[test]
 fn test_sidebar_render_with_badges() {
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new().items(vec![SidebarItem::new("inbox", "Inbox").badge("5")]);
-    sb.render(&mut ctx);
+    let buffer = screen(&sb, 30, 10);
+    // The badge sits two columns left of the bar's edge, white on red.
+    assert_eq!(rows_of(&buffer)[0], "   Inbox             5 │      ");
+    let badge = buffer.get(21, 0).unwrap();
+    assert_eq!((badge.fg, badge.bg), (Some(Color::WHITE), Some(Color::RED)));
 }
 
 #[test]
 fn test_sidebar_render_with_disabled() {
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new().items(vec![
         SidebarItem::new("active", "Active"),
         SidebarItem::new("disabled", "Disabled").disabled(true),
     ]);
-    sb.render(&mut ctx);
+    let buffer = screen(&sb, 30, 10);
+    assert_eq!(rows_of(&buffer)[1], "   Disabled            │      ");
+    // Dimmed text on the bar's own background.
+    let cell = buffer.get(3, 1).unwrap();
+    assert_eq!((cell.fg, cell.bg), (Some(DISABLED_FG), Some(BAR_BG)));
 }
 
 #[test]
 fn test_sidebar_render_with_selected() {
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new()
         .items(vec![
             SidebarItem::new("a", "Item A"),
             SidebarItem::new("b", "Item B"),
         ])
         .selected("b");
-    sb.render(&mut ctx);
+    let buffer = screen(&sb, 30, 10);
+    // Row 0 is hovered (the default), row 1 is selected: white on blue
+    // across the bar.
+    let hovered = buffer.get(3, 0).unwrap();
+    assert_eq!(
+        (hovered.fg, hovered.bg),
+        (Some(Color::WHITE), Some(HOVER_BG))
+    );
+    for x in 0..23 {
+        assert_eq!(buffer.get(x, 1).unwrap().bg, Some(Color::BLUE), "x={x}");
+    }
+    assert_eq!(buffer.get(3, 1).unwrap().fg, Some(Color::WHITE));
 }
 
 #[test]
 fn test_sidebar_render_small_area() {
-    let mut buffer = Buffer::new(2, 1);
-    let area = Rect::new(0, 0, 2, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new().items(vec![SidebarItem::new("home", "Home")]);
-    sb.render(&mut ctx); // Should handle gracefully
+    // 2x1 is below the 3x2 minimum: nothing is drawn.
+    assert!(is_blank(&screen(&sb, 2, 1)));
 }
 
 #[test]
 fn test_sidebar_render_auto_collapse() {
-    let mut buffer = Buffer::new(15, 10);
-    let area = Rect::new(0, 0, 15, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new()
         .collapse_mode(CollapseMode::Auto)
         .collapse_threshold(20)
-        .items(vec![SidebarItem::new("home", "Home").icon('🏠')]);
-    // Width (15) < threshold (20), so should render collapsed
-    sb.render(&mut ctx);
+        .items(vec![SidebarItem::new("home", "Home").icon('H')]);
+    // Width (15) < threshold (20): drawn collapsed, icon only.
+    assert_eq!(render_rows(&sb, 15, 10)[0], " H │           ");
+    // At the threshold it is drawn expanded.
+    assert_eq!(render_rows(&sb, 20, 2)[0], "   H Home          │");
 }
 
 // =========================================================================
@@ -1362,9 +1428,15 @@ fn test_sidebar_navigation_on_empty() {
 
 #[test]
 fn test_sidebar_toggle_nonexistent_item() {
-    let mut sb = Sidebar::new().items(vec![SidebarItem::new("a", "A")]);
+    let mut sb = Sidebar::new().items(vec![
+        SidebarItem::new("a", "A").children(vec![SidebarItem::new("a1", "A1")])
+    ]);
     sb.toggle_item("nonexistent");
-    // Should not panic
+    // No item changed: the parent is still closed.
+    assert!(matches!(
+        &sb.visible_items()[..],
+        [FlattenedItem::Item { item, .. }] if !item.expanded
+    ));
 }
 
 #[test]

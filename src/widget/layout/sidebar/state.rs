@@ -1,121 +1,95 @@
-//! Sidebar state and navigation
+//! Sidebar state: the selection, the hovered row, collapsing the bar, and
+//! expanding items
 
-use super::types::{FlattenedItem, SidebarItem};
+use super::types::{CollapseMode, FlattenedItem, SidebarItem};
+use super::Sidebar;
 
-/// Sidebar state getters and navigation methods
-pub trait SidebarState {
+impl Sidebar {
     /// Get selected item ID
-    fn selected_id(&self) -> Option<&str>;
-
-    /// Get hovered index
-    fn hovered_index(&self) -> usize;
-
-    /// Get collapse mode
-    fn is_collapsed(&self) -> bool;
-
-    /// Get current width based on collapse state
-    fn current_width(&self, expanded: u16, collapsed: u16) -> u16;
-
-    /// Get flattened list of visible items
-    fn visible_items(&self) -> Vec<FlattenedItem>;
-
-    /// Flatten an item recursively
-    fn flatten_item(&self, item: &SidebarItem, depth: usize, items: &mut Vec<FlattenedItem>);
-
-    /// Get total item count (excluding sections)
-    fn item_count(&self) -> usize;
-
-    /// Move hover down
-    fn hover_down(&mut self);
-
-    /// Move hover up
-    fn hover_up(&mut self);
-
-    /// Select the currently hovered item
-    fn select_hovered(&mut self);
-
-    /// Toggle expansion of hovered item
-    fn toggle_hovered(&mut self);
-
-    /// Toggle item expansion by ID
-    fn toggle_item(&mut self, id: &str);
-
-    /// Toggle item recursively (helper)
-    fn toggle_item_recursive(item: &mut SidebarItem, id: &str) -> bool;
-
-    /// Expand all items
-    fn expand_all(&mut self);
-
-    /// Collapse all items
-    fn collapse_all(&mut self);
-
-    /// Set expanded recursively (helper)
-    fn set_expanded_recursive(item: &mut SidebarItem, expanded: bool);
-}
-
-impl SidebarState for super::Sidebar {
-    fn selected_id(&self) -> Option<&str> {
+    pub fn selected_id(&self) -> Option<&str> {
         self.selected.as_deref()
     }
 
-    fn hovered_index(&self) -> usize {
+    /// Get hovered index
+    pub fn hovered_index(&self) -> usize {
         self.hovered
     }
 
-    fn is_collapsed(&self) -> bool {
-        matches!(self.collapse_mode, super::CollapseMode::Collapsed)
+    /// Check if sidebar is collapsed
+    pub fn is_collapsed(&self) -> bool {
+        matches!(self.collapse_mode, CollapseMode::Collapsed)
     }
 
-    fn current_width(&self, expanded: u16, collapsed: u16) -> u16 {
+    /// Get current width based on collapse state
+    pub fn current_width(&self) -> u16 {
         match self.collapse_mode {
-            super::CollapseMode::Expanded => expanded,
-            super::CollapseMode::Collapsed => collapsed,
-            super::CollapseMode::Auto => expanded, // Determined at render time
+            CollapseMode::Expanded => self.expanded_width,
+            CollapseMode::Collapsed => self.collapsed_width,
+            CollapseMode::Auto => self.expanded_width, // Determined at render time
         }
     }
 
-    fn visible_items(&self) -> Vec<FlattenedItem> {
+    /// Toggle sidebar collapse mode
+    pub fn toggle_collapse(&mut self) {
+        self.collapse_mode = match self.collapse_mode {
+            CollapseMode::Expanded => CollapseMode::Collapsed,
+            CollapseMode::Collapsed => CollapseMode::Expanded,
+            CollapseMode::Auto => CollapseMode::Collapsed,
+        };
+    }
+
+    /// Get flattened list of visible items
+    pub fn visible_items(&self) -> Vec<FlattenedItem> {
         let mut items = Vec::new();
         for section in &self.sections {
             if section.title.is_some() {
                 items.push(FlattenedItem::Section(section.title.clone()));
             }
             for item in &section.items {
-                self.flatten_item(item, 0, &mut items);
+                Self::flatten_item(item, 0, &mut items);
             }
         }
         items
     }
 
-    fn flatten_item(&self, item: &SidebarItem, depth: usize, items: &mut Vec<FlattenedItem>) {
+    /// Flatten an item and its expanded children
+    fn flatten_item(item: &SidebarItem, depth: usize, items: &mut Vec<FlattenedItem>) {
         items.push(FlattenedItem::Item {
             item: item.clone(),
             depth,
         });
         if item.expanded {
             for child in &item.children {
-                self.flatten_item(child, depth + 1, items);
+                Self::flatten_item(child, depth + 1, items);
             }
         }
     }
 
-    fn item_count(&self) -> usize {
+    /// Get total item count (excluding sections)
+    pub fn item_count(&self) -> usize {
         self.visible_items()
             .iter()
             .filter(|i| matches!(i, FlattenedItem::Item { .. }))
             .count()
     }
 
-    fn hover_down(&mut self) {
+    /// Indices in [`Self::visible_items`] of the rows hover can land on:
+    /// items that are not disabled
+    fn hoverable_indices(&self) -> Vec<usize> {
         let items = self.visible_items();
-        let item_indices: Vec<usize> = items
+        items
             .iter()
             .enumerate()
             .filter_map(|(i, item)| match item {
                 FlattenedItem::Item { item: it, .. } if !it.disabled => Some(i),
                 _ => None,
             })
-            .collect();
+            .collect()
+    }
+
+    /// Move hover down
+    pub fn hover_down(&mut self) {
+        let item_indices = self.hoverable_indices();
 
         if let Some(current_pos) = item_indices.iter().position(|&i| i == self.hovered) {
             if current_pos + 1 < item_indices.len() {
@@ -126,16 +100,9 @@ impl SidebarState for super::Sidebar {
         }
     }
 
-    fn hover_up(&mut self) {
-        let items = self.visible_items();
-        let item_indices: Vec<usize> = items
-            .iter()
-            .enumerate()
-            .filter_map(|(i, item)| match item {
-                FlattenedItem::Item { item: it, .. } if !it.disabled => Some(i),
-                _ => None,
-            })
-            .collect();
+    /// Move hover up
+    pub fn hover_up(&mut self) {
+        let item_indices = self.hoverable_indices();
 
         if let Some(current_pos) = item_indices.iter().position(|&i| i == self.hovered) {
             if current_pos > 0 {
@@ -146,7 +113,8 @@ impl SidebarState for super::Sidebar {
         }
     }
 
-    fn select_hovered(&mut self) {
+    /// Select the currently hovered item
+    pub fn select_hovered(&mut self) {
         let items = self.visible_items();
         if let Some(FlattenedItem::Item { item, .. }) = items.get(self.hovered) {
             if !item.disabled {
@@ -155,7 +123,8 @@ impl SidebarState for super::Sidebar {
         }
     }
 
-    fn toggle_hovered(&mut self) {
+    /// Toggle expansion of hovered item
+    pub fn toggle_hovered(&mut self) {
         let items = self.visible_items();
         if let Some(FlattenedItem::Item { item, .. }) = items.get(self.hovered) {
             if item.has_children() {
@@ -164,7 +133,8 @@ impl SidebarState for super::Sidebar {
         }
     }
 
-    fn toggle_item(&mut self, id: &str) {
+    /// Toggle item expansion by ID
+    pub fn toggle_item(&mut self, id: &str) {
         for section in &mut self.sections {
             for item in &mut section.items {
                 if Self::toggle_item_recursive(item, id) {
@@ -174,6 +144,7 @@ impl SidebarState for super::Sidebar {
         }
     }
 
+    /// Toggle the first item with `id` in `item`'s tree; whether one was found
     fn toggle_item_recursive(item: &mut SidebarItem, id: &str) -> bool {
         if item.id == id {
             item.expanded = !item.expanded;
@@ -187,7 +158,8 @@ impl SidebarState for super::Sidebar {
         false
     }
 
-    fn expand_all(&mut self) {
+    /// Expand all items
+    pub fn expand_all(&mut self) {
         for section in &mut self.sections {
             for item in &mut section.items {
                 Self::set_expanded_recursive(item, true);
@@ -195,7 +167,8 @@ impl SidebarState for super::Sidebar {
         }
     }
 
-    fn collapse_all(&mut self) {
+    /// Collapse all items
+    pub fn collapse_all(&mut self) {
         for section in &mut self.sections {
             for item in &mut section.items {
                 Self::set_expanded_recursive(item, false);
@@ -203,6 +176,7 @@ impl SidebarState for super::Sidebar {
         }
     }
 
+    /// Set `expanded` on `item` and everything under it
     fn set_expanded_recursive(item: &mut SidebarItem, expanded: bool) {
         item.expanded = expanded;
         for child in &mut item.children {
