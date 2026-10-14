@@ -311,3 +311,19 @@ fn an_empty_list_draws_the_header_and_no_rows() {
         assert_eq!(buffer.get(0, y).unwrap().bg, None);
     }
 }
+
+#[test]
+fn the_stats_bar_is_light_gray_and_counts_the_processes() {
+    let monitor = monitor_with(numbered(3));
+    let buffer = draw(&monitor, 80, 6);
+    let stats = row(&buffer, 0);
+    assert!(stats.starts_with("CPU:"), "{stats}");
+    assert!(stats.trim_end().ends_with("Processes: 3"), "{stats}");
+    for x in 0..stats.trim_end().chars().count() as u16 {
+        assert_eq!(
+            style(&buffer, x, 0),
+            (Some(LIGHT_GRAY), None, Modifier::empty()),
+            "x={x}"
+        );
+    }
+}
