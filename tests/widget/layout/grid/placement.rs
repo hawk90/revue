@@ -264,8 +264,7 @@ mod model {
 
         /// Column-major flow down the given rows, adding columns. Spans and
         /// explicit items outside the given tracks are left out here: past
-        /// the given columns, column flow drops a spanning item (draft grid
-        /// issue from the #930 audit).
+        /// the given columns, column flow drops a spanning item (#1037).
         #[test]
         fn prop_col_flow_matches_the_model(
             items in prop::collection::vec(item(), 0..12),

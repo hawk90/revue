@@ -158,8 +158,8 @@ fn test_grid_render_with_span() {
 #[test]
 fn test_grid_render_auto_dimensions() {
     // With no tracks defined, a lone auto-placed child makes a 1x1 grid.
-    // More children, or explicit lines, are not counted right (draft
-    // grid issue from the #930 audit), so they are left out here.
+    // More children, or explicit lines, are not counted right (#1037),
+    // so they are left out here.
     let grid = Grid::new().child(Fill('a'));
     let buffer = render(&grid, 5, 3);
     assert_eq!(rows(&buffer), vec!["aaaaa"; 3]);
@@ -375,7 +375,7 @@ fn test_grid_auto_cols_size_the_detected_tracks() {
 
 #[test]
 fn test_grid_column_given_alone_is_drawn() {
-    // Where it goes is the draft grid issue (#930 audit): only check that
+    // Where it goes is #1037: only check that
     // it is drawn, once, inside the grid
     let grid = Grid::new()
         .cols(3)
@@ -436,7 +436,7 @@ proptest! {
     /// track are blank.
     ///
     /// The children never outnumber the defined cells: extra children get
-    /// no track (draft grid issue from the #930 audit).
+    /// no track (#1037).
     #[test]
     fn prop_grid_auto_placed_children_fill_their_cells(
         cols in 1usize..5,

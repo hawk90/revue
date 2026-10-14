@@ -262,7 +262,7 @@ mod model {
         /// A step that keeps both ratios at the divider inside 0.1..0.9
         /// moves that divider by the step and no divider before it (the
         /// ones after it by at most a rounding cell). Steps that clamp move
-        /// other panes too (draft #885 comment from the #930 audit), so
+        /// other panes too (#885), so
         /// widths are not checked after the first one.
         ///
         /// Collapsing the focused pane leaves the focus stuck on it (#885),
