@@ -13,15 +13,6 @@ impl super::CodeEditor {
     // Editing
     // =========================================================================
 
-    /// Push undo operation
-    pub(super) fn push_undo(&mut self, op: EditOp) {
-        self.undo_stack.push(op);
-        if self.undo_stack.len() > super::types::MAX_UNDO_HISTORY {
-            self.undo_stack.remove(0);
-        }
-        self.redo_stack.clear();
-    }
-
     /// Insert character
     pub fn insert_char(&mut self, ch: char) {
         if self.read_only {
@@ -118,10 +109,7 @@ impl super::CodeEditor {
 
             let base = leading_ws;
             if extra_indent {
-                let indent_str = match self.config.indent_style {
-                    IndentStyle::Spaces => " ".repeat(self.config.indent_size),
-                    IndentStyle::Tabs => "\t".to_string(),
-                };
+                let indent_str = self.indent_unit();
                 format!("{}{}", base, indent_str)
             } else {
                 base
@@ -151,10 +139,7 @@ impl super::CodeEditor {
             return;
         }
 
-        let indent = match self.config.indent_style {
-            IndentStyle::Spaces => " ".repeat(self.config.indent_size),
-            IndentStyle::Tabs => "\t".to_string(),
-        };
+        let indent = self.indent_unit();
 
         if let Some(line) = self.lines.get_mut(self.cursor.0) {
             let col = self.cursor.1.min(line.chars().count());
@@ -265,85 +250,11 @@ impl super::CodeEditor {
         self.ensure_cursor_visible();
     }
 
-    /// Undo
-    pub fn undo(&mut self) {
-        if let Some(op) = self.undo_stack.pop() {
-            match &op {
-                EditOp::Insert { line, col, text } => {
-                    if let Some(l) = self.lines.get_mut(*line) {
-                        let range = byte_at(l, *col)..byte_at(l, *col + text.chars().count());
-                        l.drain(range);
-                    }
-                    self.cursor = (*line, *col);
-                }
-                EditOp::Delete { line, col, text } => {
-                    if let Some(l) = self.lines.get_mut(*line) {
-                        let at = byte_at(l, *col);
-                        l.insert_str(at, text);
-                    }
-                    self.cursor = (*line, *col + text.chars().count());
-                }
-                EditOp::SplitLine { line, col } => {
-                    if *line + 1 < self.lines.len() {
-                        let next = self.lines.remove(*line + 1);
-                        if let Some(l) = self.lines.get_mut(*line) {
-                            l.push_str(&next);
-                        }
-                    }
-                    self.cursor = (*line, *col);
-                }
-                EditOp::MergeLine { line, col } => {
-                    if let Some(l) = self.lines.get_mut(*line) {
-                        let at = byte_at(l, *col);
-                        let rest: String = l.drain(at..).collect();
-                        self.lines.insert(*line + 1, rest);
-                    }
-                    self.cursor = (*line + 1, 0);
-                }
-            }
-            self.redo_stack.push(op);
-            self.ensure_cursor_visible();
-        }
-    }
-
-    /// Redo
-    pub fn redo(&mut self) {
-        if let Some(op) = self.redo_stack.pop() {
-            match &op {
-                EditOp::Insert { line, col, text } => {
-                    if let Some(l) = self.lines.get_mut(*line) {
-                        let at = byte_at(l, *col);
-                        l.insert_str(at, text);
-                    }
-                    self.cursor = (*line, *col + text.chars().count());
-                }
-                EditOp::Delete { line, col, text } => {
-                    if let Some(l) = self.lines.get_mut(*line) {
-                        let range = byte_at(l, *col)..byte_at(l, *col + text.chars().count());
-                        l.drain(range);
-                    }
-                    self.cursor = (*line, *col);
-                }
-                EditOp::SplitLine { line, col } => {
-                    if let Some(l) = self.lines.get_mut(*line) {
-                        let at = byte_at(l, *col);
-                        let rest: String = l.drain(at..).collect();
-                        self.lines.insert(*line + 1, rest);
-                    }
-                    self.cursor = (*line + 1, 0);
-                }
-                EditOp::MergeLine { line, col } => {
-                    if *line + 1 < self.lines.len() {
-                        let next = self.lines.remove(*line + 1);
-                        if let Some(l) = self.lines.get_mut(*line) {
-                            l.push_str(&next);
-                        }
-                    }
-                    self.cursor = (*line, *col);
-                }
-            }
-            self.undo_stack.push(op);
-            self.ensure_cursor_visible();
+    /// One level of indentation: `indent_size` spaces or a tab
+    fn indent_unit(&self) -> String {
+        match self.config.indent_style {
+            IndentStyle::Spaces => " ".repeat(self.config.indent_size),
+            IndentStyle::Tabs => "\t".to_string(),
         }
     }
 }

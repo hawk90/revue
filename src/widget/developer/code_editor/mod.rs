@@ -4,7 +4,9 @@
 //! bracket matching, auto-indent, and other code-specific features.
 
 mod bracket;
+mod builders;
 mod editing;
+mod history;
 mod key_handling;
 mod modes;
 mod navigation;
@@ -14,8 +16,6 @@ mod types;
 
 #[cfg(test)]
 mod tests;
-
-use std::path::Path;
 
 use crate::style::Color;
 use crate::widget::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
@@ -33,50 +33,50 @@ const DEFAULT_PAGE_HEIGHT: usize = 20;
 #[derive(Clone)]
 pub struct CodeEditor {
     /// Lines of code
-    pub(super) lines: Vec<String>,
+    lines: Vec<String>,
     /// Cursor position (line, column)
-    pub(super) cursor: (usize, usize),
+    cursor: (usize, usize),
     /// Selection anchor (if selecting)
-    pub(super) anchor: Option<(usize, usize)>,
+    anchor: Option<(usize, usize)>,
     /// First visible line, kept between renders so the view only moves
     /// when the cursor would leave it
-    pub(super) scroll: std::cell::Cell<usize>,
+    scroll: std::cell::Cell<usize>,
     /// Horizontal scroll in terminal COLUMNS, kept between renders so the
     /// view only moves when the cursor would leave it
-    pub(super) scroll_x: std::cell::Cell<usize>,
+    scroll_x: std::cell::Cell<usize>,
     /// Rows showing lines at the last render, the step for PageUp and
     /// PageDown ([`DEFAULT_PAGE_HEIGHT`] before the first render)
-    pub(super) page_height: std::cell::Cell<usize>,
+    page_height: std::cell::Cell<usize>,
     /// Undo stack
-    pub(super) undo_stack: Vec<EditOp>,
+    undo_stack: Vec<EditOp>,
     /// Redo stack
-    pub(super) redo_stack: Vec<EditOp>,
+    redo_stack: Vec<EditOp>,
     /// Language for syntax highlighting
-    pub(super) language: Language,
+    language: Language,
     /// Syntax highlighter
-    pub(super) highlighter: Option<SyntaxHighlighter>,
+    highlighter: Option<SyntaxHighlighter>,
     /// Syntax theme
-    pub(super) theme: SyntaxTheme,
+    theme: SyntaxTheme,
     /// Editor configuration
-    pub(super) config: EditorConfig,
+    config: EditorConfig,
     /// Show line numbers
-    pub(super) show_line_numbers: bool,
+    show_line_numbers: bool,
     /// Read-only mode
-    pub(super) read_only: bool,
+    read_only: bool,
     /// Focused state
-    pub(super) focused: bool,
+    focused: bool,
     /// Go-to-line mode active
-    pub(super) goto_line_mode: bool,
+    goto_line_mode: bool,
     /// Go-to-line input buffer
-    pub(super) goto_line_input: String,
+    goto_line_input: String,
     /// Find mode active
-    pub(super) find_mode: bool,
+    find_mode: bool,
     /// Find query
-    pub(super) find_query: String,
+    find_query: String,
     /// Find matches
-    pub(super) find_matches: Vec<(usize, usize, usize)>, // (line, start, end)
+    find_matches: Vec<(usize, usize, usize)>, // (line, start, end)
     /// Current find match index
-    pub(super) find_index: usize,
+    find_index: usize,
     /// Colors
     /// Background color
     pub bg: Option<Color>,
@@ -144,28 +144,9 @@ impl CodeEditor {
         }
     }
 
-    /// Set content
-    pub fn content(mut self, text: impl Into<String>) -> Self {
-        let text = text.into();
-        self.lines = text.lines().map(String::from).collect();
-        if self.lines.is_empty() {
-            self.lines.push(String::new());
-        }
-        self.cursor = (0, 0);
-        self.scroll.set(0);
-        self.scroll_x.set(0);
-        self
-    }
-
     /// Set content (mutable)
     pub fn set_content(&mut self, text: &str) {
-        self.lines = text.lines().map(String::from).collect();
-        if self.lines.is_empty() {
-            self.lines.push(String::new());
-        }
-        self.cursor = (0, 0);
-        self.scroll.set(0);
-        self.scroll_x.set(0);
+        self.reset_text(text);
         self.undo_stack.clear();
         self.redo_stack.clear();
         // Matches of the find query are positions in the old text
@@ -175,17 +156,6 @@ impl CodeEditor {
     /// Get content
     pub fn get_content(&self) -> String {
         self.lines.join("\n")
-    }
-
-    /// Set language for syntax highlighting
-    pub fn language(mut self, lang: Language) -> Self {
-        self.language = lang;
-        if lang != Language::None {
-            self.highlighter = Some(SyntaxHighlighter::with_theme(lang, self.theme.clone()));
-        } else {
-            self.highlighter = None;
-        }
-        self
     }
 
     /// Set language (mutable)
@@ -198,104 +168,21 @@ impl CodeEditor {
         }
     }
 
-    /// Detect language from file extension
-    pub fn detect_language(mut self, filename: &str) -> Self {
-        if let Some(ext) = Path::new(filename).extension().and_then(|e| e.to_str()) {
-            let lang = Language::from_extension(ext);
-            self = self.language(lang);
-        }
-        self
-    }
-
-    /// Set syntax theme
-    pub fn theme(mut self, theme: SyntaxTheme) -> Self {
-        self.theme = theme.clone();
-        if let Some(ref mut hl) = self.highlighter {
-            *hl = SyntaxHighlighter::with_theme(self.language, theme);
-        }
-        self
-    }
-
-    /// Set editor configuration
-    pub fn config(mut self, config: EditorConfig) -> Self {
-        self.config = config;
-        self
-    }
-
-    /// Enable/disable line numbers
-    pub fn line_numbers(mut self, show: bool) -> Self {
-        self.show_line_numbers = show;
-        self
-    }
-
-    /// Enable/disable read-only mode
-    pub fn read_only(mut self, read_only: bool) -> Self {
-        self.read_only = read_only;
-        self
-    }
-
-    /// Set focused state
-    pub fn focused(mut self, focused: bool) -> Self {
-        self.focused = focused;
-        self
-    }
-
-    /// Set indent size
-    pub fn indent_size(mut self, size: usize) -> Self {
-        self.config.indent_size = size.max(1);
-        self
-    }
-
-    /// Set indent style
-    pub fn indent_style(mut self, style: IndentStyle) -> Self {
-        self.config.indent_style = style;
-        self
-    }
-
-    /// Enable/disable auto-indent
-    pub fn auto_indent(mut self, enable: bool) -> Self {
-        self.config.auto_indent = enable;
-        self
-    }
-
-    /// Enable/disable bracket matching
-    pub fn bracket_matching(mut self, enable: bool) -> Self {
-        self.config.bracket_matching = enable;
-        self
-    }
-
-    /// Enable/disable current line highlight
-    pub fn highlight_current_line(mut self, enable: bool) -> Self {
-        self.config.highlight_current_line = enable;
-        self
-    }
-
-    /// Enable/disable minimap
-    pub fn minimap(mut self, show: bool) -> Self {
-        self.config.show_minimap = show;
-        self
-    }
-
-    /// Set background color
-    pub fn bg(mut self, color: Color) -> Self {
-        self.bg = Some(color);
-        self
-    }
-
-    /// Set foreground color
-    pub fn fg(mut self, color: Color) -> Self {
-        self.fg = Some(color);
-        self
-    }
-
-    // =========================================================================
-    // Getter methods (for tests)
-    // =========================================================================
-
     /// Get line at index
     #[doc(hidden)]
     pub fn get_line(&self, index: usize) -> Option<String> {
         self.lines.get(index).cloned()
+    }
+
+    /// Replace the text, with the cursor and the view at its start
+    fn reset_text(&mut self, text: &str) {
+        self.lines = text.lines().map(String::from).collect();
+        if self.lines.is_empty() {
+            self.lines.push(String::new());
+        }
+        self.cursor = (0, 0);
+        self.scroll.set(0);
+        self.scroll_x.set(0);
     }
 }
 

@@ -38,11 +38,7 @@ impl super::CodeEditor {
             self.cursor.0 -= 1;
             self.cursor.1 = self.line_len(self.cursor.0);
         }
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Move cursor right
@@ -54,11 +50,7 @@ impl super::CodeEditor {
             self.cursor.0 += 1;
             self.cursor.1 = 0;
         }
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Move cursor up
@@ -66,11 +58,7 @@ impl super::CodeEditor {
         if self.cursor.0 > 0 {
             self.move_to_line(self.cursor.0 - 1);
         }
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Move cursor down
@@ -78,11 +66,7 @@ impl super::CodeEditor {
         if self.cursor.0 + 1 < self.lines.len() {
             self.move_to_line(self.cursor.0 + 1);
         }
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Move to start of line
@@ -96,42 +80,26 @@ impl super::CodeEditor {
         } else {
             self.cursor.1 = first_non_ws;
         }
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Move to end of line
     pub fn move_end(&mut self) {
         self.cursor.1 = self.line_len(self.cursor.0);
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Move to start of document
     pub fn move_document_start(&mut self) {
         self.cursor = (0, 0);
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Move to end of document
     pub fn move_document_end(&mut self) {
         let last_line = self.lines.len().saturating_sub(1);
         self.cursor = (last_line, self.line_len(last_line));
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Move by word left
@@ -141,11 +109,7 @@ impl super::CodeEditor {
                 self.cursor.0 -= 1;
                 self.cursor.1 = self.line_len(self.cursor.0);
             }
-            // Only clear selection if not in selection mode
-            if self.anchor.is_none() {
-                self.clear_selection();
-            }
-            self.ensure_cursor_visible();
+            self.finish_move();
             return;
         }
 
@@ -163,11 +127,7 @@ impl super::CodeEditor {
         }
 
         self.cursor.1 = col;
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Move by word right
@@ -181,11 +141,7 @@ impl super::CodeEditor {
                 self.cursor.0 += 1;
                 self.cursor.1 = 0;
             }
-            // Only clear selection if not in selection mode
-            if self.anchor.is_none() {
-                self.clear_selection();
-            }
-            self.ensure_cursor_visible();
+            self.finish_move();
             return;
         }
 
@@ -199,11 +155,7 @@ impl super::CodeEditor {
         }
 
         self.cursor.1 = col;
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Page up: scroll the view up `page_size` lines and move the cursor up
@@ -220,11 +172,7 @@ impl super::CodeEditor {
             self.scroll.set(new_top);
             self.move_to_line(self.cursor.0 - (top - new_top));
         }
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// Page down: scroll the view down `page_size` lines and move the cursor
@@ -244,11 +192,7 @@ impl super::CodeEditor {
             self.scroll.set(new_top);
             self.move_to_line((self.cursor.0 + (new_top - top)).min(last));
         }
-        // Only clear selection if not in selection mode
-        if self.anchor.is_none() {
-            self.clear_selection();
-        }
-        self.ensure_cursor_visible();
+        self.finish_move();
     }
 
     /// The first visible line that keeps the cursor's line in a view
@@ -268,6 +212,16 @@ impl super::CodeEditor {
         let col = col_of(from, self.cursor.1);
         let to = self.lines.get(line).map_or("", String::as_str);
         self.cursor = (line, char_at_col(to, col));
+    }
+
+    /// End a cursor move: drop the selection unless one is being made, and
+    /// scroll up to the cursor
+    fn finish_move(&mut self) {
+        // Only clear selection if not in selection mode
+        if self.anchor.is_none() {
+            self.clear_selection();
+        }
+        self.ensure_cursor_visible();
     }
 
     /// Ensure cursor is visible. Only scrolling up can be settled here;
