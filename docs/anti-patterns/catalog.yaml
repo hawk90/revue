@@ -1820,6 +1820,7 @@ entries:
       - "타입은 `core.rs` 같은 형제 파일에 있고, 그 메서드를 담은 새 파일들이 같은 층의 형제 모듈이다"
       - "`scripts/check-field-visibility.sh`(pre-commit)가 스테이징된 변경에서 이것을 찾는다"
       - "`tests/lib/field_visibility.rs`(ratchet)가 `pub struct`마다 `pub(super)`·`pub(crate)`·`pub(in ..)` 필드 수를 세어 목록과 비교한다. 목록에 없는 타입이 필드를 열거나 목록보다 많이 열면 실패한다"
+      - "그냥 `pub`로 넓힌 필드는 ratchet에 잡히지 않는다. 분리 커밋 전후로 같은 구조체의 필드 한정자를 비교한다 (부모 커밋에서 private, 이후 `pub`)"
     fix:
       - "타입(과 빌더)을 `mod.rs`에 두고 새 파일을 그 하위 모듈로 만든다. Rust에서 하위 모듈은 부모의 private 필드를 볼 수 있다 (감사 후 Autocomplete가 이 모양)."
       - "파일 사이에서 불러야 하는 것은 메서드뿐이면 메서드에만 `pub(super)`를 붙이고 필드는 private으로 둔다."
@@ -1829,6 +1830,7 @@ entries:
       - "autocomplete 감사(2026-10-13): `core.rs`의 `Autocomplete`를 `filter`/`input`/`view`로 나누면서 모든 필드를 `pub(super)`로 열자는 변경이 나왔고, 사용자가 커밋 전에 막았다. 구조체를 `mod.rs`로 옮겨 필드를 private으로 두고 나눴다 (#1003)."
       - "같은 날 전수 조사: 공개 타입 30개가 필드 313개를 `pub(super)`·`pub(crate)`로 열어 두었다. Combobox(26), TextArea(26), Sidebar(25), RichTextEditor(24), FilePicker(23), CodeEditor(21), RangePicker(20), Select(18) 등 대부분 위젯이고, 거의 모두 큰 파일을 나눈 리팩터링에서 열렸다 (#270, #271, #272, #512, select·accordion 분리, 2026-01~03). `pub(super)`는 그 타입 모듈의 부모 전체(예: Combobox는 input_widgets의 모든 위젯)에 필드를 연다. 목록은 `tests/lib/field_visibility.rs`의 `OPEN_FIELDS`이고, 줄어들기만 한다."
       - "2026-10-01 이후 `src`를 바꾼 커밋 144개를 구조체·메서드 정의 전후로 비교: 기존 private 필드를 넓힌 커밋은 없다. 이미 열린 구조체에 열린 필드를 더한 커밋은 4개(#695, #710, #750, #752: Input·TextArea·CodeEditor의 스크롤 상태). datagrid 감사(#989)는 폴더를 한 단계 깊게 나누면서 메서드 7개를 `pub(super)`에서 `pub(crate)`로 넓혔다. `pub(in crate::widget::data::datagrid)`면 충분했다."
+      - "color_picker 감사(2026-10-14): `ColorPicker`의 필드 18개가 모두 그냥 `pub`이다. ratchet은 `pub(super)`·`pub(crate)`·`pub(in ..)`만 세므로 보이지 않았다. 큰 분리 커밋들을 부모 커밋과 필드 단위로 비교하니 #271과 #272가 구조체 40개의 private 필드 291개를 그냥 `pub`로 넓혔고, 289개가 아직 `pub`이다. 그중 35개 공개 타입의 271개는 사용자가 쓸 수 있는 공개 API다(DataGrid 33, CsvViewer 27, DateTimePicker 24, ColorPicker 18, CommandPalette 17 등). 닫는 것은 breaking change라 deprecate한 뒤 4.0에서 닫는다 (#1021, #801)."
   - id: REV-MEM-001
     title: "Arena Without Generation"
     category: memory
