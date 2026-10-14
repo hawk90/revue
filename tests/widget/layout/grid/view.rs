@@ -342,6 +342,53 @@ fn test_grid_min_size_larger_than_the_area_is_clipped() {
 }
 
 #[test]
+fn test_grid_min_size_wins_over_a_smaller_max_size() {
+    let grid = Grid::new()
+        .cols(2)
+        .constrain(12, 3, 6, 1)
+        .child(Fill('a'))
+        .child(Fill('b'));
+    let buffer = render(&grid, 21, 7);
+
+    // 12x3, not 6x1
+    let r = rows(&buffer);
+    let full = format!("aaaaaabbbbbb{}", " ".repeat(9));
+    assert!(r[..3].iter().all(|l| *l == full));
+    assert!(r[3..].iter().all(|l| l.trim().is_empty()));
+}
+
+#[test]
+fn test_grid_auto_cols_size_the_detected_tracks() {
+    // With no columns defined, the tracks found from the items take
+    // `auto_cols` / `auto_rows`
+    let grid = Grid::new()
+        .auto_cols(TrackSize::Fixed(3))
+        .auto_rows(TrackSize::Fixed(1))
+        .item(GridItem::new(Fill('a')).at(1, 1))
+        .item(GridItem::new(Fill('b')).at(2, 1));
+    let buffer = render(&grid, 12, 3);
+    assert_eq!(
+        rows(&buffer),
+        vec!["aaabbb      ", "            ", "            "]
+    );
+}
+
+#[test]
+fn test_grid_column_given_alone_is_drawn() {
+    // Where it goes is the draft grid issue (#930 audit): only check that
+    // it is drawn, once, inside the grid
+    let grid = Grid::new()
+        .cols(3)
+        .rows_count(1)
+        .item(GridItem::new(Fill('a')).col(2))
+        .item(GridItem::new(Fill('b')).row(1));
+    let buffer = render(&grid, 9, 1);
+    let r = rows(&buffer).concat();
+    assert_eq!(r.matches('a').count(), 3);
+    assert_eq!(r.matches('b').count(), 3);
+}
+
+#[test]
 fn test_grid_css_gaps_override_the_builder() {
     let grid = || {
         Grid::new()
