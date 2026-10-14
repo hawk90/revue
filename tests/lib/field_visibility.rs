@@ -48,7 +48,6 @@ const OPEN_FIELDS: &[(&str, &str, usize)] = &[
     ("widget/developer/httpclient/request.rs", "HttpRequest", 1),
     ("widget/feedback/menu/context_menu.rs", "ContextMenu", 4),
     ("widget/feedback/menu/menu_bar.rs", "MenuBar", 6),
-    ("widget/feedback/popover/core.rs", "Popover", 14),
     ("widget/filepicker/mod.rs", "FilePicker", 23),
     ("widget/form/rich_text_editor/core.rs", "RichTextEditor", 24),
     ("widget/input/input_widgets/combobox/mod.rs", "Combobox", 26),
