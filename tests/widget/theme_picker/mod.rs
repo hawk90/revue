@@ -1,16 +1,21 @@
 //! ThemePicker widget tests
 
+mod keys;
+mod view;
+
 use revue::event::Key;
 use revue::event::KeyEvent;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
+use revue::style::{get_theme, set_theme_by_id, use_theme};
 use revue::widget::theme_picker;
 use revue::widget::traits::RenderContext;
 use revue::widget::Interactive;
 use revue::widget::StyledView;
 use revue::widget::ThemePicker;
 use revue::widget::View;
+use serial_test::serial;
 
 // =========================================================================
 // Constructor and builder tests
@@ -64,19 +69,21 @@ fn test_theme_picker_themes_builder_vec() {
 
 #[test]
 fn test_theme_picker_compact() {
-    // Compact mode affects rendering, test that it can be set
+    let current = use_theme().get();
     let picker = ThemePicker::new().compact(true);
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    let row = rendered_row(&picker, 20, 0);
+    assert_eq!(row.trim(), "", "compact draws swatches, no text: {row:?}");
+    assert_eq!(swatch_cells(&picker, 20, 0, &current), 4);
 
-    // Should render without panic in compact mode
+    let full = ThemePicker::new().compact(false);
+    assert!(rendered_row(&full, 20, 0).starts_with("Theme: "));
+}
+
+fn render_buf(picker: &ThemePicker, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
     picker.render(&mut ctx);
-
-    let picker = ThemePicker::new().compact(false);
-    picker.render(&mut ctx);
-
-    let _picker = ThemePicker::new().compact(true);
+    buffer
 }
 
 fn rendered_row(picker: &ThemePicker, width: u16, y: u16) -> String {
@@ -153,54 +160,40 @@ fn picker_shows_preview(picker: &ThemePicker, theme: &revue::style::Theme) -> bo
 
 #[test]
 fn test_theme_picker_width() {
-    let picker = ThemePicker::new().width(50);
-    // Width affects rendering, verify it renders without panic
-    let mut buffer = Buffer::new(50, 5);
-    let area = Rect::new(0, 0, 50, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    let surface = use_theme().get().colors.surface;
 
-    picker.render(&mut ctx);
+    let buffer = render_buf(&ThemePicker::new().width(50), 100, 5);
+    assert_eq!(buffer.get(49, 0).unwrap().bg, Some(surface));
+    assert_eq!(buffer.get(50, 0).unwrap().bg, None);
 
-    let picker = ThemePicker::new().width(100);
-    let mut buffer = Buffer::new(100, 5);
-    let area = Rect::new(0, 0, 100, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    picker.render(&mut ctx);
-
-    let _picker = ThemePicker::new().width(50);
+    // Without a width the header is 35 columns
+    let buffer = render_buf(&ThemePicker::new(), 100, 5);
+    assert_eq!(buffer.get(34, 0).unwrap().bg, Some(surface));
+    assert_eq!(buffer.get(35, 0).unwrap().bg, None);
 }
 
 #[test]
 fn test_theme_picker_fg() {
-    let picker = ThemePicker::new().fg(Color::RED);
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    let buffer = render_buf(&ThemePicker::new().fg(Color::RED), 20, 5);
+    for x in 0..7 {
+        assert_eq!(buffer.get(x, 0).unwrap().fg, Some(Color::RED), "col {x}");
+    }
 
-    // Should render with custom foreground
-    picker.render(&mut ctx);
-
-    let picker = ThemePicker::new().fg(Color::rgb(255, 128, 0));
-    picker.render(&mut ctx);
-
-    let _picker = ThemePicker::new().fg(Color::CYAN);
+    let text = use_theme().get().colors.text;
+    let buffer = render_buf(&ThemePicker::new(), 20, 5);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(text));
 }
 
 #[test]
 fn test_theme_picker_bg() {
-    let picker = ThemePicker::new().bg(Color::BLUE);
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    let buffer = render_buf(&ThemePicker::new().bg(Color::BLUE), 20, 5);
+    for x in [0, 6, 19] {
+        assert_eq!(buffer.get(x, 0).unwrap().bg, Some(Color::BLUE), "col {x}");
+    }
 
-    // Should render with custom background
-    picker.render(&mut ctx);
-
-    let picker = ThemePicker::new().bg(Color::rgb(0, 128, 255));
-    picker.render(&mut ctx);
-
-    let _picker = ThemePicker::new().bg(Color::BLUE);
+    let surface = use_theme().get().colors.surface;
+    let buffer = render_buf(&ThemePicker::new(), 20, 5);
+    assert_eq!(buffer.get(0, 0).unwrap().bg, Some(surface));
 }
 
 #[test]
@@ -428,29 +421,32 @@ fn test_theme_picker_selected_theme_empty() {
 }
 
 #[test]
+#[serial]
 fn test_theme_picker_apply_selected() {
-    let mut picker = ThemePicker::new().themes(["dark", "light", "dracula"]);
-
-    // Should not panic when applying
-    picker.apply_selected();
-
-    picker.select_next();
-    picker.apply_selected();
-
-    picker.select_next();
-    picker.apply_selected();
-
-    let picker = ThemePicker::new().themes(["dark"]);
-    picker.apply_selected();
-    // Apply selected works
+    let mut picker = ThemePicker::new().themes(["light", "dracula", "nord"]);
+    for id in ["light", "dracula", "nord"] {
+        picker.apply_selected();
+        assert_eq!(use_theme().get().name, get_theme(id).unwrap().name);
+        picker.select_next();
+    }
+    set_theme_by_id("dark");
 }
 
 #[test]
+#[serial]
 fn test_theme_picker_apply_selected_empty() {
-    let picker = ThemePicker::new().themes::<Vec<&str>, _>(vec![]);
+    set_theme_by_id("nord");
+    let before = use_theme().get().name;
 
-    // Should not panic when applying with no themes
-    picker.apply_selected();
+    ThemePicker::new()
+        .themes::<Vec<&str>, _>(vec![])
+        .apply_selected();
+    assert_eq!(use_theme().get().name, before);
+
+    // An unknown id applies nothing either
+    ThemePicker::new().themes(["nonexistent"]).apply_selected();
+    assert_eq!(use_theme().get().name, before);
+    set_theme_by_id("dark");
 }
 
 // =========================================================================
@@ -634,24 +630,30 @@ fn test_theme_picker_handle_key_unknown() {
 
 #[test]
 fn test_theme_picker_render_too_small_width() {
-    let picker = ThemePicker::new();
-    let mut buffer = Buffer::new(5, 1);
-    let area = Rect::new(0, 0, 5, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    // Should not panic with too small width
-    picker.render(&mut ctx);
+    for width in [5, 9] {
+        let buffer = render_buf(&ThemePicker::new(), width, 1);
+        for x in 0..width {
+            let cell = buffer.get(x, 0).unwrap();
+            assert_eq!((cell.symbol, cell.bg), (' ', None), "{width}: col {x}");
+        }
+    }
+    assert!(rendered_row(&ThemePicker::new(), 10, 0).starts_with("Theme:"));
 }
 
 #[test]
 fn test_theme_picker_render_too_small_height() {
     let picker = ThemePicker::new();
-    let mut buffer = Buffer::new(20, 0);
+    let mut buffer = Buffer::new(20, 2);
     let area = Rect::new(0, 0, 20, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    // Should not panic with zero height
     picker.render(&mut ctx);
+
+    for y in 0..2 {
+        for x in 0..20 {
+            assert_eq!(buffer.get(x, y).unwrap().symbol, ' ', "({x}, {y})");
+        }
+    }
 }
 
 #[test]
@@ -814,57 +816,59 @@ fn test_theme_picker_render_theme_name_truncation() {
 fn test_theme_picker_css_id() {
     let picker = ThemePicker::new().element_id("theme-selector");
 
-    // Verify the picker can be created with element_id
-    // and renders without issues
-    let mut buffer = Buffer::new(35, 10);
-    let area = Rect::new(0, 0, 35, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    picker.render(&mut ctx);
+    // The id does not change what is drawn. `View::id` does not report it
+    // (ThemePicker's View has no view meta, #1097), so it is not checked here.
+    for y in 0..2 {
+        assert_eq!(
+            rendered_row(&picker, 35, y),
+            rendered_row(&ThemePicker::new(), 35, y)
+        );
+    }
 }
 
 #[test]
 fn test_theme_picker_css_classes() {
     let picker = ThemePicker::new().class("dropdown").class("themed");
 
-    // Verify the picker can be created with classes
-    // and renders without issues
-    let mut buffer = Buffer::new(35, 10);
-    let area = Rect::new(0, 0, 35, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    picker.render(&mut ctx);
+    // Checked through StyledView; `View::classes` reports none (#1097)
+    assert!(picker.has_class("dropdown"));
+    assert!(picker.has_class("themed"));
+    assert!(!picker.has_class("other"));
 }
 
 #[test]
 fn test_theme_picker_styled_view() {
     let mut picker = ThemePicker::new();
 
-    // Test CSS methods work without panicking
     picker.set_id("test-picker");
     picker.add_class("active");
     picker.remove_class("active");
     picker.toggle_class("selected");
     picker.toggle_class("selected");
 
-    // Should render successfully
-    let mut buffer = Buffer::new(35, 10);
-    let area = Rect::new(0, 0, 35, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    assert!(!picker.has_class("active"));
+    assert!(!picker.has_class("selected"));
 
-    picker.render(&mut ctx);
+    picker.toggle_class("selected");
+    assert!(picker.has_class("selected"));
 }
 
 #[test]
 fn test_theme_picker_inline_color_override() {
+    let current = use_theme().get();
     let picker = ThemePicker::new().fg(Color::RED).bg(Color::BLUE);
+    let buffer = render_buf(&picker, 35, 5);
 
-    let mut buffer = Buffer::new(35, 5);
-    let area = Rect::new(0, 0, 35, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    let label = buffer.get(0, 0).unwrap();
+    assert_eq!((label.fg, label.bg), (Some(Color::RED), Some(Color::BLUE)));
+    assert_eq!(buffer.get(34, 0).unwrap().bg, Some(Color::BLUE));
 
-    // Should render with custom colors
-    picker.render(&mut ctx);
+    // The swatch keeps the theme's colors: "Theme: Dark" and a space, then 4 cells
+    let swatch = 8 + current.name.chars().count() as u16;
+    assert_eq!(
+        buffer.get(swatch, 0).unwrap().bg,
+        Some(current.colors.background)
+    );
 }
 
 #[test]
@@ -909,14 +913,11 @@ fn test_theme_picker_with_empty_themes_list() {
 #[test]
 fn test_theme_picker_with_single_theme() {
     let mut picker = ThemePicker::new().themes(["dark"]);
+    picker.open();
 
-    assert_eq!(picker.selected_id(), Some("dark"));
-
-    picker.select_next();
-    assert_eq!(picker.selected_id(), Some("dark"));
-
-    picker.select_prev();
-    assert_eq!(picker.selected_id(), Some("dark"));
+    // One row in the box, marked, then the bottom border
+    assert!(rendered_row(&picker, 30, 2).starts_with("│▶"));
+    assert!(rendered_row(&picker, 30, 3).starts_with('└'));
 }
 
 #[test]
@@ -938,23 +939,33 @@ fn test_theme_picker_multiple_open_close() {
 #[test]
 fn test_theme_picker_render_with_zero_width() {
     let picker = ThemePicker::new();
-    let mut buffer = Buffer::new(0, 10);
+    let mut buffer = Buffer::new(10, 10);
     let area = Rect::new(0, 0, 0, 10);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    // Should not panic with zero width
     picker.render(&mut ctx);
+
+    for y in 0..10 {
+        assert_eq!(buffer.get(0, y).unwrap().symbol, ' ', "row {y}");
+    }
 }
 
 #[test]
 fn test_theme_picker_render_with_minimal_area() {
     let picker = ThemePicker::new();
-    let mut buffer = Buffer::new(10, 1);
+    let mut buffer = Buffer::new(12, 2);
     let area = Rect::new(0, 0, 10, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    // Should render with minimal valid area
     picker.render(&mut ctx);
+
+    let row: String = (0..10).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert!(row.starts_with("Theme:"), "{row:?}");
+    // Nothing outside the area
+    for (x, y) in [(10, 0), (11, 0), (0, 1), (9, 1)] {
+        let cell = buffer.get(x, y).unwrap();
+        assert_eq!((cell.symbol, cell.bg), (' ', None), "({x}, {y})");
+    }
 }
 
 #[test]
@@ -1008,13 +1019,21 @@ fn test_theme_picker_debug_format() {
 
 #[test]
 fn test_theme_picker_themes() {
-    let _picker = ThemePicker::new().themes(["dark", "light", "dracula"]);
-    // Themes were set successfully
+    let mut picker = ThemePicker::new().themes(["dark", "light", "dracula"]);
+    picker.open();
+
+    for (y, id) in [(2, "dark"), (3, "light"), (4, "dracula")] {
+        let name = get_theme(id).unwrap().name;
+        assert!(rendered_row(&picker, 30, y).contains(&name), "row {y}");
+    }
 }
 
 #[test]
 fn test_theme_picker_show_preview() {
-    let _picker = ThemePicker::new().show_preview(false);
+    // Compact mode is made of swatches, so it ignores show_preview(false)
+    let current = use_theme().get();
+    let picker = ThemePicker::new().compact(true).show_preview(false);
+    assert_eq!(swatch_cells(&picker, 20, 0, &current), 4);
 }
 
 #[test]
@@ -1063,9 +1082,11 @@ fn test_theme_picker_handle_key_down() {
     let mut picker = ThemePicker::new().themes(["dark", "light", "dracula"]);
     picker.open();
 
-    let event = KeyEvent::new(Key::Down);
-    let _result = Interactive::handle_key(&mut picker, &event);
-    // Navigation works
+    for expected in ["light", "dracula", "dracula"] {
+        let result = Interactive::handle_key(&mut picker, &KeyEvent::new(Key::Down));
+        assert_eq!(result, revue::widget::traits::EventResult::Consumed);
+        assert_eq!(picker.selected_id(), Some(expected));
+    }
 }
 
 #[test]
@@ -1075,9 +1096,11 @@ fn test_theme_picker_handle_key_up() {
     picker.select_next();
     picker.select_next(); // Move to third item
 
-    let event = KeyEvent::new(Key::Up);
-    let _result = Interactive::handle_key(&mut picker, &event);
-    // Navigation works
+    for expected in ["light", "dark", "dark"] {
+        let result = Interactive::handle_key(&mut picker, &KeyEvent::new(Key::Up));
+        assert_eq!(result, revue::widget::traits::EventResult::Consumed);
+        assert_eq!(picker.selected_id(), Some(expected));
+    }
 }
 
 #[test]
@@ -1085,9 +1108,11 @@ fn test_theme_picker_handle_key_j() {
     let mut picker = ThemePicker::new().themes(["dark", "light", "dracula"]);
     picker.open();
 
-    let event = KeyEvent::new(Key::Char('j'));
-    let _result = Interactive::handle_key(&mut picker, &event);
-    // Vim-style navigation works
+    for _ in 0..3 {
+        Interactive::handle_key(&mut picker, &KeyEvent::new(Key::Char('j')));
+    }
+    assert_eq!(picker.selected_id(), Some("dracula"));
+    assert!(picker.is_open());
 }
 
 #[test]
@@ -1097,21 +1122,30 @@ fn test_theme_picker_handle_key_k() {
     picker.select_next();
     picker.select_next(); // Move to third item
 
-    let event = KeyEvent::new(Key::Char('k'));
-    let _result = Interactive::handle_key(&mut picker, &event);
-    // Vim-style navigation works
+    for _ in 0..3 {
+        Interactive::handle_key(&mut picker, &KeyEvent::new(Key::Char('k')));
+    }
+    assert_eq!(picker.selected_id(), Some("dark"));
+    assert!(picker.is_open());
 }
 
 #[test]
 fn test_theme_picker_builder_pattern() {
-    let _picker = theme_picker()
+    let current = use_theme().get();
+    let picker = theme_picker()
         .themes(["dark", "light"])
         .compact(true)
         .width(40)
         .fg(Color::CYAN)
         .bg(Color::BLUE);
 
-    // Builder pattern works
+    assert_eq!(picker.selected_id(), Some("dark"));
+    // Compact: the swatch and nothing after it
+    let buffer = render_buf(&picker, 40, 3);
+    assert_eq!(swatch_cells(&picker, 40, 0, &current), 4);
+    for x in 4..40 {
+        assert_eq!(buffer.get(x, 0).unwrap().bg, None, "col {x}");
+    }
 }
 
 #[test]
