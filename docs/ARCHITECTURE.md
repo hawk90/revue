@@ -153,7 +153,7 @@ src/widget/
     ├── link.rs            # Clickable links
     ├── pagination/        # Pagination
     ├── slides.rs          # Slide widget
-    ├── theme_picker.rs    # Theme selector
+    ├── theme_picker/      # Theme selector
     ├── zen.rs             # Zen mode
     └── debug_overlay/     # Debug overlay
 ```

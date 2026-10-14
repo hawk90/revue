@@ -71,7 +71,7 @@ mod streamline;
 mod syntax;
 #[path = "widget/theme.rs"]
 mod theme;
-#[path = "widget/theme_picker.rs"]
+#[path = "widget/theme_picker/mod.rs"]
 mod theme_picker;
 #[path = "widget/transition/mod.rs"]
 mod transition;
