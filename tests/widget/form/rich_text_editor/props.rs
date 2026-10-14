@@ -109,8 +109,7 @@ impl Doc {
             return Step::Known;
         }
         if text.trim() == "---" || text.trim() == "***" {
-            // The horizontal rule shortcut never fires: a bug reported
-            // from the #930 audit
+            // The horizontal rule shortcut never fires (#1075)
             return Step::Known;
         }
         if let Some((p, t)) = SHORTCUTS.iter().find(|(p, _)| text.starts_with(p)) {
@@ -547,8 +546,7 @@ proptest! {
                     }
                 }
                 // Numbered items are numbered by block position and
-                // headings 4-6 are drawn as plain text: bugs reported from
-                // the #930 audit
+                // headings 4-6 are drawn as plain text (#1076)
                 _ => {}
             }
         }
