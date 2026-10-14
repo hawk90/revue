@@ -68,14 +68,7 @@ impl RichText {
             }
             if ch == '[' {
                 // Flush buffer with current style
-                if !buffer.is_empty() {
-                    let mut span = Span::styled(buffer.clone(), current_style.clone());
-                    if let Some(ref url) = current_link {
-                        span.link = Some(url.clone());
-                    }
-                    self.spans.push(span);
-                    buffer.clear();
-                }
+                self.push_run(std::mem::take(&mut buffer), &current_style, &current_link);
 
                 // Parse tag
                 let mut tag = String::new();
@@ -86,64 +79,86 @@ impl RichText {
                     tag.push(c);
                 }
 
-                // Handle reset tag
-                if tag == "/" {
-                    current_style = Style::default();
-                    current_link = None;
-                    continue;
-                }
-
-                // Parse tag attributes
-                for part in tag.split_whitespace() {
-                    if let Some(link) = part.strip_prefix("link=") {
-                        current_link = Some(link.to_string());
-                        current_style.underline = true;
-                        if current_style.fg.is_none() {
-                            current_style.fg = Some(Color::CYAN);
-                        }
-                    } else {
-                        match part.to_lowercase().as_str() {
-                            "bold" | "b" => current_style.bold = true,
-                            "italic" | "i" => current_style.italic = true,
-                            "underline" | "u" => current_style.underline = true,
-                            "dim" => current_style.dim = true,
-                            "strike" | "s" => current_style.strikethrough = true,
-                            "reverse" | "rev" => current_style.reverse = true,
-                            "red" => current_style.fg = Some(Color::RED),
-                            "green" => current_style.fg = Some(Color::GREEN),
-                            "blue" => current_style.fg = Some(Color::BLUE),
-                            "yellow" => current_style.fg = Some(Color::YELLOW),
-                            "cyan" => current_style.fg = Some(Color::CYAN),
-                            "magenta" => current_style.fg = Some(Color::MAGENTA),
-                            "white" => current_style.fg = Some(Color::WHITE),
-                            "black" => current_style.fg = Some(Color::BLACK),
-                            // Background colors with "on_" prefix
-                            "on_red" => current_style.bg = Some(Color::RED),
-                            "on_green" => current_style.bg = Some(Color::GREEN),
-                            "on_blue" => current_style.bg = Some(Color::BLUE),
-                            "on_yellow" => current_style.bg = Some(Color::YELLOW),
-                            "on_cyan" => current_style.bg = Some(Color::CYAN),
-                            "on_magenta" => current_style.bg = Some(Color::MAGENTA),
-                            "on_white" => current_style.bg = Some(Color::WHITE),
-                            "on_black" => current_style.bg = Some(Color::BLACK),
-                            _ => {}
-                        }
-                    }
-                }
+                apply_tag(&tag, &mut current_style, &mut current_link);
             } else {
                 buffer.push(ch);
             }
         }
 
         // Flush remaining buffer
-        if !buffer.is_empty() {
-            let mut span = Span::styled(buffer, current_style);
-            if let Some(url) = current_link {
-                span.link = Some(url);
+        self.push_run(buffer, &current_style, &current_link);
+    }
+
+    /// Add `text` as a span with the style and link in effect, unless it is
+    /// empty
+    fn push_run(&mut self, text: String, style: &Style, link: &Option<String>) {
+        if !text.is_empty() {
+            let mut span = Span::styled(text, style.clone());
+            if let Some(url) = link {
+                span.link = Some(url.clone());
             }
             self.spans.push(span);
         }
     }
+}
+
+/// Apply the tag between `[` and `]` to the style and link in effect
+fn apply_tag(tag: &str, current_style: &mut Style, current_link: &mut Option<String>) {
+    // Handle reset tag
+    if tag == "/" {
+        *current_style = Style::default();
+        *current_link = None;
+        return;
+    }
+
+    // Parse tag attributes
+    for part in tag.split_whitespace() {
+        if let Some(link) = part.strip_prefix("link=") {
+            *current_link = Some(link.to_string());
+            current_style.underline = true;
+            if current_style.fg.is_none() {
+                current_style.fg = Some(Color::CYAN);
+            }
+        } else {
+            let part = part.to_lowercase();
+            match part.as_str() {
+                "bold" | "b" => current_style.bold = true,
+                "italic" | "i" => current_style.italic = true,
+                "underline" | "u" => current_style.underline = true,
+                "dim" => current_style.dim = true,
+                "strike" | "s" => current_style.strikethrough = true,
+                "reverse" | "rev" => current_style.reverse = true,
+                // Background colors with "on_" prefix
+                name => match name.strip_prefix("on_") {
+                    Some(bg) => {
+                        if let Some(color) = named_color(bg) {
+                            current_style.bg = Some(color);
+                        }
+                    }
+                    None => {
+                        if let Some(color) = named_color(name) {
+                            current_style.fg = Some(color);
+                        }
+                    }
+                },
+            }
+        }
+    }
+}
+
+/// The colors a tag can name, as text (`red`) or background (`on_red`)
+fn named_color(name: &str) -> Option<Color> {
+    Some(match name {
+        "red" => Color::RED,
+        "green" => Color::GREEN,
+        "blue" => Color::BLUE,
+        "yellow" => Color::YELLOW,
+        "cyan" => Color::CYAN,
+        "magenta" => Color::MAGENTA,
+        "white" => Color::WHITE,
+        "black" => Color::BLACK,
+        _ => return None,
+    })
 }
 
 #[cfg(test)]
