@@ -117,7 +117,7 @@ proptest! {
             prop_assert_eq!(p.get_total(), model.total);
             prop_assert_eq!(p.is_first(), model.current == 1);
             // With no pages `is_last()` is false although nothing follows
-            // page 1 (draft-pd-1); checked only with pages
+            // page 1 (#1104); checked only with pages
             if model.total > 0 {
                 prop_assert_eq!(p.is_last(), model.current == model.total);
             }
