@@ -67,8 +67,8 @@ proptest! {
     /// A message that fits on one row is drawn in a box `width` (or as wide
     /// as it needs) and one row tall plus the border, one cell in from the
     /// position's edges and centered between them for the Center positions.
-    /// A message that does not fit gets a taller box with one row drawn (the
-    /// toast issue from the #930 audit), so the box is never narrower than
+    /// A message that does not fit gets a taller box with one row drawn (#1059),
+    /// so the box is never narrower than
     /// the message; a borderless toast's background is not checked (same
     /// issue).
     #[test]
@@ -95,8 +95,7 @@ proptest! {
             t = t.width(natural + e);
         }
         // The area has room for the box and a margin on each side. (A box as
-        // wide as the area loses its right border at the Left positions: the
-        // toast issue from the #930 audit.)
+        // wide as the area loses its right border at the Left positions: #1059.)
         let w = natural + extra.unwrap_or(0);
         let aw = w + 2 + aw_extra;
         let h = if border { 3 } else { 1 };

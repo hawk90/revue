@@ -497,8 +497,8 @@ mod render {
             let mut m = Modal::new().title("Test").content("Body").ok();
             m.show();
             m.render(&mut ctx);
-            // At three and four rows the title is drawn outside its box (the
-            // modal issue from the #930 audit), so only the smaller areas are
+            // At three and four rows the title is drawn outside its box (#1060),
+            // so only the smaller areas are
             // checked
             if height <= 2 {
                 assert!(text(&buffer).trim().is_empty(), "{height}");

@@ -838,8 +838,7 @@ fn test_alert_zero_area() {
 #[test]
 fn test_alert_newline_in_message() {
     // The first line is drawn where the message starts. (What follows it
-    // is drawn on the same row, run together: see the alert issue from the
-    // #930 audit.)
+    // is drawn on the same row, run together: #1061.)
     let b = draw(&Alert::new("Line 1\nLine 2\nLine 3"), 40, 3);
     assert!(row(&b, 1).starts_with("│ ℹ Line 1"), "{}", row(&b, 1));
     assert_eq!(Alert::new("Line 1\nLine 2\nLine 3").height(), 3);

@@ -63,7 +63,7 @@ fn test_modal_colors() {
         .border_fg(Color::GREEN);
     m.show();
     // 40 x 6 box centered in 44 x 9: rows 1 to 6 from x = 2. (The
-    // separator under the title has no color: the modal issue from #930.)
+    // separator under the title has no color: #1060.)
     let b = draw(&m, 44, 9);
     assert_eq!(b.get(2, 1).unwrap().symbol, '┌');
     for (x, y) in [(2, 1), (20, 1), (41, 1), (2, 5), (41, 5), (2, 6), (41, 6)] {
@@ -251,7 +251,7 @@ fn model(
 proptest! {
     /// Any title, lines, buttons and width draw the box the model gives, in
     /// any area tall enough for it. (In a shorter area the title is drawn
-    /// outside the box: the modal issue from the #930 audit.)
+    /// outside the box: #1060.)
     #[test]
     fn prop_modal_box_follows_the_model(
         title in "[A-Za-z ]{0,30}",

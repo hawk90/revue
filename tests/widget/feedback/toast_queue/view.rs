@@ -130,8 +130,8 @@ fn op() -> impl Strategy<Value = Op> {
         4 => (
             level(),
             // High is documented as "shows immediately" and Critical as
-            // "cannot be dismissed"; the queue does neither (the toast issue
-            // from the #930 audit). High is left out and Critical toasts are
+            // "cannot be dismissed"; the queue does neither (#1059).
+            // High is left out and Critical toasts are
             // pushed non-dismissible, so the model does not depend on that.
             prop_oneof![
                 Just(ToastPriority::Low),
@@ -248,7 +248,7 @@ proptest! {
     /// The visible toasts are stacked one cell in from the position's edges,
     /// `3 + gap` rows apart, newest last (Down) or first (Up), and each is
     /// drawn as the model's box. At the bottom the stack ends 1 + gap rows
-    /// above the edge (the toast issue from the #930 audit), so the bottom
+    /// above the edge (#1059), so the bottom
     /// positions run with no gap.
     #[test]
     fn prop_toast_queue_stack_follows_the_model(
