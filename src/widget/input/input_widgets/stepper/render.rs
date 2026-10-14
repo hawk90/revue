@@ -82,48 +82,13 @@ impl Stepper {
             let color = self.step_color(ctx, step);
 
             // Step indicator
-            if self.shows_numbers() {
-                let num = format!("{}", i + 1);
-                for (j, ch) in num.chars().enumerate() {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(color);
-                    if step.status == StepStatus::Active {
-                        cell.modifier |= Modifier::BOLD;
-                    }
-                    ctx.set(x + j as u16, y, cell);
-                }
-            } else {
-                let mut cell = Cell::new(step.display_icon());
-                cell.fg = Some(color);
-                if step.status == StepStatus::Active {
-                    cell.modifier |= Modifier::BOLD;
-                }
-                ctx.set(x, y, cell);
-            }
+            self.draw_indicator(ctx, x, y, i, step, color);
 
             // Connector (except last)
             if matches!(self.style, StepperStyle::Connected | StepperStyle::Progress)
                 && i < step_count - 1
             {
-                let connector_start = x + 2;
-                let connector_end = ((i + 1) * step_width) as u16;
-
-                for cx in connector_start..connector_end {
-                    let ch = if matches!(self.style, StepperStyle::Progress)
-                        && step.status == StepStatus::Completed
-                    {
-                        '━'
-                    } else {
-                        '─'
-                    };
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(if step.status == StepStatus::Completed {
-                        self.completed_color
-                    } else {
-                        self.connector_color
-                    });
-                    ctx.set(cx, y, cell);
-                }
+                self.draw_connector(ctx, x + 2, ((i + 1) * step_width) as u16, y, step);
             }
 
             // Title (below indicator)
@@ -166,20 +131,7 @@ impl Stepper {
             let x: u16 = 0;
 
             // Step indicator
-            let indicator = if self.shows_numbers() {
-                format!("{}", i + 1)
-            } else {
-                step.display_icon().to_string()
-            };
-
-            for (j, ch) in indicator.chars().enumerate() {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(color);
-                if step.status == StepStatus::Active {
-                    cell.modifier |= Modifier::BOLD;
-                }
-                ctx.set(x + j as u16, y, cell);
-            }
+            self.draw_indicator(ctx, x, y, i, step, color);
 
             // Title
             let title_x = x + 3;
@@ -221,6 +173,64 @@ impl Stepper {
                 ctx.set(x, y, cell);
                 y += 1;
             }
+        }
+    }
+}
+
+impl Stepper {
+    /// Step `i`'s indicator at (x, y): its number or its status icon, in
+    /// `color`, bold while active
+    fn draw_indicator(
+        &self,
+        ctx: &mut RenderContext,
+        x: u16,
+        y: u16,
+        i: usize,
+        step: &Step,
+        color: Color,
+    ) {
+        let indicator = if self.shows_numbers() {
+            format!("{}", i + 1)
+        } else {
+            step.display_icon().to_string()
+        };
+
+        for (j, ch) in indicator.chars().enumerate() {
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(color);
+            if step.status == StepStatus::Active {
+                cell.modifier |= Modifier::BOLD;
+            }
+            ctx.set(x + j as u16, y, cell);
+        }
+    }
+
+    /// The horizontal connector after `step`, from `connector_start` up to
+    /// the next step: heavy and in the completed color once the step is
+    /// done in the Progress style
+    fn draw_connector(
+        &self,
+        ctx: &mut RenderContext,
+        connector_start: u16,
+        connector_end: u16,
+        y: u16,
+        step: &Step,
+    ) {
+        for cx in connector_start..connector_end {
+            let ch = if matches!(self.style, StepperStyle::Progress)
+                && step.status == StepStatus::Completed
+            {
+                '━'
+            } else {
+                '─'
+            };
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(if step.status == StepStatus::Completed {
+                self.completed_color
+            } else {
+                self.connector_color
+            });
+            ctx.set(cx, y, cell);
         }
     }
 }
