@@ -7,6 +7,31 @@ use revue::style::Color;
 use revue::widget::traits::RenderContext;
 use revue::widget::{search_bar, SearchBar, View};
 
+mod edit;
+mod view;
+
+const BG: Color = Color::rgb(30, 30, 40);
+const BORDER: Color = Color::rgb(80, 80, 100);
+const PLACEHOLDER: Color = Color::rgb(100, 100, 120);
+
+fn screen(s: &SearchBar, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    s.render(&mut ctx);
+    buffer
+}
+
+/// Row `y`, without wide glyphs' continuation cells
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .filter(|&c| c != '\0')
+        .collect()
+}
+
+/// An invalid query (an unknown sort direction)
+const INVALID: &str = "sort:name:invalid";
+
 // =============================================================================
 // Constructor Tests
 // =============================================================================
@@ -39,60 +64,95 @@ fn test_search_bar_helper_function() {
 
 #[test]
 fn test_search_bar_placeholder_builder() {
-    // Verify builder returns self and doesn't panic
-    let _s = SearchBar::new().placeholder("Type here...");
+    let s = SearchBar::new().placeholder("Type here...");
+    assert_eq!(row(&screen(&s, 20, 1), 0), "│ 🔍Type here...   │");
 }
 
 #[test]
 fn test_search_bar_placeholder_builder_with_string() {
-    let _s = SearchBar::new().placeholder(String::from("Custom placeholder"));
+    let s = SearchBar::new().placeholder(String::from("Custom"));
+    assert!(row(&screen(&s, 20, 1), 0).starts_with("│ 🔍Custom "));
 }
 
 #[test]
 fn test_search_bar_width_builder() {
-    let _s = SearchBar::new().width(60);
+    let buffer = screen(&SearchBar::new().width(20), 30, 1);
+    // The right border at the last of 20 columns, nothing after it
+    assert_eq!(buffer.get(19, 0).unwrap().symbol, '│');
+    assert_eq!(buffer.get(20, 0).unwrap().bg, None);
 }
 
 #[test]
 fn test_search_bar_width_builder_clamps_minimum() {
-    // Width of 5 should be clamped to minimum 10; just verify no panic
-    let _s = SearchBar::new().width(5);
+    // Width 5 is raised to 10
+    let buffer = screen(&SearchBar::new().width(5), 30, 1);
+    assert_eq!(buffer.get(9, 0).unwrap().symbol, '│');
+    assert_eq!(buffer.get(10, 0).unwrap().bg, None);
 }
 
 #[test]
 fn test_search_bar_icon_builder() {
-    let _s = SearchBar::new().icon('🔎');
+    let buffer = screen(&SearchBar::new().icon('S'), 20, 1);
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, 'S');
+    assert_eq!(row(&buffer, 0), "│ S Search...      │");
 }
 
 #[test]
 fn test_search_bar_show_hints_builder() {
-    let _s = SearchBar::new().show_hints(false);
+    // Hidden hints: not even the error one
+    let mut s = SearchBar::new().show_hints(false);
+    s.focus();
+    s.set_query(INVALID);
+    assert_eq!(row(&screen(&s, 30, 2), 1).trim(), "");
 }
 
 #[test]
 fn test_search_bar_show_hints_builder_true() {
-    let _s = SearchBar::new().show_hints(true);
+    let mut s = SearchBar::new().show_hints(true);
+    s.focus();
+    s.set_query(INVALID);
+    let buffer = screen(&s, 30, 2);
+    assert_eq!(row(&buffer, 1).trim_end(), "Invalid query syntax");
+    assert_eq!(buffer.get(0, 1).unwrap().fg, Some(Color::RED));
 }
 
 #[test]
 fn test_search_bar_colors_builder() {
-    let _s = SearchBar::new().colors(Color::RED, Color::BLUE, Color::GREEN);
+    let mut s = SearchBar::new().colors(Color::RED, Color::BLUE, Color::GREEN);
+    s.set_query("ab");
+    let buffer = screen(&s, 20, 1);
+    assert_eq!(buffer.get(10, 0).unwrap().bg, Some(Color::RED));
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::BLUE));
+    assert_eq!(buffer.get(19, 0).unwrap().fg, Some(Color::BLUE));
+    assert_eq!(buffer.get(4, 0).unwrap().fg, Some(Color::GREEN));
 }
 
 #[test]
 fn test_search_bar_error_color_builder() {
-    let _s = SearchBar::new().error_color(Color::YELLOW);
+    let mut s = SearchBar::new().error_color(Color::YELLOW);
+    s.set_query(INVALID);
+    s.cursor_home();
+    let buffer = screen(&s, 40, 1);
+    // The text and the error mark
+    assert_eq!(buffer.get(4, 0).unwrap().fg, Some(Color::YELLOW));
+    let mark = (0..40)
+        .find(|&x| buffer.get(x, 0).unwrap().symbol == '!')
+        .unwrap();
+    assert_eq!(buffer.get(mark, 0).unwrap().fg, Some(Color::YELLOW));
 }
 
 #[test]
 fn test_search_bar_builder_chaining() {
-    let _s = SearchBar::new()
-        .placeholder("Search")
-        .width(50)
-        .icon('🔍')
+    let s = SearchBar::new()
+        .placeholder("Find")
+        .width(12)
+        .icon('S')
         .show_hints(false)
         .colors(Color::WHITE, Color::rgb(128, 128, 128), Color::BLACK)
         .error_color(Color::RED);
+    let buffer = screen(&s, 20, 2);
+    assert_eq!(row(&buffer, 0), "│ S Find   │        ");
+    assert_eq!(buffer.get(5, 0).unwrap().bg, Some(Color::WHITE));
 }
 
 // =============================================================================
@@ -128,13 +188,6 @@ fn test_search_bar_blur_can_be_called_multiple_times() {
     s.blur();
     s.blur();
     assert!(!s.is_focused());
-}
-
-#[test]
-fn test_search_bar_is_focused_returns_true_when_focused() {
-    let mut s = SearchBar::new();
-    s.focus();
-    assert!(s.is_focused());
 }
 
 #[test]
@@ -633,83 +686,92 @@ fn test_search_bar_handle_key_page_down_returns_false() {
 
 #[test]
 fn test_search_bar_render_without_panic() {
-    let mut buffer = Buffer::new(50, 2);
-    let area = Rect::new(0, 0, 50, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = search_bar().width(40).placeholder("Search...");
-    s.render(&mut ctx);
-    // Smoke test - just verify it renders without panic
+    let buffer = screen(&s, 50, 2);
+    assert_eq!(
+        row(&buffer, 0).trim_end(),
+        format!("│ 🔍Search...{}│", " ".repeat(26))
+    );
+    // The bar's background inside its 40 columns only; no hint unfocused
+    assert_eq!(buffer.get(38, 0).unwrap().bg, Some(BG));
+    assert_eq!(buffer.get(40, 0).unwrap().bg, None);
+    assert_eq!(row(&buffer, 1).trim(), "");
 }
 
 #[test]
 fn test_search_bar_render_with_text() {
-    let mut buffer = Buffer::new(50, 2);
-    let area = Rect::new(0, 0, 50, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut s = search_bar().width(40);
     s.set_query("test query");
-    s.render(&mut ctx);
-    // Smoke test
+    let buffer = screen(&s, 50, 2);
+    assert!(row(&buffer, 0).starts_with("│ 🔍test query "));
+    assert_eq!(buffer.get(4, 0).unwrap().fg, Some(Color::WHITE));
+    assert_eq!(buffer.get(4, 0).unwrap().bg, Some(BG));
 }
 
 #[test]
 fn test_search_bar_render_with_error() {
-    let mut buffer = Buffer::new(50, 2);
-    let area = Rect::new(0, 0, 50, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut s = search_bar().width(40);
-    s.set_query("sort:name:invalid"); // Invalid sort direction causes parse error
-    s.render(&mut ctx);
-    // Smoke test
+    s.set_query(INVALID); // Invalid sort direction causes parse error
+    let buffer = screen(&s, 50, 2);
+    assert!(row(&buffer, 0).contains(INVALID));
+    assert_eq!(buffer.get(4, 0).unwrap().fg, Some(Color::RED));
+    let mark = (0..40)
+        .find(|&x| buffer.get(x, 0).unwrap().symbol == '!')
+        .unwrap();
+    assert_eq!(buffer.get(mark, 0).unwrap().fg, Some(Color::RED));
 }
 
 #[test]
 fn test_search_bar_render_focused() {
-    let mut buffer = Buffer::new(50, 2);
-    let area = Rect::new(0, 0, 50, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut s = search_bar().width(40);
+    let unfocused = screen(&s, 50, 2);
+    assert_eq!(unfocused.get(0, 0).unwrap().fg, Some(BORDER));
     s.focus();
-    s.render(&mut ctx);
-    // Smoke test
+    let buffer = screen(&s, 50, 2);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::CYAN));
+    assert_eq!(buffer.get(39, 0).unwrap().fg, Some(Color::CYAN));
+    // The cursor, at the start of the empty field
+    assert_eq!(buffer.get(4, 0).unwrap().bg, Some(Color::WHITE));
 }
 
 #[test]
 fn test_search_bar_render_small_area() {
-    let mut buffer = Buffer::new(5, 1);
-    let area = Rect::new(0, 0, 5, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // The bar fits the 5 columns it is given
     let s = search_bar().width(5);
-    s.render(&mut ctx);
-    // Should handle small area gracefully
+    let buffer = screen(&s, 5, 1);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '│');
+    assert_eq!(buffer.get(4, 0).unwrap().symbol, '│');
+    // Under 5 columns, nothing
+    let buffer = screen(&s, 4, 1);
+    assert!((0..4).all(|x| buffer.get(x, 0).unwrap().symbol == ' '));
 }
 
 #[test]
 fn test_search_bar_render_with_hints() {
-    let mut buffer = Buffer::new(50, 3);
-    let area = Rect::new(0, 0, 50, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut s = search_bar().width(40).show_hints(true);
     s.focus();
-    s.render(&mut ctx);
-    // Should show hints
+    let buffer = screen(&s, 50, 3);
+    // The hint is clipped to the bar's 40 columns
+    assert_eq!(
+        row(&buffer, 1).trim_end(),
+        "Try: field:value, text~contains, age:>18"
+    );
+    assert_eq!(buffer.get(0, 1).unwrap().fg, Some(PLACEHOLDER));
+    // Gone once there is a (valid) query
+    s.set_query("a");
+    assert_eq!(row(&screen(&s, 50, 3), 1).trim(), "");
+    s.clear();
+    assert_eq!(
+        row(&screen(&s.width(20), 50, 3), 1).trim_end(),
+        "Try: field:value, te"
+    );
 }
 
 #[test]
 fn test_search_bar_render_without_hints() {
-    let mut buffer = Buffer::new(50, 3);
-    let area = Rect::new(0, 0, 50, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = search_bar().width(40).show_hints(false);
-    s.render(&mut ctx);
-    // Should not show hints
+    let mut s = search_bar().width(40).show_hints(false);
+    s.focus();
+    assert_eq!(row(&screen(&s, 50, 3), 1).trim(), "");
 }
 
 // =============================================================================
@@ -726,48 +788,40 @@ fn test_search_bar_initial_state_is_valid() {
 
 #[test]
 fn test_search_bar_default_colors() {
-    // Verify default colors are set by checking render doesn't panic
-    let mut buffer = Buffer::new(50, 2);
-    let area = Rect::new(0, 0, 50, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
     let s = SearchBar::new();
-    s.render(&mut ctx);
+    let buffer = screen(&s, 50, 2);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(BORDER));
+    assert_eq!(buffer.get(10, 0).unwrap().bg, Some(BG));
+    assert_eq!(buffer.get(4, 0).unwrap().fg, Some(PLACEHOLDER));
 }
 
 #[test]
 fn test_search_bar_default_icon() {
-    // Verify default icon renders without panic
-    let mut buffer = Buffer::new(50, 2);
-    let area = Rect::new(0, 0, 50, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    let s = SearchBar::new();
-    s.render(&mut ctx);
+    let buffer = screen(&SearchBar::new(), 50, 2);
+    // An emoji: two columns from x 2
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '🔍');
+    assert_eq!(buffer.get(3, 0).unwrap().symbol, '\0');
 }
 
 #[test]
 fn test_search_bar_default_placeholder() {
-    // Verify default placeholder renders without panic
-    let mut buffer = Buffer::new(50, 2);
-    let area = Rect::new(0, 0, 50, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    let s = SearchBar::new();
-    s.render(&mut ctx);
+    let buffer = screen(&SearchBar::new(), 50, 2);
+    assert!(row(&buffer, 0).starts_with("│ 🔍Search... "));
 }
 
 #[test]
 fn test_search_bar_default_width() {
-    // Verify default width; widget is valid and can render
-    let s = SearchBar::new();
-    assert!(s.get_input().is_empty());
+    // 40 columns
+    let buffer = screen(&SearchBar::new(), 50, 2);
+    assert_eq!(buffer.get(39, 0).unwrap().symbol, '│');
+    assert_eq!(buffer.get(40, 0).unwrap().bg, None);
 }
 
 #[test]
 fn test_search_bar_default_show_hints() {
-    // Verify default show_hints renders hints when focused
-    let mut buffer = Buffer::new(50, 3);
-    let area = Rect::new(0, 0, 50, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    // Shown by default, while focused
     let mut s = SearchBar::new();
+    assert_eq!(row(&screen(&s, 50, 3), 1).trim(), "");
     s.focus();
-    s.render(&mut ctx);
+    assert!(row(&screen(&s, 50, 3), 1).starts_with("Try: "));
 }
