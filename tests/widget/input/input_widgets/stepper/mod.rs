@@ -8,6 +8,33 @@ use revue::widget::{
     step, stepper, Step, StepStatus, Stepper, StepperOrientation, StepperStyle, View,
 };
 
+mod view;
+
+/// Each row of `s` drawn in a `w` x `h` area, trimmed at the end
+fn rows(s: &Stepper, w: u16, h: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    s.render(&mut ctx);
+    (0..h)
+        .map(|y| {
+            (0..w)
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .filter(|&c| c != '\0')
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
+
+/// The fg of the cell at (x, y)
+fn fg_at(s: &Stepper, w: u16, h: u16, x: u16, y: u16) -> Option<Color> {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    s.render(&mut ctx);
+    buffer.get(x, y).unwrap().fg
+}
+
 // =============================================================================
 // StepStatus Tests
 // =============================================================================
@@ -54,22 +81,16 @@ fn test_step_status_all_variants() {
 
 #[test]
 fn test_step_status_icons() {
-    // icon() is a private method; verify each status variant renders without panic
-    // (each variant has a distinct icon used internally during rendering)
-    let statuses = [
-        StepStatus::Pending,
-        StepStatus::Active,
-        StepStatus::Completed,
-        StepStatus::Error,
-        StepStatus::Skipped,
-    ];
-    for status in statuses {
-        let mut buf = Buffer::new(10, 2);
-        let a = Rect::new(0, 0, 10, 2);
-        let mut c = RenderContext::new(&mut buf, a);
-        Stepper::new()
-            .step(Step::new("X").status(status))
-            .render(&mut c);
+    // Each status has its own icon
+    for (status, icon) in [
+        (StepStatus::Pending, '○'),
+        (StepStatus::Active, '●'),
+        (StepStatus::Completed, '✓'),
+        (StepStatus::Error, '✗'),
+        (StepStatus::Skipped, '⊘'),
+    ] {
+        let s = Stepper::new().step(Step::new("X").status(status));
+        assert_eq!(rows(&s, 10, 2)[0], icon.to_string(), "{status:?}");
     }
 }
 
@@ -348,126 +369,98 @@ fn test_stepper_steps_builder() {
 
 #[test]
 fn test_stepper_orientation_horizontal() {
-    // Verify horizontal orientation by smoke-test rendering
+    // Side by side: half the width each, joined by the default connector,
+    // titles on the row below
     let s = Stepper::new().horizontal().add_step("A").add_step("B");
-    let mut buf = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buf, area);
-    s.render(&mut ctx);
-
-    let _stepper = Stepper::new().horizontal();
-
-    // Orientation was set successfully
+    assert_eq!(rows(&s, 20, 2), vec!["○ ────────○", "A         B"]);
 }
 
 #[test]
 fn test_stepper_orientation_vertical() {
-    // Verify vertical orientation by smoke-test rendering
+    // One under the other, the title after the indicator, a connector
+    // between
     let s = Stepper::new().vertical().add_step("A").add_step("B");
-    let mut buf = Buffer::new(60, 10);
-    let area = Rect::new(0, 0, 60, 10);
-    let mut ctx = RenderContext::new(&mut buf, area);
-    s.render(&mut ctx);
-
-    let _stepper = Stepper::new().vertical();
-
-    // Orientation was set successfully
+    assert_eq!(rows(&s, 20, 3), vec!["○  A", "│", "○  B"]);
 }
 
 #[test]
 fn test_stepper_orientation_builder() {
-    // Verify orientation builder does not panic
-    let s = Stepper::new().orientation(StepperOrientation::Vertical);
-    let mut buf = Buffer::new(60, 10);
-    let area = Rect::new(0, 0, 60, 10);
-    let mut ctx = RenderContext::new(&mut buf, area);
-    s.render(&mut ctx);
+    let s = Stepper::new().add_step("A").add_step("B");
+    assert_eq!(
+        rows(&s.clone().orientation(StepperOrientation::Vertical), 20, 3),
+        rows(&s.clone().vertical(), 20, 3)
+    );
+    assert_eq!(
+        rows(
+            &s.clone().orientation(StepperOrientation::Horizontal),
+            20,
+            3
+        ),
+        rows(&s, 20, 3)
+    );
 }
 
 #[test]
 fn test_stepper_style_builder() {
-    // Verify style builder does not panic
+    // Numbered: the step's number instead of its icon
     let s = Stepper::new().style(StepperStyle::Numbered).add_step("A");
-    let mut buf = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buf, area);
-    s.render(&mut ctx);
+    assert_eq!(rows(&s, 10, 2), vec!["1", "A"]);
 }
 
 #[test]
 fn test_stepper_descriptions_show() {
-    // Verify descriptions(true) does not panic when rendering
     let s = Stepper::new()
         .descriptions(true)
         .step(Step::new("A").description("desc"));
-    let mut buf = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buf, area);
-    s.render(&mut ctx);
+    assert_eq!(rows(&s, 20, 3), vec!["○", "A", "desc"]);
 }
 
 #[test]
 fn test_stepper_descriptions_hide() {
-    // Verify descriptions(false) does not panic when rendering
     let s = Stepper::new()
         .descriptions(false)
         .step(Step::new("A").description("desc"));
-    let mut buf = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buf, area);
-    s.render(&mut ctx);
+    assert_eq!(rows(&s, 20, 3), vec!["○", "A", ""]);
 }
 
 #[test]
 fn test_stepper_numbers_show() {
-    // Verify numbers(true) does not panic when rendering
+    // Numbers show only in the Numbered style
     let s = Stepper::new().numbers(true).add_step("A");
-    let mut buf = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buf, area);
-    s.render(&mut ctx);
+    assert_eq!(rows(&s, 10, 2)[0], "○");
+    assert_eq!(rows(&s.style(StepperStyle::Numbered), 10, 2)[0], "1");
 }
 
 #[test]
 fn test_stepper_numbers_hide() {
-    // Verify numbers(false) does not panic when rendering
-    let s = Stepper::new().numbers(false).add_step("A");
-    let mut buf = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buf, area);
-    s.render(&mut ctx);
+    // Turned off, the Numbered style shows icons
+    let s = Stepper::new()
+        .numbers(false)
+        .style(StepperStyle::Numbered)
+        .add_step("A");
+    assert_eq!(rows(&s, 10, 2)[0], "○");
 }
 
 #[test]
 fn test_stepper_active_color() {
-    // Verify active_color builder does not panic
-    let color = Color::MAGENTA;
-    let s = Stepper::new().active_color(color).add_step("A").current(0);
-    let mut buf = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buf, area);
-    s.render(&mut ctx);
-
-    let _stepper = Stepper::new().active_color(Color::CYAN);
-
-    // Color was set successfully
+    let s = Stepper::new()
+        .active_color(Color::MAGENTA)
+        .add_step("A")
+        .add_step("B")
+        .current(0);
+    // The active step's indicator and title; the next one is not active
+    assert_eq!(fg_at(&s, 20, 2, 0, 0), Some(Color::MAGENTA));
+    assert_eq!(fg_at(&s, 20, 2, 0, 1), Some(Color::MAGENTA));
+    assert_ne!(fg_at(&s, 20, 2, 10, 0), Some(Color::MAGENTA));
 }
 
 #[test]
 fn test_stepper_completed_color() {
-    // Verify completed_color builder does not panic
-    let color = Color::BLUE;
     let s = Stepper::new()
-        .completed_color(color)
+        .completed_color(Color::MAGENTA)
         .step(Step::new("A").complete());
-    let mut buf = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buf, area);
-    s.render(&mut ctx);
-
-    let _stepper = Stepper::new().completed_color(Color::GREEN);
-
-    // Color was set successfully
+    assert_eq!(rows(&s, 10, 2)[0], "✓");
+    assert_eq!(fg_at(&s, 10, 2, 0, 0), Some(Color::MAGENTA));
 }
 
 #[test]
@@ -723,7 +716,9 @@ fn test_stepper_mark_error() {
 fn test_stepper_mark_error_out_of_bounds() {
     let mut s = Stepper::new().add_step("A");
     s.mark_error(100);
-    // Should not panic
+    // Nothing changes
+    assert_eq!(s.len(), 1);
+    assert_eq!(s.current_step().unwrap().status, StepStatus::Pending);
 }
 
 #[test]
@@ -742,7 +737,8 @@ fn test_stepper_skip() {
 fn test_stepper_skip_out_of_bounds() {
     let mut s = Stepper::new().add_step("A");
     s.skip(100);
-    // Should not panic
+    assert_eq!(s.len(), 1);
+    assert_eq!(s.current_step().unwrap().status, StepStatus::Pending);
 }
 
 #[test]
@@ -832,142 +828,110 @@ fn test_helpers_combined() {
 
 #[test]
 fn test_render_horizontal() {
-    let mut buffer = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Stepper::new()
         .add_step("Step 1")
         .add_step("Step 2")
         .add_step("Step 3")
         .current(1);
-
-    s.render(&mut ctx);
-    // Smoke test - should not panic
+    // 20 columns each: done, active, pending, joined by connectors
+    assert_eq!(
+        &rows(&s, 60, 5)[..2],
+        [
+            format!("✓ {}● {}○", "─".repeat(18), "─".repeat(18)),
+            format!("Step 1{}Step 2{}Step 3", " ".repeat(14), " ".repeat(14)),
+        ]
+    );
 }
 
 #[test]
 fn test_render_vertical() {
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Stepper::new()
         .vertical()
         .add_step("Step 1")
         .add_step("Step 2")
         .current(0);
-
-    s.render(&mut ctx);
-    // Smoke test - should not panic
+    assert_eq!(&rows(&s, 40, 10)[..4], ["●  Step 1", "│", "○  Step 2", ""]);
 }
 
 #[test]
 fn test_render_horizontal_too_narrow() {
-    let mut buffer = Buffer::new(2, 5);
-    let area = Rect::new(0, 0, 2, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // Under 3 columns, nothing is drawn
     let s = Stepper::new().add_step("Step 1").add_step("Step 2");
-
-    s.render(&mut ctx);
-    // Should not panic with width < 3
+    assert!(rows(&s, 2, 5).iter().all(|r| r.is_empty()));
+    // One column each: both icons, with no room between them (#1028)
+    assert_eq!(rows(&s, 3, 5)[0].matches('○').count(), 2);
 }
 
 #[test]
 fn test_render_horizontal_too_short() {
-    let mut buffer = Buffer::new(60, 0);
+    let mut buffer = Buffer::new(60, 1);
     let area = Rect::new(0, 0, 60, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     let s = Stepper::new().add_step("Step 1");
 
     s.render(&mut ctx);
-    // Should not panic with height < 1
+    // A zero-height area draws nothing
+    assert!((0..60).all(|x| buffer.get(x, 0).unwrap().symbol == ' '));
 }
 
 #[test]
 fn test_render_horizontal_empty() {
-    let mut buffer = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Stepper::new();
-
-    s.render(&mut ctx);
-    // Should not panic with empty steps
+    assert!(rows(&Stepper::new(), 60, 5).iter().all(|r| r.is_empty()));
 }
 
 #[test]
 fn test_render_vertical_empty() {
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Stepper::new().vertical();
-
-    s.render(&mut ctx);
-    // Should not panic with empty steps
+    assert!(rows(&Stepper::new().vertical(), 40, 10)
+        .iter()
+        .all(|r| r.is_empty()));
 }
 
 #[test]
 fn test_render_with_description() {
-    let mut buffer = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Stepper::new()
         .step(Step::new("Step 1").description("This is a description"))
-        .current(0);
-
-    s.render(&mut ctx);
-    // Smoke test with descriptions
+        .current(0)
+        .descriptions(true);
+    let shown = rows(&s, 60, 5);
+    assert_eq!(&shown[..3], ["●", "Step 1", "This is a description"]);
+    // Grayer than the title
+    assert_ne!(fg_at(&s, 60, 5, 0, 2), fg_at(&s, 60, 5, 0, 1));
 }
 
 #[test]
 fn test_render_without_description() {
-    let mut buffer = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Stepper::new()
         .descriptions(false)
         .step(Step::new("Step 1").description("Hidden"))
         .current(0);
-
-    s.render(&mut ctx);
-    // Smoke test without descriptions
+    assert!(rows(&s, 60, 5).iter().all(|r| !r.contains("Hidden")));
 }
 
 #[test]
 fn test_render_vertical_with_description() {
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Stepper::new()
         .vertical()
+        .descriptions(true)
         .step(Step::new("Step 1").description("Description"))
+        .add_step("Step 2")
         .current(0);
-
-    s.render(&mut ctx);
-    // Smoke test vertical with description
+    // The description takes its own row, under the title
+    assert_eq!(
+        &rows(&s, 40, 10)[..4],
+        ["●  Step 1", "   Description", "│", "○  Step 2"]
+    );
 }
 
 #[test]
 fn test_render_vertical_without_description() {
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Stepper::new()
         .vertical()
         .descriptions(false)
-        .add_step("Step 1")
+        .step(Step::new("Step 1").description("Description"))
+        .add_step("Step 2")
         .current(0);
-
-    s.render(&mut ctx);
-    // Smoke test vertical without description
+    assert_eq!(&rows(&s, 40, 10)[..3], ["●  Step 1", "│", "○  Step 2"]);
 }
 
 // =============================================================================
@@ -976,66 +940,46 @@ fn test_render_vertical_without_description() {
 
 #[test]
 fn test_render_style_dots() {
-    let mut buffer = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Stepper::new()
         .style(StepperStyle::Dots)
         .add_step("Step 1")
         .add_step("Step 2")
         .current(0);
-
-    s.render(&mut ctx);
-    // Smoke test for Dots style
+    // Icons, no connector
+    assert_eq!(rows(&s, 20, 2)[0], "●         ○");
 }
 
 #[test]
 fn test_render_style_numbered() {
-    let mut buffer = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Stepper::new()
         .style(StepperStyle::Numbered)
         .add_step("Step 1")
         .add_step("Step 2")
         .current(0);
-
-    s.render(&mut ctx);
-    // Smoke test for Numbered style
+    assert_eq!(rows(&s, 20, 2)[0], "1         2");
 }
 
 #[test]
 fn test_render_style_connected() {
-    let mut buffer = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Stepper::new()
         .style(StepperStyle::Connected)
         .add_step("Step 1")
         .add_step("Step 2")
         .current(0);
-
-    s.render(&mut ctx);
-    // Smoke test for Connected style
+    // A thin line from after the first indicator to the next step
+    assert_eq!(rows(&s, 20, 2)[0], format!("● {}○", "─".repeat(8)));
 }
 
 #[test]
 fn test_render_style_progress() {
-    let mut buffer = Buffer::new(60, 5);
-    let area = Rect::new(0, 0, 60, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Stepper::new()
         .style(StepperStyle::Progress)
         .add_step("Step 1")
         .add_step("Step 2")
         .current(1);
-
-    s.render(&mut ctx);
-    // Smoke test for Progress style
+    // Past a completed step the line is heavy, in the completed color
+    assert_eq!(rows(&s, 20, 2)[0], format!("✓ {}●", "━".repeat(8)));
+    assert_eq!(fg_at(&s, 20, 2, 3, 0), fg_at(&s, 20, 2, 0, 0));
 }
 
 // =============================================================================
@@ -1127,7 +1071,10 @@ fn test_stepper_add_multiple_steps() {
         .add_step("Step 2")
         .add_step("Step 3");
 
-    assert_eq!(stepper.len(), 3);
+    // In order, each pending
+    assert_eq!(stepper.current_step().unwrap().title, "Step 1");
+    assert_eq!(stepper.current_step().unwrap().status, StepStatus::Pending);
+    assert!((stepper.progress() - 0.0).abs() < f64::EPSILON);
 }
 
 #[test]
@@ -1143,16 +1090,17 @@ fn test_stepper_with_steps_vec() {
 
 #[test]
 fn test_stepper_descriptions() {
-    let _stepper = Stepper::new().descriptions(true);
-
-    // Descriptions enabled successfully
+    // On by default
+    let s = Stepper::new().step(Step::new("A").description("d"));
+    assert!(rows(&s, 10, 3).iter().any(|r| r == "d"));
+    assert!(!rows(&s.descriptions(false), 10, 3).iter().any(|r| r == "d"));
 }
 
 #[test]
 fn test_stepper_numbers() {
-    let _stepper = Stepper::new().numbers(true);
-
-    // Numbers enabled successfully
+    // On by default, for the Numbered style
+    let s = Stepper::new().style(StepperStyle::Numbered).add_step("A");
+    assert_eq!(rows(&s.clone().numbers(true), 10, 2), rows(&s, 10, 2));
 }
 
 #[test]
