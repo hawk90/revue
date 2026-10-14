@@ -231,3 +231,12 @@ fn test_search_after_close() {
     assert_eq!(select.query(), "");
     assert_eq!(select.get_filtered().len(), 5);
 }
+
+#[test]
+fn test_matches_are_listed_best_first_not_in_option_order() {
+    let mut select = MultiSelect::new().options(vec!["Pineapple", "Banana", "Apple"]);
+    select.set_query("app");
+    // The prefix match comes first although it is the last option
+    assert_eq!(select.get_filtered(), &[2, 0]);
+    assert_eq!(select.current_option(), Some(2));
+}

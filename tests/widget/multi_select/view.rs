@@ -381,7 +381,23 @@ fn stylesheet_colors_reach_the_header_and_the_rows() {
         (Some(Color::MAGENTA), Some(Color::GREEN))
     );
     // The cursor row keeps its own colors
-    assert_eq!(bg(&buffer, 4, 1), Some(CURSOR_ROW_BG));
+    assert_eq!(
+        (fg(&buffer, 4, 1), bg(&buffer, 4, 1)),
+        (Some(Color::WHITE), Some(CURSOR_ROW_BG))
+    );
+}
+
+#[test]
+fn a_width_below_three_is_raised_to_three() {
+    // Open, so that no placeholder covers the arrow (draft-ms-1)
+    for w in [0, 1, 2, 3] {
+        let mut v = fruits().width(w);
+        v.open();
+        let b = render_in(&v, 20, 1);
+        assert_eq!(cols(&b, 0, 0, 4), "  ▲ ", "{w}");
+        assert_eq!((bg(&b, 2, 0), bg(&b, 3, 0)), (None, None), "{w}");
+        assert_eq!(bg(&b, 1, 0), Some(BG), "{w}");
+    }
 }
 
 // The dropdown
