@@ -306,8 +306,8 @@ proptest! {
         // The min is kept within the area: past it the frame is clipped at
         // the area's edge, a case the model leaves out.
         let (min_w, min_h) = (min.0.min(aw), min.1.min(ah));
-        // A max below the min draws one size and measures another (see the
-        // issue drafted in the border audit), so the max is the min or more.
+        // A max below the min draws one size and measures another
+        // (#1042), so the max is the min or more.
         let (max_w, max_h) = extra.map_or((0, 0), |(ew, eh)| (min_w + ew, min_h + eh));
         let mut b = Border::new().border_type(t).constrain(min_w, min_h, max_w, max_h);
         let title_str: Option<String> = title.as_ref().map(|t| t.iter().map(|&(c, _)| c).collect());
