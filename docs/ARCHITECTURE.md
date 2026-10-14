@@ -107,7 +107,7 @@ src/widget/
 │   ├── avatar/            #   Avatar
 │   ├── progress.rs        #   Progress bar
 │   ├── spinner.rs         #   Loading spinner
-│   ├── skeleton.rs        #   Skeleton loader
+│   ├── skeleton/          #   Skeleton loader
 │   ├── gauge/             #   Gauge/meter
 │   └── divider.rs         #   Divider
 │
