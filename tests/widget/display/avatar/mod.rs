@@ -1,7 +1,7 @@
 //! Avatar widget tests
 
 use revue::layout::Rect;
-use revue::render::Buffer;
+use revue::render::{Buffer, Modifier};
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView, View};
 use revue::widget::{avatar, avatar_icon, Avatar, AvatarShape, AvatarSize};
@@ -453,11 +453,11 @@ fn test_avatar_render_medium() {
     let a = avatar("John Doe");
     a.render(&mut ctx);
 
-    // Should have initials in the middle
+    // The two initials between the circle's edges, then nothing
     let text: String = (0..10)
         .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
         .collect();
-    assert!(text.contains('J') || text.contains('D'));
+    assert_eq!(text, "◖JD◗      ");
 }
 
 #[test]
@@ -853,9 +853,16 @@ fn test_avatar_color_generation_different_names() {
     let mut ctx2 = RenderContext::new(&mut buffer2, area2);
     a2.render(&mut ctx2);
 
-    // Different names should (usually) generate different colors
-    let _c1 = buffer1.get(1, 0).unwrap().bg.unwrap();
-    let _c2 = buffer2.get(1, 0).unwrap().bg.unwrap();
+    // "Alice" and "Bob" sum to different hues (118 and 275), so the colors
+    // differ; the same name always gives the same color
+    let c1 = buffer1.get(1, 0).unwrap().bg.unwrap();
+    let c2 = buffer2.get(1, 0).unwrap().bg.unwrap();
+    assert_ne!(c1, c2);
+
+    let mut buffer3 = Buffer::new(10, 1);
+    let mut ctx3 = RenderContext::new(&mut buffer3, Rect::new(0, 0, 10, 1));
+    Avatar::new("Alice").render(&mut ctx3);
+    assert_eq!(buffer3.get(1, 0).unwrap().bg, Some(c1));
 }
 
 #[test]
@@ -876,8 +883,13 @@ fn test_avatar_color_generation_empty_name() {
     let area = Rect::new(0, 0, 10, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
     a.render(&mut ctx);
-    // Empty name should still render something
-    // Just verify rendering doesn't panic
+    // An empty name has hue 0 (red): the circle's edges and the empty
+    // initials' row are drawn in it
+    let red = Some(Color::rgb(163, 40, 40));
+    let text: String = (0..4).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert_eq!(text, "◖  ◗");
+    assert_eq!(buffer.get(0, 0).unwrap().fg, red);
+    assert_eq!(buffer.get(3, 0).unwrap().fg, red);
 }
 
 // =============================================================================
@@ -909,13 +921,23 @@ fn test_all_avatar_size_variants() {
 
 #[test]
 fn test_avatar_size_default() {
-    let a = avatar("Test");
-    let mut buffer = Buffer::new(10, 1);
-    let area = Rect::new(0, 0, 10, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    a.render(&mut ctx);
-    // Default is Medium (circle markers)
-    assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('◖'));
+    // Default is Medium: the same cells as an explicit `.medium()`, one row
+    // with the initial between the edges
+    let draw = |a: Avatar| {
+        let mut buffer = Buffer::new(10, 3);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 10, 3));
+        a.render(&mut ctx);
+        (0..3)
+            .flat_map(|y| (0..10).map(move |x| (x, y)))
+            .map(|(x, y)| *buffer.get(x, y).unwrap())
+            .collect::<Vec<_>>()
+    };
+    let default = draw(avatar("Test"));
+    assert!(default == draw(avatar("Test").medium()));
+    assert!(default != draw(avatar("Test").small()));
+    assert!(default != draw(avatar("Test").large()));
+    let text: String = default[..10].iter().map(|c| c.symbol).collect();
+    assert_eq!(text, "◖T ◗      ");
 }
 
 // =============================================================================
@@ -946,13 +968,27 @@ fn test_all_avatar_shape_variants() {
 
 #[test]
 fn test_avatar_shape_default() {
-    let a = avatar("Test");
-    let mut buffer = Buffer::new(10, 1);
-    let area = Rect::new(0, 0, 10, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    a.render(&mut ctx);
-    // Default is Circle
-    assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('◖'));
+    // Default is Circle: the same cells as an explicit `.circle()` at every
+    // size, and not those of the other shapes at medium size
+    let draw = |a: Avatar| {
+        let mut buffer = Buffer::new(10, 3);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 10, 3));
+        a.render(&mut ctx);
+        (0..3)
+            .flat_map(|y| (0..10).map(move |x| (x, y)))
+            .map(|(x, y)| *buffer.get(x, y).unwrap())
+            .collect::<Vec<_>>()
+    };
+    for size in [AvatarSize::Small, AvatarSize::Medium, AvatarSize::Large] {
+        let default = draw(avatar("Test").size(size));
+        assert!(
+            default == draw(avatar("Test").size(size).circle()),
+            "{size:?}"
+        );
+    }
+    let medium = draw(avatar("Test"));
+    assert!(medium != draw(avatar("Test").square()));
+    assert!(medium != draw(avatar("Test").rounded()));
 }
 
 // =============================================================================
@@ -965,13 +1001,17 @@ fn test_avatar_render_bold_modifier() {
     let area = Rect::new(0, 0, 10, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let a = avatar("JD");
+    let a = avatar("Jane Doe");
     a.render(&mut ctx);
 
-    // Avatar renders successfully - bold modifier may or may not be applied
-    // depending on implementation
-    let cell1 = buffer.get(1, 0).unwrap();
-    assert_eq!(cell1.symbol, 'J');
+    // The initials are bold; the circle's edges are not
+    for x in [1, 2] {
+        assert!(buffer.get(x, 0).unwrap().modifier.contains(Modifier::BOLD));
+    }
+    for x in [0, 3] {
+        assert!(!buffer.get(x, 0).unwrap().modifier.contains(Modifier::BOLD));
+    }
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, 'J');
 }
 
 // =============================================================================
@@ -991,6 +1031,8 @@ fn test_avatar_default_trait() {
 
 // =============================================================================
 // =============================================================================
+
+mod view;
 
 mod snapshots {
     use revue::prelude::*;
