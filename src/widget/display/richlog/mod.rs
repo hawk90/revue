@@ -3,6 +3,7 @@
 //! Provides a scrollable log view with syntax highlighting and log levels.
 
 mod navigation;
+mod prefix;
 mod render;
 mod types;
 
