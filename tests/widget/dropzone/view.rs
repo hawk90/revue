@@ -262,7 +262,7 @@ fn the_highlight_fill_covers_the_background() {
     for (x, y) in [(0, 0), (2, 1), (19, 2)] {
         assert_eq!(bg(&rest, x, y), Some(Color::BLUE), "({x}, {y})");
     }
-    // The verdict's own cells lose the fill (draft-dz-c982); the cells
+    // The verdict's own cells lose the fill (#982); the cells
     // around it are checked.
     zone.set_hovered(true, true);
     let accept = render(&zone, 20, 3);

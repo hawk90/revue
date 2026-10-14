@@ -92,7 +92,7 @@ proptest! {
                 }
                 Op::Drop(kind) => {
                     // A drop of a type the zone does not accept still runs the
-                    // handler (draft-dz-2), so only accepted types are dropped.
+                    // handler (#1108), so only accepted types are dropped.
                     if !accepted(kind) {
                         continue;
                     }
@@ -182,7 +182,7 @@ fn setup() -> impl Strategy<Value = Setup> {
             1..=26u16,
             // Three rows or more, and a minimum height that fits: a shorter
             // area or a larger minimum draws text over the frame or past the
-            // area (draft-dz-1).
+            // area (#1107).
             3..=9u16,
             proptest::option::of(0..=9u16),
             any::<(bool, bool)>(),
@@ -356,7 +356,7 @@ proptest! {
         let buffer = render(&build(&s), s.width, s.height);
         let (mut actual, mut expected) = (cells(&buffer), model(&s));
         if s.hovered && s.style == DropZoneStyle::Highlight {
-            // The verdict's cells lose the highlight fill (draft-dz-c982), so
+            // The verdict's cells lose the highlight fill (#982), so
             // their background is not compared.
             let y = usize::from(s.height / 2);
             for x in 2..usize::from(s.width.saturating_sub(2)) {
