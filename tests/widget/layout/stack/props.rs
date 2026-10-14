@@ -137,3 +137,60 @@ fn test_stack_zero_areas_draw_nothing() {
         }
     }
 }
+
+#[test]
+fn test_stack_auto_children_get_one_cell_beside_flex() {
+    // With a flex child, an unsized one gets one cell and flex the rest
+    let s = vstack()
+        .content_sized(false)
+        .child_flex(Paint('f'), 1.0)
+        .child(Paint('a'));
+    let mut buffer = Buffer::new(1, 6);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 1, 6));
+    s.render(&mut ctx);
+    let column: String = (0..6).map(|y| buffer.get(0, y).unwrap().symbol).collect();
+    assert_eq!(column, "fffffa");
+}
+
+#[test]
+fn test_stack_measure_and_fills() {
+    use revue::widget::{Input, Text};
+    // The minimum size is kept; a flex child leaves the size to the layout
+    assert_eq!(
+        vstack()
+            .child(Text::new("a"))
+            .min_size(5, 4)
+            .measure(20, 20),
+        Some((5, 4))
+    );
+    assert_eq!(
+        vstack().child_flex(Text::new("a"), 1.0).measure(20, 20),
+        None
+    );
+    // Only a child added with `child` makes the stack fill
+    assert!(hstack().child(Input::new()).fills().width);
+    assert!(!hstack().child_sized(Input::new(), 5).fills().width);
+}
+
+#[test]
+fn test_stack_render_keeps_its_max_size() {
+    use revue::widget::Text;
+    let s = vstack()
+        .content_sized(false)
+        .child(Text::new("aaaaaaaa"))
+        .child(Text::new("bbbbbbbb"))
+        .max_size(4, 1);
+    let mut buffer = Buffer::new(10, 4);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 10, 4));
+    s.render(&mut ctx);
+    let rows: Vec<String> = (0..4)
+        .map(|y| {
+            (0..10)
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect();
+    assert_eq!(rows, vec!["aaaa", "", "", ""]);
+}
