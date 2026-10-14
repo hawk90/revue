@@ -1,4 +1,4 @@
-//! Accordion section type
+//! One section: its title, content lines, expanded state and icons.
 
 /// Accordion section
 #[derive(Clone)]

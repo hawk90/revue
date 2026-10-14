@@ -1,0 +1,291 @@
+//! Collapsible widget - a single expandable/collapsible section
+//!
+//! Similar to HTML's `<details>/<summary>` elements.
+//!
+//! # Example
+//!
+//! ```rust,ignore
+//! use revue::widget::{Collapsible, collapsible};
+//!
+//! // Basic usage
+//! let details = Collapsible::new("More Info")
+//!     .content("Hidden content here\nMultiple lines supported")
+//!     .expanded(false);
+//!
+//! // With custom icons
+//! let custom = collapsible("Settings")
+//!     .icons('+', '-')
+//!     .content("Configuration options...")
+//!     .expanded(true);
+//! ```
+
+mod view;
+
+use crate::event::Key;
+use crate::style::Color;
+use crate::widget::theme::{DARK_GRAY, SECONDARY_TEXT};
+use crate::widget::traits::{WidgetProps, WidgetState};
+use crate::{impl_styled_view, impl_widget_builders};
+
+/// A single collapsible/expandable section widget
+///
+/// Like HTML's `<details>/<summary>`, this provides a toggleable
+/// section with a header and hidden content.
+#[derive(Clone)]
+pub struct Collapsible {
+    /// Header/summary text
+    title: String,
+    /// Content lines (shown when expanded)
+    content: Vec<String>,
+    /// Whether the content is visible
+    expanded: bool,
+    /// Icon when collapsed
+    collapsed_icon: char,
+    /// Icon when expanded
+    expanded_icon: char,
+    /// Header foreground color
+    /// The color the builder named, if it named one - see #656.
+    header_fg: Option<Color>,
+    /// Header background color (optional)
+    header_bg: Option<Color>,
+    /// Content foreground color
+    content_fg: Color,
+    /// Content background color (optional)
+    content_bg: Option<Color>,
+    /// Show border around content
+    show_border: bool,
+    /// Border color
+    border_color: Color,
+    /// Widget state (focused, disabled, etc.)
+    state: WidgetState,
+    /// Minimum width constraint (0 = no constraint)
+    min_width: u16,
+    /// Minimum height constraint (0 = no constraint)
+    min_height: u16,
+    /// Maximum width constraint (0 = no constraint)
+    max_width: u16,
+    /// Maximum height constraint (0 = no constraint)
+    max_height: u16,
+    /// Widget properties (id, classes)
+    props: WidgetProps,
+}
+
+impl Collapsible {
+    /// Create a new collapsible section with the given title
+    pub fn new(title: impl Into<String>) -> Self {
+        Self {
+            title: title.into(),
+            content: Vec::new(),
+            expanded: false,
+            collapsed_icon: '▶',
+            expanded_icon: '▼',
+            header_fg: None,
+            header_bg: None,
+            content_fg: SECONDARY_TEXT,
+            content_bg: None,
+            show_border: true,
+            border_color: DARK_GRAY,
+            state: WidgetState::new(),
+            min_width: 0,
+            min_height: 0,
+            max_width: 0,
+            max_height: 0,
+            props: WidgetProps::new(),
+        }
+    }
+
+    /// Set content text (splits by newlines)
+    pub fn content(mut self, text: impl Into<String>) -> Self {
+        self.content = text.into().lines().map(|s| s.to_string()).collect();
+        self
+    }
+
+    /// Add a single content line
+    pub fn line(mut self, line: impl Into<String>) -> Self {
+        self.content.push(line.into());
+        self
+    }
+
+    /// Add multiple content lines
+    pub fn lines(mut self, lines: &[&str]) -> Self {
+        self.content.extend(lines.iter().map(|s| s.to_string()));
+        self
+    }
+
+    /// Set expanded state
+    pub fn expanded(mut self, expanded: bool) -> Self {
+        self.expanded = expanded;
+        self
+    }
+
+    /// Set custom icons for collapsed/expanded states
+    pub fn icons(mut self, collapsed: char, expanded: char) -> Self {
+        self.collapsed_icon = collapsed;
+        self.expanded_icon = expanded;
+        self
+    }
+
+    /// Set header colors
+    pub fn header_colors(mut self, fg: Color, bg: Option<Color>) -> Self {
+        self.header_fg = Some(fg);
+        self.header_bg = bg;
+        self
+    }
+
+    /// Set content colors
+    pub fn content_colors(mut self, fg: Color, bg: Option<Color>) -> Self {
+        self.content_fg = fg;
+        self.content_bg = bg;
+        self
+    }
+
+    /// Show/hide border around content
+    pub fn border(mut self, show: bool) -> Self {
+        self.show_border = show;
+        self
+    }
+
+    /// Set border color
+    pub fn border_color(mut self, color: Color) -> Self {
+        self.border_color = color;
+        self
+    }
+
+    /// Toggle expanded state
+    pub fn toggle(&mut self) {
+        self.expanded = !self.expanded;
+    }
+
+    /// Expand the content
+    pub fn expand(&mut self) {
+        self.expanded = true;
+    }
+
+    /// Collapse the content
+    pub fn collapse(&mut self) {
+        self.expanded = false;
+    }
+
+    /// Check if expanded
+    pub fn is_expanded(&self) -> bool {
+        self.expanded
+    }
+
+    /// Set expanded state mutably
+    pub fn set_expanded(&mut self, expanded: bool) {
+        self.expanded = expanded;
+    }
+
+    /// Set minimum width constraint
+    pub fn min_width(mut self, width: u16) -> Self {
+        self.min_width = width;
+        self
+    }
+
+    /// Set minimum height constraint
+    pub fn min_height(mut self, height: u16) -> Self {
+        self.min_height = height;
+        self
+    }
+
+    /// Set maximum width constraint (0 = no limit)
+    pub fn max_width(mut self, width: u16) -> Self {
+        self.max_width = width;
+        self
+    }
+
+    /// Set maximum height constraint (0 = no limit)
+    pub fn max_height(mut self, height: u16) -> Self {
+        self.max_height = height;
+        self
+    }
+
+    /// Set both min width and height
+    pub fn min_size(self, width: u16, height: u16) -> Self {
+        self.min_width(width).min_height(height)
+    }
+
+    /// Set both max width and height (0 = no limit)
+    pub fn max_size(self, width: u16, height: u16) -> Self {
+        self.max_width(width).max_height(height)
+    }
+
+    /// Set all size constraints at once
+    pub fn constrain(self, min_w: u16, min_h: u16, max_w: u16, max_h: u16) -> Self {
+        self.min_width(min_w)
+            .min_height(min_h)
+            .max_width(max_w)
+            .max_height(max_h)
+    }
+
+    /// Get the current icon based on state
+    fn icon(&self) -> char {
+        if self.expanded {
+            self.expanded_icon
+        } else {
+            self.collapsed_icon
+        }
+    }
+
+    /// Calculate total height needed
+    pub fn height(&self) -> u16 {
+        if self.expanded {
+            let content_height = self.content.len() as u16;
+            if self.show_border {
+                // header + content + bottom border
+                1 + content_height + 1
+            } else {
+                1 + content_height
+            }
+        } else {
+            1 // Just header
+        }
+    }
+
+    /// Handle keyboard input
+    ///
+    /// Returns `true` if the key was handled.
+    ///
+    /// Supported keys:
+    /// - Enter/Space: Toggle expanded state
+    /// - Right/l: Expand
+    /// - Left/h: Collapse
+    pub fn handle_key(&mut self, key: &Key) -> bool {
+        if self.state.disabled {
+            return false;
+        }
+
+        match key {
+            Key::Enter | Key::Char(' ') => {
+                self.toggle();
+                true
+            }
+            Key::Right | Key::Char('l') => {
+                self.expand();
+                true
+            }
+            Key::Left | Key::Char('h') => {
+                self.collapse();
+                true
+            }
+            _ => false,
+        }
+    }
+}
+
+impl Default for Collapsible {
+    fn default() -> Self {
+        Self::new("Details")
+    }
+}
+
+impl_styled_view!(Collapsible);
+impl_widget_builders!(Collapsible);
+
+/// Helper function to create a Collapsible widget
+pub fn collapsible(title: impl Into<String>) -> Collapsible {
+    Collapsible::new(title)
+}
+
+#[cfg(test)]
+mod tests;
