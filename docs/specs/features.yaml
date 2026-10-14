@@ -807,7 +807,7 @@ items:
     evidence:
       - src/widget/feedback/menu/helpers.rs::menu_bar
       - src/widget/feedback/menu/types.rs::separator
-      - tests/widget/feedback/menu.rs
+      - tests/widget/feedback/menu/mod.rs
     source:
       - FEATURES.md §4 Widgets / Navigation Widgets / Menu Bar
     notes: Doc menu_separator() does not exist; use MenuItem::separator().
