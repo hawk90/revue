@@ -208,10 +208,7 @@ fn test_flattened_item_section() {
 #[test]
 fn test_flattened_item_section_none() {
     let item = revue::widget::FlattenedItem::Section(None);
-    match item {
-        revue::widget::FlattenedItem::Section(None) => {}
-        _ => panic!("Expected Section with None"),
-    }
+    assert!(matches!(item, revue::widget::FlattenedItem::Section(None)));
 }
 
 #[test]
