@@ -433,7 +433,7 @@ proptest! {
         downs in 0usize..12,
         pick in any::<prop::sample::Index>(),
         mode in prop_oneof![Just(CollapseMode::Expanded), Just(CollapseMode::Collapsed), Just(CollapseMode::Auto)],
-        // Widths of 0 and 1 panic: a draft issue of the sidebar audit
+        // Widths of 0 and 1 panic (#1032)
         expanded in 2u16..30,
         collapsed in 2u16..8,
         threshold in 0u16..30,
@@ -473,8 +473,8 @@ proptest! {
         let top = if header { 2 } else { 0 };
         let bottom = h - if footer { 2 } else { 0 };
         // The indicator and icon are placed without checking the bar's
-        // width, so a deep row in a narrow bar draws past it: a draft
-        // issue of the sidebar audit. Check "nothing right of the bar"
+        // width, so a deep row in a narrow bar draws past it (#1032).
+        // Check "nothing right of the bar"
         // only when no drawn row reaches past it.
         let mut overflows = false;
         for y in 0..h {
@@ -489,7 +489,7 @@ proptest! {
                             overflows = true;
                         }
                         // A badge as wide as the bar starts at column 0
-                        // and covers the row's first cell.
+                        // and covers the row's first cell (#1032).
                         let badge_at_0 = !is_collapsed
                             && n.badge.as_ref().is_some_and(|b| b.len() as u16 + 2 >= cw);
                         if badge_at_0 {
