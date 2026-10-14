@@ -131,7 +131,7 @@ src/widget/
 │   ├── diff/              #   Diff viewer
 │   ├── procmon/           #   Process monitor
 │   ├── vim/               #   Vim mode
-│   └── tree_sitter_highlight.rs # Syntax highlighting
+│   └── tree_sitter_highlight/ #   Syntax highlighting (tree-sitter)
 │
 ├── markdown/              # Markdown renderer (events, blocks, parser, types, helpers)
 │
