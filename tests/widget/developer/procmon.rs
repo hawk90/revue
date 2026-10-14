@@ -4,10 +4,47 @@
 mod tests {
     use revue::layout::Rect;
     use revue::render::Buffer;
+    use revue::style::Color;
     use revue::widget::traits::{RenderContext, View};
     use revue::widget::{
         htop, process_monitor, ProcColors, ProcessInfo, ProcessMonitor, ProcessSort, ProcessView,
     };
+
+    /// Draw `monitor` into a `w`x`h` buffer
+    fn screen(monitor: &ProcessMonitor, w: u16, h: u16) -> Buffer {
+        let mut buffer = Buffer::new(w, h);
+        monitor.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, w, h)));
+        buffer
+    }
+
+    /// Row `y` of `buffer` as text
+    fn row_text(buffer: &Buffer, y: u16) -> String {
+        (0..buffer.width())
+            .map(|x| buffer.get(x, y).unwrap().symbol)
+            .collect()
+    }
+
+    /// The listed processes in order, read by moving the selection through
+    /// them; the selection ends on the first
+    fn listed(monitor: &mut ProcessMonitor) -> Vec<ProcessInfo> {
+        monitor.page_up(usize::MAX);
+        let mut list = Vec::new();
+        for _ in 0..monitor.process_count() {
+            list.push(monitor.selected_process().unwrap().clone());
+            monitor.select_next();
+        }
+        monitor.page_up(usize::MAX);
+        list
+    }
+
+    /// The position of the highlighted row when every process fits on screen
+    fn selected_index(monitor: &ProcessMonitor) -> Option<usize> {
+        let height = monitor.process_count() as u16 + 2;
+        let buffer = screen(monitor, 60, height.max(5));
+        (2..height)
+            .find(|&y| buffer.get(0, y).unwrap().bg == Some(Color::rgb(60, 80, 120)))
+            .map(|y| y as usize - 2)
+    }
 
     // =========================================================================
     // ProcessSort enum tests
@@ -91,16 +128,16 @@ mod tests {
     #[test]
     fn test_proc_colors_default() {
         let colors = ProcColors::default();
-        // Verify all fields are set
-        let _ = colors.header_bg;
-        let _ = colors.header_fg;
-        let _ = colors.selected_bg;
-        let _ = colors.high_cpu;
-        let _ = colors.medium_cpu;
-        let _ = colors.low_cpu;
-        let _ = colors.high_mem;
-        let _ = colors.name;
-        let _ = colors.pid;
+        assert_eq!(colors.header_bg, Color::rgb(40, 40, 60));
+        assert_eq!(colors.header_fg, Color::WHITE);
+        assert_eq!(colors.selected_bg, Color::rgb(60, 80, 120));
+        assert_eq!(colors.high_cpu, Color::RED);
+        assert_eq!(colors.medium_cpu, Color::YELLOW);
+        assert_eq!(colors.low_cpu, Color::GREEN);
+        assert_eq!(colors.high_mem, Color::MAGENTA);
+        // No name color: the stylesheet decides, then white
+        assert_eq!(colors.name, None);
+        assert_eq!(colors.pid, Color::CYAN);
     }
 
     #[test]
@@ -163,31 +200,48 @@ mod tests {
     #[test]
     fn test_process_monitor_creation() {
         let monitor = ProcessMonitor::new();
-        // Just verify the monitor can be created (process count may be 0 in some CI environments)
-        let _ = monitor.process_count();
+        // Nothing is listed before the first refresh
+        assert_eq!(monitor.process_count(), 0);
+        assert!(monitor.selected_process().is_none());
+        let buffer = screen(&monitor, 120, 6);
+        let stats = row_text(&buffer, 0);
+        assert!(stats.starts_with("CPU:"), "{stats}");
+        assert!(stats.trim_end().ends_with("Processes: 0"), "{stats}");
+        assert!(row_text(&buffer, 1).starts_with("PID    NAME"));
+        assert!((2..6).all(|y| row_text(&buffer, y).trim().is_empty()));
     }
 
     #[test]
     fn test_process_monitor_default() {
-        let _monitor = ProcessMonitor::default();
-        // Default sort is Cpu (descending) — verify via toggle behavior
+        // Default sorts by CPU, descending
         let mut m = ProcessMonitor::default();
-        // toggle_sort on the default sort (Cpu) should flip direction
+        assert!(row_text(&screen(&m, 70, 5), 1).contains("CPU%▼"));
+        assert_eq!(m.process_count(), 0);
+        // toggle_sort on the default sort (Cpu) flips the direction
         m.toggle_sort(ProcessSort::Cpu);
-        // After toggling same column, direction changes — no panic
-        let _ = m.process_count();
+        assert!(row_text(&screen(&m, 70, 5), 1).contains("CPU%▲"));
     }
 
     #[test]
     fn test_process_monitor_helper() {
         let monitor = process_monitor();
-        let _ = monitor.process_count();
+        let header = row_text(&screen(&monitor, 70, 5), 1);
+        assert!(
+            header.contains("CPU%▼") && !header.contains("COMMAND"),
+            "{header}"
+        );
+        assert_eq!(monitor.process_count(), 0);
     }
 
     #[test]
     fn test_htop_helper() {
         let monitor = htop();
-        let _ = monitor.process_count();
+        let header = row_text(&screen(&monitor, 70, 5), 1);
+        assert!(
+            header.contains("CPU%▼") && !header.contains("COMMAND"),
+            "{header}"
+        );
+        assert_eq!(monitor.process_count(), 0);
     }
 
     // =========================================================================
@@ -196,47 +250,89 @@ mod tests {
 
     #[test]
     fn test_sort_by() {
-        // sort_by returns Self — verify it compiles and doesn't panic
-        let monitor = ProcessMonitor::new().sort_by(ProcessSort::Memory);
-        let _ = monitor.process_count();
+        let mut monitor = ProcessMonitor::new().sort_by(ProcessSort::Memory);
+        // Both memory columns carry the arrow; CPU does not
+        let header = row_text(&screen(&monitor, 70, 5), 1);
+        assert!(
+            header.contains("MEM%▼") && header.contains("MEM▼"),
+            "{header}"
+        );
+        assert!(!header.contains("CPU%▼"), "{header}");
+        monitor.refresh();
+        let list = listed(&mut monitor);
+        assert!(list.windows(2).all(|w| w[0].memory >= w[1].memory));
     }
 
     #[test]
     fn test_ascending() {
-        let monitor = ProcessMonitor::new().ascending(true);
-        let _ = monitor.process_count();
+        let mut monitor = ProcessMonitor::new().ascending(true);
+        assert!(row_text(&screen(&monitor, 70, 5), 1).contains("CPU%▲"));
+        monitor.refresh();
+        let list = listed(&mut monitor);
+        assert!(list.windows(2).all(|w| w[0].cpu <= w[1].cpu));
     }
 
     #[test]
     fn test_ascending_false() {
-        let monitor = ProcessMonitor::new().ascending(false);
-        let _ = monitor.process_count();
+        let mut monitor = ProcessMonitor::new().ascending(false);
+        assert!(row_text(&screen(&monitor, 70, 5), 1).contains("CPU%▼"));
+        monitor.refresh();
+        let list = listed(&mut monitor);
+        assert!(list.windows(2).all(|w| w[0].cpu >= w[1].cpu));
     }
 
     #[test]
     #[allow(deprecated)] // ProcessView::Tree
     fn test_view() {
-        let monitor = ProcessMonitor::new().view(ProcessView::Tree);
-        let _ = monitor.process_count();
+        // Tree has no layout of its own: the flat list, sorted by CPU
+        let mut monitor = ProcessMonitor::new().view(ProcessView::Tree);
+        monitor.refresh();
+        let list = listed(&mut monitor);
+        assert!(list.iter().any(|p| p.pid == std::process::id()));
+        assert!(list.windows(2).all(|w| w[0].cpu >= w[1].cpu));
+        let mut pids: Vec<u32> = list.iter().map(|p| p.pid).collect();
+        pids.sort_unstable();
+        pids.dedup();
+        assert_eq!(pids.len(), list.len(), "each process once");
     }
 
     #[test]
     fn test_colors() {
-        let custom_colors = ProcColors::default();
+        let custom_colors = ProcColors {
+            header_bg: Color::rgb(1, 2, 3),
+            header_fg: Color::rgb(4, 5, 6),
+            ..ProcColors::default()
+        };
         let monitor = ProcessMonitor::new().colors(custom_colors);
-        let _ = monitor.process_count();
+        let buffer = screen(&monitor, 60, 5);
+        let cell = buffer.get(0, 1).unwrap();
+        assert_eq!(
+            (cell.symbol, cell.fg, cell.bg),
+            ('P', Some(Color::rgb(4, 5, 6)), Some(Color::rgb(1, 2, 3)))
+        );
+        assert_eq!(buffer.get(59, 1).unwrap().bg, Some(Color::rgb(1, 2, 3)));
     }
 
     #[test]
     fn test_show_cmd() {
-        let monitor = ProcessMonitor::new().show_cmd(true);
-        let _ = monitor.process_count();
+        let mut monitor = ProcessMonitor::new().show_cmd(true);
+        monitor.refresh();
+        let buffer = screen(&monitor, 100, 5);
+        let header: String = row_text(&buffer, 1).chars().skip(59).collect();
+        assert_eq!(header.trim_end(), "COMMAND");
+        // The first process's command (or its name when it has none)
+        assert_ne!(buffer.get(59, 2).unwrap().symbol, ' ');
     }
 
     #[test]
     fn test_show_cmd_false() {
-        let monitor = ProcessMonitor::new().show_cmd(false);
-        let _ = monitor.process_count();
+        let mut monitor = ProcessMonitor::new().show_cmd(false);
+        monitor.refresh();
+        let buffer = screen(&monitor, 100, 8);
+        for y in 1..8 {
+            let tail: String = row_text(&buffer, y).chars().skip(59).collect();
+            assert!(tail.trim().is_empty(), "row {y}: {tail:?}");
+        }
     }
 
     #[test]
@@ -248,14 +344,27 @@ mod tests {
 
     #[test]
     fn test_builder_chain() {
-        let monitor = ProcessMonitor::new()
+        let mut monitor = ProcessMonitor::new()
             .sort_by(ProcessSort::Name)
             .ascending(true)
             .view(ProcessView::User)
             .show_cmd(true)
             .update_interval(2000);
 
-        let _ = monitor.process_count();
+        let header = row_text(&screen(&monitor, 100, 5), 1);
+        assert!(
+            header.contains("NAME▲") && header.contains("COMMAND"),
+            "{header}"
+        );
+        monitor.refresh();
+        let list = listed(&mut monitor);
+        assert!(list
+            .windows(2)
+            .all(|w| w[0].name.to_lowercase() <= w[1].name.to_lowercase()));
+        // The User view keeps the processes of whoever runs this one
+        if let Some(me) = list.iter().find(|p| p.pid == std::process::id()) {
+            assert!(list.iter().all(|p| p.user == me.user));
+        }
     }
 
     // =========================================================================
@@ -265,26 +374,50 @@ mod tests {
     #[test]
     fn test_filter() {
         let mut monitor = ProcessMonitor::new();
-        monitor.filter("test");
-        // After filter, selected resets to 0 — verify selection doesn't panic
-        let _ = monitor.selected_process();
+        monitor.refresh();
+        monitor.select_next();
+        monitor.filter("zz-no-such-process-zz");
+        // The selection starts over at the first process
+        assert_eq!(
+            selected_index(&monitor),
+            (monitor.process_count() > 0).then_some(0)
+        );
+        // The next refresh lists only matches: none
+        monitor.refresh();
+        assert_eq!(monitor.process_count(), 0);
+        assert!(monitor.selected_process().is_none());
     }
 
     #[test]
     fn test_clear_filter() {
         let mut monitor = ProcessMonitor::new();
-        monitor.filter("test");
+        monitor.filter("zz-no-such-process-zz");
+        monitor.refresh();
+        assert_eq!(monitor.process_count(), 0);
         monitor.clear_filter();
-        // After clear, process list should be accessible
-        let _ = monitor.process_count();
+        monitor.refresh();
+        let list = listed(&mut monitor);
+        assert!(list.iter().any(|p| p.pid == std::process::id()));
     }
 
     #[test]
     fn test_filter_with_uppercase() {
         let mut monitor = ProcessMonitor::new();
+        monitor.refresh();
+        let me = listed(&mut monitor)
+            .into_iter()
+            .find(|p| p.pid == std::process::id())
+            .expect("this test process is listed");
         // Filter is case-insensitive (stored as lowercase)
-        monitor.filter("TEST");
-        let _ = monitor.process_count();
+        monitor.filter(me.name.to_uppercase());
+        monitor.refresh();
+        let needle = me.name.to_lowercase();
+        let list = listed(&mut monitor);
+        assert!(list.iter().any(|p| p.pid == me.pid));
+        assert!(list
+            .iter()
+            .all(|p| p.name.to_lowercase().contains(&needle)
+                || p.cmd.to_lowercase().contains(&needle)));
     }
 
     // =========================================================================
@@ -296,17 +429,25 @@ mod tests {
         let mut monitor = ProcessMonitor::new();
         // Toggle same column (Cpu by default) flips direction
         monitor.toggle_sort(ProcessSort::Cpu);
+        assert!(row_text(&screen(&monitor, 70, 5), 1).contains("CPU%▲"));
         monitor.toggle_sort(ProcessSort::Cpu);
-        // Two toggles return to original state — no panic
-        let _ = monitor.process_count();
+        // Two toggles return to the original direction
+        assert!(row_text(&screen(&monitor, 70, 5), 1).contains("CPU%▼"));
     }
 
     #[test]
     fn test_toggle_sort_different_column() {
-        let mut monitor = ProcessMonitor::new();
+        let mut monitor = ProcessMonitor::new().ascending(true);
         // Toggle different column sets it as sort column (descending)
         monitor.toggle_sort(ProcessSort::Memory);
-        let _ = monitor.process_count();
+        let header = row_text(&screen(&monitor, 70, 5), 1);
+        assert!(
+            header.contains("MEM%▼") && !header.contains("CPU%▲"),
+            "{header}"
+        );
+        monitor.refresh();
+        let list = listed(&mut monitor);
+        assert!(list.windows(2).all(|w| w[0].memory >= w[1].memory));
     }
 
     // =========================================================================
@@ -319,8 +460,9 @@ mod tests {
         monitor.refresh();
 
         monitor.select_next();
-        // Selection should either advance or stay at bound
-        let _ = monitor.selected_process();
+        // Selection advances, or stays on the last process
+        let last = monitor.process_count() - 1;
+        assert_eq!(selected_index(&monitor), Some(1.min(last)));
     }
 
     #[test]
@@ -330,15 +472,19 @@ mod tests {
 
         monitor.select_next();
         monitor.select_prev();
-        let _ = monitor.selected_process();
+        assert_eq!(selected_index(&monitor), Some(0));
     }
 
     #[test]
     fn test_select_prev_at_zero() {
         let mut monitor = ProcessMonitor::new();
         monitor.select_prev();
-        // Should not go below 0 — selected_process still valid
-        let _ = monitor.selected_process();
+        // Nothing listed yet: nothing selected
+        assert!(monitor.selected_process().is_none());
+        monitor.refresh();
+        monitor.select_prev();
+        // Does not go below 0
+        assert_eq!(selected_index(&monitor), Some(0));
     }
 
     #[test]
@@ -347,7 +493,8 @@ mod tests {
         monitor.refresh();
 
         monitor.page_down(10);
-        let _ = monitor.selected_process();
+        let last = monitor.process_count() - 1;
+        assert_eq!(selected_index(&monitor), Some(10.min(last)));
     }
 
     #[test]
@@ -357,14 +504,19 @@ mod tests {
 
         monitor.page_down(10);
         monitor.page_up(5);
-        let _ = monitor.selected_process();
+        let last = monitor.process_count() - 1;
+        assert_eq!(
+            selected_index(&monitor),
+            Some(10.min(last).saturating_sub(5))
+        );
     }
 
     #[test]
     fn test_page_up_at_zero() {
         let mut monitor = ProcessMonitor::new();
+        monitor.refresh();
         monitor.page_up(10);
-        let _ = monitor.selected_process();
+        assert_eq!(selected_index(&monitor), Some(0));
     }
 
     // =========================================================================
@@ -387,10 +539,16 @@ mod tests {
     #[test]
     fn test_selected_process_out_of_bounds() {
         let mut monitor = ProcessMonitor::new();
-        // page_down with huge value clamps to valid range
+        monitor.refresh();
+        let list = listed(&mut monitor);
+        // page_down with huge value clamps to the last process
         monitor.page_down(99999);
-        // selected_process either returns Some (valid index) or None (empty list)
-        let _ = monitor.selected_process();
+        assert_eq!(
+            monitor.selected_process().map(|p| p.pid),
+            list.last().map(|p| p.pid)
+        );
+        monitor.select_next();
+        assert_eq!(selected_index(&monitor), Some(list.len() - 1));
     }
 
     #[test]
@@ -398,8 +556,17 @@ mod tests {
         let mut monitor = ProcessMonitor::new();
         monitor.refresh();
         let count = monitor.process_count();
-        // usize is always >= 0, just verify we can get the count
-        let _ = count;
+        // One row per process, and the stats bar's count
+        let buffer = screen(&monitor, 120, count as u16 + 3);
+        let rows = (2..count as u16 + 3)
+            .filter(|&y| !row_text(&buffer, y).trim().is_empty())
+            .count();
+        assert_eq!(rows, count);
+        let stats = row_text(&buffer, 0);
+        assert!(
+            stats.trim_end().ends_with(&format!("Processes: {count}")),
+            "{stats}"
+        );
     }
 
     #[test]
@@ -425,8 +592,10 @@ mod tests {
     fn test_refresh() {
         let mut monitor = ProcessMonitor::new();
         monitor.refresh();
-        // Should not panic
-        let _ = monitor.process_count();
+        // This test process is among them
+        let list = listed(&mut monitor);
+        assert_eq!(list.len(), monitor.process_count());
+        assert!(list.iter().any(|p| p.pid == std::process::id()));
     }
 
     #[test]
@@ -444,11 +613,18 @@ mod tests {
 
     #[test]
     fn test_tick() {
+        // Not due yet: tick reads nothing
+        let mut idle = ProcessMonitor::new().update_interval(3_600_000);
+        idle.tick();
+        assert_eq!(idle.process_count(), 0);
+
         let mut monitor = ProcessMonitor::new().update_interval(1);
         std::thread::sleep(std::time::Duration::from_millis(10));
         monitor.tick();
-        // Should not panic
-        let _ = monitor.process_count();
+        // Due: tick refreshed the list and restarted the interval
+        assert!(listed(&mut monitor)
+            .iter()
+            .any(|p| p.pid == std::process::id()));
     }
 
     // =========================================================================
@@ -459,23 +635,35 @@ mod tests {
     fn test_render() {
         let mut monitor = ProcessMonitor::new();
         monitor.refresh();
+        let first = monitor.selected_process().unwrap().pid;
 
         let mut buffer = Buffer::new(100, 30);
         let area = Rect::new(0, 0, 100, 30);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         monitor.render(&mut ctx);
+        assert!(row_text(&buffer, 0).starts_with("CPU:"));
+        assert!(row_text(&buffer, 1).starts_with("PID    NAME                CPU%▼"));
+        // The first process, selected
+        assert_eq!(row_text(&buffer, 2)[..6].trim(), first.to_string());
+        assert_eq!(buffer.get(99, 2).unwrap().bg, Some(Color::rgb(60, 80, 120)));
     }
 
     #[test]
     fn test_render_small_area() {
-        let monitor = ProcessMonitor::new();
+        let mut monitor = ProcessMonitor::new();
+        monitor.refresh();
 
-        let mut buffer = Buffer::new(10, 2);
-        let area = Rect::new(0, 0, 10, 2);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        monitor.render(&mut ctx);
-        // Should not crash with small area
+        // Under 40 columns or 5 rows nothing is drawn
+        for (w, h) in [(10, 2), (39, 30), (100, 4)] {
+            let buffer = screen(&monitor, w, h);
+            let blank = (0..h).all(|y| {
+                (0..w).all(|x| {
+                    let cell = buffer.get(x, y).unwrap();
+                    cell.symbol == ' ' && cell.fg.is_none() && cell.bg.is_none()
+                })
+            });
+            assert!(blank, "{w}x{h}");
+        }
     }
 }
