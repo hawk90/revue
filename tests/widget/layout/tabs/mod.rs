@@ -2,10 +2,35 @@
 
 use revue::event::Key;
 use revue::layout::Rect;
-use revue::render::Buffer;
+use revue::render::{Buffer, Modifier};
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
 use revue::widget::{tabs, StyledView, Tabs, View};
+
+mod view;
+
+const ACTIVE_FG: Color = Color::rgb(220, 220, 220);
+
+/// Row `y` of `t` drawn in a `w` x `h` area, and the buffer
+fn draw(t: &Tabs, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    t.render(&mut ctx);
+    buffer
+}
+
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .filter(|&c| c != '\0')
+        .collect::<String>()
+        .trim_end()
+        .to_string()
+}
+
+fn blank(buffer: &Buffer) -> bool {
+    (0..buffer.height()).all(|y| row(buffer, y).is_empty())
+}
 
 #[test]
 fn test_tabs_new() {
@@ -151,24 +176,15 @@ fn test_tabs_selected_label_empty() {
 
 #[test]
 fn test_tabs_render_empty() {
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let t = Tabs::new();
-    t.render(&mut ctx);
-    // Empty tabs should not panic
+    assert!(blank(&draw(&Tabs::new(), 40, 5)));
 }
 
 #[test]
 fn test_tabs_render_small_area() {
-    let mut buffer = Buffer::new(2, 1);
-    let area = Rect::new(0, 0, 2, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // Under three columns nothing is drawn
     let t = Tabs::new().tab("Test");
-    t.render(&mut ctx);
-    // Small area should not panic
+    assert!(blank(&draw(&t, 2, 1)));
+    assert_eq!(row(&draw(&t, 3, 1), 0), " Te");
 }
 
 // =============================================================================
@@ -339,26 +355,19 @@ fn test_tabs_render_truncates_on_width() {
 
 #[test]
 fn test_tabs_render_zero_height() {
-    let mut buffer = Buffer::new(40, 0);
+    let mut buffer = Buffer::new(40, 1);
     let area = Rect::new(0, 0, 40, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     let t = Tabs::new().tab("Test");
-
     t.render(&mut ctx);
-    // Should not panic or render anything
+    assert!(blank(&buffer));
 }
 
 #[test]
 fn test_tabs_render_too_narrow() {
-    let mut buffer = Buffer::new(2, 3);
-    let area = Rect::new(0, 0, 2, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let t = Tabs::new().tab("Test");
-
-    t.render(&mut ctx);
-    // Should not render as width < 3
+    // Two columns: nothing, on any row
+    assert!(blank(&draw(&Tabs::new().tab("Test"), 2, 3)));
 }
 
 #[test]
@@ -653,9 +662,16 @@ fn test_tabs_render_offset_area() {
 
 #[test]
 fn test_tabs_default_colors() {
-    let _t = Tabs::new();
-    // Active tab should have default colors
-    // These are set in new(): active_fg: Some(Color::WHITE), active_bg: Some(Color::BLUE)
+    // The active tab is light on blue and bold; the others keep the
+    // terminal's colors
+    let buffer = draw(&Tabs::new().tab("A").tab("B"), 10, 1);
+    let a = buffer.get(1, 0).unwrap();
+    assert_eq!(
+        (a.symbol, a.fg, a.bg),
+        ('A', Some(ACTIVE_FG), Some(Color::BLUE))
+    );
+    let b = buffer.get(5, 0).unwrap();
+    assert_eq!((b.symbol, b.fg, b.bg), ('B', None, None));
 }
 
 #[test]
@@ -735,14 +751,16 @@ fn test_tabs_very_many_tabs() {
 fn test_tabs_select_out_of_bounds() {
     let mut t = Tabs::new().tab("A").tab("B").tab("C");
     t.select(100);
-    // Should wrap or clamp to valid range
+    // Clamped to the last tab
+    assert_eq!(t.selected_index(), 2);
+    assert_eq!(t.selected_label(), Some("C"));
 }
 
 #[test]
 fn test_tabs_select_max_value() {
     let mut t = Tabs::new().tab("A").tab("B").tab("C");
     t.select(usize::MAX);
-    // Should handle max value (wrap or clamp)
+    assert_eq!(t.selected_index(), 2);
 }
 
 #[test]
@@ -760,25 +778,17 @@ fn test_tabs_all_empty_labels() {
 
 #[test]
 fn test_tabs_divider_with_long_labels() {
-    let mut buffer = Buffer::new(50, 3);
-    let area = Rect::new(0, 0, 50, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let t = Tabs::new().tab("LongLabel1").tab("LongLabel2").divider('|');
-
-    t.render(&mut ctx);
-    // Should render with dividers
+    assert_eq!(row(&draw(&t, 50, 3), 0), " LongLabel1 | LongLabel2");
 }
 
 #[test]
 fn test_tabs_render_with_focused() {
-    let mut buffer = Buffer::new(30, 3);
-    let area = Rect::new(0, 0, 30, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let t = Tabs::new().tab("Test");
-    // Check if focused state affects rendering
-    t.render(&mut ctx);
+    // A single tab is the active one: padded, bold
+    let buffer = draw(&Tabs::new().tab("Test"), 30, 3);
+    assert_eq!(row(&buffer, 0), " Test");
+    assert!(buffer.get(1, 0).unwrap().modifier.contains(Modifier::BOLD));
+    assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::BLUE));
 }
 
 #[test]
@@ -794,55 +804,53 @@ fn test_tabs_width_divider_calculation() {
 fn test_tabs_select_first_on_empty() {
     let mut t = Tabs::new();
     t.select_first();
-    // Should handle empty case
+    assert_eq!((t.selected_index(), t.selected_label()), (0, None));
 }
 
 #[test]
 fn test_tabs_select_last_on_empty() {
     let mut t = Tabs::new();
     t.select_last();
-    // Should handle empty case
+    assert_eq!((t.selected_index(), t.selected_label()), (0, None));
 }
 
 #[test]
 fn test_tabs_select_next_on_empty() {
     let mut t = Tabs::new();
     t.select_next();
-    // Should handle empty case
+    assert_eq!((t.selected_index(), t.selected_label()), (0, None));
 }
 
 #[test]
 fn test_tabs_select_prev_on_empty() {
     let mut t = Tabs::new();
     t.select_prev();
-    // Should handle empty case
+    assert_eq!((t.selected_index(), t.selected_label()), (0, None));
 }
 
 #[test]
 fn test_tabs_handle_key_tab() {
+    // Tab is left to the app (focus moves)
     let mut t = Tabs::new().tab("A").tab("B").tab("C");
-    // Tab key might be used for navigation
-    let changed = t.handle_key(&Key::Tab);
-    // Implementation dependent
-    let _ = changed;
+    assert!(!t.handle_key(&Key::Tab));
+    assert_eq!(t.selected_index(), 0);
 }
 
 #[test]
 fn test_tabs_handle_key_shift_tab() {
-    // Shift+Tab might navigate backward
-    // Implementation dependent
+    // Shift+Tab too
+    let mut t = Tabs::new().tab("A").tab("B").tab("C").selected(1);
+    assert!(!t.handle_key(&Key::BackTab));
+    assert_eq!(t.selected_index(), 1);
 }
 
 #[test]
 fn test_tabs_render_clips_content() {
-    let mut buffer = Buffer::new(10, 3);
-    let area = Rect::new(0, 0, 10, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // The first tab fills the ten columns; nothing past them
     let t = Tabs::new().tab("VeryLong").tab("Another");
-
-    t.render(&mut ctx);
-    // Content should be clipped to fit
+    let buffer = draw(&t, 10, 3);
+    assert_eq!(row(&buffer, 0), " VeryLong");
+    assert!((1..3).all(|y| row(&buffer, y).is_empty()));
 }
 
 #[test]
@@ -859,23 +867,21 @@ fn test_tabs_multibyte_divider() {
 
 #[test]
 fn test_tabs_render_different_bg_colors() {
-    let mut buffer = Buffer::new(30, 5);
-    let area = Rect::new(0, 0, 30, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let t = Tabs::new().tab("A").tab("B").bg(Color::rgb(50, 50, 50));
-
-    t.render(&mut ctx);
+    let buffer = draw(&t, 30, 5);
+    // The inactive tab takes the bg; the active one keeps its highlight
+    assert_eq!(buffer.get(5, 0).unwrap().bg, Some(Color::rgb(50, 50, 50)));
+    assert_eq!(buffer.get(1, 0).unwrap().bg, Some(Color::BLUE));
 }
 
 #[test]
 fn test_tabs_render_with_underline() {
-    let mut buffer = Buffer::new(30, 3);
-    let area = Rect::new(0, 0, 30, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let t = Tabs::new().tab("Underline");
-    t.render(&mut ctx);
+    // The active label is bold, not underlined; its padding is plain
+    let buffer = draw(&Tabs::new().tab("Underline"), 30, 3);
+    let label = buffer.get(1, 0).unwrap();
+    assert!(label.modifier.contains(Modifier::BOLD));
+    assert!(!label.modifier.contains(Modifier::UNDERLINE));
+    assert!(!buffer.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
 }
 
 #[test]
@@ -912,18 +918,33 @@ fn test_tabs_tabs_vec_single() {
 
 #[test]
 fn test_tabs_handle_key_all_navigation_keys() {
-    // Test all arrow keys that might work
-    // Implementation dependent - just verify keys compile
+    // Each navigation key, and whether it moved the selection
+    let mut t = Tabs::new().tab("A").tab("B").tab("C");
+    for (key, moved, index) in [
+        (Key::Right, true, 1),
+        (Key::Char('l'), true, 2),
+        (Key::Right, true, 0),
+        (Key::Left, true, 2),
+        (Key::Char('h'), true, 1),
+        (Key::Home, true, 0),
+        (Key::Home, false, 0),
+        (Key::End, true, 2),
+        (Key::Char('2'), true, 1),
+        (Key::Char('2'), false, 1),
+        (Key::Up, false, 1),
+        (Key::Down, false, 1),
+    ] {
+        assert_eq!(t.handle_key(&key), moved, "{key:?}");
+        assert_eq!(t.selected_index(), index, "{key:?}");
+    }
 }
 
 #[test]
 fn test_tabs_render_very_narrow_single_char() {
-    let mut buffer = Buffer::new(5, 3);
-    let area = Rect::new(0, 0, 5, 3);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let t = Tabs::new().tab("X");
-    t.render(&mut ctx);
+    let buffer = draw(&Tabs::new().tab("X"), 5, 3);
+    assert_eq!(row(&buffer, 0), " X");
+    assert_eq!(buffer.get(2, 0).unwrap().bg, Some(Color::BLUE));
+    assert_eq!(buffer.get(3, 0).unwrap().bg, None);
 }
 
 #[test]

@@ -91,6 +91,13 @@ mod tests {
             .pane(Pane::new("a").ratio(0.5))
             .pane(Pane::new("b").ratio(0.5));
         s.render(&mut ctx);
+        // 79 columns for the panes: the left one is 39 wide, then the divider
+        for y in 0..24 {
+            for x in 0..80 {
+                let ch = if x == 39 { '│' } else { ' ' };
+                assert_eq!(buf.get(x, y).unwrap().symbol, ch, "({x}, {y})");
+            }
+        }
     }
 
     /// The divider columns, and which of them is highlighted.

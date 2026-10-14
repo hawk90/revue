@@ -1,12 +1,7 @@
-//! Grid layout calculations tests
+//! Grid track sizing tests: `calculate_tracks` and `track_positions`
 
-use revue::widget::Text;
+use revue::widget::Grid;
 use revue::widget::TrackSize;
-use revue::widget::{Grid, GridItem};
-
-// =========================================================================
-// calculate_tracks tests
-// =========================================================================
 
 #[test]
 fn test_calculate_tracks_empty() {
@@ -126,10 +121,6 @@ fn test_calculate_tracks_overflow_protection() {
     assert_eq!(result[1], 150);
 }
 
-// =========================================================================
-// track_positions tests
-// =========================================================================
-
 #[test]
 fn test_track_positions_empty() {
     let grid = Grid::new();
@@ -191,149 +182,6 @@ fn test_track_positions_large_gap() {
     // 60 + 10 = 70 (no gap after last track)
 }
 
-// =========================================================================
-// auto_place_items tests
-// =========================================================================
-
-#[test]
-fn test_auto_place_items_empty() {
-    let grid = Grid::new();
-    let placements = grid.test_auto_place_items(3, 3);
-    assert!(placements.is_empty());
-}
-
-#[test]
-fn test_auto_place_items_single_item_auto() {
-    let grid = Grid::new().child(Text::new("A"));
-    let placements = grid.test_auto_place_items(2, 2);
-    assert_eq!(placements.len(), 1);
-    assert_eq!(placements[0].0, 0); // index
-    assert_eq!(placements[0].1.col_start, 1); // 0-indexed + 1
-    assert_eq!(placements[0].1.col_end, 2);
-    assert_eq!(placements[0].1.row_start, 1);
-    assert_eq!(placements[0].1.row_end, 2);
-}
-
-#[test]
-fn test_auto_place_items_explicit_placement() {
-    let grid = Grid::new().item(GridItem::new(Text::new("A")).at(2, 3));
-    let placements = grid.test_auto_place_items(5, 5);
-    assert_eq!(placements.len(), 1);
-    // GridItem uses 1-indexed, auto_place_items returns 1-indexed
-    assert_eq!(placements[0].1.col_start, 2);
-    assert_eq!(placements[0].1.col_end, 3);
-    assert_eq!(placements[0].1.row_start, 3);
-    assert_eq!(placements[0].1.row_end, 4);
-}
-
-#[test]
-fn test_auto_place_items_row_flow() {
-    let grid = Grid::new()
-        .auto_flow_row()
-        .child(Text::new("A"))
-        .child(Text::new("B"))
-        .child(Text::new("C"));
-    let placements = grid.test_auto_place_items(2, 2);
-    assert_eq!(placements.len(), 3);
-    // Row flow fills columns first
-    // A: (0,0), B: (1,0), C: (0,1)
-    assert_eq!(placements[0].1.col_start, 1);
-    assert_eq!(placements[0].1.row_start, 1);
-    assert_eq!(placements[1].1.col_start, 2);
-    assert_eq!(placements[1].1.row_start, 1);
-    assert_eq!(placements[2].1.col_start, 1);
-    assert_eq!(placements[2].1.row_start, 2);
-}
-
-#[test]
-fn test_auto_place_items_col_flow() {
-    let grid = Grid::new()
-        .auto_flow_col()
-        .child(Text::new("A"))
-        .child(Text::new("B"))
-        .child(Text::new("C"));
-    let placements = grid.test_auto_place_items(2, 2);
-    assert_eq!(placements.len(), 3);
-    // Column flow fills rows first
-    assert_eq!(placements[0].1.col_start, 1);
-    assert_eq!(placements[0].1.row_start, 1);
-    assert_eq!(placements[1].1.col_start, 1);
-    assert_eq!(placements[1].1.row_start, 2);
-    assert_eq!(placements[2].1.col_start, 2);
-    assert_eq!(placements[2].1.row_start, 1);
-}
-
-#[test]
-fn test_auto_place_items_with_span() {
-    let grid = Grid::new()
-        .item(GridItem::new(Text::new("A")).col_span(2))
-        .child(Text::new("B"));
-    let placements = grid.test_auto_place_items(3, 2);
-    assert_eq!(placements.len(), 2);
-    // A spans 2 columns: (0,0) to (2,0)
-    // B goes to (0,1) after A
-}
-
-#[test]
-fn test_auto_place_items_bounds_protection() {
-    // Create a grid with items that would exceed MAX_GRID_SIZE
-    let mut grid = Grid::new();
-    for _ in 0..5 {
-        grid.items.push(GridItem::new(Text::new("Test")));
-    }
-    // Should not panic even with large coordinates
-    let placements = grid.test_auto_place_items(1000, 1000);
-    assert!(!placements.is_empty());
-}
-
-#[test]
-fn test_auto_place_items_explicit_out_of_bounds() {
-    let grid = Grid::new().item(GridItem::new(Text::new("A")).at(1001, 1));
-    let placements = grid.test_auto_place_items(10, 10);
-    // Item beyond max grid size should be skipped
-    assert_eq!(placements.len(), 0);
-}
-
-#[test]
-fn test_auto_place_items_many_items() {
-    let mut grid = Grid::new().auto_flow_row();
-    for i in 0..10 {
-        grid.items
-            .push(GridItem::new(Text::new(format!("Item{}", i))));
-    }
-    let placements = grid.test_auto_place_items(3, 5);
-    assert_eq!(placements.len(), 10);
-}
-
-#[test]
-fn test_auto_place_items_with_column_span() {
-    let grid = Grid::new()
-        .item(GridItem::new(Text::new("A")).at(1, 1).col_span(2))
-        .child(Text::new("B"));
-    let placements = grid.test_auto_place_items(3, 2);
-    assert_eq!(placements.len(), 2);
-    // A at (1,1) spanning 2 cols: col_start=1, col_end=3
-    assert_eq!(placements[0].1.col_start, 1);
-    assert_eq!(placements[0].1.col_end, 3);
-    // B should be placed at (1,2) since (2,1) is occupied by A's span
-}
-
-#[test]
-fn test_auto_place_items_with_row_span() {
-    let grid = Grid::new()
-        .item(GridItem::new(Text::new("A")).at(1, 1).row_span(2))
-        .child(Text::new("B"));
-    let placements = grid.test_auto_place_items(2, 3);
-    assert_eq!(placements.len(), 2);
-    // A at (1,1) spanning 2 rows: row_start=1, row_end=3
-    assert_eq!(placements[0].1.row_start, 1);
-    assert_eq!(placements[0].1.row_end, 3);
-}
-
-// =========================================================================
-// Edge case tests
-// =========================================================================
-
 #[test]
 fn test_calculate_tracks_zero_available() {
     let grid = Grid::new();
@@ -347,14 +195,6 @@ fn test_track_positions_empty_sizes() {
     let grid = Grid::new();
     let positions = grid.test_track_positions(&[], 5);
     assert_eq!(positions, vec![0]);
-}
-
-#[test]
-fn test_auto_place_items_zero_dimensions() {
-    let grid = Grid::new().child(Text::new("Test"));
-    // Even with 0 columns/rows, should clamp to minimum 1
-    let placements = grid.test_auto_place_items(0, 0);
-    assert!(!placements.is_empty());
 }
 
 #[test]
