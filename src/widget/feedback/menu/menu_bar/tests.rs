@@ -6,7 +6,17 @@ use crate::event::Key;
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::widget::traits::{RenderContext, View};
+use crate::widget::theme::{DARK_BG, LIGHT_GRAY};
+use crate::widget::traits::{RenderContext, View, DISABLED_FG};
+
+/// The symbols of row `y`
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect()
+}
+
+const SELECTED_BG: Color = Color::rgb(60, 100, 180);
 
 #[test]
 fn test_menu_bar() {
@@ -38,7 +48,28 @@ fn test_menu_bar_render() {
         .menu(Menu::new("Edit"));
 
     bar.render(&mut ctx);
-    // Smoke test
+    // Titles padded by one space each, the first one selected
+    assert_eq!(row(&buffer, 0).trim_end(), " File  Edit");
+    for x in 0..6 {
+        let cell = buffer.get(x, 0).unwrap();
+        assert_eq!(
+            (cell.fg, cell.bg),
+            (Some(Color::WHITE), Some(SELECTED_BG)),
+            "{x}"
+        );
+    }
+    for x in 6..12 {
+        let cell = buffer.get(x, 0).unwrap();
+        assert_eq!(
+            (cell.fg, cell.bg),
+            (Some(Color::WHITE), Some(DARK_BG)),
+            "{x}"
+        );
+    }
+    // The bar's background runs to the right edge; nothing below it
+    assert_eq!(buffer.get(79, 0).unwrap().bg, Some(DARK_BG));
+    assert!(row(&buffer, 1).trim().is_empty());
+    assert_eq!(buffer.get(0, 1).unwrap().bg, None);
 }
 
 #[test]
@@ -208,6 +239,30 @@ fn test_menu_bar_render_open() {
 
     bar.open_menu(0);
     bar.render(&mut ctx);
+    // 16 columns: "Open" (4) + "Ctrl+O" and its gap (8) + borders and padding (4)
+    let rows: Vec<String> = (1..8)
+        .map(|y| (0..17).map(|x| buffer.get(x, y).unwrap().symbol).collect())
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            "┌──────────────┐ ",
+            "│ New   Ctrl+N │ ",
+            "│ Open  Ctrl+O │ ",
+            "├──────────────┤ ",
+            "│ Exit         │ ",
+            "└──────────────┘ ",
+            "                 ",
+        ]
+    );
+    // The first item is selected; the shortcut keeps its own color
+    assert_eq!(buffer.get(2, 2).unwrap().bg, Some(SELECTED_BG));
+    assert_eq!(buffer.get(14, 2).unwrap().bg, Some(SELECTED_BG));
+    assert_eq!(buffer.get(13, 2).unwrap().fg, Some(LIGHT_GRAY));
+    assert_eq!(buffer.get(2, 3).unwrap().bg, Some(DARK_BG));
+    // The separator line is dim, its joints are in the frame's color
+    assert_eq!(buffer.get(5, 4).unwrap().fg, Some(DISABLED_FG));
+    assert_eq!(buffer.get(0, 4).unwrap().fg, Some(Color::WHITE));
 }
 
 #[test]
@@ -255,4 +310,7 @@ fn test_menu_bar_dropdown_past_the_right_edge() {
     let mut buffer = Buffer::new(5, 2);
     let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 5, 2));
     bar.render(&mut ctx);
+    // "Edit" starts at column 6: its dropdown has no room and is not drawn
+    assert_eq!(row(&buffer, 0), " File");
+    assert_eq!(row(&buffer, 1), "     ");
 }

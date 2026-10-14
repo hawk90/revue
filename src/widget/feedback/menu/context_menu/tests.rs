@@ -6,6 +6,7 @@ use crate::event::Key;
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
+use crate::widget::theme::DARK_BG;
 use crate::widget::traits::{RenderContext, View};
 
 #[test]
@@ -120,6 +121,31 @@ fn test_context_menu_render() {
 
     menu.show(5, 5);
     menu.render(&mut ctx);
+    // A 9x6 box at (5, 5): the widest label "Paste" plus borders and padding.
+    // Only the frame and the labels are checked: the separator and shortcut
+    // rows are the menu-audit issue about ContextMenu ignoring item state.
+    let text = |x0: u16, y: u16, w: u16| -> String {
+        (x0..x0 + w)
+            .map(|x| buffer.get(x, y).unwrap().symbol)
+            .collect()
+    };
+    assert_eq!(text(5, 5, 9), "┌───────┐");
+    assert_eq!(text(5, 6, 5), "│ Cut");
+    assert_eq!(text(5, 7, 6), "│ Copy");
+    assert_eq!(text(5, 9, 7), "│ Paste");
+    assert_eq!(text(5, 10, 9), "└───────┘");
+    assert_eq!(text(13, 6, 1), "│");
+    assert_eq!(text(4, 5, 1), " ");
+    assert_eq!(text(14, 5, 1), " ");
+    assert_eq!(text(5, 11, 1), " ");
+    // The first item is selected
+    let selected = buffer.get(7, 6).unwrap();
+    assert_eq!(
+        (selected.fg, selected.bg),
+        (Some(Color::WHITE), Some(Color::rgb(60, 100, 180)))
+    );
+    let plain = buffer.get(7, 7).unwrap();
+    assert_eq!((plain.fg, plain.bg), (Some(Color::WHITE), Some(DARK_BG)));
 }
 
 #[test]
