@@ -16,7 +16,7 @@ mod command_palette;
 pub mod data;
 #[path = "widget/datetime_picker.rs"]
 mod datetime_picker;
-#[path = "widget/debug_overlay.rs"]
+#[path = "widget/debug_overlay/mod.rs"]
 mod debug_overlay;
 #[path = "widget/developer/mod.rs"]
 mod developer;
@@ -53,7 +53,7 @@ mod mermaid;
 mod multi_select;
 #[path = "widget/option_list.rs"]
 mod option_list;
-#[path = "widget/pagination.rs"]
+#[path = "widget/pagination/mod.rs"]
 mod pagination;
 #[cfg(feature = "qrcode")]
 #[path = "widget/qrcode.rs"]

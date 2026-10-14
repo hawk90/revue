@@ -3,6 +3,8 @@
 //! The overlay keeps its configuration private, so builder options are
 //! checked through what the panel draws.
 
+mod view;
+
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
