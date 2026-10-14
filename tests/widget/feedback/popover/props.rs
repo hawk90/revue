@@ -237,7 +237,7 @@ proptest! {
         let taken = model_side(side, anchor, size, arrow_len, area);
         let room = has_room(taken, anchor, size, arrow_len, area);
         // Without room on its side the box is pushed over the anchor and the
-        // arrow can land on the box's border (draft-po-1); with an arrow only
+        // arrow can land on the box's border (#1045); with an arrow only
         // the sides with room are checked
         if !room && arrow != PopoverArrow::None {
             return Ok(());
@@ -256,7 +256,7 @@ proptest! {
             prop_assert_eq!(shown.trim_end(), line.trim_end(), "line {}", i);
         }
 
-        // and where the box goes without room is draft-po-1
+        // and where the box goes without room is #1045
         if !room {
             return Ok(());
         }
@@ -329,7 +329,7 @@ proptest! {
         }
         // The box's cells are the ones painted with its background
         let b = render_in(&p, aw, ah);
-        // Without room the arrow can be drawn over the box (draft-po-1)
+        // Without room the arrow can be drawn over the box (#1045)
         if matches!(symbol(&b, cx, cy), '▲' | '▼' | '◀' | '▶') {
             return Ok(());
         }
