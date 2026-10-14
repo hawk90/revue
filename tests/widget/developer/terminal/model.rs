@@ -54,6 +54,9 @@ fn sgr() -> impl Strategy<Value = Vec<u16>> {
             102, 103, 104, 105, 106, 107, 53, 60,
         ])
         .prop_map(|c| vec![c]),
+        // The modifiers on and off again, often enough that an "off" code
+        // meets the modifier it should clear
+        3 => prop::sample::select(vec![1u16, 2, 3, 4, 9, 22, 23, 24, 29]).prop_map(|c| vec![c]),
         1 => Just(vec![]),
         1 => (prop::sample::select(vec![38u16, 48]), 0u16..=255).prop_map(|(c, n)| vec![c, 5, n]),
         1 => (prop::sample::select(vec![38u16, 48]), 0u16..=255, 0u16..=255, 0u16..=255)

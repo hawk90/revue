@@ -215,6 +215,17 @@ fn test_ansi_parse_csi_crossed_out() {
 }
 
 #[test]
+fn test_ansi_parse_csi_normal_intensity() {
+    // 22 ends bold and dim, and leaves the other modifiers
+    let buffer = written("\x1b[1;2;3ma\x1b[22mb");
+    assert_eq!(
+        cell(&buffer, 0, 0).modifier,
+        Modifier::BOLD | Modifier::DIM | Modifier::ITALIC
+    );
+    assert_eq!(cell(&buffer, 1, 0).modifier, Modifier::ITALIC);
+}
+
+#[test]
 fn test_ansi_parse_csi_red_fg() {
     let buffer = written("\x1b[31mRed\x1b[0m.");
     assert_eq!(
