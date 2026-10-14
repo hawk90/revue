@@ -49,14 +49,13 @@ impl HSplit {
     /// Get left and right areas
     pub fn areas(&self, area: Rect) -> (Rect, Rect) {
         let splitter_width = if self.show_splitter { 1 } else { 0 };
-        let available = area.width.saturating_sub(splitter_width);
-
-        let left_width = (available as f32 * self.ratio).clamp(0.0, available as f32);
-        let mut left_width = left_width as u16;
-        left_width = left_width.max(self.min_left);
-        left_width = left_width.min(available.saturating_sub(self.min_right));
-
-        let right_width = available.saturating_sub(left_width);
+        let (left_width, right_width) = split_extent(
+            area.width,
+            splitter_width,
+            self.ratio,
+            self.min_left,
+            self.min_right,
+        );
 
         let left = Rect::new(area.x, area.y, left_width, area.height);
         let right = Rect::new(
@@ -117,14 +116,13 @@ impl VSplit {
     /// Get top and bottom areas
     pub fn areas(&self, area: Rect) -> (Rect, Rect) {
         let splitter_height = if self.show_splitter { 1 } else { 0 };
-        let available = area.height.saturating_sub(splitter_height);
-
-        let top_height = (available as f32 * self.ratio).clamp(0.0, available as f32);
-        let mut top_height = top_height as u16;
-        top_height = top_height.max(self.min_top);
-        top_height = top_height.min(available.saturating_sub(self.min_bottom));
-
-        let bottom_height = available.saturating_sub(top_height);
+        let (top_height, bottom_height) = split_extent(
+            area.height,
+            splitter_height,
+            self.ratio,
+            self.min_top,
+            self.min_bottom,
+        );
 
         let top = Rect::new(area.x, area.y, area.width, top_height);
         let bottom = Rect::new(
@@ -153,6 +151,26 @@ impl View for VSplit {
             ctx.set(x, y, cell);
         }
     }
+}
+
+/// Split `extent` minus the `divider` between two panes: the first gets
+/// `ratio` of the rest, at least `min_first` but leaving `min_second` for
+/// the second, which takes what is left.
+fn split_extent(
+    extent: u16,
+    divider: u16,
+    ratio: f32,
+    min_first: u16,
+    min_second: u16,
+) -> (u16, u16) {
+    let available = extent.saturating_sub(divider);
+
+    let first = (available as f32 * ratio).clamp(0.0, available as f32);
+    let mut first = first as u16;
+    first = first.max(min_first);
+    first = first.min(available.saturating_sub(min_second));
+
+    (first, available.saturating_sub(first))
 }
 
 #[cfg(test)]
