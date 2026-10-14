@@ -59,6 +59,33 @@ fn test_render() {
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     client.render(&mut ctx);
+
+    // An idle client: the bold GET badge in GET's color on method_bg, the URL
+    // in white on url_bg, the dim send hint, the separator and the dim
+    // placeholder.
+    let colors = HttpColors::default();
+    let cell = |x, y| *buffer.get(x, y).unwrap();
+    for (x, ch) in "GET".chars().enumerate() {
+        let c = cell(x as u16, 0);
+        assert_eq!(c.symbol, ch);
+        assert_eq!(c.fg, Some(HttpMethod::GET.color()));
+        assert_eq!(c.bg, Some(colors.method_bg));
+        assert!(c.modifier.contains(crate::render::Modifier::BOLD));
+    }
+    assert_eq!(cell(3, 0).bg, Some(colors.url_bg));
+    assert_eq!(cell(4, 0).symbol, 'h');
+    assert_eq!(cell(4, 0).fg, Some(crate::style::Color::WHITE));
+    assert_eq!(cell(4, 0).bg, Some(colors.url_bg));
+    assert!(!cell(4, 0).modifier.contains(crate::render::Modifier::BOLD));
+    assert_eq!(cell(67, 0).symbol, '[');
+    assert_eq!(cell(67, 0).fg, Some(crate::widget::theme::DISABLED_FG));
+    for x in 0..80 {
+        assert_eq!(cell(x, 1).symbol, '─');
+        assert_eq!(cell(x, 1).fg, Some(crate::widget::theme::SEPARATOR_COLOR));
+    }
+    assert_eq!(cell(0, 2).symbol, 'E');
+    assert_eq!(cell(0, 2).fg, Some(crate::widget::theme::DISABLED_FG));
+    assert!((3..20).all(|y| (0..80).all(|x| cell(x, y).symbol == ' ')));
 }
 
 #[test]
