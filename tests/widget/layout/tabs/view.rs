@@ -95,3 +95,54 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn test_tabs_inactive_tabs_take_the_stylesheet_colors() {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::style::{Style, VisualStyle};
+    use revue::widget::traits::{RenderContext, View};
+    let style = Style {
+        visual: VisualStyle {
+            color: Color::MAGENTA,
+            background: Color::YELLOW,
+            ..VisualStyle::default()
+        },
+        ..Default::default()
+    };
+    let t = Tabs::new().tabs(vec!["A", "B"]);
+    let mut buffer = Buffer::new(10, 1);
+    let mut ctx = RenderContext::with_style(&mut buffer, Rect::new(0, 0, 10, 1), &style);
+    t.render(&mut ctx);
+    let b = buffer.get(5, 0).unwrap();
+    assert_eq!(
+        (b.symbol, b.fg, b.bg),
+        ('B', Some(Color::MAGENTA), Some(Color::YELLOW))
+    );
+    // The active tab keeps its highlight
+    assert_eq!(buffer.get(1, 0).unwrap().bg, Some(Color::BLUE));
+}
+
+#[test]
+fn test_tabs_divider_takes_the_fg() {
+    let buffer = draw(&Tabs::new().tabs(vec!["A", "B"]).fg(Color::RED), 10, 1);
+    let d = buffer.get(3, 0).unwrap();
+    assert_eq!((d.symbol, d.fg), ('│', Some(Color::RED)));
+}
+
+#[test]
+fn test_tabs_wide_label_that_does_not_fit_is_cut_before_it() {
+    // " a │ 한": the wide glyph needs columns 5 and 6; in 6 columns it is left out
+    let buffer = draw(&Tabs::new().tabs(vec!["a", "한"]), 6, 1);
+    assert_eq!(row(&buffer, 0), " a │");
+}
+
+#[test]
+fn test_tabs_min_width_above_max_width() {
+    // The minimum wins, as it does for the other layout widgets
+    let t = Tabs::new()
+        .tabs(vec!["One", "Two"])
+        .min_width(12)
+        .max_width(5);
+    assert_eq!(row(&draw(&t, 20, 1), 0), " One │ Two");
+}
