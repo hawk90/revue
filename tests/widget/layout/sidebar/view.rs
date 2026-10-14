@@ -121,6 +121,28 @@ fn test_sidebar_hover_on_a_title_row_highlights_nothing() {
     assert_eq!(screen(&sb, 24, 3).get(3, 1).unwrap().bg, Some(HOVER_BG));
 }
 
+#[test]
+fn test_sidebar_toggle_item_toggles_one_item_per_id() {
+    // Two trees hold "dup", one nested: toggling expands the first one only.
+    let mut sb = Sidebar::new()
+        .items(vec![SidebarItem::new("p", "P").expanded(true).children(
+            vec![SidebarItem::new("dup", "Nested").children(vec![SidebarItem::new("n1", "N1")])],
+        )])
+        .items(vec![
+            SidebarItem::new("dup", "Top").children(vec![SidebarItem::new("t1", "T1")])
+        ]);
+    sb.toggle_item("dup");
+    let ids: Vec<String> = sb
+        .visible_items()
+        .into_iter()
+        .filter_map(|f| match f {
+            FlattenedItem::Item { item, .. } => Some(item.id),
+            FlattenedItem::Section(_) => None,
+        })
+        .collect();
+    assert_eq!(ids, ["p", "dup", "n1", "dup"]);
+}
+
 // =========================================================================
 // Proptests
 // =========================================================================
@@ -314,8 +336,7 @@ proptest! {
     /// Any operations leave the tree, the visible rows, the selection and
     /// the hover a plain model gives. Hover moves are checked from the
     /// widget's current index; where the index points after a toggle is
-    /// not (an index left on a collapsed row is a draft issue of the
-    /// sidebar audit).
+    /// not (the index stays put while the rows around it change: #975).
     #[test]
     fn prop_sidebar_ops_follow_the_model(s in sections(), ops in prop::collection::vec(op(), 0..40)) {
         let mut model = s.clone();
