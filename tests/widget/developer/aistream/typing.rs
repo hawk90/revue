@@ -308,6 +308,18 @@ proptest! {
     }
 }
 
+/// The chars shown after each tick until the stream of `total` chars
+/// completes; it gives up after `total + 1` ticks, so a stream that never
+/// completes fails the test instead of hanging it
+fn stops(stream: &mut AiStream, total: usize) -> Vec<usize> {
+    let mut stops = Vec::new();
+    while !stream.is_complete() && stops.len() <= total {
+        stream.tick();
+        stops.push((stream.progress() * total as f32).round() as usize);
+    }
+    stops
+}
+
 #[test]
 fn ticks_before_typing_speed_has_passed_do_not_type() {
     let mut stream = AiStream::new().typing_speed(u64::MAX).content("abc");
@@ -335,11 +347,8 @@ fn word_style_stops_at_each_word_start() {
         .typing_style(TypingStyle::Word)
         .typing_speed(0)
         .content("  one  two\nthree");
-    let mut stops = Vec::new();
-    while !stream.is_complete() {
-        stream.tick();
-        stops.push((stream.progress() * 16.0).round() as usize);
-    }
+    let stops = stops(&mut stream, 16);
+    assert!(stream.is_complete());
     // leading blanks, "one  ", "two\n", "three"
     assert_eq!(stops, [2, 7, 11, 16]);
 }
@@ -350,11 +359,8 @@ fn line_style_stops_after_each_newline() {
         .typing_style(TypingStyle::Line)
         .typing_speed(0)
         .content("ab\n\ncd");
-    let mut stops = Vec::new();
-    while !stream.is_complete() {
-        stream.tick();
-        stops.push((stream.progress() * 6.0).round() as usize);
-    }
+    let stops = stops(&mut stream, 6);
+    assert!(stream.is_complete());
     assert_eq!(stops, [3, 4, 6]);
 }
 
@@ -364,10 +370,7 @@ fn chunk_style_shows_five_chars_a_tick() {
         .typing_style(TypingStyle::Chunk)
         .typing_speed(0)
         .content("0123456789ab");
-    let mut stops = Vec::new();
-    while !stream.is_complete() {
-        stream.tick();
-        stops.push((stream.progress() * 12.0).round() as usize);
-    }
+    let stops = stops(&mut stream, 12);
+    assert!(stream.is_complete());
     assert_eq!(stops, [5, 10, 12]);
 }
