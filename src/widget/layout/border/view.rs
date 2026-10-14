@@ -6,6 +6,7 @@ use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::{BorderStyle, Color};
 use crate::utils::unicode::{char_width, truncate_to_width};
+use crate::widget::layout::constraints::constrain;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Border {
@@ -88,20 +89,13 @@ impl View for Border {
 impl Border {
     /// Apply size constraints to the available area
     fn apply_constraints(&self, area: Rect) -> Rect {
-        let eff_max_w = if self.max_width > 0 {
-            self.max_width.max(self.min_width)
-        } else {
-            u16::MAX
-        };
-        let eff_max_h = if self.max_height > 0 {
-            self.max_height.max(self.min_height)
-        } else {
-            u16::MAX
-        };
-        let width = area.width.clamp(self.min_width, eff_max_w);
-        let height = area.height.clamp(self.min_height, eff_max_h);
-
-        Rect::new(area.x, area.y, width, height)
+        constrain(
+            area,
+            self.min_width,
+            self.min_height,
+            self.max_width,
+            self.max_height,
+        )
     }
 
     /// The border to draw: the stylesheet's if it named one, else the builder's.
