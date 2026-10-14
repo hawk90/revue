@@ -200,7 +200,7 @@ fn a_long_name_is_cut_before_the_swatch() {
     set_theme_by_id("dark");
 
     // The name is cut, and no letter reaches the six columns before the
-    // 35-column width (the swatch and arrow need more: draft-pk-1)
+    // 35-column width (the swatch and arrow need more: #1097)
     assert!(row.starts_with("Theme: Abcdefghijklmnop"), "{row:?}");
     for (x, ch) in row.chars().enumerate().skip(29) {
         assert!(
@@ -214,7 +214,7 @@ proptest! {
     /// The open dropdown, against a plain model: a top border, one row per
     /// theme while a row is left for the bottom border, the marker on the
     /// selected row, each name cut at the right border. The marker is checked
-    /// only when the selected row fits: the list does not scroll (draft-pk-c973).
+    /// only when the selected row fits: the list does not scroll (#973).
     #[test]
     fn open_dropdown_matches_the_model(
         picks in proptest::collection::vec(0..KNOWN.len(), 0..8),
@@ -223,7 +223,7 @@ proptest! {
         height in 1u16..14,
         preview in any::<bool>(),
     ) {
-        // Unknown ids are left out: an unknown selected id shows no marker (draft-pk-1)
+        // Unknown ids are left out: an unknown selected id shows no marker (#1097)
         let ids: Vec<&str> = picks.iter().map(|&i| KNOWN[i]).collect();
         let mut picker = ThemePicker::new().themes(ids.clone()).show_preview(preview);
         for _ in 0..moves {

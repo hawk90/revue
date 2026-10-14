@@ -189,7 +189,7 @@ fn x_labels_take_the_last_row() {
     let buffer = render(&chart, 33, 10);
     let rows = rows(&buffer, 33, 10);
     // Where the later labels go is #990's (they are spread over the width,
-    // not placed at the points: draft-pk-c990); the first is at column 0
+    // not placed at the points: #990); the first is at column 0
     assert!(rows[9].starts_with("Q1"), "{rows:?}");
     assert!(!rows[8].contains('Q'), "{rows:?}");
     assert_eq!(buffer.get(0, 9).unwrap().bg, Some(Color::BLUE));
@@ -334,7 +334,7 @@ proptest! {
     }
 
     /// Any positive data draws inside its plot rows, with a band at every
-    /// data point's column (negative values panic: draft-pk-c990).
+    /// data point's column (negative values panic: #990).
     #[test]
     fn plot_draws_a_band_at_every_point(
         values in layers_strategy(),

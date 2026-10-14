@@ -817,7 +817,7 @@ fn test_theme_picker_css_id() {
     let picker = ThemePicker::new().element_id("theme-selector");
 
     // The id does not change what is drawn. `View::id` does not report it
-    // (ThemePicker's View has no view meta, draft-pk-1), so it is not checked here.
+    // (ThemePicker's View has no view meta, #1097), so it is not checked here.
     for y in 0..2 {
         assert_eq!(
             rendered_row(&picker, 35, y),
@@ -830,7 +830,7 @@ fn test_theme_picker_css_id() {
 fn test_theme_picker_css_classes() {
     let picker = ThemePicker::new().class("dropdown").class("themed");
 
-    // Checked through StyledView; `View::classes` reports none (draft-pk-1)
+    // Checked through StyledView; `View::classes` reports none (#1097)
     assert!(picker.has_class("dropdown"));
     assert!(picker.has_class("themed"));
     assert!(!picker.has_class("other"));

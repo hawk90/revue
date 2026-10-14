@@ -98,7 +98,7 @@ proptest! {
         for &k in &keys {
             let key = KEYS[k];
             if key == Key::Tab && model.selected + 1 >= model.ids.len() {
-                // Tab at the last theme stops instead of wrapping (draft-pk-1)
+                // Tab at the last theme stops instead of wrapping (#1097)
                 break;
             }
             let expected = model.press(key);
