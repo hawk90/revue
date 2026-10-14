@@ -8,6 +8,16 @@ use revue::style::Color;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{markup, rich_text, span, style, RichText, Span, Style};
 
+mod view;
+
+/// `rt` drawn into a one-row area `width` wide
+fn draw(rt: &RichText, width: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, 1);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, 1));
+    rt.render(&mut ctx);
+    buffer
+}
+
 // =============================================================================
 // Markup Parsing Edge Cases Tests
 // =============================================================================
@@ -25,8 +35,10 @@ fn test_markup_unclosed_tag() {
 fn test_markup_mismatched_tags() {
     let rt = RichText::markup("[bold][/italic]Text");
 
-    // Should handle mismatched closing tag
-    assert!(!rt.is_empty());
+    // The closing tag names a style that is not on; the text stays bold
+    let buffer = draw(&rt, 6);
+    assert_eq!(row(&buffer, 0, 6), "Text");
+    assert!(buffer.get(3, 0).unwrap().modifier.contains(Modifier::BOLD));
 }
 
 #[test]
@@ -43,8 +55,9 @@ fn test_markup_nested_tags() {
     let rt = RichText::markup("[b][i]Nested[/i][/b]");
 
     // Should apply both styles
-    assert!(!rt.is_empty());
     assert_eq!(rt.width(), 6);
+    let cell = *draw(&rt, 8).get(0, 0).unwrap();
+    assert!(cell.modifier.contains(Modifier::BOLD | Modifier::ITALIC));
 }
 
 #[test]
@@ -71,24 +84,32 @@ fn test_markup_adjacent_tags() {
 fn test_markup_tag_without_content() {
     let rt = RichText::markup("[b][/]");
 
-    // Empty tag with reset should work
-    assert!(rt.is_empty() || rt.width() == 0);
+    // Tags alone make no span
+    assert!(rt.is_empty());
+    assert_eq!(rt.width(), 0);
 }
 
 #[test]
 fn test_markup_multiple_reset_tags() {
     let rt = RichText::markup("[b]Text1[/]Text2[/]Text3");
 
-    // Multiple resets should work
-    assert!(rt.len() >= 2);
+    assert_eq!(rt.len(), 3);
+    let buffer = draw(&rt, 16);
+    assert_eq!(row(&buffer, 0, 16), "Text1Text2Text3");
+    assert!(buffer.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
+    // After a reset nothing is bold, and a second reset keeps it so
+    assert!(buffer.get(5, 0).unwrap().modifier.is_empty());
+    assert!(buffer.get(10, 0).unwrap().modifier.is_empty());
 }
 
 #[test]
 fn test_markup_whitespace_in_tags() {
     let rt = RichText::markup("[bold ]Text[/ ]");
 
-    // Should handle whitespace in tags
-    assert!(!rt.is_empty());
+    // A trailing space inside a tag is ignored
+    let buffer = draw(&rt, 6);
+    assert_eq!(row(&buffer, 0, 6), "Text");
+    assert!(buffer.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
 }
 
 #[test]
@@ -112,7 +133,7 @@ fn test_markup_empty_string() {
 
 #[test]
 fn test_markup_all_standard_colors() {
-    for (name, _expected) in [
+    for (name, expected) in [
         ("red", Color::RED),
         ("green", Color::GREEN),
         ("blue", Color::BLUE),
@@ -124,14 +145,15 @@ fn test_markup_all_standard_colors() {
     ] {
         let markup = format!("[{}]Text[/]", name);
         let rt = RichText::markup(&markup);
-        // Should parse without error
         assert_eq!(rt.width(), 4);
+        let cell = *draw(&rt, 6).get(0, 0).unwrap();
+        assert_eq!((cell.fg, cell.bg), (Some(expected), None), "{name}");
     }
 }
 
 #[test]
 fn test_markup_all_background_colors() {
-    for (name, _expected) in [
+    for (name, expected) in [
         ("on_red", Color::RED),
         ("on_green", Color::GREEN),
         ("on_blue", Color::BLUE),
@@ -143,8 +165,9 @@ fn test_markup_all_background_colors() {
     ] {
         let markup = format!("[{}]Text[/]", name);
         let rt = RichText::markup(&markup);
-        // Should parse without error
         assert_eq!(rt.width(), 4);
+        let cell = *draw(&rt, 6).get(3, 0).unwrap();
+        assert_eq!((cell.fg, cell.bg), (None, Some(expected)), "{name}");
     }
 }
 
@@ -153,6 +176,8 @@ fn test_markup_combined_colors() {
     let rt = RichText::markup("[red on_blue]Text[/]");
 
     assert_eq!(rt.width(), 4);
+    let cell = *draw(&rt, 6).get(0, 0).unwrap();
+    assert_eq!((cell.fg, cell.bg), (Some(Color::RED), Some(Color::BLUE)));
 }
 
 // =============================================================================
@@ -163,7 +188,14 @@ fn test_markup_combined_colors() {
 fn test_markup_link_with_formatting() {
     let rt = RichText::markup("[link=https://example.com][b]Click[/b][/]");
 
-    assert!(!rt.is_empty());
+    let buffer = draw(&rt, 8);
+    assert_eq!(row(&buffer, 0, 8), "Click");
+    let cell = buffer.get(4, 0).unwrap();
+    let id = cell.hyperlink_id.expect("linked");
+    assert_eq!(buffer.get_hyperlink(id), Some("https://example.com"));
+    // A link is cyan and underlined unless told otherwise, and keeps the bold
+    assert_eq!(cell.fg, Some(Color::CYAN));
+    assert!(cell.modifier.contains(Modifier::BOLD | Modifier::UNDERLINE));
 }
 
 #[test]
@@ -171,14 +203,20 @@ fn test_markup_link_empty_url() {
     let rt = RichText::markup("[link=]Text[/]");
 
     // Should handle empty URL
-    assert!(!rt.is_empty());
+    assert_eq!(rt.len(), 1);
+    assert_eq!(row(&draw(&rt, 6), 0, 6), "Text");
 }
 
 #[test]
 fn test_markup_link_special_chars() {
     let rt = RichText::markup("[link=https://example.com?param=value&other=test]Link[/]");
 
-    assert!(!rt.is_empty());
+    let buffer = draw(&rt, 6);
+    let id = buffer.get(0, 0).unwrap().hyperlink_id.expect("linked");
+    assert_eq!(
+        buffer.get_hyperlink(id),
+        Some("https://example.com?param=value&other=test")
+    );
 }
 
 // =============================================================================
@@ -197,8 +235,8 @@ fn test_span_width_wide_chars() {
 fn test_span_width_emoji() {
     let span = Span::new("😀😃"); // Emoji
 
-    // Emoji are typically width 2
-    assert!(span.width() >= 2);
+    // Emoji are width 2
+    assert_eq!(span.width(), 4);
 }
 
 #[test]
@@ -206,15 +244,15 @@ fn test_span_width_combining() {
     let span = Span::new("café"); // With combining accent
 
     // Should count correctly
-    assert!(span.width() >= 4);
+    assert_eq!(span.width(), 4);
 }
 
 #[test]
 fn test_span_width_mixed() {
     let span = Span::new("Hi 日本語 😀");
 
-    // Should calculate mixed width correctly
-    assert!(span.width() > 10);
+    // 2 + 1 + 6 + 1 + 2
+    assert_eq!(span.width(), 12);
 }
 
 #[test]
@@ -303,37 +341,42 @@ fn test_render_wide_char_continuation() {
 
     rt.render(&mut ctx);
 
-    // Wide chars should use continuation cells
     // First wide char at 0, continuation at 1
     // Second wide char at 2, continuation at 3
-    assert!(buffer.get(1, 0).is_some());
-    assert!(buffer.get(3, 0).is_some());
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '日');
+    assert!(buffer.get(1, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '本');
+    assert!(buffer.get(3, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(4, 0).unwrap().symbol, ' ');
 }
 
 #[test]
 fn test_render_zero_area() {
     let rt = RichText::new().text("Test");
 
-    let mut buffer = Buffer::new(0, 0);
+    let mut buffer = Buffer::new(4, 2);
     let area = Rect::new(0, 0, 0, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     rt.render(&mut ctx);
 
-    // Should not panic
+    assert_eq!(row(&buffer, 0, 4), "");
+    assert_eq!(row(&buffer, 1, 4), "");
 }
 
 #[test]
 fn test_render_truncation() {
     let rt = RichText::new().text("This is very long text that exceeds area");
 
-    let mut buffer = Buffer::new(10, 1);
+    let mut buffer = Buffer::new(12, 2);
     let area = Rect::new(0, 0, 10, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     rt.render(&mut ctx);
 
-    // Should truncate at area width
+    // Should truncate at area width, without wrapping
+    assert_eq!(row(&buffer, 0, 12), "This is ve");
+    assert_eq!(row(&buffer, 1, 12), "");
 }
 
 // =============================================================================
@@ -633,7 +676,10 @@ fn test_style_helper() {
 fn test_rich_text_view_meta() {
     let rt = RichText::new();
 
-    assert!(rt.widget_type().contains("RichText"));
+    let meta = rt.meta();
+    assert_eq!(meta.widget_type, "RichText");
+    assert_eq!(meta.id, None);
+    assert!(meta.classes.is_empty());
 }
 
 #[test]
@@ -655,28 +701,33 @@ fn test_markup_short_tags() {
 fn test_markup_multiple_attributes() {
     let rt = RichText::markup("[bold red underline]Text[/]");
 
-    assert!(!rt.is_empty());
+    let cell = *draw(&rt, 6).get(0, 0).unwrap();
+    assert_eq!(cell.fg, Some(Color::RED));
+    assert_eq!(cell.modifier, Modifier::BOLD | Modifier::UNDERLINE);
 }
 
 #[test]
 fn test_markup_dim_modifier() {
     let rt = RichText::markup("[dim]Text[/]");
 
-    assert!(!rt.is_empty());
+    assert_eq!(draw(&rt, 6).get(0, 0).unwrap().modifier, Modifier::DIM);
 }
 
 #[test]
 fn test_markup_strike_modifier() {
     let rt = RichText::markup("[s]Text[/]");
 
-    assert!(!rt.is_empty());
+    assert_eq!(
+        draw(&rt, 6).get(0, 0).unwrap().modifier,
+        Modifier::CROSSED_OUT
+    );
 }
 
 #[test]
 fn test_markup_reverse_modifier() {
     let rt = RichText::markup("[rev]Text[/]");
 
-    assert!(!rt.is_empty());
+    assert_eq!(draw(&rt, 6).get(0, 0).unwrap().modifier, Modifier::REVERSE);
 }
 
 #[test]
@@ -751,10 +802,14 @@ fn test_span_style_method() {
 
 #[test]
 fn test_rich_text_default_style() {
-    let rt = RichText::new().default_style(Style::new().fg(Color::CYAN));
+    let rt = RichText::new()
+        .text("ab")
+        .default_style(Style::new().fg(Color::CYAN));
 
-    // Default style is set
-    let _ = rt;
+    // Spans without a color take the default style's
+    let buffer = draw(&rt, 4);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::CYAN));
+    assert_eq!(buffer.get(1, 0).unwrap().fg, Some(Color::CYAN));
 }
 
 #[test]
@@ -781,11 +836,14 @@ fn test_style_clone() {
 #[test]
 fn test_span_clone_independent() {
     let span1 = Span::styled("Test", Style::new().bold());
-    let span2 = span1.clone();
+    let mut span2 = span1.clone();
 
     // Modifying one should not affect the other
-    assert_eq!(span1.text, span2.text);
-    assert_eq!(span1.style.bold, span2.style.bold);
+    span2.text.push('!');
+    span2.style.bold = false;
+    assert_eq!(span1.text, "Test");
+    assert!(span1.style.bold);
+    assert_eq!(span2.text, "Test!");
 }
 
 // =============================================================================
@@ -931,7 +989,7 @@ fn test_rich_text_meta() {
 #[test]
 fn test_rich_text_view_widget_type() {
     let rt = RichText::new();
-    assert!(rt.widget_type().contains("RichText"));
+    assert_eq!(rt.widget_type(), "RichText");
 }
 
 #[test]
@@ -963,9 +1021,12 @@ fn test_render_emoji_only() {
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     rt.render(&mut ctx);
-    // Should render emoji
-    let cell = buffer.get(0, 0).unwrap();
-    assert_ne!(cell.symbol, ' ');
+    // Each emoji takes two columns
+    for (x, emoji) in [(0, '😀'), (2, '😃'), (4, '😄')] {
+        assert_eq!(buffer.get(x, 0).unwrap().symbol, emoji);
+        assert!(buffer.get(x + 1, 0).unwrap().is_continuation());
+    }
+    assert_eq!(buffer.get(6, 0).unwrap().symbol, ' ');
 }
 
 #[test]
@@ -976,7 +1037,8 @@ fn test_render_empty_string() {
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     rt.render(&mut ctx);
-    // Should not panic
+    assert_eq!(row(&buffer, 0, 10), "");
+    assert_eq!(rt.measure(10, 10), Some((0, 1)));
 }
 
 #[test]
@@ -992,22 +1054,24 @@ fn test_render_with_offset() {
 
 #[test]
 fn test_render_single_pixel_width() {
-    let rt = RichText::new().text("A");
-    let mut buffer = Buffer::new(1, 1);
+    let rt = RichText::new().text("AB");
+    let mut buffer = Buffer::new(2, 1);
     let area = Rect::new(0, 0, 1, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     rt.render(&mut ctx);
+    assert_eq!(row(&buffer, 0, 2), "A");
 }
 
 #[test]
 fn test_render_zero_height() {
     let rt = RichText::new().text("Test");
-    let mut buffer = Buffer::new(10, 0);
+    let mut buffer = Buffer::new(10, 1);
     let area = Rect::new(0, 0, 10, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     rt.render(&mut ctx);
+    assert_eq!(row(&buffer, 0, 10), "");
 }
 
 #[test]
@@ -1018,6 +1082,9 @@ fn test_render_newline_in_text() {
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     rt.render(&mut ctx);
+    assert_eq!(row(&buffer, 0, 20), "Line1");
+    assert_eq!(row(&buffer, 1, 20), "Line2");
+    assert_eq!(rt.measure(20, 20), Some((5, 2)));
 }
 
 #[test]
@@ -1028,6 +1095,12 @@ fn test_render_tabs_in_text() {
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     rt.render(&mut ctx);
+    // The words stay apart. What the tab itself becomes is not checked:
+    // it is written into a cell as a raw control character (#982).
+    let text = row(&buffer, 0, 20);
+    assert!(text.starts_with("Item"), "{text:?}");
+    let tabbed = text.find("Tabbed").expect("Tabbed is drawn");
+    assert!(tabbed > 4, "{text:?}");
 }
 
 // =============================================================================
@@ -1148,8 +1221,8 @@ fn test_width_multiple_spans() {
 #[test]
 fn test_width_with_emoji() {
     let rt = RichText::new().text("Hi😀");
-    // Emoji typically has width 2
-    assert!(rt.width() >= 4);
+    // Emoji has width 2
+    assert_eq!(rt.width(), 4);
 }
 
 #[test]
@@ -1163,7 +1236,7 @@ fn test_width_with_cjk() {
 fn test_width_mixed_content() {
     let rt = RichText::new().text("A日😀B");
     // A=1, 日=2 (CJK), 😀=2 (emoji), B=1 = 6 total
-    assert!(rt.width() >= 6);
+    assert_eq!(rt.width(), 6);
 }
 
 // =============================================================================
@@ -1181,7 +1254,7 @@ fn test_span_empty_text() {
 fn test_span_only_whitespace() {
     let span = Span::new("   ");
     assert_eq!(span.text, "   ");
-    assert!(span.width() >= 3);
+    assert_eq!(span.width(), 3);
 }
 
 #[test]
@@ -1200,7 +1273,7 @@ fn test_span_tabs() {
 fn test_span_special_chars() {
     let span = Span::new("@#$%^&*()");
     assert_eq!(span.text, "@#$%^&*()");
-    assert!(span.width() >= 9);
+    assert_eq!(span.width(), 9);
 }
 
 // =============================================================================
@@ -1241,26 +1314,37 @@ fn test_rich_text_all_builder_methods() {
 #[test]
 fn test_markup_emoji_in_text() {
     let rt = RichText::markup("[b]😀[/b]");
-    assert!(!rt.is_empty());
+    let buffer = draw(&rt, 4);
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.symbol, '😀');
+    assert!(cell.modifier.contains(Modifier::BOLD));
+    assert!(buffer.get(1, 0).unwrap().is_continuation());
 }
 
 #[test]
 fn test_markup_cjk_in_text() {
     let rt = RichText::markup("[red]日本語[/]");
-    assert!(!rt.is_empty());
+    assert_eq!(rt.width(), 6);
+    let buffer = draw(&rt, 8);
+    assert_eq!(buffer.get(4, 0).unwrap().symbol, '語');
+    assert_eq!(buffer.get(4, 0).unwrap().fg, Some(Color::RED));
 }
 
 #[test]
 fn test_markup_rtl_text() {
     let rt = RichText::markup("[i]مرحبا[/i]");
-    assert!(!rt.is_empty());
+    assert_eq!(rt.width(), 5);
+    let cell = *draw(&rt, 6).get(0, 0).unwrap();
+    assert_eq!(cell.symbol, 'م');
+    assert!(cell.modifier.contains(Modifier::ITALIC));
 }
 
 #[test]
 fn test_markup_very_long_text() {
     let long_text = "A".repeat(1000);
     let rt = RichText::markup(&format!("[b]{}[/]", long_text));
-    assert!(!rt.is_empty());
+    assert_eq!(rt.len(), 1);
+    assert_eq!(rt.width(), 1000);
 }
 
 #[test]
@@ -1269,20 +1353,28 @@ fn test_markup_many_nested_tags() {
     let text = "T";
     let closes = "[/]".repeat(20);
     let rt = RichText::markup(&format!("{}{}{}", tags, text, closes));
-    assert!(!rt.is_empty());
+    assert_eq!(rt.len(), 1);
+    let cell = *draw(&rt, 2).get(0, 0).unwrap();
+    assert_eq!(cell.symbol, 'T');
+    assert_eq!(cell.modifier, Modifier::BOLD);
 }
 
 #[test]
 fn test_markup_tag_uppercase() {
     let rt = RichText::markup("[B]Bold[/B]");
     // Tags should work regardless of case
-    assert!(!rt.is_empty());
+    assert!(draw(&rt, 6)
+        .get(0, 0)
+        .unwrap()
+        .modifier
+        .contains(Modifier::BOLD));
 }
 
 #[test]
 fn test_markup_numeric_colors() {
     let rt = RichText::markup("[#ff0000]Hex Color[/]");
-    assert!(!rt.is_empty());
+    // Only named colors are tags; the text is still drawn
+    assert_eq!(row(&draw(&rt, 12), 0, 12), "Hex Color");
 }
 
 // =============================================================================

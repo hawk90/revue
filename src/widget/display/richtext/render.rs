@@ -6,7 +6,10 @@ use crate::widget::traits::{RenderContext, View};
 
 impl Style {
     /// Get modifier flags
-    fn to_modifier(&self) -> Modifier {
+    ///
+    /// `Text` builds a `Style` and paints its justified path cell by cell,
+    /// so it reads the flags here too.
+    pub(in crate::widget::display) fn to_modifier(&self) -> Modifier {
         let mut m = Modifier::empty();
         if self.bold {
             m |= Modifier::BOLD;
