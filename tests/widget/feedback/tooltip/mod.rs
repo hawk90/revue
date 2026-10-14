@@ -1,8 +1,12 @@
 //! Tooltip widget tests
 
+mod props;
+mod view;
+
 use revue::layout::Rect;
-use revue::render::Buffer;
+use revue::render::{Buffer, Cell, Modifier};
 use revue::style::Color;
+use revue::widget::theme::{DARK_BG, EDITOR_BG};
 use revue::widget::tooltip;
 use revue::widget::RenderContext;
 use revue::widget::StyledView;
@@ -21,6 +25,58 @@ fn render(t: &Tooltip) -> Buffer {
 
 fn symbol(buffer: &Buffer, x: u16, y: u16) -> char {
     buffer.get(x, y).map(|c| c.symbol).unwrap_or(' ')
+}
+
+fn render_in(t: &Tooltip, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    t.render(&mut ctx);
+    buffer
+}
+
+/// Row `y` as text, one char per cell.
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width()).map(|x| symbol(buffer, x, y)).collect()
+}
+
+/// Columns `range` of row `y` as text.
+fn cols(buffer: &Buffer, y: u16, range: std::ops::Range<u16>) -> String {
+    range.map(|x| symbol(buffer, x, y)).collect()
+}
+
+/// The first cell where `text` starts, searching row by row. Positions
+/// are in cells, so only for text of 1-column chars.
+fn find(buffer: &Buffer, text: &str) -> Option<(u16, u16)> {
+    (0..buffer.height()).find_map(|y| {
+        let r: Vec<char> = row(buffer, y).chars().collect();
+        let t: Vec<char> = text.chars().collect();
+        (0..=r.len().saturating_sub(t.len()))
+            .find(|&x| r[x..].starts_with(&t))
+            .map(|x| (x as u16, y))
+    })
+}
+
+/// How many cells the box covers: the cells with a background (the
+/// arrow has none).
+fn box_cells(buffer: &Buffer) -> usize {
+    (0..buffer.height())
+        .flat_map(|y| (0..buffer.width()).map(move |x| (x, y)))
+        .filter(|&(x, y)| buffer.get(x, y).unwrap().bg.is_some())
+        .count()
+}
+
+/// The box covers exactly `(x, y, w, h)`: a bordered box with its corners
+/// there, and no background outside it.
+fn assert_box(buffer: &Buffer, (x, y, w, h): (u16, u16, u16, u16)) {
+    assert!(
+        matches!(symbol(buffer, x, y), '┌' | '╭'),
+        "top-left at ({x}, {y})"
+    );
+    assert!(
+        matches!(symbol(buffer, x + w - 1, y + h - 1), '┘' | '╯'),
+        "bottom-right"
+    );
+    assert_eq!(box_cells(buffer), (w * h) as usize);
 }
 
 // =========================================================================
@@ -329,56 +385,70 @@ fn test_tooltip_reset_delay_on_show() {
 
 #[test]
 fn test_tooltip_builder_text() {
-    let t = Tooltip::new("Initial").text("Updated text");
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Initial").text("Updated text").anchor(10, 4);
+    let buffer = render_in(&t, 20, 5);
+    // 12 + 4 wide, 3 high, above the anchor: the text is on row 1.
+    assert_eq!(row(&buffer, 1), "  │ Updated text │  ");
+    assert!(find(&buffer, "Initial").is_none());
 }
 
 #[test]
 fn test_tooltip_builder_position() {
     let t = Tooltip::new("Test").position(TooltipPosition::Bottom);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let buffer = render(&t);
+    // Below the anchor (0, 0): the arrow on row 1, the box from row 2.
+    assert_eq!(symbol(&buffer, 0, 1), '▲');
+    assert_eq!(cols(&buffer, 2, 0..8), "┌──────┐");
+    assert_eq!(cols(&buffer, 3, 0..8), "│ Test │");
+    assert_eq!(row(&buffer, 0).trim(), "");
 }
 
 #[test]
 fn test_tooltip_builder_anchor() {
     let t = Tooltip::new("Test").anchor(10, 5);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let buffer = render(&t);
+    // 8 x 3, centered over x = 10 and one arrow row above y = 5.
+    assert_eq!(find(&buffer, "┌──────┐"), Some((6, 1)));
+    assert_eq!(find(&buffer, "│ Test │"), Some((6, 2)));
+    assert_eq!(symbol(&buffer, 10, 4), '▼');
 }
 
 #[test]
 fn test_tooltip_builder_style() {
-    let t = Tooltip::new("Test").style(TooltipStyle::Info);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Test")
+        .style(TooltipStyle::Info)
+        .anchor(20, 10);
+    let buffer = render(&t);
+    let (x, y) = find(&buffer, "Test").unwrap();
+    let cell = buffer.get(x, y).unwrap();
+    assert_eq!(cell.fg, Some(Color::WHITE));
+    assert_eq!(cell.bg, Some(Color::rgb(30, 80, 100)));
+    assert_eq!(symbol(&buffer, x - 2, y - 1), '┌');
 }
 
 #[test]
 fn test_tooltip_builder_arrow() {
-    let t = Tooltip::new("Test").arrow(TooltipArrow::Unicode);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let with = |arrow| render(&Tooltip::new("Test").anchor(20, 10).arrow(arrow));
+    // Unicode: the box sits one row higher and the arrow fills the gap.
+    let buffer = with(TooltipArrow::Unicode);
+    assert_eq!(symbol(&buffer, 20, 9), '▼');
+    assert_eq!(find(&buffer, "└──────┘"), Some((16, 8)));
+    // None: the box touches the anchor's row.
+    let buffer = with(TooltipArrow::None);
+    assert_eq!(find(&buffer, "└──────┘"), Some((16, 9)));
 }
 
 #[test]
 fn test_tooltip_builder_max_width() {
-    let t = Tooltip::new("Test").max_width(30);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("one two three four five six seven eight")
+        .max_width(30)
+        .position(TooltipPosition::Bottom)
+        .anchor(20, 0);
+    let buffer = render(&t);
+    // 39 columns wrap at 30: 27 + 11; the box is 27 + 4 wide.
+    let (x, y) = find(&buffer, "one two three four five six").unwrap();
+    assert_eq!(find(&buffer, "seven eight"), Some((x, y + 1)));
+    assert_eq!(symbol(&buffer, x + 28, y), '│');
 }
 
 #[test]
@@ -389,29 +459,49 @@ fn test_tooltip_builder_visible() {
 
 #[test]
 fn test_tooltip_builder_fg() {
-    let t = Tooltip::new("Test").fg(Color::RED);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Test").fg(Color::RED).anchor(20, 10);
+    let buffer = render(&t);
+    let (x, y) = find(&buffer, "Test").unwrap();
+    for (cx, cy) in [(x, y), (x - 2, y - 1), (20, 9)] {
+        assert_eq!(
+            buffer.get(cx, cy).unwrap().fg,
+            Some(Color::RED),
+            "({cx}, {cy})"
+        );
+    }
 }
 
 #[test]
 fn test_tooltip_builder_bg() {
-    let t = Tooltip::new("Test").bg(Color::BLUE);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Test").bg(Color::BLUE).anchor(20, 10);
+    let buffer = render(&t);
+    // Every cell of the 8 x 3 box; the arrow has no background.
+    for y in 6..9 {
+        for x in 16..24 {
+            assert_eq!(
+                buffer.get(x, y).unwrap().bg,
+                Some(Color::BLUE),
+                "({x}, {y})"
+            );
+        }
+    }
+    assert_eq!(buffer.get(20, 9).unwrap().bg, None);
 }
 
 #[test]
 fn test_tooltip_builder_title() {
-    let t = Tooltip::new("Test").title("My Title");
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Test").title("My Title").anchor(20, 10);
+    let buffer = render(&t);
+    // The title sets the width (8 + 2 + 4) and takes the first row inside.
+    let (x, y) = find(&buffer, "My Title").unwrap();
+    assert!(buffer.get(x, y).unwrap().modifier.contains(Modifier::BOLD));
+    assert_eq!(find(&buffer, "Test"), Some((x, y + 1)));
+    assert!(!buffer
+        .get(x, y + 1)
+        .unwrap()
+        .modifier
+        .contains(Modifier::BOLD));
+    assert_eq!(symbol(&buffer, x + 11, y), '│');
 }
 
 #[test]
@@ -502,11 +592,9 @@ fn test_tooltip_calculate_position_top() {
         .position(TooltipPosition::Top)
         .anchor(20, 10)
         .style(TooltipStyle::Bordered);
-
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    // 8 x 3 centered on x = 20, ending above the arrow row 9.
+    assert_box(&render(&t), (16, 6, 8, 3));
+    assert_eq!(symbol(&render(&t), 20, 9), '▼');
 }
 
 #[test]
@@ -515,11 +603,8 @@ fn test_tooltip_calculate_position_bottom() {
         .position(TooltipPosition::Bottom)
         .anchor(20, 10)
         .style(TooltipStyle::Bordered);
-
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    assert_box(&render(&t), (16, 12, 8, 3));
+    assert_eq!(symbol(&render(&t), 20, 11), '▲');
 }
 
 #[test]
@@ -528,11 +613,9 @@ fn test_tooltip_calculate_position_left() {
         .position(TooltipPosition::Left)
         .anchor(20, 10)
         .style(TooltipStyle::Bordered);
-
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    // Ends left of the arrow column 19, centered on row 10.
+    assert_box(&render(&t), (11, 9, 8, 3));
+    assert_eq!(symbol(&render(&t), 19, 10), '▶');
 }
 
 #[test]
@@ -541,24 +624,41 @@ fn test_tooltip_calculate_position_right() {
         .position(TooltipPosition::Right)
         .anchor(20, 10)
         .style(TooltipStyle::Bordered);
-
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    assert_box(&render(&t), (22, 9, 8, 3));
+    assert_eq!(symbol(&render(&t), 21, 10), '◀');
 }
 
 #[test]
 fn test_tooltip_calculate_position_auto() {
-    let t = Tooltip::new("Test")
-        .position(TooltipPosition::Auto)
-        .anchor(20, 10)
-        .style(TooltipStyle::Bordered);
-
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let auto = |anchor: (u16, u16)| {
+        render(
+            &Tooltip::new("Test")
+                .position(TooltipPosition::Auto)
+                .anchor(anchor.0, anchor.1)
+                .style(TooltipStyle::Bordered),
+        )
+    };
+    // Room above: above. None above but below: below. Then right, then left.
+    assert_box(&auto((20, 10)), (16, 6, 8, 3));
+    assert_box(&auto((20, 1)), (16, 3, 8, 3));
+    let buffer = render_in(
+        &Tooltip::new("Test")
+            .position(TooltipPosition::Auto)
+            .anchor(5, 1),
+        40,
+        3,
+    );
+    assert_box(&buffer, (7, 0, 8, 3));
+    assert_eq!(symbol(&buffer, 6, 1), '◀');
+    let buffer = render_in(
+        &Tooltip::new("Test")
+            .position(TooltipPosition::Auto)
+            .anchor(35, 1),
+        40,
+        3,
+    );
+    assert_box(&buffer, (26, 0, 8, 3));
+    assert_eq!(symbol(&buffer, 34, 1), '▶');
 }
 
 #[test]
@@ -568,10 +668,11 @@ fn test_tooltip_calculate_position_edge_top_left() {
         .anchor(0, 0)
         .style(TooltipStyle::Bordered);
 
-    let mut buffer = Buffer::new(20, 20);
-    let area = Rect::new(0, 0, 20, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    // Kept inside the area at the left edge, drawn whole. (Where it goes
+    // with no room above is #1045.)
+    let buffer = render_in(&t, 20, 20);
+    let (x, _) = find(&buffer, "│ Test │").unwrap();
+    assert_eq!(x, 0);
 }
 
 #[test]
@@ -581,10 +682,11 @@ fn test_tooltip_calculate_position_edge_bottom_right() {
         .anchor(19, 19)
         .style(TooltipStyle::Bordered);
 
-    let mut buffer = Buffer::new(20, 20);
-    let area = Rect::new(0, 0, 20, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    // Pushed left so its right border is the area's last column, drawn
+    // whole. (Where it goes with no room below is #1045.)
+    let buffer = render_in(&t, 20, 20);
+    let (x, _) = find(&buffer, "│ Test │").unwrap();
+    assert_eq!(x, 12);
 }
 
 // =============================================================================
@@ -593,47 +695,56 @@ fn test_tooltip_calculate_position_edge_bottom_right() {
 
 #[test]
 fn test_tooltip_wrap_text_short() {
-    let t = Tooltip::new("Short text").max_width(20);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Short text").max_width(20).anchor(20, 10);
+    let buffer = render(&t);
+    // One line: the bottom border follows the text row.
+    let (x, y) = find(&buffer, "Short text").unwrap();
+    assert_eq!(find(&buffer, "└────────────┘"), Some((x - 2, y + 1)));
 }
 
 #[test]
 fn test_tooltip_wrap_text_long() {
-    let t = Tooltip::new("This is a very long text that should be wrapped").max_width(20);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("This is a very long text that should be wrapped")
+        .max_width(20)
+        .anchor(20, 10);
+    let buffer = render(&t);
+    let (x, y) = find(&buffer, "This is a very long").unwrap();
+    assert_eq!(find(&buffer, "text that should be"), Some((x, y + 1)));
+    assert_eq!(find(&buffer, "wrapped"), Some((x, y + 2)));
+    assert_eq!(symbol(&buffer, x - 2, y + 3), '└');
 }
 
 #[test]
 fn test_tooltip_wrap_text_multiple_lines() {
-    let t = Tooltip::new("Line 1\nLine 2\nLine 3").max_width(20);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Line 1\nLine 2\nLine 3")
+        .max_width(20)
+        .anchor(20, 10);
+    let buffer = render(&t);
+    let (x, y) = find(&buffer, "Line 1").unwrap();
+    assert_eq!(find(&buffer, "Line 2"), Some((x, y + 1)));
+    assert_eq!(find(&buffer, "Line 3"), Some((x, y + 2)));
 }
 
 #[test]
 fn test_tooltip_wrap_text_empty() {
-    let t = Tooltip::new("").max_width(20);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("").max_width(20).anchor(20, 10);
+    let buffer = render(&t);
+    // One empty line: 0 + 4 wide, 3 high.
+    assert_box(&buffer, (18, 6, 4, 3));
+    assert_eq!(row(&buffer, 7).trim(), "│  │");
 }
 
 #[test]
 fn test_tooltip_wrap_text_zero_max_width() {
-    let t = Tooltip::new("Test").max_width(0);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    // 0 means 40: nine 4-letter words (44 columns) wrap after the eighth.
+    let t = Tooltip::new(["word"; 9].join(" "))
+        .max_width(0)
+        .position(TooltipPosition::Bottom)
+        .anchor(25, 0);
+    let buffer = render_in(&t, 60, 10);
+    let (x, y) = find(&buffer, &["word"; 8].join(" ")).unwrap();
+    assert_eq!(find(&buffer, "word "), Some((x, y)));
+    assert_eq!(cols(&buffer, y + 1, x..x + 5), "word ");
 }
 
 // =============================================================================
@@ -642,50 +753,53 @@ fn test_tooltip_wrap_text_zero_max_width() {
 
 #[test]
 fn test_tooltip_calculate_dimensions_plain() {
-    let t = Tooltip::new("Short").style(TooltipStyle::Plain);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Short")
+        .style(TooltipStyle::Plain)
+        .arrow(TooltipArrow::None)
+        .anchor(20, 10);
+    let buffer = render(&t);
+    // 5 + 2 padding, one row: 7 cells.
+    assert_eq!(box_cells(&buffer), 7);
+    assert_eq!(find(&buffer, " Short "), Some((17, 9)));
 }
 
 #[test]
 fn test_tooltip_calculate_dimensions_bordered() {
-    let t = Tooltip::new("Short").style(TooltipStyle::Bordered);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Short")
+        .style(TooltipStyle::Bordered)
+        .arrow(TooltipArrow::None)
+        .anchor(20, 10);
+    // 5 + 4 wide, 1 + 2 high.
+    assert_eq!(box_cells(&render(&t)), 9 * 3);
 }
 
 #[test]
 fn test_tooltip_calculate_dimensions_with_title() {
     let t = Tooltip::new("Content")
         .title("Title")
-        .style(TooltipStyle::Bordered);
-
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+        .style(TooltipStyle::Bordered)
+        .arrow(TooltipArrow::None)
+        .anchor(20, 10);
+    // max(7, 5 + 2) + 4 wide; the text, the title row and the border high.
+    assert_eq!(box_cells(&render(&t)), 11 * 4);
 }
 
 #[test]
 fn test_tooltip_calculate_dimensions_long_text() {
-    let t = Tooltip::new("This is a longer text").style(TooltipStyle::Bordered);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("This is a longer text")
+        .style(TooltipStyle::Bordered)
+        .arrow(TooltipArrow::None)
+        .anchor(20, 10);
+    assert_eq!(box_cells(&render(&t)), 25 * 3);
 }
 
 #[test]
 fn test_tooltip_calculate_dimensions_multiline() {
-    let t = Tooltip::new("Line 1\nLine 2\nLine 3").style(TooltipStyle::Bordered);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Line 1\nLine 2\nLine 3")
+        .style(TooltipStyle::Bordered)
+        .arrow(TooltipArrow::None)
+        .anchor(20, 10);
+    assert_eq!(box_cells(&render(&t)), 10 * 5);
 }
 
 // =============================================================================
@@ -695,104 +809,123 @@ fn test_tooltip_calculate_dimensions_multiline() {
 #[test]
 fn test_tooltip_render_all_styles() {
     let styles = [
-        TooltipStyle::Plain,
-        TooltipStyle::Bordered,
-        TooltipStyle::Rounded,
-        TooltipStyle::Info,
-        TooltipStyle::Warning,
-        TooltipStyle::Error,
-        TooltipStyle::Success,
+        (TooltipStyle::Plain, ' ', Color::WHITE, DARK_BG),
+        (TooltipStyle::Bordered, '┌', Color::WHITE, EDITOR_BG),
+        (TooltipStyle::Rounded, '╭', Color::WHITE, EDITOR_BG),
+        (
+            TooltipStyle::Info,
+            '┌',
+            Color::WHITE,
+            Color::rgb(30, 80, 100),
+        ),
+        (
+            TooltipStyle::Warning,
+            '┌',
+            Color::BLACK,
+            Color::rgb(180, 150, 0),
+        ),
+        (
+            TooltipStyle::Error,
+            '┌',
+            Color::WHITE,
+            Color::rgb(150, 30, 30),
+        ),
+        (
+            TooltipStyle::Success,
+            '┌',
+            Color::WHITE,
+            Color::rgb(30, 100, 50),
+        ),
     ];
 
-    for style in styles {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
+    for (style, corner, fg, bg) in styles {
         let t = Tooltip::new("Test")
             .anchor(20, 10)
             .style(style)
             .arrow(TooltipArrow::None);
-
-        t.render(&mut ctx);
+        let buffer = render(&t);
+        let (x, y) = find(&buffer, "Test").unwrap();
+        let cell = buffer.get(x, y).unwrap();
+        assert_eq!((cell.fg, cell.bg), (Some(fg), Some(bg)), "{style:?}");
+        if corner == ' ' {
+            assert_eq!(box_cells(&buffer), 6, "{style:?}");
+        } else {
+            assert_eq!(symbol(&buffer, x - 2, y - 1), corner, "{style:?}");
+        }
     }
 }
 
 #[test]
 fn test_tooltip_render_all_arrow_types() {
-    let arrows = [
-        TooltipArrow::None,
-        TooltipArrow::Simple,
-        TooltipArrow::Unicode,
-    ];
-
-    for arrow in arrows {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // The cell between the box and the anchor (20, 10).
+    let between = |arrow| {
         let t = Tooltip::new("Test")
             .anchor(20, 10)
             .arrow(arrow)
             .style(TooltipStyle::Bordered);
-
-        t.render(&mut ctx);
-    }
+        symbol(&render(&t), 20, 9)
+    };
+    // No arrow: the box moves down a row, so its bottom border is there.
+    assert_eq!(between(TooltipArrow::None), '─');
+    assert_eq!(between(TooltipArrow::Simple), 'v');
+    assert_eq!(between(TooltipArrow::Unicode), '▼');
 }
 
 #[test]
 fn test_tooltip_render_plain() {
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let t = Tooltip::new("Hello World")
         .anchor(20, 10)
         .position(TooltipPosition::Top)
         .style(TooltipStyle::Plain);
 
-    t.render(&mut ctx);
+    let buffer = render(&t);
+    // 11 + 2 wide, one row, centered on x = 20 above the arrow.
+    assert_eq!(cols(&buffer, 8, 14..27), " Hello World ");
+    assert_eq!(box_cells(&buffer), 13);
+    assert_eq!(symbol(&buffer, 20, 9), '▼');
 }
 
 #[test]
 fn test_tooltip_render_bordered() {
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let t = Tooltip::new("Hello World")
         .anchor(20, 10)
         .position(TooltipPosition::Top)
         .style(TooltipStyle::Bordered);
 
-    t.render(&mut ctx);
+    let buffer = render(&t);
+    assert_eq!(cols(&buffer, 6, 13..28), "┌─────────────┐");
+    assert_eq!(cols(&buffer, 7, 13..28), "│ Hello World │");
+    assert_eq!(cols(&buffer, 8, 13..28), "└─────────────┘");
 }
 
 #[test]
 fn test_tooltip_render_rounded() {
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let t = Tooltip::new("Hello")
         .anchor(20, 10)
         .style(TooltipStyle::Rounded);
 
-    t.render(&mut ctx);
+    let buffer = render(&t);
+    assert_eq!(cols(&buffer, 6, 16..25), "╭───────╮");
+    assert_eq!(cols(&buffer, 7, 16..25), "│ Hello │");
+    assert_eq!(cols(&buffer, 8, 16..25), "╰───────╯");
 }
 
 #[test]
 fn test_tooltip_render_with_title() {
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let t = Tooltip::new("Content")
         .title("Title")
         .anchor(20, 10)
         .style(TooltipStyle::Bordered);
 
-    t.render(&mut ctx);
+    let buffer = render(&t);
+    // 11 x 4: the border, the bold title, the text, the border.
+    assert_eq!(cols(&buffer, 5, 15..26), "┌─────────┐");
+    assert_eq!(cols(&buffer, 6, 15..26), "│ Title   │");
+    assert_eq!(cols(&buffer, 7, 15..26), "│ Content │");
+    assert_eq!(cols(&buffer, 8, 15..26), "└─────────┘");
+    for x in 17..22 {
+        assert!(buffer.get(x, 6).unwrap().modifier.contains(Modifier::BOLD));
+    }
 }
 
 #[test]
@@ -825,28 +958,27 @@ fn test_tooltip_render_with_delay() {
 
 #[test]
 fn test_tooltip_render_after_delay() {
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut t = Tooltip::new("Now visible").delay(1).anchor(20, 10);
+    assert!(find(&render(&t), "Now visible").is_none());
     t.tick();
 
-    t.render(&mut ctx);
+    assert!(find(&render(&t), "Now visible").is_some());
 }
 
 #[test]
 fn test_tooltip_render_custom_colors() {
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let t = Tooltip::new("Colored")
         .anchor(20, 10)
         .fg(Color::CYAN)
         .bg(Color::RED);
 
-    t.render(&mut ctx);
+    let buffer = render(&t);
+    let (x, y) = find(&buffer, "Colored").unwrap();
+    // The text, the padding and the border.
+    for (cx, cy) in [(x, y), (x - 1, y), (x - 2, y - 1)] {
+        let cell = buffer.get(cx, cy).unwrap();
+        assert_eq!((cell.fg, cell.bg), (Some(Color::CYAN), Some(Color::RED)));
+    }
 }
 
 #[test]
@@ -859,16 +991,22 @@ fn test_tooltip_render_all_positions() {
     ];
 
     for pos in positions {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
         let t = Tooltip::new("Test")
             .anchor(20, 10)
             .position(pos)
             .style(TooltipStyle::Bordered);
 
-        t.render(&mut ctx);
+        let buffer = render(&t);
+        // The anchor cell is left alone and the text is on the asked side.
+        assert_eq!(symbol(&buffer, 20, 10), ' ', "{pos:?}");
+        let (x, y) = find(&buffer, "Test").unwrap();
+        let side = match pos {
+            TooltipPosition::Top => y < 10,
+            TooltipPosition::Bottom => y > 10,
+            TooltipPosition::Left => x + 4 < 20 && y == 10,
+            _ => x > 20 && y == 10,
+        };
+        assert!(side, "{pos:?} at ({x}, {y})");
     }
 }
 
@@ -886,28 +1024,26 @@ fn test_tooltip_empty_text() {
 fn test_tooltip_very_long_text() {
     let long_text = "A".repeat(1000);
     let t = Tooltip::new(&long_text).max_width(50);
-    let mut buffer = Buffer::new(60, 30);
-    let area = Rect::new(0, 0, 60, 30);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let buffer = render_in(&t, 60, 30);
+    // The word is drawn from the left border on, as far as the area goes.
+    let (_, y) = find(&buffer, &format!("│ {}", "A".repeat(48))).unwrap();
+    assert_eq!(cols(&buffer, y, 0..2), "│ ");
 }
 
 #[test]
 fn test_tooltip_zero_anchor() {
     let t = Tooltip::new("Test").anchor(0, 0);
-    let mut buffer = Buffer::new(20, 20);
-    let area = Rect::new(0, 0, 20, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let buffer = render_in(&t, 20, 20);
+    // Centering would start left of the area: it starts at column 0.
+    assert_eq!(find(&buffer, "│ Test │").map(|(x, _)| x), Some(0));
 }
 
 #[test]
 fn test_tooltip_large_anchor() {
     let t = Tooltip::new("Test").anchor(100, 100);
-    let mut buffer = Buffer::new(120, 120);
-    let area = Rect::new(0, 0, 120, 120);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let buffer = render_in(&t, 120, 120);
+    assert_box(&buffer, (96, 96, 8, 3));
+    assert_eq!(symbol(&buffer, 100, 99), '▼');
 }
 
 #[test]
@@ -916,67 +1052,95 @@ fn test_tooltip_very_small_area() {
         .anchor(0, 0)
         .style(TooltipStyle::Bordered);
 
-    let mut buffer = Buffer::new(5, 5);
-    let area = Rect::new(0, 0, 5, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    // A 5 x 5 area in a larger buffer: the 8-wide box starts at the
+    // area's corner and nothing is drawn outside the area.
+    let mut buffer = Buffer::new(10, 10);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 5, 5));
     t.render(&mut ctx);
+    assert_eq!(symbol(&buffer, 0, 0), '┌');
+    for y in 0..10 {
+        for x in 0..10 {
+            if x >= 5 || y >= 5 {
+                assert_eq!(buffer.get(x, y).unwrap(), &Cell::default(), "({x}, {y})");
+            }
+        }
+    }
 }
 
 #[test]
 fn test_tooltip_text_with_special_chars() {
-    let t = Tooltip::new("Text with emoji and symbols: @#$%");
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Text with emoji and symbols: @#$%").anchor(20, 10);
+    let buffer = render(&t);
+    let (x, y) = find(&buffer, "Text with emoji and symbols: @#$%").unwrap();
+    // 33 columns, then the padding and the right border.
+    assert_eq!(symbol(&buffer, x + 34, y), '│');
 }
 
 #[test]
 fn test_tooltip_multiline_with_wrapping() {
-    let t = Tooltip::new("Line 1 is very long and should wrap\nLine 2").max_width(20);
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Line 1 is very long and should wrap\nLine 2")
+        .max_width(20)
+        .anchor(20, 10);
+    let buffer = render(&t);
+    // The long line wraps; the second line keeps its own row.
+    let (x, y) = find(&buffer, "Line 1 is very long").unwrap();
+    assert_eq!(find(&buffer, "and should wrap"), Some((x, y + 1)));
+    assert_eq!(find(&buffer, "Line 2"), Some((x, y + 2)));
 }
 
 #[test]
 fn test_tooltip_title_longer_than_content() {
     let t = Tooltip::new("Short")
         .title("This is a very long title")
-        .style(TooltipStyle::Bordered);
+        .style(TooltipStyle::Bordered)
+        .anchor(20, 10);
 
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let buffer = render(&t);
+    // The title sets the width: 25 + 2 + 4.
+    let (x, y) = find(&buffer, "This is a very long title").unwrap();
+    assert_eq!(symbol(&buffer, x - 2, y), '│');
+    assert_eq!(symbol(&buffer, x + 28, y), '│');
+    assert_eq!(find(&buffer, "Short"), Some((x, y + 1)));
 }
 
 #[test]
 fn test_tooltip_text_with_tabs() {
-    let t = Tooltip::new("Text\twith\ttabs");
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let t = Tooltip::new("Text\twith\ttabs").anchor(20, 10);
+    let buffer = render(&t);
+    // The words are drawn in order, and the box ends one padding cell
+    // after the last one.
+    let (_, y) = find(&buffer, "Text").unwrap();
+    let line = row(&buffer, y);
+    let (a, b, c) = (
+        line.find("Text").unwrap(),
+        line.find("with").unwrap(),
+        line.find("tabs").unwrap(),
+    );
+    assert!(a < b && b < c);
+    assert!(line[c..].starts_with("tabs │"));
 }
 
 #[test]
 fn test_tooltip_max_width_boundary() {
-    let t = Tooltip::new("Test").max_width(100);
-    let mut buffer = Buffer::new(120, 20);
-    let area = Rect::new(0, 0, 120, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let text = ["word"; 18].join(" ");
+    let t = Tooltip::new(&text).max_width(100).anchor(60, 10);
+    let buffer = render_in(&t, 120, 20);
+    // 89 columns fit under 100: one line.
+    let (x, y) = find(&buffer, &text).unwrap();
+    assert_eq!(symbol(&buffer, x - 2, y + 1), '└');
 }
 
 #[test]
 fn test_tooltip_default_trait() {
     let t: Tooltip = Default::default();
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    // The same as an empty `new`.
+    let (a, b) = (render(&t), render(&Tooltip::new("")));
+    for y in 0..20 {
+        for x in 0..40 {
+            assert_eq!(a.get(x, y), b.get(x, y));
+        }
+    }
+    assert!(box_cells(&a) > 0);
 }
 
 // =============================================================================
@@ -1026,10 +1190,15 @@ fn test_tooltip_helper_with_builder() {
         .position(TooltipPosition::Bottom)
         .style(TooltipStyle::Warning);
 
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    t.render(&mut ctx);
+    let buffer = render(&t);
+    assert_eq!(symbol(&buffer, 0, 1), '▲');
+    let (x, y) = find(&buffer, "│ Test │").unwrap();
+    assert_eq!((x, y), (0, 3));
+    let cell = buffer.get(2, 3).unwrap();
+    assert_eq!(
+        (cell.fg, cell.bg),
+        (Some(Color::BLACK), Some(Color::rgb(180, 150, 0)))
+    );
 }
 
 // =============================================================================
@@ -1234,17 +1403,24 @@ fn test_tooltip_all_positions_with_all_styles() {
 
     for pos in positions {
         for style in styles {
-            let mut buffer = Buffer::new(40, 20);
-            let area = Rect::new(0, 0, 40, 20);
-            let mut ctx = RenderContext::new(&mut buffer, area);
-
             let t = Tooltip::new("Test")
                 .anchor(20, 10)
                 .position(pos)
                 .style(style)
                 .arrow(TooltipArrow::None);
 
-            t.render(&mut ctx);
+            let buffer = render(&t);
+            // With no arrow the box touches the anchor; its text row or
+            // column is next to it whatever the style.
+            let (x, y) = find(&buffer, "Test").unwrap();
+            let bordered = style != TooltipStyle::Plain;
+            let (ex, ey) = match pos {
+                TooltipPosition::Top => (18, if bordered { 8 } else { 9 }),
+                TooltipPosition::Bottom => (18, if bordered { 12 } else { 11 }),
+                TooltipPosition::Left => (if bordered { 14 } else { 15 }, 10),
+                _ => (if bordered { 23 } else { 22 }, 10),
+            };
+            assert_eq!((x, y), (ex, ey), "{pos:?} {style:?}");
         }
     }
 }
@@ -1261,16 +1437,16 @@ fn test_tooltip_with_title_and_all_styles() {
     ];
 
     for style in styles {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
         let t = Tooltip::new("Content")
             .title("Title")
             .anchor(20, 10)
             .style(style);
 
-        t.render(&mut ctx);
+        let buffer = render(&t);
+        // Every bordered style draws the bold title above the text.
+        let (x, y) = find(&buffer, "Title").unwrap();
+        assert!(buffer.get(x, y).unwrap().modifier.contains(Modifier::BOLD));
+        assert_eq!(find(&buffer, "Content"), Some((x, y + 1)), "{style:?}");
     }
 }
 
@@ -1287,17 +1463,26 @@ fn test_tooltip_custom_colors_with_all_styles() {
     ];
 
     for style in styles {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
         let t = Tooltip::new("Colored")
             .anchor(20, 10)
             .style(style)
             .fg(Color::CYAN)
             .bg(Color::rgb(80, 80, 80));
 
-        t.render(&mut ctx);
+        let buffer = render(&t);
+        // The builder colors win over every style's own, in every box cell.
+        let mut n = 0;
+        for y in 0..20 {
+            for x in 0..40 {
+                let cell = buffer.get(x, y).unwrap();
+                if cell.bg.is_some() {
+                    n += 1;
+                    assert_eq!(cell.bg, Some(Color::rgb(80, 80, 80)), "{style:?}");
+                    assert_eq!(cell.fg, Some(Color::CYAN), "{style:?}");
+                }
+            }
+        }
+        assert!(n > 0, "{style:?}");
     }
 }
 
