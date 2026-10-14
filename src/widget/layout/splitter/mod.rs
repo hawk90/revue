@@ -2,6 +2,8 @@
 //!
 //! Allows dividing an area into resizable panes with draggable dividers.
 
+mod input;
+mod layout;
 mod render;
 mod two_pane;
 mod types;
@@ -9,8 +11,6 @@ mod types;
 pub use two_pane::{HSplit, VSplit};
 pub use types::{Pane, SplitOrientation, SplitterStyle};
 
-use crate::event::Key;
-use crate::layout::Rect;
 use crate::style::Color;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -103,193 +103,9 @@ impl Splitter {
         self
     }
 
-    /// Get pane areas
-    pub fn pane_areas(&self, area: Rect) -> Vec<(String, Rect)> {
-        let mut areas = Vec::new();
-        let visible_panes: Vec<_> = self.panes.iter().filter(|p| !p.collapsed).collect();
-
-        if visible_panes.is_empty() {
-            return areas;
-        }
-
-        let dividers = u16::try_from(visible_panes.len().saturating_sub(1)).unwrap_or(u16::MAX);
-        let total_splitter_width = dividers.saturating_mul(self.splitter_width);
-        let extent = match self.orientation {
-            SplitOrientation::Horizontal => area.width,
-            SplitOrientation::Vertical => area.height,
-        };
-        let available = extent.saturating_sub(total_splitter_width);
-
-        // Normalize ratios
-        let total_ratio: f32 = visible_panes.iter().map(|p| p.ratio).sum();
-        let mut offset = 0u16;
-
-        for (i, pane) in visible_panes.iter().enumerate() {
-            let ratio = if total_ratio > 0.0 {
-                pane.ratio / total_ratio
-            } else {
-                1.0 / visible_panes.len() as f32
-            };
-            let size = (available as f32 * ratio).clamp(0.0, available as f32);
-            let mut size = size as u16;
-
-            // Apply constraints
-            size = size.max(pane.min_size);
-            if pane.max_size > 0 {
-                size = size.min(pane.max_size);
-            }
-
-            // Last pane takes the remaining space. `offset` already counts
-            // the dividers placed so far, so measure it against the whole
-            // extent, not against `available` (which has them taken out).
-            // Panes whose minimum sizes overrun the extent are cut at its end
-            // (and later ones get no room), so no pane leaves the area and
-            // no coordinate runs past `u16::MAX`.
-            let remaining = extent.saturating_sub(offset);
-            if i == visible_panes.len() - 1 {
-                size = remaining;
-            }
-            size = size.min(remaining);
-            let start = offset.min(extent);
-
-            let pane_area = match self.orientation {
-                SplitOrientation::Horizontal => {
-                    Rect::new(area.x.saturating_add(start), area.y, size, area.height)
-                }
-                SplitOrientation::Vertical => {
-                    Rect::new(area.x, area.y.saturating_add(start), area.width, size)
-                }
-            };
-
-            areas.push((pane.id.clone(), pane_area));
-            offset = offset
-                .saturating_add(size)
-                .saturating_add(self.splitter_width);
-        }
-
-        areas
-    }
-
     /// Get focused pane id
     pub fn focused(&self) -> Option<&str> {
         self.panes.get(self.focused_pane).map(|p| p.id.as_str())
-    }
-
-    /// Focus next pane
-    pub fn focus_next(&mut self) {
-        let visible: Vec<_> = self
-            .panes
-            .iter()
-            .enumerate()
-            .filter(|(_, p)| !p.collapsed)
-            .map(|(i, _)| i)
-            .collect();
-
-        if let Some(pos) = visible.iter().position(|&i| i == self.focused_pane) {
-            let next = (pos + 1) % visible.len();
-            self.focused_pane = visible[next];
-        }
-    }
-
-    /// Focus previous pane
-    pub fn focus_prev(&mut self) {
-        let visible: Vec<_> = self
-            .panes
-            .iter()
-            .enumerate()
-            .filter(|(_, p)| !p.collapsed)
-            .map(|(i, _)| i)
-            .collect();
-
-        if let Some(pos) = visible.iter().position(|&i| i == self.focused_pane) {
-            let prev = if pos == 0 { visible.len() - 1 } else { pos - 1 };
-            self.focused_pane = visible[prev];
-        }
-    }
-
-    /// The panes on either side of a divider. Dividers are counted as they
-    /// are drawn - between visible panes, skipping collapsed ones.
-    fn divider_panes(&self, divider: usize) -> Option<(usize, usize)> {
-        let mut visible = self
-            .panes
-            .iter()
-            .enumerate()
-            .filter(|(_, p)| !p.collapsed)
-            .map(|(i, _)| i)
-            .skip(divider);
-        Some((visible.next()?, visible.next()?))
-    }
-
-    /// Start resizing divider
-    ///
-    /// `divider` counts the dividers as drawn: between visible panes, so
-    /// collapsed panes are skipped.
-    pub fn start_resize(&mut self, divider: usize) {
-        if self.divider_panes(divider).is_some() {
-            self.active_divider = Some(divider);
-        }
-    }
-
-    /// Stop resizing
-    pub fn stop_resize(&mut self) {
-        self.active_divider = None;
-    }
-
-    /// Resize by delta
-    pub fn resize(&mut self, delta: i16) {
-        if let Some((before, after)) = self.active_divider.and_then(|d| self.divider_panes(d)) {
-            let current_ratio = self.panes[before].ratio;
-            let next_ratio = self.panes[after].ratio;
-
-            let change = delta as f32 * 0.01;
-            let new_current = (current_ratio + change).clamp(0.1, 0.9);
-            let new_next = (next_ratio - change).clamp(0.1, 0.9);
-
-            self.panes[before].ratio = new_current;
-            self.panes[after].ratio = new_next;
-        }
-    }
-
-    /// Toggle collapse for pane
-    pub fn toggle_pane(&mut self, index: usize) {
-        if let Some(pane) = self.panes.get_mut(index) {
-            pane.toggle_collapse();
-        }
-    }
-
-    /// Handle key input
-    pub fn handle_key(&mut self, key: &Key) -> bool {
-        match key {
-            Key::Tab => {
-                self.focus_next();
-                true
-            }
-            Key::Left | Key::Char('h') if self.active_divider.is_some() => {
-                self.resize(-5);
-                true
-            }
-            Key::Right | Key::Char('l') if self.active_divider.is_some() => {
-                self.resize(5);
-                true
-            }
-            Key::Up | Key::Char('k') if self.active_divider.is_some() => {
-                self.resize(-5);
-                true
-            }
-            Key::Down | Key::Char('j') if self.active_divider.is_some() => {
-                self.resize(5);
-                true
-            }
-            Key::Enter if self.active_divider.is_some() => {
-                self.stop_resize();
-                true
-            }
-            Key::Escape if self.active_divider.is_some() => {
-                self.stop_resize();
-                true
-            }
-            _ => false,
-        }
     }
 }
 
@@ -327,6 +143,7 @@ pub fn vsplit(ratio: f32) -> VSplit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::layout::Rect;
 
     #[test]
     fn test_splitter_new() {

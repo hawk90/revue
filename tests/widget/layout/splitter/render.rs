@@ -103,3 +103,113 @@ fn test_splitter_single_pane_draws_no_divider() {
     let buffer = render(&s, 10, 1);
     assert_eq!(row(&buffer, 0, 10), " ".repeat(10));
 }
+
+#[test]
+fn test_splitter_zero_areas_and_offset() {
+    for vertical in [false, true] {
+        let mut s = splitter()
+            .color(Color::BLUE)
+            .pane(pane("a").min_size(0))
+            .pane(pane("b").collapsible())
+            .pane(pane("c").min_size(0).ratio(0.2));
+        if vertical {
+            s = s.vertical();
+        }
+        s.start_resize(1);
+        crate::traits::placement::assert_zero_areas_draw_nothing(&s);
+        crate::traits::placement::assert_same_when_offset(s, 15, 9);
+    }
+}
+
+#[test]
+fn test_splitter_idle_divider_is_dark_gray_by_default() {
+    let s = splitter().pane(pane("a")).pane(pane("b"));
+    let buffer = render(&s, 21, 1);
+    assert_eq!(
+        buffer.get(10, 0).unwrap().fg,
+        Some(revue::widget::theme::DARK_GRAY)
+    );
+}
+
+mod props {
+    use super::*;
+    use proptest::prelude::*;
+    use revue::widget::SplitOrientation;
+
+    const STYLES: [(SplitterStyle, char, char); 4] = [
+        (SplitterStyle::Line, '│', '─'),
+        (SplitterStyle::Double, '║', '═'),
+        (SplitterStyle::Thick, '┃', '━'),
+        (SplitterStyle::Hidden, ' ', ' '),
+    ];
+
+    proptest! {
+        /// The splitter draws exactly its dividers: the full line one cell
+        /// past every visible pane but the last (when that cell is inside
+        /// the area), in the style's glyph, the divider being resized in
+        /// the active color and the others in the idle color; no other
+        /// cell is touched, in the area or outside it.
+        #[test]
+        fn prop_splitter_draws_its_dividers_and_nothing_else(
+            n in 0usize..6,
+            ratios in prop::collection::vec(0.0f32..=1.0, 6),
+            mins in prop::collection::vec(0u16..8, 6),
+            collapsed in prop::collection::vec(prop::bool::weighted(0.25), 6),
+            vertical in any::<bool>(),
+            style in 0usize..4,
+            color in prop::option::of(Just(Color::RED)),
+            active in prop::option::of(0usize..6),
+            (x, y, w, h) in (0u16..4, 0u16..4, 0u16..40, 0u16..16),
+        ) {
+            let mut s = splitter().style(STYLES[style].0).active_color(Color::GREEN);
+            if vertical {
+                s = s.orientation(SplitOrientation::Vertical);
+            }
+            if let Some(c) = color {
+                s = s.color(c);
+            }
+            for i in 0..n {
+                s = s.pane(pane(format!("p{i}")).ratio(ratios[i]).min_size(mins[i]).collapsible());
+            }
+            for (i, &c) in collapsed.iter().enumerate().take(n) {
+                if c {
+                    s.toggle_pane(i);
+                }
+            }
+            if let Some(d) = active {
+                s.start_resize(d);
+            }
+            let area = Rect::new(x, y, w, h);
+            let areas = s.pane_areas(area);
+            let dividers = areas.len().saturating_sub(1);
+            let active = active.filter(|&d| d < dividers);
+
+            let mut buffer = Buffer::new(x + w + 2, y + h + 2);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            s.render(&mut ctx);
+
+            // Expected: the divider index at each line along the split
+            let mut line = std::collections::HashMap::new();
+            for (i, (_, r)) in areas.iter().take(dividers).enumerate() {
+                let at = if vertical { r.y + r.height } else { r.x + r.width };
+                line.insert(at, i);
+            }
+            let glyph = if vertical { STYLES[style].2 } else { STYLES[style].1 };
+            let idle = color.unwrap_or(revue::widget::theme::DARK_GRAY);
+            for yy in 0..y + h + 2 {
+                for xx in 0..x + w + 2 {
+                    let cell = buffer.get(xx, yy).unwrap();
+                    let inside = (x..x + w).contains(&xx) && (y..y + h).contains(&yy);
+                    let along = if vertical { yy } else { xx };
+                    match line.get(&along) {
+                        Some(&i) if inside => {
+                            let fg = if Some(i) == active { Color::GREEN } else { idle };
+                            prop_assert_eq!((cell.symbol, cell.fg), (glyph, Some(fg)), "({}, {})", xx, yy);
+                        }
+                        _ => prop_assert_eq!(cell, &revue::render::Cell::default(), "({}, {})", xx, yy),
+                    }
+                }
+            }
+        }
+    }
+}
