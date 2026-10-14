@@ -43,8 +43,6 @@ const OPEN_FIELDS: &[(&str, &str, usize)] = &[
     ("widget/data/filetree/mod.rs", "FileTree", 15),
     ("widget/debug_overlay/event_log.rs", "EventLog", 2),
     ("widget/debug_overlay/metrics.rs", "PerfMetrics", 5),
-    ("widget/developer/httpclient/client.rs", "HttpClient", 11),
-    ("widget/developer/httpclient/request.rs", "HttpRequest", 1),
     ("widget/filepicker/mod.rs", "FilePicker", 23),
     ("widget/input/input_widgets/combobox/mod.rs", "Combobox", 26),
     ("widget/input/input_widgets/select/mod.rs", "Select", 18),

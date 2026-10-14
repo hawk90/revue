@@ -1,7 +1,7 @@
 //! HTTP Client helper functions
 
-use super::client::HttpClient;
 use super::types::HttpMethod;
+use super::HttpClient;
 
 /// Create a new HTTP client
 pub fn http_client() -> HttpClient {
