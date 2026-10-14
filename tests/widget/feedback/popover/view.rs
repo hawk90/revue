@@ -275,3 +275,28 @@ fn test_popover_slides_along_the_edge_it_is_against() {
     assert_eq!(symbol(&b, 39, 7), '┐');
     assert_eq!(symbol(&b, 38, 6), '^');
 }
+
+#[test]
+fn test_popover_auto_goes_below_when_it_just_fits() {
+    // Rows 17 to 19 are free below the anchor: the 3-row box just fits
+    let p = Popover::new("Test")
+        .anchor(20, 16)
+        .position(PopoverPosition::Auto)
+        .open(true);
+    assert_eq!(corner(&render(&p)), Some((15, 17)));
+    // With an arrow it needs one row more
+    let p = Popover::new("Test")
+        .anchor(20, 15)
+        .arrow(PopoverArrow::Simple)
+        .position(PopoverPosition::Auto)
+        .open(true);
+    let b = render(&p);
+    assert_eq!(corner(&b), Some((15, 17)));
+    assert_eq!(symbol(&b, 20, 16), '^');
+    // One row less and it goes above
+    let p = Popover::new("Test")
+        .anchor(20, 17)
+        .position(PopoverPosition::Auto)
+        .open(true);
+    assert_eq!(corner(&render(&p)), Some((15, 14)));
+}
