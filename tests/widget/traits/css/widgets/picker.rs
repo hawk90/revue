@@ -78,10 +78,22 @@ wrap!(
     // the buffer are the ones `color` is meant to address. The first is
     // highlighted and keeps its own color; the rest are the base.
     FilePicker::new()
-        .start_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/src/widget/dropzone"))
+        .start_dir(plain_files())
         .filter(FileFilter::Extensions(vec!["rs".into()]))
         .element_id("w")
 );
+
+/// A directory of three `.rs` files under the target's scratch directory.
+/// It used to be `src/widget/dropzone`, which a split of that widget could
+/// empty.
+fn plain_files() -> std::path::PathBuf {
+    let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("filepicker-css");
+    std::fs::create_dir_all(&dir).unwrap();
+    for name in ["a.rs", "b.rs", "c.rs"] {
+        std::fs::write(dir.join(name), "").unwrap();
+    }
+    dir
+}
 
 wrap!(
     ColorPickerView,
