@@ -5,6 +5,8 @@ use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::{toast, RenderContext, Toast, ToastLevel, ToastPosition, View};
 
+mod view;
+
 fn render(t: &Toast, width: u16, height: u16) -> Buffer {
     let mut buffer = Buffer::new(width, height);
     let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
