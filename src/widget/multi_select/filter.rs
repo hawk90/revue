@@ -2,7 +2,7 @@
 
 use crate::utils::{fuzzy_match, FuzzyMatch};
 
-use super::types::MultiSelect;
+use super::MultiSelect;
 
 impl MultiSelect {
     /// Get current search query

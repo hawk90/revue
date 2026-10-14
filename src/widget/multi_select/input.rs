@@ -1,9 +1,11 @@
-//! Key handling for the multi-select widget
+//! Key handling for the multi-select widget: Enter and Escape in both
+//! states, the dropdown keys while it is open and the tag keys while it is
+//! closed
 
 use crate::event::Key;
 use crate::widget::traits::{EventResult, Interactive};
 
-use super::types::MultiSelect;
+use super::MultiSelect;
 
 impl Interactive for MultiSelect {
     fn handle_key(&mut self, event: &crate::event::KeyEvent) -> EventResult {
@@ -62,7 +64,15 @@ impl MultiSelect {
                 }
             }
 
-            Key::Char(' ') if self.open && !self.searchable => {
+            _ if self.open => self.handle_dropdown_key(key),
+            _ => self.handle_tag_key(key),
+        }
+    }
+
+    /// A key other than Enter and Escape while the dropdown is open
+    fn handle_dropdown_key(&mut self, key: &Key) -> bool {
+        match key {
+            Key::Char(' ') if !self.searchable => {
                 if let Some(idx) = self.current_option() {
                     self.toggle_option(idx);
                 }
@@ -70,29 +80,55 @@ impl MultiSelect {
             }
 
             // Dropdown navigation
-            Key::Down | Key::Char('j') if self.open => {
+            Key::Down | Key::Char('j') => {
                 self.cursor_down();
                 true
             }
 
-            Key::Up | Key::Char('k') if self.open => {
+            Key::Up | Key::Char('k') => {
                 self.cursor_up();
                 true
             }
 
+            Key::Backspace if self.searchable => {
+                self.query.pop();
+                self.update_filter();
+                true
+            }
+
+            // Search typing
+            Key::Char(c) if self.searchable => {
+                self.query.push(*c);
+                self.update_filter();
+                true
+            }
+
+            // Close dropdown on Tab when open
+            Key::Tab => {
+                self.close();
+                true
+            }
+
+            _ => false,
+        }
+    }
+
+    /// A key other than Enter and Escape while the dropdown is closed
+    fn handle_tag_key(&mut self, key: &Key) -> bool {
+        match key {
             // Tag navigation
-            Key::Left if !self.open => {
+            Key::Left => {
                 self.tag_cursor_left();
                 true
             }
 
-            Key::Right if !self.open => {
+            Key::Right => {
                 self.tag_cursor_right();
                 true
             }
 
             // Delete tag
-            Key::Backspace if !self.open => {
+            Key::Backspace => {
                 if self.tag_cursor.is_some() {
                     self.remove_tag_at_cursor();
                 } else if !self.selected.is_empty() {
@@ -101,39 +137,20 @@ impl MultiSelect {
                 true
             }
 
-            Key::Backspace if self.open && self.searchable => {
-                self.query.pop();
-                self.update_filter();
-                true
-            }
-
-            Key::Delete if !self.open && self.tag_cursor.is_some() => {
+            Key::Delete if self.tag_cursor.is_some() => {
                 self.remove_tag_at_cursor();
                 true
             }
 
-            // Search typing
-            Key::Char(c) if self.open && self.searchable => {
-                self.query.push(*c);
-                self.update_filter();
-                true
-            }
-
             // Select all
-            Key::Char('a') if !self.open => {
+            Key::Char('a') => {
                 self.select_all();
                 true
             }
 
             // Clear selection
-            Key::Char('c') if !self.open => {
+            Key::Char('c') => {
                 self.clear_selection();
-                true
-            }
-
-            // Close dropdown on Tab when open
-            Key::Tab if self.open => {
-                self.close();
                 true
             }
 

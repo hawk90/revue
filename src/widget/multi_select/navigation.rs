@@ -1,6 +1,6 @@
 //! Navigation for the multi-select widget
 
-use super::types::MultiSelect;
+use super::MultiSelect;
 
 impl MultiSelect {
     /// Move dropdown cursor down
