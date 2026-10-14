@@ -4,8 +4,54 @@ use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};
 use revue::style::Color;
+use revue::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use revue::widget::traits::RenderContext;
 use revue::widget::{log_entry, richlog, LogEntry, LogLevel, RichLog, StyledView, View};
+
+mod view;
+
+/// Draw `log` in a `w`x`h` buffer
+fn draw(log: &RichLog, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    log.render(&mut ctx);
+    buffer
+}
+
+/// Row `y`'s symbols, trailing spaces trimmed
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect::<String>()
+        .trim_end()
+        .to_string()
+}
+
+/// Every row of `log` drawn in `w`x`h`
+fn rows(log: &RichLog, w: u16, h: u16) -> Vec<String> {
+    let buffer = draw(log, w, h);
+    (0..h).map(|y| row(&buffer, y)).collect()
+}
+
+/// Every row without the scroll marker in the last column
+fn text(log: &RichLog, w: u16, h: u16) -> Vec<String> {
+    rows(log, w, h)
+        .into_iter()
+        .map(|r| r.trim_end_matches('█').trim_end().to_string())
+        .collect()
+}
+
+fn blank(buffer: &Buffer) -> bool {
+    buffer
+        .cells()
+        .iter()
+        .all(|c| c.symbol == ' ' && c.bg.is_none())
+}
+
+/// A log that draws only the message, from column 0
+fn bare() -> RichLog {
+    RichLog::new().timestamps(false).sources(false).icons(false)
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Constructor and builder tests
@@ -33,63 +79,99 @@ fn test_richlog_helper_function() {
 
 #[test]
 fn test_richlog_min_level_builder() {
-    let log = RichLog::new().min_level(LogLevel::Warning);
-    // Builder should work without panicking
-    let _ = log;
+    let mut log = bare().min_level(LogLevel::Warning);
+    log.info("info");
+    log.warn("warn");
+    assert_eq!(log.len(), 1);
+    assert_eq!(rows(&log, 20, 2), ["warn", ""]);
 }
 
 #[test]
 fn test_richlog_timestamps_builder() {
-    let log = RichLog::new().timestamps(false);
-    // Builder should work without panicking
-    let _ = log;
+    let entry = || LogEntry::new("msg").timestamp("10:30");
+    let mut shown = RichLog::new().sources(false);
+    shown.log(entry());
+    assert_eq!(rows(&shown, 30, 1), ["10:30       ● msg"]);
+
+    let mut hidden = RichLog::new().timestamps(false).sources(false);
+    hidden.log(entry());
+    assert_eq!(rows(&hidden, 30, 1), ["● msg"]);
 }
 
 #[test]
 fn test_richlog_sources_builder() {
-    let log = RichLog::new().sources(false);
-    // Builder should work without panicking
-    let _ = log;
+    let entry = || LogEntry::new("msg").source("main.rs");
+    let mut shown = RichLog::new().timestamps(false);
+    shown.log(entry());
+    assert_eq!(rows(&shown, 30, 1), ["● main.rs        msg"]);
+
+    let mut hidden = RichLog::new().timestamps(false).sources(false);
+    hidden.log(entry());
+    assert_eq!(rows(&hidden, 30, 1), ["● msg"]);
 }
 
 #[test]
 fn test_richlog_icons_builder() {
-    let log = RichLog::new().icons(false);
-    // Builder should work without panicking
-    let _ = log;
+    let mut shown = RichLog::new().timestamps(false).sources(false);
+    shown.warn("msg");
+    let buffer = draw(&shown, 20, 1);
+    assert_eq!(row(&buffer, 0), "⚠ msg");
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::YELLOW));
+
+    let mut hidden = RichLog::new().timestamps(false).sources(false).icons(false);
+    hidden.warn("msg");
+    assert_eq!(rows(&hidden, 20, 1), ["msg"]);
 }
 
 #[test]
 fn test_richlog_auto_scroll_builder() {
-    let log = RichLog::new().auto_scroll(false);
-    // Builder should work without panicking
-    let _ = log;
+    let mut following = bare();
+    let mut fixed = bare().auto_scroll(false);
+    for i in 0..10 {
+        following.info(format!("m{i}"));
+        fixed.info(format!("m{i}"));
+    }
+    assert_eq!(text(&following, 10, 3), ["m7", "m8", "m9"]);
+    assert_eq!(text(&fixed, 10, 3), ["m0", "m1", "m2"]);
 }
 
 #[test]
 fn test_richlog_max_entries_builder() {
-    let log = RichLog::new().max_entries(100);
-    // Builder should work without panicking
-    let _ = log;
+    let mut log = bare().max_entries(100);
+    for i in 0..150 {
+        log.info(format!("m{i}"));
+    }
+    assert_eq!(log.len(), 100);
+    log.scroll_to_top();
+    assert_eq!(text(&log, 10, 1), ["m50"]);
 }
 
 #[test]
 fn test_richlog_wrap_builder() {
-    let log = RichLog::new().wrap(true);
-    // Builder should work without panicking
-    let _ = log;
+    // The prefix columns go on the first row only; the wrapped rows start at
+    // the message column.
+    let mut log = RichLog::new().timestamps(false).sources(false);
+    log.info("alpha beta gamma");
+    assert_eq!(rows(&log, 12, 2), ["● alpha beta", ""]);
+
+    let log = log.wrap(true);
+    assert_eq!(rows(&log, 12, 2), ["● alpha beta", "  gamma"]);
 }
 
 #[test]
 fn test_richlog_bg_builder() {
-    let log = RichLog::new().bg(Color::BLACK);
-    // Builder should work without panicking
-    let _ = log;
+    let mut log = RichLog::new().bg(Color::BLACK);
+    log.log(LogEntry::new("msg").timestamp("10:00").source("app"));
+    let buffer = draw(&log, 40, 1);
+    // The whole row, the gaps between the columns and past the message too
+    for x in 0..40 {
+        assert_eq!(buffer.get(x, 0).unwrap().bg, Some(Color::BLACK), "x={x}");
+    }
 }
 
 #[test]
 fn test_richlog_chained_builders() {
-    let log = RichLog::new()
+    let mut log = RichLog::new()
         .min_level(LogLevel::Error)
         .timestamps(true)
         .sources(true)
@@ -98,8 +180,19 @@ fn test_richlog_chained_builders() {
         .max_entries(500)
         .wrap(false)
         .bg(Color::BLACK);
-    // Chained builders should work without panicking
-    let _ = log;
+    log.info("dropped");
+    log.log(
+        LogEntry::new("boom")
+            .error()
+            .timestamp("12:00")
+            .source("db"),
+    );
+    assert_eq!(log.len(), 1);
+    let buffer = draw(&log, 40, 2);
+    assert_eq!(row(&buffer, 0), "12:00       ✗ db             boom");
+    assert_eq!(row(&buffer, 1), "");
+    assert_eq!(buffer.get(29, 0).unwrap().fg, Some(Color::RED));
+    assert_eq!(buffer.get(29, 0).unwrap().bg, Some(Color::BLACK));
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -381,105 +474,115 @@ fn test_richlog_max_entries_zero() {
 
 #[test]
 fn test_richlog_scroll_up() {
-    let mut log = RichLog::new().auto_scroll(false);
+    let mut log = bare().auto_scroll(false);
 
     for i in 0..10 {
         log.info(format!("Message {}", i));
     }
 
+    log.scroll_down(5);
     log.scroll_up(2);
-    // 스크롤 위치가 감소했는지 확인 (내부 상태)
-    let _ = log;
+    assert_eq!(text(&log, 20, 3), ["Message 3", "Message 4", "Message 5"]);
 }
 
 #[test]
 fn test_richlog_scroll_down() {
-    let mut log = RichLog::new();
+    let mut log = bare().auto_scroll(false);
 
     for i in 0..10 {
         log.info(format!("Message {}", i));
     }
 
     log.scroll_down(3);
-    // 스크롤 동작을 수행하고 패닉하지 않아야 함
-    let _ = log;
+    assert_eq!(text(&log, 20, 3), ["Message 3", "Message 4", "Message 5"]);
 }
 
 #[test]
 fn test_richlog_scroll_to_top() {
-    let mut log = RichLog::new();
+    let mut log = bare();
 
     for i in 0..10 {
         log.info(format!("Message {}", i));
     }
 
     log.scroll_to_top();
-    // 스크롤 동작을 수행하고 패닉하지 않아야 함
-    let _ = log;
+    assert_eq!(text(&log, 20, 3), ["Message 0", "Message 1", "Message 2"]);
 }
 
 #[test]
 fn test_richlog_scroll_to_bottom() {
-    let mut log = RichLog::new();
+    let mut log = bare().auto_scroll(false);
 
     for i in 0..10 {
         log.info(format!("Message {}", i));
     }
 
     log.scroll_to_bottom();
-    // 스크롤 동작을 수행하고 패닉하지 않아야 함
-    let _ = log;
+    // The last page is full: the last entry is on the bottom row
+    assert_eq!(text(&log, 20, 3), ["Message 7", "Message 8", "Message 9"]);
 }
 
 #[test]
 fn test_richlog_scroll_up_from_top() {
-    let mut log = RichLog::new();
+    let mut log = bare().auto_scroll(false);
+    for i in 0..5 {
+        log.info(format!("Message {}", i));
+    }
 
-    log.info("Message");
-    log.scroll_up(10); // 위로 더 스크롤하려고 시도
-                       // 0 미만으로 내려가지 않아야 함 (saturating_sub)
-    let _ = log;
+    log.scroll_up(10);
+    assert_eq!(text(&log, 20, 2), ["Message 0", "Message 1"]);
+    log.scroll_down(1);
+    assert_eq!(text(&log, 20, 2), ["Message 1", "Message 2"]);
 }
 
 #[test]
 fn test_richlog_scroll_down_past_end() {
-    let mut log = RichLog::new();
+    let mut log = bare().auto_scroll(false);
+    for i in 0..5 {
+        log.info(format!("Message {}", i));
+    }
 
-    log.info("Message");
-    log.scroll_down(100); // 끝을 지나서 스크롤
-                          // entries.len()을 초과하지 않아야 함
-    let _ = log;
+    log.scroll_down(100);
+    // No blank rows under the last entry
+    assert_eq!(text(&log, 20, 3), ["Message 2", "Message 3", "Message 4"]);
 }
 
 #[test]
 fn test_richlog_auto_scroll_behavior() {
-    let mut log = RichLog::new().auto_scroll(true);
+    let mut log = bare().auto_scroll(true);
 
-    log.info("First message");
-    log.info("Second message");
+    for i in 0..10 {
+        log.info(format!("m{i}"));
+    }
+    assert_eq!(text(&log, 10, 3), ["m7", "m8", "m9"]);
 
-    // auto_scroll이 true면 자동으로 아래로 스크롤됨
-    let _ = log;
+    log.info("m10");
+    assert_eq!(text(&log, 10, 3), ["m8", "m9", "m10"]);
 }
 
 #[test]
 fn test_richlog_scroll_up_disables_auto_scroll() {
-    let mut log = RichLog::new().auto_scroll(true);
+    let mut log = bare().auto_scroll(true);
+    for i in 0..10 {
+        log.info(format!("m{i}"));
+    }
 
-    log.info("Message");
-    log.scroll_up(1);
-    // 위로 스크롤하면 auto_scroll이 비활성화됨
-    let _ = log;
+    log.scroll_up(5);
+    assert_eq!(text(&log, 10, 3), ["m4", "m5", "m6"]);
+    log.info("new");
+    assert_eq!(text(&log, 10, 3), ["m4", "m5", "m6"]);
 }
 
 #[test]
 fn test_richlog_scroll_to_top_disables_auto_scroll() {
-    let mut log = RichLog::new().auto_scroll(true);
+    let mut log = bare().auto_scroll(true);
+    for i in 0..10 {
+        log.info(format!("m{i}"));
+    }
 
-    log.info("Message");
     log.scroll_to_top();
-    // 맨 위로 이동하면 auto_scroll이 비활성화됨
-    let _ = log;
+    log.info("new");
+    assert_eq!(text(&log, 10, 3), ["m0", "m1", "m2"]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -614,57 +717,70 @@ fn test_richlog_handle_key_unhandled() {
 
 #[test]
 fn test_richlog_select_next() {
-    let mut log = RichLog::new();
+    let mut log = bare();
     log.info("Message 1");
     log.info("Message 2");
 
     log.select_next();
-    // 다음 항목을 선택하고 패닉하지 않아야 함
-    let _ = log;
+    log.select_next();
+    let buffer = draw(&log, 20, 2);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::CYAN));
+    assert!(!buffer.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
+    assert_eq!(buffer.get(0, 1).unwrap().fg, Some(Color::WHITE));
+    assert!(buffer.get(0, 1).unwrap().modifier.contains(Modifier::BOLD));
 }
 
 #[test]
 fn test_richlog_select_next_from_none() {
-    let mut log = RichLog::new();
+    let mut log = bare();
     log.info("Message");
+    assert_eq!(draw(&log, 20, 1).get(0, 0).unwrap().fg, Some(Color::CYAN));
 
     log.select_next();
-    // None에서 시작하면 첫 번째 항목을 선택해야 함
-    let _ = log;
+    let buffer = draw(&log, 20, 1);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::WHITE));
+    assert!(buffer.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
 }
 
 #[test]
 fn test_richlog_select_prev() {
-    let mut log = RichLog::new();
+    let mut log = bare();
     log.info("Message 1");
     log.info("Message 2");
 
     log.select_next();
+    log.select_next();
     log.select_prev();
-    // 이전 항목을 선택하고 패닉하지 않아야 함
-    let _ = log;
+    let buffer = draw(&log, 20, 2);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::WHITE));
+    assert_eq!(buffer.get(0, 1).unwrap().fg, Some(Color::CYAN));
 }
 
 #[test]
 fn test_richlog_toggle_selected() {
-    let mut log = RichLog::new();
-    log.info("Message");
+    let mut log = bare();
+    log.log(LogEntry::new("Message").detail("at main.rs:1"));
 
     log.select_next();
     log.toggle_selected();
-    // 선택된 항목의 토글을 수행하고 패닉하지 않아야 함
-    let _ = log;
+    let buffer = draw(&log, 20, 2);
+    assert_eq!(row(&buffer, 0), "Message");
+    assert_eq!(row(&buffer, 1), "  at main.rs:1");
+    // Detail lines use the source color, not bold
+    assert_eq!(buffer.get(2, 1).unwrap().fg, Some(LIGHT_GRAY));
+    assert!(!buffer.get(2, 1).unwrap().modifier.contains(Modifier::BOLD));
+
+    log.toggle_selected();
+    assert_eq!(rows(&log, 20, 2), ["Message", ""]);
 }
 
 #[test]
 fn test_richlog_toggle_selected_no_selection() {
-    let mut log = RichLog::new();
-    log.info("Message");
+    let mut log = bare();
+    log.log(LogEntry::new("Message").detail("at main.rs:1"));
 
-    // 선택 없이 토글 시도
     log.toggle_selected();
-    // 패닉하지 않아야 함
-    let _ = log;
+    assert_eq!(rows(&log, 20, 2), ["Message", ""]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -673,13 +789,8 @@ fn test_richlog_toggle_selected_no_selection() {
 
 #[test]
 fn test_richlog_render_empty() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let log = RichLog::new();
-    log.render(&mut ctx);
-    // 빈 로그를 렌더링하고 패닉하지 않아야 함
+    assert!(blank(&draw(&log, 80, 24)));
 }
 
 #[test]
@@ -716,44 +827,46 @@ fn test_richlog_render_multiple_entries() {
 
 #[test]
 fn test_richlog_render_with_timestamp() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut log = RichLog::new().timestamps(true);
     log.log(LogEntry::new("Message").timestamp("10:30:00"));
-    log.render(&mut ctx);
+    let buffer = draw(&log, 80, 1);
 
-    // 타임스탬프가 표시되어야 함 (기본宽度 12)
-    let _ = buffer;
+    assert!(
+        row(&buffer, 0).starts_with("10:30:00    ●"),
+        "{:?}",
+        row(&buffer, 0)
+    );
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(DISABLED_FG));
+    // A long timestamp is cut to the 12-column field, leaving a space
+    let mut log = RichLog::new().sources(false);
+    log.log(LogEntry::new("Message").timestamp("2026-10-14T12:00:00"));
+    assert_eq!(rows(&log, 40, 1), ["2026-10-14T ● Message"]);
 }
 
 #[test]
 fn test_richlog_render_with_source() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut log = RichLog::new().sources(true);
     log.log(LogEntry::new("Message").source("main.rs"));
-    log.render(&mut ctx);
+    let buffer = draw(&log, 80, 1);
 
-    // 소스가 표시되어야 함
-    let _ = buffer;
+    // timestamp (12) + icon (2), then the source
+    assert_eq!(buffer.get(14, 0).unwrap().symbol, 'm');
+    assert_eq!(buffer.get(14, 0).unwrap().fg, Some(LIGHT_GRAY));
+    // A long source is cut to the 15-column field, leaving a space
+    let mut log = RichLog::new().timestamps(false);
+    log.log(LogEntry::new("Message").source("server::http::listener"));
+    assert_eq!(rows(&log, 40, 1), ["● server::http:: Message"]);
 }
 
 #[test]
 fn test_richlog_render_without_icons() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut log = RichLog::new().icons(false);
     log.info("Message");
-    log.render(&mut ctx);
+    let buffer = draw(&log, 80, 1);
 
-    // 아이콘이 표시되지 않아야 함
-    let _ = buffer;
+    assert!(row(&buffer, 0).chars().all(|c| c != '●'));
+    // timestamp (12) + source (15), then the message
+    assert_eq!(buffer.get(27, 0).unwrap().symbol, 'M');
 }
 
 #[test]
@@ -773,19 +886,19 @@ fn test_richlog_render_with_background() {
 
 #[test]
 fn test_richlog_render_scrolled() {
-    let mut buffer = Buffer::new(80, 5);
-    let area = Rect::new(0, 0, 80, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut log = RichLog::new().auto_scroll(false);
     for i in 0..10 {
         log.info(format!("Message {}", i));
     }
     log.scroll_to_bottom();
-    log.render(&mut ctx);
+    let buffer = draw(&log, 80, 5);
 
-    // 스크롤된 상태로 렌더링되어야 함
-    let _ = buffer;
+    for (y, i) in (5..10).enumerate() {
+        let message: String = (29..38)
+            .map(|x| buffer.get(x, y as u16).unwrap().symbol)
+            .collect();
+        assert_eq!(message, format!("Message {i}"));
+    }
 }
 
 #[test]
@@ -807,48 +920,54 @@ fn test_richlog_render_scrolled_to_top() {
 
 #[test]
 fn test_richlog_render_with_scroll_indicator() {
-    let mut buffer = Buffer::new(80, 5);
-    let area = Rect::new(0, 0, 80, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut log = RichLog::new().auto_scroll(false);
     for i in 0..20 {
         log.info(format!("Message {}", i));
     }
     log.scroll_to_top();
-    log.render(&mut ctx);
+    let buffer = draw(&log, 80, 5);
+    let marker = buffer.get(79, 0).unwrap();
+    assert_eq!(marker.symbol, '█');
+    assert_eq!(marker.fg, Some(DISABLED_FG));
+    assert!((1..5).all(|y| buffer.get(79, y).unwrap().symbol == ' '));
 
-    // 스크롤 인디케이터가 표시되어야 함
-    // 마지막 열에 스크롤 표시
-    let indicator = buffer.get(79, 0).unwrap().symbol;
-    // 스크롤 인디케이터는 '█' 또는 다른 문자일 수 있음
-    let _ = indicator;
+    log.scroll_to_bottom();
+    let buffer = draw(&log, 80, 5);
+    assert_eq!(buffer.get(79, 4).unwrap().symbol, '█');
+    assert!((0..4).all(|y| buffer.get(79, y).unwrap().symbol == ' '));
+
+    // No marker when every entry fits
+    let mut short = RichLog::new();
+    short.info("one");
+    assert!(draw(&short, 80, 5).cells().iter().all(|c| c.symbol != '█'));
 }
 
 #[test]
 fn test_richlog_render_zero_area() {
-    // Zero width/height causes subtraction overflow in implementation
-    // This is a known edge case - for now we just verify it doesn't crash with valid (but small) areas
+    // A 10-column area is narrower than the default prefix columns
+    // (timestamp 12, icon 2, source 15): the icon would go at column 12, so
+    // nothing is drawn and nothing spills past the area.
     let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 10, 1); // Small but valid area
+    let area = Rect::new(0, 0, 10, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     let mut log = RichLog::new();
     log.info("Message");
     log.render(&mut ctx);
-    // 패닉하지 않아야 함
+    assert!(blank(&buffer));
 }
 
 #[test]
 fn test_richlog_render_small_area() {
     let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 10, 2); // 작은 영역
+    let area = Rect::new(0, 0, 10, 2);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let mut log = RichLog::new();
+    let mut log = bare();
     log.info("Short message");
     log.render(&mut ctx);
-    // 패닉하지 않아야 함
+    assert_eq!(row(&buffer, 0), "Short mess");
+    assert_eq!(row(&buffer, 1), "");
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -996,18 +1115,16 @@ fn test_richlog_message_text_rendering() {
 
 #[test]
 fn test_richlog_long_message_truncation() {
-    let mut buffer = Buffer::new(20, 1);
+    let mut buffer = Buffer::new(30, 1);
     let area = Rect::new(0, 0, 20, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let mut log = RichLog::new();
+    let mut log = bare();
     log.info("This is a very long message that should be truncated");
-
     log.render(&mut ctx);
 
-    // 메시지가 영역에 맞춰 잘려야 함
-    // 패닉하지 않으면 성공
-    let _ = buffer;
+    assert_eq!(row(&buffer, 0), "This is a very long");
+    assert!((20..30).all(|x| buffer.get(x, 0).unwrap().symbol == ' '));
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -1062,12 +1179,17 @@ fn test_richlog_many_entries() {
 
 #[test]
 fn test_richlog_scroll_empty_log() {
-    let mut log = RichLog::new();
+    let mut log = bare();
     log.scroll_up(10);
     log.scroll_down(10);
     log.scroll_to_top();
     log.scroll_to_bottom();
-    // 빈 로그에서 스크롤해도 패닉하지 않아야 함
+    assert!(blank(&draw(&log, 20, 3)));
+
+    // The scroll stays usable once entries arrive
+    log.info("a");
+    log.info("b");
+    assert_eq!(rows(&log, 20, 3), ["a", "b", ""]);
 }
 
 #[test]
@@ -1095,16 +1217,16 @@ fn test_richlog_clear_multiple_times() {
 
 #[test]
 fn test_richlog_max_entries_with_scroll() {
-    let mut log = RichLog::new().max_entries(5);
+    let mut log = bare().max_entries(5);
 
     for i in 0..10 {
         log.info(format!("Message {}", i));
     }
 
-    // 오래된 항목이 제거되고 스크롤 위치가 조정되어야 함
+    // Trimming dropped Message 0-4 and kept the scroll on the entries left
     log.scroll_down(10);
     log.scroll_up(5);
-    // 패닉하지 않아야 함
+    assert_eq!(text(&log, 20, 3), ["Message 5", "Message 6", "Message 7"]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -1231,16 +1353,18 @@ fn test_richlog_full_workflow() {
 
 #[test]
 fn test_richlog_visible_entries_filtering() {
-    let mut log = RichLog::new().min_level(LogLevel::Warning);
+    // `min_level` given after logging keeps the entries but hides those
+    // below it from the view.
+    let mut log = bare();
 
-    log.debug("Debug"); // 필터링됨
-    log.info("Info"); // 필터링됨
-    log.warn("Warning"); // 표시
-    log.error("Error"); // 표시
+    log.debug("Debug");
+    log.info("Info");
+    log.warn("Warning");
+    log.error("Error");
 
-    // entries.len()은 실제 저장된 항목 수 (2개)
-    // visible_entries()는 min_level 필터링 후의 항목 수
-    assert_eq!(log.len(), 2);
+    let log = log.min_level(LogLevel::Warning);
+    assert_eq!(log.len(), 4);
+    assert_eq!(rows(&log, 20, 3), ["Warning", "Error", ""]);
 }
 
 #[test]
