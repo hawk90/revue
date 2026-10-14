@@ -8,6 +8,9 @@ use revue::widget::traits::RenderContext;
 use revue::widget::View;
 use revue::widget::{currency_input, integer_input, number_input, percentage_input, NumberInput};
 
+mod edit;
+mod view;
+
 fn render_row(input: &NumberInput, width: u16) -> (Buffer, String) {
     let mut buffer = Buffer::new(width, 1);
     let area = Rect::new(0, 0, width, 1);
