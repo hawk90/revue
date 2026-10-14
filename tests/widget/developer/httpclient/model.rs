@@ -94,7 +94,7 @@ struct Model {
     show_headers: bool,
     /// An error is still set although a later call should have dropped it:
     /// a response set after an error, or a valid URL after a refused one.
-    /// The error and the state are not checked until a call resets them.
+    /// The error and the state are not checked until a call resets them (#1083).
     stale: bool,
 }
 
@@ -129,7 +129,7 @@ proptest! {
                 Op::SetUrl(i) => {
                     c.set_url(URLS[i]);
                     if URLS[i].starts_with("http") {
-                        // Skipped: the refusal of an earlier URL stays set.
+                        // Skipped: the refusal of an earlier URL stays set (#1083).
                         m.stale |= m.error == Some(REFUSED);
                         m.url = URLS[i].to_string();
                         m.cursor = m.url.len();
@@ -191,7 +191,7 @@ proptest! {
                         time: Duration::from_millis(1),
                         size: 0,
                     });
-                    // Skipped: an older error stays set and on screen.
+                    // Skipped: an older error stays set and on screen (#1083).
                     m.stale |= m.error.is_some();
                     m.status = Some(status);
                     m.state = if (200..300).contains(&status) {
