@@ -255,3 +255,44 @@ proptest! {
         prop_assert_eq!(a.measure(mw, mh), Some((mw, a.height().min(mh))));
     }
 }
+
+#[test]
+fn test_alert_title_styles_by_variant() {
+    // The title is bold in every variant: white when filled, the text color
+    // when outlined, the accent when minimal; the message under it is muted
+    // (the filled one uses the secondary text color)
+    use revue::render::Modifier;
+    use revue::style::Color;
+    use revue::widget::theme::MUTED_TEXT;
+    let cases = [
+        (AlertVariant::Outlined, 4, 0, Color::WHITE),
+        (AlertVariant::Minimal, 2, 0, Color::CYAN),
+    ];
+    for (variant, x, y, title_fg) in cases {
+        let a = Alert::info("message").title("Title").variant(variant);
+        let b = draw(&a, 20, 2);
+        let t = b.get(x, y).unwrap();
+        assert_eq!((t.symbol, t.fg), ('T', Some(title_fg)), "{variant:?}");
+        assert!(t.modifier.contains(Modifier::BOLD), "{variant:?}");
+        let m = b.get(x, y + 1).unwrap();
+        assert_eq!((m.symbol, m.fg), ('m', Some(MUTED_TEXT)), "{variant:?}");
+        assert!(!m.modifier.contains(Modifier::BOLD), "{variant:?}");
+    }
+}
+
+#[test]
+fn test_alert_custom_icon_turns_the_icon_on() {
+    let a = Alert::new("m").icon(false).custom_icon('★');
+    for (variant, x, y) in [
+        (AlertVariant::Filled, 2, 1),
+        (AlertVariant::Outlined, 2, 0),
+        (AlertVariant::Minimal, 0, 0),
+    ] {
+        let b = draw(
+            &a.clone().variant(variant),
+            20,
+            a.clone().variant(variant).height(),
+        );
+        assert_eq!(b.get(x, y).unwrap().symbol, '★', "{variant:?}");
+    }
+}

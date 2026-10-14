@@ -344,3 +344,33 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn test_modal_required_height() {
+    // Borders, the title and its separator, the lines, a row of padding and
+    // the button row when there are buttons; a set height wins
+    let m = Modal::new().title("T").content("a\nb");
+    assert_eq!(m.required_height(), 7);
+    assert_eq!(m.ok().required_height(), 8);
+    assert_eq!(Modal::new().title("T").height(3).ok().required_height(), 3);
+}
+
+#[test]
+fn test_modal_content_stops_above_the_button_row() {
+    // A 5-row box has room for two lines: the rows above the padding row
+    let mut m = Modal::new().content("1\n2\n3\n4\n5").width(10).height(5);
+    m.show();
+    // Centered in 14 x 7: rows 1 to 5 from x = 2
+    let b = draw(&m, 14, 7);
+    let rows: Vec<String> = (1..6).map(|y| row(&b, y)).collect();
+    assert_eq!(
+        rows,
+        [
+            "  ┌────────┐  ",
+            "  │ 1      │  ",
+            "  │ 2      │  ",
+            "  │        │  ",
+            "  └────────┘  ",
+        ]
+    );
+}
