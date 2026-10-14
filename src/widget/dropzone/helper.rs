@@ -1,4 +1,4 @@
-use super::core::DropZone;
+use super::DropZone;
 use crate::event::drag::DragData;
 
 /// Create a drop zone with default settings
