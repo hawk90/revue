@@ -5,21 +5,41 @@
 use super::*;
 use crate::event::{Key, KeyEvent};
 use crate::layout::Rect;
-use crate::render::Buffer;
+use crate::render::{Buffer, Modifier};
 use crate::style::Color;
 use crate::widget::traits::{RenderContext, View};
 
+/// The text of line `i`
+fn text(term: &Terminal, i: usize) -> String {
+    term.lines[i].cells.iter().map(|c| c.ch).collect()
+}
+
 #[test]
 fn test_terminal_new() {
-    let _term = Terminal::new(80, 24);
-    // Private fields - can't test directly
+    let term = Terminal::new(80, 24);
+    // One empty line per row, the cursor at the top-left, at the bottom
+    assert_eq!(term.lines.len(), 24);
+    assert!(term.lines.iter().all(|l| l.cells.is_empty() && !l.wrapped));
+    assert_eq!((term.cursor_row, term.cursor_col), (0, 0));
+    assert_eq!(term.scroll_offset, 0);
+    assert_eq!((term.width, term.height), (80, 24));
+    assert_eq!(term.max_scrollback, 10000);
+    assert!(term.show_cursor && !term.focused);
+    assert_eq!(term.cursor_style, CursorStyle::Block);
+    assert_eq!((term.default_fg, term.default_bg), (None, None));
+    // Clamped to 1000 x 1000
+    let big = Terminal::new(5000, 3000);
+    assert_eq!((big.width, big.height), (1000, 1000));
+    assert_eq!(big.lines.len(), 1000);
 }
 
 #[test]
 fn test_terminal_write() {
     let mut term = Terminal::new(80, 24);
     term.write("Hello, World!");
-    // Private fields - can't test directly
+    assert_eq!(text(&term, 0), "Hello, World!");
+    assert_eq!((term.cursor_row, term.cursor_col), (0, 13));
+    assert_eq!(term.lines.len(), 24);
 }
 
 #[test]
@@ -27,14 +47,21 @@ fn test_terminal_writeln() {
     let mut term = Terminal::new(80, 24);
     term.writeln("Line 1");
     term.writeln("Line 2");
-    // Private field - can't test directly
+    assert_eq!(text(&term, 0), "Line 1");
+    assert_eq!(text(&term, 1), "Line 2");
+    // The cursor waits at the start of the next line
+    assert_eq!((term.cursor_row, term.cursor_col), (2, 0));
 }
 
 #[test]
 fn test_terminal_ansi_colors() {
     let mut term = Terminal::new(80, 24);
     term.write("\x1b[31mRed\x1b[0m Normal");
-    // Private fields - can't test directly
+    assert_eq!(text(&term, 0), "Red Normal");
+    let cells = &term.lines[0].cells;
+    assert!(cells[..3].iter().all(|c| c.fg == Color::RED));
+    assert!(cells[3..].iter().all(|c| c.fg == Color::WHITE));
+    assert_eq!(term.parser.fg(), Color::WHITE);
 }
 
 #[test]
@@ -43,19 +70,34 @@ fn test_terminal_scroll() {
     for i in 0..10 {
         term.writeln(&format!("Line {}", i));
     }
+    // Ten lines and the empty one after them; five show
+    assert_eq!(term.lines.len(), 11);
+    assert_eq!(term.visible_range(), 6..11);
 
     term.scroll_up(3);
+    assert_eq!(term.scroll_offset, 3);
+    assert_eq!(term.visible_range(), 3..8);
     term.scroll_down(2);
+    assert_eq!(term.scroll_offset, 1);
+    term.scroll_up(100);
+    assert_eq!(term.scroll_offset, 6);
+    assert_eq!(term.visible_range(), 0..5);
     term.scroll_to_bottom();
-    // Private field - can't test directly
+    assert_eq!(term.scroll_offset, 0);
 }
 
 #[test]
 fn test_terminal_clear() {
     let mut term = Terminal::new(80, 24);
-    term.writeln("Some text");
+    for _ in 0..30 {
+        term.writeln("Some text");
+    }
+    term.scroll_up(2);
     term.clear();
-    // Private fields - can't test directly
+    assert_eq!(term.lines.len(), 24);
+    assert!(term.lines.iter().all(|l| l.cells.is_empty()));
+    assert_eq!((term.cursor_row, term.cursor_col), (0, 0));
+    assert_eq!(term.scroll_offset, 0);
 }
 
 #[test]
@@ -79,48 +121,95 @@ fn test_terminal_history() {
     term.handle_key(KeyEvent::new(Key::Char('a')));
     term.handle_key(KeyEvent::new(Key::Enter));
 
-    term.handle_key(KeyEvent::new(Key::Char('b')));
+    // An empty line submits but is not kept
     term.handle_key(KeyEvent::new(Key::Enter));
 
-    term.handle_key(KeyEvent::new(Key::Up));
-    assert_eq!(term.get_input(), "b");
+    term.handle_key(KeyEvent::new(Key::Char('b')));
+    term.handle_key(KeyEvent::new(Key::Enter));
+    assert_eq!(term.history, ["a", "b"]);
+    assert_eq!(term.history_pos, 2);
 
     term.handle_key(KeyEvent::new(Key::Up));
-    assert_eq!(term.get_input(), "a");
+    term.handle_key(KeyEvent::new(Key::Up));
+    term.handle_key(KeyEvent::new(Key::Up));
+    assert_eq!((term.history_pos, term.get_input()), (0, "a"));
+
+    term.handle_key(KeyEvent::new(Key::Down));
+    term.handle_key(KeyEvent::new(Key::Down));
+    assert_eq!((term.history_pos, term.get_input()), (2, ""));
+    term.handle_key(KeyEvent::new(Key::Down));
+    assert_eq!(term.history_pos, 2);
 }
 
 #[test]
 fn test_terminal_render() {
-    // Terminal::render doesn't exist - remove test
+    let mut term = Terminal::new(6, 3).default_bg(Color::BLUE);
+    term.write("ab\x1b[1mc");
+
+    let mut buffer = Buffer::new(8, 4);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 8, 4));
+    term.render(&mut ctx);
+
+    // The lines' cells as they were written, on the default background
+    // over the whole area
+    let row: String = (0..8).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert_eq!(row, "abc     ");
+    assert_eq!(buffer.get(2, 0).unwrap().modifier, Modifier::BOLD);
+    assert_eq!(buffer.get(0, 0).unwrap().modifier, Modifier::empty());
+    for (x, y) in [(0, 0), (7, 0), (0, 3), (7, 3)] {
+        assert_eq!(buffer.get(x, y).unwrap().bg, Some(Color::BLUE), "{x},{y}");
+    }
 }
 
 #[test]
 fn test_terminal_256_color() {
     let mut term = Terminal::new(80, 24);
     term.write("\x1b[38;5;196mRed256\x1b[0m");
-    // Private fields - can't test directly
+    // 196 = 16 + 36*5: the reddest cube color
+    assert!(term.lines[0]
+        .cells
+        .iter()
+        .all(|c| c.fg == Color::rgb(255, 0, 0)));
+    assert_eq!(term.lines[0].cells.len(), 6);
 }
 
 #[test]
 fn test_terminal_rgb_color() {
     let mut term = Terminal::new(80, 24);
     term.write("\x1b[38;2;255;128;64mOrange\x1b[0m");
-    // Private fields - can't test directly
+    assert!(term.lines[0]
+        .cells
+        .iter()
+        .all(|c| c.fg == Color::rgb(255, 128, 64)));
+    assert_eq!(text(&term, 0), "Orange");
 }
 
 #[test]
 fn test_terminal_presets() {
-    let _shell = Terminal::shell(80, 24);
-    // Private field - can't test directly
+    use crate::widget::theme::{EDITOR_BG, MUTED_TEXT, SECONDARY_TEXT};
 
-    let _log = Terminal::log_viewer(80, 24);
-    // Private field - can't test directly
+    let shell = Terminal::shell(80, 24);
+    assert_eq!(shell.default_fg, Some(SECONDARY_TEXT));
+    assert_eq!(shell.default_bg, Some(EDITOR_BG));
+    assert_eq!(
+        (shell.parser.fg(), shell.parser.bg()),
+        (SECONDARY_TEXT, EDITOR_BG)
+    );
+    assert_eq!(shell.cursor_style, CursorStyle::Block);
+    assert!(shell.show_cursor);
+
+    let log = Terminal::log_viewer(80, 24);
+    assert_eq!(log.default_fg, Some(MUTED_TEXT));
+    assert_eq!(log.default_bg, Some(Color::rgb(20, 20, 20)));
+    assert!(!log.show_cursor);
+    assert_eq!(log.max_scrollback, 50000);
 }
 
 #[test]
 fn test_terminal_helper() {
-    let _term = super::terminal(120, 40);
-    // Private fields - can't test directly
+    let term = super::terminal(120, 40);
+    assert_eq!((term.width, term.height), (120, 40));
+    assert_eq!(term.lines.len(), 40);
 }
 
 // The private-state tests that were inline in core.rs
@@ -152,6 +241,10 @@ fn a_tab_at_the_right_edge_ends() {
 fn a_tab_inside_an_escape_sequence_ends() {
     let mut terminal = Terminal::new(16, 4);
     terminal.write("\x1b[\t\tX");
+    // The first space ends the sequence; seven more reach column 7, the
+    // second tab goes on to 8
+    assert_eq!(text(&terminal, 0), "        X");
+    assert_eq!((terminal.cursor_row, terminal.cursor_col), (0, 9));
 }
 
 #[test]
@@ -206,11 +299,15 @@ fn test_render_cursor_private() {
     // Test private cursor rendering logic
     let mut terminal = Terminal::new(80, 24);
     terminal.focus();
+    terminal.write("ab\ncd");
 
     let mut buffer = crate::render::Buffer::new(80, 24);
     let area = crate::layout::Rect::new(0, 0, 80, 24);
     let mut ctx = crate::widget::traits::RenderContext::new(&mut buffer, area);
 
-    // Should not panic
     terminal.render(&mut ctx);
+    // At the write position: row 1, after "cd"
+    assert_eq!((terminal.cursor_row, terminal.cursor_col), (1, 2));
+    assert_eq!(buffer.get(2, 1).unwrap().symbol, '█');
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, ' ');
 }
