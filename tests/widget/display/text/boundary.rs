@@ -11,6 +11,19 @@ use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::Text;
 
+/// Every cell of `buffer` is still a blank
+fn blank(buffer: &Buffer) -> bool {
+    (0..buffer.height())
+        .all(|y| (0..buffer.width()).all(|x| buffer.get(x, y).unwrap().symbol == ' '))
+}
+
+/// Row `y` of `buffer` as text
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect()
+}
+
 /// Test empty string handling
 mod empty_strings {
     use super::*;
@@ -27,9 +40,8 @@ mod empty_strings {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should not panic with empty string
         text.render(&mut ctx);
+        assert!(blank(&buffer));
     }
 }
 
@@ -70,9 +82,9 @@ mod single_character {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should not panic
         text.render(&mut ctx);
+        // The newline only moves to the next row; nothing is drawn
+        assert!(blank(&buffer));
     }
 }
 
@@ -128,9 +140,13 @@ mod unicode_characters {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should not panic with unicode
         text.render(&mut ctx);
+        // Each syllable takes two columns: the glyph and its continuation
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '안');
+        assert!(buffer.get(1, 0).unwrap().is_continuation());
+        assert_eq!(buffer.get(2, 0).unwrap().symbol, '녕');
+        assert!(buffer.get(3, 0).unwrap().is_continuation());
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, ' ');
     }
 
     #[test]
@@ -139,9 +155,10 @@ mod unicode_characters {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should not panic with emoji
         text.render(&mut ctx);
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '🎉');
+        assert!(buffer.get(1, 0).unwrap().is_continuation());
+        assert_eq!(buffer.get(2, 0).unwrap().symbol, ' ');
     }
 }
 
@@ -207,9 +224,10 @@ mod long_strings {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should handle long string gracefully (clip to buffer size)
         text.render(&mut ctx);
+        // Clipped at the right edge; it does not wrap onto the next row
+        assert_eq!(row(&buffer, 0), "XXXXXXXXXX");
+        assert_eq!(row(&buffer, 1), "          ");
     }
 
     #[test]
@@ -219,8 +237,8 @@ mod long_strings {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
         text.render(&mut ctx);
+        assert!(blank(&buffer));
     }
 }
 
@@ -258,8 +276,10 @@ mod whitespace_strings {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
         text.render(&mut ctx);
+        // Spaces are measured but draw as blanks
+        assert_eq!(text.measure(10, 10), Some((3, 1)));
+        assert!(blank(&buffer));
     }
 }
 
@@ -273,29 +293,34 @@ mod text_truncation {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should clip to buffer width
         text.render(&mut ctx);
+        assert_eq!(row(&buffer, 0), "This is a ");
+        assert_eq!(row(&buffer, 1), "          ");
+        assert_eq!(text.measure(10, 10), Some((10, 1)));
     }
 
     #[test]
     fn test_text_taller_than_buffer() {
         let text = Text::new("Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10\nLine 11\nLine 12");
-        let mut buffer = Buffer::new(10, 10);
+        let mut buffer = Buffer::new(10, 12);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should clip to buffer height
         text.render(&mut ctx);
+        // Rows past the area's height are clipped
+        assert_eq!(row(&buffer, 0), "Line 1    ");
+        assert_eq!(row(&buffer, 9), "Line 10   ");
+        assert_eq!(row(&buffer, 10), "          ");
+        assert_eq!(row(&buffer, 11), "          ");
     }
 
     #[test]
     fn test_text_in_zero_width_buffer() {
         let text = Text::new("Hello");
-        let mut buffer = Buffer::new(0, 10);
+        let mut buffer = Buffer::new(5, 10);
         let area = Rect::new(0, 0, 0, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
         text.render(&mut ctx);
+        assert!(blank(&buffer));
+        assert_eq!(text.measure(0, 10), Some((0, 1)));
     }
 }
