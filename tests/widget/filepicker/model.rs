@@ -283,7 +283,7 @@ proptest! {
 
     /// In save mode `confirm` returns the current directory joined with the
     /// typed name, and the footer shows it; other modes ignore typing.
-    /// Separators and `..` are left out of the alphabet (draft-fp-1).
+    /// Separators and `..` are left out of the alphabet (#1110).
     #[test]
     fn prop_filepicker_save_name_follows_the_typing(
         keys in prop::collection::vec(

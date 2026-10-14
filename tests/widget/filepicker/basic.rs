@@ -118,7 +118,7 @@ fn test_filepicker_empty_directory() {
 fn test_filepicker_lists_only_symlinks_that_stay_inside() {
     let tmp = tempfile::tempdir().unwrap();
     // Canonical: under a path with a symlink in it every symlink is dropped
-    // (draft-fp-1).
+    // (#1110).
     let base = tmp.path().canonicalize().unwrap();
     let dir = base.join("in");
     std::fs::create_dir(&dir).unwrap();
