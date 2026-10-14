@@ -1,11 +1,32 @@
-use crate::render::{Cell, Modifier};
-use crate::style::Color;
-use crate::utils::{char_width, display_width};
-use crate::widget::theme::{DARK_GRAY, DISABLED_FG, SUBTLE_GRAY};
+//! Drawing: the frame, the title and search lines, and one row per command.
+
+mod frame;
+mod header;
+mod row;
+
+use crate::render::Cell;
 use crate::widget::traits::RenderContext;
 use crate::widget::View;
 
-use super::core::CommandPalette;
+use super::CommandPalette;
+
+/// Where the palette sits in the area, computed once per render.
+struct Layout {
+    /// Left column of the frame
+    x: u16,
+    /// Top row of the frame
+    y: u16,
+    /// Frame width
+    width: u16,
+    /// Frame height
+    height: u16,
+    /// Right border column
+    right_x: u16,
+    /// End of the text columns
+    text_end: u16,
+    /// End of the label column
+    label_end: u16,
+}
 
 impl View for CommandPalette {
     crate::impl_view_meta!("CommandPalette");
@@ -15,152 +36,30 @@ impl View for CommandPalette {
             return;
         }
 
-        let area = ctx.area;
-        let width = self.width.min(area.width);
-        let x = (area.width.saturating_sub(width)) / 2;
-        let has_title = self.title.is_some();
-
-        // Calculate height
-        let visible_count = self.filtered.len().min(self.max_visible as usize);
-        let height = 3 + visible_count as u16 + if has_title { 1 } else { 0 }; // border + input + items
-        let y: u16 = 2; // Offset from top
-
-        if y + height > area.height {
+        let Some(layout) = self.layout(ctx) else {
             return;
-        }
+        };
 
-        // Right border column, end of the text columns and end of the label
-        // column, saturating for a palette narrower than its frame.
-        let right_x = (x + width).saturating_sub(1);
-        let text_end = (x + width).saturating_sub(2);
-        let label_end = (x + width).saturating_sub(15);
+        self.draw_background(ctx, &layout);
 
-        // Draw background
-        for dy in 0..height {
-            for dx in 0..width {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(self.bg_color);
-                ctx.set(x + dx, y + dy, cell);
-            }
-        }
-
-        // Draw border
-        let border_chars = ['╭', '╮', '╰', '╯', '─', '│'];
-        let mut current_y = y;
+        let mut current_y = layout.y;
 
         // Top border
-        let mut tl = Cell::new(border_chars[0]);
-        tl.fg = Some(self.border_color);
-        ctx.set(x, current_y, tl);
-
-        for dx in 1..width.saturating_sub(1) {
-            let mut h = Cell::new(border_chars[4]);
-            h.fg = Some(self.border_color);
-            ctx.set(x + dx, current_y, h);
-        }
-
-        let mut tr = Cell::new(border_chars[1]);
-        tr.fg = Some(self.border_color);
-        ctx.set(right_x, current_y, tr);
-
+        self.draw_rule(ctx, &layout, current_y, '╭', '╮');
         current_y += 1;
 
         // Title (if present)
         if let Some(ref title) = self.title {
-            let mut left = Cell::new(border_chars[5]);
-            left.fg = Some(self.border_color);
-            ctx.set(x, current_y, left);
-
-            let title_x = x + 2;
-            let mut dx: u16 = 0;
-            for ch in title.chars() {
-                let cw = char_width(ch) as u16;
-                if title_x + dx >= text_end {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::CYAN);
-                cell.bg = Some(self.bg_color);
-                cell.modifier |= Modifier::BOLD;
-                ctx.set(title_x + dx, current_y, cell);
-                dx += cw;
-            }
-
-            let mut right = Cell::new(border_chars[5]);
-            right.fg = Some(self.border_color);
-            ctx.set(right_x, current_y, right);
-
+            self.draw_title(ctx, &layout, current_y, title);
             current_y += 1;
         }
 
         // Search input line
-        let mut left = Cell::new(border_chars[5]);
-        left.fg = Some(self.border_color);
-        ctx.set(x, current_y, left);
-
-        // Search icon
-        let search_icon = Cell::new('🔍');
-        ctx.set(x + 2, current_y, search_icon);
-
-        // Query or placeholder
-        let input_x = x + 4;
-        let display_text = if self.query.is_empty() {
-            &self.placeholder
-        } else {
-            &self.query
-        };
-        // The typed query takes `color`; the empty-state grey keeps its own.
-        let text_color = if self.query.is_empty() {
-            DISABLED_FG
-        } else {
-            ctx.css_color(Color::WHITE)
-        };
-
-        let mut dx: u16 = 0;
-        for ch in display_text.chars() {
-            let cw = char_width(ch) as u16;
-            if input_x + dx >= text_end {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(text_color);
-            cell.bg = Some(self.bg_color);
-            ctx.set(input_x + dx, current_y, cell);
-            dx += cw;
-        }
-
-        // Cursor
-        if !self.query.is_empty() || display_text == &self.placeholder {
-            let cursor_x = input_x + display_width(&self.query) as u16;
-            if cursor_x < text_end {
-                let mut cursor = Cell::new('▏');
-                cursor.fg = Some(Color::WHITE);
-                cursor.bg = Some(self.bg_color);
-                ctx.set(cursor_x, current_y, cursor);
-            }
-        }
-
-        let mut right = Cell::new(border_chars[5]);
-        right.fg = Some(self.border_color);
-        ctx.set(right_x, current_y, right);
-
+        self.draw_search(ctx, &layout, current_y);
         current_y += 1;
 
         // Separator
-        let mut sl = Cell::new('├');
-        sl.fg = Some(self.border_color);
-        ctx.set(x, current_y, sl);
-
-        for dx in 1..width.saturating_sub(1) {
-            let mut h = Cell::new('─');
-            h.fg = Some(self.border_color);
-            ctx.set(x + dx, current_y, h);
-        }
-
-        let mut sr = Cell::new('┤');
-        sr.fg = Some(self.border_color);
-        ctx.set(right_x, current_y, sr);
-
+        self.draw_rule(ctx, &layout, current_y, '├', '┤');
         current_y += 1;
 
         // Command items
@@ -173,150 +72,62 @@ impl View for CommandPalette {
             .collect();
 
         for (i, &cmd_idx) in visible_items.iter().enumerate() {
-            let cmd = &self.commands[*cmd_idx];
             let is_selected = self.selection.is_selected(scroll_offset + i);
             let item_y = current_y + i as u16;
-
-            // Left border
-            let mut left = Cell::new(border_chars[5]);
-            left.fg = Some(self.border_color);
-            ctx.set(x, item_y, left);
-
-            // Background for selected
-            let row_bg = if is_selected {
-                self.selected_bg
-            } else {
-                self.bg_color
-            };
-            for dx in 1..width.saturating_sub(1) {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(row_bg);
-                ctx.set(x + dx, item_y, cell);
-            }
-
-            let mut content_x = x + 2;
-
-            // Icon
-            if self.show_icons {
-                if let Some(icon) = cmd.icon {
-                    let mut cell = Cell::new(icon);
-                    cell.fg = Some(Color::CYAN);
-                    cell.bg = Some(row_bg);
-                    ctx.set(content_x, item_y, cell);
-                }
-                content_x += 2;
-            }
-
-            // Label with highlighting
-            let highlighted = self.highlight_match(&cmd.label);
-            for (ch, is_match) in highlighted {
-                if content_x >= label_end {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(if is_match {
-                    self.match_color
-                } else {
-                    Color::WHITE
-                });
-                cell.bg = Some(row_bg);
-                if is_match {
-                    cell.modifier |= Modifier::BOLD;
-                }
-                ctx.set(content_x, item_y, cell);
-                content_x += 1;
-            }
-
-            // Where the right-aligned shortcut starts, if one is drawn.
-            let shortcut_x = cmd
-                .shortcut
-                .as_ref()
-                .filter(|_| self.show_shortcuts)
-                .map(|shortcut| text_end.saturating_sub(display_width(shortcut) as u16));
-
-            // Description, dimmed, after the label and clear of the shortcut
-            if self.show_descriptions {
-                if let Some(ref desc) = cmd.description {
-                    let desc_end = shortcut_x.map_or(text_end, |sx| sx.saturating_sub(1));
-                    let mut dx = content_x + 2;
-                    for ch in desc.chars() {
-                        let cw = char_width(ch) as u16;
-                        if dx + cw > desc_end {
-                            break;
-                        }
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(SUBTLE_GRAY);
-                        cell.bg = Some(row_bg);
-                        ctx.set(dx, item_y, cell);
-                        dx += cw;
-                    }
-                }
-            }
-
-            // Shortcut (right-aligned)
-            if let Some(shortcut_x) = shortcut_x {
-                if let Some(ref shortcut) = cmd.shortcut {
-                    let mut dx: u16 = 0;
-                    for ch in shortcut.chars() {
-                        let cw = char_width(ch) as u16;
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(SUBTLE_GRAY);
-                        cell.bg = Some(row_bg);
-                        ctx.set(shortcut_x + dx, item_y, cell);
-                        dx += cw;
-                    }
-                }
-            }
-
-            // Right border
-            let mut right = Cell::new(border_chars[5]);
-            right.fg = Some(self.border_color);
-            ctx.set(right_x, item_y, right);
+            self.draw_row(ctx, &layout, item_y, &self.commands[*cmd_idx], is_selected);
         }
 
         // Fill remaining space if fewer items than max_visible
         for i in visible_items.len()..self.max_visible as usize {
             let item_y = current_y + i as u16;
-            if item_y >= y + height - 1 {
+            if item_y >= layout.y + layout.height - 1 {
                 break;
             }
-
-            let mut left = Cell::new(border_chars[5]);
-            left.fg = Some(self.border_color);
-            ctx.set(x, item_y, left);
-
-            let mut right = Cell::new(border_chars[5]);
-            right.fg = Some(self.border_color);
-            ctx.set(right_x, item_y, right);
+            self.draw_sides(ctx, &layout, item_y);
         }
 
         // Bottom border
-        let bottom_y = y + height - 1;
-        let mut bl = Cell::new(border_chars[2]);
-        bl.fg = Some(self.border_color);
-        ctx.set(x, bottom_y, bl);
+        let bottom_y = layout.y + layout.height - 1;
+        self.draw_rule(ctx, &layout, bottom_y, '╰', '╯');
+        self.draw_count(ctx, &layout, bottom_y);
+    }
+}
 
-        for dx in 1..width.saturating_sub(1) {
-            let mut h = Cell::new(border_chars[4]);
-            h.fg = Some(self.border_color);
-            ctx.set(x + dx, bottom_y, h);
+impl CommandPalette {
+    /// Centered frame geometry, or `None` when the frame does not fit the
+    /// area's height.
+    fn layout(&self, ctx: &RenderContext) -> Option<Layout> {
+        let area = ctx.area;
+        let width = self.width.min(area.width);
+        let x = (area.width.saturating_sub(width)) / 2;
+        let has_title = self.title.is_some();
+
+        // Calculate height
+        let visible_count = self.filtered.len().min(self.max_visible as usize);
+        let height = 3 + visible_count as u16 + if has_title { 1 } else { 0 }; // border + input + items
+        let y: u16 = 2; // Offset from top
+
+        if y + height > area.height {
+            return None;
         }
 
-        let mut br = Cell::new(border_chars[3]);
-        br.fg = Some(self.border_color);
-        ctx.set(right_x, bottom_y, br);
+        // Right border column, end of the text columns and end of the label
+        // column, saturating for a palette narrower than its frame.
+        Some(Layout {
+            x,
+            y,
+            width,
+            height,
+            right_x: (x + width).saturating_sub(1),
+            text_end: (x + width).saturating_sub(2),
+            label_end: (x + width).saturating_sub(15),
+        })
+    }
 
-        // Results count
-        let count_str = format!("{}/{}", self.filtered.len(), self.commands.len());
-        let count_x = text_end.saturating_sub(display_width(&count_str) as u16);
-        let mut dx: u16 = 0;
-        for ch in count_str.chars() {
-            let cw = char_width(ch) as u16;
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(DARK_GRAY);
-            cell.bg = Some(self.bg_color);
-            ctx.set(count_x + dx, bottom_y, cell);
-            dx += cw;
-        }
+    /// A border glyph in the border color.
+    fn border_cell(&self, ch: char) -> Cell {
+        let mut cell = Cell::new(ch);
+        cell.fg = Some(self.border_color);
+        cell
     }
 }
