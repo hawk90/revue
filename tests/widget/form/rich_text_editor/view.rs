@@ -183,3 +183,23 @@ fn test_rich_text_editor_dialog_wide_field_scrolls_to_its_end() {
     assert_eq!(buffer.get(48, 9).unwrap().bg, Some(DIALOG_BG));
     assert_eq!(buffer.get(49, 9).unwrap().symbol, '│');
 }
+
+#[test]
+fn test_rich_text_editor_links_colored_except_in_code() {
+    let link_fg = Color::rgb(137, 180, 250);
+    let editor = RichTextEditor::new().from_markdown("[a](b) x\n```\n[a](b) x\n```");
+    let buffer = screen(&editor, 20, 4);
+    // A paragraph's link is told apart by color; a code block is literal
+    assert_eq!(row(&buffer, 1), "[a](b) x");
+    assert_eq!(row(&buffer, 2), "` [a](b) x");
+    for x in 0..6 {
+        assert_eq!(buffer.get(x, 1).unwrap().fg, Some(link_fg), "column {x}");
+        assert_eq!(
+            buffer.get(x + 2, 2).unwrap().fg,
+            Some(FG),
+            "column {}",
+            x + 2
+        );
+    }
+    assert_eq!(buffer.get(7, 1).unwrap().fg, Some(FG));
+}
