@@ -135,3 +135,23 @@ impl<V: View> DebugOverlay<V> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fps_color_is_green_from_30_and_yellow_from_15() {
+        let (green, yellow, red) = (
+            Color::rgb(100, 255, 100),
+            Color::rgb(255, 255, 100),
+            Color::rgb(255, 100, 100),
+        );
+        assert_eq!(fps_color(60.0), green);
+        assert_eq!(fps_color(30.0), green);
+        assert_eq!(fps_color(29.9), yellow);
+        assert_eq!(fps_color(15.0), yellow);
+        assert_eq!(fps_color(14.9), red);
+        assert_eq!(fps_color(0.0), red);
+    }
+}

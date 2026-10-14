@@ -1,13 +1,48 @@
 //! Pagination widget tests
 
+mod nav;
+mod view;
+
 use revue::layout::Rect;
-use revue::render::Buffer;
+use revue::render::{Buffer, Modifier};
 use revue::style::Color;
 use revue::widget::pagination;
 use revue::widget::traits::RenderContext;
 use revue::widget::Pagination;
 use revue::widget::PaginationStyle;
 use revue::widget::View;
+
+/// Draw `p` into a fresh `width` x `height` buffer.
+fn draw(p: &Pagination, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+    p.render(&mut ctx);
+    buffer
+}
+
+/// Row `y`'s symbols, without trailing blanks.
+fn row(buffer: &Buffer, y: u16) -> String {
+    let text: String = (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect();
+    text.trim_end().to_string()
+}
+
+/// Every cell of row 0.
+fn cells(buffer: &Buffer) -> Vec<revue::render::Cell> {
+    (0..buffer.width())
+        .map(|x| *buffer.get(x, 0).unwrap())
+        .collect()
+}
+
+/// The foreground of every drawn (non-blank) cell of row 0, by symbol.
+fn colors(buffer: &Buffer) -> Vec<(char, Option<Color>, bool)> {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, 0).unwrap())
+        .filter(|c| c.symbol != ' ')
+        .map(|c| (c.symbol, c.fg, c.modifier.contains(Modifier::BOLD)))
+        .collect()
+}
 
 // =========================================================================
 // PaginationStyle enum tests
@@ -284,12 +319,6 @@ fn test_goto_same_page() {
 // =========================================================================
 
 #[test]
-fn test_get_current() {
-    let p = Pagination::new(10).current(5);
-    assert_eq!(p.get_current(), 5);
-}
-
-#[test]
 fn test_is_first() {
     let p = Pagination::new(10).current(1);
     assert!(p.is_first());
@@ -354,65 +383,90 @@ fn test_set_total_to_one() {
 
 #[test]
 fn test_pagination_render_full() {
-    let mut buffer = Buffer::new(50, 1);
-    let area = Rect::new(0, 0, 50, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let p = pagination(10).current(5);
-    p.render(&mut ctx);
-
-    // Should have navigation symbols
-    let text: String = (0..50)
-        .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
-        .collect();
-    assert!(text.contains('5'));
+    let p = pagination(10)
+        .current(5)
+        .active_color(Color::RED)
+        .inactive_color(Color::BLUE);
+    let buffer = draw(&p, 50, 1);
+    assert_eq!(row(&buffer, 0), "« ‹ 1 2 3 4 [5] 6 7 8 … 10 › »");
+    // Away from both ends every button is active; the current page is
+    // active and bold between active brackets; other pages are inactive
+    let (r, b) = (Some(Color::RED), Some(Color::BLUE));
+    let want = vec![
+        ('«', r, false),
+        ('‹', r, false),
+        ('1', b, false),
+        ('2', b, false),
+        ('3', b, false),
+        ('4', b, false),
+        ('[', r, false),
+        ('5', r, true),
+        (']', r, false),
+        ('6', b, false),
+        ('7', b, false),
+        ('8', b, false),
+        ('…', b, false),
+        ('1', b, false),
+        ('0', b, false),
+        ('›', r, false),
+        ('»', r, false),
+    ];
+    assert_eq!(colors(&buffer), want);
 }
 
 #[test]
 fn test_pagination_render_simple() {
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let p = pagination(10).current(5).simple();
-    p.render(&mut ctx);
-
-    let text: String = (0..30)
-        .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
-        .collect();
-    assert!(text.contains('5'));
+    let p = pagination(10)
+        .current(5)
+        .simple()
+        .active_color(Color::RED)
+        .inactive_color(Color::BLUE);
+    let buffer = draw(&p, 30, 1);
+    assert_eq!(row(&buffer, 0), "← Page 5 of 10 →");
+    // The arrows are active away from the ends; the text is inactive
+    let drawn = colors(&buffer);
+    assert_eq!(drawn[0], ('←', Some(Color::RED), false));
+    assert_eq!(drawn[drawn.len() - 1], ('→', Some(Color::RED), false));
+    assert!(drawn[1..drawn.len() - 1]
+        .iter()
+        .all(|&(_, fg, bold)| fg == Some(Color::BLUE) && !bold));
 }
 
 #[test]
 fn test_pagination_render_compact() {
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let p = pagination(10).current(5).compact();
-    p.render(&mut ctx);
-
-    let text: String = (0..20)
-        .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
-        .collect();
-    assert!(text.contains('5'));
-    assert!(text.contains('/'));
+    let p = pagination(10)
+        .current(5)
+        .compact()
+        .active_color(Color::RED)
+        .inactive_color(Color::BLUE);
+    let buffer = draw(&p, 20, 1);
+    assert_eq!(row(&buffer, 0), "5/10");
+    // All of it active and bold
+    assert!(colors(&buffer)
+        .iter()
+        .all(|&(_, fg, bold)| fg == Some(Color::RED) && bold));
 }
 
 #[test]
 fn test_pagination_render_dots() {
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let p = pagination(5).current(3).dots();
-    p.render(&mut ctx);
-
-    let text: String = (0..30)
-        .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
-        .collect();
-    assert!(text.contains('●'));
-    assert!(text.contains('○'));
+    let p = pagination(5)
+        .current(3)
+        .dots()
+        .active_color(Color::RED)
+        .inactive_color(Color::BLUE);
+    let buffer = draw(&p, 30, 1);
+    assert_eq!(row(&buffer, 0), "○ ○ ● ○ ○");
+    let (r, b) = (Some(Color::RED), Some(Color::BLUE));
+    assert_eq!(
+        colors(&buffer),
+        [
+            ('○', b, false),
+            ('○', b, false),
+            ('●', r, false),
+            ('○', b, false),
+            ('○', b, false)
+        ]
+    );
 }
 
 // =========================================================================
@@ -510,25 +564,38 @@ fn test_pagination_focused_underlines_the_current_page() {
 
 #[test]
 fn test_pagination_style_full() {
-    let _p = Pagination::new(10).style(PaginationStyle::Full);
+    let p = Pagination::new(10).style(PaginationStyle::Full);
+    assert_eq!(row(&draw(&p, 40, 1), 0), "« ‹ [1] 2 3 4 5 6 7 … 10 › »");
+    // The same cells as the default style
+    let other = Pagination::new(10);
+    assert_eq!(cells(&draw(&p, 40, 1)), cells(&draw(&other, 40, 1)));
 }
 
 #[test]
 fn test_pagination_style_simple() {
-    let _p = pagination(10).simple();
-    // Simple style was set
+    let p = pagination(10).simple();
+    assert_eq!(row(&draw(&p, 40, 1), 0), "← Page 1 of 10 →");
+    // The same cells as the style set by name
+    let other = pagination(10).style(PaginationStyle::Simple);
+    assert_eq!(cells(&draw(&p, 40, 1)), cells(&draw(&other, 40, 1)));
 }
 
 #[test]
 fn test_pagination_style_compact() {
-    let _p = pagination(10).compact();
-    // Compact style was set
+    let p = pagination(10).compact();
+    assert_eq!(row(&draw(&p, 40, 1), 0), "1/10");
+    // The same cells as the style set by name
+    let other = pagination(10).style(PaginationStyle::Compact);
+    assert_eq!(cells(&draw(&p, 40, 1)), cells(&draw(&other, 40, 1)));
 }
 
 #[test]
 fn test_pagination_style_dots() {
-    let _p = pagination(10).dots();
-    // Dots style was set
+    let p = pagination(10).dots();
+    assert_eq!(row(&draw(&p, 40, 1), 0), "● ○ ○ ○ ○ ○ ○ ○ ○ ○");
+    // The same cells as the style set by name
+    let other = pagination(10).style(PaginationStyle::Dots);
+    assert_eq!(cells(&draw(&p, 40, 1)), cells(&draw(&other, 40, 1)));
 }
 
 #[test]
@@ -560,13 +627,6 @@ fn test_pagination_prev_page_at_start() {
 }
 
 #[test]
-fn test_pagination_first() {
-    let mut p = Pagination::new(10).current(5);
-    p.first();
-    assert_eq!(p.get_current(), 1);
-}
-
-#[test]
 fn test_pagination_last() {
     let mut p = Pagination::new(10);
     p.last();
@@ -578,20 +638,6 @@ fn test_pagination_goto() {
     let mut p = Pagination::new(10);
     p.goto(7);
     assert_eq!(p.get_current(), 7);
-}
-
-#[test]
-fn test_pagination_goto_clamps_below() {
-    let mut p = Pagination::new(10).current(5);
-    p.goto(0);
-    assert_eq!(p.get_current(), 1);
-}
-
-#[test]
-fn test_pagination_goto_clamps_above() {
-    let mut p = Pagination::new(10).current(5);
-    p.goto(20);
-    assert_eq!(p.get_current(), 10);
 }
 
 #[test]
@@ -613,14 +659,6 @@ fn test_pagination_is_last() {
 }
 
 #[test]
-fn test_pagination_set_total() {
-    let mut p = pagination(10).current(8);
-    p.set_total(5);
-    assert_eq!(p.get_total(), 5);
-    assert_eq!(p.get_current(), 5); // Clamped
-}
-
-#[test]
 fn test_pagination_set_total_increase() {
     let mut p = pagination(5).current(3);
     p.set_total(10);
@@ -633,12 +671,6 @@ fn test_pagination_single_page() {
     let p = Pagination::new(1);
     assert!(p.is_first());
     assert!(p.is_last());
-}
-
-#[test]
-fn test_pagination_helper() {
-    let p = pagination(15);
-    assert_eq!(p.get_total(), 15);
 }
 
 #[test]
@@ -696,6 +728,7 @@ fn test_no_pages_stays_on_page_one() {
 
 /// Test Pagination widget edge cases
 mod edge_cases {
+    use super::{draw, row};
     use revue::layout::Rect;
     use revue::render::Buffer;
     use revue::widget::traits::{RenderContext, View};
@@ -704,11 +737,10 @@ mod edge_cases {
     #[test]
     fn test_pagination_with_zero_items() {
         let pagination = Pagination::new(0);
-        let mut buffer = Buffer::new(20, 10);
-        let area = Rect::new(0, 0, 20, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        pagination.render(&mut ctx);
+        let buffer = draw(&pagination, 20, 10);
+        // Only the buttons; no page numbers, and nothing below the first row
+        assert_eq!(row(&buffer, 0), "« ‹ › »");
+        assert!((1..10).all(|y| row(&buffer, y).is_empty()));
     }
 
     #[test]
@@ -725,11 +757,9 @@ mod edge_cases {
     #[test]
     fn test_pagination_with_very_large_total() {
         let pagination = Pagination::new(1000);
-        let mut buffer = Buffer::new(20, 10);
-        let area = Rect::new(0, 0, 20, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        pagination.render(&mut ctx);
+        let buffer = draw(&pagination, 40, 10);
+        assert_eq!(row(&buffer, 0), "« ‹ [1] 2 3 4 5 6 7 … 1000 › »");
+        assert!((1..10).all(|y| row(&buffer, y).is_empty()));
     }
 
     #[test]
@@ -771,11 +801,14 @@ mod edge_cases {
     #[test]
     fn test_pagination_with_zero_width_buffer() {
         let pagination = Pagination::new(10);
-        let mut buffer = Buffer::new(0, 10);
-        let area = Rect::new(0, 0, 0, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
+        // A zero-width buffer has no cells to draw into
+        let buffer = draw(&pagination, 0, 10);
+        assert_eq!(buffer.get(0, 0), None);
+        // and a zero-width area in a wider buffer draws nothing
+        let mut buffer = Buffer::new(10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 0, 10));
         pagination.render(&mut ctx);
+        assert!((0..10).all(|y| row(&buffer, y).is_empty()));
     }
 
     #[test]
@@ -792,42 +825,36 @@ mod edge_cases {
 
     #[test]
     fn test_pagination_exact_multiple() {
-        // Items divide evenly
+        // A total of 100 pages: the window, an ellipsis, and the last page
         let pagination = Pagination::new(100);
-        let mut buffer = Buffer::new(30, 10);
-        let area = Rect::new(0, 0, 30, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        pagination.render(&mut ctx);
+        let buffer = draw(&pagination, 30, 10);
+        assert_eq!(row(&buffer, 0), "« ‹ [1] 2 3 4 5 6 7 … 100 › »");
     }
 
     #[test]
     fn test_pagination_with_very_small_buffer() {
         let pagination = Pagination::new(10);
-        let mut buffer = Buffer::new(5, 5);
-        let area = Rect::new(0, 0, 5, 5);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should clip to buffer
-        pagination.render(&mut ctx);
+        let buffer = draw(&pagination, 5, 5);
+        // Clipped to the buffer: the first five columns of the row
+        assert_eq!(row(&buffer, 0), "« ‹ [");
+        assert!((1..5).all(|y| row(&buffer, y).is_empty()));
     }
 
     #[test]
     fn test_pagination_all_styles() {
         let styles = [
-            revue::widget::PaginationStyle::Full,
-            revue::widget::PaginationStyle::Simple,
-            revue::widget::PaginationStyle::Compact,
-            revue::widget::PaginationStyle::Dots,
+            (revue::widget::PaginationStyle::Full, "« ‹ [1] 2 3 4 5 6 7"),
+            (revue::widget::PaginationStyle::Simple, "← Page 1 of 10 →"),
+            (revue::widget::PaginationStyle::Compact, "1/10"),
+            (revue::widget::PaginationStyle::Dots, "● ○ ○ ○ ○ ○ ○ ○ ○ ○"),
         ];
 
-        for style in styles {
+        for (style, want) in styles {
             let pagination = Pagination::new(10).style(style);
-            let mut buffer = Buffer::new(20, 10);
-            let area = Rect::new(0, 0, 20, 10);
-            let mut ctx = RenderContext::new(&mut buffer, area);
-
-            pagination.render(&mut ctx);
+            let buffer = draw(&pagination, 20, 10);
+            // Every style is one row, cut at the area's edge
+            assert_eq!(row(&buffer, 0), want, "{style:?}");
+            assert!((1..10).all(|y| row(&buffer, y).is_empty()), "{style:?}");
         }
     }
 }
