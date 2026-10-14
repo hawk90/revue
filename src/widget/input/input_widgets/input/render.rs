@@ -1,6 +1,6 @@
 //! Rendering implementation for the Input widget
 
-use super::types::Input;
+use super::Input;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::theme::PLACEHOLDER_FG;
@@ -39,26 +39,7 @@ impl View for Input {
         let selection = self.selection();
 
         // Get CSS colors with priority: inline > CSS > default
-        let css_fg = self.fg.or_else(|| {
-            ctx.style.and_then(|s| {
-                let c = s.visual.color;
-                if c != Color::default() {
-                    Some(c)
-                } else {
-                    None
-                }
-            })
-        });
-        let css_bg = self.bg.or_else(|| {
-            ctx.style.and_then(|s| {
-                let c = s.visual.background;
-                if c != Color::default() {
-                    Some(c)
-                } else {
-                    None
-                }
-            })
-        });
+        let (css_fg, css_bg) = self.text_colors(ctx);
 
         // The cursor is a char index; the screen is in columns, where a wide
         // glyph (Hangul, CJK, emoji) takes two. Scroll by columns so the
@@ -112,4 +93,32 @@ impl View for Input {
     }
 
     crate::impl_view_meta!("Input", focusable);
+}
+
+impl Input {
+    /// The text's fg and bg: the builder's, else the stylesheet's
+    /// `color` and `background`, else none
+    fn text_colors(&self, ctx: &RenderContext) -> (Option<Color>, Option<Color>) {
+        let css_fg = self.fg.or_else(|| {
+            ctx.style.and_then(|s| {
+                let c = s.visual.color;
+                if c != Color::default() {
+                    Some(c)
+                } else {
+                    None
+                }
+            })
+        });
+        let css_bg = self.bg.or_else(|| {
+            ctx.style.and_then(|s| {
+                let c = s.visual.background;
+                if c != Color::default() {
+                    Some(c)
+                } else {
+                    None
+                }
+            })
+        });
+        (css_fg, css_bg)
+    }
 }

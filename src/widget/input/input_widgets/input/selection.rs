@@ -1,6 +1,7 @@
 //! Selection management (copy, cut, paste) for the Input widget
 
-use super::types::{EditOperation, Input};
+use super::types::EditOperation;
+use super::Input;
 use crate::event::Key;
 
 impl Input {

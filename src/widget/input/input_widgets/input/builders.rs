@@ -1,6 +1,6 @@
 //! Builder methods for the Input widget
 
-use super::types::Input;
+use super::Input;
 use crate::style::Color;
 use crate::widget::traits::WidgetProps;
 

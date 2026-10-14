@@ -1,6 +1,7 @@
 //! Undo/redo functionality for the Input widget
 
-use super::types::{EditOperation, Input};
+use super::types::EditOperation;
+use super::Input;
 
 impl Input {
     // ─────────────────────────────────────────────────────────────────────────
