@@ -1,5 +1,7 @@
 //! Vim widget tests
 
+mod model;
+
 use revue::event::Key;
 use revue::event::KeyEvent;
 use revue::style::Color;
@@ -175,16 +177,28 @@ fn test_switch_to_search_mode_backward() {
 
 #[test]
 fn test_escape_to_normal_mode() {
-    let mut vim = VimState::new();
-
-    // Insert 모드로 전환
-    vim.handle_key(&KeyEvent::new(Key::Char('i')));
-    assert_eq!(vim.mode(), VimMode::Insert);
-
-    // Escape로 Normal 모드로 복귀
-    let action = vim.handle_key(&KeyEvent::new(Key::Escape));
-    assert_eq!(action, VimAction::Escape);
-    assert_eq!(vim.mode(), VimMode::Normal);
+    // From every mode, Escape returns to Normal and drops a typed command
+    // or search
+    for mode in [
+        VimMode::Insert,
+        VimMode::Visual,
+        VimMode::VisualLine,
+        VimMode::VisualBlock,
+        VimMode::Command,
+        VimMode::Search,
+        VimMode::Replace,
+        VimMode::Normal,
+    ] {
+        let mut vim = VimState::new();
+        vim.set_mode(mode);
+        vim.handle_key(&KeyEvent::new(Key::Char('w')));
+        vim.set_mode(mode);
+        let action = vim.handle_key(&KeyEvent::new(Key::Escape));
+        assert_eq!(action, VimAction::Escape, "{mode:?}");
+        assert_eq!(vim.mode(), VimMode::Normal, "{mode:?}");
+        assert_eq!(vim.command_buffer(), "", "{mode:?}");
+        assert_eq!(vim.search_pattern(), "", "{mode:?}");
+    }
 }
 
 #[test]
@@ -806,9 +820,15 @@ fn test_custom_mapping() {
     let mut vim = VimState::new();
     vim.map("zz", VimAction::Move(VimMotion::GoToLine(Some(1))));
 
-    // 매핑은 handle_key에서 자동으로 사용되지 않음
-    // 이 테스트는 매핑이 저장되는지만 확인
-    // 실제 사용은 구현에 따라 다름
+    // A mapping leaves the built-in keys and the state alone. (handle_key
+    // does not look mappings up at all: #799.)
+    assert_eq!(vim.mode(), VimMode::Normal);
+    assert_eq!(
+        vim.handle_key(&KeyEvent::new(Key::Char('j'))),
+        VimAction::Move(VimMotion::Down)
+    );
+    assert_eq!(vim.count(), 1);
+    assert_eq!(vim.register(), "");
 }
 
 // =============================================================================

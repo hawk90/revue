@@ -4,6 +4,7 @@
 //! and Command modes.
 
 mod key_handling;
+mod normal;
 mod types;
 
 pub use types::{VimAction, VimCommandResult, VimMode, VimMotion};
