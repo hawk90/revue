@@ -313,3 +313,49 @@ proptest! {
         prop_assert_eq!(d.measure(500, 50), Some((widest as u16, d.height() as u16)));
     }
 }
+
+/// A style with its colon, dot and minus rows.
+type Marks = (
+    DigitStyle,
+    &'static [&'static str],
+    &'static [&'static str],
+    &'static [&'static str],
+);
+
+#[test]
+fn each_style_draws_its_own_colon_dot_and_minus() {
+    // (style, colon rows, dot rows, minus rows), written out here
+    let cases: [Marks; 4] = [
+        (
+            DigitStyle::Block,
+            &[" ", "█", " ", "█", " "],
+            &[" ", " ", " ", " ", "█"],
+            &["   ", "   ", "███", "   ", "   "],
+        ),
+        (
+            DigitStyle::Thin,
+            &[" ", "●", " ", "●", " "],
+            &[" ", " ", " ", " ", "●"],
+            &["   ", "   ", "───", "   ", "   "],
+        ),
+        (
+            DigitStyle::Ascii,
+            &[" ", "o", " ", "o", " "],
+            &[" ", " ", " ", " ", "o"],
+            &["   ", "   ", "---", "   ", "   "],
+        ),
+        (
+            DigitStyle::Braille,
+            &[" ", "⠂", "⠂", " "],
+            &[" ", " ", " ", "⠂"],
+            &["  ", "⠤⠤", "  ", "  "],
+        ),
+    ];
+    for (style, colon, dot, minus) in cases {
+        for (c, want) in [(":", colon), (".", dot), ("-", minus)] {
+            let lines = Digits::new(c).style(style).render_lines();
+            let want: Vec<String> = want.iter().map(|r| format!("{r} ")).collect();
+            assert_eq!(lines, want, "{style:?} {c:?}");
+        }
+    }
+}
