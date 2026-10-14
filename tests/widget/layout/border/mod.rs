@@ -57,15 +57,13 @@ fn test_border_type_all_variants_unique() {
         BorderType::Ascii,
     ];
 
-    // All variants should be different from None
-    for variant in variants.iter().skip(1) {
-        assert_ne!(*variant, BorderType::None);
-    }
-
-    // All variants should be different from Single
-    for variant in variants.iter() {
-        if *variant != BorderType::Single {
-            assert_ne!(*variant, BorderType::Single);
+    // Each variant equals itself and no other, and has its own corner glyph.
+    for (i, a) in variants.iter().enumerate() {
+        for (j, b) in variants.iter().enumerate() {
+            assert_eq!(a == b, i == j, "{a:?} vs {b:?}");
+            if i != j {
+                assert_ne!(a.chars().top_left, b.chars().top_left, "{a:?} vs {b:?}");
+            }
         }
     }
 }
@@ -360,11 +358,23 @@ fn test_border_render_none() {
     let area = Rect::new(0, 0, 10, 5);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let b = Border::new().border_type(BorderType::None);
+    let b = Border::new()
+        .border_type(BorderType::None)
+        .child(Text::new("Hi"));
     b.render(&mut ctx);
 
-    // No border should be drawn
-    assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+    // No frame glyphs anywhere, yet the child keeps its one-cell inset.
+    for y in 0..5 {
+        for x in 0..10 {
+            let inside = (1..9).contains(&x) && (1..4).contains(&y);
+            if !inside {
+                assert_eq!(buffer.get(x, y).unwrap().symbol, ' ', "({x}, {y})");
+            }
+        }
+    }
+    assert_eq!(buffer.get(0, 1).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(1, 1).unwrap().symbol, 'H');
+    assert_eq!(buffer.get(2, 1).unwrap().symbol, 'i');
 }
 
 #[test]
@@ -416,7 +426,13 @@ fn test_border_render_small_width() {
 
     let b = Border::single();
     b.render(&mut ctx);
-    // Should not panic even with minimum width
+
+    // Two columns are just the corners and the sides.
+    assert_eq!(row_text(&buffer, 0), "┌┐");
+    for y in 1..4 {
+        assert_eq!(row_text(&buffer, y), "││");
+    }
+    assert_eq!(row_text(&buffer, 4), "└┘");
 }
 
 #[test]
@@ -427,7 +443,10 @@ fn test_border_render_small_height() {
 
     let b = Border::single();
     b.render(&mut ctx);
-    // Should not panic even with minimum height
+
+    // Two rows are the top and bottom edges with nothing between.
+    assert_eq!(row_text(&buffer, 0), "┌────────┐");
+    assert_eq!(row_text(&buffer, 1), "└────────┘");
 }
 
 #[test]
@@ -436,9 +455,12 @@ fn test_border_render_too_small() {
     let area = Rect::new(0, 0, 1, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let b = Border::single();
+    let b = Border::single().title("T").child(Text::new("X"));
     b.render(&mut ctx);
-    // Should not render anything when too small
+
+    // One cell cannot hold a frame: nothing is drawn, not even the child.
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(0, 0).unwrap().fg, None);
 }
 
 // =========================================================================
@@ -501,9 +523,12 @@ fn test_border_with_title_unicode() {
     let b = Border::single().title("🔧 Settings");
     b.render(&mut ctx);
 
-    // Unicode title should render
-    let char_at_2 = buffer.get(2, 0).unwrap().symbol;
-    assert!(char_at_2 == '🔧' || char_at_2 == 'S'); // May vary by terminal
+    // 🔧 takes columns 2-3, the space 4, "Settings" 5-12, and the line
+    // picks up at 13.
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '🔧');
+    assert!(buffer.get(3, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(5, 0).unwrap().symbol, 'S');
+    assert_eq!(row_text(&buffer, 0), "┌─🔧 Settings──────┐");
 }
 
 // =========================================================================
@@ -807,6 +832,8 @@ mod side_titles {
         assert_eq!(col, "  ⚙ab ");
     }
 }
+
+mod view;
 
 mod snapshots {
     use revue::prelude::*;
