@@ -1,10 +1,11 @@
-//! Drawing the debug overlay: panel placement, contents and border
+//! Drawing the debug overlay: panel placement, background and border; the
+//! sections inside are in `sections.rs`
 
-use super::{DebugEvent, DebugOverlay, DebugPosition};
+use super::{DebugOverlay, DebugPosition};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::utils::{draw_text_overlay, truncate_to_width, truncate_with_suffix};
+use crate::utils::{draw_text_overlay, truncate_to_width};
 use crate::widget::{RenderContext, View};
 
 impl<V: View> DebugOverlay<V> {
@@ -33,16 +34,7 @@ impl<V: View> DebugOverlay<V> {
         }
         let inner_width = (rect.width - 2) as usize;
 
-        // Fill background
-        for y in rect.y..rect.y + rect.height {
-            for x in rect.x..rect.x + rect.width {
-                if let Some(cell) = buffer.get_mut(x, y) {
-                    cell.symbol = ' ';
-                    cell.bg = Some(self.config.bg_color);
-                    cell.fg = Some(self.config.fg_color);
-                }
-            }
-        }
+        self.fill_panel(buffer, rect);
 
         // Content goes between the top border (which carries the title) and
         // the bottom border
@@ -58,121 +50,17 @@ impl<V: View> DebugOverlay<V> {
 
         // Performance metrics
         if self.config.show_metrics && y < max_y {
-            let fps_color = if self.metrics.fps() >= 30.0 {
-                Color::rgb(100, 255, 100) // Green
-            } else if self.metrics.fps() >= 15.0 {
-                Color::rgb(255, 255, 100) // Yellow
-            } else {
-                Color::rgb(255, 100, 100) // Red
-            };
-
-            self.draw_text(
-                buffer,
-                x,
-                y,
-                truncate_to_width(&format!("FPS: {:.1}", self.metrics.fps()), inner_width),
-                fps_color,
-            );
-            y += 1;
-
-            if y < max_y {
-                self.draw_text(
-                    buffer,
-                    x,
-                    y,
-                    truncate_to_width(
-                        &format!("Frame: {:.2}ms", self.metrics.avg_frame_time_ms()),
-                        inner_width,
-                    ),
-                    self.config.fg_color,
-                );
-                y += 1;
-            }
-
-            if y < max_y {
-                self.draw_text(
-                    buffer,
-                    x,
-                    y,
-                    truncate_to_width(
-                        &format!("Layout: {:.2}ms", self.metrics.avg_layout_time_ms()),
-                        inner_width,
-                    ),
-                    self.config.fg_color,
-                );
-                y += 1;
-            }
-
-            if y < max_y {
-                self.draw_text(
-                    buffer,
-                    x,
-                    y,
-                    truncate_to_width(
-                        &format!("Render: {:.2}ms", self.metrics.avg_render_time_ms()),
-                        inner_width,
-                    ),
-                    self.config.fg_color,
-                );
-                y += 1;
-            }
-
-            y += 1; // Spacing
+            y = self.draw_metrics(buffer, x, y, max_y, inner_width);
         }
 
         // Widget tree
         if self.config.show_tree && y < max_y {
-            self.draw_text(
-                buffer,
-                x,
-                y,
-                truncate_to_width("Widgets:", inner_width),
-                self.config.accent_color,
-            );
-            y += 1;
-
-            for widget in &self.widgets {
-                if y >= max_y {
-                    break;
-                }
-                let truncated = truncate_with_suffix(&widget.tree_line(), inner_width, "...");
-                let color = if widget.focused {
-                    self.config.accent_color
-                } else {
-                    self.config.fg_color
-                };
-                self.draw_text(buffer, x, y, &truncated, color);
-                y += 1;
-            }
-
-            y += 1; // Spacing
+            y = self.draw_tree(buffer, x, y, max_y, inner_width);
         }
 
         // Event log
         if self.config.show_events && y < max_y {
-            self.draw_text(
-                buffer,
-                x,
-                y,
-                truncate_to_width("Events:", inner_width),
-                self.config.accent_color,
-            );
-            y += 1;
-
-            for (_, event) in self.events.recent(5) {
-                if y >= max_y {
-                    break;
-                }
-                let text = match event {
-                    DebugEvent::KeyPress(k) => format!("Key: {}", k),
-                    DebugEvent::Mouse(m) => format!("Mouse: {}", m),
-                    DebugEvent::StateChange(s) => format!("State: {}", s),
-                    DebugEvent::Custom(c) => c.clone(),
-                };
-                let truncated = truncate_with_suffix(&text, inner_width, "...");
-                self.draw_text(buffer, x, y, &truncated, self.config.fg_color);
-                y += 1;
-            }
+            self.draw_events(buffer, x, y, max_y, inner_width);
         }
 
         // Border, then the title on top of it
@@ -186,8 +74,21 @@ impl<V: View> DebugOverlay<V> {
         );
     }
 
+    /// Fill background
+    fn fill_panel(&self, buffer: &mut Buffer, rect: Rect) {
+        for y in rect.y..rect.y + rect.height {
+            for x in rect.x..rect.x + rect.width {
+                if let Some(cell) = buffer.get_mut(x, y) {
+                    cell.symbol = ' ';
+                    cell.bg = Some(self.config.bg_color);
+                    cell.fg = Some(self.config.fg_color);
+                }
+            }
+        }
+    }
+
     /// Draw text at position
-    fn draw_text(&self, buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
+    pub(super) fn draw_text(&self, buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
         draw_text_overlay(buffer, x, y, text, color);
     }
 
