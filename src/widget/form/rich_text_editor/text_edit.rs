@@ -2,8 +2,8 @@
 //!
 //! This module contains text editing and block manipulation methods.
 
-use super::core::RichTextEditor;
 use super::undo::MAX_UNDO_HISTORY;
+use super::RichTextEditor;
 use super::{Block, EditOp};
 
 impl RichTextEditor {
@@ -25,15 +25,7 @@ impl RichTextEditor {
             self.undo_stack.remove(0);
         }
 
-        let block = &mut self.blocks[self.cursor.0];
-        let text = block.text();
-        let chars: Vec<char> = text.chars().collect();
-        let new_text: String = chars[..self.cursor.1]
-            .iter()
-            .chain(std::iter::once(&ch))
-            .chain(&chars[self.cursor.1..])
-            .collect();
-        block.set_text(new_text);
+        self.blocks[self.cursor.0].insert_char_at(self.cursor.1, ch);
         self.cursor.1 += 1;
     }
 
@@ -60,11 +52,7 @@ impl RichTextEditor {
             });
             self.redo_stack.clear();
 
-            let new_text: String = chars[..self.cursor.1 - 1]
-                .iter()
-                .chain(&chars[self.cursor.1..])
-                .collect();
-            block.set_text(new_text);
+            block.remove_char_at(self.cursor.1 - 1);
             self.cursor.1 -= 1;
         } else if self.cursor.0 > 0 {
             // Merge with previous block
@@ -88,11 +76,7 @@ impl RichTextEditor {
             });
             self.redo_stack.clear();
 
-            let new_text: String = chars[..self.cursor.1]
-                .iter()
-                .chain(&chars[self.cursor.1 + 1..])
-                .collect();
-            self.blocks[self.cursor.0].set_text(new_text);
+            self.blocks[self.cursor.0].remove_char_at(self.cursor.1);
         } else if self.cursor.0 + 1 < self.blocks.len() {
             // Merge with next block
             self.merge_with_next();
@@ -101,12 +85,7 @@ impl RichTextEditor {
 
     /// Split block at cursor
     fn split_block(&mut self) {
-        let block = &self.blocks[self.cursor.0];
-        let text = block.text();
-        let chars: Vec<char> = text.chars().collect();
-
-        let first_text: String = chars[..self.cursor.1].iter().collect();
-        let second_text: String = chars[self.cursor.1..].iter().collect();
+        let (first_text, second_text) = self.blocks[self.cursor.0].split_text_at(self.cursor.1);
 
         // Record for undo
         self.undo_stack.push(EditOp::SplitBlock {
@@ -130,7 +109,6 @@ impl RichTextEditor {
         }
 
         let prev_len = self.blocks[self.cursor.0 - 1].char_count();
-        let current_text = self.blocks[self.cursor.0].text();
 
         // Record for undo
         self.undo_stack.push(EditOp::MergeBlocks {
@@ -139,9 +117,7 @@ impl RichTextEditor {
         });
         self.redo_stack.clear();
 
-        let prev_text = self.blocks[self.cursor.0 - 1].text();
-        self.blocks[self.cursor.0 - 1].set_text(format!("{}{}", prev_text, current_text));
-        self.blocks.remove(self.cursor.0);
+        self.join_with_next(self.cursor.0 - 1);
         self.cursor.0 -= 1;
         self.cursor.1 = prev_len;
     }
@@ -152,10 +128,16 @@ impl RichTextEditor {
             return;
         }
 
-        let next_text = self.blocks[self.cursor.0 + 1].text();
-        let current_text = self.blocks[self.cursor.0].text();
-        self.blocks[self.cursor.0].set_text(format!("{}{}", current_text, next_text));
-        self.blocks.remove(self.cursor.0 + 1);
+        self.join_with_next(self.cursor.0);
+    }
+
+    /// Append the next block's text to block `index` and remove the next
+    /// block; the merged block keeps `index`'s type.
+    pub(super) fn join_with_next(&mut self, index: usize) {
+        let next_text = self.blocks[index + 1].text();
+        let current_text = self.blocks[index].text();
+        self.blocks[index].set_text(format!("{}{}", current_text, next_text));
+        self.blocks.remove(index + 1);
     }
 
     /// Delete current block

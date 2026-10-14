@@ -108,6 +108,10 @@ fn test_dialog_in_a_tiny_area() {
         editor.open_image_dialog();
         let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
         editor.render(&mut ctx);
+        // The box needs 2 columns after a 2-column margin on each side;
+        // below that only the editor is drawn
+        let corner = (0..buffer.height()).any(|y| super::row(&buffer, y).contains('┌'));
+        assert_eq!(corner, w >= 6, "{w}x{h}");
     }
 }
 

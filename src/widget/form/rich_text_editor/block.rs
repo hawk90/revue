@@ -129,6 +129,35 @@ impl Block {
         self.spans.iter().map(|s| s.text.chars().count()).sum()
     }
 
+    /// Insert `ch` before the character at `col`, as one plain span
+    pub(super) fn insert_char_at(&mut self, col: usize, ch: char) {
+        let text = self.text();
+        let chars: Vec<char> = text.chars().collect();
+        let new_text: String = chars[..col]
+            .iter()
+            .chain(std::iter::once(&ch))
+            .chain(&chars[col..])
+            .collect();
+        self.set_text(new_text);
+    }
+
+    /// Remove the character at `col`, leaving one plain span
+    pub(super) fn remove_char_at(&mut self, col: usize) {
+        let text = self.text();
+        let chars: Vec<char> = text.chars().collect();
+        let new_text: String = chars[..col].iter().chain(&chars[col + 1..]).collect();
+        self.set_text(new_text);
+    }
+
+    /// The text before and from character `col`
+    pub(super) fn split_text_at(&self, col: usize) -> (String, String) {
+        let text = self.text();
+        let chars: Vec<char> = text.chars().collect();
+        let first_text: String = chars[..col].iter().collect();
+        let second_text: String = chars[col..].iter().collect();
+        (first_text, second_text)
+    }
+
     /// Check if empty
     pub fn is_empty(&self) -> bool {
         self.len() == 0

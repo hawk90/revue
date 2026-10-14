@@ -3,7 +3,7 @@
 //! This module contains toolbar actions, markdown shortcuts, and key handling.
 
 use super::types::ToolbarAction;
-use super::{BlockType, DialogType, RichTextEditor};
+use super::{BlockType, RichTextEditor};
 use crate::event::Key;
 
 impl RichTextEditor {
@@ -116,72 +116,6 @@ impl RichTextEditor {
             Key::Tab => self.insert_str("    "),
 
             _ => return false,
-        }
-        true
-    }
-
-    /// Handle dialog key input
-    fn handle_dialog_key(&mut self, key: &Key) -> bool {
-        match &mut self.dialog {
-            DialogType::InsertLink { text, url, field } => match key {
-                Key::Tab => {
-                    *field = (*field + 1) % 2;
-                }
-                Key::Enter => {
-                    let t = text.clone();
-                    let u = url.clone();
-                    self.dialog = DialogType::None;
-                    self.insert_link(&t, &u);
-                }
-                Key::Escape => {
-                    self.dialog = DialogType::None;
-                }
-                Key::Char(ch) => {
-                    if *field == 0 {
-                        text.push(*ch);
-                    } else {
-                        url.push(*ch);
-                    }
-                }
-                Key::Backspace => {
-                    if *field == 0 {
-                        text.pop();
-                    } else {
-                        url.pop();
-                    }
-                }
-                _ => return false,
-            },
-            DialogType::InsertImage { alt, src, field } => match key {
-                Key::Tab => {
-                    *field = (*field + 1) % 2;
-                }
-                Key::Enter => {
-                    let a = alt.clone();
-                    let s = src.clone();
-                    self.dialog = DialogType::None;
-                    self.insert_image(&a, &s);
-                }
-                Key::Escape => {
-                    self.dialog = DialogType::None;
-                }
-                Key::Char(ch) => {
-                    if *field == 0 {
-                        alt.push(*ch);
-                    } else {
-                        src.push(*ch);
-                    }
-                }
-                Key::Backspace => {
-                    if *field == 0 {
-                        alt.pop();
-                    } else {
-                        src.pop();
-                    }
-                }
-                _ => return false,
-            },
-            DialogType::None => return false,
         }
         true
     }

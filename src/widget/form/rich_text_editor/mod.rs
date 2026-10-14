@@ -8,10 +8,12 @@ pub mod block;
 pub mod core;
 pub mod cursor;
 pub mod dialog;
+mod dialog_view;
 pub mod editing;
 mod editor_view;
 pub mod format;
 pub mod link;
+mod markdown;
 mod preview;
 pub mod selection;
 pub mod text_edit;
@@ -19,16 +21,17 @@ pub mod text_format;
 mod toolbar;
 pub mod types;
 pub mod undo;
+mod view;
 
 // KEEP HERE - Private implementation tests in tests/ directory (accesses private fields of RichTextEditor)
 #[cfg(test)]
 mod tests;
 
-use crate::widget::traits::{RenderContext, View};
+use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 // Public exports (also used internally)
 pub use block::{Block, BlockType, FormattedSpan};
-pub use core::RichTextEditor;
 pub use link::{ImageRef, Link};
 pub use text_format::TextFormat;
 pub use types::{EditorViewMode, ToolbarAction};
@@ -93,53 +96,97 @@ pub(super) enum DialogType {
     },
 }
 
-impl View for RichTextEditor {
-    crate::impl_view_meta!("RichTextEditor");
+/// Rich text editor widget
+#[derive(Clone)]
+pub struct RichTextEditor {
+    /// Document blocks
+    blocks: Vec<Block>,
+    /// Cursor position (block, col)
+    cursor: (usize, usize),
+    /// Selection anchor (if selecting)
+    anchor: Option<(usize, usize)>,
+    /// Scroll offset
+    scroll: usize,
+    /// Current format for new text
+    current_format: TextFormat,
+    /// Undo stack
+    undo_stack: Vec<EditOp>,
+    /// Redo stack
+    redo_stack: Vec<EditOp>,
+    /// View mode
+    view_mode: EditorViewMode,
+    /// Show toolbar
+    show_toolbar: bool,
+    /// Focused state
+    focused: bool,
+    /// Active dialog
+    dialog: DialogType,
+    /// Colors
+    bg: Option<Color>,
+    fg: Option<Color>,
+    toolbar_bg: Color,
+    toolbar_fg: Color,
+    toolbar_active_bg: Color,
+    cursor_bg: Color,
+    selection_bg: Color,
+    preview_bg: Color,
+    heading_fg: Color,
+    code_bg: Color,
+    quote_fg: Color,
+    link_fg: Color,
+    /// Widget props
+    props: crate::widget::traits::WidgetProps,
+}
 
-    fn render(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
-        if area.width < 2 || area.height < 1 {
-            return;
-        }
+/// The editor's own fill and text color when nothing says otherwise.
+///
+/// These live here rather than in `new()` because an `Option` filled in at
+/// construction cannot express "the builder said nothing" - the state a
+/// stylesheet needs to reach. The default is applied where the color is
+/// painted instead.
+const EDITOR_BG: Color = Color::rgb(30, 30, 46);
+const EDITOR_FG: Color = Color::rgb(205, 214, 244);
 
-        // Fill background
-        let bg = self
-            .bg
-            .unwrap_or_else(|| ctx.css_background(core::EDITOR_BG));
-        ctx.fill_box_background(bg);
-
-        let mut y: u16 = 0;
-
-        // Render toolbar if enabled
-        if self.show_toolbar {
-            self.render_toolbar(ctx, 0, y, area.width);
-            y += 1;
-        }
-
-        let content_height = area
-            .height
-            .saturating_sub(if self.show_toolbar { 1 } else { 0 });
-
-        match self.view_mode {
-            EditorViewMode::Editor => {
-                self.render_editor(ctx, 0, y, area.width, content_height);
-            }
-            EditorViewMode::Preview => {
-                self.render_preview(ctx, 0, y, area.width, content_height);
-            }
-            EditorViewMode::Split => {
-                let half_width = area.width / 2;
-                self.render_editor(ctx, 0, y, half_width, content_height);
-                self.render_preview(ctx, half_width, y, area.width - half_width, content_height);
-            }
-        }
-
-        // Render dialog if open
-        if self.is_dialog_open() {
-            self.render_dialog(ctx, 0, 0, area.width, area.height);
+impl RichTextEditor {
+    /// Create a new rich text editor
+    pub fn new() -> Self {
+        Self {
+            blocks: vec![Block::paragraph("")],
+            cursor: (0, 0),
+            anchor: None,
+            scroll: 0,
+            current_format: TextFormat::default(),
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+            view_mode: EditorViewMode::Editor,
+            show_toolbar: true,
+            focused: true,
+            dialog: DialogType::None,
+            bg: None,
+            fg: None,
+            toolbar_bg: Color::rgb(49, 50, 68),
+            toolbar_fg: Color::rgb(166, 173, 200),
+            toolbar_active_bg: Color::rgb(137, 180, 250),
+            cursor_bg: Color::rgb(166, 227, 161),
+            selection_bg: Color::rgb(69, 71, 90),
+            preview_bg: Color::rgb(24, 24, 37),
+            heading_fg: Color::rgb(137, 180, 250),
+            code_bg: Color::rgb(49, 50, 68),
+            quote_fg: Color::rgb(166, 173, 200),
+            link_fg: Color::rgb(137, 180, 250),
+            props: crate::widget::traits::WidgetProps::new(),
         }
     }
 }
+
+impl Default for RichTextEditor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl_styled_view!(RichTextEditor);
+impl_props_builders!(RichTextEditor);
 
 /// Create a new rich text editor
 pub fn rich_text_editor() -> RichTextEditor {

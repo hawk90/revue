@@ -2,7 +2,7 @@
 //!
 //! This module contains text formatting and block type operations.
 
-use super::core::RichTextEditor;
+use super::RichTextEditor;
 use super::{BlockType, EditOp, TextFormat};
 
 impl RichTextEditor {

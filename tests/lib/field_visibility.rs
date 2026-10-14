@@ -47,7 +47,6 @@ const OPEN_FIELDS: &[(&str, &str, usize)] = &[
     ("widget/developer/httpclient/client.rs", "HttpClient", 11),
     ("widget/developer/httpclient/request.rs", "HttpRequest", 1),
     ("widget/filepicker/mod.rs", "FilePicker", 23),
-    ("widget/form/rich_text_editor/core.rs", "RichTextEditor", 24),
     ("widget/input/input_widgets/combobox/mod.rs", "Combobox", 26),
     ("widget/input/input_widgets/select/mod.rs", "Select", 18),
     ("widget/multi_select/types.rs", "MultiSelect", 13),
