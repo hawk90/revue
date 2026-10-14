@@ -2,6 +2,7 @@
 
 mod boundary;
 mod content_sized;
+mod props;
 
 mod snapshots {
     use revue::prelude::*;
