@@ -11,7 +11,14 @@ use revue::widget::sidebar_section_titled;
 
 #[test]
 fn test_sidebar_helper_creates_sidebar() {
-    let _sidebar = sidebar();
+    let sb = sidebar();
+    // The same empty sidebar as Sidebar::new()
+    assert!(sb.visible_items().is_empty());
+    assert_eq!(sb.current_width(), 24);
+    assert_eq!(
+        super::render_rows(&sb, 30, 3),
+        super::render_rows(&revue::widget::Sidebar::new(), 30, 3)
+    );
 }
 
 // =========================================================================

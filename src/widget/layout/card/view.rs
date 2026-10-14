@@ -1,13 +1,14 @@
 //! Drawing the card (frame, header, body, footer, shadow) and measuring it
 
-use super::super::super::border::BorderType;
-use super::super::types::CardVariant;
+use super::super::border::BorderType;
+use super::types::CardVariant;
 use super::Card;
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::border::BorderChars;
 use crate::utils::unicode::char_width;
-use crate::widget::theme::{DARK_BG, LIGHT_GRAY};
+use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View};
 
 impl Card {
@@ -29,75 +30,15 @@ impl Card {
         }
     }
 
-    /// Get effective colors based on variant and state
-    /// [`effective_colors`](Self::effective_colors), with the stylesheet
-    /// filling in whatever the builder left unset.
-    ///
-    /// The builder is the inline style and wins; a variant's defaults are the
-    /// bottom row, below the stylesheet. Same precedence as every other paint
-    /// property in the crate.
-    fn effective_colors_with_css(&self, ctx: &RenderContext) -> (Option<Color>, Color, Color) {
-        let (bg, border, title) = self.effective_colors();
-
-        let css_bg = ctx
-            .style
-            .map(|s| s.visual.background)
-            .filter(|c| *c != Color::default());
-        let bg = self.bg_color.or(css_bg).or(bg);
-
-        let border = match (self.border_color, ctx.css_border_or_text_color()) {
-            (Some(explicit), _) => explicit,
-            (None, Some(css)) => css,
-            (None, None) => border,
-        };
-
-        (bg, border, title)
+    /// Whether the parts below the title and subtitle show: always, unless
+    /// the card is collapsible and collapsed
+    fn shown(&self) -> bool {
+        self.expanded || !self.collapsible
     }
 
-    /// The border to draw: the stylesheet's if it named one, else the builder's.
-    ///
-    /// See `Border::border_type_with_css` - a stylesheet that said nothing
-    /// leaves the builder's choice alone, and `border-style: none` removes the
-    /// border.
-    fn border_type_with_css(&self, ctx: &RenderContext) -> BorderType {
-        match ctx.css_border_style() {
-            None => self.border,
-            Some(crate::style::BorderStyle::None) => BorderType::None,
-            Some(crate::style::BorderStyle::Solid) | Some(crate::style::BorderStyle::Dashed) => {
-                BorderType::Single
-            }
-            Some(crate::style::BorderStyle::Double) => BorderType::Double,
-            Some(crate::style::BorderStyle::Rounded) => BorderType::Rounded,
-        }
-    }
-
-    fn effective_colors(&self) -> (Option<Color>, Color, Color) {
-        let default_bg: Option<Color> = match self.variant {
-            CardVariant::Outlined => None,
-            CardVariant::Filled => Some(Color::rgb(30, 30, 35)),
-            CardVariant::Elevated => Some(Color::rgb(35, 35, 40)),
-            CardVariant::Flat => None,
-        };
-
-        let default_border = match self.variant {
-            CardVariant::Outlined => Color::rgb(60, 60, 70),
-            CardVariant::Filled => Color::rgb(50, 50, 60),
-            CardVariant::Elevated => Color::rgb(70, 70, 80),
-            CardVariant::Flat => DARK_BG,
-        };
-
-        let default_title = Color::WHITE;
-
-        let bg = self.bg_color.or(default_bg);
-        let border = self.border_color.unwrap_or(default_border);
-        let title = self.title_color.unwrap_or(default_title);
-
-        // Adjust for focus state
-        if self.state.focused && self.clickable {
-            (bg, Color::CYAN, title)
-        } else {
-            (bg, border, title)
-        }
+    /// Whether anything sits above the body: a title, subtitle or header
+    fn has_header(&self) -> bool {
+        self.title.is_some() || self.subtitle.is_some() || self.header.is_some()
     }
 }
 
@@ -113,7 +54,7 @@ impl View for Card {
     /// The frame counted is the builder's: a stylesheet `border-style`
     /// is applied at paint time, which `measure` cannot see.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
-        let shown = self.expanded || !self.collapsible;
+        let shown = self.shown();
         let frame: u16 = if self.border != BorderType::None {
             2
         } else {
@@ -123,7 +64,7 @@ impl View for Card {
 
         let mut rows = frame + shadow;
         rows += u16::from(self.title.is_some()) + u16::from(self.subtitle.is_some());
-        let has_header = self.title.is_some() || self.subtitle.is_some() || self.header.is_some();
+        let has_header = self.has_header();
         if shown {
             rows += u16::from(self.header.is_some());
             if let Some(body) = &self.body {
@@ -170,6 +111,89 @@ impl View for Card {
     }
 }
 
+/// The card's box after the shadow, and where its content goes (offsets
+/// within the widget)
+struct Inner {
+    area: Rect,
+    has_border: bool,
+    border_color: Color,
+    content_x: u16,
+    content_width: u16,
+}
+
+impl Inner {
+    fn new(area: Rect, has_border: bool, border_color: Color, padding: u16) -> Self {
+        // Content area (relative offsets within this widget)
+        let content_x = if has_border { 1 + padding } else { padding };
+        let content_width = if has_border {
+            area.width.saturating_sub(2 + padding * 2)
+        } else {
+            area.width.saturating_sub(padding * 2)
+        };
+        Self {
+            area,
+            has_border,
+            border_color,
+            content_x,
+            content_width,
+        }
+    }
+
+    /// The four corners and edges of the frame
+    fn draw_frame(&self, ctx: &mut RenderContext, chars: BorderChars) {
+        let area = self.area;
+        let border_color = self.border_color;
+        // Corners
+        ctx.set(0, 0, Cell::new(chars.top_left).fg(border_color));
+        ctx.set(
+            area.width - 1,
+            0,
+            Cell::new(chars.top_right).fg(border_color),
+        );
+        ctx.set(
+            0,
+            area.height - 1,
+            Cell::new(chars.bottom_left).fg(border_color),
+        );
+        ctx.set(
+            area.width - 1,
+            area.height - 1,
+            Cell::new(chars.bottom_right).fg(border_color),
+        );
+
+        // Top and bottom borders
+        for x in 1..area.width - 1 {
+            ctx.set(x, 0, Cell::new(chars.horizontal).fg(border_color));
+            ctx.set(
+                x,
+                area.height - 1,
+                Cell::new(chars.horizontal).fg(border_color),
+            );
+        }
+
+        // Side borders
+        for y in 1..area.height - 1 {
+            ctx.set(0, y, Cell::new(chars.vertical).fg(border_color));
+            ctx.set(
+                area.width - 1,
+                y,
+                Cell::new(chars.vertical).fg(border_color),
+            );
+        }
+    }
+
+    /// A `├───┤` row across the frame
+    fn draw_framed_separator(&self, ctx: &mut RenderContext, sep_y: u16) {
+        let area = self.area;
+        let border_color = self.border_color;
+        ctx.set(0, sep_y, Cell::new('├').fg(border_color));
+        ctx.set(area.width - 1, sep_y, Cell::new('┤').fg(border_color));
+        for x in 1..area.width - 1 {
+            ctx.set(x, sep_y, Cell::new('─').fg(border_color));
+        }
+    }
+}
+
 impl Card {
     /// Draw into `ctx.area`, already constrained.
     fn render_constrained(&self, ctx: &mut RenderContext) {
@@ -188,10 +212,27 @@ impl Card {
             ctx.fill_box_background(bg);
         }
 
-        // Draw shadow for elevated variant (inside area bounds). The shadow
-        // takes the last column and row and the card is drawn in what is
-        // left, so its border does not paint over the shadow.
-        let area = if self.variant == CardVariant::Elevated && area.width > 4 && area.height > 3 {
+        let area = self.draw_shadow(ctx, area);
+        let inner = Inner::new(area, has_border, border_color, self.padding);
+
+        // Draw border
+        if has_border {
+            inner.draw_frame(ctx, chars);
+        }
+
+        let mut current_y: u16 = if has_border { 1 } else { 0 };
+        current_y = self.draw_heading(ctx, &inner, title_color, current_y);
+        current_y = self.draw_header_separator(ctx, &inner, current_y);
+        current_y = self.draw_body(ctx, &inner, current_y);
+        self.draw_footer(ctx, &inner, current_y);
+    }
+
+    /// Draw shadow for elevated variant (inside area bounds). The shadow
+    /// takes the last column and row and the card is drawn in what is
+    /// left, so its border does not paint over the shadow. Returns the
+    /// card's box.
+    fn draw_shadow(&self, ctx: &mut RenderContext, area: Rect) -> Rect {
+        if self.variant == CardVariant::Elevated && area.width > 4 && area.height > 3 {
             let shadow_color = Color::rgb(20, 20, 20);
             // Right shadow (last column, below the card's top row)
             for y in 1..area.height {
@@ -208,61 +249,20 @@ impl Card {
             Rect::new(area.x, area.y, area.width - 1, area.height - 1)
         } else {
             area
-        };
-
-        // Draw border
-        if has_border {
-            // Corners
-            ctx.set(0, 0, Cell::new(chars.top_left).fg(border_color));
-            ctx.set(
-                area.width - 1,
-                0,
-                Cell::new(chars.top_right).fg(border_color),
-            );
-            ctx.set(
-                0,
-                area.height - 1,
-                Cell::new(chars.bottom_left).fg(border_color),
-            );
-            ctx.set(
-                area.width - 1,
-                area.height - 1,
-                Cell::new(chars.bottom_right).fg(border_color),
-            );
-
-            // Top and bottom borders
-            for x in 1..area.width - 1 {
-                ctx.set(x, 0, Cell::new(chars.horizontal).fg(border_color));
-                ctx.set(
-                    x,
-                    area.height - 1,
-                    Cell::new(chars.horizontal).fg(border_color),
-                );
-            }
-
-            // Side borders
-            for y in 1..area.height - 1 {
-                ctx.set(0, y, Cell::new(chars.vertical).fg(border_color));
-                ctx.set(
-                    area.width - 1,
-                    y,
-                    Cell::new(chars.vertical).fg(border_color),
-                );
-            }
         }
+    }
 
-        // Content area (relative offsets within this widget)
-        let content_x = if has_border {
-            1 + self.padding
-        } else {
-            self.padding
-        };
-        let content_width = if has_border {
-            area.width.saturating_sub(2 + self.padding * 2)
-        } else {
-            area.width.saturating_sub(self.padding * 2)
-        };
-        let mut current_y: u16 = if has_border { 1 } else { 0 };
+    /// The title (with the collapse icon), the subtitle and the custom
+    /// header, from row `current_y`. Returns the row below them.
+    fn draw_heading(
+        &self,
+        ctx: &mut RenderContext,
+        inner: &Inner,
+        title_color: Color,
+        mut current_y: u16,
+    ) -> u16 {
+        let content_x = inner.content_x;
+        let content_width = inner.content_width;
 
         // Draw title
         if let Some(ref title) = self.title {
@@ -313,37 +313,46 @@ impl Card {
 
         // Draw custom header
         if let Some(ref header) = self.header {
-            if self.expanded || !self.collapsible {
+            if self.shown() {
                 let header_area = ctx.sub_area(content_x, current_y, content_width, 1);
                 ctx.render_child(header.as_ref(), header_area);
                 current_y += 1;
             }
         }
+        current_y
+    }
 
-        // Draw header separator if we have header content and body
-        let has_header = self.title.is_some() || self.subtitle.is_some() || self.header.is_some();
-        if has_header && self.body.is_some() && (self.expanded || !self.collapsible) {
+    /// Draw header separator if we have header content and body. Returns
+    /// the row below it.
+    fn draw_header_separator(
+        &self,
+        ctx: &mut RenderContext,
+        inner: &Inner,
+        mut current_y: u16,
+    ) -> u16 {
+        if self.has_header() && self.body.is_some() && self.shown() {
             // Separator line
             let sep_y = current_y;
-            if has_border {
-                ctx.set(0, sep_y, Cell::new('├').fg(border_color));
-                ctx.set(area.width - 1, sep_y, Cell::new('┤').fg(border_color));
-                for x in 1..area.width - 1 {
-                    ctx.set(x, sep_y, Cell::new('─').fg(border_color));
-                }
+            if inner.has_border {
+                inner.draw_framed_separator(ctx, sep_y);
             } else {
-                for x in 0..area.width {
+                for x in 0..inner.area.width {
                     ctx.set(x, sep_y, Cell::new('─').fg(Color::rgb(50, 50, 50)));
                 }
             }
             current_y += 1;
         }
+        current_y
+    }
 
-        // Draw body (only if expanded or not collapsible)
+    /// Draw body (only if expanded or not collapsible) in the rows down to
+    /// the footer. Returns the row below it.
+    fn draw_body(&self, ctx: &mut RenderContext, inner: &Inner, mut current_y: u16) -> u16 {
+        let area = inner.area;
         if let Some(ref body) = self.body {
-            if self.expanded || !self.collapsible {
+            if self.shown() {
                 let footer_height = self.footer_height();
-                let body_end = if has_border {
+                let body_end = if inner.has_border {
                     area.height - 1 - footer_height
                 } else {
                     area.height - footer_height
@@ -351,17 +360,23 @@ impl Card {
                 let body_height = body_end.saturating_sub(current_y);
 
                 if body_height > 0 {
-                    let body_area = ctx.sub_area(content_x, current_y, content_width, body_height);
+                    let body_area =
+                        ctx.sub_area(inner.content_x, current_y, inner.content_width, body_height);
                     ctx.render_child(body.as_ref(), body_area);
                     current_y += body_height;
                 }
             }
         }
+        current_y
+    }
 
-        // Draw footer separator and content
+    /// Draw footer separator and content on the card's last rows, if
+    /// `current_y` has not passed the separator
+    fn draw_footer(&self, ctx: &mut RenderContext, inner: &Inner, current_y: u16) {
+        let area = inner.area;
         if let Some(ref footer) = self.footer {
-            if self.expanded || !self.collapsible {
-                let footer_y = if has_border {
+            if self.shown() {
+                let footer_y = if inner.has_border {
                     area.height - 2
                 } else {
                     area.height - 1
@@ -375,16 +390,13 @@ impl Card {
                 // footer never drew the footer at all.
                 let sep_y = footer_y - 1;
                 if sep_y >= current_y {
-                    if has_border {
-                        ctx.set(0, sep_y, Cell::new('├').fg(border_color));
-                        ctx.set(area.width - 1, sep_y, Cell::new('┤').fg(border_color));
-                        for x in 1..area.width - 1 {
-                            ctx.set(x, sep_y, Cell::new('─').fg(border_color));
-                        }
+                    if inner.has_border {
+                        inner.draw_framed_separator(ctx, sep_y);
                     }
 
                     // Footer content
-                    let footer_area = ctx.sub_area(content_x, footer_y, content_width, 1);
+                    let footer_area =
+                        ctx.sub_area(inner.content_x, footer_y, inner.content_width, 1);
                     ctx.render_child(footer.as_ref(), footer_area);
                 }
             }

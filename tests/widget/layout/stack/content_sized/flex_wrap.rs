@@ -149,3 +149,24 @@ fn a_wrapping_row_given_the_whole_screen_stacks_its_lines_from_the_top() {
         "aaabbb\nccc"
     );
 }
+
+/// An item wider than the row (here sized by the builder; a measured one is
+/// cut to the row) stays on the first line rather than leaving it empty.
+#[test]
+fn a_first_item_wider_than_the_row_stays_on_the_first_line() {
+    fn wide_first() -> Stack {
+        vstack()
+            .child(
+                hstack()
+                    .class("tags")
+                    .child_sized(Text::new("abcdefgh"), 8)
+                    .child(Text::new("x")),
+            )
+            .child(Text::new("after"))
+    }
+    // With a gap, an empty first line would show as a blank row
+    assert_eq!(
+        draw_at(".tags { flex-wrap: wrap; gap: 1; }", 5, 6, wide_first),
+        "abcde\n\nx\nafter"
+    );
+}
