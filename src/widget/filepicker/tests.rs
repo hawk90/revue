@@ -65,14 +65,19 @@ fn test_picker_entry_format_size() {
 
 #[test]
 fn test_navigation() {
-    let mut picker = FilePicker::new();
-    let _initial_dir = picker.current_dir.clone();
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("a.txt"), "").unwrap();
+    std::fs::write(dir.path().join("b.txt"), "").unwrap();
+    let mut picker = FilePicker::new().start_dir(dir.path());
 
-    // These tests depend on filesystem, so just check basic operations
     picker.highlight_next();
+    assert_eq!(picker.highlighted, 1);
     picker.highlight_previous();
+    assert_eq!(picker.highlighted, 0);
 
-    assert!(!picker.history.is_empty());
+    // Moving the highlight never touches the history.
+    assert_eq!(picker.history, vec![dir.path().to_path_buf()]);
+    assert_eq!(picker.history_idx, 0);
 }
 
 #[test]
@@ -120,23 +125,15 @@ fn test_reject_double_dot_backslash() {
     // On Unix, backslash is a valid filename character, not a path separator
     // On Windows, this would be detected as path traversal
     let result = picker.try_set_start_dir("..\\..\\system32");
-    // On Unix: this is a valid path with weird backslashes, might not exist
-    // On Windows: should be rejected as traversal
     #[cfg(windows)]
     {
-        assert!(result.is_err());
-        if let Err(FilePickerError::PathTraversal(_)) = result {
-            // Expected
-        } else {
-            panic!("Expected PathTraversal error");
-        }
+        assert!(matches!(result, Err(FilePickerError::PathTraversal(_))));
     }
     #[cfg(not(windows))]
     {
-        // On Unix, backslash is just a character - the path validation
-        // will catch it via component check (.. is a ParentDir component)
-        // We just check the function doesn't panic
-        let _ = result;
+        // One ordinary component on Unix: accepted (it need not exist).
+        let picker = result.expect("a name with backslashes is a plain name on Unix");
+        assert_eq!(picker.current_dir, PathBuf::from("..\\..\\system32"));
     }
 }
 
@@ -159,12 +156,12 @@ fn test_navigate_to_rejects_traversal() {
 
 #[test]
 fn test_allow_valid_paths() {
-    let picker = FilePicker::new();
-    // Valid absolute path should work (if it exists)
-    if let Ok(current) = std::env::current_dir() {
-        let result = picker.try_set_start_dir(&current);
-        assert!(result.is_ok());
-    }
+    let dir = tempfile::tempdir().unwrap();
+    let picker = FilePicker::new()
+        .try_set_start_dir(dir.path())
+        .expect("an existing absolute directory is accepted");
+    assert_eq!(picker.current_dir, dir.path());
+    assert_eq!(picker.history, vec![dir.path().to_path_buf()]);
 }
 
 #[test]
@@ -176,25 +173,31 @@ fn test_allow_current_directory() {
 
 #[test]
 fn test_go_up_stays_safe() {
-    let mut picker = FilePicker::new();
-    let _initial_dir = picker.current_dir().to_path_buf();
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    std::fs::create_dir(root.join("sub")).unwrap();
+    let mut picker = FilePicker::new().start_dir(root.join("sub"));
+
     picker.go_up();
-    // go_up should always navigate to parent, which should be valid
-    // (may or may not change directory depending on where we started)
+    assert_eq!(picker.current_dir, root);
+    assert_eq!(picker.history, vec![root.join("sub"), root.clone()]);
+    assert_eq!(picker.history_idx, 1);
+    assert_eq!(picker.highlighted_entry().unwrap().name, "sub");
 }
 
 #[test]
 fn test_enter_directory_safe() {
-    let mut picker = FilePicker::new();
-    // Navigate within the picker should be safe
-    picker.highlight_next();
-    if let Some(entry) = picker.highlighted_entry() {
-        if entry.is_dir {
-            let _initial_dir = picker.current_dir().to_path_buf();
-            picker.enter();
-            // Either we navigated or stayed, but shouldn't panic
-        }
-    }
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    std::fs::create_dir(root.join("sub")).unwrap();
+    std::fs::write(root.join("sub").join("inner.txt"), "").unwrap();
+    let mut picker = FilePicker::new().start_dir(&root);
+
+    assert!(picker.highlighted_entry().unwrap().is_dir);
+    assert!(picker.enter().is_none());
+    assert_eq!(picker.current_dir, root.join("sub"));
+    assert_eq!(picker.history_idx, 1);
+    assert_eq!(picker.highlighted_entry().unwrap().name, "inner.txt");
 }
 
 #[test]
@@ -215,13 +218,24 @@ fn test_path_traversal_error_message() {
 
 #[test]
 fn test_outside_directory_error() {
-    let mut picker = FilePicker::new();
-    // Try to navigate to a path outside the current directory tree
-    // This test is platform-dependent, so we just check the function doesn't panic
-    let outside_path = Path::new("/tmp/revue_test_nonexistent_outside");
-    let _result = picker.navigate_to(outside_path);
-    // Should either succeed (if path exists) or fail with appropriate error
-    // but should not panic
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    std::fs::create_dir(root.join("a")).unwrap();
+    std::fs::create_dir(root.join("b")).unwrap();
+    let mut picker = FilePicker::new().start_dir(root.join("a"));
+
+    // "b" exists but is not inside the current directory "a".
+    let result = picker.navigate_to(&root.join("b"));
+    assert!(matches!(
+        result,
+        Err(FilePickerError::OutsideAllowedDirectory)
+    ));
+    assert_eq!(picker.current_dir, root.join("a"));
+    assert_eq!(picker.history.len(), 1);
+
+    // A path that does not exist is not a directory: ignored, not an error.
+    assert!(picker.navigate_to(&root.join("a").join("missing")).is_ok());
+    assert_eq!(picker.current_dir, root.join("a"));
 }
 
 // Additional security hardening tests
@@ -242,23 +256,19 @@ fn test_reject_null_byte_in_path() {
 
 #[test]
 fn test_reject_windows_reserved_names() {
-    // Test Windows reserved device names
-    #[cfg(windows)]
-    {
-        let reserved_names = ["CON", "PRN", "AUX", "NUL", "COM1", "LPT1"];
-        for name in reserved_names {
-            let picker = FilePicker::new();
-            let path = PathBuf::from("/tmp").join(name);
-            // try_set_start_dir returns Result - just verify it doesn't panic
-            // The validation should handle reserved names gracefully
-            let _ = picker.try_set_start_dir(&path);
-        }
-    }
-    #[cfg(not(windows))]
-    {
-        // On non-Windows, this test is not applicable
-        // Just verify that FilePicker creation doesn't panic
-        let _picker = FilePicker::new();
+    let reserved_names = ["CON", "PRN", "AUX", "NUL", "COM1", "LPT1"];
+    for name in reserved_names {
+        let picker = FilePicker::new();
+        let path = PathBuf::from("/tmp").join(name);
+        let result = picker.try_set_start_dir(&path);
+        #[cfg(windows)]
+        assert!(
+            matches!(result, Err(FilePickerError::ReservedDeviceName(_))),
+            "{name}"
+        );
+        // Only Windows reserves these names.
+        #[cfg(not(windows))]
+        assert!(result.is_ok(), "{name}");
     }
 }
 
