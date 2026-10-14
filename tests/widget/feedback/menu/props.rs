@@ -30,7 +30,7 @@ fn kind() -> impl Strategy<Value = Kind> {
 }
 
 /// Menus of 0..6 items. The first item is never a separator: `open_menu`
-/// selects index 0 whatever it is (menu-audit issue), which the model
+/// selects index 0 whatever it is (#1050), which the model
 /// below does not copy.
 fn menus() -> impl Strategy<Value = Vec<Vec<Kind>>> {
     prop::collection::vec(
@@ -246,7 +246,7 @@ proptest! {
     /// The context menu: Up and Down stop at the ends, Enter runs the
     /// item unless it is disabled and closes, Escape closes, and a hidden
     /// menu takes no keys. No separators: they are selectable and drawn as
-    /// blank rows (menu-audit issue about ContextMenu ignoring item state).
+    /// blank rows (#1051).
     #[test]
     fn prop_context_menu_keys_match_model(
         disabled in prop::collection::vec(any::<bool>(), 0..6),
@@ -326,7 +326,7 @@ proptest! {
         let open = pick.index(titles.len());
         let x0 = titles[..open].iter().map(|t| display_width(t) as u16 + 2).sum::<u16>();
         // The first menu's dropdown in a one-column area panics when it has
-        // an item row (menu-audit issue about the MenuBar dropdown)
+        // an item row (#1050)
         prop_assume!(!(x0 == 0 && w == 1 && h >= 3));
         let width_of = |labels: &[(&str, Option<&str>)]| {
             labels
@@ -337,8 +337,8 @@ proptest! {
         };
         let mut labels = labels;
         // In a dropdown cut narrower than its items, a shortcut is drawn over
-        // the left border and past it (menu-audit issue about the MenuBar
-        // dropdown): cut dropdowns are checked without shortcuts
+        // the left border and past it (#1050):
+        // cut dropdowns are checked without shortcuts
         if width_of(&labels) > w.saturating_sub(x0) {
             for (_, s) in labels.iter_mut() {
                 *s = None;

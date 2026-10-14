@@ -123,7 +123,7 @@ fn test_context_menu_render() {
     menu.render(&mut ctx);
     // A 9x6 box at (5, 5): the widest label "Paste" plus borders and padding.
     // Only the frame and the labels are checked: the separator and shortcut
-    // rows are the menu-audit issue about ContextMenu ignoring item state.
+    // rows are #1051.
     let text = |x0: u16, y: u16, w: u16| -> String {
         (x0..x0 + w)
             .map(|x| buffer.get(x, y).unwrap().symbol)
