@@ -1,5 +1,6 @@
 //! Slider value handling: clamping, stepping, increment/decrement
 
+use proptest::prelude::*;
 use revue::widget::{slider, slider_range};
 
 #[test]
@@ -119,4 +120,79 @@ fn test_slider_range_with_nan_bound_keeps_the_old_bound() {
 
     let s = slider_range(10.0, f64::NAN).value(500.0);
     assert_eq!(s.get_value(), 100.0);
+}
+
+#[derive(Clone, Debug)]
+enum Op {
+    Set(f64),
+    Increment,
+    Decrement,
+    Min,
+    Max,
+}
+
+fn op() -> impl Strategy<Value = Op> {
+    prop_oneof![
+        prop_oneof![
+            -1e4f64..1e4,
+            Just(f64::NAN),
+            Just(f64::INFINITY),
+            Just(f64::NEG_INFINITY),
+        ]
+        .prop_map(Op::Set),
+        Just(Op::Increment),
+        Just(Op::Decrement),
+        Just(Op::Min),
+        Just(Op::Max),
+    ]
+}
+
+proptest! {
+    /// After any operations the value is inside the range and on the step
+    /// grid from `min`, or the maximum itself.
+    #[test]
+    fn prop_slider_value_stays_in_range_on_the_step(
+        a in -1e3f64..1e3,
+        b in -1e3f64..1e3,
+        step in prop_oneof![Just(0.0), 0.01f64..50.0],
+        ops in prop::collection::vec(op(), 0..30),
+    ) {
+        // The step before the range, so the first value is snapped too
+        // (`step` does not snap the value it has, #1011)
+        let mut s = slider().step(step).range(a, b);
+        let (min, max) = (a.min(b), a.max(b));
+        for o in &ops {
+            match *o {
+                Op::Set(v) => s.set_value(v),
+                Op::Increment => s.increment(),
+                Op::Decrement => s.decrement(),
+                Op::Min => s.set_min(),
+                Op::Max => s.set_max(),
+            }
+            let v = s.get_value();
+            prop_assert!((min..=max).contains(&v), "{} not in {}..={} after {:?}", v, min, max, o);
+            if step > 0.0 && v != max {
+                let steps = (v - min) / step;
+                prop_assert!((steps - steps.round()).abs() < 1e-6, "{} off the grid of {} after {:?}", v, step, o);
+            }
+        }
+    }
+
+    /// With a step, an increment that moves the value and stays below the
+    /// maximum is undone by a decrement, exactly. (An increment that would
+    /// pass the maximum may not move at all, #1012.)
+    #[test]
+    fn prop_slider_increment_then_decrement_returns(
+        // Mostly below the top, so few cases are skipped
+        step in 0.01f64..25.0,
+        start in 0.0f64..=75.0,
+    ) {
+        let mut s = slider().step(step);
+        s.set_value(start);
+        let before = s.get_value();
+        s.increment();
+        prop_assume!(s.get_value() > before && s.get_value() < 100.0);
+        s.decrement();
+        prop_assert_eq!(s.get_value(), before);
+    }
 }

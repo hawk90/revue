@@ -3,6 +3,7 @@
 mod basic;
 mod events;
 mod value;
+mod view;
 
 use revue::layout::Rect;
 use revue::render::Buffer;
