@@ -1,10 +1,6 @@
-//! Core types for the multi-select widget tests
+//! Builder and constructor tests for the multi-select widget
 
-use revue::layout::Rect;
-use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::traits::RenderContext;
-use revue::widget::View;
 use revue::widget::{MultiSelect, MultiSelectOption};
 
 /// Every option label, in option order (read through `select_all`).
@@ -15,70 +11,6 @@ fn labels(select: &MultiSelect) -> Vec<String> {
         .into_iter()
         .map(String::from)
         .collect()
-}
-
-/// Render into an `area_width` x 1 buffer and return the column of the
-/// dropdown arrow, which the widget draws in the last column it occupies.
-fn rendered_width(select: &MultiSelect, area_width: u16) -> u16 {
-    let mut buffer = Buffer::new(area_width, 1);
-    let area = Rect::new(0, 0, area_width, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    select.render(&mut ctx);
-    let arrow = (0..area_width)
-        .find(|&x| buffer.get(x, 0).map(|c| c.symbol) == Some('▼'))
-        .expect("dropdown arrow should be drawn");
-    arrow + 1
-}
-
-// MultiSelectOption tests
-
-#[test]
-fn test_multiselectoption_new() {
-    let option = MultiSelectOption::new("Apple", "apple");
-
-    assert_eq!(option.label, "Apple");
-    assert_eq!(option.value, "apple");
-    assert!(!option.disabled);
-}
-
-#[test]
-fn test_multiselectoption_new_with_string_types() {
-    let option = MultiSelectOption::new(String::from("Label"), String::from("value"));
-
-    assert_eq!(option.label, "Label");
-    assert_eq!(option.value, "value");
-}
-
-#[test]
-fn test_multiselectoption_simple() {
-    let option = MultiSelectOption::simple("Apple");
-
-    assert_eq!(option.label, "Apple");
-    assert_eq!(option.value, "Apple");
-    assert!(!option.disabled);
-}
-
-#[test]
-fn test_multiselectoption_disabled_true() {
-    let option = MultiSelectOption::simple("Apple").disabled(true);
-    assert!(option.disabled);
-}
-
-#[test]
-fn test_multiselectoption_disabled_false() {
-    let option = MultiSelectOption::simple("Apple").disabled(false);
-    assert!(!option.disabled);
-}
-
-#[test]
-fn test_multiselectoption_clone() {
-    let option1 = MultiSelectOption::new("Apple", "apple").disabled(true);
-
-    let option2 = option1.clone();
-
-    assert_eq!(option1.label, option2.label);
-    assert_eq!(option1.value, option2.value);
-    assert_eq!(option1.disabled, option2.disabled);
 }
 
 // MultiSelect tests - Constructors
@@ -299,40 +231,6 @@ fn test_multiselect_highlight_fg() {
 fn test_multiselect_tag_bg() {
     let select = MultiSelect::new().tag_bg(Color::BLUE);
     assert_eq!(select.get_tag_bg(), Some(Color::BLUE));
-}
-
-// MultiSelect tests - Display width (observed through the rendered arrow)
-
-#[test]
-fn test_display_width_with_custom_width() {
-    let select = MultiSelect::new().width(30);
-    assert_eq!(rendered_width(&select, 100), 30);
-}
-
-#[test]
-fn test_display_width_custom_width_capped_by_max() {
-    let select = MultiSelect::new().width(150);
-    assert_eq!(rendered_width(&select, 100), 100);
-}
-
-#[test]
-fn test_display_width_from_options() {
-    let select = MultiSelect::new().options(vec!["Apple", "Banana", "Strawberry"]);
-    // "Strawberry" (10) + 4 = 14
-    assert_eq!(rendered_width(&select, 100), 14);
-}
-
-#[test]
-fn test_display_width_from_placeholder_when_empty() {
-    let select = MultiSelect::new().placeholder("Select an item please");
-    // "Select an item please" (21) + 4 = 25
-    assert_eq!(rendered_width(&select, 100), 25);
-}
-
-#[test]
-fn test_display_width_capped_by_max() {
-    let select = MultiSelect::new().options(vec!["Very long option name that exceeds maximum"]);
-    assert_eq!(rendered_width(&select, 20), 20);
 }
 
 // MultiSelect tests - Chained builders

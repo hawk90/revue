@@ -1,6 +1,6 @@
 //! Constructor functions for the multi-select widget
 
-use super::types::MultiSelect;
+use super::MultiSelect;
 
 /// Create a basic multi-select widget
 ///
