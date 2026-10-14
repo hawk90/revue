@@ -5,20 +5,77 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::render::Modifier;
 use revue::style::Color;
+use revue::style::{Style, VisualStyle};
 use revue::widget::alert;
+use revue::widget::theme::{DISABLED_FG, LIGHT_GRAY, SECONDARY_TEXT};
 use revue::widget::traits::RenderContext;
 use revue::widget::Alert;
 use revue::widget::AlertLevel;
 use revue::widget::AlertVariant;
 use revue::widget::StyledView;
 use revue::widget::View;
+use revue::widget::{error_alert, info_alert, success_alert, warning_alert};
+
+mod view;
+
+/// Render `alert` into a fresh `w` x `h` buffer.
+fn draw(alert: &Alert, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    alert.render(&mut ctx);
+    buffer
+}
+
+/// Render `alert` with a stylesheet that sets `color` and `background`
+/// (`Color::default()` leaves one unset).
+fn draw_css(alert: &Alert, w: u16, h: u16, color: Color, background: Color) -> Buffer {
+    let style = Style {
+        visual: VisualStyle {
+            color,
+            background,
+            ..VisualStyle::default()
+        },
+        ..Default::default()
+    };
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::with_style(&mut buffer, Rect::new(0, 0, w, h), &style);
+    alert.render(&mut ctx);
+    buffer
+}
+
+/// Row `y` as text, continuation cells left out.
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .filter(|&c| c != '\0')
+        .collect()
+}
+
+/// Every cell, row by row.
+fn cells(buffer: &Buffer) -> Vec<revue::render::Cell> {
+    (0..buffer.height())
+        .flat_map(|y| (0..buffer.width()).map(move |x| *buffer.get(x, y).unwrap()))
+        .collect()
+}
+
+/// Whether nothing was drawn.
+fn blank(buffer: &Buffer) -> bool {
+    cells(buffer)
+        .iter()
+        .all(|c| c.symbol == ' ' && c.fg.is_none() && c.bg.is_none())
+}
 
 // ==================== Constructor Tests ====================
 
 #[test]
 fn test_alert_new() {
-    let _a = Alert::new("Test message");
-    // Private field - just verify it compiles
+    // Filled, Info, with the icon: a rounded box around "ℹ message"
+    let a = Alert::new("Test message");
+    let b = draw(&a, 30, 3);
+    assert_eq!(row(&b, 0), format!("╭{}╮", "─".repeat(28)));
+    assert_eq!(row(&b, 1), format!("{:<29}│", "│ ℹ Test message"));
+    assert_eq!(row(&b, 2), format!("╰{}╯", "─".repeat(28)));
+    assert!(!a.is_dismissed());
 }
 
 #[test]
@@ -33,76 +90,112 @@ fn test_alert_default() {
 
 #[test]
 fn test_alert_helper() {
-    let _a = alert("Test message");
-    // Private field - just verify it compiles
+    assert_eq!(
+        cells(&draw(&alert("Test message"), 30, 3)),
+        cells(&draw(&Alert::new("Test message"), 30, 3))
+    );
 }
 
 // ==================== Builder Tests ====================
 
 #[test]
 fn test_alert_title() {
-    let _a = Alert::new("Message").title("Title");
-    // Private field - just verify it compiles
+    // The title takes the first row, bold and white; the message moves below
+    let b = draw(&Alert::new("Message").title("Title"), 30, 4);
+    assert_eq!(row(&b, 1), format!("{:<29}│", "│ ℹ Title"));
+    assert_eq!(row(&b, 2), format!("{:<29}│", "│   Message"));
+    let title = b.get(4, 1).unwrap();
+    assert_eq!(title.fg, Some(Color::WHITE));
+    assert!(title.modifier.contains(Modifier::BOLD));
+    let message = b.get(4, 2).unwrap();
+    assert_eq!(message.fg, Some(SECONDARY_TEXT));
+    assert!(!message.modifier.contains(Modifier::BOLD));
 }
 
 #[test]
 fn test_alert_level() {
-    let _a = Alert::new("Message").level(AlertLevel::Warning);
-    // Private field - just verify it compiles
+    let b = draw(&Alert::new("Message").level(AlertLevel::Warning), 30, 3);
+    let icon = b.get(2, 1).unwrap();
+    assert_eq!((icon.symbol, icon.fg), ('⚠', Some(Color::YELLOW)));
+    assert_eq!(b.get(0, 0).unwrap().fg, Some(Color::rgb(180, 120, 0)));
+    assert_eq!(b.get(10, 1).unwrap().bg, Some(Color::rgb(50, 35, 0)));
 }
 
 #[test]
 fn test_alert_variant() {
-    let _a = Alert::new("Message").variant(AlertVariant::Minimal);
-    // Private field - just verify it compiles
+    // Minimal: no box, the icon and the message on one row
+    let a = Alert::new("Message").variant(AlertVariant::Minimal);
+    let b = draw(&a, 30, 3);
+    assert_eq!(row(&b, 0).trim_end(), "ℹ Message");
+    assert!(row(&b, 1).trim().is_empty());
+    assert_eq!(a.height(), 1);
 }
 
 #[test]
 fn test_alert_dismissible() {
-    let _a = Alert::new("Message").dismissible(true);
-    // Private field - just verify it compiles
+    // The `×` sits two columns in from the right border, on the first row
+    let mut a = Alert::new("Message").dismissible(true);
+    let b = draw(&a, 30, 3);
+    let x = b.get(27, 1).unwrap();
+    assert_eq!((x.symbol, x.fg), ('×', Some(LIGHT_GRAY)));
+    assert!(a.handle_key(&Key::Char('x')));
+    assert!(blank(&draw(&a, 30, 3)));
 }
 
 #[test]
 fn test_alert_not_dismissible() {
-    let _a = Alert::new("Message").dismissible(false);
-    // Private field - just verify it compiles
+    let mut a = Alert::new("Message").dismissible(false);
+    let b = draw(&a, 30, 3);
+    assert!(!(0..3).any(|y| row(&b, y).contains('×')));
+    assert!(!a.handle_key(&Key::Char('x')));
+    assert!(!a.is_dismissed());
 }
 
 #[test]
 fn test_alert_focused() {
-    let _a = Alert::new("Test").focused(true);
-    // Private field - just verify it compiles
+    assert!(Alert::new("Test").focused(true).is_focused());
+    assert!(!Alert::new("Test").is_focused());
 }
 
 #[test]
 fn test_alert_not_focused() {
-    let _a = Alert::new("Test").focused(false);
-    // Private field - just verify it compiles
+    assert!(!Alert::new("Test").focused(true).focused(false).is_focused());
 }
 
 #[test]
 fn test_alert_disabled() {
-    let _a = Alert::new("Test").disabled(true);
-    // Private field - just verify it compiles
+    // A disabled outlined alert greys its message
+    let a = Alert::new("Test")
+        .variant(AlertVariant::Outlined)
+        .disabled(true);
+    assert!(a.is_disabled());
+    let b = draw(&a, 20, 1);
+    assert_eq!(b.get(4, 0).unwrap().symbol, 'T');
+    assert_eq!(b.get(4, 0).unwrap().fg, Some(DISABLED_FG));
 }
 
 #[test]
 fn test_alert_not_disabled() {
-    let _a = Alert::new("Test").disabled(false);
-    // Private field - just verify it compiles
+    let a = Alert::new("Test")
+        .variant(AlertVariant::Outlined)
+        .disabled(true)
+        .disabled(false);
+    assert!(!a.is_disabled());
+    assert_eq!(draw(&a, 20, 1).get(4, 0).unwrap().fg, Some(Color::WHITE));
 }
 
 #[test]
 fn test_alert_icon() {
-    let _a = Alert::new("Message").icon(true);
-    // Private field - just verify it compiles
+    let b = draw(&Alert::new("Message").icon(true), 30, 3);
+    assert_eq!(row(&b, 1), format!("{:<29}│", "│ ℹ Message"));
+    assert_eq!(b.get(2, 1).unwrap().fg, Some(Color::CYAN));
 }
 
 #[test]
 fn test_alert_no_icon() {
-    let _a = Alert::new("Message").icon(false);
-    // Private field - just verify it compiles
+    // Without the icon the message starts where the icon was
+    let b = draw(&Alert::new("Message").icon(false), 30, 3);
+    assert_eq!(row(&b, 1), format!("{:<29}│", "│ Message"));
 }
 
 #[test]
@@ -118,19 +211,32 @@ fn test_alert_custom_icon() {
 
 #[test]
 fn test_alert_fg() {
-    let _a = Alert::new("Message").fg(Color::RED);
-    // Private field - just verify it compiles
+    // The outlined and minimal variants draw the message in `fg`
+    // (the filled one keeps white: #799)
+    for (variant, x) in [(AlertVariant::Outlined, 4), (AlertVariant::Minimal, 2)] {
+        let b = draw(
+            &Alert::new("Message").variant(variant).fg(Color::RED),
+            20,
+            1,
+        );
+        assert_eq!(b.get(x, 0).unwrap().symbol, 'M', "{variant:?}");
+        assert_eq!(b.get(x, 0).unwrap().fg, Some(Color::RED), "{variant:?}");
+    }
 }
 
 #[test]
 fn test_alert_bg() {
-    let _a = Alert::new("Message").bg(Color::BLUE);
-    // Private field - just verify it compiles
+    // The filled background is the level's, and a stylesheet background
+    // replaces it. (`.bg()` itself changes nothing yet: #799.)
+    let b = draw(&Alert::new("Message").level(AlertLevel::Error), 20, 3);
+    assert!((0..20).all(|x| b.get(x, 1).unwrap().bg == Some(Color::rgb(50, 0, 0))));
+    let css = draw_css(&Alert::new("Message"), 20, 3, Color::default(), Color::BLUE);
+    assert!((0..20).all(|x| css.get(x, 1).unwrap().bg == Some(Color::BLUE)));
 }
 
 #[test]
 fn test_alert_builder_chain() {
-    let _a = Alert::new("Message")
+    let a = Alert::new("Message")
         .title("Title")
         .level(AlertLevel::Warning)
         .variant(AlertVariant::Filled)
@@ -140,7 +246,11 @@ fn test_alert_builder_chain() {
         .icon(true)
         .fg(Color::WHITE)
         .bg(Color::BLACK);
-    // Just verify it compiles
+    let b = draw(&a, 30, 4);
+    assert_eq!(row(&b, 1), format!("{:<27}× │", "│ ⚠ Title"));
+    assert_eq!(row(&b, 2), format!("{:<29}│", "│   Message"));
+    assert_eq!(b.get(0, 0).unwrap().fg, Some(Color::rgb(180, 120, 0)));
+    assert_eq!(a.height(), 4);
 }
 
 // ==================== Dismissal Tests ====================
@@ -335,41 +445,77 @@ fn test_alert_variant_partial_eq() {
 
 #[test]
 fn test_alert_variant_all_variants() {
-    let _ = AlertVariant::Filled;
-    let _ = AlertVariant::Outlined;
-    let _ = AlertVariant::Minimal;
+    // Each variant's frame: a box, a bar down the left edge, or none
+    let frame = |v| draw(&Alert::new("m").icon(false).variant(v), 10, 3);
+    let filled = frame(AlertVariant::Filled);
+    assert_eq!(
+        (0..3)
+            .map(|y| filled.get(0, y).unwrap().symbol)
+            .collect::<String>(),
+        "╭│╰"
+    );
+    let outlined = frame(AlertVariant::Outlined);
+    assert_eq!(
+        (0..3)
+            .map(|y| outlined.get(0, y).unwrap().symbol)
+            .collect::<String>(),
+        "┃┃┃"
+    );
+    let minimal = frame(AlertVariant::Minimal);
+    assert_eq!(row(&minimal, 0).trim_end(), "m");
+    assert!(row(&minimal, 1).trim().is_empty() && row(&minimal, 2).trim().is_empty());
 }
 
 // ==================== Helper Functions Tests ====================
 
 #[test]
 fn test_alert_helper_function() {
-    let _a = alert("Test message");
-    // Just verify it compiles
+    // The free helpers build the same alerts as the constructors
+    let pairs = [
+        (info_alert("m"), Alert::info("m")),
+        (success_alert("m"), Alert::success("m")),
+        (warning_alert("m"), Alert::warning("m")),
+        (error_alert("m"), Alert::error("m")),
+    ];
+    for (helper, ctor) in pairs {
+        assert_eq!(cells(&draw(&helper, 20, 3)), cells(&draw(&ctor, 20, 3)));
+    }
 }
 
 #[test]
 fn test_alert_info_helper() {
-    let _a = Alert::info("Info message");
-    // Just verify it compiles
+    let b = draw(&Alert::info("Info message"), 30, 3);
+    let icon = b.get(2, 1).unwrap();
+    assert_eq!((icon.symbol, icon.fg), ('ℹ', Some(Color::CYAN)));
+    assert_eq!(icon.bg, Some(Color::rgb(0, 30, 50)));
+    assert!(row(&b, 1).contains("Info message"));
 }
 
 #[test]
 fn test_alert_success_helper() {
-    let _a = Alert::success("Success message");
-    // Just verify it compiles
+    let b = draw(&Alert::success("Success message"), 30, 3);
+    let icon = b.get(2, 1).unwrap();
+    assert_eq!((icon.symbol, icon.fg), ('✓', Some(Color::GREEN)));
+    assert_eq!(icon.bg, Some(Color::rgb(0, 35, 0)));
+    assert!(row(&b, 1).contains("Success message"));
 }
 
 #[test]
 fn test_alert_warning_helper() {
-    let _a = Alert::warning("Warning message");
-    // Just verify it compiles
+    let b = draw(&Alert::warning("Warning message"), 30, 3);
+    let icon = b.get(2, 1).unwrap();
+    assert_eq!((icon.symbol, icon.fg), ('⚠', Some(Color::YELLOW)));
+    assert_eq!(icon.bg, Some(Color::rgb(50, 35, 0)));
+    assert!(row(&b, 1).contains("Warning message"));
 }
 
 #[test]
 fn test_alert_error_helper() {
-    let _a = Alert::error("Error message");
-    // Just verify it compiles
+    let b = draw(&Alert::error("Error message"), 30, 3);
+    let icon = b.get(2, 1).unwrap();
+    assert_eq!((icon.symbol, icon.fg), ('✗', Some(Color::RED)));
+    assert_eq!(icon.bg, Some(Color::rgb(50, 0, 0)));
+    assert!(row(&b, 1).contains("Error message"));
 }
 
 // ==================== Height Tests ====================
@@ -516,13 +662,11 @@ fn test_alert_render_with_custom_icon() {
 
 #[test]
 fn test_alert_render_too_small_area() {
-    let mut buffer = Buffer::new(40, 5);
-    let too_small = Rect::new(0, 0, 3, 1);
-    let mut ctx = RenderContext::new(&mut buffer, too_small);
-
-    let alert = Alert::new("Test message");
-    alert.render(&mut ctx);
-    // Should not crash
+    // Under five columns nothing is drawn; at five the box starts
+    for w in 0..5 {
+        assert!(blank(&draw(&Alert::new("Test message"), w, 3)), "{w}");
+    }
+    assert_eq!(row(&draw(&Alert::new("Test message"), 5, 3), 0), "╭───╮");
 }
 
 #[test]
@@ -634,122 +778,168 @@ fn test_alert_builder_styled_methods() {
 
 #[test]
 fn test_alert_color_builders() {
-    use revue::style::Color;
-
-    let alert = Alert::new("Test").fg(Color::RED).bg(Color::BLUE);
-    let _ = alert;
+    // `fg` outranks the stylesheet's color
+    let a = Alert::new("Test").variant(AlertVariant::Outlined);
+    let css = draw_css(&a, 20, 1, Color::MAGENTA, Color::default());
+    assert_eq!(css.get(4, 0).unwrap().fg, Some(Color::MAGENTA));
+    let both = draw_css(&a.fg(Color::RED), 20, 1, Color::MAGENTA, Color::default());
+    assert_eq!(both.get(4, 0).unwrap().fg, Some(Color::RED));
 }
 
 // ==================== Edge Cases ====================
 
 #[test]
 fn test_alert_empty_message() {
-    let _a = Alert::new("");
-    // Just verify it compiles
+    let b = draw(&Alert::new(""), 20, 3);
+    assert_eq!(row(&b, 1), format!("{:<19}│", "│ ℹ"));
+    let b = draw(&Alert::new("").variant(AlertVariant::Minimal), 20, 1);
+    assert_eq!(row(&b, 0).trim_end(), "ℹ");
 }
 
 #[test]
 fn test_alert_unicode_message() {
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let alert = Alert::new("Hello 世界 🌍");
-    alert.render(&mut ctx);
-    // Should handle unicode without panic
+    // The filled alert draws wide glyphs with their continuation cells
+    let b = draw(&Alert::new("Hello 世界 🌍"), 40, 3);
+    let text = row(&b, 1);
+    assert!(
+        text.starts_with("│ ℹ Hello 世界 🌍 ") && text.ends_with(" │"),
+        "{text}"
+    );
+    assert_eq!(b.get(10, 1).unwrap().symbol, '世');
+    assert!(b.get(11, 1).unwrap().is_continuation());
+    assert_eq!(b.get(12, 1).unwrap().symbol, '界');
+    assert!(b.get(13, 1).unwrap().is_continuation());
 }
 
 #[test]
 fn test_alert_special_characters_message() {
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let alert = Alert::new("!@#$%^&*()");
-    alert.render(&mut ctx);
-    // Should handle special characters
+    let b = draw(&Alert::new("!@#$%^&*()"), 40, 3);
+    assert_eq!(row(&b, 1), format!("{:<39}│", "│ ℹ !@#$%^&*()"));
 }
 
 #[test]
 fn test_alert_very_long_message() {
+    // The message is cut at the right padding
     let long_msg = "This is an extremely long alert message that contains a lot of text and would normally wrap or truncate in most UI scenarios but the widget should handle it gracefully without panicking or crashing.";
-    let _a = Alert::new(long_msg);
-    // Just verify it compiles
+    let b = draw(&Alert::new(long_msg).icon(false), 20, 3);
+    assert_eq!(row(&b, 1), "│ This is an extre │");
 }
 
 #[test]
 fn test_alert_zero_area() {
-    let mut buffer = Buffer::new(10, 5);
-    let area = Rect::new(0, 0, 0, 0);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let a = Alert::new("Test");
-    a.render(&mut ctx);
-    // Should handle zero area gracefully
+    for (w, h) in [(0, 0), (0, 5), (10, 0)] {
+        let mut buffer = Buffer::new(10, 5);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+        Alert::new("Test").render(&mut ctx);
+        assert!(blank(&buffer), "{w}x{h}");
+    }
 }
 
 #[test]
 fn test_alert_newline_in_message() {
-    let msg = "Line 1\nLine 2\nLine 3";
-    let _a = Alert::new(msg);
-    // Just verify it compiles
+    // The first line is drawn where the message starts. (What follows it
+    // is drawn on the same row, run together: see the alert issue from the
+    // #930 audit.)
+    let b = draw(&Alert::new("Line 1\nLine 2\nLine 3"), 40, 3);
+    assert!(row(&b, 1).starts_with("│ ℹ Line 1"), "{}", row(&b, 1));
+    assert_eq!(Alert::new("Line 1\nLine 2\nLine 3").height(), 3);
 }
 
 #[test]
 fn test_alert_render_all_levels() {
-    for level in [
-        AlertLevel::Info,
-        AlertLevel::Success,
-        AlertLevel::Warning,
-        AlertLevel::Error,
-    ] {
-        let mut buffer = Buffer::new(40, 5);
-        let area = Rect::new(0, 0, 40, 5);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let alert = Alert::new("Test").level(level);
-        alert.render(&mut ctx);
-        // Should render without panic for all levels
+    // icon, accent, background, border
+    let cases = [
+        (
+            AlertLevel::Info,
+            'ℹ',
+            Color::CYAN,
+            Color::rgb(0, 30, 50),
+            Color::rgb(0, 100, 150),
+        ),
+        (
+            AlertLevel::Success,
+            '✓',
+            Color::GREEN,
+            Color::rgb(0, 35, 0),
+            Color::rgb(0, 120, 0),
+        ),
+        (
+            AlertLevel::Warning,
+            '⚠',
+            Color::YELLOW,
+            Color::rgb(50, 35, 0),
+            Color::rgb(180, 120, 0),
+        ),
+        (
+            AlertLevel::Error,
+            '✗',
+            Color::RED,
+            Color::rgb(50, 0, 0),
+            Color::rgb(150, 0, 0),
+        ),
+    ];
+    for (level, icon, accent, bg, border) in cases {
+        let b = draw(&Alert::new("Test").level(level), 40, 3);
+        let i = b.get(2, 1).unwrap();
+        assert_eq!(
+            (i.symbol, i.fg, i.bg),
+            (icon, Some(accent), Some(bg)),
+            "{level:?}"
+        );
+        let corner = b.get(0, 0).unwrap();
+        assert_eq!(
+            (corner.fg, corner.bg),
+            (Some(border), Some(bg)),
+            "{level:?}"
+        );
     }
 }
 
 #[test]
 fn test_alert_render_all_variants() {
-    for variant in [
-        AlertVariant::Filled,
-        AlertVariant::Outlined,
-        AlertVariant::Minimal,
+    // Only the filled variant paints a background, over its whole area
+    let bg = Color::rgb(0, 30, 50);
+    for (variant, painted) in [
+        (AlertVariant::Filled, true),
+        (AlertVariant::Outlined, false),
+        (AlertVariant::Minimal, false),
     ] {
-        let mut buffer = Buffer::new(40, 5);
-        let area = Rect::new(0, 0, 40, 5);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let alert = Alert::new("Test").variant(variant);
-        alert.render(&mut ctx);
-        // Should render without panic for all variants
+        let b = draw(&Alert::new("Test").variant(variant), 40, 5);
+        let all = (0..5).all(|y| (0..40).all(|x| b.get(x, y).unwrap().bg == Some(bg)));
+        let none = (0..5).all(|y| (0..40).all(|x| b.get(x, y).unwrap().bg.is_none()));
+        assert_eq!((all, none), (painted, !painted), "{variant:?}");
     }
 }
 
 #[test]
 fn test_alert_focused_rendering() {
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let alert = Alert::new("Test").focused(true);
-    alert.render(&mut ctx);
-    // Should render with focus indication
+    // Focus has no look of its own without a stylesheet: a `:focus` rule
+    // reaches the alert through the style it is drawn with
+    for variant in [
+        AlertVariant::Filled,
+        AlertVariant::Outlined,
+        AlertVariant::Minimal,
+    ] {
+        let plain = Alert::new("Test").variant(variant);
+        let focused = plain.clone().focused(true);
+        assert_eq!(cells(&draw(&focused, 40, 3)), cells(&draw(&plain, 40, 3)));
+    }
 }
 
 #[test]
 fn test_alert_disabled_rendering() {
-    let mut buffer = Buffer::new(40, 5);
-    let area = Rect::new(0, 0, 40, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let alert = Alert::new("Test").disabled(true);
-    alert.render(&mut ctx);
-    // Should render with disabled styling
+    // The outlined and minimal variants grey the message; the icon keeps its
+    // accent
+    for (variant, x) in [(AlertVariant::Outlined, 4), (AlertVariant::Minimal, 2)] {
+        let b = draw(&Alert::new("Test").variant(variant).disabled(true), 40, 1);
+        assert_eq!(b.get(x, 0).unwrap().symbol, 'T', "{variant:?}");
+        assert_eq!(b.get(x, 0).unwrap().fg, Some(DISABLED_FG), "{variant:?}");
+        assert_eq!(
+            b.get(x - 2, 0).unwrap().fg,
+            Some(Color::CYAN),
+            "{variant:?}"
+        );
+    }
 }
 
 #[test]

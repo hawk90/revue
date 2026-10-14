@@ -441,70 +441,44 @@ mod render {
 
     #[test]
     fn test_modal_render_small_area_no_panic() {
-        // Test that rendering in very small areas doesn't panic
-        // This is the fix for issue #154
-
-        // Width = 0
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 0, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Width = 1
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 1, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Width = 2
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 2, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Height = 0
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 0);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Height = 1
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Height = 2
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 2);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
-
-        // Both width and height = 0
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 0, 0);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        let mut m = Modal::new().title("Test").ok();
-        m.show();
-        m.render(&mut ctx); // Should not panic
+        // Rendering in very small areas doesn't panic (issue #154), and a
+        // modal with no room draws nothing: under six columns there is no
+        // box, and under three rows no height
+        for (w, h) in [
+            (0, 24),
+            (1, 24),
+            (2, 24),
+            (5, 24),
+            (80, 0),
+            (80, 1),
+            (80, 2),
+            (0, 0),
+        ] {
+            let mut buffer = Buffer::new(80, 24);
+            let area = Rect::new(0, 0, w, h);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            let mut m = Modal::new().title("Test").ok();
+            m.show();
+            m.render(&mut ctx);
+            let blank = (0..24).all(|y| (0..80).all(|x| buffer.get(x, y).unwrap().symbol == ' '));
+            assert!(blank, "{w}x{h}");
+        }
     }
 
     #[test]
     fn test_modal_render_text_content_in_short_area() {
         // With text content the line loop compares against the bottom of
         // the modal, which used to underflow for modals under 2 rows
+        let text = |buffer: &Buffer| -> String {
+            (0..24)
+                .map(|y| {
+                    (0..80)
+                        .map(|x| buffer.get(x, y).unwrap().symbol)
+                        .collect::<String>()
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
         for height in 0..=4 {
             let mut buffer = Buffer::new(80, 24);
             let area = Rect::new(0, 0, 80, height);
@@ -512,25 +486,55 @@ mod render {
             let mut m = Modal::new().content("Line one\nLine two").ok();
             m.show();
             m.render(&mut ctx);
+            // At four rows only an empty two-row box fits; below that, nothing
+            let drawn = text(&buffer);
+            assert!(!drawn.contains("Line"), "{height}");
+            assert_eq!(drawn.contains('┌'), height == 4, "{height}");
+            assert!((height..24).all(|y| (0..80).all(|x| buffer.get(x, y).unwrap().symbol == ' ')));
 
             let mut buffer = Buffer::new(80, 24);
             let mut ctx = RenderContext::new(&mut buffer, area);
             let mut m = Modal::new().title("Test").content("Body").ok();
             m.show();
             m.render(&mut ctx);
+            // At three and four rows the title is drawn outside its box (the
+            // modal issue from the #930 audit), so only the smaller areas are
+            // checked
+            if height <= 2 {
+                assert!(text(&buffer).trim().is_empty(), "{height}");
+            }
         }
     }
 
     #[test]
     fn test_modal_render_width_2_border() {
-        // Specific test for width=2 which was mentioned in the issue
-        let mut buffer = Buffer::new(10, 10);
-        let area = Rect::new(0, 0, 4, 10); // Small width after subtracting 4 for margins
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let mut m = Modal::new().title("X").width(2).height(4);
-        m.show();
-        m.render(&mut ctx); // Should not panic
+        // A 2-wide modal needs a 6-wide area (two columns of margin each
+        // side); in a 4-wide one there is no room and nothing is drawn
+        let rows = |area_w: u16| -> Vec<String> {
+            let mut buffer = Buffer::new(10, 10);
+            let area = Rect::new(0, 0, area_w, 10);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            let mut m = Modal::new().title("X").width(2).height(4);
+            m.show();
+            m.render(&mut ctx);
+            (0..10)
+                .map(|y| {
+                    (0..10)
+                        .map(|x| buffer.get(x, y).unwrap().symbol)
+                        .collect::<String>()
+                })
+                .collect()
+        };
+        assert!(rows(4).iter().all(|r| r.trim().is_empty()));
+        let six = rows(6);
+        assert_eq!(
+            &six[3..7],
+            ["  ┌┐      ", "  ││      ", "  ││      ", "  └┘      "]
+        );
+        assert!(six[..3]
+            .iter()
+            .chain(&six[7..])
+            .all(|r| r.trim().is_empty()));
     }
 
     #[test]
