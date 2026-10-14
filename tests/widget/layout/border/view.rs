@@ -217,6 +217,30 @@ fn test_border_measure_adds_the_frame_to_the_child() {
     );
 }
 
+/// A max below the min counts as the min (the rule of the shared
+/// `constraints::constrain`): the frame is drawn at the min size.
+#[test]
+fn test_border_min_wins_over_a_smaller_max() {
+    let mut buffer = Buffer::new(10, 6);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 10, 6));
+    Border::new().min_size(6, 4).max_size(3, 2).render(&mut ctx);
+
+    let rows: Vec<String> = (0..6)
+        .map(|y| (0..10).map(|x| buffer.get(x, y).unwrap().symbol).collect())
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            "┌────┐    ",
+            "│    │    ",
+            "│    │    ",
+            "└────┘    ",
+            "          ",
+            "          "
+        ]
+    );
+}
+
 /// A child that writes 20 cells from its origin straight into the buffer,
 /// past its own area.
 struct Spill;
