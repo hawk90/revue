@@ -134,6 +134,29 @@ fn show_restarts_the_delay() {
 }
 
 #[test]
+fn auto_takes_the_right_before_the_left() {
+    // Three rows: no room above or below; room on both sides.
+    let t = Tooltip::new("Test")
+        .position(TooltipPosition::Auto)
+        .anchor(20, 1);
+    let buffer = render_in(&t, 40, 3);
+    assert_eq!(find(&buffer, "│ Test │"), Some((22, 1)));
+    assert_eq!(symbol(&buffer, 21, 1), '◀');
+}
+
+#[test]
+fn the_delay_counter_stops_at_the_delay() {
+    // Ticked every frame for longer than u16 can count: no overflow, and
+    // still shown.
+    let mut t = Tooltip::new("Long").delay(5).anchor(10, 5);
+    for _ in 0..70_000 {
+        t.tick();
+    }
+    assert_eq!(t.get_delay_counter(), 5);
+    assert!(find(&render_in(&t, 30, 12), "Long").is_some());
+}
+
+#[test]
 fn the_box_is_pushed_back_from_the_left_and_right_edges() {
     // Centered under an anchor near an edge the box would cross it; it is
     // moved along the edge and drawn whole.

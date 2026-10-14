@@ -262,7 +262,7 @@ impl Case {
 /// past the area
 fn cases(
     widths: std::ops::Range<u16>,
-    heights: std::ops::Range<u16>,
+    heights: impl Strategy<Value = u16>,
     past: u16,
 ) -> impl Strategy<Value = Case> {
     (widths, heights)
@@ -287,9 +287,11 @@ fn cases(
         })
 }
 
-/// Any area, the anchor inside it or up to 2 cells past it
+/// Any area, the anchor inside it or up to 2 cells past it. Areas of 1 to
+/// 4 rows are half the cases, so Auto often finds no room above or below
+/// and has to choose between right and left.
 fn case() -> impl Strategy<Value = Case> {
-    cases(1..45, 1..16, 3)
+    cases(1..45, prop_oneof![1u16..5, 5u16..16], 3)
 }
 
 proptest! {
@@ -336,7 +338,7 @@ proptest! {
     /// With room on the side the box takes, the anchor's cell stays free
     /// and the arrow is in the cell next to it, pointing at it
     #[test]
-    fn prop_the_anchor_stays_free_and_the_arrow_points_at_it(c in cases(16..60, 8..24, 0)) {
+    fn prop_the_anchor_stays_free_and_the_arrow_points_at_it(c in cases(16..60, 8u16..24, 0)) {
         let (ax, ay) = c.anchor;
         let side = c.side_taken();
         // Without room the box is pushed over the anchor: #1045.
