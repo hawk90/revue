@@ -6,7 +6,10 @@ use revue::widget::traits::RenderContext;
 use revue::widget::CollapseMode;
 use revue::widget::Sidebar;
 use revue::widget::SidebarItem;
+use revue::widget::SidebarSection;
 use revue::widget::View;
+
+use super::{bar_width, is_blank, render_rows, row, screen, BAR_BG};
 
 // =========================================================================
 // Render edge case tests
@@ -14,46 +17,32 @@ use revue::widget::View;
 
 #[test]
 fn test_render_sidebar_too_narrow() {
-    let sidebar = Sidebar::new();
-    let mut buffer = Buffer::new(2, 10); // width < 3
-    let area = Rect::new(0, 0, 2, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    // Should not crash with too narrow area
-    sidebar.render(&mut ctx);
+    // width < 3: nothing is drawn
+    assert!(is_blank(&screen(&Sidebar::new().header("H"), 2, 10)));
 }
 
 #[test]
 fn test_render_sidebar_too_short() {
-    let sidebar = Sidebar::new();
-    let mut buffer = Buffer::new(10, 1); // height < 2
-    let area = Rect::new(0, 0, 10, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    // Should not crash with too short area
-    sidebar.render(&mut ctx);
+    // height < 2: nothing is drawn
+    assert!(is_blank(&screen(&Sidebar::new().header("H"), 10, 1)));
 }
 
 #[test]
 fn test_render_sidebar_zero_width() {
-    let sidebar = Sidebar::new();
-    let mut buffer = Buffer::new(0, 10);
-    let area = Rect::new(0, 0, 0, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    // Should not crash with zero width
+    let sidebar = Sidebar::new().items(vec![SidebarItem::new("a", "A")]);
+    let mut buffer = Buffer::new(10, 10);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 0, 10));
     sidebar.render(&mut ctx);
+    assert!(is_blank(&buffer));
 }
 
 #[test]
 fn test_render_sidebar_zero_height() {
-    let sidebar = Sidebar::new();
-    let mut buffer = Buffer::new(10, 0);
-    let area = Rect::new(0, 0, 10, 0);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    // Should not crash with zero height
+    let sidebar = Sidebar::new().items(vec![SidebarItem::new("a", "A")]);
+    let mut buffer = Buffer::new(10, 10);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 10, 0));
     sidebar.render(&mut ctx);
+    assert!(is_blank(&buffer));
 }
 
 // =========================================================================
@@ -65,17 +54,8 @@ fn test_render_sidebar_expanded_mode() {
     let sidebar = Sidebar::new()
         .collapse_mode(CollapseMode::Expanded)
         .expanded_width(20);
-
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Should render with expanded width
-    // Check that background was rendered
-    let cell = buffer.get(0, 0);
-    assert!(cell.is_some());
+    // The bar takes 20 columns, border last; the rest is untouched.
+    assert_eq!(bar_width(&screen(&sidebar, 30, 10)), 20);
 }
 
 #[test]
@@ -83,16 +63,7 @@ fn test_render_sidebar_collapsed_mode() {
     let sidebar = Sidebar::new()
         .collapse_mode(CollapseMode::Collapsed)
         .collapsed_width(5);
-
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Should render with collapsed width
-    let cell = buffer.get(0, 0);
-    assert!(cell.is_some());
+    assert_eq!(bar_width(&screen(&sidebar, 30, 10)), 5);
 }
 
 #[test]
@@ -102,16 +73,8 @@ fn test_render_sidebar_auto_mode_collapsed() {
         .collapse_threshold(15)
         .expanded_width(20)
         .collapsed_width(5);
-
-    let mut buffer = Buffer::new(10, 10); // width < threshold
-    let area = Rect::new(0, 0, 10, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Should auto-collapse when width < threshold
-    let cell = buffer.get(0, 0);
-    assert!(cell.is_some());
+    // width 10 < threshold 15: the collapsed width
+    assert_eq!(bar_width(&screen(&sidebar, 10, 10)), 5);
 }
 
 #[test]
@@ -121,16 +84,8 @@ fn test_render_sidebar_auto_mode_expanded() {
         .collapse_threshold(15)
         .expanded_width(20)
         .collapsed_width(5);
-
-    let mut buffer = Buffer::new(30, 10); // width >= threshold
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Should stay expanded when width >= threshold
-    let cell = buffer.get(0, 0);
-    assert!(cell.is_some());
+    // width 30 >= threshold 15: the expanded width
+    assert_eq!(bar_width(&screen(&sidebar, 30, 10)), 20);
 }
 
 // =========================================================================
@@ -140,66 +95,42 @@ fn test_render_sidebar_auto_mode_expanded() {
 #[test]
 fn test_render_sidebar_with_header() {
     let sidebar = Sidebar::new().header("Test Header");
-
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Header should be rendered
-    // Check for separator line after header
-    let cell = buffer.get(0, 1);
-    assert!(cell.is_some());
+    let rows = render_rows(&sidebar, 20, 10);
+    assert_eq!(rows[0], "    Test Header    │");
+    // The separator under it, up to the border
+    assert_eq!(rows[1], "───────────────────│");
 }
 
 #[test]
 fn test_render_sidebar_with_footer() {
     let sidebar = Sidebar::new().footer("Test Footer");
-
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Footer should be rendered
-    // Check for separator line before footer (at height - 2)
-    let cell = buffer.get(0, 8);
-    assert!(cell.is_some());
+    let rows = render_rows(&sidebar, 20, 10);
+    // Separator at height - 2, footer on the last row
+    assert_eq!(rows[8], "───────────────────│");
+    assert_eq!(rows[9], "    Test Footer    │");
 }
 
 #[test]
 fn test_render_sidebar_with_header_and_footer() {
-    let sidebar = Sidebar::new().header("Header").footer("Footer");
-
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Both header and footer should be rendered
-    let header_sep = buffer.get(0, 1);
-    let footer_sep = buffer.get(0, 8);
-    assert!(header_sep.is_some());
-    assert!(footer_sep.is_some());
+    let sidebar = Sidebar::new()
+        .header("Header")
+        .footer("Footer")
+        .items(vec![SidebarItem::new("a", "A")]);
+    let rows = render_rows(&sidebar, 20, 10);
+    assert_eq!(rows[0], "       Header      │");
+    assert_eq!(rows[1], "───────────────────│");
+    assert_eq!(rows[2], "   A               │");
+    assert_eq!(rows[8], "───────────────────│");
+    assert_eq!(rows[9], "       Footer      │");
 }
 
 #[test]
 fn test_render_sidebar_header_truncation() {
     let long_header = "This is a very long header that should be truncated";
     let sidebar = Sidebar::new().header(long_header).expanded_width(15);
-
-    let mut buffer = Buffer::new(15, 10);
-    let area = Rect::new(0, 0, 15, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Should not crash with long header
-    let cell = buffer.get(0, 0);
-    assert!(cell.is_some());
+    // Cut to 13 columns (two less than the bar) and centered; the border
+    // is drawn over the last column.
+    assert_eq!(render_rows(&sidebar, 15, 10)[0], " This is a ver│");
 }
 
 // =========================================================================
@@ -230,16 +161,14 @@ fn test_render_sidebar_border() {
     let sidebar = Sidebar::new()
         .border_color(revue::style::Color::rgb(255, 0, 0))
         .expanded_width(15);
-
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Right border should be rendered at width - 1
-    let border_cell = buffer.get(14, 0);
-    assert!(border_cell.is_some());
+    let buffer = screen(&sidebar, 20, 10);
+    // Right border at width - 1 on every row, in the border color
+    for y in 0..10 {
+        let cell = buffer.get(14, y).unwrap();
+        assert_eq!(cell.symbol, '│', "y={y}");
+        assert_eq!(cell.fg, Some(revue::style::Color::rgb(255, 0, 0)));
+    }
+    assert_eq!(bar_width(&buffer), 15);
 }
 
 // =========================================================================
@@ -248,21 +177,36 @@ fn test_render_sidebar_border() {
 
 #[test]
 fn test_render_sidebar_with_colors() {
+    let white = revue::style::Color::rgb(255, 255, 255);
+    let black = revue::style::Color::rgb(0, 0, 0);
+    let gray = revue::style::Color::rgb(128, 128, 128);
+    let cyan = revue::style::Color::rgb(0, 255, 255);
     let sidebar = Sidebar::new()
-        .fg(revue::style::Color::rgb(255, 255, 255))
-        .bg(revue::style::Color::rgb(0, 0, 0))
-        .border_color(revue::style::Color::rgb(128, 128, 128))
-        .section_color(revue::style::Color::rgb(0, 255, 255));
+        .fg(white)
+        .bg(black)
+        .border_color(gray)
+        .section_color(cyan)
+        .section(SidebarSection::titled(
+            "Sec",
+            vec![SidebarItem::new("a", "A"), SidebarItem::new("b", "B")],
+        ));
 
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Should render with configured colors
-    let cell = buffer.get(0, 0);
-    assert!(cell.is_some());
+    let buffer = screen(&sidebar, 20, 10);
+    // Section title in the section color on the bar background
+    let title = buffer.get(1, 0).unwrap();
+    assert_eq!(
+        (title.symbol, title.fg, title.bg),
+        ('S', Some(cyan), Some(black))
+    );
+    // A plain item in fg on bg (row 0, the section row, holds the hover)
+    let item = buffer.get(3, 2).unwrap();
+    assert_eq!(
+        (item.symbol, item.fg, item.bg),
+        ('B', Some(white), Some(black))
+    );
+    // Border and empty rows
+    assert_eq!(buffer.get(19, 5).unwrap().fg, Some(gray));
+    assert_eq!(buffer.get(0, 9).unwrap().bg, Some(black));
 }
 
 // =========================================================================
@@ -274,16 +218,10 @@ fn test_render_sidebar_content_width_clamping() {
     let sidebar = Sidebar::new()
         .expanded_width(30)
         .collapse_mode(CollapseMode::Expanded);
-
-    let mut buffer = Buffer::new(20, 10); // Smaller than expanded_width
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    sidebar.render(&mut ctx);
-
-    // Content width should be clamped to available width
-    let border_cell = buffer.get(19, 0); // At edge of buffer
-    assert!(border_cell.is_some());
+    // Content width is clamped to the 20 available columns
+    let buffer = screen(&sidebar, 20, 10);
+    assert_eq!(buffer.get(19, 0).unwrap().symbol, '│');
+    assert_eq!(bar_width(&buffer), 20);
 }
 
 // =========================================================================
@@ -292,71 +230,62 @@ fn test_render_sidebar_content_width_clamping() {
 
 #[test]
 fn test_render_empty_sidebar() {
-    let sidebar = Sidebar::new();
-
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    // Should not crash with empty sidebar
-    sidebar.render(&mut ctx);
+    let buffer = screen(&Sidebar::new(), 20, 10);
+    // An empty bar: its background and the border on every row
+    for y in 0..10 {
+        assert_eq!(row(&buffer, y), "                   │");
+        assert!((0..20).all(|x| buffer.get(x, y).unwrap().bg == Some(BAR_BG)));
+    }
 }
 
 #[test]
 fn test_sidebar_render() {
-    let mut buffer = Buffer::new(30, 20);
-    let area = Rect::new(0, 0, 30, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new()
         .header("My App")
         .items(vec![
-            SidebarItem::new("home", "Home").icon('🏠'),
-            SidebarItem::new("settings", "Settings").icon('⚙'),
+            SidebarItem::new("home", "Home").icon('H'),
+            SidebarItem::new("settings", "Settings").icon('S'),
         ])
         .footer("v1.0");
-
-    sb.render(&mut ctx);
+    let rows = render_rows(&sb, 30, 20);
+    assert_eq!(rows[0], "         My App        │      ");
+    assert_eq!(rows[1], "───────────────────────│      ");
+    assert_eq!(rows[2], "   H Home              │      ");
+    assert_eq!(rows[3], "   S Settings          │      ");
+    assert_eq!(rows[18], "───────────────────────│      ");
+    assert_eq!(rows[19], "          v1.0         │      ");
 }
 
 #[test]
 fn test_sidebar_render_collapsed() {
-    let mut buffer = Buffer::new(10, 20);
-    let area = Rect::new(0, 0, 10, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new()
         .collapse_mode(CollapseMode::Collapsed)
         .items(vec![
-            SidebarItem::new("home", "Home").icon('🏠'),
-            SidebarItem::new("settings", "Settings").icon('⚙'),
+            SidebarItem::new("home", "Home").icon('H'),
+            SidebarItem::new("settings", "Settings").icon('S'),
         ]);
-
-    sb.render(&mut ctx);
+    let rows = render_rows(&sb, 10, 20);
+    // Icons only, no labels
+    assert_eq!(rows[0], " H │      ");
+    assert_eq!(rows[1], " S │      ");
+    assert_eq!(rows[2], "   │      ");
 }
 
 #[test]
 fn test_sidebar_render_with_badge() {
-    let mut buffer = Buffer::new(30, 20);
-    let area = Rect::new(0, 0, 30, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new().items(vec![
-        SidebarItem::new("inbox", "Inbox").icon('📥').badge("99+"),
-        SidebarItem::new("sent", "Sent").icon('📤'),
+        SidebarItem::new("inbox", "Inbox").icon('I').badge("99+"),
+        SidebarItem::new("sent", "Sent").icon('S'),
     ]);
-
-    sb.render(&mut ctx);
+    let rows = render_rows(&sb, 30, 20);
+    // The badge ends two columns before the bar's edge
+    assert_eq!(rows[0], "   I Inbox         99+ │      ");
+    assert_eq!(rows[1], "   S Sent              │      ");
 }
 
 #[test]
 fn test_sidebar_render_small_area() {
-    let mut buffer = Buffer::new(2, 1);
-    let area = Rect::new(0, 0, 2, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let sb = Sidebar::new().items(vec![SidebarItem::new("a", "A")]);
-
-    // Should handle small area gracefully
-    sb.render(&mut ctx);
+    // Below the 3x2 minimum: nothing drawn
+    assert!(is_blank(&screen(&sb, 2, 1)));
 }
