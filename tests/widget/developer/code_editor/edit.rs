@@ -176,6 +176,52 @@ fn test_code_editor_keys_on_an_empty_editor() {
     );
 }
 
+#[test]
+fn test_code_editor_enter_indents_after_an_opener() {
+    // Each of `{ [ ( :` at the end of a line adds a level; anything else
+    // keeps the line's own indent
+    for (line, indent) in [
+        ("  if x {", "      "),
+        ("  v = [", "      "),
+        ("  f(", "      "),
+        ("  def f():", "      "),
+        ("  x = 1", "  "),
+    ] {
+        let mut editor = CodeEditor::new().content(line).bracket_matching(false);
+        editor.move_end();
+        editor.handle_key(&Key::Enter);
+        assert_eq!(editor.get_line(1).as_deref(), Some(indent), "{line:?}");
+        assert_eq!(editor.cursor_position(), (1, indent.len()), "{line:?}");
+    }
+}
+
+#[test]
+fn test_code_editor_indent_size_is_at_least_one() {
+    let mut editor = CodeEditor::new().indent_size(0);
+    editor.handle_key(&Key::Tab);
+    assert_eq!(editor.get_content(), " ");
+    let mut editor = CodeEditor::new().indent_size(2);
+    editor.handle_key(&Key::Tab);
+    assert_eq!(editor.get_content(), "  ");
+}
+
+#[test]
+fn test_code_editor_undo_keeps_the_last_100_edits() {
+    let mut editor = CodeEditor::new().bracket_matching(false);
+    for _ in 0..105 {
+        editor.insert_char('a');
+    }
+    for _ in 0..200 {
+        editor.undo();
+    }
+    // The first five edits fell off the history
+    assert_eq!(editor.get_content(), "aaaaa");
+    for _ in 0..200 {
+        editor.redo();
+    }
+    assert_eq!(editor.get_content(), "a".repeat(105));
+}
+
 fn key() -> impl Strategy<Value = Key> {
     prop_oneof![
         Just(Key::Char('a')),
