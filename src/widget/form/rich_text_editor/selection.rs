@@ -2,7 +2,7 @@
 //!
 //! This module contains methods for managing text selection.
 
-use super::core::RichTextEditor;
+use super::RichTextEditor;
 
 impl RichTextEditor {
     /// Start selection
@@ -20,14 +20,19 @@ impl RichTextEditor {
         self.anchor.is_some()
     }
 
-    /// Get selected text
-    pub fn get_selection(&self) -> Option<String> {
+    /// The selection's two ends in document order, (block, col) each
+    pub(super) fn selection_range(&self) -> Option<((usize, usize), (usize, usize))> {
         let anchor = self.anchor?;
-        let (start, end) = if anchor < self.cursor {
+        Some(if anchor < self.cursor {
             (anchor, self.cursor)
         } else {
             (self.cursor, anchor)
-        };
+        })
+    }
+
+    /// Get selected text
+    pub fn get_selection(&self) -> Option<String> {
+        let (start, end) = self.selection_range()?;
 
         let mut result = String::new();
         for block_idx in start.0..=end.0 {
@@ -55,15 +60,8 @@ impl RichTextEditor {
 
     /// Delete selection
     pub fn delete_selection(&mut self) {
-        let anchor = match self.anchor {
-            Some(a) => a,
-            None => return,
-        };
-
-        let (start, end) = if anchor < self.cursor {
-            (anchor, self.cursor)
-        } else {
-            (self.cursor, anchor)
+        let Some((start, end)) = self.selection_range() else {
+            return;
         };
 
         if start.0 == end.0 {
