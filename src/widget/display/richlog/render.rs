@@ -1,7 +1,8 @@
-//! Drawing the log: the prefix columns, the message, expanded details and the
-//! scroll indicator
+//! Drawing the log: which entries fit, each entry's rows (message and
+//! expanded details) and the scroll indicator. The prefix columns are in
+//! `prefix.rs`.
 
-use super::{LogEntry, LogFormat, LogLevel, RichLog};
+use super::{LogEntry, LogLevel, RichLog};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::{char_width, truncate_to_width, wrap_to_width};
@@ -27,6 +28,97 @@ impl RichLog {
         }
         lines
     }
+
+    /// The first entry to draw, and the last one that still fills the area
+    /// to its bottom row.
+    fn first_entry(
+        &self,
+        entries: &[&LogEntry],
+        visible_height: usize,
+        message_width: u16,
+    ) -> (usize, usize) {
+        // `scroll` is the first entry to show, but the scroll methods do not
+        // know the viewport height (`scroll_to_bottom` puts it on the last
+        // entry), so keep the last page full here. An entry can take more
+        // than one row (wrapped, or expanded details).
+        let mut max_start = entries.len();
+        let mut filled = 0;
+        while max_start > 0 && filled < visible_height {
+            max_start -= 1;
+            filled += self
+                .entry_lines(entries[max_start], message_width as usize)
+                .len();
+        }
+        let start = self.scroll.min(max_start);
+        (start, max_start)
+    }
+
+    /// Fill row `y` with the background color, when one is set
+    fn fill_row(&self, ctx: &mut RenderContext, y: u16, width: u16) {
+        if let Some(bg) = self.bg {
+            for x in 0..width {
+                let mut cell = Cell::new(' ');
+                cell.bg = Some(bg);
+                ctx.set(x, y, cell);
+            }
+        }
+    }
+
+    /// The message (or detail) text color, and whether it is bold
+    fn line_style(&self, entry: &LogEntry, is_detail: bool, is_selected: bool) -> (Color, bool) {
+        let fg = if is_detail {
+            self.source_fg
+        } else if is_selected {
+            Color::WHITE
+        } else {
+            entry.level.color()
+        };
+        let bold = !is_detail && (is_selected || entry.level >= LogLevel::Error);
+        (fg, bold)
+    }
+
+    /// Draw one row of message (or detail) text from `prefix_width`, cut at
+    /// `message_width` columns
+    fn draw_message(
+        &self,
+        ctx: &mut RenderContext,
+        text: &str,
+        y: u16,
+        prefix_width: u16,
+        message_width: u16,
+        (fg, bold): (Color, bool),
+    ) {
+        let mut x = prefix_width;
+        let truncated = truncate_to_width(text, message_width as usize);
+        for ch in truncated.chars() {
+            let cw = char_width(ch) as u16;
+            if x + cw > prefix_width + message_width {
+                break;
+            }
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(fg);
+            cell.bg = self.bg;
+            if bold {
+                cell.modifier |= Modifier::BOLD;
+            }
+            ctx.set(x, y, cell);
+            x += cw;
+        }
+    }
+
+    /// Draw the scroll marker in the last column, at the row matching how far
+    /// `start` is between the first entry and `max_start`
+    fn draw_scroll_indicator(&self, ctx: &mut RenderContext, start: usize, max_start: usize) {
+        let area = ctx.area;
+        if let Some(scroll_pos) = (start * (area.height as usize - 1)).checked_div(max_start) {
+            let indicator_y = scroll_pos as u16;
+            if indicator_y < area.height {
+                let mut cell = Cell::new('█');
+                cell.fg = Some(DISABLED_FG);
+                ctx.set(area.width - 1, indicator_y, cell);
+            }
+        }
+    }
 }
 
 impl View for RichLog {
@@ -42,42 +134,13 @@ impl View for RichLog {
             return;
         }
 
-        // Which prefix columns the format shows
-        let (show_timestamps, show_sources, show_icons, show_labels) = match self.format {
-            LogFormat::Simple => (false, false, false, false),
-            LogFormat::Detailed => (true, true, self.show_icons, self.show_labels),
-            _ => (
-                self.show_timestamps,
-                self.show_sources,
-                self.show_icons,
-                self.show_labels,
-            ),
-        };
-
-        // Calculate prefix widths
-        let timestamp_width = if show_timestamps { 12 } else { 0 };
-        let icon_width = if show_icons { 2 } else { 0 };
-        let label_width = if show_labels { 7 } else { 0 };
-        let source_width = if show_sources { 15 } else { 0 };
-
-        let prefix_width = timestamp_width + icon_width + label_width + source_width;
+        let columns = self.columns();
+        let prefix_width = columns.prefix_width();
         let message_width = area.width.saturating_sub(prefix_width);
 
         // Calculate visible range
         let visible_height = area.height as usize;
-        // `scroll` is the first entry to show, but the scroll methods do not
-        // know the viewport height (`scroll_to_bottom` puts it on the last
-        // entry), so keep the last page full here. An entry can take more
-        // than one row (wrapped, or expanded details).
-        let mut max_start = entries.len();
-        let mut filled = 0;
-        while max_start > 0 && filled < visible_height {
-            max_start -= 1;
-            filled += self
-                .entry_lines(entries[max_start], message_width as usize)
-                .len();
-        }
-        let start = self.scroll.min(max_start);
+        let (start, max_start) = self.first_entry(&entries, visible_height, message_width);
 
         let mut y: u16 = 0;
         for (i, entry) in entries.iter().enumerate().skip(start) {
@@ -86,7 +149,6 @@ impl View for RichLog {
             }
 
             let is_selected = self.selected == Some(i);
-            let level_color = entry.level.color();
 
             for (line_idx, (text, is_detail)) in self
                 .entry_lines(entry, message_width as usize)
@@ -97,114 +159,22 @@ impl View for RichLog {
                     break;
                 }
 
-                // Fill background
-                if let Some(bg) = self.bg {
-                    for x in 0..area.width {
-                        let mut cell = Cell::new(' ');
-                        cell.bg = Some(bg);
-                        ctx.set(x, y, cell);
-                    }
-                }
-
-                let mut x: u16 = 0;
+                self.fill_row(ctx, y, area.width);
 
                 // The prefix columns go on the entry's first row only
                 if line_idx == 0 {
-                    // Draw timestamp
-                    if show_timestamps {
-                        if let Some(ref ts) = entry.timestamp {
-                            let ts_display = truncate_to_width(ts, timestamp_width as usize - 1);
-                            for ch in ts_display.chars() {
-                                let cw = char_width(ch) as u16;
-                                let mut cell = Cell::new(ch);
-                                cell.fg = Some(self.timestamp_fg);
-                                cell.bg = self.bg;
-                                ctx.set(x, y, cell);
-                                x += cw;
-                            }
-                        }
-                        x = timestamp_width;
-                    }
-
-                    // Draw icon
-                    if show_icons {
-                        let icon = entry.level.icon();
-                        let mut cell = Cell::new(icon);
-                        cell.fg = Some(level_color);
-                        cell.bg = self.bg;
-                        ctx.set(x, y, cell);
-                        x += icon_width;
-                    }
-
-                    // Draw label
-                    if show_labels {
-                        let label = entry.level.label();
-                        for ch in label.chars() {
-                            let mut cell = Cell::new(ch);
-                            cell.fg = Some(level_color);
-                            cell.bg = self.bg;
-                            cell.modifier |= Modifier::BOLD;
-                            ctx.set(x, y, cell);
-                            x += 1;
-                        }
-                        x = timestamp_width + icon_width + label_width;
-                    }
-
-                    // Draw source
-                    if show_sources {
-                        if let Some(ref src) = entry.source {
-                            let src_display = truncate_to_width(src, source_width as usize - 1);
-                            for ch in src_display.chars() {
-                                let cw = char_width(ch) as u16;
-                                let mut cell = Cell::new(ch);
-                                cell.fg = Some(self.source_fg);
-                                cell.bg = self.bg;
-                                ctx.set(x, y, cell);
-                                x += cw;
-                            }
-                        }
-                    }
+                    self.draw_prefix(ctx, &columns, entry, y);
                 }
-                x = prefix_width;
 
                 // Draw the message (or detail) text
-                let fg = if is_detail {
-                    self.source_fg
-                } else if is_selected {
-                    Color::WHITE
-                } else {
-                    level_color
-                };
-                let bold = !is_detail && (is_selected || entry.level >= LogLevel::Error);
-                let truncated = truncate_to_width(&text, message_width as usize);
-                for ch in truncated.chars() {
-                    let cw = char_width(ch) as u16;
-                    if x + cw > prefix_width + message_width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(fg);
-                    cell.bg = self.bg;
-                    if bold {
-                        cell.modifier |= Modifier::BOLD;
-                    }
-                    ctx.set(x, y, cell);
-                    x += cw;
-                }
+                let style = self.line_style(entry, is_detail, is_selected);
+                self.draw_message(ctx, &text, y, prefix_width, message_width, style);
 
                 y += 1;
             }
         }
 
-        // Draw scroll indicator
-        if let Some(scroll_pos) = (start * (area.height as usize - 1)).checked_div(max_start) {
-            let indicator_y = scroll_pos as u16;
-            if indicator_y < area.height {
-                let mut cell = Cell::new('█');
-                cell.fg = Some(DISABLED_FG);
-                ctx.set(area.width - 1, indicator_y, cell);
-            }
-        }
+        self.draw_scroll_indicator(ctx, start, max_start);
     }
 }
 
