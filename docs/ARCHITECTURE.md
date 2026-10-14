@@ -151,7 +151,7 @@ src/widget/
     ├── qrcode/            # QR code
     ├── image/             # Kitty image protocol
     ├── link.rs            # Clickable links
-    ├── pagination.rs      # Pagination
+    ├── pagination/        # Pagination
     ├── slides.rs          # Slide widget
     ├── theme_picker.rs    # Theme selector
     ├── zen.rs             # Zen mode
