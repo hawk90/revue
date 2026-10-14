@@ -2,10 +2,37 @@
 
 use revue::event::Key;
 use revue::layout::Rect;
-use revue::render::Buffer;
+use revue::render::{Buffer, Modifier};
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView};
 use revue::widget::{switch, toggle, Switch, SwitchStyle, ToggleWidget, View};
+
+mod view;
+
+const GRAY: Color = Color::rgb(100, 100, 100);
+
+fn screen(s: &Switch, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    s.render(&mut ctx);
+    buffer
+}
+
+/// Row `y`, without wide glyphs' continuation cells
+fn row_of(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .filter(|&c| c != '\0')
+        .collect()
+}
+
+fn row(s: &Switch, w: u16) -> String {
+    row_of(&screen(s, w, 1), 0)
+}
+
+fn fg(buffer: &Buffer, x: u16) -> Option<Color> {
+    buffer.get(x, 0).unwrap().fg
+}
 
 // ==================== Constructor Tests ====================
 
@@ -102,67 +129,84 @@ fn test_switch_disabled_toggle() {
 
 #[test]
 fn test_switch_focused() {
-    let _s = Switch::new().focused(true);
-    // Private field - just verify it compiles
+    // A focus bracket after the switch
+    assert_eq!(row(&Switch::new(), 8), "[●━━━]  ");
+    assert_eq!(row(&Switch::new().focused(true), 8), "[●━━━]] ");
 }
 
 #[test]
 fn test_switch_disabled() {
-    let _s = Switch::new().disabled(true);
-    // Private field - just verify it compiles
+    // Disabled: no focus brackets, even when focused
+    let s = Switch::new().focused(true).disabled(true);
+    assert_eq!(row(&s, 8), "[●━━━]  ");
 }
 
 #[test]
 fn test_switch_label() {
-    let _s = Switch::new().label("Dark Mode");
-    // Private field - just verify it compiles
+    assert_eq!(
+        row(&Switch::new().label("Dark Mode"), 18),
+        "Dark Mode [●━━━]  "
+    );
 }
 
 #[test]
 fn test_switch_label_right() {
-    let _s = Switch::new().label_right();
-    // Private field - just verify it compiles
+    // Without a label it changes nothing; with one, the label follows
+    assert_eq!(row(&Switch::new().label_right(), 8), "[●━━━]  ");
+    let s = Switch::new().label_right().label("ab");
+    assert_eq!(row(&s, 10), "[●━━━] ab ");
 }
 
 #[test]
 fn test_switch_width() {
-    let _s = Switch::new().width(10);
-    // Private field - just verify it compiles
+    assert_eq!(row(&Switch::new().width(10), 12), "[●━━━━━━━]  ");
 }
 
 #[test]
 fn test_switch_width_minimum() {
-    let _s = Switch::new().width(2);
-    // Width should be clamped to min 4
+    // Width 2 is raised to 4
+    assert_eq!(row(&Switch::new().width(2), 6), "[●━]  ");
 }
 
 #[test]
 fn test_switch_on_color() {
-    let _s = Switch::new().on_color(Color::CYAN);
-    // Private field - just verify it compiles
+    let buffer = screen(&Switch::new().on(true).on_color(Color::CYAN), 6, 1);
+    // The knob and the brackets
+    for x in [0, 4, 5] {
+        assert_eq!(fg(&buffer, x), Some(Color::CYAN), "{x}");
+    }
 }
 
 #[test]
 fn test_switch_off_color() {
-    let _s = Switch::new().off_color(Color::rgb(100, 100, 100));
-    // Private field - just verify it compiles
+    let off = Color::rgb(10, 20, 30);
+    let buffer = screen(&Switch::new().off_color(off), 6, 1);
+    for x in [0, 1, 5] {
+        assert_eq!(fg(&buffer, x), Some(off), "{x}");
+    }
 }
 
 #[test]
 fn test_switch_track_color() {
-    let _s = Switch::new().track_color(Color::BLUE);
-    // Private field - just verify it compiles
+    let buffer = screen(&Switch::new().track_color(Color::BLUE), 6, 1);
+    // The three track cells after the knob
+    for x in 2..5 {
+        assert_eq!(fg(&buffer, x), Some(Color::BLUE), "{x}");
+    }
+    assert_ne!(fg(&buffer, 1), Some(Color::BLUE));
 }
 
 #[test]
 fn test_switch_text() {
-    let _s = Switch::new().text("YES", "NO");
-    // Private fields - just verify it compiles
+    // Used by the Text style: the on text and the off text
+    let s = Switch::new().style(SwitchStyle::Text).text("YES", "NO");
+    assert_eq!(row(&s, 6), "[NO]  ");
+    assert_eq!(row(&s.on(true), 6), "[YES] ");
 }
 
 #[test]
 fn test_switch_builder_chain() {
-    let _s = Switch::new()
+    let s = Switch::new()
         .on(true)
         .focused(true)
         .disabled(false)
@@ -174,7 +218,14 @@ fn test_switch_builder_chain() {
         .off_color(Color::rgb(100, 100, 100))
         .track_color(Color::BLUE)
         .text("ON", "OFF");
-    // Just verify it compiles
+    let buffer = screen(&s, 20, 1);
+    // An 8-wide IOS track, on: the knob at its right end on the on color;
+    // the focus bracket, then the label
+    let knob = buffer.get(6, 0).unwrap();
+    assert_eq!((knob.symbol, knob.bg), ('●', Some(Color::GREEN)));
+    assert_eq!(buffer.get(7, 0).unwrap().symbol, ')');
+    assert_eq!(buffer.get(8, 0).unwrap().symbol, ']');
+    assert!(row_of(&buffer, 0).ends_with("]Toggle     "));
 }
 
 // ==================== Style Tests ====================
@@ -187,12 +238,20 @@ fn test_switch_style_default() {
 
 #[test]
 fn test_switch_style_all_variants() {
-    let _ = SwitchStyle::Default;
-    let _ = SwitchStyle::IOS;
-    let _ = SwitchStyle::Material;
-    let _ = SwitchStyle::Text;
-    let _ = SwitchStyle::Emoji;
-    let _ = SwitchStyle::Block;
+    // Each style draws the off switch differently
+    let styles = [
+        SwitchStyle::Default,
+        SwitchStyle::IOS,
+        SwitchStyle::Material,
+        SwitchStyle::Text,
+        SwitchStyle::Emoji,
+        SwitchStyle::Block,
+    ];
+    let rows: std::collections::HashSet<String> = styles
+        .iter()
+        .map(|&st| row(&Switch::new().style(st), 8))
+        .collect();
+    assert_eq!(rows.len(), styles.len());
 }
 
 #[test]
@@ -254,42 +313,34 @@ fn test_switch_handle_key_invalid() {
 
 #[test]
 fn test_switch_render_default() {
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Switch::new().on(true);
-    s.render(&mut ctx);
+    let buffer = screen(&s, 20, 1);
+    assert_eq!(row_of(&buffer, 0).trim_end(), "[━━━●]");
+    assert_eq!(fg(&buffer, 4), Some(Color::GREEN));
 }
 
 #[test]
 fn test_switch_render_off() {
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Switch::new().on(false);
-    s.render(&mut ctx);
+    let buffer = screen(&s, 20, 1);
+    assert_eq!(row_of(&buffer, 0).trim_end(), "[●━━━]");
+    // The off knob in the default off color
+    assert_eq!(fg(&buffer, 1), Some(GRAY));
 }
 
 #[test]
 fn test_switch_render_all_styles() {
-    let styles = [
-        SwitchStyle::Default,
-        SwitchStyle::IOS,
-        SwitchStyle::Material,
-        SwitchStyle::Text,
-        SwitchStyle::Emoji,
-        SwitchStyle::Block,
-    ];
-
-    for style in styles {
-        let mut buffer = Buffer::new(20, 1);
-        let area = Rect::new(0, 0, 20, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
+    for (style, off, on) in [
+        (SwitchStyle::Default, "[●━━━]", "[━━━●]"),
+        (SwitchStyle::IOS, "(●   )", "(   ●)"),
+        (SwitchStyle::Material, "●━━━━○", "○━━━━●"),
+        (SwitchStyle::Text, "[OFF]", "[ON]"),
+        (SwitchStyle::Emoji, "❌", "✅"),
+        (SwitchStyle::Block, "▓▓▓░░░", "░░░▓▓▓"),
+    ] {
         let s = Switch::new().style(style);
-        s.render(&mut ctx);
+        assert_eq!(row(&s, 20).trim_end(), off, "{style:?}");
+        assert_eq!(row(&s.on(true), 20).trim_end(), on, "{style:?}");
     }
 }
 
@@ -323,24 +374,27 @@ fn test_switch_render_with_label_right() {
 
 #[test]
 fn test_switch_render_focused() {
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Switch::new().focused(true);
-    s.render(&mut ctx);
-    // Should render with focus indicator
+    let buffer = screen(&s, 20, 1);
+    // Both brackets turn cyan, and a focus bracket follows
+    for x in [0, 5, 6] {
+        assert_eq!(fg(&buffer, x), Some(Color::CYAN), "{x}");
+    }
+    // With a label on the left the focus brackets go around the switch's
+    // own, which turn cyan too
+    let buffer = screen(&s.label("ab"), 20, 1);
+    assert_eq!(row_of(&buffer, 0).trim_end(), "ab[[●━━━]]");
+    for x in [2, 3, 8, 9] {
+        assert_eq!(fg(&buffer, x), Some(Color::CYAN), "{x}");
+    }
 }
 
 #[test]
 fn test_switch_render_disabled() {
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Switch::new().disabled(true).label("Disabled");
-    s.render(&mut ctx);
-    // Should render with disabled styling
+    let buffer = screen(&Switch::new().disabled(true).label("Disabled"), 20, 1);
+    assert_eq!(fg(&buffer, 0), Some(GRAY));
+    let enabled = screen(&Switch::new().label("Disabled"), 20, 1);
+    assert_eq!(fg(&enabled, 0), Some(Color::WHITE));
 }
 
 #[test]
@@ -351,75 +405,61 @@ fn test_switch_render_zero_area() {
 
     let s = Switch::new();
     s.render(&mut ctx);
-    // Should handle zero area gracefully
+    assert!((0..20).all(|x| buffer.get(x, 0).unwrap().symbol == ' '));
 }
 
 #[test]
 fn test_switch_render_custom_width() {
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // A 12-wide switch in 8 columns is clipped
     let s = Switch::new().width(12);
-    s.render(&mut ctx);
-    // Should render with custom width
+    assert_eq!(row(&s, 8), "[●━━━━━━");
+    assert_eq!(row(&s, 30).trim_end(), "[●━━━━━━━━━]");
 }
 
 #[test]
 fn test_switch_render_text_style_custom() {
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Switch::new().style(SwitchStyle::Text).text("YES", "NO");
-
-    s.render(&mut ctx);
-    // Should render with custom text
+    let buffer = screen(&s, 30, 1);
+    assert_eq!(row_of(&buffer, 0).trim_end(), "[NO]");
+    // The text in the off color, the brackets white
+    assert_eq!(fg(&buffer, 1), Some(GRAY));
+    assert_eq!(fg(&buffer, 0), Some(Color::WHITE));
 }
 
 #[test]
 fn test_switch_render_text_style_default_text() {
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Switch::new().style(SwitchStyle::Text);
-
-    s.render(&mut ctx);
-    // Should render with default ON/OFF text
+    assert_eq!(row(&s, 30).trim_end(), "[OFF]");
+    let buffer = screen(&s.on(true), 30, 1);
+    assert_eq!(row_of(&buffer, 0).trim_end(), "[ON]");
+    // The on text is bold
+    assert!(buffer.get(1, 0).unwrap().modifier.contains(Modifier::BOLD));
 }
 
 // ==================== Edge Cases ====================
 
 #[test]
 fn test_switch_empty_label() {
+    // An empty label still leaves its one-column gap
     let s = Switch::new().label("");
-    // Should handle empty label
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    s.render(&mut ctx);
+    assert_eq!(row(&s, 8), " [●━━━] ");
 }
 
 #[test]
 fn test_switch_unicode_label() {
+    // Six wide glyphs: the switch starts after 12 columns and a space
     let s = Switch::new().label("ダークモード");
-    // Should handle unicode label
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    s.render(&mut ctx);
+    let buffer = screen(&s, 30, 1);
+    assert_eq!(buffer.get(13, 0).unwrap().symbol, '[');
+    assert!(row_of(&buffer, 0).starts_with("ダークモード [●━━━]"));
 }
 
 #[test]
 fn test_switch_very_long_label() {
     let long_label = "This is a very long label that exceeds normal width";
     let s = Switch::new().label(long_label);
-    // Should handle long label
-    let mut buffer = Buffer::new(40, 1);
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    s.render(&mut ctx);
+    // Clipped to the 40 columns, with no room left for the switch
+    assert_eq!(row(&s, 40), long_label[..40]);
 }
 
 #[test]
@@ -522,50 +562,54 @@ fn test_switch_meta() {
 
 #[test]
 fn test_switch_render_with_custom_colors() {
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Switch::new()
+        .style(SwitchStyle::Material)
         .on(true)
         .on_color(Color::GREEN)
         .off_color(Color::RED)
         .track_color(Color::BLUE);
-
-    s.render(&mut ctx);
-    // Should render with custom colors
+    let buffer = screen(&s, 30, 1);
+    // On: the empty end in the track color, the line and the knob in the on color
+    assert_eq!(fg(&buffer, 0), Some(Color::BLUE));
+    assert_eq!(fg(&buffer, 2), Some(Color::GREEN));
+    assert_eq!(fg(&buffer, 5), Some(Color::GREEN));
 }
 
 #[test]
 fn test_switch_render_same_on_off_colors() {
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // With one color for both, only the knob's place tells them apart
     let s = Switch::new().on_color(Color::CYAN).off_color(Color::CYAN);
-
-    s.render(&mut ctx);
-    // Should render with same color for both states
+    let off = screen(&s, 6, 1);
+    let on = screen(&s.on(true), 6, 1);
+    assert_eq!(
+        (fg(&off, 1), fg(&on, 4)),
+        (Some(Color::CYAN), Some(Color::CYAN))
+    );
+    assert_ne!(row_of(&off, 0), row_of(&on, 0));
 }
 
 // ==================== Width Edge Cases ====================
 
 #[test]
 fn test_switch_very_small_width() {
-    let _s = Switch::new().width(1);
-    // Width should be clamped to minimum
+    // Width 1 is raised to the minimum, 4
+    assert_eq!(
+        row(&Switch::new().width(1), 8),
+        row(&Switch::new().width(4), 8)
+    );
 }
 
 #[test]
 fn test_switch_very_large_width() {
-    let _s = Switch::new().width(1000);
-    // Large width should be handled
+    // Measured as wide as it is, up to the room given; drawn clipped
+    let s = Switch::new().width(1000);
+    assert_eq!(s.measure(50, 1), Some((50, 1)));
+    assert_eq!(row(&s, 20), format!("[●{}", "━".repeat(18)));
 }
 
 #[test]
 fn test_switch_zero_width() {
-    let _s = Switch::new().width(0);
-    // Zero width should be handled
+    assert_eq!(Switch::new().width(0).measure(100, 1), Some((4, 1)));
 }
 
 // ==================== Label Edge Cases ====================
@@ -573,28 +617,22 @@ fn test_switch_zero_width() {
 #[test]
 fn test_switch_label_with_special_chars() {
     let s = Switch::new().label("Toggle & Switch <Test>");
-    let mut buffer = Buffer::new(40, 1);
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    s.render(&mut ctx);
+    assert!(row(&s, 40).starts_with("Toggle & Switch <Test> [●━━━]"));
 }
 
 #[test]
 fn test_switch_label_with_tabs() {
+    // A tab has no width: it is dropped, and the switch follows the rest
     let s = Switch::new().label("Toggle\tTest");
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    s.render(&mut ctx);
+    assert!(row(&s, 30).starts_with("ToggleTest [●━━━]"));
+    assert_eq!(s.measure(100, 1), Some((17, 1)));
 }
 
 #[test]
 fn test_switch_label_with_newlines() {
+    // Likewise a newline: the label stays on one row
     let s = Switch::new().label("Line1\nLine2");
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    s.render(&mut ctx);
+    assert!(row(&s, 30).starts_with("Line1Line2 [●━━━]"));
 }
 
 // ==================== Style-Specific Tests ====================
@@ -665,24 +703,21 @@ fn test_switch_render_block_style_off() {
 
 #[test]
 fn test_switch_render_material_style() {
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Switch::new().style(SwitchStyle::Material);
-    s.render(&mut ctx);
-    // Material style should render
+    let buffer = screen(&Switch::new().style(SwitchStyle::Material), 20, 1);
+    // Off: the knob on the left in the off color, the rest in the track color
+    assert_eq!(fg(&buffer, 0), Some(GRAY));
+    assert_ne!(fg(&buffer, 2), Some(GRAY));
+    assert_eq!(fg(&buffer, 2), fg(&buffer, 5));
 }
 
 #[test]
 fn test_switch_render_ios_style() {
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Switch::new().style(SwitchStyle::IOS);
-    s.render(&mut ctx);
-    // iOS style should render
+    let buffer = screen(&Switch::new().style(SwitchStyle::IOS), 20, 1);
+    // A white knob on the track's background, between the parentheses
+    let knob = buffer.get(1, 0).unwrap();
+    assert_eq!((knob.symbol, knob.fg), ('●', Some(Color::WHITE)));
+    assert_eq!(buffer.get(2, 0).unwrap().bg, knob.bg);
+    assert!(knob.bg.is_some());
 }
 
 // ==================== Text Style Tests ====================
@@ -743,27 +778,21 @@ fn test_switch_render_text_style_custom_text() {
 
 #[test]
 fn test_switch_render_text_style_empty_text() {
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let s = Switch::new().style(SwitchStyle::Text).text("", "");
-    s.render(&mut ctx);
-    // Should handle empty text
+    assert_eq!(row(&s, 20).trim_end(), "[]");
+    assert_eq!(s.measure(20, 1), Some((2, 1)));
 }
 
 #[test]
 fn test_switch_render_text_style_unicode_text() {
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // A wide glyph: the closing bracket after its two columns
     let s = Switch::new()
         .on(true)
         .style(SwitchStyle::Text)
         .text("開", "關");
-    s.render(&mut ctx);
-    // Should handle unicode text
+    let buffer = screen(&s, 20, 1);
+    assert_eq!(row_of(&buffer, 0).trim_end(), "[開]");
+    assert_eq!(buffer.get(3, 0).unwrap().symbol, ']');
 }
 
 // ==================== State Transition Tests ====================
@@ -847,41 +876,30 @@ fn test_switch_toggle_while_disabled() {
 
 #[test]
 fn test_switch_render_disabled_with_colors() {
-    let mut buffer = Buffer::new(30, 1);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // The label grays out whatever the colors (the switch itself does not
+    // yet, #1018)
     let s = Switch::new()
         .disabled(true)
+        .label("L")
         .on_color(Color::GREEN)
         .off_color(Color::RED);
-
-    s.render(&mut ctx);
-    // Disabled should override custom colors
+    assert_eq!(fg(&screen(&s, 30, 1), 0), Some(GRAY));
 }
 
 // ==================== Layout Tests ====================
 
 #[test]
 fn test_switch_render_narrow_buffer() {
-    let mut buffer = Buffer::new(10, 1);
-    let area = Rect::new(0, 0, 10, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Switch::new();
-    s.render(&mut ctx);
-    // Should handle narrow buffer
+    assert_eq!(row(&Switch::new(), 10), "[●━━━]    ");
+    // Narrower than the switch: clipped
+    assert_eq!(row(&Switch::new(), 3), "[●━");
 }
 
 #[test]
 fn test_switch_render_wide_buffer() {
-    let mut buffer = Buffer::new(100, 1);
-    let area = Rect::new(0, 0, 100, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let s = Switch::new().label("Wide Label");
-    s.render(&mut ctx);
-    // Should handle wide buffer
+    let buffer = screen(&Switch::new().label("Wide Label"), 100, 1);
+    assert!(row_of(&buffer, 0).starts_with("Wide Label [●━━━]"));
+    assert!((17..100).all(|x| buffer.get(x, 0).unwrap().symbol == ' '));
 }
 
 #[test]
@@ -892,7 +910,11 @@ fn test_switch_render_offset_area() {
 
     let s = Switch::new().label("Offset");
     s.render(&mut ctx);
-    // Should render at offset position
+    // Drawn from (10, 2), and nowhere else
+    assert!(row_of(&buffer, 2)[10..].starts_with("Offset [●━━━]"));
+    for y in [0, 1, 3, 4] {
+        assert_eq!(row_of(&buffer, y).trim(), "", "{y}");
+    }
 }
 
 // ==================== Builder Pattern Tests ====================
@@ -1105,34 +1127,33 @@ fn test_switch_render_very_narrow() {
 
     let s = Switch::new();
     s.render(&mut ctx);
-    // Should handle very narrow area
+    assert_eq!(row_of(&buffer, 0), "[●━━━");
 }
 
 #[test]
 fn test_switch_render_all_styles_with_colors() {
-    let styles = [
-        SwitchStyle::Default,
-        SwitchStyle::IOS,
-        SwitchStyle::Material,
-        SwitchStyle::Text,
-        SwitchStyle::Emoji,
-        SwitchStyle::Block,
-    ];
-
-    for style in styles {
-        let mut buffer = Buffer::new(30, 1);
-        let area = Rect::new(0, 0, 30, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // On, every style uses the on color for its knob or text
+    for (style, x) in [
+        (SwitchStyle::Default, 4),
+        (SwitchStyle::Material, 5),
+        (SwitchStyle::Text, 1),
+        (SwitchStyle::Emoji, 0),
+        (SwitchStyle::Block, 5),
+    ] {
         let s = Switch::new()
             .style(style)
             .on(true)
             .on_color(Color::GREEN)
             .off_color(Color::RED)
             .track_color(Color::BLUE);
-
-        s.render(&mut ctx);
+        assert_eq!(fg(&screen(&s, 30, 1), x), Some(Color::GREEN), "{style:?}");
     }
+    // IOS fills its track with it
+    let s = Switch::new()
+        .style(SwitchStyle::IOS)
+        .on(true)
+        .on_color(Color::GREEN);
+    assert_eq!(screen(&s, 30, 1).get(2, 0).unwrap().bg, Some(Color::GREEN));
 }
 
 /// Test Switch edge cases
@@ -1149,6 +1170,9 @@ mod edge_cases {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         switch.render(&mut ctx);
+        // One row only
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '[');
+        assert!((1..10).all(|y| (0..10).all(|x| buffer.get(x, y).unwrap().symbol == ' ')));
     }
 
     #[test]
@@ -1159,6 +1183,9 @@ mod edge_cases {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         switch.render(&mut ctx);
+        // Measured with the label's gap, as drawn
+        assert_eq!(switch.measure(10, 10), Some((7, 1)));
+        assert_eq!(buffer.get(1, 0).unwrap().symbol, '[');
     }
 
     #[test]
@@ -1170,6 +1197,8 @@ mod edge_cases {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         switch.render(&mut ctx);
+        assert!((0..10).all(|x| buffer.get(x, 0).unwrap().symbol == 'A'));
+        assert_eq!(switch.measure(10, 10), Some((10, 1)));
     }
 
     #[test]
@@ -1193,6 +1222,9 @@ mod edge_cases {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         switch.render(&mut ctx);
+        // "전환 ⚡" is 7 columns wide: the switch starts at 8
+        assert_eq!(buffer.get(8, 0).unwrap().symbol, '[');
+        assert_eq!(switch.measure(20, 10), Some((14, 1)));
     }
 
     #[test]
@@ -1214,6 +1246,7 @@ mod edge_cases {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         switch.render(&mut ctx);
+        assert_eq!(switch.measure(0, 10), Some((0, 1)));
     }
 }
 
