@@ -21,9 +21,15 @@ mod empty_containers {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should not panic with empty stack
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        assert!((0..buffer.height()).all(|y| row(y).is_empty()));
     }
 
     #[test]
@@ -32,9 +38,15 @@ mod empty_containers {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should not panic with empty stack
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        assert!((0..buffer.height()).all(|y| row(y).is_empty()));
     }
 
     #[test]
@@ -43,9 +55,15 @@ mod empty_containers {
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should not panic with empty stack
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        assert!((0..buffer.height()).all(|y| row(y).is_empty()));
     }
 }
 
@@ -106,6 +124,17 @@ mod container_overflow {
 
         // Should handle overflow gracefully (clip)
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        // Measured children that overflow shrink in proportion: one column
+        // each for the first ten, on one row
+        assert_eq!(row(0), "XXXXXXXXXX");
+        assert!((1..10).all(|y| row(y).is_empty()));
     }
 
     #[test]
@@ -120,6 +149,15 @@ mod container_overflow {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        // One row each for the first ten
+        assert!((0..10).all(|y| row(y) == "Line"));
     }
 }
 
@@ -137,9 +175,9 @@ mod size_calculations {
         let mut buffer = Buffer::new(0, 10);
         let area = Rect::new(0, 0, 0, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should not panic with zero width
         stack.render(&mut ctx);
+        // Nothing to draw into
+        assert_eq!(buffer.width(), 0);
     }
 
     #[test]
@@ -152,9 +190,8 @@ mod size_calculations {
         let mut buffer = Buffer::new(10, 0);
         let area = Rect::new(0, 0, 10, 0);
         let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should not panic with zero height
         stack.render(&mut ctx);
+        assert_eq!(buffer.height(), 0);
     }
 
     #[test]
@@ -169,6 +206,16 @@ mod size_calculations {
 
         // Should clip to container width
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        // The text wraps within the five columns
+        assert_eq!(row(0), "This");
+        assert!(row(0).chars().count() <= 5);
     }
 
     #[test]
@@ -184,6 +231,15 @@ mod size_calculations {
 
         // Should clip to container height
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        // The first five lines, one row each
+        assert!((0..5).all(|y| row(y) == "Line"));
     }
 }
 
@@ -229,6 +285,15 @@ mod empty_items {
 
         // Should handle empty text widget
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        // An empty text takes no columns
+        assert_eq!(row(0), "FirstSecond");
     }
 
     #[test]
@@ -244,6 +309,14 @@ mod empty_items {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        assert!((0..buffer.height()).all(|y| row(y).is_empty()));
     }
 }
 
@@ -263,6 +336,15 @@ mod large_collections {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        // The first hundred, one column each
+        assert_eq!(row(0), "0123456789".repeat(10));
     }
 
     #[test]
@@ -277,6 +359,16 @@ mod large_collections {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        // The first hundred, one row each
+        assert_eq!(row(0), "Line 0");
+        assert_eq!(row(99), "Line 99");
     }
 
     #[test]
@@ -292,5 +384,14 @@ mod large_collections {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         stack.render(&mut ctx);
+        let row = |y: u16| -> String {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
+        // A row by default: A, fifty columns, B
+        assert_eq!(row(0), format!("A{}B", " ".repeat(50)));
     }
 }

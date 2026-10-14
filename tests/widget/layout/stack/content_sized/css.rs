@@ -357,3 +357,20 @@ fn an_explicit_width_beats_a_child_that_fills_the_row() {
     }
     assert_eq!(draw("#bar { width: 5; }", &Row), "[█████]");
 }
+
+/// An explicit `height` or `min-height` is put back by the box model, so
+/// the slot keeps it when the column overflows; only measured siblings give
+/// way. (With eight siblings a measured slot would shrink to four rows.)
+#[test]
+fn a_pinned_height_keeps_its_rows_when_the_column_overflows() {
+    for css in ["#AAAA { height: 6; }", "#AAAA { min-height: 6; }"] {
+        assert_eq!(
+            draw(
+                css,
+                &Column::content_sized(&["AAAA", "B", "C", "D", "E", "F", "G", "H", "I"])
+            ),
+            "AAAA\n\n\n\n\n\nB\nC",
+            "{css}"
+        );
+    }
+}
