@@ -270,6 +270,7 @@ proptest! {
         max_visible in 3u16..10,
         query in prop::sample::select(vec!["", "e", "fi", "o", "save", "zz", "Re"]),
         steps in 0usize..30,
+        back in 0usize..10,
         titled in any::<bool>(),
         width in 30u16..72,
     ) {
@@ -282,12 +283,20 @@ proptest! {
         for _ in 0..steps {
             p.select_next();
         }
+        // Going back moves the selection off the last row, where the
+        // offset rows above it can be checked.
+        for _ in 0..back {
+            p.select_prev();
+        }
         let mut m = Model::new(commands(n), max_visible as usize);
         m.show();
         m.query = query.to_string();
         m.refilter();
         for _ in 0..steps {
             m.next();
+        }
+        for _ in 0..back {
+            m.prev();
         }
 
         let b = render(&p, 80, 30);

@@ -300,6 +300,20 @@ fn an_empty_palette_draws_its_frame_and_a_zero_count() {
     assert!(row(&b, bottom).contains("0/0"), "{}", row(&b, bottom));
 }
 
+/// The frame needs two rows above it, the search line, the separator, the
+/// rows and the borders; in a shorter area it draws nothing rather than a
+/// cut frame.
+#[test]
+fn a_palette_taller_than_the_area_draws_nothing() {
+    let p = shown(sample());
+    // Three commands: the frame's height is computed as 3 + 3, and two rows
+    // above it make 8 (draft-cmd-1 counts one row short); 7 do not fit.
+    let b = render(&p, 70, 8);
+    assert_eq!(cell(&b, X, 2).symbol, '╭');
+    let b = render(&p, 70, 7);
+    assert!((0..7).all(|y| row(&b, y).trim().is_empty()));
+}
+
 #[test]
 fn rows_scroll_with_the_selection() {
     let commands = (0..20)
