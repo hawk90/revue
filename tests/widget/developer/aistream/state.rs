@@ -1,5 +1,6 @@
 //! AiStream state, typing animation and rendering tests
 
+use crate::traits::placement::assert_zero_areas_draw_nothing;
 use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};
 use revue::style::Color;
@@ -257,12 +258,7 @@ fn test_render_default() {
 fn test_render_empty_area() {
     let mut stream = AiStream::new();
     stream.set_content("text");
-
-    let mut buffer = Buffer::new(0, 0);
-    let area = Rect::new(0, 0, 0, 0);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    stream.render(&mut ctx); // Should not panic
+    assert_zero_areas_draw_nothing(&stream);
 }
 
 #[test]
