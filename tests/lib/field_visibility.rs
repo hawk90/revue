@@ -52,7 +52,6 @@ const OPEN_FIELDS: &[(&str, &str, usize)] = &[
     ("widget/filepicker/mod.rs", "FilePicker", 23),
     ("widget/form/rich_text_editor/core.rs", "RichTextEditor", 24),
     ("widget/input/input_widgets/combobox/mod.rs", "Combobox", 26),
-    ("widget/input/input_widgets/input/types.rs", "Input", 15),
     ("widget/input/input_widgets/select/mod.rs", "Select", 18),
     ("widget/layout/accordion/mod.rs", "Accordion", 10),
     ("widget/layout/sidebar/mod.rs", "Sidebar", 25),

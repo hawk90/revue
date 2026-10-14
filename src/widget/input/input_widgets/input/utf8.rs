@@ -1,6 +1,6 @@
 //! UTF-8 helper methods for character-based operations
 
-use super::types::Input;
+use super::Input;
 
 impl Input {
     // ─────────────────────────────────────────────────────────────────────────
