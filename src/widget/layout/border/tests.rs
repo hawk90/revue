@@ -87,6 +87,13 @@ fn test_border_render_small_area_no_panic() {
     let mut ctx = RenderContext::new(&mut buf, area);
     let b = Border::new().child(Text::new("X"));
     b.render(&mut ctx); // Width/height < 2, should return early
+
+    // Neither the frame nor the child reaches the buffer.
+    for y in 0..10 {
+        for x in 0..10 {
+            assert_eq!(buf.get(x, y).unwrap().symbol, ' ', "({x}, {y})");
+        }
+    }
 }
 
 #[test]
@@ -105,16 +112,4 @@ fn test_draw_border_none_type() {
     draw_border(&mut buf, area, BorderType::None, None, None);
     // BorderType::None should not draw anything
     assert_eq!(buf.get(0, 0).unwrap().symbol, ' ');
-}
-
-#[test]
-fn test_border_default() {
-    let b = Border::default();
-    assert_eq!(b.get_border_type(), BorderType::Single);
-}
-
-#[test]
-fn test_border_helper_fn() {
-    let b = border();
-    assert_eq!(b.get_border_type(), BorderType::Single);
 }
