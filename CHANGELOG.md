@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.1](https://github.com/hawk90/revue/compare/v3.10.0...v3.10.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **csv_viewer:** keep the selection and the search in the shown order; has_header re-reads the rows ([#970](https://github.com/hawk90/revue/issues/970)) ([17ed329](https://github.com/hawk90/revue/commit/17ed329fd2082495e4b347e476580fc0f4bd6c5c))
+* **deps:** update non-major dependencies ([#965](https://github.com/hawk90/revue/issues/965)) ([4c57803](https://github.com/hawk90/revue/commit/4c57803d5a4964bf0503602e42073fef7f4e86aa))
+* **deps:** update rustls to 0.23.46 for RUSTSEC-2026-0346 to 0349 ([#1101](https://github.com/hawk90/revue/issues/1101)) ([ac148c7](https://github.com/hawk90/revue/commit/ac148c72dcdf2b6cac573e9fc3dec551421ce464))
+* **filetree:** keep each child under its directory; fit sizes and wide names in the row ([#968](https://github.com/hawk90/revue/issues/968)) ([bc5db4c](https://github.com/hawk90/revue/commit/bc5db4ca78dab2b313c37c6da91e9d12ed6d27dd))
+* **virtuallist:** draw with the custom renderer and survive items taller than the view ([#972](https://github.com/hawk90/revue/issues/972)) ([ecc253b](https://github.com/hawk90/revue/commit/ecc253baf6f2b7935fff25bd26961d60215c8175))
+
 ## [3.10.0](https://github.com/hawk90/revue/compare/v3.9.1...v3.10.0) (2026-10-11)
 
 
