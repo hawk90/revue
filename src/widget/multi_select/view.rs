@@ -1,0 +1,244 @@
+//! Drawing for the multi-select widget: the header row (tags or placeholder,
+//! query, arrow) and the dropdown of options
+
+use crate::impl_view_meta;
+use crate::render::Cell;
+use crate::style::Color;
+use crate::widget::input_widgets::dropdown::{
+    calculate_dropdown_layout, queue_or_inline_overlay, MIN_DROPDOWN_WIDTH,
+};
+use crate::widget::theme::{
+    DISABLED_FG, LIGHT_GRAY, MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG, SECONDARY_TEXT,
+};
+use crate::widget::traits::{OverlayEntry, RenderContext, View};
+
+use super::{MultiSelect, MultiSelectOption};
+
+/// A `ch` cell in `fg` on `bg`
+fn colored_cell(ch: char, fg: Color, bg: Color) -> Cell {
+    let mut cell = Cell::new(ch);
+    cell.fg = Some(fg);
+    cell.bg = Some(bg);
+    cell
+}
+
+impl MultiSelect {
+    /// Calculate display width
+    fn display_width(&self, max_width: u16) -> u16 {
+        if let Some(w) = self.width {
+            // The header needs room for its arrow; a smaller configured
+            // width would leave none.
+            return w.max(MIN_DROPDOWN_WIDTH).min(max_width);
+        }
+
+        let max_option_len = self
+            .options
+            .iter()
+            .map(|o| crate::utils::display_width(&o.label))
+            .max()
+            .unwrap_or(crate::utils::display_width(&self.placeholder));
+
+        ((max_option_len + 4) as u16).min(max_width)
+    }
+
+    /// The header row: its background, the arrow, and the tags (with the
+    /// query while searching) or the placeholder
+    fn draw_header(&self, ctx: &mut RenderContext, width: u16, fg: Color, bg: Color) {
+        // Draw background for header row
+        ctx.fill_row(0, width, Some(fg), Some(bg));
+
+        // Draw arrow
+        let arrow = if self.open { '▲' } else { '▼' };
+        ctx.draw_char(width - 1, 0, arrow, fg);
+
+        // Draw tags or placeholder
+        let max_x = width - 2; // Leave room for arrow
+
+        if self.selected.is_empty() && !self.open {
+            // Draw placeholder
+            ctx.draw_text(0, 0, &self.placeholder, PLACEHOLDER_FG);
+        } else {
+            let x = self.draw_tags(ctx, max_x);
+
+            // Draw search query if open
+            if self.open && self.searchable && !self.query.is_empty() {
+                let query_display = format!(" {}", self.query);
+                ctx.draw_text(x.min(max_x), 0, &query_display, Color::CYAN);
+            }
+        }
+    }
+
+    /// The selected options as `[label]` tags from column 0, and `...` in
+    /// place of the first tag that does not fit before `max_x`. Returns the
+    /// column after the tags.
+    fn draw_tags(&self, ctx: &mut RenderContext, max_x: u16) -> u16 {
+        let mut x: u16 = 0;
+        for (i, &opt_idx) in self.selected.iter().enumerate() {
+            if x >= max_x {
+                break;
+            }
+
+            if let Some(opt) = self.options.get(opt_idx) {
+                let label = &opt.label;
+                let tag_len = (crate::utils::display_width(label) + 3) as u16; // "[label] "
+
+                if x + tag_len > max_x {
+                    // Draw overflow indicator
+                    ctx.draw_text(x, 0, "...", LIGHT_GRAY);
+                    break;
+                }
+
+                x = self.draw_tag(ctx, x, max_x, label, self.tag_cursor == Some(i));
+            }
+        }
+        x
+    }
+
+    /// One `[label]` tag at column `x`, in the tag cursor's colors when
+    /// `is_tag_selected`. Returns the column after it and its space.
+    fn draw_tag(
+        &self,
+        ctx: &mut RenderContext,
+        mut x: u16,
+        max_x: u16,
+        label: &str,
+        is_tag_selected: bool,
+    ) -> u16 {
+        let tag_fg = if is_tag_selected {
+            Color::WHITE
+        } else {
+            SECONDARY_TEXT
+        };
+        let tag_bg_color = if is_tag_selected {
+            Color::rgb(100, 100, 200)
+        } else {
+            self.tag_bg.unwrap_or(Color::rgb(60, 60, 140))
+        };
+
+        // Draw tag with brackets
+        ctx.draw_char_bg(x, 0, '[', tag_fg, tag_bg_color);
+        x += 1;
+
+        for ch in label.chars() {
+            let cw = crate::utils::char_width(ch) as u16;
+            if x + cw > max_x - 1 {
+                break;
+            }
+            ctx.draw_char_bg(x, 0, ch, tag_fg, tag_bg_color);
+            x += cw;
+        }
+
+        ctx.draw_char_bg(x, 0, ']', tag_fg, tag_bg_color);
+        x += 1;
+
+        // Space between tags
+        if x < max_x {
+            x += 1;
+        }
+        x
+    }
+
+    /// The open dropdown: the first [`MAX_DROPDOWN_VISIBLE`] filtered
+    /// options, queued as an overlay below the header (above it when the
+    /// screen has no room below), or drawn below the header without an
+    /// overlay queue
+    fn draw_dropdown(&self, ctx: &mut RenderContext, width: u16, fg: Color, bg: Color) {
+        let max_visible = self.filtered.len().min(MAX_DROPDOWN_VISIBLE as usize);
+        let dropdown_h = max_visible.max(1) as u16;
+
+        let (abs_x, _) = ctx.absolute_position();
+        let layout = calculate_dropdown_layout(ctx, dropdown_h);
+        let overlay_area = crate::layout::Rect::new(abs_x, layout.overlay_y, width, dropdown_h);
+        let mut entry = OverlayEntry::new(100, overlay_area);
+
+        for (row, &opt_idx) in self.filtered.iter().enumerate().take(max_visible) {
+            let y = row as u16;
+            let is_cursor = row == self.dropdown_cursor;
+            let is_selected = self.is_selected(opt_idx);
+
+            if let Some(opt) = self.options.get(opt_idx) {
+                let colors = if is_cursor {
+                    (Color::WHITE, Color::rgb(80, 80, 150))
+                } else {
+                    (fg, bg)
+                };
+                self.push_option_row(&mut entry, y, opt, is_selected, width, colors);
+            }
+        }
+
+        // Queue as overlay; fallback to inline
+        queue_or_inline_overlay(ctx, entry);
+    }
+
+    /// Dropdown row `y`: its background, the `[x]`/`[ ]` checkbox and the
+    /// label, its query matches in the highlight color
+    fn push_option_row(
+        &self,
+        entry: &mut OverlayEntry,
+        y: u16,
+        opt: &MultiSelectOption,
+        is_selected: bool,
+        width: u16,
+        (row_fg, row_bg): (Color, Color),
+    ) {
+        // Row background
+        for dx in 0..width {
+            entry.push(dx, y, colored_cell(' ', row_fg, row_bg));
+        }
+
+        // Checkbox
+        let checkbox_str = if is_selected { "[x]" } else { "[ ]" };
+        for (i, ch) in checkbox_str.chars().enumerate() {
+            entry.push(i as u16, y, colored_cell(ch, row_fg, row_bg));
+        }
+
+        // Draw label with highlight (HashSet for O(1) lookup)
+        let match_indices: std::collections::HashSet<usize> = self
+            .get_match(&opt.label)
+            .map(|m| m.indices.into_iter().collect())
+            .unwrap_or_default();
+
+        let mut cx: u16 = 4;
+        for (j, ch) in opt.label.chars().enumerate() {
+            let cw = crate::utils::char_width(ch) as u16;
+            if cx + cw > width {
+                break;
+            }
+
+            let char_fg = if match_indices.contains(&j) {
+                self.highlight_fg.unwrap_or(Color::YELLOW)
+            } else if opt.disabled {
+                DISABLED_FG
+            } else {
+                row_fg
+            };
+
+            entry.push(cx, y, colored_cell(ch, char_fg, row_bg));
+            cx += cw;
+        }
+    }
+}
+
+impl View for MultiSelect {
+    fn render(&self, ctx: &mut RenderContext) {
+        let area = ctx.area;
+        if area.width < 5 || area.height < 1 {
+            return;
+        }
+
+        let (fg, bg) =
+            self.state
+                .resolve_colors_interactive(ctx.style, Color::WHITE, Color::rgb(50, 50, 50));
+
+        let width = self.display_width(area.width);
+
+        self.draw_header(ctx, width, fg, bg);
+
+        // Draw dropdown if open (as overlay to escape parent clipping)
+        if self.open {
+            self.draw_dropdown(ctx, width, fg, bg);
+        }
+    }
+
+    impl_view_meta!("MultiSelect");
+}

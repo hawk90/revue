@@ -782,6 +782,8 @@ entries:
       - "wide glyph"
       - "grapheme cluster"
       - "반드시 grapheme segmentation과 terminal display width를 기준으로 처리해야 한다."
+    observed:
+      - "terminal 감사(#930): 스크롤 표시 \"↑N\"을 `area.width - indicator.len() - 1`에 그린다. `↑`는 3바이트라 표시가 오른쪽 끝에서 한 칸이 아니라 세 칸 앞에서 끝나고, 같은 바이트 수로 너비를 검사해 좁은 영역에서는 두 칸 일찍 빠진다."
     source_labels: ["깨지는 대상"]
   - id: REV-RENDER-006
     title: "Partial Wide-Character Overwrite"
@@ -2023,6 +2025,7 @@ entries:
       - "테스트를 옮기는 PR이 아니라 그 모듈을 감사할 때 고친다. 이동 PR에서는 목록만 남긴다."
     observed:
       - "#930: 위젯 테스트 정리(W1~W7)에서 76개 묶음을 찾아 위젯별로 기록"
+      - "같은 문제의 다른 모양 (tree_sitter_highlight 감사, #930): `tests/widget/developer/tree_sitter_highlight.rs`의 `test_tree_sitter_*` 11개가 모두 `TreeSitterHighlighter`가 아니라 키워드 하이라이터 `SyntaxHighlighter`를 만들었다. 이름이 약속한 타입을 본문이 한 번도 부르지 않았고 4개는 assertion도 없었다. 본문 비교로는 보이지 않으므로, 감사할 때 테스트 파일이 그 모듈의 타입을 실제로 import하는지 본다."
   - id: REV-TEST-011
     title: "Behavior Changed Inside a Split"
     category: testing
@@ -2178,6 +2181,8 @@ entries:
     category: security
     review_tag: SEC
     summary: "clipboard, hyperlink, title 변경 등 OSC sequence를 무제한 허용한다. capability와 opt-in 정책이 필요하다."
+    observed:
+      - "terminal 감사(#930): Terminal 위젯은 OSC payload를 실행하지 않고 버린다(title·clipboard 변경 없음). 대신 끝을 BEL이나 `\\` 하나로 판단해, `\\`가 들어간 title이나 OSC 8 link는 중간에 끝나고 나머지가 글자로 찍힌다. `ESC ] BEL`은 첫 바이트로 BEL을 삼켜 끝나지 않으므로 그 뒤의 출력이 모두 사라진다 (#878 댓글)."
   - id: REV-SEC-003
     title: "Untrusted CSS Resource Exhaustion"
     category: security

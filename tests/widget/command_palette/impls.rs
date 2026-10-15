@@ -170,18 +170,29 @@ fn test_command_palette_clear_query() {
 
 #[test]
 fn test_command_palette_select_next() {
-    let mut palette =
-        CommandPalette::new().commands(vec![Command::new("cmd1", "A"), Command::new("cmd2", "B")]);
+    let mut palette = CommandPalette::new().commands(vec![
+        Command::new("cmd1", "A"),
+        Command::new("cmd2", "B"),
+        Command::new("cmd3", "C"),
+    ]);
     palette.select_next();
-    // Just verify it doesn't panic
+    assert_eq!(palette.selected_id(), Some("cmd2"));
+    palette.select_next();
+    palette.select_next();
+    assert_eq!(palette.selected_id(), Some("cmd1"));
 }
 
 #[test]
 fn test_command_palette_select_prev() {
-    let mut palette =
-        CommandPalette::new().commands(vec![Command::new("cmd1", "A"), Command::new("cmd2", "B")]);
+    let mut palette = CommandPalette::new().commands(vec![
+        Command::new("cmd1", "A"),
+        Command::new("cmd2", "B"),
+        Command::new("cmd3", "C"),
+    ]);
     palette.select_prev();
-    // Just verify it doesn't panic
+    assert_eq!(palette.selected_id(), Some("cmd3"));
+    palette.select_prev();
+    assert_eq!(palette.selected_id(), Some("cmd2"));
 }
 
 #[test]
@@ -383,9 +394,10 @@ fn test_mark_recent() {
 
 #[test]
 fn test_mark_recent_nonexistent() {
-    let mut palette = CommandPalette::new();
+    let mut palette = CommandPalette::new().command(Command::new("cmd1", "Command 1"));
     palette.mark_recent("nonexistent");
-    // Should not panic
+    assert_eq!(palette.commands.len(), 1);
+    assert!(!palette.commands[0].recent);
 }
 
 // =========================================================================

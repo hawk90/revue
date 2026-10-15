@@ -7,15 +7,15 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Clone)]
 pub struct PerfMetrics {
     /// Frame times (last N frames)
-    pub(super) frame_times: VecDeque<Duration>,
+    frame_times: VecDeque<Duration>,
     /// Last frame start time
-    pub(super) last_frame_start: Option<Instant>,
+    last_frame_start: Option<Instant>,
     /// Layout times
-    pub(super) layout_times: VecDeque<Duration>,
+    layout_times: VecDeque<Duration>,
     /// Render times
-    pub(super) render_times: VecDeque<Duration>,
+    render_times: VecDeque<Duration>,
     /// Maximum samples to keep
-    pub(super) max_samples: usize,
+    max_samples: usize,
 }
 
 impl Default for PerfMetrics {
@@ -202,5 +202,34 @@ mod tests {
 
         assert!(metrics.avg_layout_time_ms() > 0.0);
         assert!(metrics.avg_render_time_ms() > 0.0);
+    }
+
+    #[test]
+    fn test_perf_metrics_fps_from_frame_times() {
+        // Frame times need a clock; set them directly
+        let mut metrics = PerfMetrics::new();
+        metrics.frame_times.push_back(Duration::from_millis(10));
+        metrics.frame_times.push_back(Duration::from_millis(30));
+        assert_eq!(metrics.avg_frame_time_ms(), 20.0);
+        assert_eq!(metrics.fps(), 50.0);
+
+        // Zero-length frames have no rate
+        let mut metrics = PerfMetrics::new();
+        metrics.frame_times.push_back(Duration::ZERO);
+        assert_eq!(metrics.fps(), 0.0);
+    }
+
+    #[test]
+    fn test_perf_metrics_keeps_the_last_frame_times() {
+        let mut metrics = PerfMetrics::new();
+        for _ in 0..70 {
+            metrics.start_frame();
+        }
+        // 69 frames ended; only the last 60 are kept
+        assert_eq!(metrics.frame_times.len(), 60);
+        for _ in 0..70 {
+            metrics.record_render(Duration::from_millis(1));
+        }
+        assert_eq!(metrics.render_times.len(), 60);
     }
 }

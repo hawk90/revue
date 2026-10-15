@@ -1,12 +1,15 @@
 //! Preview mode rendering for RichTextEditor
 
+use super::view::fill;
 use super::{BlockType, RichTextEditor};
+use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
+use crate::style::Color;
 use crate::widget::traits::RenderContext;
 
 impl RichTextEditor {
     /// Render preview
-    pub(crate) fn render_preview(
+    pub(super) fn render_preview(
         &self,
         ctx: &mut RenderContext,
         x: u16,
@@ -14,16 +17,10 @@ impl RichTextEditor {
         width: u16,
         height: u16,
     ) {
-        let fg = self
-            .fg
-            .unwrap_or_else(|| ctx.css_color(super::core::EDITOR_FG));
+        let fg = self.fg.unwrap_or_else(|| ctx.css_color(super::EDITOR_FG));
 
         // Fill preview background
-        for row in 0..height {
-            for col in 0..width {
-                ctx.set(x + col, y + row, Cell::new(' ').bg(self.preview_bg));
-            }
-        }
+        fill(ctx, x, y, width, height, self.preview_bg);
 
         // Render blocks as formatted text
         for (row, block_idx) in (self.scroll..).take(height as usize).enumerate() {
@@ -32,8 +29,9 @@ impl RichTextEditor {
             }
 
             let block = &self.blocks[block_idx];
-            let row_y = y + row as u16;
-            let links = super::link::link_char_ranges(&block.text());
+            let line = Rect::new(x, y + row as u16, width, 1);
+            let text = block.text();
+            let links = super::link::link_char_ranges(&text);
             let text_fg = |i: usize| {
                 if links.iter().any(|r| r.contains(&i)) {
                     self.link_fg
@@ -44,99 +42,112 @@ impl RichTextEditor {
 
             match block.block_type {
                 BlockType::Heading1 => {
-                    self.render_heading(ctx, x, row_y, width, &block.text(), 1);
+                    self.render_heading(ctx, x, line.y, width, &text, 1);
                 }
                 BlockType::Heading2 => {
-                    self.render_heading(ctx, x, row_y, width, &block.text(), 2);
+                    self.render_heading(ctx, x, line.y, width, &text, 2);
                 }
                 BlockType::Heading3 => {
-                    self.render_heading(ctx, x, row_y, width, &block.text(), 3);
+                    self.render_heading(ctx, x, line.y, width, &text, 3);
                 }
                 BlockType::Quote => {
-                    let mut col = x;
                     ctx.set(
-                        col,
-                        row_y,
+                        x,
+                        line.y,
                         Cell::new('│').fg(self.quote_fg).bg(self.preview_bg),
                     );
-                    col += 2;
-                    for ch in block.text().chars() {
-                        if col >= x + width {
-                            break;
-                        }
-                        ctx.set(
-                            col,
-                            row_y,
-                            Cell::new(ch).fg(self.quote_fg).bg(self.preview_bg),
-                        );
-                        col += 1;
-                    }
+                    self.draw_preview_text(ctx, line, x + 2, &text, |_| self.quote_fg);
                 }
                 BlockType::BulletList => {
-                    let mut col = x;
-                    ctx.set(col, row_y, Cell::new('•').fg(fg).bg(self.preview_bg));
-                    col += 2;
-                    for (i, ch) in block.text().chars().enumerate() {
-                        if col >= x + width {
-                            break;
-                        }
-                        ctx.set(col, row_y, Cell::new(ch).fg(text_fg(i)).bg(self.preview_bg));
-                        col += 1;
-                    }
+                    ctx.set(x, line.y, Cell::new('•').fg(fg).bg(self.preview_bg));
+                    self.draw_preview_text(ctx, line, x + 2, &text, text_fg);
                 }
                 BlockType::NumberedList => {
-                    let num = (block_idx + 1).to_string();
-                    let mut col = x;
-                    for ch in num.chars() {
-                        if col < x + width {
-                            ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
-                            col += 1;
-                        }
-                    }
-                    ctx.set(col, row_y, Cell::new('.').fg(fg).bg(self.preview_bg));
-                    col += 2;
-                    for (i, ch) in block.text().chars().enumerate() {
-                        if col >= x + width {
-                            break;
-                        }
-                        ctx.set(col, row_y, Cell::new(ch).fg(text_fg(i)).bg(self.preview_bg));
-                        col += 1;
-                    }
+                    self.draw_preview_numbered(ctx, line, block_idx, &text, fg, text_fg);
                 }
                 BlockType::CodeBlock => {
-                    for col in 0..width {
-                        ctx.set(x + col, row_y, Cell::new(' ').bg(self.code_bg));
-                    }
-                    for (col, ch) in (x + 1..).zip(block.text().chars()) {
-                        if col >= x + width - 1 {
-                            break;
-                        }
-                        ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.code_bg));
-                    }
+                    self.draw_preview_code(ctx, line, &text, fg);
                 }
                 BlockType::HorizontalRule => {
-                    for col in 0..width {
-                        ctx.set(
-                            x + col,
-                            row_y,
-                            Cell::new('─').fg(self.quote_fg).bg(self.preview_bg),
-                        );
-                    }
+                    self.draw_preview_rule(ctx, line);
                 }
                 _ => {
-                    for (i, (col, ch)) in (x..).zip(block.text().chars()).enumerate() {
-                        if col >= x + width {
-                            break;
-                        }
-                        ctx.set(col, row_y, Cell::new(ch).fg(text_fg(i)).bg(self.preview_bg));
-                    }
+                    self.draw_preview_text(ctx, line, x, &text, text_fg);
                 }
             }
         }
     }
 
+    /// Draw `text` from column `from` to the end of `line`, one column per
+    /// character, the i-th character in `fg(i)`.
+    fn draw_preview_text(
+        &self,
+        ctx: &mut RenderContext,
+        line: Rect,
+        from: u16,
+        text: &str,
+        fg: impl Fn(usize) -> Color,
+    ) {
+        for (i, (col, ch)) in (from..).zip(text.chars()).enumerate() {
+            if col >= line.x + line.width {
+                break;
+            }
+            ctx.set(col, line.y, Cell::new(ch).fg(fg(i)).bg(self.preview_bg));
+        }
+    }
+
+    /// A numbered list item: its number - the block's position in the
+    /// document - a dot, and the text.
+    fn draw_preview_numbered(
+        &self,
+        ctx: &mut RenderContext,
+        line: Rect,
+        block_idx: usize,
+        text: &str,
+        fg: Color,
+        text_fg: impl Fn(usize) -> Color,
+    ) {
+        let x = line.x;
+        let num = (block_idx + 1).to_string();
+        let mut col = x;
+        for ch in num.chars() {
+            if col < x + line.width {
+                ctx.set(col, line.y, Cell::new(ch).fg(fg).bg(self.preview_bg));
+                col += 1;
+            }
+        }
+        ctx.set(col, line.y, Cell::new('.').fg(fg).bg(self.preview_bg));
+        self.draw_preview_text(ctx, line, col + 2, text, text_fg);
+    }
+
+    /// A horizontal rule across the line
+    fn draw_preview_rule(&self, ctx: &mut RenderContext, line: Rect) {
+        for col in 0..line.width {
+            ctx.set(
+                line.x + col,
+                line.y,
+                Cell::new('─').fg(self.quote_fg).bg(self.preview_bg),
+            );
+        }
+    }
+
+    /// A code block's row: the code background across the line and the text
+    /// inset by one column on each side.
+    fn draw_preview_code(&self, ctx: &mut RenderContext, line: Rect, text: &str, fg: Color) {
+        let Rect { x, y, width, .. } = line;
+        for col in 0..width {
+            ctx.set(x + col, y, Cell::new(' ').bg(self.code_bg));
+        }
+        for (col, ch) in (x + 1..).zip(text.chars()) {
+            if col >= x + width - 1 {
+                break;
+            }
+            ctx.set(col, y, Cell::new(ch).fg(fg).bg(self.code_bg));
+        }
+    }
+
     /// Render heading in preview
-    pub(crate) fn render_heading(
+    fn render_heading(
         &self,
         ctx: &mut RenderContext,
         x: u16,

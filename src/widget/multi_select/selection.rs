@@ -1,6 +1,6 @@
 //! Selection manipulation for the multi-select widget
 
-use super::types::MultiSelect;
+use super::MultiSelect;
 
 impl MultiSelect {
     /// Check if dropdown is open

@@ -2,6 +2,7 @@
 
 mod bracket;
 mod edge_cases;
+mod edit;
 mod editing;
 mod key_handling;
 mod modes;
@@ -10,6 +11,7 @@ mod render;
 mod selection;
 mod types;
 mod vertical_scroll;
+mod view;
 mod wide_chars;
 
 use revue::layout::Rect;

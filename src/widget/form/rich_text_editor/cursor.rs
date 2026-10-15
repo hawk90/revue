@@ -2,7 +2,7 @@
 //!
 //! This module contains methods for moving the cursor within the editor.
 
-use super::core::RichTextEditor;
+use super::RichTextEditor;
 
 impl RichTextEditor {
     /// Move cursor left

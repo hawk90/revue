@@ -142,13 +142,20 @@ mod tests {
 
     #[test]
     fn test_update_process_list() {
-        // Test private method implementation
-        let mut monitor = ProcessMonitor::new();
-        // Just ensure the method exists and can be called
-        // Actual functionality depends on sysinfo being available
-        if cfg!(feature = "sysinfo") {
-            monitor.refresh();
-            let _count = monitor.process_count(); // Just verify the method works
+        // The User view keeps the processes of whoever runs this one
+        let mut monitor = ProcessMonitor::new().view(ProcessView::User);
+        monitor.refresh();
+        let me = monitor
+            .processes
+            .iter()
+            .find(|p| p.pid == std::process::id())
+            .expect("this test process is listed");
+        if let Some(user) = &monitor.current_user {
+            assert_eq!(&me.user, user);
+            assert!(monitor.processes.iter().all(|p| &p.user == user));
         }
+        // MEM% is the share of the system's memory
+        let total = monitor.system.total_memory() as f32;
+        assert_eq!(me.memory_percent, me.memory as f32 / total * 100.0);
     }
 }

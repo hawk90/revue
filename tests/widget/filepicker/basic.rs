@@ -112,3 +112,22 @@ fn test_filepicker_empty_directory() {
     assert!(picker.enter().is_none());
     assert!(listed_names(&mut picker).is_empty());
 }
+
+#[cfg(unix)]
+#[test]
+fn test_filepicker_lists_only_symlinks_that_stay_inside() {
+    let tmp = tempfile::tempdir().unwrap();
+    // Canonical: under a path with a symlink in it every symlink is dropped
+    // (#1110).
+    let base = tmp.path().canonicalize().unwrap();
+    let dir = base.join("in");
+    std::fs::create_dir(&dir).unwrap();
+    std::fs::write(dir.join("a.txt"), "a").unwrap();
+    std::fs::write(base.join("outside.txt"), "o").unwrap();
+    std::os::unix::fs::symlink(dir.join("a.txt"), dir.join("to_a")).unwrap();
+    std::os::unix::fs::symlink(base.join("outside.txt"), dir.join("to_outside")).unwrap();
+    std::os::unix::fs::symlink(dir.join("nowhere"), dir.join("broken")).unwrap();
+
+    let mut picker = file_picker().start_dir(&dir);
+    assert_eq!(listed_names(&mut picker), ["a.txt", "to_a"]);
+}

@@ -6,6 +6,7 @@
 mod render;
 mod stream;
 mod types;
+mod typing;
 
 pub use types::{StreamCursor, StreamStatus, TypingStyle};
 

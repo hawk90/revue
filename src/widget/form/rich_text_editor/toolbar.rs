@@ -7,7 +7,7 @@ use crate::widget::traits::RenderContext;
 
 impl RichTextEditor {
     /// Render toolbar
-    pub(crate) fn render_toolbar(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16) {
+    pub(super) fn render_toolbar(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16) {
         // Fill toolbar background
         for col in 0..width {
             ctx.set(x + col, y, Cell::new(' ').bg(self.toolbar_bg));

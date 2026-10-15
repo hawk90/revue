@@ -131,7 +131,7 @@ src/widget/
 │   ├── diff/              #   Diff viewer
 │   ├── procmon/           #   Process monitor
 │   ├── vim/               #   Vim mode
-│   └── tree_sitter_highlight.rs # Syntax highlighting
+│   └── tree_sitter_highlight/ #   Syntax highlighting (tree-sitter)
 │
 ├── markdown/              # Markdown renderer (events, blocks, parser, types, helpers)
 │
@@ -151,9 +151,9 @@ src/widget/
     ├── qrcode/            # QR code
     ├── image/             # Kitty image protocol
     ├── link.rs            # Clickable links
-    ├── pagination.rs      # Pagination
+    ├── pagination/        # Pagination
     ├── slides.rs          # Slide widget
-    ├── theme_picker.rs    # Theme selector
+    ├── theme_picker/      # Theme selector
     ├── zen.rs             # Zen mode
     └── debug_overlay/     # Debug overlay
 ```

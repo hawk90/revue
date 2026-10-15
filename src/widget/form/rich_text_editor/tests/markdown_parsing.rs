@@ -52,13 +52,6 @@ fn test_from_markdown_empty() {
     assert_eq!(editor.block_count(), 1);
 }
 
-#[test]
-fn test_to_markdown() {
-    let mut editor = RichTextEditor::new().content("Title");
-    editor.set_block_type(BlockType::Heading1);
-    assert_eq!(editor.to_markdown(), "# Title");
-}
-
 // =========================================================================
 // Heading tests (all levels)
 // =========================================================================

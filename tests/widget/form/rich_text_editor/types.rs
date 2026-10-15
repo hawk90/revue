@@ -4,6 +4,8 @@ use revue::widget::EditorViewMode;
 use revue::widget::RichTextEditor;
 use revue::widget::ToolbarAction;
 
+use super::{cells_with_bg, row, screen, CURSOR_BG, PREVIEW_BG, TOOLBAR};
+
 #[test]
 fn test_toolbar_action_variants_are_distinct() {
     let variants = [
@@ -55,15 +57,27 @@ fn test_editor_view_mode_debug() {
 
 #[test]
 fn test_view_mode_default() {
-    let editor = RichTextEditor::new();
     // Default should be editor mode
-    let _md = editor.to_markdown(); // Just verify it works
+    assert_eq!(EditorViewMode::default(), EditorViewMode::Editor);
+    let editor = RichTextEditor::new().content("x");
+    let buffer = screen(&editor, 30, 5);
+    // The editor: its cursor on the text, no preview background
+    assert_eq!(row(&buffer, 1), "x");
+    assert_eq!(cells_with_bg(&buffer, CURSOR_BG), vec![(0, 1)]);
+    assert!(cells_with_bg(&buffer, PREVIEW_BG).is_empty());
 }
 
 #[test]
 fn test_view_mode_builder() {
-    let _editor = RichTextEditor::new()
+    let editor = RichTextEditor::new()
+        .content("ab")
         .view_mode(EditorViewMode::Split)
         .toolbar(true)
         .focused(true);
+    let buffer = screen(&editor, 40, 5);
+    assert_eq!(row(&buffer, 0), TOOLBAR);
+    // The editor with its cursor on the left, the preview on the right
+    assert_eq!(row(&buffer, 1), format!("{:<20}ab", "ab"));
+    assert_eq!(cells_with_bg(&buffer, CURSOR_BG), vec![(0, 1)]);
+    assert_eq!(buffer.get(20, 1).unwrap().bg, Some(PREVIEW_BG));
 }

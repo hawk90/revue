@@ -4,8 +4,10 @@
 //! lists does not depend on the working directory.
 
 pub mod basic;
+mod model;
 pub mod render;
 pub mod selection;
+mod view;
 mod windows_paths;
 
 use revue::widget::FilePicker;
