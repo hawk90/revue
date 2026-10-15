@@ -1,92 +1,17 @@
-//! Masking the value for display and drawing the field, strength bar and message
+//! Drawing the field, its strength bar and its validation message
 
-use super::{MaskStyle, MaskedInput, ValidationState};
+use super::{MaskedInput, ValidationState};
 use crate::style::Color;
 use crate::utils::display_width;
+use crate::widget::stack::{hstack, vstack, Stack};
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
+use crate::widget::Text;
 use crate::widget::{RenderContext, View};
 
 impl MaskedInput {
-    /// Get masked display string
-    ///
-    /// This method is optimized to minimize string allocations by:
-    /// - Pre-allocating strings with known capacity
-    /// - Avoiding repeated `.to_string().repeat()` calls
-    /// - Using `extend` with char iterators instead of format!
-    pub fn masked_display(&self) -> String {
-        if self.revealing {
-            return self.value.clone();
-        }
-
-        let len = self.char_count();
-        if len == 0 {
-            return String::new();
-        }
-
-        match self.mask_style {
-            MaskStyle::Full => {
-                // Pre-allocate with exact capacity
-                std::iter::repeat_n(self.mask_char, len).collect()
-            }
-            MaskStyle::ShowLast(n) => {
-                if len <= n {
-                    self.value.clone()
-                } else {
-                    let mask_count = len - n;
-                    let mut result = String::with_capacity(len);
-                    result.extend(std::iter::repeat_n(self.mask_char, mask_count));
-                    result.push_str(&self.value[self.byte_at(len - n)..]);
-                    result
-                }
-            }
-            MaskStyle::ShowFirst(n) => {
-                if len <= n {
-                    self.value.clone()
-                } else {
-                    let mut result = String::with_capacity(len);
-                    result.push_str(&self.value[..self.byte_at(n)]);
-                    result.extend(std::iter::repeat_n(self.mask_char, len - n));
-                    result
-                }
-            }
-            MaskStyle::Peek => {
-                if self.peek_countdown > 0 && self.cursor > 0 && self.cursor <= len {
-                    // Show the last typed character
-                    // Use char_indices for O(n) instead of O(n²) with .chars().nth()
-                    let last_char = self
-                        .value
-                        .char_indices()
-                        .nth(self.cursor - 1)
-                        .map(|(_, c)| c)
-                        .unwrap_or(' ');
-                    let mut result = String::with_capacity(len);
-                    result.extend(std::iter::repeat_n(self.mask_char, self.cursor - 1));
-                    result.push(last_char);
-                    result.extend(std::iter::repeat_n(self.mask_char, len - self.cursor));
-                    result
-                } else {
-                    std::iter::repeat_n(self.mask_char, len).collect()
-                }
-            }
-            MaskStyle::Hidden => String::new(),
-        }
-    }
-}
-
-impl View for MaskedInput {
-    crate::impl_view_meta!("MaskedInput");
-
-    fn render(&self, ctx: &mut RenderContext) {
-        use crate::widget::stack::{hstack, vstack};
-        use crate::widget::Text;
-
-        let mut content = vstack();
-
-        // Label
-        if let Some(label) = &self.label {
-            content = content.child(Text::new(label).bold());
-        }
-
+    /// The text inside the brackets: the masked value, or the placeholder
+    /// while the value is empty, padded or cut to the field width
+    fn field_text(&self) -> String {
         // Input field
         let display = if self.value.is_empty() {
             self.placeholder.clone().unwrap_or_default()
@@ -94,19 +19,24 @@ impl View for MaskedInput {
             self.masked_display()
         };
 
-        let is_placeholder = self.value.is_empty() && self.placeholder.is_some();
-
         // Build input display with pre-allocated padding
         let width = self.width.unwrap_or(20) as usize;
         let display_w = display_width(&display);
-        let padded = if display_w < width {
+        if display_w < width {
             let mut result = String::with_capacity(width);
             result.push_str(&display);
             result.extend(std::iter::repeat_n(' ', width - display_w));
             result
         } else {
             crate::utils::truncate_to_width(&display, width).to_owned()
-        };
+        }
+    }
+
+    /// The field between the brackets: its text with the cursor when
+    /// focused, and the reveal indicator when revealing is allowed
+    fn field(&self, ctx: &RenderContext) -> Stack {
+        let is_placeholder = self.value.is_empty() && self.placeholder.is_some();
+        let padded = self.field_text();
 
         // Insert cursor if focused
         let display_with_cursor = if self.focused && !self.disabled {
@@ -169,8 +99,13 @@ impl View for MaskedInput {
             input_text = input_text.child(Text::new(format!(" {}", eye)));
         }
 
-        // Wrap in border
-        let border_color = if self.disabled {
+        input_text
+    }
+
+    /// The bracket color: gray when disabled, then the validation state's
+    /// red or green, cyan when focused
+    fn border_color(&self) -> Color {
+        if self.disabled {
             DARK_GRAY
         } else if matches!(self.validation, ValidationState::Invalid(_)) {
             Color::RED
@@ -180,29 +115,49 @@ impl View for MaskedInput {
             Color::CYAN
         } else {
             PLACEHOLDER_FG
-        };
+        }
+    }
+
+    /// The password strength bar: five cells filled up to the strength,
+    /// then its label, in the strength color
+    fn strength_bar(&self) -> Stack {
+        let strength = self.password_strength();
+        let color = self.strength_color();
+        // Pre-allocate strength bar (max 5 chars = strength + 1)
+        let bar: String = std::iter::repeat_n('█', strength + 1).collect();
+        let empty: String = std::iter::repeat_n('░', 4 - strength).collect();
+
+        hstack()
+            .child(Text::new(&bar).fg(color))
+            .child(Text::new(&empty).fg(DARK_GRAY))
+            .child(Text::new(format!(" {}", self.strength_label())).fg(color))
+    }
+}
+
+impl View for MaskedInput {
+    crate::impl_view_meta!("MaskedInput");
+
+    fn render(&self, ctx: &mut RenderContext) {
+        let mut content = vstack();
+
+        // Label
+        if let Some(label) = &self.label {
+            content = content.child(Text::new(label).bold());
+        }
+
+        // Wrap in border
+        let border_color = self.border_color();
 
         let bordered = hstack()
             .child(Text::new("[").fg(border_color))
-            .child(input_text)
+            .child(self.field(ctx))
             .child(Text::new("]").fg(border_color));
 
         content = content.child(bordered);
 
         // Password strength indicator
         if self.show_strength && !self.value.is_empty() {
-            let strength = self.password_strength();
-            let color = self.strength_color();
-            // Pre-allocate strength bar (max 5 chars = strength + 1)
-            let bar: String = std::iter::repeat_n('█', strength + 1).collect();
-            let empty: String = std::iter::repeat_n('░', 4 - strength).collect();
-
-            let strength_display = hstack()
-                .child(Text::new(&bar).fg(color))
-                .child(Text::new(&empty).fg(DARK_GRAY))
-                .child(Text::new(format!(" {}", self.strength_label())).fg(color));
-
-            content = content.child(strength_display);
+            content = content.child(self.strength_bar());
         }
 
         // Validation message

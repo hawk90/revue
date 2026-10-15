@@ -35,6 +35,7 @@
 //! `End`, like [`Input::handle_key`](crate::widget::Input::handle_key).
 
 mod editing;
+mod mask;
 mod render;
 mod types;
 mod validation;

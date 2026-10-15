@@ -7,6 +7,8 @@ use revue::widget::{
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+mod view;
+
 fn strings(items: &[&str]) -> Vec<String> {
     items.iter().map(|s| s.to_string()).collect()
 }
