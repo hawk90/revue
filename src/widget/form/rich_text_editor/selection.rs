@@ -20,14 +20,24 @@ impl RichTextEditor {
         self.anchor.is_some()
     }
 
-    /// The selection's two ends in document order, (block, col) each
+    /// The selection's two ends in document order, (block, col) each,
+    /// moved inside the text: every edit clears the anchor, and a position
+    /// left past the blocks or a block's end must not index past them (#1074)
     pub(super) fn selection_range(&self) -> Option<((usize, usize), (usize, usize))> {
-        let anchor = self.anchor?;
-        Some(if anchor < self.cursor {
-            (anchor, self.cursor)
+        let anchor = self.inside_text(self.anchor?);
+        let cursor = self.inside_text(self.cursor);
+        Some(if anchor < cursor {
+            (anchor, cursor)
         } else {
-            (self.cursor, anchor)
+            (cursor, anchor)
         })
+    }
+
+    /// `pos` moved to the last block and to its block's end when past them
+    fn inside_text(&self, (block, col): (usize, usize)) -> (usize, usize) {
+        let block = block.min(self.blocks.len().saturating_sub(1));
+        let chars = self.blocks.get(block).map_or(0, |b| b.char_count());
+        (block, col.min(chars))
     }
 
     /// Get selected text
