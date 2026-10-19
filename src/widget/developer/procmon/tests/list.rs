@@ -72,8 +72,10 @@ fn arb_move() -> impl Strategy<Value = Move> {
     prop_oneof![
         Just(Move::Next),
         Just(Move::Prev),
-        (0usize..15).prop_map(Move::PageDown),
-        (0usize..15).prop_map(Move::PageUp),
+        // Pages up to usize::MAX: callers pass a huge page for "to the end"
+        // (#1084)
+        prop_oneof![0usize..15, Just(usize::MAX)].prop_map(Move::PageDown),
+        prop_oneof![0usize..15, Just(usize::MAX)].prop_map(Move::PageUp),
     ]
 }
 
@@ -148,7 +150,7 @@ proptest! {
                 }
                 Move::PageDown(k) => {
                     monitor.page_down(k);
-                    model = (model + k).min(last);
+                    model = model.saturating_add(k).min(last);
                 }
                 Move::PageUp(k) => {
                     monitor.page_up(k);
@@ -209,6 +211,32 @@ proptest! {
         let arrows = header.matches(arrow).count();
         prop_assert_eq!(arrows, if sort == ProcessSort::Memory { 2 } else { 1 });
     }
+}
+
+#[test]
+fn a_nan_cpu_does_not_panic_the_sort() {
+    // #986
+    let mut monitor = bare().sort_by(ProcessSort::Cpu);
+    let list = (0..40)
+        .map(|i| {
+            let cpu = if i % 3 == 0 {
+                f32::NAN
+            } else {
+                (i % 11) as f32
+            };
+            process(i, "p", cpu, 0, 0.0, "Run", "", "0")
+        })
+        .collect();
+    monitor.set_process_list(list);
+    assert_eq!(monitor.process_count(), 40);
+}
+
+#[test]
+fn page_down_by_a_huge_page_stops_at_the_last_process() {
+    let mut monitor = monitor_with(numbered(3));
+    monitor.select_next();
+    monitor.page_down(usize::MAX);
+    assert_eq!(monitor.selected_process().map(|p| p.pid), Some(102));
 }
 
 #[test]

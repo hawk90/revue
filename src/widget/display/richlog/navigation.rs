@@ -34,7 +34,7 @@ impl RichLog {
     pub fn select_next(&mut self) {
         let count = self.visible_entries().len();
         match self.selected {
-            Some(i) if i < count - 1 => self.selected = Some(i + 1),
+            Some(i) if i + 1 < count => self.selected = Some(i + 1),
             None if count > 0 => self.selected = Some(0),
             _ => {}
         }

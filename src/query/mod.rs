@@ -542,9 +542,7 @@ impl Query {
                         case.cmp_for_sort(a, b)
                     }
                     (Some(QueryValue::Int(a)), Some(QueryValue::Int(b))) => a.cmp(b),
-                    (Some(QueryValue::Float(a)), Some(QueryValue::Float(b))) => {
-                        a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
-                    }
+                    (Some(QueryValue::Float(a)), Some(QueryValue::Float(b))) => a.total_cmp(b),
                     (Some(QueryValue::Date(a)), Some(QueryValue::Date(b))) => a.cmp(b),
                     (Some(_), None) => std::cmp::Ordering::Less,
                     (None, Some(_)) => std::cmp::Ordering::Greater,
@@ -625,6 +623,31 @@ mod tests {
             active: true,
         });
         assert_eq!(query.filter_items(&items).len(), 1);
+    }
+
+    /// Float fields that are NaN do not panic the sort (#986)
+    #[test]
+    fn sort_by_a_float_field_with_nan() {
+        struct Score(f64);
+        impl Queryable for Score {
+            fn field_value(&self, _: &str) -> Option<QueryValue> {
+                Some(QueryValue::Float(self.0))
+            }
+            fn full_text(&self) -> String {
+                String::new()
+            }
+        }
+        let items: Vec<Score> = (0..40)
+            .map(|i| {
+                Score(if i % 3 == 0 {
+                    f64::NAN
+                } else {
+                    (i % 11) as f64
+                })
+            })
+            .collect();
+        let sorted = Query::new().sort_asc("score").filter_items(&items);
+        assert_eq!(sorted.len(), 40);
     }
 
     struct TestItem {

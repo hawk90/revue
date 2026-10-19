@@ -3,7 +3,7 @@
 use super::super::{count_char, render, render_rows, rows};
 use super::bare;
 use revue::widget::data::chart::{
-    bubble_chart, scatter_chart, ChartGrid, Legend, ScatterChart, ScatterSeries,
+    bubble_chart, scatter_chart, Axis, ChartGrid, Legend, ScatterChart, ScatterSeries,
 };
 
 #[test]
@@ -98,4 +98,19 @@ fn test_scatter_small_area_renders_nothing() {
     assert!(rows(&buffer).iter().all(|r| r.trim().is_empty()));
     let buffer = render(&chart, 40, 7);
     assert!(rows(&buffer).iter().all(|r| r.trim().is_empty()));
+}
+
+/// Tick counts the axis takes as given: 0, and more ticks than columns
+/// (#862)
+#[test]
+fn test_scatter_any_tick_count_draws() {
+    for ticks in [0, 1, 1_000] {
+        let chart = ScatterChart::new()
+            .grid(ChartGrid::both())
+            .x_axis(Axis::new().ticks(ticks))
+            .y_axis(Axis::new().ticks(ticks))
+            .series(ScatterSeries::new("s").points(&[(0.0, 0.0), (10.0, 10.0)]));
+        let buffer = render(&chart, 40, 12);
+        assert!(count_char(&buffer, '0') > 0, "ticks {ticks}: no labels");
+    }
 }

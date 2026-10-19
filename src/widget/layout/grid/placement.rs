@@ -124,13 +124,15 @@ fn starts_beyond_max_grid(placement: &GridPlacement) -> bool {
 }
 
 /// The 0-indexed (col_start, col_end, row_start, row_end) of an explicitly
-/// placed item, clamped to the max grid size
+/// placed item, clamped to the max grid size. An end at or before the start
+/// (0 when only the start is set) spans one track, as in `auto_spans`.
 fn explicit_cell(placement: &GridPlacement) -> (usize, usize, usize, usize) {
+    let end = |start: u16, end: u16| if end > start { end - 1 } else { start };
     (
         ((placement.col_start - 1) as usize).min(MAX_GRID_SIZE - 1),
-        ((placement.col_end - 1) as usize).min(MAX_GRID_SIZE),
+        (end(placement.col_start, placement.col_end) as usize).min(MAX_GRID_SIZE),
         ((placement.row_start - 1) as usize).min(MAX_GRID_SIZE - 1),
-        ((placement.row_end - 1) as usize).min(MAX_GRID_SIZE),
+        (end(placement.row_start, placement.row_end) as usize).min(MAX_GRID_SIZE),
     )
 }
 
