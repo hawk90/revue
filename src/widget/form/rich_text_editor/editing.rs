@@ -69,6 +69,7 @@ impl RichTextEditor {
         // Horizontal rule
         else if text == "---" || text == "***" {
             self.forget_history();
+            self.clear_selection();
             self.blocks[self.cursor.0].block_type = BlockType::HorizontalRule;
             self.blocks[self.cursor.0].set_text("");
         }
@@ -78,6 +79,7 @@ impl RichTextEditor {
     /// leading blanks and the `prefix_len`-byte ASCII marker after them
     fn apply_shortcut(&mut self, block_type: BlockType, prefix_len: usize) {
         self.forget_history();
+        self.clear_selection();
         let block = &mut self.blocks[self.cursor.0];
         let text = block.text();
         let trimmed = text.trim_start();

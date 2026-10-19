@@ -28,6 +28,7 @@ impl RichTextEditor {
     /// Parse markdown content
     pub(super) fn parse_markdown(&mut self, markdown: &str) {
         self.forget_history();
+        self.clear_selection();
         self.blocks.clear();
         let mut in_code_block = false;
         let mut code_block_lang = String::new();

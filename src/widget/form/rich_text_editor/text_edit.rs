@@ -9,6 +9,7 @@ use super::{Block, EditOp};
 impl RichTextEditor {
     /// Insert character at cursor
     pub fn insert_char(&mut self, ch: char) {
+        self.clear_selection();
         if ch == '\n' {
             self.split_block();
             return;
@@ -38,6 +39,7 @@ impl RichTextEditor {
 
     /// Delete character before cursor
     pub fn delete_char_before(&mut self) {
+        self.clear_selection();
         if self.cursor.1 > 0 {
             let block = &mut self.blocks[self.cursor.0];
             let text = block.text();
@@ -62,6 +64,7 @@ impl RichTextEditor {
 
     /// Delete character at cursor
     pub fn delete_char_at(&mut self) {
+        self.clear_selection();
         let block = &self.blocks[self.cursor.0];
         if self.cursor.1 < block.char_count() {
             let text = block.text();
@@ -149,6 +152,7 @@ impl RichTextEditor {
 
     /// Delete current block
     pub fn delete_block(&mut self) {
+        self.clear_selection();
         if self.blocks.len() > 1 {
             let block = self.blocks.remove(self.cursor.0);
             self.undo_stack.push(EditOp::DeleteBlock {
