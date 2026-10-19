@@ -159,6 +159,34 @@ pub(crate) fn validate_path_no_traversal(path: &Path) -> Result<(), FilePickerEr
     Ok(())
 }
 
+/// Validate a save name as one file name in the current directory: not
+/// empty, `.` or `..`, no path separator, no root or drive, no null byte and
+/// no Windows device name (#1110)
+pub(crate) fn validate_file_name(name: &str) -> Result<(), FilePickerError> {
+    use std::path::Component;
+
+    // `components` drops a trailing separator ("a/" is just "a"), so the
+    // separators are checked on the text itself
+    if name.chars().any(std::path::is_separator) {
+        return Err(FilePickerError::PathTraversal(
+            "file name contains a path separator".to_string(),
+        ));
+    }
+    let path = Path::new(name);
+    let mut components = path.components();
+    match (components.next(), components.next()) {
+        (Some(Component::Normal(_)), None) => {}
+        _ => {
+            return Err(FilePickerError::InvalidPath(
+                "not a single file name".to_string(),
+            ))
+        }
+    }
+    validate_path_characters(path)?;
+    validate_windows_device_names(path)?;
+    Ok(())
+}
+
 /// Validate a path for security issues only (doesn't check existence or bounds)
 ///
 /// This is used for `start_dir()` to allow setting paths that don't exist yet.
