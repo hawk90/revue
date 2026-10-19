@@ -4,7 +4,7 @@ use proptest::prelude::*;
 use revue::event::Key;
 use revue::render::Modifier;
 use revue::style::Color;
-use revue::widget::{BlockType, EditorViewMode, RichTextEditor};
+use revue::widget::{BlockType, EditorViewMode, RichTextEditor, ToolbarAction};
 
 use super::{
     row, screen, BG, CODE_BG, CURSOR_BG, FG, HEADING_FG, PREVIEW_BG, QUOTE_FG, SELECTION_BG,
@@ -251,6 +251,76 @@ proptest! {
             editor.redo();
         }
         prop_assert_eq!(editor.get_content(), end);
+    }
+}
+
+// =========================================================================
+// Selection
+// =========================================================================
+
+/// A step of the selection proptest: a key, a call that starts or extends
+/// the selection, or one that edits or replaces the blocks
+#[derive(Clone, Debug)]
+enum SelectionStep {
+    Key(Key),
+    Select,
+    Cursor(usize, usize),
+    Undo,
+    Redo,
+    DeleteBlock,
+    SetContent(&'static str),
+    Content(&'static str),
+    FromMarkdown(&'static str),
+}
+
+fn selection_step() -> impl Strategy<Value = SelectionStep> {
+    let text = || prop::sample::select(vec!["", "x", "one\ntwo\nthree", "# a\n- b"]);
+    prop_oneof![
+        6 => key().prop_map(SelectionStep::Key),
+        2 => Just(SelectionStep::Select),
+        3 => (0usize..4, 0usize..8).prop_map(|(b, c)| SelectionStep::Cursor(b, c)),
+        1 => Just(SelectionStep::Undo),
+        1 => Just(SelectionStep::Redo),
+        1 => Just(SelectionStep::DeleteBlock),
+        1 => text().prop_map(SelectionStep::SetContent),
+        1 => text().prop_map(SelectionStep::Content),
+        1 => text().prop_map(SelectionStep::FromMarkdown),
+    ]
+}
+
+proptest! {
+    /// An edit that changes the text drops the selection, and reading or
+    /// deleting the selection never indexes past the blocks (#1074).
+    #[test]
+    fn prop_rich_text_editor_edits_drop_the_selection(
+        text in start(),
+        steps in prop::collection::vec(selection_step(), 0..40),
+    ) {
+        let mut editor = RichTextEditor::new().content(text);
+        for step in &steps {
+            let before = editor.get_content();
+            match step {
+                SelectionStep::Key(k) => {
+                    editor.handle_key(k);
+                }
+                SelectionStep::Select => editor.start_selection(),
+                SelectionStep::Cursor(b, c) => editor.set_cursor(*b, *c),
+                SelectionStep::Undo => editor.undo(),
+                SelectionStep::Redo => editor.redo(),
+                SelectionStep::DeleteBlock => editor.delete_block(),
+                SelectionStep::SetContent(t) => editor.set_content(t),
+                SelectionStep::Content(t) => editor = editor.content(*t),
+                SelectionStep::FromMarkdown(t) => editor = editor.from_markdown(*t),
+            }
+            if editor.get_content() != before {
+                prop_assert!(!editor.has_selection(), "after {:?}", step);
+            }
+            let _ = editor.get_selection();
+        }
+        editor.toolbar_action(ToolbarAction::Link);
+        editor.close_dialog();
+        editor.delete_selection();
+        prop_assert!(!editor.has_selection());
     }
 }
 

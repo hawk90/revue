@@ -1,6 +1,7 @@
 //! Selection in the rich text editor
 
-use revue::widget::RichTextEditor;
+use revue::event::Key;
+use revue::widget::{RichTextEditor, ToolbarAction};
 
 #[test]
 fn test_get_selection_none_without_anchor() {
@@ -151,4 +152,77 @@ fn test_get_selection() {
     let sel = editor.get_selection();
     assert!(sel.is_some());
     assert_eq!(sel.unwrap(), "hello");
+}
+
+// =========================================================================
+// Edits drop the selection (#1074)
+// =========================================================================
+
+#[test]
+fn test_backspace_merge_drops_the_selection() {
+    let mut editor = RichTextEditor::new().content("ab\ncd");
+    editor.set_cursor(1, 1);
+    editor.start_selection();
+    editor.set_cursor(1, 0);
+    editor.handle_key(&Key::Backspace);
+    assert_eq!(editor.get_content(), "abcd");
+    assert!(!editor.has_selection());
+    assert_eq!(editor.get_selection(), None);
+}
+
+#[test]
+fn test_set_content_drops_the_selection() {
+    let mut editor = RichTextEditor::new().content("one\ntwo\nthree");
+    editor.set_cursor(2, 3);
+    editor.start_selection();
+    editor.set_content("x");
+    assert!(!editor.has_selection());
+    editor.toolbar_action(ToolbarAction::Link);
+    assert!(editor.is_dialog_open());
+}
+
+#[test]
+fn test_delete_block_drops_the_selection() {
+    let mut editor = RichTextEditor::new().content("one\ntwo");
+    editor.set_cursor(1, 2);
+    editor.start_selection();
+    editor.delete_block();
+    assert!(!editor.has_selection());
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "one");
+}
+
+#[test]
+fn test_backspace_inside_a_line_drops_the_selection() {
+    // The anchor's column would be past the shortened line
+    let mut editor = RichTextEditor::new().content("hello");
+    editor.set_cursor(0, 5);
+    editor.start_selection();
+    for _ in 0..3 {
+        editor.handle_key(&Key::Backspace);
+    }
+    assert!(!editor.has_selection());
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "he");
+}
+
+#[test]
+fn test_undo_drops_the_selection() {
+    let mut editor = RichTextEditor::new().content("a");
+    editor.set_cursor(0, 1);
+    editor.handle_key(&Key::Enter);
+    editor.start_selection();
+    editor.undo();
+    assert_eq!(editor.get_content(), "a");
+    assert!(!editor.has_selection());
+}
+
+#[test]
+fn test_markdown_shortcut_drops_the_selection() {
+    let mut editor = RichTextEditor::new().content("# title");
+    editor.set_cursor(0, 7);
+    editor.start_selection();
+    editor.process_markdown_shortcuts();
+    assert_eq!(editor.get_content(), "title");
+    assert!(!editor.has_selection());
 }

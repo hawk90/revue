@@ -44,3 +44,17 @@ fn test_delete_selection() {
     editor.delete_selection();
     assert_eq!(editor.get_content(), " World");
 }
+
+#[test]
+fn test_selection_left_past_the_text_stays_inside_it() {
+    // Every edit clears the anchor; one left past the blocks or a block's
+    // end is read as the text's end instead of indexing past it (#1074)
+    let mut editor = RichTextEditor::new().content("ab\ncd");
+    editor.anchor = Some((5, 9));
+    assert_eq!(editor.get_selection().as_deref(), Some("ab\ncd"));
+    editor.anchor = Some((0, 9));
+    editor.set_cursor(0, 1);
+    assert_eq!(editor.get_selection().as_deref(), Some("b"));
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "a\ncd");
+}
