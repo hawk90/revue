@@ -16,6 +16,7 @@ impl RichTextEditor {
                 self.forget_history();
                 return;
             }
+            self.clear_selection();
             match op {
                 EditOp::InsertChar { block, col, ch } => {
                     self.blocks[block].remove_char_at(col);
@@ -98,6 +99,7 @@ impl RichTextEditor {
                 self.forget_history();
                 return;
             }
+            self.clear_selection();
             match op {
                 EditOp::InsertChar { block, col, ch } => {
                     self.blocks[block].insert_char_at(col, ch);

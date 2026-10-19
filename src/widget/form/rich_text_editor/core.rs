@@ -14,6 +14,7 @@ impl RichTextEditor {
     pub fn content(mut self, text: impl Into<String>) -> Self {
         let text = text.into();
         self.forget_history();
+        self.clear_selection();
         self.blocks = text.lines().map(Block::paragraph).collect();
         if self.blocks.is_empty() {
             self.blocks.push(Block::paragraph(""));
@@ -31,6 +32,7 @@ impl RichTextEditor {
 
     /// Set content (mutable)
     pub fn set_content(&mut self, text: &str) {
+        self.clear_selection();
         self.blocks = text.lines().map(Block::paragraph).collect();
         if self.blocks.is_empty() {
             self.blocks.push(Block::paragraph(""));
