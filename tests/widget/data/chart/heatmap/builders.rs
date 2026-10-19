@@ -53,6 +53,17 @@ fn test_from_flat_partial_data() {
 }
 
 #[test]
+fn test_from_flat_data_shorter_than_a_row() {
+    // Rows past the data are empty instead of panicking the slice (#993)
+    let hm = HeatMap::from_flat(&[1.0], 3, 2);
+    let rows = render_rows(&hm, 4, 3);
+    assert_eq!(rows[0].trim_end(), "██");
+    assert!(rows[1].trim().is_empty());
+    assert!(rows[2].trim().is_empty());
+    assert!(blank(&render(&HeatMap::from_flat(&[], 2, 2), 4, 2)));
+}
+
+#[test]
 fn test_heatmap_empty_data() {
     let hm = HeatMap::new(vec![]);
     // Default bounds 0..1

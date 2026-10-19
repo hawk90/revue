@@ -105,10 +105,7 @@ impl ProcessMonitor {
             let ord = match self.sort {
                 ProcessSort::Pid => a.pid.cmp(&b.pid),
                 ProcessSort::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-                ProcessSort::Cpu => a
-                    .cpu
-                    .partial_cmp(&b.cpu)
-                    .unwrap_or(std::cmp::Ordering::Equal),
+                ProcessSort::Cpu => a.cpu.total_cmp(&b.cpu),
                 ProcessSort::Memory => a.memory.cmp(&b.memory),
                 ProcessSort::Status => a.status.cmp(&b.status),
             };
