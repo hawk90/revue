@@ -1554,9 +1554,14 @@ fn test_masked_input_debug_does_not_print_the_value() {
     // A log line, a panic message or `dbg!` must not print the secret (#1073)
     let mut input = MaskedInput::password().value("hunter2");
     input.toggle_reveal();
+    // The messages leave the output out: a failing check would print the
+    // secret it guards
     for debug in [format!("{input:?}"), format!("{input:#?}")] {
-        assert!(!debug.contains("hunter2"), "{debug}");
-        assert!(debug.contains("<7 chars>"), "{debug}");
+        assert!(!debug.contains("hunter2"), "Debug printed the value");
+        assert!(
+            debug.contains("<7 chars>"),
+            "Debug did not print the length"
+        );
     }
 }
 
