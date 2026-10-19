@@ -69,6 +69,16 @@ fn test_slide_content_notes() {
 }
 
 #[test]
+fn test_slide_content_notes_after_a_char_that_lowercases_to_two() {
+    // `İ` lowercases to one byte more: the note is found by the ASCII
+    // marker without shifting the offset into `한` (#875)
+    let slide = SlideContent::new("İ<!-- notes:한 -->");
+    assert_eq!(slide.notes(), Some("한"));
+    let slide = SlideContent::new("\u{212A}<!-- NOTES: b -->");
+    assert_eq!(slide.notes(), Some("b"));
+}
+
+#[test]
 fn test_slide_content_notes_multiline() {
     let slide = SlideContent::new("# Title\n\n<!--\nnotes:\n- Point 1\n- Point 2\n-->");
     assert!(slide.notes().is_some());

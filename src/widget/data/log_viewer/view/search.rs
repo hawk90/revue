@@ -1,6 +1,7 @@
 //! LogViewer search: query, match list and match navigation
 
 use super::LogViewer;
+use crate::utils::text::lowercase_with_origin;
 use crate::widget::data::log_viewer::entry::SearchMatch;
 
 impl LogViewer {
@@ -94,21 +95,6 @@ impl LogViewer {
             self.search_index = 0;
         }
     }
-}
-
-/// Lowercase `text` one character at a time, recording for each byte of the
-/// result the byte range of the original character it came from
-fn lowercase_with_origin(text: &str) -> (String, Vec<std::ops::Range<usize>>) {
-    let mut lower = String::with_capacity(text.len());
-    let mut origin = Vec::with_capacity(text.len());
-    for (i, ch) in text.char_indices() {
-        let range = i..i + ch.len_utf8();
-        for lc in ch.to_lowercase() {
-            lower.push(lc);
-            origin.extend(std::iter::repeat_n(range.clone(), lc.len_utf8()));
-        }
-    }
-    (lower, origin)
 }
 
 #[cfg(test)]
