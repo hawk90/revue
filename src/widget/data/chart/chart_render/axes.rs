@@ -26,7 +26,7 @@ pub fn render_grid(
     if grid.x {
         // Vertical grid lines
         for i in 0..=x_ticks {
-            let x = chart_area.x + (i as u16 * chart_area.width / x_ticks as u16);
+            let x = chart_area.x + tick_offset(i, chart_area.width, x_ticks);
             for y in chart_area.y..chart_area.y + chart_area.height {
                 if x < chart_area.x + chart_area.width {
                     let ch = if y == chart_area.y + chart_area.height - 1 {
@@ -45,7 +45,7 @@ pub fn render_grid(
     if grid.y {
         // Horizontal grid lines
         for i in 0..=y_ticks {
-            let y = chart_area.y + (i as u16 * chart_area.height / y_ticks as u16);
+            let y = chart_area.y + tick_offset(i, chart_area.height, y_ticks);
             for x in chart_area.x..chart_area.x + chart_area.width {
                 if y < chart_area.y + chart_area.height {
                     let ch = if x == chart_area.x { '├' } else { '─' };
@@ -73,10 +73,11 @@ pub fn render_y_axis_labels(
     y_max: f64,
     label_width: u16,
 ) {
-    for i in 0..=axis.ticks {
-        let value = y_min + (y_max - y_min) * (1.0 - i as f64 / axis.ticks as f64);
+    let ticks = axis.ticks.max(1);
+    for i in 0..=ticks {
+        let value = y_min + (y_max - y_min) * (1.0 - i as f64 / ticks as f64);
         let label = axis.format_value(value);
-        let y = area.y + 1 + (i as u16 * (area.height - 2) / axis.ticks as u16);
+        let y = area.y + 1 + tick_offset(i, area.height.saturating_sub(2), ticks);
 
         let label_truncated = truncate_to_width(&label, label_width as usize);
         let mut dx: u16 = 0;
@@ -105,10 +106,11 @@ pub fn render_x_axis_labels(
     x_offset: u16,
 ) {
     let label_y = area.y + area.height - 1;
-    for i in 0..=axis.ticks {
-        let value = x_min + (x_max - x_min) * i as f64 / axis.ticks as f64;
+    let ticks = axis.ticks.max(1);
+    for i in 0..=ticks {
+        let value = x_min + (x_max - x_min) * i as f64 / ticks as f64;
         let label = axis.format_value(value);
-        let x = area.x + x_offset + (i as u16 * (area.width - x_offset) / axis.ticks as u16);
+        let x = area.x + x_offset + tick_offset(i, area.width.saturating_sub(x_offset), ticks);
 
         let label_truncated = truncate_to_width(&label, 6);
         let mut dx: u16 = 0;
@@ -153,4 +155,10 @@ pub fn render_axis_title(
         }
     }
     // Y axis title rendering would go here (rotated text, not commonly needed)
+}
+
+/// The offset of tick `i` of `ticks` (at least one) across `span` cells:
+/// at most `span`, computed wide so many ticks do not overflow
+fn tick_offset(i: usize, span: u16, ticks: usize) -> u16 {
+    (i as u128 * u128::from(span) / ticks.max(1) as u128) as u16
 }

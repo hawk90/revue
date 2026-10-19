@@ -633,3 +633,16 @@ proptest! {
         }
     }
 }
+
+/// A filter given after a selection can hide every entry; moving down then
+/// does nothing (#1063)
+#[test]
+fn test_richlog_select_next_after_the_filter_hides_every_entry() {
+    let mut log = RichLog::new();
+    log.info("a");
+    log.info("b");
+    log.select_next();
+    let mut log = log.min_level(LogLevel::Error);
+    log.select_next();
+    assert!(text(&log, 10, 3).iter().all(|r| r.trim().is_empty()));
+}

@@ -105,3 +105,14 @@ fn test_chart_axis_titles() {
     let column: String = (6..12).map(|y| sym(&buffer, 0, y)).collect();
     assert_eq!(column, "Y Axis");
 }
+
+/// `ticks(0)` labels the axis once, not with NaN (#862)
+#[test]
+fn test_chart_zero_ticks_draws_no_nan() {
+    let chart = Chart::new()
+        .series(Series::new("s").data(vec![(0.0, 0.0), (10.0, 10.0)]))
+        .x_axis(Axis::new().ticks(0))
+        .y_axis(Axis::new().ticks(0));
+    let text = render_rows(&chart, 40, 12).join("\n");
+    assert!(!text.contains("NaN"), "{text}");
+}

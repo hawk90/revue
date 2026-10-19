@@ -502,3 +502,17 @@ proptest! {
         }
     }
 }
+
+/// A placement with a start and no end spans one track (#1037)
+#[test]
+fn a_start_without_an_end_spans_one_track() {
+    let g = Grid::new()
+        .cols(2)
+        .rows_count(1)
+        .item(GridItem::new(Fill('a')).place(GridPlacement {
+            col_start: 2,
+            row_start: 1,
+            ..Default::default()
+        }));
+    assert_eq!(rows(&render(&g, 4, 1)), vec!["  aa"]);
+}

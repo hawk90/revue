@@ -41,7 +41,9 @@ impl VimState {
         if let Key::Char(ch) = key.key {
             if let Some(digit) = ch.to_digit(10).filter(|&d| d != 0 || self.count.is_some()) {
                 let digit = digit as usize;
-                self.count = Some(self.count.unwrap_or(0) * 10 + digit);
+                // A count too long for usize stays at usize::MAX
+                let count = self.count.unwrap_or(0).saturating_mul(10);
+                self.count = Some(count.saturating_add(digit));
                 return true;
             }
         }
