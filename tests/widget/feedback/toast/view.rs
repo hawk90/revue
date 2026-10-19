@@ -155,3 +155,13 @@ proptest! {
         }
     }
 }
+
+// `width(0)` leaves no box to draw (#1059)
+
+#[test]
+fn test_toast_width_zero_draws_nothing() {
+    let buffer = render(&Toast::new("x").width(0), 20, 5);
+    for y in 0..5 {
+        assert_eq!(row(&buffer, y).trim(), "", "row {y}");
+    }
+}

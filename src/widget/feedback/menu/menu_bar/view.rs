@@ -74,6 +74,10 @@ impl MenuBar {
         let dropdown_height = (menu.items.len() as u16 + 2).min(ctx.area.height - y);
 
         draw_frame(ctx, menu_x, y, dropdown_width, dropdown_height, fg, self.bg);
+        // Cut to two columns or less: no column inside the border for a row
+        if dropdown_width < 3 {
+            return;
+        }
 
         // Draw items
         for (i, item) in menu.items.iter().enumerate() {
