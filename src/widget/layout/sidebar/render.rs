@@ -25,6 +25,9 @@ impl Sidebar {
 
         let bar = self.bar(area.width);
         let (is_collapsed, content_width) = (bar.collapsed, bar.width);
+        if content_width == 0 {
+            return;
+        }
 
         // Fill background
         for y in 0..area.height {
@@ -132,7 +135,7 @@ impl Sidebar {
         fg: Option<Color>,
         bold: bool,
     ) {
-        let display = truncate_to_width(text, content_width as usize - 2);
+        let display = truncate_to_width(text, (content_width as usize).saturating_sub(2));
         let x_offset = (content_width as usize).saturating_sub(display_width(display)) / 2;
         let mut dx: u16 = 0;
         for ch in display.chars() {
@@ -169,7 +172,8 @@ impl Sidebar {
         if !bar.collapsed {
             if let Some(title_text) = title {
                 // Section title
-                let display = truncate_to_width(title_text, content_width as usize - 2);
+                let display =
+                    truncate_to_width(title_text, (content_width as usize).saturating_sub(2));
                 let mut dx: u16 = 0;
                 for ch in display.chars() {
                     let cw = char_width(ch) as u16;
@@ -184,7 +188,7 @@ impl Sidebar {
                 }
             } else {
                 // Separator line
-                self.draw_separator(ctx, 1..content_width - 1, y);
+                self.draw_separator(ctx, 1..content_width.saturating_sub(1), y);
             }
         }
     }
