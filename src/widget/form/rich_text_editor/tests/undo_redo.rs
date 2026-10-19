@@ -50,3 +50,55 @@ fn test_insert_clears_redo_stack() {
     editor.redo(); // Should do nothing
     assert_eq!(editor.get_content(), "B");
 }
+
+#[test]
+fn test_undo_and_redo_drop_an_op_that_no_longer_fits() {
+    // An edit made outside the recorded operations leaves ops pointing
+    // past the blocks: undo and redo drop the history instead of
+    // indexing past them (#887)
+    let mut editor = RichTextEditor::new();
+    editor.insert_str("ab");
+    editor.blocks[0].set_text("");
+    editor.undo();
+    assert_eq!(editor.get_content(), "");
+    assert!(editor.undo_stack.is_empty());
+
+    let mut editor = RichTextEditor::new().content("a\nb");
+    editor.set_cursor(0, 1);
+    editor.insert_char('x');
+    editor.undo();
+    editor.blocks = vec![Block::paragraph("")];
+    editor.redo();
+    assert_eq!(editor.get_content(), "");
+    assert!(editor.redo_stack.is_empty());
+}
+
+#[test]
+fn test_undo_split_and_redo_merge_keep_the_cursor_inside_the_text() {
+    // The blocks still exist but are shorter than the op's column: the
+    // op would put the cursor past the text and the next typed char
+    // panic
+    let mut editor = RichTextEditor::new().content("abcd");
+    editor.set_cursor(0, 3);
+    editor.handle_key(&Key::Enter);
+    editor.blocks[0].set_text("a");
+    editor.blocks[1].set_text("");
+    editor.set_cursor(0, 0);
+    editor.undo();
+    assert!(editor.undo_stack.is_empty());
+    editor.insert_char('x');
+
+    let mut editor = RichTextEditor::new().content(
+        "abc
+d",
+    );
+    editor.set_cursor(0, 3);
+    editor.handle_key(&Key::Delete);
+    editor.undo();
+    editor.blocks[0].set_text("");
+    editor.blocks[1].set_text("");
+    editor.set_cursor(0, 0);
+    editor.redo();
+    assert!(editor.redo_stack.is_empty());
+    editor.insert_char('x');
+}

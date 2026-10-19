@@ -68,19 +68,24 @@ impl RichTextEditor {
         }
         // Horizontal rule
         else if text == "---" || text == "***" {
+            self.forget_history();
             self.blocks[self.cursor.0].block_type = BlockType::HorizontalRule;
             self.blocks[self.cursor.0].set_text("");
         }
     }
 
-    /// Apply markdown shortcut
+    /// Apply markdown shortcut: the block takes `block_type` and loses its
+    /// leading blanks and the `prefix_len`-byte ASCII marker after them
     fn apply_shortcut(&mut self, block_type: BlockType, prefix_len: usize) {
+        self.forget_history();
         let block = &mut self.blocks[self.cursor.0];
         let text = block.text();
-        let new_text = text[prefix_len..].to_string();
-        block.set_text(new_text);
+        let trimmed = text.trim_start();
+        let removed = text.len() - trimmed.len() + prefix_len;
+        let removed_chars = text[..removed].chars().count();
+        block.set_text(&text[removed..]);
         block.block_type = block_type;
-        self.cursor.1 = self.cursor.1.saturating_sub(prefix_len);
+        self.cursor.1 = self.cursor.1.saturating_sub(removed_chars);
     }
 
     // =========================================================================

@@ -27,6 +27,7 @@ fn typed_block(block_type: BlockType, text: &str) -> Block {
 impl RichTextEditor {
     /// Parse markdown content
     pub(super) fn parse_markdown(&mut self, markdown: &str) {
+        self.forget_history();
         self.blocks.clear();
         let mut in_code_block = false;
         let mut code_block_lang = String::new();

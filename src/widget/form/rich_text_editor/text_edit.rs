@@ -128,6 +128,13 @@ impl RichTextEditor {
             return;
         }
 
+        // Record for undo
+        self.undo_stack.push(EditOp::MergeBlocks {
+            index: self.cursor.0,
+            split_col: self.blocks[self.cursor.0].char_count(),
+        });
+        self.redo_stack.clear();
+
         self.join_with_next(self.cursor.0);
     }
 
@@ -143,12 +150,20 @@ impl RichTextEditor {
     /// Delete current block
     pub fn delete_block(&mut self) {
         if self.blocks.len() > 1 {
-            self.blocks.remove(self.cursor.0);
+            let block = self.blocks.remove(self.cursor.0);
+            self.undo_stack.push(EditOp::DeleteBlock {
+                index: self.cursor.0,
+                block,
+            });
+            self.redo_stack.clear();
             if self.cursor.0 >= self.blocks.len() {
                 self.cursor.0 = self.blocks.len() - 1;
             }
             self.cursor.1 = 0;
         } else {
+            // The last block is emptied, not removed, and no EditOp
+            // records that
+            self.forget_history();
             self.blocks[0].set_text("");
             self.cursor.1 = 0;
         }

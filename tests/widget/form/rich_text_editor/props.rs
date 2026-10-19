@@ -99,23 +99,21 @@ impl Doc {
     }
 
     /// The markdown shortcut after a typed space: a line starting with a
-    /// marker takes the marker's type and loses the marker.
+    /// marker, after any blanks, takes the marker's type and loses the
+    /// blanks and the marker.
     fn shortcut(&mut self) -> Step {
         let b = self.cursor.0;
         let text: String = self.blocks[b].0.iter().collect();
         let trimmed = text.trim_start();
-        if trimmed.len() != text.len() && SHORTCUTS.iter().any(|(p, _)| trimmed.starts_with(p)) {
-            // A marker after leading blanks: #887
-            return Step::Known;
-        }
+        let blanks = text.chars().count() - trimmed.chars().count();
         if text.trim() == "---" || text.trim() == "***" {
             // The horizontal rule shortcut never fires (#1075)
             return Step::Known;
         }
-        if let Some((p, t)) = SHORTCUTS.iter().find(|(p, _)| text.starts_with(p)) {
-            self.blocks[b].0.drain(..p.len());
+        if let Some((p, t)) = SHORTCUTS.iter().find(|(p, _)| trimmed.starts_with(p)) {
+            self.blocks[b].0.drain(..blanks + p.len());
             self.blocks[b].1 = *t;
-            self.cursor.1 = self.cursor.1.saturating_sub(p.len());
+            self.cursor.1 = self.cursor.1.saturating_sub(blanks + p.len());
         }
         Step::Handled(true)
     }
@@ -228,8 +226,7 @@ proptest! {
     /// Typing, Backspace, Enter, Tab and the arrows are recorded: undoing
     /// everything gives the starting text back and redoing everything the
     /// final text. (Spaces are left out: the markdown shortcut they fire is
-    /// not recorded, and Delete at a line's end merges without a record:
-    /// #887.)
+    /// not recorded, so it clears the history; #887.)
     #[test]
     fn prop_rich_text_editor_undo_all_then_redo_all(
         text in prop::sample::select(vec!["", "ab\ncd", "x\n\nyz"]),
@@ -238,8 +235,7 @@ proptest! {
         let mut editor = RichTextEditor::new().content(text);
         let mut model = Doc::plain(text);
         for k in &keys {
-            let (b, c) = model.cursor;
-            if *k == Key::Char(' ') || (*k == Key::Delete && c == model.len(b)) {
+            if *k == Key::Char(' ') {
                 continue;
             }
             editor.handle_key(k);
