@@ -122,7 +122,6 @@ proptest! {
         let mut vim = VimState::new();
         vim.set_mode(start);
         let mut model = Model { mode: start, command: String::new(), search: String::new(), forward: true };
-        let mut digits = 0;
         for k in &keys {
             // Backspace on a one-char command line or pattern leaves the
             // mode instead of keeping the empty line open (#1081);
@@ -132,16 +131,6 @@ proptest! {
                     || (model.mode == VimMode::Search && model.search.chars().count() == 1))
             {
                 continue;
-            }
-            // A count of 20 digits overflows (the vim issue filed from this
-            // audit): keep counts short.
-            if model.mode == VimMode::Normal && matches!(k, Key::Char('3' | '0')) {
-                digits += 1;
-                if digits > 8 {
-                    continue;
-                }
-            } else {
-                digits = 0;
             }
             let action = vim.handle_key(&KeyEvent::new(*k));
             let expected = model.press(k);
