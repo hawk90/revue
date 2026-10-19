@@ -236,3 +236,72 @@ fn test_special_characters() {
     let m = fuzzy_match("->", "a->b->c").unwrap();
     assert!(m.score > 0);
 }
+
+// =========================================================================
+// Chars whose lowercase has another length (#875)
+// =========================================================================
+
+#[test]
+fn test_match_after_a_char_that_lowercases_to_two() {
+    // `İ` lowercases to `i` plus a combining dot: indices stay those of
+    // the original chars
+    let m = fuzzy_match("x", "İx").unwrap();
+    assert_eq!(m.indices, vec![1]);
+    let m = fuzzy_match("ab", "İab").unwrap();
+    assert_eq!(m.indices, vec![1, 2]);
+    assert_eq!(fuzzy_match("i", "İ").unwrap().indices, vec![0]);
+    assert_eq!(
+        FuzzyMatcher::new("x").match_str("İx").unwrap().indices,
+        vec![1]
+    );
+}
+
+#[test]
+fn test_pattern_with_a_char_that_lowercases_to_two() {
+    // The case bonus compares each pattern char with its own original
+    assert_eq!(fuzzy_match("İx", "ix").unwrap().indices, vec![0, 1]);
+    assert_eq!(fuzzy_match("ix", "İx").unwrap().indices, vec![0, 1]);
+}
+
+#[test]
+fn test_kelvin_sign_matches_k() {
+    assert_eq!(fuzzy_match("k", "\u{212A}m").unwrap().indices, vec![0]);
+}
+
+mod props {
+    use proptest::prelude::*;
+    use revue::utils::fuzzy::*;
+
+    fn fold(c: char) -> char {
+        c.to_lowercase().next().unwrap_or(c)
+    }
+
+    /// Strings of chars whose lowercase is longer, shorter or the same
+    fn text() -> impl Strategy<Value = String> {
+        prop::collection::vec(
+            prop::sample::select(vec!['İ', '\u{212A}', 'ß', '한', 'a', 'A', 'x', 'X', ' ']),
+            0..12,
+        )
+        .prop_map(String::from_iter)
+    }
+
+    proptest! {
+        /// A match's indices point, in order, at target chars equal to the
+        /// pattern's chars ignoring case
+        #[test]
+        fn prop_fuzzy_indices_point_at_the_pattern(pattern in text(), target in text()) {
+            let Some(m) = fuzzy_match(&pattern, &target) else {
+                return Ok(());
+            };
+            let target: Vec<char> = target.chars().collect();
+            let pattern: Vec<char> = pattern.chars().collect();
+            prop_assert_eq!(m.indices.len(), pattern.len());
+            prop_assert!(m.indices.windows(2).all(|w| w[0] < w[1]));
+            for (&i, &p) in m.indices.iter().zip(&pattern) {
+                prop_assert_eq!(fold(target[i]), fold(p));
+            }
+            prop_assert_eq!(Some(m), FuzzyMatcher::new(&pattern.iter().collect::<String>())
+                .match_str(&target.iter().collect::<String>()));
+        }
+    }
+}

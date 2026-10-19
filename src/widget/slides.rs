@@ -120,8 +120,10 @@ impl SlideContent {
     /// -->
     /// ```
     fn extract_notes(markdown: &str) -> Option<String> {
-        // Simple regex-free approach: find <!-- notes: ... -->
-        let lower = markdown.to_lowercase();
+        // Simple regex-free approach: find <!-- notes: ... -->. The markers
+        // are ASCII, so an ASCII-lowercased copy keeps every byte offset of
+        // `markdown` (#875)
+        let lower = markdown.to_ascii_lowercase();
 
         if let Some(start_idx) = lower.find("<!-- notes:") {
             let content_start = start_idx + "<!-- notes:".len();
