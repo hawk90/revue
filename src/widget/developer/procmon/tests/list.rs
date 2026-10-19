@@ -212,6 +212,24 @@ proptest! {
 }
 
 #[test]
+fn a_nan_cpu_does_not_panic_the_sort() {
+    // #986
+    let mut monitor = bare().sort_by(ProcessSort::Cpu);
+    let list = (0..40)
+        .map(|i| {
+            let cpu = if i % 3 == 0 {
+                f32::NAN
+            } else {
+                (i % 11) as f32
+            };
+            process(i, "p", cpu, 0, 0.0, "Run", "", "0")
+        })
+        .collect();
+    monitor.set_process_list(list);
+    assert_eq!(monitor.process_count(), 40);
+}
+
+#[test]
 fn moves_on_an_empty_list_select_nothing() {
     let mut monitor = monitor_with(Vec::new());
     monitor.select_next();

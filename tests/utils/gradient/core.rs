@@ -314,3 +314,19 @@ fn test_gradient_debug() {
     let debug_str = format!("{:?}", gradient);
     assert!(debug_str.contains("Gradient"));
 }
+
+/// NaN stop positions do not panic the sort (#986)
+#[test]
+fn test_gradient_with_nan_stops() {
+    let stop = |i: i32| {
+        let position = if i % 3 == 0 {
+            f32::NAN
+        } else {
+            (i % 11) as f32 / 11.0
+        };
+        ColorStop::new(position, Color::RED)
+    };
+    let mut gradient = Gradient::new((0..40).map(stop).collect());
+    gradient.add_stop(stop(0));
+    assert_eq!(gradient.stops().len(), 41);
+}

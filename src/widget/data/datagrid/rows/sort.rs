@@ -120,7 +120,7 @@ impl DataGrid {
                     ColumnType::Number => {
                         let na: f64 = va.parse().unwrap_or(0.0);
                         let nb: f64 = vb.parse().unwrap_or(0.0);
-                        na.partial_cmp(&nb).unwrap_or(Ordering::Equal)
+                        na.total_cmp(&nb)
                     }
                     ColumnType::Text | ColumnType::Custom => {
                         if use_natural {
