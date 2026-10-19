@@ -32,11 +32,7 @@ impl Gradient {
     ///
     /// Stops are automatically sorted by position.
     pub fn new(mut stops: Vec<ColorStop>) -> Self {
-        stops.sort_by(|a, b| {
-            a.position
-                .partial_cmp(&b.position)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        stops.sort_by(|a, b| a.position.total_cmp(&b.position));
         Self {
             stops,
             interpolation: InterpolationMode::default(),
@@ -92,11 +88,7 @@ impl Gradient {
     /// Add a color stop
     pub fn add_stop(&mut self, stop: ColorStop) {
         self.stops.push(stop);
-        self.stops.sort_by(|a, b| {
-            a.position
-                .partial_cmp(&b.position)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        self.stops.sort_by(|a, b| a.position.total_cmp(&b.position));
     }
 
     /// Get number of color stops

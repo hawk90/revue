@@ -198,3 +198,24 @@ proptest! {
         prop_assert_eq!(got, expected);
     }
 }
+
+/// A "NaN" cell in a number column sorts to one end instead of panicking
+/// the sort (#986)
+#[test]
+fn test_datagrid_sort_number_column_with_nan() {
+    let rows = (0..40)
+        .map(|i| {
+            let v = if i % 3 == 0 {
+                "NaN".to_string()
+            } else {
+                (i % 11).to_string()
+            };
+            GridRow::new().cell("n", v)
+        })
+        .collect();
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("n", "N").col_type(ColumnType::Number))
+        .rows(rows);
+    grid.sort(0);
+    assert_eq!(grid.row_count(), 40);
+}
