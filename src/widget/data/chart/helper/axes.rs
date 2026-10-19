@@ -46,8 +46,9 @@ impl Chart {
             ..
         } = *plot;
         let (_, _, y_min, y_max) = bounds;
-        for i in 0..=self.y_axis.ticks {
-            let t = i as f64 / self.y_axis.ticks as f64;
+        let ticks = self.y_axis.ticks.max(1);
+        for i in 0..=ticks {
+            let t = i as f64 / ticks as f64;
             let value = y_min + t * (y_max - y_min);
             let label = self.format_label(value, &self.y_axis.format);
             let y = inner_y + inner_h - 1 - ((t * (inner_h as f64 - 1.0)) as u16);
@@ -64,7 +65,7 @@ impl Chart {
             }
 
             // Draw grid line
-            if self.y_axis.grid && i > 0 && i < self.y_axis.ticks {
+            if self.y_axis.grid && i > 0 && i < ticks {
                 for x in inner_x..inner_x + inner_w {
                     let mut cell = Cell::new('┄');
                     cell.fg = Some(Color::rgb(50, 50, 50));
@@ -91,8 +92,9 @@ impl Chart {
             ..
         } = *plot;
         let (x_min, x_max, _, _) = bounds;
-        for i in 0..=self.x_axis.ticks {
-            let t = i as f64 / self.x_axis.ticks as f64;
+        let ticks = self.x_axis.ticks.max(1);
+        for i in 0..=ticks {
+            let t = i as f64 / ticks as f64;
             let value = x_min + t * (x_max - x_min);
             let label = self.format_label(value, &self.x_axis.format);
             let x = inner_x + (t * (inner_w as f64 - 1.0)) as u16;
@@ -111,7 +113,7 @@ impl Chart {
             }
 
             // Draw grid line
-            if self.x_axis.grid && i > 0 && i < self.x_axis.ticks {
+            if self.x_axis.grid && i > 0 && i < ticks {
                 for y in inner_y..inner_y + inner_h {
                     let mut cell = Cell::new('┊');
                     cell.fg = Some(Color::rgb(50, 50, 50));

@@ -54,8 +54,7 @@ impl<T: Interpolatable> Keyframes<T> {
     /// Add a keyframe
     pub fn add(mut self, time: f64, value: T) -> Self {
         self.keyframes.push(Keyframe::new(time, value));
-        self.keyframes
-            .sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
+        self.keyframes.sort_by(|a, b| a.time.total_cmp(&b.time));
         self
     }
 
@@ -63,8 +62,7 @@ impl<T: Interpolatable> Keyframes<T> {
     pub fn add_eased(mut self, time: f64, value: T, easing: Easing) -> Self {
         self.keyframes
             .push(Keyframe::new(time, value).easing(easing));
-        self.keyframes
-            .sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
+        self.keyframes.sort_by(|a, b| a.time.total_cmp(&b.time));
         self
     }
 
