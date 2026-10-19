@@ -122,6 +122,7 @@ impl MultiSelect {
         if let Some(max) = self.max_selections {
             self.selected.truncate(max);
         }
+        self.clamp_tag_cursor();
     }
 
     /// Remove the last selected tag
