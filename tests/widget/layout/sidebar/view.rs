@@ -121,6 +121,36 @@ fn test_sidebar_hover_on_a_title_row_highlights_nothing() {
     assert_eq!(screen(&sb, 24, 3).get(3, 1).unwrap().bg, Some(HOVER_BG));
 }
 
+// A bar narrower than the two columns its text margins need (#1032)
+
+#[test]
+fn test_sidebar_expanded_width_1_draws() {
+    let sb = Sidebar::new()
+        .expanded_width(1)
+        .header("App")
+        .items(vec![SidebarItem::new("a", "A")]);
+    let buffer = screen(&sb, 10, 4);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '│');
+}
+
+#[test]
+fn test_sidebar_expanded_width_0_draws_nothing() {
+    let sb = Sidebar::new()
+        .expanded_width(0)
+        .items(vec![SidebarItem::new("a", "A")]);
+    let buffer = screen(&sb, 10, 4);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+}
+
+#[test]
+fn test_sidebar_collapsed_width_0_draws_nothing() {
+    let sb = Sidebar::new()
+        .collapse_mode(CollapseMode::Collapsed)
+        .collapsed_width(0);
+    let buffer = screen(&sb, 10, 4);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+}
+
 #[test]
 fn test_sidebar_toggle_item_toggles_one_item_per_id() {
     // Two trees hold "dup", one nested: toggling expands the first one only.
