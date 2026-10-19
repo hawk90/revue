@@ -138,9 +138,9 @@ fn has_room(
 ) -> bool {
     match side {
         TooltipPosition::Top => ay >= h + arrow,
-        TooltipPosition::Bottom => ah.saturating_sub(ay + 1) >= h + arrow,
+        TooltipPosition::Bottom => ah.saturating_sub(ay.saturating_add(1)) >= h + arrow,
         TooltipPosition::Left => ax >= w + arrow,
-        TooltipPosition::Right => aw.saturating_sub(ax + 1) >= w + arrow,
+        TooltipPosition::Right => aw.saturating_sub(ax.saturating_add(1)) >= w + arrow,
         TooltipPosition::Auto => false,
     }
 }
@@ -178,9 +178,9 @@ fn model_corner(
     (aw, ah): (u16, u16),
 ) -> (u16, u16) {
     let (x, y) = match side {
-        TooltipPosition::Bottom => (ax.saturating_sub(w / 2), ay + 1 + arrow),
+        TooltipPosition::Bottom => (ax.saturating_sub(w / 2), ay.saturating_add(1 + arrow)),
         TooltipPosition::Left => (ax.saturating_sub(w + arrow), ay.saturating_sub(h / 2)),
-        TooltipPosition::Right => (ax + 1 + arrow, ay.saturating_sub(h / 2)),
+        TooltipPosition::Right => (ax.saturating_add(1 + arrow), ay.saturating_sub(h / 2)),
         _ => (ax.saturating_sub(w / 2), ay.saturating_sub(h + arrow)),
     };
     (x.min(aw.saturating_sub(w)), y.min(ah.saturating_sub(h)))
@@ -258,15 +258,32 @@ impl Case {
     }
 }
 
+/// An anchor coordinate below `near`, or with `far` sometimes anywhere up
+/// to `u16::MAX` and sometimes within 2 of it, where adding the arrow
+/// overflowed (#1054)
+fn anchor(near: u16, far: bool) -> BoxedStrategy<u16> {
+    if far {
+        prop_oneof![18 => 0..near, 1 => near..=u16::MAX, 1 => u16::MAX - 2..=u16::MAX].boxed()
+    } else {
+        (0..near).boxed()
+    }
+}
+
 /// Cases in areas of `widths` x `heights`, the anchor up to `past` cells
-/// past the area
+/// past the area, and, when `past` is not 0, sometimes far past it
 fn cases(
     widths: std::ops::Range<u16>,
     heights: impl Strategy<Value = u16>,
     past: u16,
 ) -> impl Strategy<Value = Case> {
     (widths, heights)
-        .prop_flat_map(move |(aw, ah)| (Just((aw, ah)), 0..aw + past, 0..ah + past))
+        .prop_flat_map(move |(aw, ah)| {
+            (
+                Just((aw, ah)),
+                anchor(aw + past, past > 0),
+                anchor(ah + past, past > 0),
+            )
+        })
         .prop_flat_map(|(area, ax, ay)| {
             (
                 (text(), title(), 0u16..25),
@@ -287,7 +304,8 @@ fn cases(
         })
 }
 
-/// Any area, the anchor inside it or up to 2 cells past it. Areas of 1 to
+/// Any area, the anchor inside it, up to 2 cells past it, or anywhere up
+/// to `u16::MAX` (one case in ten). Areas of 1 to
 /// 4 rows are half the cases, so Auto often finds no room above or below
 /// and has to choose between right and left.
 fn case() -> impl Strategy<Value = Case> {

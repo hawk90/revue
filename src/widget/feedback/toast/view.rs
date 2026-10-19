@@ -23,6 +23,10 @@ impl View for Toast {
             (ctx.buffer.width(), ctx.buffer.height())
         };
         let (toast_width, toast_height) = self.calculate_size(space_w);
+        // `width(0)`: no box to draw
+        if toast_width == 0 {
+            return;
+        }
         let (abs_x, abs_y) = self.calculate_position(space_w, space_h, toast_width, toast_height);
 
         // The level palette is this toast's own default, and a rule naming
