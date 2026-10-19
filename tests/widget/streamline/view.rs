@@ -364,3 +364,30 @@ proptest! {
         }
     }
 }
+
+/// Layers whose values sum to NaN do not panic the ordering sort (#986)
+#[test]
+fn test_streamline_orders_layers_with_nan() {
+    for order in [
+        StreamOrder::Ascending,
+        StreamOrder::Descending,
+        StreamOrder::InsideOut,
+    ] {
+        let layers: Vec<StreamLayer> = (0..40)
+            .map(|i| {
+                let v = if i % 3 == 0 {
+                    f64::NAN
+                } else {
+                    (i % 11) as f64
+                };
+                StreamLayer::new(format!("l{i}")).data(vec![v])
+            })
+            .collect();
+        let streamline = Streamline::new().layers(layers).order(order);
+        let mut buffer = Buffer::new(40, 10);
+        streamline.render(&mut RenderContext::new(
+            &mut buffer,
+            Rect::new(0, 0, 40, 10),
+        ));
+    }
+}

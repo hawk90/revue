@@ -216,3 +216,13 @@ fn test_keyframes_clone() {
     let kfs2 = kfs1.clone();
     assert_eq!(kfs1.len(), kfs2.len());
 }
+
+/// A NaN keyframe time does not panic the sort (#986)
+#[test]
+fn test_keyframes_with_a_nan_time() {
+    let frames = Keyframes::<f64>::new()
+        .add(1.0, 0.0)
+        .add(f64::NAN, 1.0)
+        .add_eased(0.5, 2.0, Easing::Linear);
+    assert_eq!(frames.len(), 3);
+}

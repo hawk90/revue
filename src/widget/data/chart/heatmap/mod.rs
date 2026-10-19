@@ -107,8 +107,9 @@ impl HeatMap {
     pub fn from_flat(data: &[f64], rows: usize, cols: usize) -> Self {
         let mut grid = Vec::with_capacity(rows);
         for r in 0..rows {
-            let start = r * cols;
-            let end = (start + cols).min(data.len());
+            // Rows past the data are empty
+            let start = r.saturating_mul(cols).min(data.len());
+            let end = start.saturating_add(cols).min(data.len());
             grid.push(data[start..end].to_vec());
         }
         Self::new(grid)

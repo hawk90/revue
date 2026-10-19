@@ -49,6 +49,10 @@ impl Skeleton {
         // Simple circle representation using unicode
         // For small sizes, just use filled block
         let size = self.height.max(1).min(area.height);
+        // A zero-height area: nothing to draw
+        if size == 0 {
+            return;
+        }
 
         if size == 1 {
             put(ctx, 0, 0, '●', color);

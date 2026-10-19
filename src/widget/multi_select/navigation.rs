@@ -38,7 +38,7 @@ impl MultiSelect {
     pub fn tag_cursor_right(&mut self) {
         match self.tag_cursor {
             None => {}
-            Some(pos) if pos >= self.selected.len() - 1 => self.tag_cursor = None,
+            Some(pos) if pos + 1 >= self.selected.len() => self.tag_cursor = None,
             Some(pos) => self.tag_cursor = Some(pos + 1),
         }
     }

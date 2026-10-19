@@ -566,3 +566,19 @@ fn test_tag_cursor_follows_a_shrinking_selection() {
     s.clear_selection();
     assert_eq!(s.get_tag_cursor(), None);
 }
+
+/// `select_all` that shrinks the selection keeps the tag cursor on a tag, so
+/// Right does not panic on an empty selection (#1094)
+#[test]
+fn multi_select_right_after_select_all_does_not_panic() {
+    use revue::event::Key;
+    let mut s = MultiSelect::new()
+        .options(vec!["A", "B"])
+        .selected_indices(vec![0])
+        .max_selections(0);
+    s.handle_key(&Key::Left);
+    s.handle_key(&Key::Char('a'));
+    assert_eq!(s.get_tag_cursor(), None);
+    s.handle_key(&Key::Right);
+    assert!(s.get_selected_indices().is_empty());
+}
