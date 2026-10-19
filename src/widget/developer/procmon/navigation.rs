@@ -19,7 +19,10 @@ impl ProcessMonitor {
 
     /// Page down
     pub fn page_down(&mut self, page_size: usize) {
-        self.selected = (self.selected + page_size).min(self.processes.len().saturating_sub(1));
+        self.selected = self
+            .selected
+            .saturating_add(page_size)
+            .min(self.processes.len().saturating_sub(1));
     }
 
     /// Page up
