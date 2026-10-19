@@ -168,6 +168,12 @@ impl RichTextEditor {
         self.blocks.get(block).map(Block::char_count)
     }
 
+    /// The char count of blocks `block` and `block + 1` joined, if both
+    /// exist
+    fn joined_chars(&self, block: usize) -> Option<usize> {
+        Some(self.chars_in(block)? + self.chars_in(block + 1)?)
+    }
+
     /// Whether undoing `op` stays inside the blocks; an op that no longer
     /// matches them is dropped with the history instead of panicking (#887)
     fn undo_fits(&self, op: &EditOp) -> bool {
@@ -175,7 +181,8 @@ impl RichTextEditor {
         match *op {
             EditOp::InsertChar { block, col, .. } => self.chars_in(block).is_some_and(|n| col < n),
             EditOp::DeleteChar { block, col, .. } => self.chars_in(block).is_some_and(|n| col <= n),
-            EditOp::SplitBlock { block, .. } => block + 1 < len,
+            // The cursor lands on `col` of the joined block
+            EditOp::SplitBlock { block, col } => self.joined_chars(block).is_some_and(|n| col <= n),
             EditOp::InsertBlock { index, .. } => index < len && len > 1,
             EditOp::DeleteBlock { index, .. } => index <= len,
             EditOp::MergeBlocks { index, split_col } => {
@@ -194,7 +201,9 @@ impl RichTextEditor {
             EditOp::SplitBlock { block, col } => self.chars_in(block).is_some_and(|n| col <= n),
             EditOp::InsertBlock { index, .. } => index <= len,
             EditOp::DeleteBlock { index, .. } => index < len && len > 1,
-            EditOp::MergeBlocks { index, .. } => index + 1 < len,
+            EditOp::MergeBlocks { index, split_col } => {
+                self.joined_chars(index).is_some_and(|n| split_col <= n)
+            }
             EditOp::SetFormat { block, .. } | EditOp::ChangeBlockType { block, .. } => block < len,
         }
     }
