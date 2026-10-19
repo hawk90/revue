@@ -56,6 +56,25 @@ pub(crate) fn find_chars(
     })
 }
 
+/// Lowercase `text` one character at a time, recording for each byte of the
+/// result the byte range of the original character it came from.
+///
+/// `to_lowercase` can change a string's length (`İ` becomes two chars, the
+/// Kelvin sign one byte), so an offset found in a lowercased copy must be
+/// mapped back through the ranges before it indexes the original.
+pub(crate) fn lowercase_with_origin(text: &str) -> (String, Vec<std::ops::Range<usize>>) {
+    let mut lower = String::with_capacity(text.len());
+    let mut origin = Vec::with_capacity(text.len());
+    for (i, ch) in text.char_indices() {
+        let range = i..i + ch.len_utf8();
+        for lc in ch.to_lowercase() {
+            lower.push(lc);
+            origin.extend(std::iter::repeat_n(range.clone(), lc.len_utf8()));
+        }
+    }
+    (lower, origin)
+}
+
 /// Get byte index from character index, also returning the character at that position
 ///
 /// # Returns

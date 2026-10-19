@@ -19,6 +19,7 @@
 //! ```
 
 use crate::style::Color;
+use crate::utils::text::lowercase_with_origin;
 
 /// A span of text with optional highlighting
 #[derive(Clone, Debug, PartialEq)]
@@ -156,10 +157,13 @@ pub fn highlight_substring_case(
         return vec![HighlightSpan::normal(text.to_string(), 0, text.len())];
     }
 
-    let search_text = if case_sensitive {
-        text.to_string()
+    // A lowercased copy can differ in length from `text`: each match is
+    // mapped back to the original characters it came from (#875)
+    let (search_text, origin) = if case_sensitive {
+        (text.to_string(), None)
     } else {
-        text.to_lowercase()
+        let (lower, origin) = lowercase_with_origin(text);
+        (lower, Some(origin))
     };
     let search_pattern = if case_sensitive {
         pattern.to_string()
@@ -170,8 +174,16 @@ pub fn highlight_substring_case(
     let mut spans = Vec::new();
     let mut last_end = 0;
 
-    for (start, _) in search_text.match_indices(&search_pattern) {
-        let end = start + pattern.len();
+    for (found, _) in search_text.match_indices(&search_pattern) {
+        let found_end = found + search_pattern.len();
+        let (start, end) = match &origin {
+            Some(origin) => (origin[found].start, origin[found_end - 1].end),
+            None => (found, found_end),
+        };
+        if start < last_end {
+            // Starts inside the original character the last match ended in
+            continue;
+        }
 
         // Add non-highlighted span before match
         if start > last_end {
