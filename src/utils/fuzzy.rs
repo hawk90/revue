@@ -58,61 +58,14 @@ impl FuzzyMatch {
 /// assert!(fuzzy_match("xyz", "fuzzy finder").is_none());
 /// ```
 pub fn fuzzy_match(pattern: &str, target: &str) -> Option<FuzzyMatch> {
-    if pattern.is_empty() {
-        return Some(FuzzyMatch::new(0, vec![]));
-    }
+    FuzzyMatcher::new(pattern).match_str(target)
+}
 
-    let pattern_lower: Vec<char> = pattern.to_lowercase().chars().collect();
-    let pattern_chars: Vec<char> = pattern.chars().collect();
-    let target_chars: Vec<char> = target.chars().collect();
-    let target_lower: Vec<char> = target.to_lowercase().chars().collect();
-
-    let mut indices = Vec::with_capacity(pattern_lower.len());
-    let mut score = 0i32;
-    let mut pattern_idx = 0;
-    let mut prev_match_idx: Option<usize> = None;
-
-    for (i, &ch) in target_lower.iter().enumerate() {
-        if pattern_idx < pattern_lower.len() && ch == pattern_lower[pattern_idx] {
-            indices.push(i);
-
-            // Base score for match
-            score += 1;
-
-            // Bonus for case-sensitive match
-            if target_chars[i] == pattern_chars.get(pattern_idx).copied().unwrap_or(' ') {
-                score += 1;
-            }
-
-            // Bonus for consecutive matches
-            if let Some(prev) = prev_match_idx {
-                if i == prev + 1 {
-                    score += 3;
-                }
-            }
-
-            // Bonus for match at word boundary
-            if i == 0 {
-                score += 2; // Start of string
-            } else {
-                let prev_char = target_chars[i - 1];
-                if !prev_char.is_alphanumeric()
-                    || (prev_char.is_lowercase() && target_chars[i].is_uppercase())
-                {
-                    score += 2; // Word boundary or camelCase
-                }
-            }
-
-            prev_match_idx = Some(i);
-            pattern_idx += 1;
-        }
-    }
-
-    if pattern_idx == pattern_lower.len() {
-        Some(FuzzyMatch::new(score, indices))
-    } else {
-        None
-    }
+/// `c` lowercased to one char, so a lowercased string keeps the original's
+/// char indices: `to_lowercase` on a whole string turns `İ` into two chars
+/// and shifts every index after it (#875)
+fn fold_case(c: char) -> char {
+    c.to_lowercase().next().unwrap_or(c)
 }
 
 /// Fuzzy match with a minimum score threshold
@@ -176,7 +129,7 @@ impl FuzzyMatcher {
     /// Create a new fuzzy matcher
     pub fn new(pattern: &str) -> Self {
         Self {
-            pattern: pattern.to_lowercase().chars().collect(),
+            pattern: pattern.chars().map(fold_case).collect(),
             original_chars: pattern.chars().collect(),
             min_score: 0,
         }
@@ -200,7 +153,7 @@ impl FuzzyMatcher {
         }
 
         let target_chars: Vec<char> = target.chars().collect();
-        let target_lower: Vec<char> = target.to_lowercase().chars().collect();
+        let target_lower: Vec<char> = target_chars.iter().copied().map(fold_case).collect();
 
         let mut indices = Vec::with_capacity(self.pattern.len());
         let mut score = 0i32;
