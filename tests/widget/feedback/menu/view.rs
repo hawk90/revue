@@ -346,3 +346,23 @@ fn test_menu_bar_separator_only_menu_takes_the_fallback_width() {
     assert_eq!(row(&b, 1), format!("┌{}┐    ", "─".repeat(8)));
     assert_eq!(row(&b, 2), format!("├{}┤    ", "─".repeat(8)));
 }
+
+// A dropdown cut to one or two columns has no column inside its border
+// (#1050)
+
+#[test]
+fn test_menu_bar_one_column_area_draws() {
+    let mut bar = MenuBar::new().menu(Menu::new("F").item(MenuItem::new("Undo")));
+    bar.open_menu(0);
+    let buffer = render(&bar, 1, 4);
+    assert_eq!(buffer.get(0, 1).unwrap().symbol, '┌');
+}
+
+#[test]
+fn test_menu_bar_two_column_dropdown_keeps_its_border() {
+    let mut bar = MenuBar::new()
+        .menu(Menu::new("F").item(MenuItem::new("More").submenu(vec![MenuItem::new("A")])));
+    bar.open_menu(0);
+    let buffer = render(&bar, 2, 4);
+    assert_eq!(row(&buffer, 2), "││");
+}

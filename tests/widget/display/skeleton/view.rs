@@ -144,22 +144,10 @@ fn assert_matches_model(buffer: &Buffer, want: &[Vec<Option<char>>], fg: Color, 
 
 #[test]
 fn zero_areas_draw_nothing() {
-    for shape in [SkeletonShape::Rectangle, SkeletonShape::Paragraph] {
-        for height in [0, 1, 3] {
+    for shape in SHAPES {
+        for height in [0, 1, 2, 3] {
             assert_zero_areas_draw_nothing(&Skeleton::new().shape(shape).height(height));
         }
-    }
-    // A circle in a zero-height area panics (`size - 1` underflows;
-    // #1065), so only the zero-width area is checked here.
-    for height in [1, 2, 3] {
-        let mut buffer = Buffer::new(10, 10);
-        let s = Skeleton::new().circle().height(height);
-        s.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 0, 10)));
-        assert_eq!(
-            cells(&buffer),
-            cells(&Buffer::new(10, 10)),
-            "circle {height}"
-        );
     }
 }
 
@@ -240,8 +228,6 @@ proptest! {
         aw in 0u16..16,
         ah in 0u16..10,
     ) {
-        // Circle in a zero-height area panics (#1065).
-        prop_assume!(!(shape == SkeletonShape::Circle && ah == 0));
         let mut s = Skeleton::new()
             .shape(shape)
             .width(width)
