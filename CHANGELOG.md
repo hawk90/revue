@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.2](https://github.com/hawk90/revue/compare/v3.10.1...v3.10.2) (2026-10-19)
+
+
+### Bug Fixes
+
+* **chart:** place axis ticks without dividing by zero or overflowing u16 ([#1124](https://github.com/hawk90/revue/issues/1124)) ([eea9a80](https://github.com/hawk90/revue/commit/eea9a80767551ed23fd792be3148abb627e325cd))
+* **deps:** update non-major dependencies ([#1115](https://github.com/hawk90/revue/issues/1115)) ([823f88f](https://github.com/hawk90/revue/commit/823f88fa8058375095cc2cda8689ab1a400831cf))
+* **filepicker:** keep a save name inside the current directory ([#1135](https://github.com/hawk90/revue/issues/1135)) ([5269448](https://github.com/hawk90/revue/commit/526944897004077f7b8dba573686d5ba64ea4bb0))
+* **grid:** span one track for an explicit start without an end instead of panicking ([#1127](https://github.com/hawk90/revue/issues/1127)) ([1b35a45](https://github.com/hawk90/revue/commit/1b35a455975faab9b79d43e06c9cd9d698f54fd7))
+* **heatmap:** build from_flat rows from the data that exists instead of panicking ([#1126](https://github.com/hawk90/revue/issues/1126)) ([e25a128](https://github.com/hawk90/revue/commit/e25a1289d902cbe331ea8fe29f01d16d1a671663))
+* **masked_input:** keep the secret out of Debug and end the peek when the cursor moves ([#1136](https://github.com/hawk90/revue/issues/1136)) ([5e3b1b3](https://github.com/hawk90/revue/commit/5e3b1b33b8a3b01e2534119f2f197a24a9d47a5a))
+* **menu_bar:** draw no rows in a dropdown cut to one or two columns ([#1118](https://github.com/hawk90/revue/issues/1118)) ([f789626](https://github.com/hawk90/revue/commit/f7896266677c8f0b0c1488f51f533ec13cd56dd6))
+* **multi_select:** keep the tag cursor on a tag after select_all so Right does not panic ([#1129](https://github.com/hawk90/revue/issues/1129)) ([a451c1b](https://github.com/hawk90/revue/commit/a451c1bbfdf454456d047752dd6e02413e10e052))
+* **pagination:** saturate the page window's end so pages near u16::MAX do not panic ([#1122](https://github.com/hawk90/revue/issues/1122)) ([270874e](https://github.com/hawk90/revue/commit/270874eacc71be24762d5a6e9c3af69b4b5ecab4))
+* **procmon:** saturate page_down so a huge page stops at the last process ([#1123](https://github.com/hawk90/revue/issues/1123)) ([bb8f9de](https://github.com/hawk90/revue/commit/bb8f9de67ff6888a17d461bdbb06ae2d0ce75ee6))
+* **rich_text_editor:** drop the selection on every edit and keep its ends inside the text ([#1133](https://github.com/hawk90/revue/issues/1133)) ([bc93434](https://github.com/hawk90/revue/commit/bc93434b646e1e6051a8a308bd50e96f9f983028))
+* **rich_text_editor:** record a merge and a deleted block, drop the history after unrecorded edits, and bounds-check undo ([#1132](https://github.com/hawk90/revue/issues/1132)) ([2c7e395](https://github.com/hawk90/revue/commit/2c7e395d23647b9ac7681ea1653a4f7d498fcff9))
+* **richlog:** keep select_next from panicking when the filter hides every entry ([#1128](https://github.com/hawk90/revue/issues/1128)) ([3f3e0f8](https://github.com/hawk90/revue/commit/3f3e0f8b153d475dbe1d7a0a980d98f4541d4264))
+* **sidebar:** draw nothing for a zero-width bar and stop the one-column bar from panicking ([#1117](https://github.com/hawk90/revue/issues/1117)) ([fd5c8e4](https://github.com/hawk90/revue/commit/fd5c8e4ae5cde5494753e7fb85daf5591d948226))
+* **skeleton:** draw nothing for a circle in a zero-height area ([#1120](https://github.com/hawk90/revue/issues/1120)) ([b20d2c5](https://github.com/hawk90/revue/commit/b20d2c514e17445e93f342512d64fdef067c974f))
+* sort floats with total_cmp so a NaN in the data does not panic the sort ([#1125](https://github.com/hawk90/revue/issues/1125)) ([938397e](https://github.com/hawk90/revue/commit/938397e9779c2020360573b611386fa7faebf3e5))
+* **toast:** draw nothing for width(0) instead of panicking ([#1119](https://github.com/hawk90/revue/issues/1119)) ([03f7efc](https://github.com/hawk90/revue/commit/03f7efc15e5274a98d88b21244d333f5e9ebe709))
+* **tooltip:** saturate the anchor offsets so an anchor near u16::MAX does not panic ([#1121](https://github.com/hawk90/revue/issues/1121)) ([0636c12](https://github.com/hawk90/revue/commit/0636c1256360d2b715c0c8fa956e390ee0172387))
+* **unicode:** map offsets from a lowercased copy back to the original string ([#1134](https://github.com/hawk90/revue/issues/1134)) ([0958039](https://github.com/hawk90/revue/commit/0958039814017f24e7c42fe9d0b7c3782f2a712e))
+* **vim:** saturate the typed count so a long count does not panic ([#1130](https://github.com/hawk90/revue/issues/1130)) ([ca7c386](https://github.com/hawk90/revue/commit/ca7c386093b31d607ff44b4db4ebc4f1e3722a0b))
+
 ## [3.10.1](https://github.com/hawk90/revue/compare/v3.10.0...v3.10.1) (2026-10-15)
 
 
