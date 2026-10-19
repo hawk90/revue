@@ -1284,3 +1284,13 @@ fn test_register_persistence_across_modes() {
     vim.set_mode(VimMode::Command);
     assert_eq!(vim.register(), "test content");
 }
+
+/// A count too long for usize saturates instead of overflowing (#1081)
+#[test]
+fn test_vim_long_count_saturates() {
+    let mut vim = VimState::new();
+    for _ in 0..25 {
+        vim.handle_key(&KeyEvent::new(Key::Char('9')));
+    }
+    assert_eq!(vim.count(), usize::MAX);
+}
