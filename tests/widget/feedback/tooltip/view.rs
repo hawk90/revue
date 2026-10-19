@@ -223,3 +223,18 @@ fn wide_text_wraps_by_columns() {
         assert_eq!(symbol(&buffer, x + 2, y), '한', "row {y}");
     }
 }
+
+#[test]
+fn anchor_at_u16_max_is_kept_inside_the_area() {
+    // The sides that add to the anchor saturate (#1054)
+    for pos in [
+        TooltipPosition::Bottom,
+        TooltipPosition::Right,
+        TooltipPosition::Auto,
+    ] {
+        let t = Tooltip::new("Hi").anchor(u16::MAX, u16::MAX).position(pos);
+        let mut b = Buffer::new(10, 5);
+        t.render(&mut RenderContext::new(&mut b, Rect::new(0, 0, 10, 5)));
+        assert!(find(&b, "Hi").is_some(), "{pos:?}");
+    }
+}
