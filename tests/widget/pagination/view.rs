@@ -180,6 +180,29 @@ fn parse_pages(row: &str) -> Vec<Token> {
         .collect()
 }
 
+/// The page window near `u16::MAX` (#1104)
+#[test]
+fn the_window_does_not_overflow_near_u16_max() {
+    let last = Pagination::new(u16::MAX).current(u16::MAX);
+    let pages = parse_pages(&text(&render(&last, 60)));
+    assert_eq!(
+        pages.last(),
+        Some(&Token::Page(u16::MAX, true)),
+        "{pages:?}"
+    );
+
+    let huge = Pagination::new(10).max_visible(u16::MAX);
+    let pages = parse_pages(&text(&render(&huge, 60)));
+    let shown: Vec<u16> = pages
+        .iter()
+        .filter_map(|t| match t {
+            Token::Page(n, _) => Some(*n),
+            Token::Gap => None,
+        })
+        .collect();
+    assert_eq!(shown, (1..=10).collect::<Vec<u16>>());
+}
+
 proptest! {
     /// Full style against a plain model of the page window: the current page
     /// (bracketed) inside a run of `min(max_visible, total)` consecutive

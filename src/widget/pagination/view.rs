@@ -36,7 +36,7 @@ impl Pagination {
             self.current - half
         };
 
-        let end = (start + self.max_visible - 1).min(self.total);
+        let end = start.saturating_add(self.max_visible - 1).min(self.total);
         (start.max(1), end)
     }
 
