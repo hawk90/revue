@@ -1538,9 +1538,58 @@ fn test_masked_input_clone() {
 fn test_masked_input_debug_format() {
     let input = MaskedInput::new().value("test");
     let debug_str = format!("{:?}", input);
-    // Debug lists the settings
-    for part in ["mask_style: Full", "mask_char: '●'", "max_length: 0"] {
+    // Debug lists the settings, and the value only as its length
+    for part in [
+        "value: <4 chars>",
+        "mask_style: Full",
+        "mask_char: '●'",
+        "max_length: 0",
+    ] {
         assert!(debug_str.contains(part), "{debug_str}");
+    }
+}
+
+#[test]
+fn test_masked_input_debug_does_not_print_the_value() {
+    // A log line, a panic message or `dbg!` must not print the secret (#1073)
+    let mut input = MaskedInput::password().value("hunter2");
+    input.toggle_reveal();
+    for debug in [format!("{input:?}"), format!("{input:#?}")] {
+        assert!(!debug.contains("hunter2"), "{debug}");
+        assert!(debug.contains("<7 chars>"), "{debug}");
+    }
+}
+
+#[test]
+fn test_masked_input_peek_shows_only_the_typed_char() {
+    // Moving or deleting ends the peek instead of revealing the char that
+    // is now before the cursor (#1073)
+    let mut input = MaskedInput::new().mask_style(MaskStyle::Peek);
+    for c in "abc".chars() {
+        input.handle_key(&Key::Char(c));
+    }
+    assert_eq!(input.masked_display(), "●●c");
+    input.handle_key(&Key::Left);
+    assert_eq!(input.masked_display(), "●●●");
+
+    let mut input = MaskedInput::new().mask_style(MaskStyle::Peek);
+    for c in "abc".chars() {
+        input.handle_key(&Key::Char(c));
+    }
+    input.handle_key(&Key::Backspace);
+    assert_eq!(input.masked_display(), "●●");
+
+    for change in [
+        |i: &mut MaskedInput| i.set_cursor(2),
+        |i: &mut MaskedInput| i.set_value("xyz"),
+        |i: &mut MaskedInput| i.clear(),
+    ] {
+        let mut input = MaskedInput::new().mask_style(MaskStyle::Peek);
+        input.insert_char('a');
+        input.insert_char('b');
+        change(&mut input);
+        assert_eq!(input.get_peek_countdown(), 0);
+        assert!(!input.masked_display().contains(['a', 'b', 'x', 'y', 'z']));
     }
 }
 

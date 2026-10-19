@@ -49,6 +49,7 @@ impl MaskedInput {
 
     /// Delete character before cursor
     pub fn delete_backward(&mut self) {
+        self.end_peek();
         if self.disabled || self.cursor == 0 {
             return;
         }
@@ -59,6 +60,7 @@ impl MaskedInput {
 
     /// Delete character at cursor
     pub fn delete_forward(&mut self) {
+        self.end_peek();
         if self.disabled || self.cursor >= self.char_count() {
             return;
         }
@@ -68,6 +70,7 @@ impl MaskedInput {
 
     /// Move cursor left
     pub fn move_left(&mut self) {
+        self.end_peek();
         if self.cursor > 0 {
             self.cursor -= 1;
         }
@@ -75,6 +78,7 @@ impl MaskedInput {
 
     /// Move cursor right
     pub fn move_right(&mut self) {
+        self.end_peek();
         if self.cursor < self.char_count() {
             self.cursor += 1;
         }
@@ -82,12 +86,21 @@ impl MaskedInput {
 
     /// Move cursor to start
     pub fn move_start(&mut self) {
+        self.end_peek();
         self.cursor = 0;
     }
 
     /// Move cursor to end
     pub fn move_end(&mut self) {
+        self.end_peek();
         self.cursor = self.char_count();
+    }
+
+    /// End the peek: it shows the char before the cursor, which is the one
+    /// just typed only until the cursor moves or the value changes, after
+    /// which it would reveal another char of the secret (#1073)
+    pub(super) fn end_peek(&mut self) {
+        self.peek_countdown = 0;
     }
 
     /// Update (call each frame for peek mode)
