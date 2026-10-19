@@ -2,7 +2,9 @@
 //! the file name typed in save mode
 
 use super::types::{PickerMode, PickerResult};
+use super::validation::validate_file_name;
 use super::FilePicker;
+use std::fs;
 use std::path::PathBuf;
 
 impl FilePicker {
@@ -46,6 +48,11 @@ impl FilePicker {
     ///
     /// Returns a canonicalized absolute path for the selected file(s).
     /// This ensures platform-independent consistent behavior.
+    ///
+    /// In save mode the typed name must be one file name inside the current
+    /// directory: a name with a separator, `..`, a root or a drive, or a
+    /// symlink that resolves outside the directory (or nowhere) returns
+    /// `PickerResult::None`.
     pub fn confirm(&self) -> PickerResult {
         match self.mode {
             PickerMode::Open | PickerMode::Directory => {
@@ -67,13 +74,31 @@ impl FilePicker {
                 }
             }
             PickerMode::Save => {
-                if !self.input_name.is_empty() {
-                    let path = self.current_dir.join(&self.input_name);
-                    // For new files, try to canonicalize but fall back to joined path
-                    let canonical = path.canonicalize().unwrap_or(path);
-                    PickerResult::Selected(canonical)
-                } else {
-                    PickerResult::None
+                if validate_file_name(&self.input_name).is_err() {
+                    return PickerResult::None;
+                }
+                let path = self.current_dir.join(&self.input_name);
+                let is_symlink =
+                    fs::symlink_metadata(&path).is_ok_and(|meta| meta.file_type().is_symlink());
+                match path.canonicalize() {
+                    // An existing name resolves through any symlink: the
+                    // file written must still be inside the directory
+                    Ok(canonical) => {
+                        let inside = self
+                            .current_dir
+                            .canonicalize()
+                            .is_ok_and(|dir| canonical.starts_with(dir));
+                        if inside {
+                            PickerResult::Selected(canonical)
+                        } else {
+                            PickerResult::None
+                        }
+                    }
+                    // A dangling symlink: writing to it would create its
+                    // target wherever that points
+                    Err(_) if is_symlink => PickerResult::None,
+                    // A new file
+                    Err(_) => PickerResult::Selected(path),
                 }
             }
             PickerMode::MultiSelect => {

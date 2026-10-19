@@ -130,6 +130,78 @@ fn test_filepicker_save_mode_uses_typed_name() {
     }
 }
 
+// =========================================================================
+// A save name stays in the current directory (#1110)
+// =========================================================================
+
+/// The save picker's result for `name` typed in `dir`
+fn save_as(dir: &std::path::Path, name: &str) -> PickerResult {
+    let mut picker = save_picker().start_dir(dir);
+    for c in name.chars() {
+        picker.input_char(c);
+    }
+    picker.confirm()
+}
+
+#[test]
+fn test_filepicker_save_name_cannot_leave_the_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    let inner = root.join("inner");
+    std::fs::create_dir(&inner).unwrap();
+    std::fs::write(root.join("outside.txt"), "keep").unwrap();
+    for name in [
+        "../outside.txt",
+        "..",
+        ".",
+        "/etc/passwd",
+        "sub/new.txt",
+        "new.txt/",
+    ] {
+        assert!(
+            matches!(save_as(&inner, name), PickerResult::None),
+            "{name}"
+        );
+    }
+    // A dotted name is still a file name
+    match save_as(&inner, "..new") {
+        PickerResult::Selected(path) => assert_eq!(path, inner.join("..new")),
+        other => panic!("expected Selected, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_filepicker_save_default_name_cannot_leave_the_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    let picker = save_picker()
+        .start_dir(dir.path())
+        .default_name("../escape.txt");
+    assert!(matches!(picker.confirm(), PickerResult::None));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_filepicker_save_name_cannot_follow_a_symlink_out() {
+    // Symlinks out of the directory are not listed, but their names can
+    // still be typed
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    let inner = root.join("inner");
+    std::fs::create_dir(&inner).unwrap();
+    std::fs::write(root.join("outside.txt"), "keep").unwrap();
+    std::os::unix::fs::symlink(root.join("outside.txt"), inner.join("out")).unwrap();
+    std::os::unix::fs::symlink(root.join("missing.txt"), inner.join("dangling")).unwrap();
+    std::fs::write(inner.join("a.txt"), "a").unwrap();
+    std::os::unix::fs::symlink(inner.join("a.txt"), inner.join("in")).unwrap();
+
+    assert!(matches!(save_as(&inner, "out"), PickerResult::None));
+    assert!(matches!(save_as(&inner, "dangling"), PickerResult::None));
+    match save_as(&inner, "in") {
+        PickerResult::Selected(path) => assert_eq!(path, inner.join("a.txt")),
+        other => panic!("expected Selected, got {other:?}"),
+    }
+}
+
 #[test]
 fn test_filepicker_save_mode_default_name() {
     let dir = fixture();

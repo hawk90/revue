@@ -282,13 +282,14 @@ proptest! {
     }
 
     /// In save mode `confirm` returns the current directory joined with the
-    /// typed name, and the footer shows it; other modes ignore typing.
-    /// Separators and `..` are left out of the alphabet (#1110).
+    /// typed name when it is one file name, and nothing when it is empty,
+    /// `.`, `..` or has a separator (#1110); the footer shows the name.
+    /// Other modes ignore typing.
     #[test]
     fn prop_filepicker_save_name_follows_the_typing(
         keys in prop::collection::vec(
             prop_oneof![
-                4 => prop::sample::select(vec!['a', 'Z', '_', '한', '😀', ' ', '-', '.']).prop_map(Some),
+                4 => prop::sample::select(vec!['a', 'Z', '_', '한', '😀', ' ', '-', '.', '.', '/', '\\']).prop_map(Some),
                 1 => Just(None),
             ],
             0..20,
@@ -306,11 +307,18 @@ proptest! {
                 None => { save.input_backspace(); open.input_backspace(); name.pop(); }
             }
         }
-        // "." and ".." name the directory itself or its parent.
-        prop_assume!(name != "." && name != "..");
+        // One file name: "." and ".." name the directory itself or its
+        // parent, and a separator names another directory
+        let file_name = !name.is_empty()
+            && name != "."
+            && name != ".."
+            && !name.chars().any(std::path::is_separator);
         match save.confirm() {
-            PickerResult::None => prop_assert!(name.is_empty()),
-            PickerResult::Selected(p) => prop_assert_eq!(p, dir.join(&name)),
+            PickerResult::None => prop_assert!(!file_name, "{:?}", name),
+            PickerResult::Selected(p) => {
+                prop_assert!(file_name, "{:?}", name);
+                prop_assert_eq!(p, dir.join(&name));
+            }
             other => prop_assert!(false, "{:?}", other),
         }
         let footer = format!("Filename: {name}_");
