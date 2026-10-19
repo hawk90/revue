@@ -214,6 +214,24 @@ proptest! {
 }
 
 #[test]
+fn a_nan_cpu_does_not_panic_the_sort() {
+    // #986
+    let mut monitor = bare().sort_by(ProcessSort::Cpu);
+    let list = (0..40)
+        .map(|i| {
+            let cpu = if i % 3 == 0 {
+                f32::NAN
+            } else {
+                (i % 11) as f32
+            };
+            process(i, "p", cpu, 0, 0.0, "Run", "", "0")
+        })
+        .collect();
+    monitor.set_process_list(list);
+    assert_eq!(monitor.process_count(), 40);
+}
+
+#[test]
 fn page_down_by_a_huge_page_stops_at_the_last_process() {
     let mut monitor = monitor_with(numbered(3));
     monitor.select_next();

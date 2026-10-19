@@ -81,9 +81,7 @@ impl Streamline {
             } else {
                 (sum_a, sum_b)
             };
-            first
-                .partial_cmp(&second)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            first.total_cmp(&second)
         });
         indices
     }
