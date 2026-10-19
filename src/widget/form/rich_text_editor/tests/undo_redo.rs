@@ -50,3 +50,25 @@ fn test_insert_clears_redo_stack() {
     editor.redo(); // Should do nothing
     assert_eq!(editor.get_content(), "B");
 }
+
+#[test]
+fn test_undo_and_redo_drop_an_op_that_no_longer_fits() {
+    // An edit made outside the recorded operations leaves ops pointing
+    // past the blocks: undo and redo drop the history instead of
+    // indexing past them (#887)
+    let mut editor = RichTextEditor::new();
+    editor.insert_str("ab");
+    editor.blocks[0].set_text("");
+    editor.undo();
+    assert_eq!(editor.get_content(), "");
+    assert!(editor.undo_stack.is_empty());
+
+    let mut editor = RichTextEditor::new().content("a\nb");
+    editor.set_cursor(0, 1);
+    editor.insert_char('x');
+    editor.undo();
+    editor.blocks = vec![Block::paragraph("")];
+    editor.redo();
+    assert_eq!(editor.get_content(), "");
+    assert!(editor.redo_stack.is_empty());
+}

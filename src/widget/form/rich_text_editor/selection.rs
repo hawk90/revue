@@ -63,6 +63,7 @@ impl RichTextEditor {
         let Some((start, end)) = self.selection_range() else {
             return;
         };
+        self.forget_history();
 
         if start.0 == end.0 {
             // Single block deletion

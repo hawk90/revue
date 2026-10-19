@@ -13,6 +13,7 @@ impl RichTextEditor {
     /// Set content from plain text
     pub fn content(mut self, text: impl Into<String>) -> Self {
         let text = text.into();
+        self.forget_history();
         self.blocks = text.lines().map(Block::paragraph).collect();
         if self.blocks.is_empty() {
             self.blocks.push(Block::paragraph(""));

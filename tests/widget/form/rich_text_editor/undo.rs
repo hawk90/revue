@@ -1,6 +1,7 @@
 //! RichTextEditor undo and redo tests
 
-use revue::widget::RichTextEditor;
+use revue::event::Key;
+use revue::widget::{BlockType, RichTextEditor};
 
 // =========================================================================
 // undo tests
@@ -196,4 +197,93 @@ fn test_undo_delete() {
 
     editor.undo();
     assert_eq!(editor.get_content(), "hello");
+}
+
+// =========================================================================
+// Edits that change blocks outside the recorded operations (#887)
+// =========================================================================
+
+#[test]
+fn test_undo_after_a_heading_shortcut() {
+    // `#` then space makes an empty heading; the shortcut is not recorded,
+    // so the history before it is dropped instead of replayed against it
+    let mut editor = RichTextEditor::new();
+    editor.handle_key(&Key::Char('#'));
+    editor.handle_key(&Key::Char(' '));
+    assert_eq!(editor.current_block_type(), BlockType::Heading1);
+    editor.undo();
+    assert_eq!(editor.current_block_type(), BlockType::Heading1);
+    assert_eq!(editor.get_content(), "");
+}
+
+#[test]
+fn test_undo_delete_at_the_end_of_a_line_splits_it_again() {
+    let mut editor = RichTextEditor::new();
+    for key in [
+        Key::Char('a'),
+        Key::Enter,
+        Key::Char('b'),
+        Key::Up,
+        Key::End,
+        Key::Delete,
+    ] {
+        editor.handle_key(&key);
+    }
+    assert_eq!(editor.get_content(), "ab");
+    editor.undo();
+    assert_eq!(editor.get_content(), "a\nb");
+    editor.redo();
+    assert_eq!(editor.get_content(), "ab");
+}
+
+#[test]
+fn test_undo_delete_block_brings_the_block_back() {
+    let mut editor = RichTextEditor::new().content("one\ntwo");
+    editor.insert_str("x");
+    editor.delete_block();
+    assert_eq!(editor.get_content(), "two");
+    editor.undo();
+    assert_eq!(editor.get_content(), "xone\ntwo");
+    editor.undo();
+    assert_eq!(editor.get_content(), "one\ntwo");
+    editor.redo();
+    editor.redo();
+    assert_eq!(editor.get_content(), "two");
+    assert_eq!(editor.cursor_position(), (0, 0));
+}
+
+#[test]
+fn test_undo_after_emptying_the_last_block() {
+    // The only block is emptied, not removed: the history is dropped
+    let mut editor = RichTextEditor::new().content("ab");
+    editor.set_cursor(0, 2);
+    editor.insert_str("c");
+    editor.delete_block();
+    editor.undo();
+    assert_eq!(editor.get_content(), "");
+}
+
+#[test]
+fn test_undo_after_deleting_a_selection() {
+    let mut editor = RichTextEditor::new().content("abc");
+    editor.set_cursor(0, 3);
+    editor.insert_str("d");
+    editor.start_selection();
+    editor.set_cursor(0, 0);
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "");
+    editor.undo();
+    assert_eq!(editor.get_content(), "");
+}
+
+#[test]
+fn test_shortcut_after_a_full_width_space() {
+    // U+3000, typed by IMEs, is a blank before the marker
+    let mut editor = RichTextEditor::new();
+    for ch in "\u{3000}# x".chars() {
+        editor.handle_key(&Key::Char(ch));
+    }
+    assert_eq!(editor.current_block_type(), BlockType::Heading1);
+    assert_eq!(editor.get_content(), "x");
+    assert_eq!(editor.cursor_position(), (0, 1));
 }
