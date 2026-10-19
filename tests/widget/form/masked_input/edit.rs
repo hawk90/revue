@@ -1,5 +1,5 @@
 //! MaskedInput keys: a model of the edit keys, `max_length`, `disabled` and
-//! the peek countdown
+//! the peek countdown and what it reveals
 
 use proptest::prelude::*;
 use revue::event::Key;
@@ -17,6 +17,8 @@ struct Model {
     disabled: bool,
     peek: bool,
     countdown: usize,
+    /// The char typed last
+    typed: Option<char>,
 }
 
 #[derive(Clone, Debug)]
@@ -36,10 +38,12 @@ impl Model {
                 if self.max == 0 || self.text.len() < self.max {
                     self.text.insert(self.cursor, *c);
                     self.cursor += 1;
+                    self.typed = Some(*c);
                     if self.peek {
                         self.countdown = PEEK;
                     }
                 }
+                return true;
             }
             Key::Backspace => {
                 if self.cursor > 0 {
@@ -58,7 +62,24 @@ impl Model {
             Key::End => self.cursor = self.text.len(),
             _ => return false,
         }
+        // Moving and deleting end the peek: the char before the cursor is
+        // no longer the one just typed (#1073)
+        self.countdown = 0;
         true
+    }
+
+    /// The masked text: all masked, but for the char just typed while the
+    /// peek runs
+    fn display(&self) -> String {
+        (0..self.text.len())
+            .map(|i| {
+                if self.countdown > 0 && i + 1 == self.cursor {
+                    self.typed.unwrap()
+                } else {
+                    '●'
+                }
+            })
+            .collect()
     }
 }
 
@@ -103,6 +124,7 @@ proptest! {
             disabled,
             peek,
             countdown: 0,
+            typed: None,
         };
         prop_assert_eq!(input.get_value(), model.text.iter().collect::<String>());
         for op in &ops {
@@ -119,6 +141,7 @@ proptest! {
             prop_assert_eq!(input.get_value(), model.text.iter().collect::<String>());
             prop_assert_eq!(input.get_cursor(), model.cursor);
             prop_assert_eq!(input.get_peek_countdown(), model.countdown);
+            prop_assert_eq!(input.masked_display(), model.display(), "after {:?}", op);
             prop_assert!(max == 0 || input.get_value().chars().count() <= max);
         }
     }

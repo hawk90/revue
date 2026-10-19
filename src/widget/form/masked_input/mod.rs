@@ -53,7 +53,9 @@ use crate::{impl_props_builders, impl_styled_view};
 const DEFAULT_PEEK_TIMEOUT: usize = 10;
 
 /// Masked input widget
-#[derive(Clone, Debug)]
+///
+/// `Debug` prints the value's length, never the value (#1073).
+#[derive(Clone)]
 pub struct MaskedInput {
     /// Current value
     value: String,
@@ -95,6 +97,35 @@ pub struct MaskedInput {
     peek_countdown: usize,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
+}
+
+impl std::fmt::Debug for MaskedInput {
+    /// Every field but the value, which is shown as its length: a log line,
+    /// a panic message or `dbg!` must not print the secret
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MaskedInput")
+            .field("value", &format_args!("<{} chars>", self.char_count()))
+            .field("mask_char", &self.mask_char)
+            .field("mask_style", &self.mask_style)
+            .field("placeholder", &self.placeholder)
+            .field("label", &self.label)
+            .field("max_length", &self.max_length)
+            .field("min_length", &self.min_length)
+            .field("cursor", &self.cursor)
+            .field("focused", &self.focused)
+            .field("disabled", &self.disabled)
+            .field("fg", &self.fg)
+            .field("bg", &self.bg)
+            .field("width", &self.width)
+            .field("validation", &self.validation)
+            .field("show_strength", &self.show_strength)
+            .field("allow_reveal", &self.allow_reveal)
+            .field("revealing", &self.revealing)
+            .field("peek_timeout", &self.peek_timeout)
+            .field("peek_countdown", &self.peek_countdown)
+            .field("props", &self.props)
+            .finish()
+    }
 }
 
 impl MaskedInput {
@@ -231,6 +262,7 @@ impl MaskedInput {
 
     /// Set initial value (cut to `max_length` chars when that is set)
     pub fn value(mut self, value: impl Into<String>) -> Self {
+        self.end_peek();
         self.value = value.into();
         self.clamp_to_max_length();
         self.cursor = self.char_count();
@@ -279,6 +311,7 @@ impl MaskedInput {
 
     /// Set cursor position
     pub fn set_cursor(&mut self, pos: usize) {
+        self.end_peek();
         self.cursor = pos.min(self.char_count());
     }
 
@@ -344,6 +377,7 @@ impl MaskedInput {
 
     /// Set value programmatically (cut to `max_length` chars when that is set)
     pub fn set_value(&mut self, value: impl Into<String>) {
+        self.end_peek();
         self.value = value.into();
         self.clamp_to_max_length();
         self.cursor = self.cursor.min(self.char_count());
@@ -359,6 +393,7 @@ impl MaskedInput {
 
     /// Clear the input
     pub fn clear(&mut self) {
+        self.end_peek();
         self.value.clear();
         self.cursor = 0;
     }
