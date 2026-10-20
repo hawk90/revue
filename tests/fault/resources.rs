@@ -29,6 +29,14 @@
 //! or nothing loaded - rather than loaded as garbage; and nothing hangs, each
 //! case has a time limit.
 //!
+//! Not covered:
+//!
+//! - the Windows clipboard tools (`clip`, PowerShell): the fake tools are
+//!   swapped in through `PATH` in a unix child process, because the system
+//!   backend's commands are fixed in the code and cached;
+//! - the watcher's `Error` events: the channel they arrive on is private, so
+//!   only real file-system situations are injected.
+//!
 //! Case keys: `"<target> <fault>"`, e.g. `"image denied"`, `"css stream"`,
 //! `"clipboard get hangs"`, `"watch rapid saves"`.
 

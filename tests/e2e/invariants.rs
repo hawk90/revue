@@ -5,6 +5,20 @@
 //! a refactor whose whole point is that some output changes.
 //!
 //! IDs refer to `docs/anti-patterns/catalog.yaml` (`invariants:` section).
+//!
+//! What is tested here, and what is not:
+//!
+//! - INV-02, INV-05, INV-06, INV-07, INV-09: tested (`inv0N_*`). INV-09 also
+//!   has unit tests in `src/runtime/render/terminal/panic_hook.rs`.
+//! - INV-03: partly. Only node state and focus; effects, tasks and timers of a
+//!   removed widget are not checked.
+//! - INV-01: not tested. One mutation owner is not something a runtime
+//!   assertion can state; a type that owns the mutation can.
+//! - INV-04: not tested. There is no transaction boundary to check against
+//!   yet.
+//! - INV-08: not tested. Worker results carry no generation yet; the test
+//!   comes with it.
+//! - INV-10: not tested. It is a release-process rule, not a runtime property.
 
 use revue::style::Color;
 use revue::testing::PipelineHarness;

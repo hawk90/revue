@@ -35,6 +35,10 @@
 //!    `incremental_dom(true)`, and with `layout_engine(false)`, paints the
 //!    same three frames cell for cell.
 //!
+//! Not covered: views that change from frame to frame. There
+//! `incremental_dom` is meant to change what is built, so "the same output"
+//! is not something to check.
+//!
 //! The ratchet: the test fails on a failure not listed in [`KNOWN`], and on a
 //! listed failure that no longer happens. The list only shrinks. See
 //! <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-fault-injection.md>, "빌드·설정 조합".
