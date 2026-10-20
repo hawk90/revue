@@ -309,6 +309,15 @@ impl View for TodoRow {
 }
 ```
 
+A built-in widget takes its key from the `.keyed(...)` builder instead. It is
+not called `key` because `StatusBar::key` already means a keyboard shortcut.
+
+```rust
+let rows = todos
+    .iter()
+    .fold(vstack(), |list, todo| list.child(Text::new(&todo.title).keyed(todo.id)));
+```
+
 Use the identity of the **data**, never the loop index — an index is positional
 identity spelled differently, and it changes the moment the list reorders.
 
@@ -395,6 +404,15 @@ Run benchmarks:
 cargo bench
 ```
 
+Compare a change against a baseline taken on the same machine in the same
+session; criterion numbers from another machine, or from another day, do not
+say whether the change made things faster.
+
+```bash
+git switch main && cargo bench --bench frame -- --save-baseline main
+git switch -   && cargo bench --bench frame -- --baseline main
+```
+
 Revue includes benchmarks for:
 - DOM building
 - CSS parsing
@@ -441,9 +459,12 @@ input.on_change(|text| {
 
 ```rust
 // Help DOM diffing with stable keys
-List::new(items)
-    .key(|item| item.id)
+items
+    .iter()
+    .fold(vstack(), |list, item| list.child(Text::new(&item.name).keyed(item.id)))
 ```
+
+See [Give collection items a key](#give-collection-items-a-key).
 
 ### 3. Avoid Deep Nesting
 

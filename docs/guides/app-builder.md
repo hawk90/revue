@@ -196,7 +196,10 @@ that the widget is a `render_child` away from its parent.
 It is also what makes the mouse able to find anything: the paint pass records
 where each node landed, the event loop asks that record what is under the
 pointer, `:hover` moves there, and a left click focuses the nearest enclosing
-focusable widget. Without it neither `:hover` nor `:focus` matches anything,
+focusable widget. Only a left button press moves focus. A click on something
+that cannot take focus, such as a label or a plain container, leaves focus
+where it was, so clicking a label does not take focus away from the field
+being typed in. Without it neither `:hover` nor `:focus` matches anything,
 which is what a running application did in 2.x — see
 [Phase 2 Hit Test](https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/phase2-hit-test.md).
 
