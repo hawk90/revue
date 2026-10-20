@@ -161,9 +161,10 @@ that still matches keeps its `DomId`, its state (focus, hover, selection) and
 its cached style; only what actually changed is marked dirty, and layout is
 rebuilt only when the *shape* of the tree changed.
 
-> This is opt-in while its performance is measured against the committed
-> baseline in [`docs/refactor/phase0-baseline.md`](../refactor/phase0-baseline.md).
-> It will become the default.
+> This is opt-in until the `benches/dom.rs` comparison is accepted:
+> `dom_incremental/incremental_same` must beat `dom_incremental/fresh_build`,
+> with no regression elsewhere against the
+> [Phase 0 baseline](https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/phase0-baseline.md).
 
 ### DOM from the render traversal
 
@@ -238,7 +239,7 @@ context is the caller's own rendering. Put the id on the view itself.
 `min-*`/`max-*` and `gap` take effect through
 [`css_layout`](#css-box-properties), also on by default, which needs this one. `flex-*` and
 `grid-template-*` still do nothing — the container computes those itself.
-See [`findings-layout.md`](../refactor/findings-layout.md).
+4.0 moves them onto one layout engine ([#1144](https://github.com/hawk90/revue/issues/1144)).
 
 ### CSS box properties
 
@@ -282,7 +283,8 @@ draws its own border would have the border move instead. `flex-*` and
 first need every widget's layout intent — `vstack()`'s direction, its gap, its
 per-child sizes — to reach the DOM as inline style, and then an intrinsic-size
 measurement the engine does not have. The comparison is written up in
-[`findings-layout.md`](../refactor/findings-layout.md).
+[Layout Findings](https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md); 4.0 takes that route
+([#1144](https://github.com/hawk90/revue/issues/1144)).
 
 ### Give collection items a key
 
@@ -347,7 +349,7 @@ At 60fps the budget is 16,667 µs, so the worst of these is 0.3% of a frame.
 > the diff to dirty regions. Both were unsound — a widget's content is not part
 > of its DOM metadata, so an ordinary state change marked nothing dirty and the
 > app stopped repainting entirely. See
-> [`docs/refactor/findings-render-pipeline.md`](../refactor/findings-render-pipeline.md).
+> [Render Pipeline Findings](https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-render-pipeline.md).
 > Region-based skipping can come back once the DOM actually describes the widget
 > tree; until then, correct beats clever.
 

@@ -6,7 +6,7 @@
 //! not, the inner stack got its bare content size and lost its last rows: a
 //! form whose fields had `margin-top: 1` dropped its submit button.
 //!
-//! The rule is written down in `docs/refactor/design-content-sized-stack.md`.
+//! The rule is written down in <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/design-content-sized-stack.md>.
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;

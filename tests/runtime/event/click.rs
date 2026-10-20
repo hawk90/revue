@@ -1,7 +1,7 @@
 //! Contracts for click-to-focus.
 //!
 //! `DomRenderer::set_focus` had no production caller either - the same defect
-//! `:hover` had, recorded in `docs/refactor/phase2-hit-test.md`. A click now
+//! `:hover` had, recorded in <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/phase2-hit-test.md>. A click now
 //! resolves through the paint-time hit test to the nearest enclosing focusable
 //! node, which is what makes `:focus` rules match in a running application.
 //!
@@ -169,8 +169,8 @@ fn focus_climbs_out_of_an_inner_node_to_its_focusable_container() {
 }
 
 /// A disabled control does not take focus. This works because the widget's
-/// declared `disabled` now travels in its `WidgetMeta` and lands on the node -
-/// see `docs/refactor/phase2-declared-state.md`.
+/// declared `disabled` now travels in its `WidgetMeta` and lands on the node
+/// (#612).
 #[test]
 fn a_disabled_control_does_not_take_focus() {
     struct Disabled;

@@ -3,7 +3,7 @@
 //! On by default since 3.0. In 2.x a stack gave every child added with
 //! `.child(...)` an equal share of the space, and twenty of the shipped
 //! examples were written as if the opposite were true; `.content_sized(false)`
-//! keeps that rule. Background: `docs/refactor/design-content-sized-stack.md`.
+//! keeps that rule. Background: <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/design-content-sized-stack.md>.
 
 mod css;
 mod flex_wrap;

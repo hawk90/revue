@@ -5,7 +5,7 @@
 //! container handed it. The container still decides the *flow*.
 //!
 //! Why an override rather than a layout engine that owns the geometry:
-//! `docs/refactor/findings-layout.md`.
+//! <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>.
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;

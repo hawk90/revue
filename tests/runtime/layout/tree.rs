@@ -4,7 +4,7 @@
 //! established. The rest **pin behavior that is wrong**, so it fails loudly
 //! when fixed - the same pattern as `tests/runtime/render/pipeline.rs`.
 //!
-//! Background: `docs/refactor/findings-layout.md`.
+//! Background: <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>.
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
