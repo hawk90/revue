@@ -9,7 +9,7 @@
 //! `tests/runtime/dom/from_render.rs`, `tests/widget/traits/css/reaches_the_screen.rs`,
 //! `tests/runtime/layout/css_layout.rs` and `tests/widget/traits/css/defaults.rs`.
 //!
-//! Background and evidence: `docs/refactor/findings-render-pipeline.md`.
+//! Background and evidence: <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-render-pipeline.md>.
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
@@ -326,7 +326,7 @@ fn the_root_render_context_does_carry_a_computed_style() {
 ///
 /// Still true with `dom_from_render(false).css_layout(false)`. The 3.0 default
 /// makes the box properties work by letting them override container-computed
-/// geometry - see `tests/runtime/layout/css_layout.rs` and `docs/refactor/findings-layout.md`.
+/// geometry - see `tests/runtime/layout/css_layout.rs` and <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>.
 /// `gap` is read by the container itself.
 #[test]
 fn css_layout_properties_have_no_effect_without_the_flags() {

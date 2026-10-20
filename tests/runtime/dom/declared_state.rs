@@ -152,7 +152,7 @@ fn a_disabled_rule_stops_matching_when_the_widget_is_enabled() {
 
 /// And it reaches the screen, not just the cascade. A disabled widget's grey is
 /// the *default* it falls back to, not an override that silences the
-/// stylesheet - see `docs/refactor/phase2-cascade-precedence.md`.
+/// stylesheet - see <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/phase2-cascade-precedence.md>.
 #[test]
 fn a_disabled_rule_reaches_the_screen() {
     let mut h = harness("#save:disabled { color: #ff0000; }");

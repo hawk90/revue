@@ -4,7 +4,7 @@
 //! A widget that builds a context by hand and calls `child.render(&mut ctx)`
 //! paints the child correctly and leaves it **out of the DOM**: no node, so no
 //! rule can select it, no `:hover` can reach it, and the hit test cannot find
-//! it. That is `F-4` from `docs/refactor/findings-render-pipeline.md` surviving
+//! it. That is `F-4` from <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-render-pipeline.md> surviving
 //! inside individual widgets after `dom_from_render` fixed it for the root
 //! traversal.
 //!

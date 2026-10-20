@@ -9,7 +9,7 @@ impl DomRenderer {
     ///
     /// Answers from the paint pass's record, so it reports what the user can
     /// see rather than what the layout engine computed - the two do not agree
-    /// yet (see `docs/refactor/findings-layout.md`).
+    /// yet (see <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>).
     ///
     /// Paint order is pre-order, so a parent is recorded before its children
     /// and an earlier sibling before a later one. Scanning backwards therefore

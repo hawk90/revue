@@ -141,27 +141,8 @@ impl View for Counter {
 
 | Document | Description |
 |:---------|:------------|
+| [4.0 Design Decisions](https://github.com/hawk90/revue/issues/1151) | One issue per 4.0 architecture decision: why, the decision, what is not done, and the work |
 | [Anti-Pattern Catalog](anti-patterns/README.md) | Structural failure modes across 24 subsystems, each marked as observed in revue or a hypothesis, in a machine-readable [`catalog.yaml`](anti-patterns/catalog.yaml) |
-| [Architecture Review](anti-patterns/architecture-review.md) | External review of the current stack and alternative directions |
-| [Phase 0 Baseline](refactor/phase0-baseline.md) | Committed benchmark numbers the 3.0 refactor is measured against |
-| [Phase 0 Invariants](refactor/phase0-invariants.md) | Which design invariants are pinned by tests, and why the rest are not |
-| [Phase 1 Reconciliation](refactor/phase1-reconciliation.md) | Keyed reconciliation, per-frame DOM updates, and what the benchmarks say |
-| [Render Pipeline Findings](refactor/findings-render-pipeline.md) | Verified defects in how repaints are decided, and what they mean for 3.0 |
-| [Layout Findings](refactor/findings-layout.md) | Why CSS layout properties did nothing, and what `css_layout` does about it |
-| [Phase 2 Hit Test](refactor/phase2-hit-test.md) | Why `:hover` never matched in a running app, and what now drives it |
-| [Style Invalidation Findings](refactor/findings-style-invalidation.md) | Why CSS stopped updating after the first frame, and what makes the cascade re-run |
-| [Phase 2 Cascade Precedence](refactor/phase2-cascade-precedence.md) | Where a widget's own colors rank against the stylesheet, and why disabled was in the wrong row |
-| [Selector Matcher Findings](refactor/findings-selector-matchers.md) | Two selector matchers that disagreed, and why descendant selectors stopped one level down |
-| [Prelude Coverage](refactor/findings-prelude-coverage.md) | 74 widgets the docs use from the prelude but the prelude does not export |
-| [Default Flip](refactor/findings-default-flip.md) | What turning `dom_from_render` and `css_layout` on by default changes, measured on every example |
-| [Content-Sized Stack](refactor/design-content-sized-stack.md) | Why stacks size children by their content, and how `measure`/`fills` get there |
-| [Event Dispatch Findings](refactor/findings-event-dispatch.md) | Why widget event dispatch is the prerequisite for moving to `on_key(&self, ctx)` |
-| [Named Color Precedence](refactor/findings-named-color-precedence.md) | Where a builder's color still loses to the stylesheet, and what is left to fix |
-| [Single-Responsibility Audit](refactor/srp-audit.md) | The per-file 3.x audit: criteria, every file's verdict, and the bugs found on the way |
-| [Widget Matrix](refactor/findings-widget-matrix.md) | Widgets drawn at every edge size, content and state combination, and what broke |
-| [Fault Injection](refactor/findings-fault-injection.md) | Failing output, odd events, broken text, missing resources and concurrency faults |
-| [Event Sequences](refactor/findings-event-sequences.md) | Property-tested key and mouse sequences, and the widget states they put out of sync |
-| [Widget Clone](refactor/findings-widget-clone.md) | Which widgets are `Clone`, which cannot be yet, and why |
 
 ---
 

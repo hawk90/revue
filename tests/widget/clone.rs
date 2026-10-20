@@ -1,7 +1,7 @@
 //! Every public widget whose fields allow it implements `Clone`.
 //!
 //! The widgets left out hold child views (`Box<dyn View>`), boxed callbacks or
-//! other non-`Clone` state; see `docs/refactor/findings-widget-clone.md`.
+//! other non-`Clone` state; see <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-widget-clone.md>.
 
 use revue::widget::*;
 

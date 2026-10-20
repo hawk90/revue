@@ -233,7 +233,7 @@ pub struct App {
     default_prevented: bool,
     /// Run [`LayoutEngine`] every frame. Off unless something will read its
     /// output - and nothing in the render path does: containers compute their
-    /// own geometry. See `docs/refactor/findings-layout.md`.
+    /// own geometry. See <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>.
     layout_engine: bool,
     /// Plugin registry
     plugins: crate::plugin::PluginRegistry,
@@ -407,7 +407,7 @@ impl App {
     /// Computed layout rect for a node, as `LayoutEngine` produced it.
     ///
     /// Crate-internal: used by `testing::PipelineHarness`. Nothing in the
-    /// render path reads this yet - see `docs/refactor/findings-layout.md`.
+    /// render path reads this yet - see <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>.
     /// Always `None` unless [`set_layout_engine`](Self::set_layout_engine)
     /// turned the engine on.
     pub(crate) fn layout_rect(&self, dom_id: crate::dom::DomId) -> Option<crate::layout::Rect> {

@@ -82,9 +82,6 @@ const EXAMPLE_LOCAL: &[&str] = &[
     "GitPlugin",
     "GitStatusPlugin",
     "MyFeaturePlugin",
-    // architecture-review.md discusses a TEA-style design revue does not use,
-    // so its `Msg` is the shape being argued about rather than an API
-    "Msg",
 ];
 
 /// Placeholders that stand for "any widget" in a pattern description.

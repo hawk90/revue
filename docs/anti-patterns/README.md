@@ -50,7 +50,6 @@ unwrap을 쓰지 말 것
 |---|---|---|
 | [`catalog.yaml`](catalog.yaml) | 사람 / LLM / 스크립트 | 모든 항목, invariant, 리뷰 질문, 우선순위의 **유일한 원본** |
 | `README.md` (이 파일) | 사람 | 사용법, 스키마, 관리 규칙, 검증 방법 |
-| [`architecture-review.md`](architecture-review.md) | 사람 | "지금 아키텍처가 맞나?" 논의와 대안 스택 3안 |
 
 항목 목록, 개수, 카테고리별 범위는 이 파일에 옮겨 적지 않는다. 두 곳에 두면 어긋난다.
 필요하면 아래 [검증](#검증) 스크립트나 `yq`로 뽑는다.
@@ -118,6 +117,9 @@ diff에서 실제로 해당하는 항목만 골라 id, 파일:줄, 근거를 제
 | `observed` | `observed`일 때 | revue에서 일어난 사례와 근거 (코드 위치, 이슈, PR, 측정). 고친 사례도 남긴다 |
 | `checked` | | 확인했지만 재현되지 않은 것, 코드 읽기로만 의심되는 것. 날짜를 붙인다 |
 | `rejected_because` | `rejected`일 때 | revue에 맞지 않는 이유 |
+
+근거에 적힌 `docs/refactor/*.md`, `docs/anti-patterns/architecture-review.md`, `docs/ARCHITECTURE.md`는 지웠거나
+다시 쓴 문서다. `meta.sources`의 commit 판으로 연다 (`<base>/<경로>`).
 
 `invariants`의 각 규칙에는 `applies`(지금부터 지킬 `3.x`인지, 4.0 구조에서 지켜지는 `4.0`인지)와
 `decisions`가 있다. `tests/e2e/invariants.rs`가 INV id로 참조하므로 id는 바꾸지 않는다.

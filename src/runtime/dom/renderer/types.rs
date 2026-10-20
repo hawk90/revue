@@ -47,7 +47,7 @@ pub struct DomRenderer {
     /// node's identity and the area it was actually given. The layout engine
     /// cannot answer this today - containers do their own arithmetic, so its
     /// rects describe a layout nobody requested (see
-    /// `docs/refactor/findings-layout.md`). What the user clicks on is what was
+    /// <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>). What the user clicks on is what was
     /// painted, so that is what this records.
     ///
     /// Reused across frames; `render` clears it rather than reallocating.

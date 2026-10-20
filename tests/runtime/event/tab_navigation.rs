@@ -4,7 +4,7 @@
 //! click (`tests/runtime/event/click.rs`). An app driven from the keyboard had no
 //! `:focus` at all, so every rule naming it was dead - the same defect
 //! `:hover` and `:focus` each had before they got a production caller, recorded
-//! in `docs/refactor/phase2-hit-test.md`.
+//! in <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/phase2-hit-test.md>.
 //!
 //! Tab walks the DOM in document order, which is the order the reader meets
 //! things rather than the order widgets were registered. A widget that moves in
