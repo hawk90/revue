@@ -751,6 +751,7 @@ entries:
       - "source effect ID 진단"
       - "write-after-read 경고"
       - "render 중에는 Signal을 쓰지 않는다 (INV-11, REV-RENDER-011)."
+      - "#1140: loop는 panic하지 않는다. notify depth를 넘거나 computed가 자기를 읽으면 그 전파를 멈추고 마지막 값을 유지하며 signal을 밝힌 경고를 남긴다. `PipelineHarness` strict mode에서는 그 경고가 테스트 실패가 된다."
     snippets:
       - lang: rust
         code: |2
@@ -1508,14 +1509,16 @@ entries:
     review_tag: STYLE
     status: observed
     assumes: [cell-grid]
+    decisions: ["#1148"]
     summary: "true color, 256 color, italic, underline style, image protocol을 항상 지원한다고 가정한다."
     fix:
       - "capability detection"
       - "fallback"
       - "deterministic downgrade"
       - "snapshot 환경 고정"
+      - "#1148: `COLORTERM`, `TERM`, terminfo로 색 깊이를 감지해 truecolor를 256색이나 16색으로 낮춘다. `NO_COLOR`면 색을 끄고 bold 같은 속성은 남긴다. 앱이 깊이를 강제할 수 있다. 3.x에도 추가 기능으로 넣을 수 있다."
     observed:
-      - "2026-10-20: 모든 색을 24-bit truecolor로 내보낸다(`to_crossterm_color` → `CrosstermColor::Rgb`, src/runtime/render/backend/crossterm.rs). COLORTERM, 256색, NO_COLOR 감지나 downgrade가 없다. alpha가 버려져 `color: transparent`가 검정이 된다. image protocol은 감지한다 (#287). 이 항목을 다룬 4.0 결정은 아직 없다."
+      - "2026-10-20: 모든 색을 24-bit truecolor로 내보낸다(`to_crossterm_color` → `CrosstermColor::Rgb`, src/runtime/render/backend/crossterm.rs). COLORTERM, 256색, NO_COLOR 감지나 downgrade가 없다. alpha가 버려져 `color: transparent`가 검정이 된다. image protocol은 감지한다 (#287)."
   - id: REV-STYLE-010
     title: "Undeclared Parts as Styling API"
     category: style
@@ -2210,7 +2213,7 @@ entries:
     decisions: ["#1143"]
     summary: "worker API가 있다는 이유로 모든 blocking 작업을 같은 pool에 넣는다. CPU-bound와 I/O-bound 작업을 동일 pool에 두면 starvation이 발생할 수 있다."
     fix:
-      - "CPU 작업과 오래 막히는 I/O를 다른 경로로 보낸다. pool이 작을수록(#1143의 min(core 수, 약 4)) 중요하다. 어떤 경로를 둘지는 #1143 구현 설계에서 정한다."
+      - "CPU 작업과 오래 막히는 I/O를 다른 경로로 보낸다. pool이 작을수록(#1143의 min(core 수, 약 4)) 중요하다. #1143: 오래 막히는 작업은 계산용 pool이 아닌 blocking lane으로 보내고, lane에도 thread 상한, bounded queue, 취소, generation으로 낡은 결과 버리기를 똑같이 둔다. `async` feature에서는 tokio의 blocking pool이 그 lane이다."
     checked:
       - "2026-10-20: WorkerPool 하나에 priority queue 하나이고 I/O와 CPU를 나누지 않는다. 내장 코드가 이 pool에 blocking I/O를 보내는 곳은 없다(HttpClient는 backend를 부르지 않고, FilePicker는 UI thread에서 읽는다). starvation 사례는 없다."
   - id: REV-ASYNC-006
@@ -2219,7 +2222,7 @@ entries:
     review_tag: ASYNC
     status: observed
     assumes: [workers]
-    decisions: ["#1143"]
+    decisions: ["#1143", "#1149"]
     summary: "worker closure panic이 runtime 전체를 손상시키거나 조용히 사라진다."
     fix:
       - "task result는 최소한 success, application error, cancellation, panic, shutdown을 구분한다."
@@ -2369,7 +2372,10 @@ entries:
     review_tag: HOT
     status: hypothesis
     assumes: [hot-reload]
+    decisions: ["#1149"]
     summary: "hot reload 관련 watcher, dependency, thread가 기본 production binary에 포함된다. dev-only feature로 분리한다."
+    fix:
+      - "#1149: hot reload는 opt-in이고 `all-gui` preset에 넣지 않는다."
     checked:
       - "2026-10-20: `hot-reload = [\"dep:notify\"]`는 `default`에 없고 `AppBuilder::hot_reload(true)`로도 켜야 한다. 다만 `all-gui`와 `full` preset이 그것을 포함해 `all-gui` 앱은 `notify`를 함께 배포한다 (Cargo.toml)."
   - id: REV-MACRO-001
