@@ -75,6 +75,8 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
     /// or through others that read it (a circular dependency). Waiting on its
     /// own recompute lock would deadlock the thread instead.
     pub fn get(&self) -> T {
+        // Changes made on other threads mark this value stale first (#873)
+        super::cross_thread::drain();
         // Whoever is tracking now (an effect, another computed) depends on
         // this value - also when it is served from the cache.
         track_read(self.source);

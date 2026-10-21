@@ -111,6 +111,9 @@ impl App {
             }
 
             let event = reader.read()?;
+            // Changes background threads made to signals reach the effects
+            // and computed values tracked here (#873)
+            crate::reactive::cross_thread::drain();
             let should_draw = self.handle_event(event, &mut view, &mut handler);
 
             if should_draw {

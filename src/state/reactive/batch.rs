@@ -217,6 +217,8 @@ pub fn batch_count() -> usize {
 /// assert_eq!(seen.get(), 2);
 /// ```
 pub fn flush() {
+    // Changes made on other threads first (#873)
+    super::cross_thread::drain();
     flush_updates();
     // Inside a batch, run what it deferred so far - and what those runs
     // defer in turn - until it settles.

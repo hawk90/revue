@@ -6,6 +6,7 @@ mod batch_defers;
 mod computed;
 mod computed_propagation;
 mod context;
+mod cross_thread;
 mod edge;
 mod effect;
 mod incremental;
