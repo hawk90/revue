@@ -9,7 +9,7 @@ pub use types::{FileEntry, FileType};
 
 use crate::event::Key;
 use crate::style::Color;
-use crate::utils::natural_cmp;
+use crate::utils::{natural_cmp, KeyedSelection, ScrollState};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 use std::cmp::Ordering;
@@ -20,10 +20,12 @@ use std::path::{Path, PathBuf};
 pub struct FileTree {
     /// Root entries
     pub(crate) root: Vec<FileEntry>,
-    /// Selected index
-    pub(crate) selected: usize,
-    /// Scroll offset
-    pub(crate) scroll: usize,
+    /// The selected entry, by its place in the tree (child positions from
+    /// the roots), which expanding, collapsing, sorting and hiding do not
+    /// change (#975). Nothing selected reads as the first row.
+    pub(crate) selection: KeyedSelection<Vec<usize>>,
+    /// Where the rows are scrolled to
+    pub(crate) scroll: ScrollState,
     /// Show hidden files
     pub(crate) show_hidden: bool,
     /// Show file sizes
@@ -53,8 +55,8 @@ impl FileTree {
     pub fn new() -> Self {
         Self {
             root: Vec::new(),
-            selected: 0,
-            scroll: 0,
+            selection: KeyedSelection::new(),
+            scroll: ScrollState::new(),
             show_hidden: false,
             show_sizes: false,
             show_icons: true,
@@ -135,30 +137,88 @@ impl FileTree {
     /// a child never leaves its directory and a hidden directory takes its
     /// subtree with it.
     pub(crate) fn visible_entries(&self) -> Vec<&FileEntry> {
+        self.visible_rows().into_iter().map(|(_, e)| e).collect()
+    }
+
+    /// The rows with each entry's place in the tree: its child positions
+    /// from the roots
+    fn visible_rows(&self) -> Vec<(Vec<usize>, &FileEntry)> {
         let mut rows = Vec::new();
-        self.push_visible(&self.root, &mut rows);
+        self.push_visible(&self.root, &mut Vec::new(), &mut rows);
         rows
     }
 
-    fn push_visible<'a>(&self, level: &'a [FileEntry], rows: &mut Vec<&'a FileEntry>) {
-        for entry in self.ordered(level) {
-            rows.push(entry);
+    fn push_visible<'a>(
+        &self,
+        level: &'a [FileEntry],
+        place: &mut Vec<usize>,
+        rows: &mut Vec<(Vec<usize>, &'a FileEntry)>,
+    ) {
+        for (i, entry) in self.ordered(level) {
+            place.push(i);
+            rows.push((place.clone(), entry));
             if entry.expanded {
-                self.push_visible(&entry.children, rows);
+                self.push_visible(&entry.children, place, rows);
             }
+            place.pop();
         }
     }
 
-    /// One level's entries, hidden ones dropped, in display order
-    fn ordered<'a>(&self, level: &'a [FileEntry]) -> Vec<&'a FileEntry> {
-        let mut entries: Vec<&FileEntry> = level
+    /// One level's entries with their positions, hidden ones dropped, in
+    /// display order
+    fn ordered<'a>(&self, level: &'a [FileEntry]) -> Vec<(usize, &'a FileEntry)> {
+        let mut entries: Vec<(usize, &FileEntry)> = level
             .iter()
-            .filter(|e| self.show_hidden || !is_hidden(e))
+            .enumerate()
+            .filter(|(_, e)| self.show_hidden || !is_hidden(e))
             .collect();
         if self.natural_sort || self.dirs_first {
-            entries.sort_by(|a, b| self.compare(a, b));
+            entries.sort_by(|(_, a), (_, b)| self.compare(a, b));
         }
         entries
+    }
+
+    /// The row of the selection
+    pub(crate) fn selected_index(&self) -> usize {
+        self.selection.index().unwrap_or(0)
+    }
+
+    /// The entry at a place in the tree
+    fn entry_at_mut(&mut self, place: &[usize]) -> Option<&mut FileEntry> {
+        let (&first, rest) = place.split_first()?;
+        let mut entry = self.root.get_mut(first)?;
+        for &i in rest {
+            entry = entry.children.get_mut(i)?;
+        }
+        Some(entry)
+    }
+
+    /// Select the row at `index`
+    fn select_row(&mut self, index: usize) {
+        let keys: Vec<Vec<usize>> = self.visible_rows().into_iter().map(|(k, _)| k).collect();
+        self.selection
+            .select(index, keys.len(), |i| keys[i].clone());
+    }
+
+    /// After rows came or went: keep the selection on its entry. An entry a
+    /// collapse or the hidden filter took away hands the selection to its
+    /// nearest shown ancestor, else to the row now in its place (#967).
+    fn rows_changed(&mut self) {
+        let keys: Vec<Vec<usize>> = self.visible_rows().into_iter().map(|(k, _)| k).collect();
+        let Some(selected) = self.selection.key().cloned() else {
+            return;
+        };
+        let ancestor = (1..=selected.len())
+            .rev()
+            .map(|n| &selected[..n])
+            .find(|place| keys.iter().any(|k| k.as_slice() == *place))
+            .map(<[usize]>::to_vec);
+        match ancestor {
+            Some(place) => {
+                self.selection.select_key(&place, keys);
+            }
+            None => self.selection.sync(keys),
+        }
     }
 
     /// Directories first if enabled, then natural or ASCII name order
@@ -179,7 +239,7 @@ impl FileTree {
 
     /// Get selected entry
     pub fn selected_entry(&self) -> Option<&FileEntry> {
-        self.visible_entries().get(self.selected).copied()
+        self.visible_entries().get(self.selected_index()).copied()
     }
 
     /// Get selected path
@@ -190,45 +250,56 @@ impl FileTree {
     /// Select next entry
     pub fn select_next(&mut self) {
         let count = self.visible_entries().len();
-        if self.selected < count.saturating_sub(1) {
-            self.selected += 1;
+        let index = self.selected_index();
+        if index < count.saturating_sub(1) {
+            self.select_row(index + 1);
         }
     }
 
     /// Select previous entry
     pub fn select_prev(&mut self) {
-        if self.selected > 0 {
-            self.selected -= 1;
+        let index = self.selected_index();
+        if index > 0 {
+            self.select_row(index - 1);
         }
     }
 
-    /// Toggle selected directory
+    /// Toggle selected directory: that entry alone, even when another has
+    /// the same path (#967)
     pub fn toggle_selected(&mut self) {
-        // This is tricky because we need to find and modify the actual entry
-        // For a real implementation, we'd need a different data structure
-        let entries = self.visible_entries();
-        if let Some(entry) = entries.get(self.selected) {
-            if entry.is_dir() {
-                let path = entry.path.clone();
-                self.toggle_path(&path);
-            }
-        }
-    }
-
-    /// Toggle directory at path
-    fn toggle_path(&mut self, path: &Path) {
-        for entry in &mut self.root {
-            Self::toggle_entry_path(entry, path);
-        }
-    }
-
-    fn toggle_entry_path(entry: &mut FileEntry, path: &Path) {
-        if entry.path == path {
-            entry.toggle();
+        let rows = self.visible_rows();
+        let Some((place, entry)) = rows.get(self.selected_index()) else {
+            return;
+        };
+        if !entry.is_dir() {
             return;
         }
-        for child in &mut entry.children {
-            Self::toggle_entry_path(child, path);
+        let place = place.clone();
+        if let Some(entry) = self.entry_at_mut(&place) {
+            entry.toggle();
+        }
+        let keys: Vec<Vec<usize>> = self.visible_rows().into_iter().map(|(k, _)| k).collect();
+        self.selection.select_key(&place, keys);
+        self.rows_changed();
+    }
+
+    /// Collapse the selected directory, or select its parent when it is not
+    /// an expanded directory (#967: Left used to expand)
+    fn collapse_or_go_to_parent(&mut self) {
+        let rows = self.visible_rows();
+        let Some((place, entry)) = rows.get(self.selected_index()) else {
+            return;
+        };
+        let place = place.clone();
+        if entry.is_dir() && entry.expanded {
+            if let Some(entry) = self.entry_at_mut(&place) {
+                entry.expanded = false;
+            }
+            self.rows_changed();
+        } else if place.len() > 1 {
+            let parent = place[..place.len() - 1].to_vec();
+            let keys: Vec<Vec<usize>> = self.visible_rows().into_iter().map(|(k, _)| k).collect();
+            self.selection.select_key(&parent, keys);
         }
     }
 
@@ -237,6 +308,7 @@ impl FileTree {
         for entry in &mut self.root {
             Self::set_expanded_recursive(entry, true);
         }
+        self.rows_changed();
     }
 
     /// Collapse all directories
@@ -244,6 +316,7 @@ impl FileTree {
         for entry in &mut self.root {
             Self::set_expanded_recursive(entry, false);
         }
+        self.rows_changed();
     }
 
     fn set_expanded_recursive(entry: &mut FileEntry, expanded: bool) {
@@ -271,12 +344,12 @@ impl FileTree {
                 true
             }
             Key::Left | Key::Char('h') => {
-                // Collapse current or go to parent
-                self.toggle_selected();
+                self.collapse_or_go_to_parent();
                 true
             }
             Key::Char('H') => {
                 self.show_hidden = !self.show_hidden;
+                self.rows_changed();
                 true
             }
             Key::Char('e') => {
@@ -581,8 +654,8 @@ mod tests {
     fn test_file_tree_new() {
         let tree = FileTree::new();
         assert!(tree.root.is_empty());
-        assert_eq!(tree.selected, 0);
-        assert_eq!(tree.scroll, 0);
+        assert_eq!(tree.selected_index(), 0);
+        assert_eq!(tree.scroll.offset(), 0);
         assert!(!tree.show_hidden);
         assert!(!tree.show_sizes);
         assert!(tree.show_icons);
@@ -597,7 +670,7 @@ mod tests {
     fn test_file_tree_default() {
         let tree = FileTree::default();
         assert!(tree.root.is_empty());
-        assert_eq!(tree.selected, 0);
+        assert_eq!(tree.selected_index(), 0);
     }
 
     #[test]
@@ -848,16 +921,16 @@ mod tests {
             .entry(FileEntry::file("b", "/b"))
             .entry(FileEntry::file("c", "/c"));
 
-        assert_eq!(tree.selected, 0);
+        assert_eq!(tree.selected_index(), 0);
 
         tree.select_next();
-        assert_eq!(tree.selected, 1);
+        assert_eq!(tree.selected_index(), 1);
 
         tree.select_next();
-        assert_eq!(tree.selected, 2);
+        assert_eq!(tree.selected_index(), 2);
 
         tree.select_prev();
-        assert_eq!(tree.selected, 1);
+        assert_eq!(tree.selected_index(), 1);
     }
 
     #[test]
@@ -868,10 +941,10 @@ mod tests {
 
         tree.select_next();
         tree.select_next();
-        assert_eq!(tree.selected, 1); // Stay at last
+        assert_eq!(tree.selected_index(), 1); // Stay at last
 
         tree.select_next();
-        assert_eq!(tree.selected, 1); // Still at last
+        assert_eq!(tree.selected_index(), 1); // Still at last
     }
 
     #[test]
@@ -879,21 +952,21 @@ mod tests {
         let mut tree = FileTree::new().entry(FileEntry::file("a", "/a"));
 
         tree.select_prev();
-        assert_eq!(tree.selected, 0); // Stay at first
+        assert_eq!(tree.selected_index(), 0); // Stay at first
     }
 
     #[test]
     fn test_select_next_empty() {
         let mut tree = FileTree::new();
         tree.select_next();
-        assert_eq!(tree.selected, 0);
+        assert_eq!(tree.selected_index(), 0);
     }
 
     #[test]
     fn test_select_prev_empty() {
         let mut tree = FileTree::new();
         tree.select_prev();
-        assert_eq!(tree.selected, 0);
+        assert_eq!(tree.selected_index(), 0);
     }
 
     // =========================================================================
@@ -999,10 +1072,10 @@ mod tests {
             .entry(FileEntry::file("b", "/b"));
 
         tree.select_next();
-        assert_eq!(tree.selected, 1);
+        assert_eq!(tree.selected_index(), 1);
 
         assert!(tree.handle_key(&Key::Up));
-        assert_eq!(tree.selected, 0);
+        assert_eq!(tree.selected_index(), 0);
     }
 
     #[test]
@@ -1012,7 +1085,7 @@ mod tests {
             .entry(FileEntry::file("b", "/b"));
 
         assert!(tree.handle_key(&Key::Down));
-        assert_eq!(tree.selected, 1);
+        assert_eq!(tree.selected_index(), 1);
     }
 
     #[test]
@@ -1022,10 +1095,10 @@ mod tests {
             .entry(FileEntry::file("b", "/b"));
 
         assert!(tree.handle_key(&Key::Char('j')));
-        assert_eq!(tree.selected, 1);
+        assert_eq!(tree.selected_index(), 1);
 
         assert!(tree.handle_key(&Key::Char('k')));
-        assert_eq!(tree.selected, 0);
+        assert_eq!(tree.selected_index(), 0);
     }
 
     #[test]
