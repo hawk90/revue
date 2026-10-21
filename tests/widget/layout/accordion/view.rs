@@ -222,16 +222,15 @@ proptest! {
                     open.push(*e);
                 }
                 Op::Remove(i) => {
-                    // Removing a section above the selected one leaves the
-                    // selection on the same index, so it moves to the next
-                    // section (#975); only removals at or below it are modeled.
-                    if *i < sel { continue; }
+                    // The selection stays on its section (#975): one above
+                    // it moves it up by one
                     let removed = acc.remove_section(*i);
                     prop_assert_eq!(removed.is_some(), *i < len);
                     if *i < len {
                         titles.remove(*i);
                         lines.remove(*i);
                         open.remove(*i);
+                        if *i < sel { sel -= 1 }
                         if sel >= titles.len() && !titles.is_empty() { sel = titles.len() - 1 }
                     }
                 }
@@ -254,4 +253,44 @@ proptest! {
             prop_assert_eq!(bg == Some(SELECTED_BG), selected, "row {}", y);
         }
     }
+}
+
+/// A selected section below the area used never to be drawn (#973).
+#[test]
+fn accordion_selected_section_scrolls_into_view() {
+    let mut acc = Accordion::new().dividers(false);
+    for i in 0..8 {
+        acc = acc.section(AccordionSection::new(format!("S{i}")));
+    }
+    acc.set_selected(7);
+    let buffer = draw(&acc, 12, 3);
+    let shown: Vec<String> = (0..3).map(|y| row(&buffer, y)).collect();
+    assert!(shown.iter().any(|r| r.contains("S7")), "{shown:?}");
+}
+
+/// An expanded section shows its content under the header when it fits.
+#[test]
+fn accordion_an_expanded_section_is_scrolled_into_view_whole() {
+    let mut acc = Accordion::new().dividers(false);
+    for i in 0..6 {
+        acc = acc.section(AccordionSection::new(format!("S{i}")).line("a").line("b"));
+    }
+    acc.set_selected(5);
+    acc.expand_selected();
+    let buffer = draw(&acc, 12, 4);
+    let shown: Vec<String> = (0..4).map(|y| row(&buffer, y).trim().to_string()).collect();
+    assert_eq!(&shown[1..], ["▼ S5", "a", "b"], "{shown:?}");
+}
+
+/// Removing a section above the selected one moved the selection to the
+/// next section (#975).
+#[test]
+fn accordion_selection_stays_on_its_section_when_one_above_is_removed() {
+    let mut acc = Accordion::new()
+        .section(AccordionSection::new("A"))
+        .section(AccordionSection::new("B"))
+        .section(AccordionSection::new("C"));
+    acc.set_selected(1); // B
+    acc.remove_section(0);
+    assert_eq!(acc.selected(), 0, "B is now at 0");
 }

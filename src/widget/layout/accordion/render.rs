@@ -28,6 +28,15 @@ struct Inner {
     width: u16,
 }
 
+/// One row of the accordion: a section's header, one of its content lines,
+/// or the divider after it
+#[derive(Clone, Copy)]
+enum Row {
+    Header(usize),
+    Line(usize, usize),
+    Divider,
+}
+
 impl Accordion {
     /// Draw into `ctx.area`, already constrained.
     fn render_constrained(&self, ctx: &mut RenderContext) {
@@ -59,35 +68,50 @@ impl Accordion {
             x: content_x_off,
             width: content_width,
         };
-        let mut y = content_y_off;
-        let max_y = content_y_off + content_height;
+        // The rows, scrolled to keep the selected section in view (#973)
+        let rows = self.rows();
+        self.scroll.set_content(rows.len());
+        self.scroll.set_viewport(content_height as usize);
+        let selected = self.selection.index;
+        if let Some(start) = rows
+            .iter()
+            .position(|r| matches!(r, Row::Header(i) if *i == selected))
+        {
+            let end = rows[start + 1..]
+                .iter()
+                .position(|r| !matches!(r, Row::Line(i, _) if *i == selected))
+                .map_or(rows.len(), |n| start + 1 + n);
+            self.scroll.track(start..end);
+        }
 
-        for (section_idx, section) in self.sections.iter().enumerate() {
-            if y >= max_y {
-                break;
-            }
-
-            let is_selected = self.selection.is_selected(section_idx);
-            self.render_header(ctx, inner, y, section, is_selected);
-            y += 1;
-
-            // Render content if expanded
-            if section.expanded {
-                for line in &section.content {
-                    if y >= max_y {
-                        break;
-                    }
-                    self.render_content_line(ctx, inner, y, line);
-                    y += 1;
+        for (k, row) in rows[self.scroll.visible()].iter().enumerate() {
+            let y = content_y_off + k as u16;
+            match *row {
+                Row::Header(i) => {
+                    let is_selected = self.selection.is_selected(i);
+                    self.render_header(ctx, inner, y, &self.sections[i], is_selected);
                 }
-            }
-
-            // Divider
-            if self.show_dividers && section_idx < self.sections.len() - 1 && y < max_y {
-                ctx.draw_hline(inner.x, y, inner.width, '─', SEPARATOR_COLOR);
-                y += 1;
+                Row::Line(i, line) => {
+                    self.render_content_line(ctx, inner, y, &self.sections[i].content[line]);
+                }
+                Row::Divider => ctx.draw_hline(inner.x, y, inner.width, '─', SEPARATOR_COLOR),
             }
         }
+    }
+
+    /// Every row the sections take, top to bottom
+    fn rows(&self) -> Vec<Row> {
+        let mut rows = Vec::new();
+        for (i, section) in self.sections.iter().enumerate() {
+            rows.push(Row::Header(i));
+            if section.expanded {
+                rows.extend((0..section.content.len()).map(|line| Row::Line(i, line)));
+            }
+            if self.show_dividers && i + 1 < self.sections.len() {
+                rows.push(Row::Divider);
+            }
+        }
+        rows
     }
 
     /// A section's header row: its background (the selected one's while

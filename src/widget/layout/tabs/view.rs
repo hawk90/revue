@@ -13,9 +13,16 @@ impl View for Tabs {
             return;
         }
 
+        // The bar scrolls (in columns) to keep the active tab in view and
+        // starts at a whole tab (#973)
+        let first = self.first_tab.unwrap_or_else(|| {
+            let spans = label_spans(self.tabs.iter().map(|t| t.label.as_str()));
+            bar_window(&spans, &self.scroll, self.selection.index, area.width)
+        });
+
         let mut x: u16 = 0;
 
-        for (i, tab) in self.tabs.iter().enumerate() {
+        for (i, tab) in self.tabs.iter().enumerate().skip(first) {
             x = self.draw_tab(ctx, area, x, i, tab);
         }
     }
@@ -144,6 +151,43 @@ pub(crate) fn label_spans<'a>(labels: impl IntoIterator<Item = &'a str>) -> Vec<
             let span = (start, x);
             x = x.saturating_add(1);
             span
+        })
+        .collect()
+}
+
+/// The first tab a bar `width` columns wide draws, keeping tab `selected` in
+/// view: `scroll` (in columns over `spans`) reveals the selected span when
+/// it changes, and the bar starts at the first whole tab at or after the
+/// offset, which still shows the selected one.
+pub(crate) fn bar_window(
+    spans: &[(u16, u16)],
+    scroll: &crate::utils::ScrollState,
+    selected: usize,
+    width: u16,
+) -> usize {
+    scroll.set_content(spans.last().map_or(0, |&(_, end)| usize::from(end)));
+    scroll.set_viewport(usize::from(width));
+    if let Some(&(start, end)) = spans.get(selected) {
+        scroll.track(usize::from(start)..usize::from(end));
+    }
+    spans
+        .iter()
+        .position(|&(start, _)| usize::from(start) >= scroll.offset())
+        .unwrap_or(spans.len())
+}
+
+/// `spans` as drawn from tab `first`: those before it take no columns
+pub(crate) fn shift_spans(spans: &[(u16, u16)], first: usize) -> Vec<(u16, u16)> {
+    let base = spans.get(first).map_or(0, |&(start, _)| start);
+    spans
+        .iter()
+        .enumerate()
+        .map(|(i, &(start, end))| {
+            if i < first {
+                (0, 0)
+            } else {
+                (start - base, end - base)
+            }
         })
         .collect()
 }
