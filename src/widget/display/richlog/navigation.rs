@@ -4,55 +4,60 @@ use super::RichLog;
 use crate::event::Key;
 
 impl RichLog {
-    /// Scroll up
+    /// Scroll the view up, without moving the selection. Stops
+    /// auto-scroll when the view moves off the newest entries.
     pub fn scroll_up(&mut self, lines: usize) {
-        self.scroll = self.scroll.saturating_sub(lines);
-        self.auto_scroll = false;
+        self.scroll
+            .scroll_by(-(lines.min(isize::MAX as usize) as isize));
     }
 
-    /// Scroll down
+    /// Scroll the view down, without moving the selection. Reaching the
+    /// newest entries starts auto-scroll again.
     pub fn scroll_down(&mut self, lines: usize) {
-        let max_scroll = self.entries.len().saturating_sub(1);
-        self.scroll = (self.scroll + lines).min(max_scroll);
+        self.scroll
+            .scroll_by(lines.min(isize::MAX as usize) as isize);
     }
 
     /// Scroll to top
     pub fn scroll_to_top(&mut self) {
-        self.scroll = 0;
-        self.auto_scroll = false;
+        self.scroll.scroll_to_top();
     }
 
-    /// Scroll to bottom
+    /// Scroll to bottom and follow new entries
     pub fn scroll_to_bottom(&mut self) {
-        if !self.entries.is_empty() {
-            self.scroll = self.entries.len().saturating_sub(1);
-        }
-        self.auto_scroll = true;
+        self.scroll.scroll_to_end();
     }
 
-    /// Select next entry
+    /// Select next entry and scroll it into view
     pub fn select_next(&mut self) {
-        let count = self.visible_entries().len();
-        match self.selected {
-            Some(i) if i + 1 < count => self.selected = Some(i + 1),
-            None if count > 0 => self.selected = Some(0),
-            _ => {}
+        let len = self.visible_entries().len();
+        let target = self
+            .selection
+            .index()
+            .map_or(0, |i| i + 1)
+            .min(len.saturating_sub(1));
+        self.select_entry(target, len);
+    }
+
+    /// Select previous entry and scroll it into view
+    pub fn select_prev(&mut self) {
+        if let Some(i) = self.selection.index() {
+            let len = self.visible_entries().len();
+            self.select_entry(i.saturating_sub(1), len);
         }
     }
 
-    /// Select previous entry
-    pub fn select_prev(&mut self) {
-        if let Some(i) = self.selected {
-            if i > 0 {
-                self.selected = Some(i - 1);
-            }
-        }
+    fn select_entry(&mut self, pos: usize, len: usize) {
+        let key = self.visible_ids().nth(pos).unwrap_or_default();
+        self.selection.select(pos, len, |_| key);
+        self.reveal_selected();
     }
 
     /// Toggle selected entry details
     pub fn toggle_selected(&mut self) {
-        // `selected` indexes the visible (level-filtered) entries.
-        if let Some(i) = self.selected {
+        // The selection indexes the visible (level-filtered) entries.
+        if let Some(i) = self.selection.index() {
+            let rows = self.entry_row_range(i);
             let min_level = self.min_level;
             if let Some(entry) = self
                 .entries
@@ -62,6 +67,16 @@ impl RichLog {
             {
                 entry.toggle();
             }
+            // The details come and go below the message: rows above the view
+            // keep it still, and the entry is scrolled into view
+            let after = self.entry_row_range(i).len();
+            if after > rows.len() {
+                self.scroll.rows_inserted(rows.end, after - rows.len());
+            } else {
+                self.scroll
+                    .rows_removed(rows.start + after, rows.len() - after);
+            }
+            self.reveal_selected();
         }
     }
 

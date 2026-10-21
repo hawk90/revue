@@ -29,28 +29,22 @@ impl RichLog {
         lines
     }
 
-    /// The first entry to draw, and the last one that still fills the area
-    /// to its bottom row.
-    fn first_entry(
-        &self,
-        entries: &[&LogEntry],
-        visible_height: usize,
-        message_width: u16,
-    ) -> (usize, usize) {
-        // `scroll` is the first entry to show, but the scroll methods do not
-        // know the viewport height (`scroll_to_bottom` puts it on the last
-        // entry), so keep the last page full here. An entry can take more
-        // than one row (wrapped, or expanded details).
-        let mut max_start = entries.len();
-        let mut filled = 0;
-        while max_start > 0 && filled < visible_height {
-            max_start -= 1;
-            filled += self
-                .entry_lines(entries[max_start], message_width as usize)
-                .len();
-        }
-        let start = self.scroll.min(max_start);
-        (start, max_start)
+    /// The rows `entry` takes when messages are `width` wide (`None` before
+    /// the first draw: one row per message): as many as
+    /// [`entry_lines`](Self::entry_lines) gives, without building them.
+    pub(super) fn entry_rows(&self, entry: &LogEntry, width: Option<usize>) -> usize {
+        let message = match width {
+            Some(width) if self.wrap && width > 0 => {
+                wrap_to_width(&entry.message, width).len().max(1)
+            }
+            _ => 1,
+        };
+        let details = if entry.expanded {
+            entry.details.len()
+        } else {
+            0
+        };
+        message + details
     }
 
     /// Fill row `y` with the background color, when one is set
@@ -107,10 +101,11 @@ impl RichLog {
     }
 
     /// Draw the scroll marker in the last column, at the row matching how far
-    /// `start` is between the first entry and `max_start`
-    fn draw_scroll_indicator(&self, ctx: &mut RenderContext, start: usize, max_start: usize) {
+    /// the view is scrolled
+    fn draw_scroll_indicator(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        if let Some(scroll_pos) = (start * (area.height as usize - 1)).checked_div(max_start) {
+        let (offset, max) = (self.scroll.offset(), self.scroll.max_offset());
+        if let Some(scroll_pos) = (offset * (area.height as usize - 1)).checked_div(max) {
             let indicator_y = scroll_pos as u16;
             if indicator_y < area.height {
                 let mut cell = Cell::new('█');
@@ -138,26 +133,42 @@ impl View for RichLog {
         let prefix_width = columns.prefix_width();
         let message_width = area.width.saturating_sub(prefix_width);
 
-        // Calculate visible range
-        let visible_height = area.height as usize;
-        let (start, max_start) = self.first_entry(&entries, visible_height, message_width);
+        // The view in rows, at this width
+        let width = message_width as usize;
+        self.message_width.set(Some(width));
+        let total: usize = entries
+            .iter()
+            .map(|e| self.entry_rows(e, Some(width)))
+            .sum();
+        self.scroll.set_content(total);
+        self.scroll.set_viewport(area.height as usize);
+        let visible = self.scroll.visible();
 
-        let mut y: u16 = 0;
-        for (i, entry) in entries.iter().enumerate().skip(start) {
-            if y >= area.height {
+        // Walk the entries by row and draw the rows in view; the first entry
+        // drawn can start above the view
+        let mut row = 0;
+        for (i, entry) in entries.iter().enumerate() {
+            if row >= visible.end {
                 break;
             }
+            let height = self.entry_rows(entry, Some(width));
+            if row + height <= visible.start {
+                row += height;
+                continue;
+            }
 
-            let is_selected = self.selected == Some(i);
-
-            for (line_idx, (text, is_detail)) in self
-                .entry_lines(entry, message_width as usize)
-                .into_iter()
-                .enumerate()
+            let is_selected = self.selection.is_selected(i);
+            for (line_idx, (text, is_detail)) in
+                self.entry_lines(entry, width).into_iter().enumerate()
             {
-                if y >= area.height {
+                let at = row + line_idx;
+                if at < visible.start {
+                    continue;
+                }
+                if at >= visible.end {
                     break;
                 }
+                let y = (at - visible.start) as u16;
 
                 self.fill_row(ctx, y, area.width);
 
@@ -169,12 +180,11 @@ impl View for RichLog {
                 // Draw the message (or detail) text
                 let style = self.line_style(entry, is_detail, is_selected);
                 self.draw_message(ctx, &text, y, prefix_width, message_width, style);
-
-                y += 1;
             }
+            row += height;
         }
 
-        self.draw_scroll_indicator(ctx, start, max_start);
+        self.draw_scroll_indicator(ctx);
     }
 }
 

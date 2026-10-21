@@ -567,10 +567,12 @@ fn test_richlog_scroll_up_disables_auto_scroll() {
         log.info(format!("m{i}"));
     }
 
+    // Following shows m7..m9; Up moves from there, not from the last entry
+    assert_eq!(text(&log, 10, 3), ["m7", "m8", "m9"]);
     log.scroll_up(5);
-    assert_eq!(text(&log, 10, 3), ["m4", "m5", "m6"]);
+    assert_eq!(text(&log, 10, 3), ["m2", "m3", "m4"]);
     log.info("new");
-    assert_eq!(text(&log, 10, 3), ["m4", "m5", "m6"]);
+    assert_eq!(text(&log, 10, 3), ["m2", "m3", "m4"]);
 }
 
 #[test]
@@ -1416,4 +1418,61 @@ fn test_richlog_render_zero_sized_area_with_entries() {
             "{w}x{h} drew outside its area"
         );
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// The view scrolls in rows (#973)
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Up used to count from the last entry, so the first presses after
+/// following changed nothing on screen.
+#[test]
+fn test_richlog_up_after_following_moves_the_view() {
+    let mut log = bare();
+    for i in 0..10 {
+        log.info(format!("m{i}"));
+    }
+    assert_eq!(text(&log, 10, 4), ["m6", "m7", "m8", "m9"]);
+    log.handle_key(&Key::Up);
+    assert_eq!(text(&log, 10, 4), ["m5", "m6", "m7", "m8"]);
+}
+
+/// Selecting used to leave the selected entry wherever it was.
+#[test]
+fn test_richlog_selection_is_scrolled_into_view() {
+    let mut log = bare();
+    for i in 0..10 {
+        log.info(format!("m{i}"));
+    }
+    draw(&log, 10, 4);
+    log.select_next(); // m0, while the view shows m6..m9
+    let buffer = draw(&log, 10, 4);
+    assert!((0..4).any(|y| buffer.get(0, y).unwrap().fg == Some(Color::WHITE)));
+    assert_eq!(text(&log, 10, 4)[0], "m0");
+}
+
+/// The last page used to start on an entry's first row, so a tall entry
+/// there pushed the newest ones below the area.
+#[test]
+fn test_richlog_following_shows_the_newest_entry_under_a_wrapped_one() {
+    let mut log = bare().wrap(true);
+    log.info("aaaa bbbb cccc dddd"); // 4 rows at width 4
+    log.info("new");
+    assert_eq!(text(&log, 4, 3).last().unwrap(), "new");
+}
+
+/// An expanded entry taller than the area shows its first rows, and the
+/// rest can be scrolled to: the view used to stop at the entry's first row.
+#[test]
+fn test_richlog_an_expanded_last_entry_can_be_scrolled_through() {
+    let mut log = bare();
+    log.info("first");
+    log.log(LogEntry::new("last").detail("d1").detail("d2").detail("d3"));
+    draw(&log, 10, 3);
+    log.select_next();
+    log.select_next();
+    log.toggle_selected();
+    assert_eq!(text(&log, 10, 3), ["last", "  d1", "  d2"]);
+    log.scroll_down(1);
+    assert_eq!(text(&log, 10, 3), ["  d1", "  d2", "  d3"]);
 }
