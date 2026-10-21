@@ -37,22 +37,22 @@ impl HeatMap {
             format!(
                 "{:>width$.prec$}",
                 value,
-                width = self.cell_width,
+                width = self.drawn_cell_width(),
                 prec = self.value_decimals
             )
         } else {
             match self.cell_display {
-                CellDisplay::Block => "█".repeat(self.cell_width),
-                CellDisplay::HalfBlock => "▀".repeat(self.cell_width),
+                CellDisplay::Block => "█".repeat(self.drawn_cell_width()),
+                CellDisplay::HalfBlock => "▀".repeat(self.drawn_cell_width()),
                 CellDisplay::Value => {
                     format!(
                         "{:>width$.prec$}",
                         value,
-                        width = self.cell_width,
+                        width = self.drawn_cell_width(),
                         prec = self.value_decimals
                     )
                 }
-                CellDisplay::Custom => "■".repeat(self.cell_width),
+                CellDisplay::Custom => "■".repeat(self.drawn_cell_width()),
             }
         }
     }

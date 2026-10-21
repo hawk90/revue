@@ -289,13 +289,14 @@ fn test_table_selection_bounds() {
 }
 
 #[test]
-fn test_table_selected_before_rows_is_clamped() {
-    // selected() clamps against the rows that exist at that point
+fn test_table_selected_before_rows_is_kept() {
+    // selected() before the rows is kept until they come (#1011); it used
+    // to clamp against the rows that existed at that point
     let t = Table::new(vec![Column::new("X")])
         .selected(1)
         .row(vec!["a"])
         .row(vec!["b"]);
-    assert_eq!(t.selected_index(), 0);
+    assert_eq!(t.selected_index(), 1);
 }
 
 #[test]

@@ -21,6 +21,10 @@ use crate::{impl_props_builders, impl_styled_view};
 pub struct Slider {
     /// Current value
     value: f64,
+    /// The value the `value` builder was given: the range and step
+    /// builders clamp and snap it again, so they may come before or after
+    /// it (#1011). A change by the user forgets it.
+    requested: Option<f64>,
     /// Minimum value
     min: f64,
     /// Maximum value
@@ -63,6 +67,7 @@ impl Slider {
     pub fn new() -> Self {
         Self {
             value: 0.0,
+            requested: None,
             min: 0.0,
             max: 100.0,
             step: 0.0,
@@ -86,7 +91,17 @@ impl Slider {
     /// Set value
     pub fn value(mut self, value: f64) -> Self {
         self.value = self.clamp_value(value);
+        if !value.is_nan() {
+            self.requested = Some(value);
+        }
         self
+    }
+
+    /// Clamp and snap the value again after a bound or the step changed,
+    /// from the value asked for when a builder gave one
+    fn reapply_value(&mut self) {
+        let value = self.requested.unwrap_or(self.value);
+        self.value = self.clamp_value(value);
     }
 
     /// Set range
@@ -99,13 +114,14 @@ impl Slider {
         let max = if max.is_nan() { self.max } else { max };
         self.min = min.min(max);
         self.max = min.max(max);
-        self.value = self.clamp_value(self.value);
+        self.reapply_value();
         self
     }
 
     /// Set step size
     pub fn step(mut self, step: f64) -> Self {
         self.step = step.abs();
+        self.reapply_value();
         self
     }
 
@@ -221,6 +237,7 @@ impl Slider {
 
     /// Set value
     pub fn set_value(&mut self, value: f64) {
+        self.requested = None;
         self.value = self.clamp_value(value);
     }
 
@@ -236,6 +253,7 @@ impl Slider {
         } else {
             (self.max - self.min) / 100.0
         };
+        self.requested = None;
         self.value = self.clamp_value(self.value + step);
     }
 
@@ -246,16 +264,19 @@ impl Slider {
         } else {
             (self.max - self.min) / 100.0
         };
+        self.requested = None;
         self.value = self.clamp_value(self.value - step);
     }
 
     /// Set to minimum
     pub fn set_min(&mut self) {
+        self.requested = None;
         self.value = self.min;
     }
 
     /// Set to maximum
     pub fn set_max(&mut self) {
+        self.requested = None;
         self.value = self.max;
     }
 }

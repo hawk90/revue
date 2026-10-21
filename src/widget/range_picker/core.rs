@@ -47,6 +47,9 @@ pub struct RangePicker {
     pub(crate) start_cursor_day: u32,
     /// Calendar cursor day (for end)
     pub(crate) end_cursor_day: u32,
+    /// The dates the `start_date`/`end_date` builders were given: the
+    /// range is made from them in order whichever came first (#1011)
+    asked: (Option<Date>, Option<Date>),
     /// Minimum allowed date
     pub(crate) min_date: Option<Date>,
     /// Maximum allowed date
@@ -94,7 +97,22 @@ impl RangePicker {
             preset_selected_bg: Color::CYAN,
             state: WidgetState::new(),
             props: WidgetProps::new(),
+            asked: (None, None),
         }
+    }
+
+    /// Remember a date a builder was given: `start` or the end
+    pub(crate) fn ask(&mut self, start: bool, date: Date) {
+        if start {
+            self.asked.0 = Some(date);
+        } else {
+            self.asked.1 = Some(date);
+        }
+    }
+
+    /// The dates the builders were given, start and end
+    pub(crate) fn asked(&self) -> (Option<Date>, Option<Date>) {
+        self.asked
     }
 }
 

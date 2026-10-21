@@ -188,11 +188,17 @@ proptest! {
             open.push(e);
         }
         let mut sel = 0usize;
+        // An index set past the end, selected once a section is there
+        // (#1011); a move forgets it
+        let mut requested: Option<usize> = None;
         for o in &ops {
             let len = titles.len();
             match o {
                 Op::Key(k) => {
                     let handled = acc.handle_key(k);
+                    if matches!(k, Key::Up | Key::Char('k') | Key::Down | Key::Char('j')) {
+                        requested = None;
+                    }
                     let expect_handled = !matches!(k, Key::Tab | Key::Char('x'));
                     prop_assert_eq!(handled, expect_handled);
                     match k {
@@ -215,11 +221,19 @@ proptest! {
                 }
                 Op::ExpandAll => { acc.expand_all(); open.iter_mut().for_each(|e| *e = true) }
                 Op::CollapseAll => { acc.collapse_all(); open.iter_mut().for_each(|e| *e = false) }
-                Op::Select(i) => { acc.set_selected(*i); sel = (*i).min(len.saturating_sub(1)) }
+                Op::Select(i) => {
+                    acc.set_selected(*i);
+                    sel = (*i).min(len.saturating_sub(1));
+                    requested = (*i >= len).then_some(*i);
+                }
                 Op::Add(e) => {
                     acc.add_section(section(&mut titles, 1, *e));
                     lines.push(1);
                     open.push(*e);
+                    if let Some(r) = requested.filter(|&r| r < titles.len()) {
+                        sel = r;
+                        requested = None;
+                    }
                 }
                 Op::Remove(i) => {
                     // The selection stays on its section (#975): one above
@@ -231,6 +245,10 @@ proptest! {
                         lines.remove(*i);
                         open.remove(*i);
                         if *i < sel { sel -= 1 }
+                        if let Some(r) = requested.filter(|&r| r < titles.len()) {
+                            sel = r;
+                            requested = None;
+                        }
                         if sel >= titles.len() && !titles.is_empty() { sel = titles.len() - 1 }
                     }
                 }

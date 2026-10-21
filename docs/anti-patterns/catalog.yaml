@@ -3243,6 +3243,7 @@ entries:
       - "builder 쌍마다 두 순서로 만든 위젯의 getter나 화면을 비교하는 테스트"
     fix:
       - "builder는 받은 값을 그대로 저장하고, 필드가 만나는 곳(읽을 때, 길이·범위가 바뀔 때, 그릴 때)에서 맞춘다."
+      - "선택은 `utils::Selection`이 끝을 넘는 index를 기억했다가 `set_len`이 항목을 주면 고른다(#1011). 다른 widget도 builder가 받은 값을 기억하고 짝이 되는 builder가 다시 맞춘다. `tests/widget/builder_order.rs`가 widget마다 builder 쌍을 두 순서로 만들어 같은지 본다."
       - "선택은 요청한 index를 따로 두고 길이가 바뀔 때 요청에서 다시 계산한다."
       - "범위·step을 바꾸는 builder는 요청한 값에서 다시 clamp한다."
     observed:

@@ -33,8 +33,9 @@ pub struct PieChart {
     explode_distance: f64,
     /// Label style
     labels: PieLabelStyle,
-    /// Donut hole ratio (0.0-1.0)
-    donut_ratio: f64,
+    /// Donut hole ratio (0.0-0.9) when one was given; a donut without one
+    /// draws 0.5, whatever order `donut` and `style` come in (#1011)
+    donut_ratio: Option<f64>,
     /// Chart title
     title: Option<String>,
     /// Background color
@@ -61,7 +62,7 @@ impl PieChart {
             explode: None,
             explode_distance: 0.15,
             labels: PieLabelStyle::None,
-            donut_ratio: 0.0,
+            donut_ratio: None,
             title: None,
             bg_color: None,
             props: WidgetProps::new(),
@@ -95,17 +96,19 @@ impl PieChart {
     /// Set chart style (pie or donut)
     pub fn style(mut self, style: PieStyle) -> Self {
         self.style = style;
-        if style == PieStyle::Donut && self.donut_ratio == 0.0 {
-            self.donut_ratio = 0.5;
-        }
         self
     }
 
     /// Make it a donut chart with specified hole ratio
     pub fn donut(mut self, ratio: f64) -> Self {
         self.style = PieStyle::Donut;
-        self.donut_ratio = ratio.clamp(0.0, 0.9);
+        self.donut_ratio = Some(ratio.clamp(0.0, 0.9));
         self
+    }
+
+    /// The donut's hole ratio as drawn: the one given, else 0.5
+    pub(crate) fn hole_ratio(&self) -> f64 {
+        self.donut_ratio.unwrap_or(0.5)
     }
 
     /// Set legend configuration

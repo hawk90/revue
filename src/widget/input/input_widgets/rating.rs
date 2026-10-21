@@ -78,6 +78,10 @@ impl RatingSize {
 pub struct Rating {
     /// Current rating value (0.0 to max_value)
     value: f32,
+    /// The value the `value` builder was given, clamped again when
+    /// `max_value` changes, so either may come first (#1011). A change by
+    /// the user forgets it.
+    requested: Option<f32>,
     /// Maximum rating value
     max_value: u8,
     /// Rating style
@@ -110,6 +114,7 @@ impl Rating {
     pub fn new() -> Self {
         Self {
             value: 0.0,
+            requested: None,
             max_value: 5,
             style: RatingStyle::Star,
             size: RatingSize::Medium,
@@ -128,13 +133,15 @@ impl Rating {
     /// Set the rating value
     pub fn value(mut self, value: f32) -> Self {
         self.value = value.clamp(0.0, self.max_value as f32);
+        self.requested = Some(value);
         self
     }
 
-    /// Set maximum rating value
+    /// Set maximum rating value (at least 1)
     pub fn max_value(mut self, max: u8) -> Self {
         self.max_value = max.max(1);
-        self.value = self.value.min(max as f32);
+        let value = self.requested.unwrap_or(self.value);
+        self.value = value.clamp(0.0, self.max_value as f32);
         self
     }
 
@@ -204,6 +211,7 @@ impl Rating {
 
     /// Set value programmatically
     pub fn set_value(&mut self, value: f32) {
+        self.requested = None;
         self.value = value.clamp(0.0, self.max_value as f32);
     }
 
@@ -221,6 +229,7 @@ impl Rating {
             return;
         }
         let step = if self.half_stars { 0.5 } else { 1.0 };
+        self.requested = None;
         self.value = (self.value + step).min(self.max_value as f32);
     }
 
@@ -230,6 +239,7 @@ impl Rating {
             return;
         }
         let step = if self.half_stars { 0.5 } else { 1.0 };
+        self.requested = None;
         self.value = (self.value - step).max(0.0);
     }
 
@@ -238,6 +248,7 @@ impl Rating {
         if self.readonly {
             return;
         }
+        self.requested = None;
         self.value = 0.0;
     }
 
