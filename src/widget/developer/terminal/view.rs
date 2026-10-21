@@ -37,10 +37,12 @@ impl View for Terminal {
             }
         }
 
+        // The rows in view: as many as the area has (#973)
+        self.scroll.set_viewport(area.height as usize);
         self.draw_lines(ctx, area, default_fg);
 
         // Render cursor if visible and focused
-        if self.show_cursor && self.focused && self.scroll_offset == 0 {
+        if self.show_cursor && self.focused {
             self.draw_cursor(ctx, area, default_fg);
         }
 
@@ -50,7 +52,7 @@ impl View for Terminal {
         }
 
         // Render scroll indicator if scrolled
-        if self.scroll_offset > 0 {
+        if self.lines_below() > 0 {
             self.draw_scroll_indicator(ctx, area);
         }
     }
@@ -97,11 +99,13 @@ impl Terminal {
         }
     }
 
-    /// The cursor glyph at the write position
+    /// The cursor glyph at the write position, when its line is in view
     fn draw_cursor(&self, ctx: &mut RenderContext, area: Rect, default_fg: Color) {
-        let cursor_screen_row = self
-            .cursor_row
-            .saturating_sub(self.lines.len().saturating_sub(self.height as usize));
+        let visible = self.visible_range();
+        if !visible.contains(&self.cursor_row) {
+            return;
+        }
+        let cursor_screen_row = self.cursor_row - visible.start;
 
         if cursor_screen_row < area.height as usize && self.cursor_col < area.width as usize {
             let cursor_x = self.cursor_col as u16;
@@ -152,7 +156,7 @@ impl Terminal {
 
     /// `↑n` near the top-right corner: how many lines the view is scrolled up
     fn draw_scroll_indicator(&self, ctx: &mut RenderContext, area: Rect) {
-        let indicator = format!("↑{}", self.scroll_offset);
+        let indicator = format!("↑{}", self.lines_below());
         let indicator_len = indicator.len() as u16;
         if area.width > indicator_len + 1 {
             let start_x = area.width - indicator_len - 1;

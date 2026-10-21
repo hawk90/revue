@@ -21,7 +21,7 @@ fn test_terminal_new() {
     assert_eq!(term.lines.len(), 24);
     assert!(term.lines.iter().all(|l| l.cells.is_empty() && !l.wrapped));
     assert_eq!((term.cursor_row, term.cursor_col), (0, 0));
-    assert_eq!(term.scroll_offset, 0);
+    assert_eq!(term.lines_below(), 0);
     assert_eq!((term.width, term.height), (80, 24));
     assert_eq!(term.max_scrollback, 10000);
     assert!(term.show_cursor && !term.focused);
@@ -75,15 +75,15 @@ fn test_terminal_scroll() {
     assert_eq!(term.visible_range(), 6..11);
 
     term.scroll_up(3);
-    assert_eq!(term.scroll_offset, 3);
+    assert_eq!(term.lines_below(), 3);
     assert_eq!(term.visible_range(), 3..8);
     term.scroll_down(2);
-    assert_eq!(term.scroll_offset, 1);
+    assert_eq!(term.lines_below(), 1);
     term.scroll_up(100);
-    assert_eq!(term.scroll_offset, 6);
+    assert_eq!(term.lines_below(), 6);
     assert_eq!(term.visible_range(), 0..5);
     term.scroll_to_bottom();
-    assert_eq!(term.scroll_offset, 0);
+    assert_eq!(term.lines_below(), 0);
 }
 
 #[test]
@@ -97,7 +97,7 @@ fn test_terminal_clear() {
     assert_eq!(term.lines.len(), 24);
     assert!(term.lines.iter().all(|l| l.cells.is_empty()));
     assert_eq!((term.cursor_row, term.cursor_col), (0, 0));
-    assert_eq!(term.scroll_offset, 0);
+    assert_eq!(term.lines_below(), 0);
 }
 
 #[test]

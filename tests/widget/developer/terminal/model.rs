@@ -285,11 +285,13 @@ proptest! {
             term.focus();
         }
 
+        // The area's rows show the newest lines (#973): an area taller than
+        // the terminal shows scrollback above its screen
         let (aw, ah) = (width as u16 + extra.0, height as u16 + extra.1);
         let buffer = screen(&term, aw, ah);
-        let first = grid.lines.len() - height;
+        let first = grid.lines.len().saturating_sub(ah as usize);
         for y in 0..ah as usize {
-            let line = grid.lines.get(first + y).filter(|_| y < height);
+            let line = grid.lines.get(first + y);
             for x in 0..aw as usize {
                 let cell = buffer.get(x as u16, y as u16).unwrap();
                 let cursor = focused && x == grid.col && y + first == grid.row;

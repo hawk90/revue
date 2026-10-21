@@ -59,13 +59,50 @@ fn test_terminal_empty_draws_only_the_background() {
 
 #[test]
 fn test_terminal_one_cell_area() {
-    // The first written cell, or the cursor over it when focused
-    let mut term = Terminal::new(8, 2);
+    // One row shows the newest line (#973): the written cell on a one-row
+    // terminal, or the cursor over it when focused
+    let mut term = Terminal::new(8, 1);
     term.write("ab");
     assert_eq!(screen(&term, 1, 1).get(0, 0).unwrap().symbol, 'a');
     term.write("\r");
     term.focus();
     assert_eq!(screen(&term, 1, 1).get(0, 0).unwrap().symbol, '█');
+}
+
+/// An area shorter than the terminal showed its oldest rows, so the newest
+/// lines and the cursor were cut off (#973).
+#[test]
+fn a_shorter_area_shows_the_newest_lines() {
+    let mut t = Terminal::new(10, 5);
+    t.focus();
+    t.write("l0\nl1\nl2\nl3\nl4");
+    let b = screen(&t, 10, 3);
+    let row = |y: u16| {
+        (0..10)
+            .map(|x| b.get(x, y).unwrap().symbol)
+            .collect::<String>()
+    };
+    assert_eq!(row(2).trim_end(), "l4█");
+}
+
+/// The offset counted from the newest line, so each new line moved a
+/// scrolled-back view (#973).
+#[test]
+fn scrolled_view_stays_on_new_output() {
+    let mut t = Terminal::new(10, 3);
+    for i in 0..10 {
+        t.writeln(&format!("r{i}"));
+    }
+    t.scroll_up(4);
+    let row = |t: &Terminal| {
+        let b = screen(t, 10, 3);
+        (0..10)
+            .map(|x| b.get(x, 1).unwrap().symbol)
+            .collect::<String>()
+    };
+    let before = row(&t);
+    t.writeln("new");
+    assert_eq!(row(&t), before);
 }
 
 #[test]

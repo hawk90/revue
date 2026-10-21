@@ -76,6 +76,7 @@ impl Terminal {
             } else {
                 self.lines[self.cursor_row].wrapped = true;
             }
+            self.sync_scroll();
             self.trim_scrollback();
         }
     }
@@ -89,6 +90,7 @@ impl Terminal {
             self.lines
                 .push(TermLine::with_capacity(self.width as usize));
         }
+        self.sync_scroll();
 
         self.trim_scrollback();
     }
@@ -98,6 +100,8 @@ impl Terminal {
         let total_lines = self.height as usize + self.max_scrollback;
         while self.lines.len() > total_lines {
             self.lines.remove(0);
+            // A scrolled-back view stays on the lines it shows
+            self.scroll.rows_removed(0, 1);
             if self.cursor_row > 0 {
                 self.cursor_row -= 1;
             }
@@ -119,7 +123,8 @@ impl Terminal {
         }
         self.cursor_row = 0;
         self.cursor_col = 0;
-        self.scroll_offset = 0;
+        self.sync_scroll();
+        self.scroll.scroll_to_end();
     }
 
     /// Clear current line
@@ -138,5 +143,6 @@ impl Terminal {
         while self.lines.len() < height as usize {
             self.lines.push(TermLine::with_capacity(width as usize));
         }
+        self.sync_scroll();
     }
 }

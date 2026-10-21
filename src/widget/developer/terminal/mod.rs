@@ -14,6 +14,7 @@ mod types;
 mod view;
 
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::theme::{EDITOR_BG, MUTED_TEXT, SECONDARY_TEXT};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -28,8 +29,9 @@ pub struct Terminal {
     cursor_row: usize,
     /// Current cursor column
     cursor_col: usize,
-    /// Scroll offset (0 = at bottom, showing latest)
-    scroll_offset: usize,
+    /// Where the lines are scrolled to, from the top: it follows the newest
+    /// line until scrolled back, and a scrolled-back view stays on its lines
+    scroll: ScrollState,
     /// Maximum scrollback lines
     max_scrollback: usize,
     /// Terminal width
@@ -73,11 +75,16 @@ impl Terminal {
             lines.push(TermLine::with_capacity(width as usize));
         }
 
+        let mut scroll = ScrollState::new().follow_end(true);
+        scroll.set_content(lines.len());
+        scroll.set_viewport(height as usize);
+        scroll.scroll_to_end();
+
         Self {
             lines,
             cursor_row: 0,
             cursor_col: 0,
-            scroll_offset: 0,
+            scroll,
             max_scrollback: 10000,
             width,
             height,
