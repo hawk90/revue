@@ -46,12 +46,17 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Unique identifier for a store instance
+/// The key a store is registered under in [`StoreRegistry`]
+///
+/// `#[derive(Store)]` gives every instance of a store type the same id
+/// ([`StoreId::from_path`]), so the registry holds one store per type, as
+/// Pinia holds one store per `defineStore` id. A hand-written store whose
+/// instances must each be registered can take [`StoreId::new`] instead.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct StoreId(pub u64);
 
 impl StoreId {
-    /// Create a new unique store ID
+    /// A new id, different from every other id this process made with `new`
     pub fn new() -> Self {
         use std::sync::atomic::{AtomicU64, Ordering};
         static COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -94,7 +99,8 @@ impl Default for StoreId {
 ///
 /// All stores implement this trait to provide common functionality.
 pub trait Store: Any + Send + Sync {
-    /// Get the unique ID of this store
+    /// The key this store is registered under; stores with the same id
+    /// replace each other in [`StoreRegistry`]
     fn id(&self) -> StoreId;
 
     /// Get the store name for debugging
@@ -161,7 +167,7 @@ impl StoreRegistry {
         }
     }
 
-    /// Register a store
+    /// Register a store, replacing any store already registered under its id
     pub fn register(&self, store: Arc<dyn Store>) {
         let mut stores = write_or_recover(&self.stores);
         stores.insert(store.id(), store);

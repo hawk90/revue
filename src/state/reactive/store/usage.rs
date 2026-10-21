@@ -113,6 +113,10 @@ where
 /// Unlike `use_store()`, this always creates a new instance rather than
 /// returning a singleton.
 ///
+/// The new instance has the same [`Store::id`] as every other instance of
+/// `T` from `#[derive(Store)]`, so registering two of them in the
+/// [`StoreRegistry`](super::StoreRegistry) keeps only the later one.
+///
 /// # Example
 ///
 /// ```

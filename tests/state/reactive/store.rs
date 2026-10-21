@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use revue::reactive::store::{Store, StoreId, StoreRegistry};
+use revue::reactive::store::{create_store, Store, StoreId, StoreRegistry};
 
 #[derive(revue::Store, Default)]
 struct SettingsStore {
@@ -56,4 +56,21 @@ fn the_registry_keeps_stores_whose_names_share_a_prefix() {
     assert_eq!(registry.all().len(), 2);
     assert!(registry.find_by_name("SettingsStore").is_some());
     assert!(registry.find_by_name("SettingsStoreV2").is_some());
+}
+
+/// The id names the store type, not the instance, so the registry holds one
+/// store per type and a later instance replaces the earlier one.
+#[test]
+fn the_registry_keeps_the_later_of_two_instances_of_one_type() {
+    let registry = StoreRegistry::new();
+    let light = create_store::<SettingsStore>();
+    let dark = Arc::new(SettingsStore { theme: 1 });
+    registry.register(light.clone());
+    registry.register(dark.clone());
+
+    assert_eq!(registry.all().len(), 1);
+    let kept = registry
+        .get(light.id())
+        .expect("the type's id is registered");
+    assert!(std::ptr::addr_eq(Arc::as_ptr(&kept), Arc::as_ptr(&dark)));
 }
