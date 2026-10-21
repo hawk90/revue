@@ -58,9 +58,15 @@ pub(super) enum EditOp {
         index: usize,
         block: Block,
     },
-    MergeBlocks {
+    /// Blocks `index..index + old.len()` became `new`: one user action made
+    /// of several changes (a markdown shortcut, a selection delete, a merge,
+    /// emptying the last block), undone and redone as one step (#1131)
+    ReplaceBlocks {
         index: usize,
-        split_col: usize,
+        old: Vec<Block>,
+        new: Vec<Block>,
+        cursor_before: (usize, usize),
+        cursor_after: (usize, usize),
     },
     SplitBlock {
         block: usize,

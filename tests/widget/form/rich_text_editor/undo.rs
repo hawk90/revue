@@ -205,15 +205,22 @@ fn test_undo_delete() {
 
 #[test]
 fn test_undo_after_a_heading_shortcut() {
-    // `#` then space makes an empty heading; the shortcut is not recorded,
-    // so the history before it is dropped instead of replayed against it
+    // `#` then space makes an empty heading. Undo takes the shortcut back
+    // as one step, then the typing before it (#1131)
     let mut editor = RichTextEditor::new();
     editor.handle_key(&Key::Char('#'));
     editor.handle_key(&Key::Char(' '));
     assert_eq!(editor.current_block_type(), BlockType::Heading1);
     editor.undo();
-    assert_eq!(editor.current_block_type(), BlockType::Heading1);
+    assert_eq!(editor.current_block_type(), BlockType::Paragraph);
+    assert_eq!(editor.get_content(), "# ");
+    editor.undo();
+    editor.undo();
     assert_eq!(editor.get_content(), "");
+    editor.redo();
+    editor.redo();
+    editor.redo();
+    assert_eq!(editor.current_block_type(), BlockType::Heading1);
 }
 
 #[test]
@@ -254,13 +261,17 @@ fn test_undo_delete_block_brings_the_block_back() {
 
 #[test]
 fn test_undo_after_emptying_the_last_block() {
-    // The only block is emptied, not removed: the history is dropped
+    // The only block is emptied, not removed; undo brings its text back,
+    // and the typing before it stays undoable (#1131)
     let mut editor = RichTextEditor::new().content("ab");
     editor.set_cursor(0, 2);
     editor.insert_str("c");
     editor.delete_block();
-    editor.undo();
     assert_eq!(editor.get_content(), "");
+    editor.undo();
+    assert_eq!(editor.get_content(), "abc");
+    editor.undo();
+    assert_eq!(editor.get_content(), "ab");
 }
 
 #[test]
@@ -272,8 +283,11 @@ fn test_undo_after_deleting_a_selection() {
     editor.set_cursor(0, 0);
     editor.delete_selection();
     assert_eq!(editor.get_content(), "");
+    // One step back to the text, then the typing before it (#1131)
     editor.undo();
-    assert_eq!(editor.get_content(), "");
+    assert_eq!(editor.get_content(), "abcd");
+    editor.undo();
+    assert_eq!(editor.get_content(), "abc");
 }
 
 #[test]
@@ -286,4 +300,20 @@ fn test_shortcut_after_a_full_width_space() {
     assert_eq!(editor.current_block_type(), BlockType::Heading1);
     assert_eq!(editor.get_content(), "x");
     assert_eq!(editor.cursor_position(), (0, 1));
+}
+
+/// Undoing a merge gave the second block the first one's type and plain
+/// text: a heading merged into a paragraph came back as a paragraph (#1131)
+#[test]
+fn test_undo_merge_brings_the_second_block_back_whole() {
+    let mut editor = RichTextEditor::new().content("a\nb");
+    editor.set_cursor(1, 0);
+    editor.set_block_type(BlockType::Heading1);
+    editor.set_cursor(1, 0);
+    editor.handle_key(&Key::Backspace); // merge "b" into "a"
+    assert_eq!(editor.block_count(), 1);
+    editor.undo();
+    assert_eq!(editor.block_count(), 2);
+    editor.set_cursor(1, 0);
+    assert_eq!(editor.current_block_type(), BlockType::Heading1);
 }

@@ -223,34 +223,41 @@ proptest! {
         }
     }
 
-    /// Typing, Backspace, Enter, Tab and the arrows are recorded: undoing
-    /// everything gives the starting text back and redoing everything the
-    /// final text. (Spaces are left out: the markdown shortcut they fire is
-    /// not recorded, so it clears the history; #887.)
+    /// Every edit is recorded, the markdown shortcuts and selection deletes
+    /// too (#1131): undoing everything gives the starting text back and
+    /// redoing everything the final text, block types included.
     #[test]
     fn prop_rich_text_editor_undo_all_then_redo_all(
         text in prop::sample::select(vec!["", "ab\ncd", "x\n\nyz"]),
-        keys in prop::collection::vec(key(), 0..20),
+        steps in prop::collection::vec(prop_oneof![
+            8 => key().prop_map(Some),
+            1 => Just(None), // delete from the start to the cursor
+        ], 0..24),
     ) {
         let mut editor = RichTextEditor::new().content(text);
-        let mut model = Doc::plain(text);
-        for k in &keys {
-            if *k == Key::Char(' ') {
-                continue;
+        for step in &steps {
+            match step {
+                Some(k) => {
+                    editor.handle_key(k);
+                }
+                None => {
+                    let (block, col) = editor.cursor_position();
+                    editor.set_cursor(0, 0);
+                    editor.start_selection();
+                    editor.set_cursor(block, col);
+                    editor.delete_selection();
+                }
             }
-            editor.handle_key(k);
-            model.key(k);
         }
-        let end = editor.get_content();
-        prop_assert_eq!(&end, &model.content());
-        for _ in 0..100 {
+        let end = editor.to_markdown();
+        for _ in 0..200 {
             editor.undo();
         }
         prop_assert_eq!(editor.get_content(), text);
-        for _ in 0..100 {
+        for _ in 0..200 {
             editor.redo();
         }
-        prop_assert_eq!(editor.get_content(), end);
+        prop_assert_eq!(editor.to_markdown(), end);
     }
 }
 
