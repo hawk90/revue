@@ -79,12 +79,27 @@ impl MenuBar {
             return;
         }
 
+        // The rows inside the border, scrolled to keep the selected item in
+        // view (#973)
+        if dropdown_height < 3 {
+            return;
+        }
+        self.scroll.set_content(menu.items.len());
+        self.scroll.set_viewport(usize::from(dropdown_height - 2));
+        let highlight = self.selected_item.unwrap_or(0);
+        self.scroll.track(highlight..highlight + 1);
+        let shown = self.scroll.visible();
+
         // Draw items
-        for (i, item) in menu.items.iter().enumerate() {
-            let item_y = y + 1 + i as u16;
-            if item_y >= y + dropdown_height - 1 {
-                break;
-            }
+        for (row, (i, item)) in menu
+            .items
+            .iter()
+            .enumerate()
+            .skip(shown.start)
+            .take(shown.len())
+            .enumerate()
+        {
+            let item_y = y + 1 + row as u16;
 
             let is_selected = self.selected_item == Some(i);
 

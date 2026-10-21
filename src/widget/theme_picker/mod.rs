@@ -26,6 +26,7 @@ mod input;
 mod view;
 
 use crate::style::{get_theme, set_theme_by_id, theme_ids, use_theme, Color, Theme};
+use crate::utils::ScrollState;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -36,6 +37,8 @@ pub struct ThemePicker {
     themes: Vec<String>,
     /// Currently selected index in themes list
     selected_index: usize,
+    /// Where the open list is scrolled to
+    scroll: ScrollState,
     /// Whether dropdown is open
     open: bool,
     /// Show compact color swatch mode
@@ -69,6 +72,7 @@ impl ThemePicker {
         Self {
             themes: all_themes,
             selected_index,
+            scroll: ScrollState::new(),
             open: false,
             compact: false,
             show_preview: true,

@@ -5,6 +5,7 @@ mod view;
 
 use super::types::Menu;
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::theme::{DARK_BG, LIGHT_GRAY};
 use crate::widget::traits::{WidgetProps, DISABLED_FG};
 use crate::{impl_props_builders, impl_styled_view};
@@ -17,6 +18,8 @@ pub struct MenuBar {
     selected_menu: usize,
     /// Currently selected item index (if menu is open)
     selected_item: Option<usize>,
+    /// Where the item rows are scrolled to
+    scroll: ScrollState,
     /// Is a menu currently open
     open: bool,
     /// Colors
@@ -43,6 +46,7 @@ impl MenuBar {
             menus: Vec::new(),
             selected_menu: 0,
             selected_item: None,
+            scroll: ScrollState::new(),
             open: false,
             bg: DARK_BG,
             fg: None,

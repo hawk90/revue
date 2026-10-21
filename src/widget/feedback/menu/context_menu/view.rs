@@ -23,7 +23,16 @@ impl View for ContextMenu {
             .max()
             .unwrap_or(10) as u16
             + 4;
-        let height = self.items.len() as u16 + 2;
+        // As tall as the items and the border, or the area; the items scroll
+        // to keep the selected one in view (#973)
+        let height = (self.items.len() as u16 + 2).min(ctx.area.height);
+        if height < 3 {
+            return;
+        }
+        self.scroll.set_content(self.items.len());
+        self.scroll.set_viewport(usize::from(height - 2));
+        self.scroll.track(self.selected..self.selected + 1);
+        let shown = self.scroll.visible();
 
         // Adjust position to fit in area (relative coordinates)
         let x = self.x.min(ctx.area.width.saturating_sub(width));
@@ -32,8 +41,15 @@ impl View for ContextMenu {
         draw_frame(ctx, x, y, width, height, fg, self.bg);
 
         // Draw items
-        for (i, item) in self.items.iter().enumerate() {
-            let item_y = y + 1 + i as u16;
+        for (row, (i, item)) in self
+            .items
+            .iter()
+            .enumerate()
+            .skip(shown.start)
+            .take(shown.len())
+            .enumerate()
+        {
+            let item_y = y + 1 + row as u16;
             let is_selected = i == self.selected;
 
             let bg = if is_selected {
