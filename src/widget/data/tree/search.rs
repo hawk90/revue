@@ -43,15 +43,23 @@ impl Tree {
         }
     }
 
-    /// Update matches based on current query
+    /// Update matches based on current query, and select the first one that
+    /// can be selected
     pub fn update_matches(&mut self) {
-        self.matches.clear();
+        self.find_matches();
         self.current_match = 0;
+        if let Some(at) = self.selectable_match_from(0, 1) {
+            self.current_match = at;
+            self.selection.set(self.matches[at]);
+        }
+    }
 
+    /// The visible rows whose labels match the query
+    fn find_matches(&mut self) {
+        self.matches.clear();
         if self.query.is_empty() {
             return;
         }
-
         let query = &self.query;
         self.matches = self
             .rows()
@@ -60,34 +68,61 @@ impl Tree {
             .filter(|(_, row)| fuzzy_match(query, &row.node.label).is_some())
             .map(|(index, _)| index)
             .collect();
-
-        // Jump to first match
-        if let Some(&first) = self.matches.first() {
-            self.selection.set(first);
-        }
     }
 
-    /// Jump to next match
+    /// After rows came or went: the matches again (#859). The selection
+    /// stays; the current match is the selected row when it matches, else
+    /// the last match above it, so `n` goes to the first match below it.
+    pub(super) fn refresh_matches(&mut self) {
+        self.find_matches();
+        let selected = self.selection.index;
+        let n = self.matches.len();
+        self.current_match = match self.matches.iter().position(|&row| row >= selected) {
+            Some(at) if self.matches[at] == selected => at,
+            Some(at) => (at + n - 1) % n,
+            None => n.saturating_sub(1),
+        };
+    }
+
+    /// The first match from position `start`, stepping by `step` (1 or the
+    /// count minus 1) and wrapping, whose node can be selected (#979)
+    fn selectable_match_from(&self, start: usize, step: usize) -> Option<usize> {
+        let n = self.matches.len();
+        (0..n)
+            .map(|k| (start + k * step) % n)
+            .find(|&at| self.is_selectable_at(self.matches[at]))
+    }
+
+    /// Jump to the next match that can be selected
     pub fn next_match(&mut self) -> bool {
         if self.matches.is_empty() {
             return false;
         }
-        self.current_match = (self.current_match + 1) % self.matches.len();
-        self.selection.set(self.matches[self.current_match]);
-        true
+        let n = self.matches.len();
+        match self.selectable_match_from((self.current_match + 1) % n, 1) {
+            Some(at) => {
+                self.current_match = at;
+                self.selection.set(self.matches[at]);
+                true
+            }
+            None => false,
+        }
     }
 
-    /// Jump to previous match
+    /// Jump to the previous match that can be selected
     pub fn prev_match(&mut self) -> bool {
         if self.matches.is_empty() {
             return false;
         }
-        self.current_match = self
-            .current_match
-            .checked_sub(1)
-            .unwrap_or(self.matches.len() - 1);
-        self.selection.set(self.matches[self.current_match]);
-        true
+        let n = self.matches.len();
+        match self.selectable_match_from((self.current_match + n - 1) % n, n - 1) {
+            Some(at) => {
+                self.current_match = at;
+                self.selection.set(self.matches[at]);
+                true
+            }
+            None => false,
+        }
     }
 
     /// Get fuzzy match for a label

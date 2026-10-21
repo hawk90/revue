@@ -17,8 +17,10 @@ impl Tree {
             Key::Down | Key::Char('j') => self.moved(Self::select_next),
             Key::Char(' ') if self.searchable => false,
             Key::Char(' ') if self.multi_select => {
+                // A change only when a node was toggled (#979)
+                let before = self.selected_paths.len();
                 self.toggle_select();
-                true
+                self.selected_paths.len() != before
             }
             Key::Enter | Key::Char(' ') => self.resized(Self::toggle_expand),
             Key::Right | Key::Char('l') => self.resized(Self::expand),

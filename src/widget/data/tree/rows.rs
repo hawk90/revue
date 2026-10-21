@@ -12,6 +12,9 @@ pub(super) struct Row<'a> {
     pub(super) parent: Option<usize>,
     /// Whether the node is the last of its siblings
     pub(super) is_last: bool,
+    /// Child positions from the roots down to the node: its identity while
+    /// rows come and go with expanding and collapsing (#975)
+    pub(super) path: Vec<usize>,
 }
 
 impl Tree {
@@ -21,23 +24,27 @@ impl Tree {
             nodes: &'a [TreeNode],
             depth: usize,
             parent: Option<usize>,
+            path: &mut Vec<usize>,
             out: &mut Vec<Row<'a>>,
         ) {
             for (i, node) in nodes.iter().enumerate() {
                 let index = out.len();
+                path.push(i);
                 out.push(Row {
                     node,
                     depth,
                     parent,
                     is_last: i == nodes.len() - 1,
+                    path: path.clone(),
                 });
                 if node.expanded && !node.children.is_empty() {
-                    walk(&node.children, depth + 1, Some(index), out);
+                    walk(&node.children, depth + 1, Some(index), path, out);
                 }
+                path.pop();
             }
         }
         let mut out = Vec::new();
-        walk(&self.root, 0, None, &mut out);
+        walk(&self.root, 0, None, &mut Vec::new(), &mut out);
         out
     }
 
@@ -84,6 +91,16 @@ impl Tree {
     /// `selectable` flag of every visible node, in visible order
     pub(super) fn selectable_flags(&self) -> Vec<bool> {
         self.rows().iter().map(|row| row.node.selectable).collect()
+    }
+
+    /// The node at `path`, shown or not
+    pub(super) fn node_at_path(&self, path: &[usize]) -> Option<&TreeNode> {
+        let (&first, rest) = path.split_first()?;
+        let mut node = self.root.get(first)?;
+        for &i in rest {
+            node = node.children.get(i)?;
+        }
+        Some(node)
     }
 
     /// Find the parent index of the node at the given visible index
