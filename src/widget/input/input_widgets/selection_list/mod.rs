@@ -36,6 +36,7 @@ mod types;
 pub use types::{SelectionItem, SelectionStyle};
 
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -68,8 +69,8 @@ pub struct SelectionList {
     bg: Option<Color>,
     /// Maximum visible items (0 = show all)
     max_visible: usize,
-    /// Scroll offset
-    scroll_offset: usize,
+    /// Where the item rows are scrolled to
+    scroll: ScrollState,
     /// Show selection count
     show_count: bool,
     /// Whether list is focused
@@ -99,7 +100,7 @@ impl SelectionList {
             highlighted_fg: None,
             bg: None,
             max_visible: 0,
-            scroll_offset: 0,
+            scroll: ScrollState::new(),
             show_count: false,
             focused: false,
             props: WidgetProps::new(),
@@ -118,8 +119,10 @@ impl SelectionList {
 
     /// Keep `selected` in range, sorted, unique and within `max_selections`
     fn normalize_selected(&mut self) {
-        let len = self.items.len();
-        self.selected.retain(|&i| i < len);
+        // Disabled items cannot be selected, as `select_all` skips them (#1023)
+        let items = &self.items;
+        self.selected
+            .retain(|&i| items.get(i).is_some_and(|item| !item.disabled));
         self.selected.sort_unstable();
         self.selected.dedup();
         if self.max_selections > 0 {
@@ -193,7 +196,8 @@ impl SelectionList {
         self
     }
 
-    /// Set maximum visible items
+    /// Set maximum visible items: the list shows at most this many items'
+    /// rows (of its tallest item), and the area's rows in any case
     pub fn max_visible(mut self, max: usize) -> Self {
         self.max_visible = max;
         self

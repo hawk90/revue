@@ -96,7 +96,6 @@ impl SelectionList {
     pub fn highlight_previous(&mut self) {
         if self.highlighted > 0 {
             self.highlighted -= 1;
-            self.ensure_visible();
         }
     }
 
@@ -104,34 +103,16 @@ impl SelectionList {
     pub fn highlight_next(&mut self) {
         if self.highlighted < self.items.len().saturating_sub(1) {
             self.highlighted += 1;
-            self.ensure_visible();
         }
     }
 
     /// Move highlight to start
     pub fn highlight_first(&mut self) {
         self.highlighted = 0;
-        self.scroll_offset = 0;
     }
 
     /// Move highlight to end
     pub fn highlight_last(&mut self) {
         self.highlighted = self.items.len().saturating_sub(1);
-        self.ensure_visible();
-    }
-
-    /// Ensure highlighted item is visible
-    fn ensure_visible(&mut self) {
-        let max_visible = if self.max_visible > 0 {
-            self.max_visible
-        } else {
-            self.items.len()
-        };
-
-        if self.highlighted < self.scroll_offset {
-            self.scroll_offset = self.highlighted;
-        } else if self.highlighted >= self.scroll_offset + max_visible {
-            self.scroll_offset = self.highlighted - max_visible + 1;
-        }
     }
 }

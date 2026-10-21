@@ -1740,3 +1740,58 @@ fn test_selected_then_toggle_keeps_order() {
     list.toggle(0);
     assert_eq!(list.get_selected(), &[0, 2]);
 }
+
+// =============================================================================
+// Scrolling and the selection invariant (#973, #1023)
+// =============================================================================
+
+/// The rows of `list` drawn in `w` x `h`, blank rows kept
+fn screen(list: &SelectionList, w: u16, h: u16) -> Vec<String> {
+    let buffer = render(list, w, h);
+    (0..h)
+        .map(|y| {
+            (0..w)
+                .map(|x| buffer.get(x, y).map(|c| c.symbol).unwrap_or(' '))
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
+
+/// Without `max_visible` the window never moved, so a highlight below the
+/// area was not drawn (#973).
+#[test]
+fn test_selection_list_highlight_below_the_area_scrolls_into_view() {
+    let items: Vec<String> = (0..10).map(|i| format!("item{i}")).collect();
+    let mut l = SelectionList::new(items).focused(true);
+    for _ in 0..7 {
+        l.handle_key(&Key::Down);
+    }
+    let shown = screen(&l, 30, 5);
+    assert!(shown.iter().any(|r| r.contains("item7")), "{shown:#?}");
+    assert!(
+        shown.last().unwrap().starts_with("↑↓: Navigate"),
+        "{shown:#?}"
+    );
+}
+
+/// On an empty list `highlight_last` set the offset to 1 and drew "↑ more".
+#[test]
+fn test_selection_list_empty_draws_no_markers() {
+    let mut l = SelectionList::new(Vec::<String>::new());
+    l.highlight_last();
+    assert!(screen(&l, 30, 5).iter().all(|r| !r.contains("more")));
+}
+
+/// The builder kept disabled items, which were drawn unselected and could
+/// not be toggled off (#1023).
+#[test]
+fn selection_list_builder_skips_disabled_items() {
+    let l = SelectionList::new(vec![
+        SelectionItem::new("a").disabled(true),
+        SelectionItem::new("b"),
+    ])
+    .selected(vec![0, 1]);
+    assert_eq!(l.get_selected(), &[1]);
+}
