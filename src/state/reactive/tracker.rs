@@ -266,30 +266,33 @@ pub fn notify_dependents(signal_id: SignalId) {
     let _depth = enter_notify();
     let batching = super::batch::is_batching();
 
-    // Collect callbacks while holding borrow, then call them after releasing.
-    // Inside a batch, a dependent that is not a computed value is deferred
-    // instead of collected.
-    let callbacks: Vec<SubscriberCallback> = with_tracker(|t| {
+    // Collect the ids while holding the borrow. Inside a batch, a dependent
+    // that is not a computed value is deferred instead of collected.
+    let ids: Vec<SubscriberId> = with_tracker(|t| {
         let Some(subscriber_ids) = t.dependencies.get(&signal_id) else {
             return Vec::new();
         };
         let mut now = Vec::new();
         for id in subscriber_ids {
-            let Some(callback) = t.subscribers.get(id) else {
+            if !t.subscribers.contains_key(id) {
                 continue;
-            };
+            }
             if batching && !t.immediate.contains(id) {
                 defer_subscriber(*id);
             } else {
-                now.push(callback.clone());
+                now.push(*id);
             }
         }
         now
     });
 
-    // Now call callbacks without holding tracker borrow
-    for callback in callbacks {
-        callback();
+    // Look each one up just before calling it, without the borrow held, so a
+    // dependent disposed earlier in this round is not called, as
+    // `run_deferred` skips one disposed during a batch (#1197).
+    for id in ids {
+        if let Some(callback) = with_tracker(|t| t.subscribers.get(&id).cloned()) {
+            callback();
+        }
     }
 }
 

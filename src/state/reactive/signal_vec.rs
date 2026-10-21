@@ -268,11 +268,17 @@ impl<T: Send + Sync + Clone + 'static> SignalVec<T> {
     fn notify_diff(&self, diff: VecDiff<T>) {
         // Emit to all diff subscribers - outside the lock, so a subscriber
         // can drop a subscription, subscribe, or change this vector, and one
-        // that panics does not poison the list for everyone after it.
+        // that panics does not poison the list for everyone after it. One
+        // dropped earlier in this round is not called (#1197).
         let _depth = enter_notify();
         let callbacks: Vec<_> = lock_or_recover(&self.diff_subscribers).clone();
         for callback in callbacks {
-            callback(diff.clone());
+            let subscribed = lock_or_recover(&self.diff_subscribers)
+                .iter()
+                .any(|cb| Arc::ptr_eq(cb, &callback));
+            if subscribed {
+                callback(diff.clone());
+            }
         }
         // Also notify regular signal dependents
         notify_dependents(self.id);

@@ -10,6 +10,7 @@ mod edge;
 mod effect;
 mod incremental;
 mod integration;
+mod notify_round;
 mod runtime;
 mod signal;
 mod store;
