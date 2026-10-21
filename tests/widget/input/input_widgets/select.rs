@@ -1245,3 +1245,28 @@ fn test_select_dropdown_end_and_home() {
     s.handle_key(&Key::Home);
     assert_eq!(dropdown(&s), (labels(1..=10), Some(0)));
 }
+
+// ==================== #1002 ====================
+
+#[test]
+fn select_moves_stay_within_the_search() {
+    let mut s = Select::new()
+        .options(vec!["Apple", "Apricot", "Banana"])
+        .searchable(true);
+    s.open();
+    s.set_query("ap");
+    s.select_last();
+    assert_eq!(s.value(), Some("Apricot")); // Banana before
+    s.select_next();
+    assert!(
+        matches!(s.value(), Some("Apple" | "Apricot")),
+        "{:?}",
+        s.value()
+    );
+}
+
+#[test]
+fn select_builder_order_keeps_the_selection() {
+    let s = Select::new().selected(2).options(vec!["A", "B", "C"]);
+    assert_eq!(s.value(), Some("C")); // "A" before
+}

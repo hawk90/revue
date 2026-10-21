@@ -117,9 +117,9 @@ impl Select {
         self
     }
 
-    /// Set selected index, clamped to the valid range
+    /// Set selected index, clamped to the valid range. Before the options
+    /// are given, the index is kept until they are (#1002, #1011).
     pub fn selected(mut self, index: usize) -> Self {
-        let index = index.min(self.options.len().saturating_sub(1));
         self.selection.set(index);
         self
     }

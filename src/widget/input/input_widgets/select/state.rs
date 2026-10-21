@@ -23,24 +23,42 @@ impl Select {
         self.open = false;
     }
 
-    /// Select next option
+    /// Select next option; while searching, the next match (#1002)
     pub fn select_next(&mut self) {
-        self.selection.next();
+        if self.query.is_empty() {
+            self.selection.next();
+        } else {
+            self.select_next_filtered();
+        }
     }
 
-    /// Select previous option
+    /// Select previous option; while searching, the previous match
     pub fn select_prev(&mut self) {
-        self.selection.prev();
+        if self.query.is_empty() {
+            self.selection.prev();
+        } else {
+            self.select_prev_filtered();
+        }
     }
 
-    /// Select first option
+    /// Select first option; while searching, the first match
     pub fn select_first(&mut self) {
-        self.selection.first();
+        if self.query.is_empty() {
+            self.selection.first();
+        } else if let Some(&first) = self.filtered.first() {
+            self.filtered_selection.first();
+            self.selection.set(first);
+        }
     }
 
-    /// Select last option
+    /// Select last option; while searching, the last match
     pub fn select_last(&mut self) {
-        self.selection.last();
+        if self.query.is_empty() {
+            self.selection.last();
+        } else if let Some(&last) = self.filtered.last() {
+            self.filtered_selection.last();
+            self.selection.set(last);
+        }
     }
 
     /// Get selected index

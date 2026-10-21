@@ -5,6 +5,7 @@ use super::{Step, StepStatus, Stepper};
 impl Stepper {
     /// Go to next step
     pub fn next_step(&mut self) -> bool {
+        self.requested = None;
         if self.current < self.steps.len().saturating_sub(1) {
             self.current += 1;
             self.update_statuses();
@@ -16,6 +17,7 @@ impl Stepper {
 
     /// Go to previous step
     pub fn prev(&mut self) -> bool {
+        self.requested = None;
         if self.current > 0 {
             self.current -= 1;
             self.update_statuses();
@@ -27,6 +29,7 @@ impl Stepper {
 
     /// Go to specific step
     pub fn go_to(&mut self, index: usize) {
+        self.requested = None;
         if index < self.steps.len() {
             self.current = index;
             self.update_statuses();

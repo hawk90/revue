@@ -80,6 +80,10 @@ pub struct MultiSelect {
     options: Vec<MultiSelectOption>,
     /// Selected option indices
     selected: Vec<usize>,
+    /// What a selection builder asked for, applied again whenever the
+    /// options or the maximum change, so the builders give the same widget
+    /// in any order (#1011); dropped once the user changes the selection
+    requested: Option<Requested>,
     /// Whether dropdown is open
     open: bool,
     /// Cursor position in dropdown
@@ -112,12 +116,20 @@ pub struct MultiSelect {
     pub props: WidgetProps,
 }
 
+/// A selection a builder asked for
+#[derive(Clone, Debug)]
+enum Requested {
+    Indices(Vec<usize>),
+    Values(Vec<String>),
+}
+
 impl MultiSelect {
     /// Create a new multi-select widget
     pub fn new() -> Self {
         Self {
             options: Vec::new(),
             selected: Vec::new(),
+            requested: None,
             open: false,
             dropdown_cursor: 0,
             dropdown_scroll: ScrollState::new(),
