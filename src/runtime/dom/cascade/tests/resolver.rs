@@ -234,6 +234,30 @@ fn test_compute_style_with_inline() {
     assert!((style.visual.opacity - 0.8).abs() < 0.001);
 }
 
+/// Inline fields beyond the first few used to be dropped by the merge, so the
+/// stylesheet's value showed instead.
+#[test]
+fn inline_position_z_index_and_text_align_beat_a_rule() {
+    use crate::style::{Position, TextAlign};
+
+    let stylesheet =
+        crate::style::parse_css("Button { position: relative; z-index: 1; text-align: center; }")
+            .unwrap();
+    let mut resolver = StyleResolver::new(&stylesheet);
+
+    let mut node = DomNode::new(DomId::new(1), WidgetMeta::new("Button"));
+    let mut inline = crate::style::Style::default();
+    inline.layout.position = Position::Absolute;
+    inline.visual.z_index = 5;
+    inline.visual.text_align = TextAlign::Right;
+    node.inline_style = Some(inline);
+
+    let style = resolver.compute_style(&node, |_| None);
+    assert_eq!(style.layout.position, Position::Absolute);
+    assert_eq!(style.visual.z_index, 5);
+    assert_eq!(style.visual.text_align, TextAlign::Right);
+}
+
 #[test]
 fn test_compute_style_with_parent() {
     use crate::style::Color;

@@ -73,6 +73,11 @@ impl WidgetProps {
     }
 
     /// Set inline style
+    ///
+    /// Only the fields that differ from [`Style::default`] reach the widget:
+    /// a field set to its default value (`display: flex`, a margin of 0)
+    /// reads as "not set", so a stylesheet rule for that property still
+    /// wins (#1139, fixed in 4.0).
     pub fn style(mut self, style: Style) -> Self {
         self.inline_style = Some(style);
         self

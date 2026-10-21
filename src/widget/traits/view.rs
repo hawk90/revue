@@ -335,6 +335,10 @@ pub trait View {
     /// [`impl_view_meta!`](crate::impl_view_meta) return what
     /// [`WidgetProps::style`](crate::widget::WidgetProps::style) set. The
     /// renderer copies it onto the widget's DOM node each frame.
+    ///
+    /// The cascade copies only the fields that differ from
+    /// [`Style::default`], so a field set to its default value does not
+    /// override a stylesheet rule (#1139, fixed in 4.0).
     fn inline_style(&self) -> Option<Style> {
         None
     }
