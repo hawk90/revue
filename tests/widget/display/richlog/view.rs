@@ -581,18 +581,18 @@ proptest! {
     }
 
     /// With wrapping and open details an entry takes several rows; scrolled
-    /// to the bottom, the last entry's last row is on the bottom row, and a
-    /// log shorter than the area starts on the top row.
+    /// to the bottom, the last entry's last row is on the bottom row at any
+    /// area height (the page can start inside an entry, #973), and a log
+    /// shorter than the area starts on the top row.
     #[test]
     fn prop_richlog_wrapped_bottom_is_full(
         messages in proptest::collection::vec(("[a-z]{1,6}( [a-z]{1,6}){0,4}", 0usize..3), 1..8),
         w in 4u16..20,
-        k in 1usize..10,
-        extra in 1usize..4,
+        h in 1u16..30,
     ) {
         let mut log = bare().wrap(true).auto_scroll(false);
         // The rows each entry takes, drawn alone
-        let mut heights = Vec::new();
+        let mut total = 1; // "END"
         for (message, details) in &messages {
             let mut entry = LogEntry::new(message.clone());
             for d in 0..*details {
@@ -601,32 +601,18 @@ proptest! {
             entry.toggle();
             let mut alone = bare().wrap(true);
             alone.log(entry.clone());
-            heights.push(rows(&alone, w, 50).iter().filter(|r| !r.is_empty()).count());
+            total += rows(&alone, w, 50).iter().filter(|r| !r.is_empty()).count();
             log.log(entry);
         }
         log.log(LogEntry::new("END"));
-        heights.push(1);
-        // The area ends a page on an entry's first row: the last k entries
-        // fill it exactly, or (k past the first entry) everything fits with
-        // rows to spare. The bottom page starts at an entry's first row, so
-        // when the rows from that entry to the end are more than the area,
-        // the newest entries are cut off below it (#973: the scroll counts
-        // entries, not rows); those heights are not generated.
-        let total: usize = heights.iter().sum();
-        let tail = if k <= heights.len() {
-            heights[heights.len() - k..].iter().sum()
-        } else {
-            total + extra
-        };
-        let h = tail as u16;
 
         log.scroll_to_bottom();
         let shown = text(&log, w, h);
         let last = shown.iter().rposition(|r| !r.is_empty()).unwrap();
         prop_assert_eq!(&shown[last], "END");
         // On the bottom row, or right after the last entry when all fit
-        prop_assert_eq!(last + 1, tail.min(total));
-        if last + 1 < h as usize {
+        prop_assert_eq!(last + 1, total.min(h as usize));
+        if total < h as usize {
             // Everything fits: the log starts on the top row
             log.scroll_to_top();
             prop_assert_eq!(text(&log, w, h), shown);
