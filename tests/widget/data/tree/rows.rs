@@ -2,8 +2,8 @@
 //!
 //! Labels are numbered in pre-order over the whole forest, so the visible
 //! rows can be checked against the model without reading private state. The
-//! drawing is only compared when every row fits, because the
-//! view does not follow the selection yet (#973).
+//! drawing is compared when every row fits; the view following the
+//! selection in a shorter area is tested in `navigation.rs`.
 
 use proptest::prelude::*;
 use revue::event::Key;

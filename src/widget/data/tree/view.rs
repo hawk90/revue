@@ -15,9 +15,15 @@ impl Tree {
             return;
         }
 
+        // The rows in view: the view follows the selection (#973)
         let rows = self.rows();
-        for (index, _) in rows.iter().enumerate().take(area.height as usize) {
-            self.render_row(ctx, &rows, index, index as u16);
+        self.scroll.set_content(rows.len());
+        self.scroll.set_viewport(area.height as usize);
+        let selected = self.selection.index;
+        self.scroll.track(selected..selected + 1);
+        let shown = self.scroll.visible();
+        for (y, index) in shown.enumerate() {
+            self.render_row(ctx, &rows, index, y as u16);
         }
     }
 

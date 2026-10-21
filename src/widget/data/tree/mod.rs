@@ -1,7 +1,7 @@
 //! Tree widget for displaying hierarchical data
 
 use crate::style::Color;
-use crate::utils::Selection;
+use crate::utils::{ScrollState, Selection};
 use crate::widget::traits::{View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -45,10 +45,13 @@ pub struct Tree {
     props: WidgetProps,
     /// Enable multi-select mode
     multi_select: bool,
-    /// Indices of selected nodes in multi-select mode
-    selected_indices: Vec<usize>,
+    /// The nodes selected in multi-select mode, by path, in the order they
+    /// were selected
+    selected_paths: Vec<Vec<usize>>,
     /// Callback invoked when a node is selected
     on_select: Option<SelectCallback>,
+    /// Where the rows are scrolled to, one row per shown node
+    scroll: ScrollState,
 }
 
 impl Tree {
@@ -69,7 +72,8 @@ impl Tree {
             current_match: 0,
             props: WidgetProps::new(),
             multi_select: false,
-            selected_indices: Vec::new(),
+            selected_paths: Vec::new(),
+            scroll: ScrollState::new(),
             on_select: None,
         }
     }

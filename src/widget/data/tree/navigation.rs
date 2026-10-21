@@ -42,16 +42,25 @@ impl Tree {
         }
     }
 
-    /// Select first selectable node
+    /// Select first selectable node; with none, the selection stays
     pub fn select_first(&mut self) {
-        self.selection.first();
-        self.settle_selection();
+        if let Some(i) = self.selectable_flags().iter().position(|&f| f) {
+            self.selection.set(i);
+        }
     }
 
-    /// Select last selectable visible node
+    /// Select last selectable visible node; with none, the selection stays
     pub fn select_last(&mut self) {
-        self.selection.last();
-        self.settle_selection();
+        if let Some(i) = self.selectable_flags().iter().rposition(|&f| f) {
+            self.selection.set(i);
+        }
+    }
+
+    /// The shown rows changed: give the selection the new count and find
+    /// the search matches again (#859)
+    fn rows_changed(&mut self) {
+        self.selection.set_len(self.count_visible());
+        self.refresh_matches();
     }
 
     /// Toggle expand/collapse of selected node
@@ -59,7 +68,7 @@ impl Tree {
         if let Some(node) = self.get_node_mut_at(self.selection.index) {
             if node.has_children() {
                 node.expanded = !node.expanded;
-                self.selection.set_len(self.count_visible());
+                self.rows_changed();
             }
         }
     }
@@ -69,7 +78,7 @@ impl Tree {
         if let Some(node) = self.get_node_mut_at(self.selection.index) {
             if node.has_children() && !node.expanded {
                 node.expanded = true;
-                self.selection.set_len(self.count_visible());
+                self.rows_changed();
             }
         }
     }
@@ -79,7 +88,7 @@ impl Tree {
         if let Some(node) = self.get_node_mut_at(self.selection.index) {
             if node.expanded {
                 node.expanded = false;
-                self.selection.set_len(self.count_visible());
+                self.rows_changed();
             }
         }
     }
@@ -90,10 +99,13 @@ impl Tree {
         if !self.is_selectable_at(idx) {
             return;
         }
-        if let Some(pos) = self.selected_indices.iter().position(|&i| i == idx) {
-            self.selected_indices.remove(pos);
+        let Some(path) = self.rows().get(idx).map(|row| row.path.clone()) else {
+            return;
+        };
+        if let Some(pos) = self.selected_paths.iter().position(|p| *p == path) {
+            self.selected_paths.remove(pos);
         } else {
-            self.selected_indices.push(idx);
+            self.selected_paths.push(path);
         }
         if let Some(callback) = &self.on_select {
             if let Some((node, _)) = self.get_node_at(idx) {
@@ -102,11 +114,12 @@ impl Tree {
         }
     }
 
-    /// Get all selected nodes in multi-select mode
+    /// Get all selected nodes in multi-select mode, shown or inside a
+    /// collapsed node, in the order they were selected
     pub fn selected_nodes(&self) -> Vec<&TreeNode> {
-        self.selected_indices
+        self.selected_paths
             .iter()
-            .filter_map(|&idx| self.get_node_at(idx).map(|(node, _)| node))
+            .filter_map(|path| self.node_at_path(path))
             .collect()
     }
 
@@ -120,7 +133,9 @@ impl Tree {
 
     /// Check if a visible index is selected in multi-select mode
     pub fn is_multi_selected(&self, index: usize) -> bool {
-        self.selected_indices.contains(&index)
+        self.rows()
+            .get(index)
+            .is_some_and(|row| self.selected_paths.contains(&row.path))
     }
 
     /// Nearest selectable ancestor of the node at the given visible index

@@ -225,3 +225,106 @@ fn test_tree_key_results_report_changes_only() {
     assert!(!tree.handle_key(&Key::Down), "already at the bottom");
     assert!(!tree.handle_key(&Key::Char('x')));
 }
+
+// =========================================================================
+// Selection by node, search, scroll (#859, #979, #973)
+// =========================================================================
+
+/// The multi-selection was kept as row numbers, so expanding a node above
+/// it moved it to other nodes (#859).
+#[test]
+fn test_tree_multi_selection_stays_on_its_nodes_when_rows_move() {
+    let mut tree = Tree::new().multi_select(true).nodes(vec![
+        TreeNode::new("A")
+            .id("A")
+            .child(leaf("a1"))
+            .child(leaf("a2")),
+        leaf("B"),
+    ]);
+    tree.select_next(); // B
+    tree.toggle_select();
+    tree.select_first(); // A
+    tree.expand();
+    assert_eq!(tree.selected_ids(), ["B"]);
+    assert!(tree.is_multi_selected(3), "B is on row 3 now");
+    assert!(!tree.is_multi_selected(1));
+    // Hidden by a collapse, still selected
+    tree.toggle_select(); // A too
+    tree.collapse();
+    assert_eq!(tree.selected_ids(), ["B", "A"]);
+}
+
+/// The matches were not found again after expanding, so n/N went to rows
+/// that no longer matched (#859).
+#[test]
+fn test_tree_matches_follow_expand_and_collapse() {
+    let mut tree = Tree::new()
+        .searchable(true)
+        .nodes(vec![TreeNode::new("A").child(leaf("xa")), leaf("xb")]);
+    tree.set_query("x");
+    assert_eq!(tree.selected_label(), Some("xb"));
+    tree.select_first(); // A
+    tree.expand();
+    assert_eq!(tree.match_count(), 2);
+    assert!(tree.is_match(1) && tree.is_match(2));
+    tree.next_match();
+    assert_eq!(tree.selected_label(), Some("xa"));
+}
+
+#[test]
+fn test_tree_search_never_selects_a_non_selectable_node() {
+    let mut tree = Tree::new()
+        .searchable(true)
+        .nodes(vec![leaf("xa").selectable(false), leaf("xb")]);
+    tree.set_query("x");
+    assert_eq!(tree.selected_label(), Some("xb")); // was "xa"
+    tree.next_match();
+    tree.next_match();
+    assert_eq!(tree.selected_label(), Some("xb")); // was "xa"
+    tree.prev_match();
+    assert_eq!(tree.selected_label(), Some("xb"));
+}
+
+#[test]
+fn test_tree_first_and_last_with_nothing_selectable_stay_put() {
+    let mut tree = Tree::new().nodes(vec![
+        leaf("A").selectable(false),
+        leaf("B").selectable(false),
+    ]);
+    tree.select_last();
+    assert_eq!(tree.selected_index(), 0); // was 1
+}
+
+#[test]
+fn test_tree_space_reports_no_change_when_nothing_toggles() {
+    let mut tree = Tree::new()
+        .multi_select(true)
+        .node(leaf("A").selectable(false));
+    assert!(!tree.handle_key(&Key::Char(' '))); // was true
+    assert!(!Tree::new().multi_select(true).handle_key(&Key::Char(' '))); // was true
+}
+
+/// render always started at the first row, so a selection below the area
+/// was never shown (#973).
+#[test]
+fn test_tree_view_follows_the_selection() {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    let mut tree = Tree::new().nodes((0..10).map(|i| leaf(&format!("n{i}"))).collect());
+    for _ in 0..7 {
+        tree.select_next();
+    }
+    let mut buffer = Buffer::new(10, 3);
+    tree.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 10, 3)));
+    let rows: Vec<String> = (0..3)
+        .map(|y| {
+            (0..10)
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim()
+                .to_string()
+        })
+        .collect();
+    assert_eq!(rows, ["n5", "n6", "n7"]);
+}
