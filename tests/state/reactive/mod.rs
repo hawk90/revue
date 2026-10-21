@@ -12,3 +12,4 @@ mod incremental;
 mod integration;
 mod runtime;
 mod signal;
+mod store;
