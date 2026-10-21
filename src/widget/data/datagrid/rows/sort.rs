@@ -1,7 +1,7 @@
 //! DataGrid sorting
 
 use crate::utils::natural_cmp;
-use crate::widget::data::datagrid::types::{ColumnType, SortDirection};
+use crate::widget::data::datagrid::types::{ColumnType, GridRow, SortDirection};
 use crate::widget::data::datagrid::DataGrid;
 use std::cmp::Ordering;
 
@@ -111,7 +111,12 @@ impl DataGrid {
 
         let use_natural = self.options.use_natural_sort;
 
-        self.rows.sort_by(|a, b| {
+        // Sort positions, so the selected row can be found after (#975)
+        let selected = self.filtered_cache.get(self.selected_row).copied();
+        let rows = std::mem::take(&mut self.rows);
+        let mut order: Vec<usize> = (0..rows.len()).collect();
+        order.sort_by(|&ia, &ib| {
+            let (a, b) = (&rows[ia], &rows[ib]);
             for (key, col_type, ascending) in &sort_spec {
                 let va = a.get(key).unwrap_or("");
                 let vb = b.get(key).unwrap_or("");
@@ -140,6 +145,15 @@ impl DataGrid {
             }
             Ordering::Equal
         });
+        let mut slots: Vec<Option<GridRow>> = rows.into_iter().map(Some).collect();
+        self.rows = order.iter().filter_map(|&i| slots[i].take()).collect();
         self.recompute_cache();
+
+        // The selection stays on its row, not on its position (#975)
+        if let Some(moved) = selected.and_then(|old| order.iter().position(|&i| i == old)) {
+            if let Some(pos) = self.filtered_cache.iter().position(|&r| r == moved) {
+                self.selected_row = pos;
+            }
+        }
     }
 }

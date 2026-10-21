@@ -219,3 +219,19 @@ fn test_datagrid_sort_number_column_with_nan() {
     grid.sort(0);
     assert_eq!(grid.row_count(), 40);
 }
+
+/// Sorting kept the selection's position, so the row now there was
+/// selected (#975).
+#[test]
+fn test_datagrid_sort_keeps_the_selected_row() {
+    let mut grid = DataGrid::new().column(GridColumn::new("a", "A")).rows(vec![
+        GridRow::new().cell("a", "z"),
+        GridRow::new().cell("a", "y"),
+        GridRow::new().cell("a", "x"),
+    ]);
+    grid.selected_row = 0; // "z"
+    grid.sort(0);
+    assert_eq!(grid.copy_cell(), "z"); // was "x"
+    grid.sort(0); // descending
+    assert_eq!(grid.copy_cell(), "z");
+}

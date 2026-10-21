@@ -77,8 +77,14 @@ impl Modal {
     }
 
     /// Set buttons
+    ///
+    /// Replacing the buttons keeps the selected one when it is still there
+    /// and moves it to the last one when the list got shorter (#975).
     pub fn buttons(mut self, buttons: Vec<ModalButton>) -> Self {
         self.buttons = buttons;
+        self.selected_button = self
+            .selected_button
+            .min(self.buttons.len().saturating_sub(1));
         self
     }
 

@@ -15,6 +15,11 @@ impl super::CodeEditor {
 
     /// Insert character
     pub fn insert_char(&mut self, ch: char) {
+        self.insert_char_edit(ch);
+        self.text_changed();
+    }
+
+    fn insert_char_edit(&mut self, ch: char) {
         if self.read_only {
             return;
         }
@@ -24,7 +29,7 @@ impl super::CodeEditor {
         }
 
         if ch == '\n' {
-            self.insert_newline();
+            self.insert_newline_edit();
             return;
         }
 
@@ -65,6 +70,11 @@ impl super::CodeEditor {
 
     /// Insert string
     pub fn insert_str(&mut self, s: &str) {
+        self.insert_str_edit(s);
+        self.text_changed();
+    }
+
+    fn insert_str_edit(&mut self, s: &str) {
         if self.read_only {
             return;
         }
@@ -86,6 +96,11 @@ impl super::CodeEditor {
 
     /// Insert newline with auto-indent
     pub(super) fn insert_newline(&mut self) {
+        self.insert_newline_edit();
+        self.text_changed();
+    }
+
+    fn insert_newline_edit(&mut self) {
         if self.read_only {
             return;
         }
@@ -155,6 +170,11 @@ impl super::CodeEditor {
 
     /// Delete character before cursor (backspace)
     pub fn delete_char_before(&mut self) {
+        self.delete_char_before_edit();
+        self.text_changed();
+    }
+
+    fn delete_char_before_edit(&mut self) {
         if self.read_only {
             return;
         }
@@ -194,6 +214,11 @@ impl super::CodeEditor {
 
     /// Delete character at cursor (delete key)
     pub fn delete_char_at(&mut self) {
+        self.delete_char_at_edit();
+        self.text_changed();
+    }
+
+    fn delete_char_at_edit(&mut self) {
         if self.read_only {
             return;
         }
@@ -226,6 +251,11 @@ impl super::CodeEditor {
 
     /// Delete current line
     pub fn delete_line(&mut self) {
+        self.delete_line_edit();
+        self.text_changed();
+    }
+
+    fn delete_line_edit(&mut self) {
         if self.read_only || self.lines.len() <= 1 {
             return;
         }
@@ -239,6 +269,11 @@ impl super::CodeEditor {
 
     /// Duplicate current line
     pub fn duplicate_line(&mut self) {
+        self.duplicate_line_edit();
+        self.text_changed();
+    }
+
+    fn duplicate_line_edit(&mut self) {
         if self.read_only {
             return;
         }
@@ -255,6 +290,23 @@ impl super::CodeEditor {
         match self.config.indent_style {
             IndentStyle::Spaces => " ".repeat(self.config.indent_size),
             IndentStyle::Tabs => "\t".to_string(),
+        }
+    }
+}
+
+impl super::CodeEditor {
+    /// After the text changed: the selection anchor is kept inside the text
+    /// and the find matches are found again in it, so neither points at
+    /// text that moved or went (#975)
+    pub(super) fn text_changed(&mut self) {
+        if let Some((line, col)) = self.anchor {
+            let last = self.lines.len().saturating_sub(1);
+            let line = line.min(last);
+            let col = col.min(self.lines.get(line).map_or(0, |l| l.chars().count()));
+            self.anchor = Some((line, col));
+        }
+        if !self.find_query.is_empty() {
+            self.refresh_find_matches();
         }
     }
 }
