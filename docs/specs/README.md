@@ -47,25 +47,10 @@ not missing features — the item can still be `done`.
 3. For a new feature, append it within its area block with the next free number and fill in `source`
    (or `"PR #NNN"` if it has no doc section).
 4. Update the status summary table in `docs/FEATURES.md` if counts change.
-5. Validate (from the repo root):
-   ```bash
-   python3 - <<'EOF'
-   import yaml, os, re, collections
-   d = yaml.safe_load(open('docs/specs/features.yaml')); ids = [i['id'] for i in d['items']]
-   assert len(ids) == len(set(ids)), [k for k, v in collections.Counter(ids).items() if v > 1]
-   bad = []
-   for i in d['items']:
-       ev = i.get('evidence') or []
-       if i['status'] in ('done', 'partial') and not ev: bad.append((i['id'], 'no evidence'))
-       for e in ev:
-           p = re.sub(r':\d+(-\d+)?$', '', str(e).split('::')[0])
-           if not os.path.exists(p): bad.append((i['id'], e)); continue
-           if '::' in e and os.path.isfile(p) and not re.search(r'\b' + re.escape(e.split('::', 1)[1]) + r'\b', open(p).read()):
-               bad.append((i['id'], e))
-   print(len(ids), 'items;', collections.Counter(i['status'] for i in d['items']), '; bad:', bad)
-   EOF
-   ruby -ryaml -rdate -e 'YAML.load_file("docs/specs/features.yaml", permitted_classes: [Date])'
-   ```
+5. Validate: `cargo test --test docs features_registry`. It checks that the file parses, ids are
+   unique, every `done`/`partial` item has evidence, every evidence path exists, and for
+   `path::name` evidence that `name` appears in that file (`tests/docs/features_registry.rs`).
+   CI runs it with the other tests.
 6. Bump `updated:` at the top of the file.
 
 Snapshot on 2026-10-05 (after deep verification): 103 items — 82 done, 17 partial, 4 todo, 0 dropped.
