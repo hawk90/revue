@@ -264,10 +264,9 @@ fn test_span_width_ascii() {
 
 #[test]
 fn test_span_width_tabs() {
-    let span = Span::new("\t");
-
-    // Tab has a width
-    assert!(span.width() >= 1);
+    // A tab is drawn as nothing (#1198), so it takes no column either
+    assert_eq!(Span::new("\t").width(), 0);
+    assert_eq!(Span::new("a\tb").width(), 2);
 }
 
 // =============================================================================
@@ -1095,12 +1094,10 @@ fn test_render_tabs_in_text() {
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     rt.render(&mut ctx);
-    // The words stay apart. What the tab itself becomes is not checked:
-    // it is written into a cell as a raw control character (#982).
-    let text = row(&buffer, 0, 20);
-    assert!(text.starts_with("Item"), "{text:?}");
-    let tabbed = text.find("Tabbed").expect("Tabbed is drawn");
-    assert!(tabbed > 4, "{text:?}");
+    // A tab is a control character, so it takes no cell, as in `draw_text`
+    // (#1198). Expanding tabs would be a rule for every text path (#982).
+    assert_eq!(row(&buffer, 0, 20), "ItemTabbed");
+    assert_eq!(rt.measure(20, 20), Some((10, 1)));
 }
 
 // =============================================================================
