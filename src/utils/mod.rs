@@ -31,7 +31,8 @@
 //!|--------|-------------|----------|
 //! | [`table`] | Table formatting | Column alignment |
 //! | [`tree`] | Tree navigation | Collapsible trees |
-//! | [`selection`] | List selection | Viewport scrolling |
+//! | [`selection`] | List selection (by position or by key) | Lists, menus |
+//! | [`scroll`] | Scroll state in rows | Any view taller than its area |
 //! | [`layout`] | Box layout | Bordered widgets |
 //!
 //! ## Utilities
@@ -120,6 +121,7 @@ pub mod once;
 pub mod overlay;
 pub mod path;
 pub mod profiler;
+pub mod scroll;
 pub mod selection;
 pub mod shell;
 pub mod sort;
@@ -333,7 +335,8 @@ pub use table::{align_center, align_left, align_right, align_text, Align, Column
 pub use tree::{Indent, TreeIcons, TreeItem, TreeNav};
 
 // Selection with viewport
-pub use selection::{wrap_next, wrap_prev, SectionedSelection, Selection};
+pub use scroll::ScrollState;
+pub use selection::{wrap_next, wrap_prev, KeyedSelection, SectionedSelection, Selection};
 
 // Box layout
 pub use layout::BoxLayout;

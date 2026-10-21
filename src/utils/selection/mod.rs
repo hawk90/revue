@@ -21,9 +21,11 @@
 
 mod core;
 mod helper;
+mod keyed;
 mod sectioned;
 mod types;
 
+pub use keyed::KeyedSelection;
 pub use types::{SectionedSelection, Selection};
 
 // Re-export helper functions
