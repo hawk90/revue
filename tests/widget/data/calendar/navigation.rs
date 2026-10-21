@@ -519,3 +519,40 @@ proptest! {
         prop_assert_eq!(header(&cal), format!("{} {}", names[month as usize - 1], year));
     }
 }
+
+/// The shown month did not follow the selection (#973): `select` kept the
+/// month, and after `]` a day move changed the selection out of sight. A
+/// month crossing set only the month, so after `}` the header named the
+/// wrong year.
+#[test]
+fn calendar_view_follows_the_selection() {
+    use revue::event::Key;
+    use revue::widget::data::calendar::{Calendar, Date};
+
+    let mut cal = Calendar::new(2025, 1);
+    cal.select(Date::new(2024, 12, 25));
+    assert_eq!(super::screen(&cal)[0].trim(), "December 2024");
+
+    let mut cal = Calendar::new(2025, 1)
+        .selected(Date::new(2025, 1, 15))
+        .focused(true);
+    cal.handle_key(&Key::Char(']')); // shows February
+    assert!(super::screen(&cal)[0].contains("February 2025"));
+    cal.handle_key(&Key::Right); // selects January 16
+    assert!(
+        super::screen(&cal)[0].contains("January 2025"),
+        "{:?}",
+        super::screen(&cal)[0]
+    );
+
+    let mut cal = Calendar::new(2025, 1)
+        .selected(Date::new(2025, 1, 31))
+        .focused(true);
+    cal.handle_key(&Key::Char('}')); // shows January 2026
+    cal.handle_key(&Key::Right); // selects February 1, 2025
+    assert!(
+        super::screen(&cal)[0].contains("February 2025"),
+        "{:?}",
+        super::screen(&cal)[0]
+    );
+}
