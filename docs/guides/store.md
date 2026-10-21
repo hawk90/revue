@@ -69,6 +69,11 @@ impl Default for CounterStore {
 | `get_state()` | Snapshot of all state as string key-value pairs |
 | `get_getters()` | Snapshot of all computed/derived values |
 
+`#[derive(Store)]` writes these four for you. Its `id()` is
+`StoreId::from_path` of the type's full path, so every store type gets its
+own id. A hand-written store can do the same:
+`StoreId::from_path(concat!(module_path!(), "::CounterStore"))`.
+
 ## Using a Store
 
 ### Singleton Access with `use_store`

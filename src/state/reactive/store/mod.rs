@@ -57,6 +57,31 @@ impl StoreId {
         static COUNTER: AtomicU64 = AtomicU64::new(1);
         Self(COUNTER.fetch_add(1, Ordering::Relaxed))
     }
+
+    /// A fixed id for a store type, from its full path
+    /// (`module_path!()` + `::` + the type name).
+    ///
+    /// `#[derive(Store)]` uses this, so two store types get different ids
+    /// even when their names share a prefix or repeat in another module.
+    /// The id is a 64-bit FNV-1a hash of the path.
+    ///
+    /// ```
+    /// use revue::reactive::store::StoreId;
+    ///
+    /// const ID: StoreId = StoreId::from_path(concat!(module_path!(), "::SettingsStore"));
+    /// assert_ne!(ID, StoreId::from_path(concat!(module_path!(), "::SettingsStoreV2")));
+    /// ```
+    pub const fn from_path(path: &str) -> Self {
+        let bytes = path.as_bytes();
+        let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+        let mut i = 0;
+        while i < bytes.len() {
+            hash ^= bytes[i] as u64;
+            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+            i += 1;
+        }
+        Self(hash)
+    }
 }
 
 impl Default for StoreId {

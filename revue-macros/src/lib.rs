@@ -46,7 +46,7 @@ use syn::{parse_macro_input, DeriveInput};
 /// # Generated Implementation
 ///
 /// The macro generates:
-/// - `id()` method that returns a unique ID based on the type name
+/// - `id()` method that returns a fixed ID from the type's full path (`revue::reactive::store::StoreId::from_path`)
 /// - `name()` method that returns the struct name
 /// - `get_state()` and `get_getters()` methods (basic implementations)
 #[proc_macro_derive(Store)]
@@ -55,20 +55,20 @@ pub fn derive_store(input: TokenStream) -> TokenStream {
     let struct_name = &input.ident;
     let struct_name_string = struct_name.to_string();
 
-    // Use a simple deterministic ID based on string length and first chars
-    // This is just a placeholder - a real implementation would use a proper hash
-    let name_bytes = struct_name_string.as_bytes();
-    let mut id: u64 = 0;
-    for (i, &byte) in name_bytes.iter().take(8).enumerate() {
-        id |= (byte as u64) << (i * 8);
-    }
-
     let expanded = quote! {
         // Implement Store trait
         impl ::revue::reactive::store::Store for #struct_name {
             fn id(&self) -> ::revue::reactive::store::StoreId {
-                // Use a compile-time constant ID based on type name
-                ::revue::reactive::store::StoreId(#id)
+                // The type's full path, hashed at compile time: the module
+                // path is only known where the derive expands, not here
+                // (#1191).
+                const ID: ::revue::reactive::store::StoreId =
+                    ::revue::reactive::store::StoreId::from_path(::core::concat!(
+                        ::core::module_path!(),
+                        "::",
+                        #struct_name_string
+                    ));
+                ID
             }
 
             fn name(&self) -> &str {
