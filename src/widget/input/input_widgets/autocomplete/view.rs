@@ -81,15 +81,25 @@ impl Autocomplete {
             let dropdown_height = (self.filtered.len() as u16).min(area.height - 1);
             let dropdown_y: u16 = 1;
 
-            for (i, &suggestion_idx) in self
+            // The rows in view: the dropdown follows the highlight (#882)
+            let scroll = &self.dropdown_scroll;
+            scroll.set_content(self.filtered.len());
+            scroll.set_viewport(dropdown_height as usize);
+            let highlighted = self.selection.index;
+            scroll.track(highlighted..highlighted + 1);
+            let shown = scroll.visible();
+
+            for (row, (i, &suggestion_idx)) in self
                 .filtered
                 .iter()
                 .enumerate()
-                .take(dropdown_height as usize)
+                .skip(shown.start)
+                .take(shown.len())
+                .enumerate()
             {
                 let suggestion = &self.suggestions[suggestion_idx];
-                let y = dropdown_y + i as u16;
-                let is_selected = i == self.selection.index;
+                let y = dropdown_y + row as u16;
+                let is_selected = i == highlighted;
 
                 let (fg, bg) = if is_selected {
                     (self.selected_fg, self.selected_bg)

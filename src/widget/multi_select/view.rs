@@ -69,18 +69,43 @@ impl MultiSelect {
     }
 
     /// The selected options as `[label]` tags from column 0, and `...` in
-    /// place of the first tag that does not fit before `max_x`. Returns the
-    /// column after the tags.
+    /// place of the first tag that does not fit before `max_x`. The row
+    /// scrolls (in columns) to keep the tag cursor in view, and starts at a
+    /// whole tag (#882). Returns the column after the tags.
     fn draw_tags(&self, ctx: &mut RenderContext, max_x: u16) -> u16 {
+        // Each tag's first column on the whole row: "[label] "
+        let mut starts = Vec::with_capacity(self.selected.len());
+        let mut total = 0;
+        for &opt_idx in &self.selected {
+            starts.push(total);
+            let label = self.options.get(opt_idx).map_or("", |o| o.label.as_str());
+            total += crate::utils::display_width(label) + 3;
+        }
+        let scroll = &self.tag_scroll;
+        scroll.set_content(total);
+        scroll.set_viewport(max_x as usize);
+        if let Some(c) = self.tag_cursor.filter(|&c| c < starts.len()) {
+            let end = starts.get(c + 1).copied().unwrap_or(total);
+            // Without the space after the tag
+            scroll.track(starts[c]..end.saturating_sub(1).max(starts[c] + 1));
+        }
+        // The first whole tag at or after the offset: it keeps the cursor's
+        // tag in view, which ends within the viewport from the offset
+        let first = starts
+            .iter()
+            .position(|&s| s >= scroll.offset())
+            .unwrap_or(starts.len());
+
         let mut x: u16 = 0;
-        for (i, &opt_idx) in self.selected.iter().enumerate() {
+        for (i, &opt_idx) in self.selected.iter().enumerate().skip(first) {
             if x >= max_x {
                 break;
             }
 
             if let Some(opt) = self.options.get(opt_idx) {
                 let label = &opt.label;
-                let tag_len = (crate::utils::display_width(label) + 3) as u16; // "[label] "
+                // "[label]"; the space after it is not needed to fit
+                let tag_len = (crate::utils::display_width(label) + 2) as u16;
 
                 if x + tag_len > max_x {
                     // Draw overflow indicator
@@ -138,22 +163,34 @@ impl MultiSelect {
         x
     }
 
-    /// The open dropdown: the first [`MAX_DROPDOWN_VISIBLE`] filtered
-    /// options, queued as an overlay below the header (above it when the
-    /// screen has no room below), or drawn below the header without an
-    /// overlay queue
+    /// The open dropdown: up to [`MAX_DROPDOWN_VISIBLE`] filtered options,
+    /// scrolled to keep the cursor in view, queued as an overlay below the
+    /// header (above it when the screen has no room below), or drawn below
+    /// the header without an overlay queue
     fn draw_dropdown(&self, ctx: &mut RenderContext, width: u16, fg: Color, bg: Color) {
         let max_visible = self.filtered.len().min(MAX_DROPDOWN_VISIBLE as usize);
         let dropdown_h = max_visible.max(1) as u16;
+        let scroll = &self.dropdown_scroll;
+        scroll.set_content(self.filtered.len());
+        scroll.set_viewport(max_visible);
+        scroll.track(self.dropdown_cursor..self.dropdown_cursor + 1);
+        let shown = scroll.visible();
 
         let (abs_x, _) = ctx.absolute_position();
         let layout = calculate_dropdown_layout(ctx, dropdown_h);
         let overlay_area = crate::layout::Rect::new(abs_x, layout.overlay_y, width, dropdown_h);
         let mut entry = OverlayEntry::new(100, overlay_area);
 
-        for (row, &opt_idx) in self.filtered.iter().enumerate().take(max_visible) {
+        for (row, (i, &opt_idx)) in self
+            .filtered
+            .iter()
+            .enumerate()
+            .skip(shown.start)
+            .take(shown.len())
+            .enumerate()
+        {
             let y = row as u16;
-            let is_cursor = row == self.dropdown_cursor;
+            let is_cursor = i == self.dropdown_cursor;
             let is_selected = self.is_selected(opt_idx);
 
             if let Some(opt) = self.options.get(opt_idx) {

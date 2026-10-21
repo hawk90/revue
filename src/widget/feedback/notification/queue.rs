@@ -7,6 +7,7 @@ impl NotificationCenter {
     pub fn push(&mut self, mut notification: Notification) {
         notification.created_at = self.tick_counter;
         self.notifications.push(notification);
+        self.sync_selection();
     }
 
     /// Push info notification
@@ -32,13 +33,13 @@ impl NotificationCenter {
     /// Dismiss notification by ID
     pub fn dismiss(&mut self, id: u64) {
         self.notifications.retain(|n| n.id != id);
-        self.keep_selection_in_range();
+        self.sync_selection();
     }
 
     /// Clear all notifications
     pub fn clear(&mut self) {
         self.notifications.clear();
-        self.selected = None;
+        self.selected.clear();
     }
 
     /// Get notification count
@@ -61,19 +62,25 @@ impl NotificationCenter {
 
         self.notifications.retain(|n| !n.is_expired());
 
-        // Adjust selection
-        self.keep_selection_in_range();
+        // Keep the selection on its notification
+        self.sync_selection();
     }
 
-    /// After notifications were removed, move a selection past the end to
-    /// the last notification, or clear it when none are left
-    fn keep_selection_in_range(&mut self) {
-        if self.selected.is_some_and(|s| s >= self.notifications.len()) {
-            self.selected = if self.notifications.is_empty() {
-                None
-            } else {
-                Some(self.notifications.len() - 1)
-            };
-        }
+    /// The ids of the shown notifications: the newest `max_visible`, newest
+    /// first, as they are stacked
+    pub(super) fn shown_ids(&self) -> impl Iterator<Item = u64> + '_ {
+        self.notifications
+            .iter()
+            .rev()
+            .take(self.max_visible)
+            .map(|n| n.id)
+    }
+
+    /// After the shown notifications changed: keep the selection on its
+    /// notification, or move it to the one now in its place when it went
+    /// (#975)
+    pub(super) fn sync_selection(&mut self) {
+        let ids: Vec<u64> = self.shown_ids().collect();
+        self.selected.sync(ids);
     }
 }

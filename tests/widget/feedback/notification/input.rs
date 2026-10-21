@@ -7,25 +7,26 @@ use revue::widget::{notification_center, Notification, NotificationCenter, Notif
 
 #[test]
 fn test_center_selection() {
+    // Moves go in screen order: the newest notification is on top here
     let mut c = center_with(3);
     assert!(selected_messages(&c).is_empty());
     c.select_next();
-    assert_eq!(selected_messages(&c), ["1"]);
+    assert_eq!(selected_messages(&c), ["3"]);
     c.select_next();
     assert_eq!(selected_messages(&c), ["2"]);
     c.select_prev();
-    assert_eq!(selected_messages(&c), ["1"]);
+    assert_eq!(selected_messages(&c), ["3"]);
 }
 
 #[test]
 fn test_center_selection_wraps() {
-    let mut c = center_with(2);
+    let mut c = center_with(2); // "2" above "1"
     c.select_prev();
-    assert_eq!(selected_messages(&c), ["2"]);
-    c.select_next();
     assert_eq!(selected_messages(&c), ["1"]);
-    c.select_prev();
+    c.select_next();
     assert_eq!(selected_messages(&c), ["2"]);
+    c.select_prev();
+    assert_eq!(selected_messages(&c), ["1"]);
 }
 
 #[test]
@@ -43,17 +44,17 @@ fn test_center_dismiss_selected() {
     c.dismiss_selected(); // nothing selected
     assert_eq!(c.count(), 2);
 
-    c.select_next(); // "1"
+    c.select_next(); // "2", on top
     c.dismiss_selected();
     assert_eq!(c.count(), 1);
     let buffer = render(&c, 50, 20);
-    assert_eq!(message_of(&row(&buffer, 1)), "2");
+    assert_eq!(message_of(&row(&buffer, 1)), "1");
 }
 
 #[test]
 fn test_center_dismiss_moves_selection_to_last() {
     let mut c = center_with(3);
-    c.select_prev(); // "3"
+    c.select_prev(); // "1", at the bottom
     c.dismiss_selected();
     assert_eq!(selected_messages(&c), ["2"]);
 
@@ -94,15 +95,15 @@ fn test_center_handle_key_needs_focus_and_content() {
 
 #[test]
 fn test_center_handle_key_navigation() {
-    let mut c = center_with(2);
+    let mut c = center_with(2); // "2" above "1"
     assert!(c.handle_key(&Key::Up));
-    assert_eq!(selected_messages(&c), ["2"]);
+    assert_eq!(selected_messages(&c), ["1"]);
     assert!(c.handle_key(&Key::Down));
-    assert_eq!(selected_messages(&c), ["1"]);
-    assert!(c.handle_key(&Key::Char('k')));
     assert_eq!(selected_messages(&c), ["2"]);
-    assert!(c.handle_key(&Key::Char('j')));
+    assert!(c.handle_key(&Key::Char('k')));
     assert_eq!(selected_messages(&c), ["1"]);
+    assert!(c.handle_key(&Key::Char('j')));
+    assert_eq!(selected_messages(&c), ["2"]);
 }
 
 #[test]
@@ -130,7 +131,8 @@ fn test_non_dismissible_survives_the_dismiss_keys() {
     center.push(Notification::warning("pinned").dismissible(false));
     center.push(Notification::info("transient"));
 
-    // Select the pinned one and press `d`.
+    // Select the pinned one (below the newer one) and press `d`.
+    center.handle_key(&Key::Down);
     center.handle_key(&Key::Down);
     center.handle_key(&Key::Char('d'));
     assert_eq!(
@@ -140,7 +142,7 @@ fn test_non_dismissible_survives_the_dismiss_keys() {
     );
 
     // Delete on the transient one still works.
-    center.handle_key(&Key::Down);
+    center.handle_key(&Key::Up);
     center.handle_key(&Key::Delete);
     assert_eq!(center.count(), 1);
 
@@ -343,4 +345,54 @@ proptest! {
             }
         }
     }
+}
+
+/// Down used to select the oldest notification even when only the newest
+/// `max_visible` were drawn, so `d` removed one the user never saw (#882).
+#[test]
+fn test_notification_keys_select_only_drawn_notifications() {
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .show_icons(false)
+        .max_visible(1)
+        .focused(true);
+    c.info("old");
+    c.info("new"); // only "new" is drawn
+    c.handle_key(&Key::Down);
+    assert_eq!(selected_messages(&c), ["new"]);
+    c.handle_key(&Key::Down);
+    assert_eq!(selected_messages(&c), ["new"], "wraps among the drawn ones");
+}
+
+/// An older notification expiring used to move the selection to the next
+/// newer one (#975).
+#[test]
+fn test_notification_expiry_keeps_the_selected_notification() {
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .show_icons(false);
+    c.push(Notification::info("short").duration(1));
+    c.push(Notification::info("a").duration(0));
+    c.push(Notification::info("b").duration(0));
+    c.select_next(); // "b", on top
+    c.select_next(); // "a"
+    assert_eq!(selected_messages(&c), ["a"]);
+    c.tick(); // "short" expires
+    assert_eq!(selected_messages(&c), ["a"]);
+}
+
+/// At the bottom positions the newest is the bottom box, so Down from no
+/// selection picks the top one there: the oldest shown.
+#[test]
+fn test_notification_moves_follow_the_screen_at_the_bottom() {
+    let mut c = notification_center()
+        .position(NotificationPosition::BottomLeft)
+        .show_icons(false)
+        .focused(true);
+    c.info("1");
+    c.info("2");
+    c.handle_key(&Key::Down);
+    assert_eq!(selected_messages(&c), ["1"]);
+    c.handle_key(&Key::Down);
+    assert_eq!(selected_messages(&c), ["2"]);
 }

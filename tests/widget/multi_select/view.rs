@@ -554,7 +554,8 @@ fn read_label(b: &Buffer, x: u16, y: u16, label: &str, end: u16) -> (usize, u16)
 
 proptest! {
     /// Whatever the options, selection, width, query and cursor, the
-    /// dropdown shows the first ten filtered options in order: `[x]` exactly
+    /// dropdown shows ten filtered options in order, scrolled just far enough
+    /// to show the cursor (#882): `[x]` exactly
     /// for the selected ones, each label cut at the widget's width, its
     /// query matches in the highlight color and disabled ones gray, and the
     /// cursor row alone in the cursor colors. The header's tags are the
@@ -603,11 +604,18 @@ proptest! {
             x = end + 2;
         }
 
-        // Rows
-        let shown = if open { v.get_filtered().len().min(10) } else { 0 };
+        // Rows: one draw after the moves scrolls from the top just far
+        // enough to show the cursor
+        let len = v.get_filtered().len();
+        let shown = if open { len.min(10) } else { 0 };
+        let offset = if open {
+            v.get_dropdown_cursor().saturating_sub(9).min(len.saturating_sub(10))
+        } else {
+            0
+        };
         for r in 0..shown {
             let y = r as u16 + 1;
-            let idx = v.get_filtered()[r];
+            let idx = v.get_filtered()[r + offset];
             let label = POOL[idx];
             let mark = if v.is_selected(idx) { "[x]" } else { "[ ]" };
             prop_assert_eq!(cols(&b, y, 0, 3), mark, "row {}", r);
@@ -621,7 +629,7 @@ proptest! {
                 .take_while(|&end| end <= dw)
                 .count();
             prop_assert_eq!(got, fits, "row {} {:?}", r, label);
-            let cursor = r == v.get_dropdown_cursor();
+            let cursor = r + offset == v.get_dropdown_cursor();
             let row_bg = if cursor { CURSOR_ROW_BG } else { BG };
             prop_assert_eq!(bg(&b, 0, y), Some(row_bg));
             prop_assert_eq!(bg(&b, dw - 1, y), Some(row_bg));
@@ -643,4 +651,37 @@ proptest! {
         }
         prop_assert!(row(&b, shown as u16 + 1).trim().is_empty());
     }
+}
+
+// ── Scrolling (#882) ────────────────────────────────────────────────────
+
+/// The dropdown drew the first 10 options while Down moved the cursor over
+/// all of them.
+#[test]
+fn the_dropdown_follows_the_cursor() {
+    use revue::event::Key;
+    let mut v = multi_select().options((1..=15).map(|i| format!("O{i:02}")).collect());
+    v.open();
+    for _ in 0..12 {
+        v.handle_key(&Key::Down);
+    }
+    let b = render_in(&v, 20, 12);
+    let rows: Vec<String> = (1..11)
+        .map(|y| row(&b, y)[4..].trim().to_string())
+        .collect();
+    let expected: Vec<String> = (4..=13).map(|i| format!("O{i:02}")).collect();
+    assert_eq!(rows, expected);
+    assert_eq!(bg(&b, 0, 10), Some(CURSOR_ROW_BG), "O13 has the cursor");
+}
+
+/// Left onto the last tag used to leave it undrawn, so Backspace removed a
+/// tag the user could not see.
+#[test]
+fn the_tag_under_the_cursor_is_drawn() {
+    use revue::event::Key;
+    let mut v = MultiSelect::new().options((1..=12).map(|i| format!("Item {i}")).collect());
+    v.select_all();
+    v.handle_key(&Key::Left); // onto the last tag, Item 12
+    let b = render_in(&v, 30, 1);
+    assert!(row(&b, 0).contains("[Item 12]"), "{:?}", row(&b, 0));
 }

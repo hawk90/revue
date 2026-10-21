@@ -61,7 +61,7 @@ impl View for NotificationCenter {
         // Render each notification
         for (idx, notification) in visible.iter().enumerate() {
             let height = self.notification_height(notification);
-            let is_selected = self.selected == Some(self.notifications.len() - 1 - idx);
+            let is_selected = self.selected.is_selected(idx);
 
             // Adjust Y position for bottom positions
             let y = if direction < 0 {

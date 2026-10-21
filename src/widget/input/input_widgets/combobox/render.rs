@@ -108,9 +108,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
         return;
     }
 
-    let visible_count = combobox
-        .max_visible
-        .min(crate::widget::theme::MAX_DROPDOWN_VISIBLE as usize);
+    let visible_count = combobox.visible_count();
 
     let colors = DropdownColors {
         fg: combobox.fg,
@@ -125,12 +123,17 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     // counts rows.
     let rows = combobox.display_rows();
 
-    // Calculate dropdown height, accounting for scroll offset
-    let items_after_scroll = rows.len().saturating_sub(combobox.scroll_offset);
+    // The rows in view: the dropdown follows the highlight, whatever moved
+    // it (#882)
+    combobox.sync_scroll();
+    if let Some(highlight) = combobox.highlight_rows() {
+        combobox.scroll.track(highlight);
+    }
+    let shown = combobox.scroll.visible();
     let dropdown_h = if combobox.loading || combobox.filtered.is_empty() {
         1u16
     } else {
-        (items_after_scroll.min(visible_count) as u16).max(1)
+        (shown.len() as u16).max(1)
     };
 
     // Position the overlay
@@ -170,8 +173,8 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     // Build row descriptors
     let dropdown_rows: Vec<DropdownRow<'_>> = rows
         .iter()
-        .skip(combobox.scroll_offset)
-        .take(visible_count)
+        .skip(shown.start)
+        .take(shown.len())
         .map(|display_row| {
             let pos = match *display_row {
                 DisplayRow::Header(name) => return DropdownRow::Header(name),
@@ -215,13 +218,13 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     let total_filtered = rows.len();
     let scroll_col = width - SCROLL_RESERVE;
     if total_filtered > visible_count {
-        if combobox.scroll_offset > 0 {
+        if combobox.scroll.has_above() {
             let mut cell = crate::render::Cell::new('↑');
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
             entry.push(scroll_col, 0, cell);
         }
-        if combobox.scroll_offset + visible_count < total_filtered {
+        if combobox.scroll.has_below() {
             let mut cell = crate::render::Cell::new('↓');
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;

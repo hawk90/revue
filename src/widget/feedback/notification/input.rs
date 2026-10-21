@@ -8,39 +8,49 @@ impl NotificationCenter {
     /// Does nothing when the selected notification is not
     /// [`dismissible`](super::Notification::dismissible).
     pub fn dismiss_selected(&mut self) {
-        if let Some(idx) = self.selected {
-            if idx < self.notifications.len() && self.notifications[idx].dismissible {
-                let id = self.notifications[idx].id;
-                self.dismiss(id);
-            }
+        let Some(&id) = self.selected.key() else {
+            return;
+        };
+        if self
+            .notifications
+            .iter()
+            .any(|n| n.id == id && n.dismissible)
+        {
+            self.dismiss(id);
         }
     }
 
-    /// Select next notification
+    /// Select the shown notification below the selected one on screen,
+    /// wrapping around; with none selected, the top one. Only shown
+    /// notifications can be selected (#882).
     pub fn select_next(&mut self) {
-        if self.notifications.is_empty() {
-            self.selected = None;
-            return;
+        let ids: Vec<u64> = self.shown_ids().collect();
+        if self.stacks_up() {
+            self.selected.prev_wrapping(ids.len(), |i| ids[i]);
+        } else {
+            self.selected.next_wrapping(ids.len(), |i| ids[i]);
         }
-
-        self.selected = Some(match self.selected {
-            Some(idx) => (idx + 1) % self.notifications.len(),
-            None => 0,
-        });
     }
 
-    /// Select previous notification
+    /// Select the shown notification above the selected one on screen,
+    /// wrapping around; with none selected, the bottom one
     pub fn select_prev(&mut self) {
-        if self.notifications.is_empty() {
-            self.selected = None;
-            return;
+        let ids: Vec<u64> = self.shown_ids().collect();
+        if self.stacks_up() {
+            self.selected.next_wrapping(ids.len(), |i| ids[i]);
+        } else {
+            self.selected.prev_wrapping(ids.len(), |i| ids[i]);
         }
+    }
 
-        self.selected = Some(match self.selected {
-            Some(0) => self.notifications.len() - 1,
-            Some(idx) => idx - 1,
-            None => self.notifications.len() - 1,
-        });
+    /// Whether the stack grows up from the bottom: the newest notification
+    /// is then the bottom one
+    fn stacks_up(&self) -> bool {
+        use super::NotificationPosition as P;
+        matches!(
+            self.position,
+            P::BottomLeft | P::BottomCenter | P::BottomRight
+        )
     }
 
     /// Handle key input
@@ -67,7 +77,7 @@ impl NotificationCenter {
             Key::Char('c') => {
                 // Clears what the user may dismiss; the rest stay.
                 self.notifications.retain(|n| !n.dismissible);
-                self.selected = None;
+                self.selected.clear();
                 true
             }
             _ => false,

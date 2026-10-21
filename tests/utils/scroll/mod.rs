@@ -140,7 +140,20 @@ fn an_empty_view() {
     s.scroll_by(3);
     s.reveal(0..1);
     assert_eq!(s.visible(), 0..0);
-    assert!(s.is_following(), "an empty view is at its end");
+    assert!(!s.is_following(), "no tail mode: it never follows");
+}
+
+/// A list without a tail mode that reaches its end does not start following:
+/// a longer list later keeps the view where it was.
+#[test]
+fn a_view_without_a_tail_mode_never_follows() {
+    let mut s = drawn(3, 5);
+    s.scroll_to_top();
+    s.reveal(2..3);
+    s.scroll_to_end();
+    assert!(!s.is_following());
+    s.set_content(20);
+    assert_eq!(s.offset(), 0);
 }
 
 /// A paused log stays paused while the selection moves on screen.
@@ -158,4 +171,31 @@ fn a_reveal_on_screen_leaves_following_as_it_is() {
     );
     s.set_follow_end(true);
     assert_eq!(s.visible(), 5..10);
+}
+
+/// `track` reveals when the rows change and leaves a scrolled view alone
+/// while they do not.
+#[test]
+fn track_follows_changes_only() {
+    let mut s = drawn(20, 5);
+    s.track(12..13);
+    assert_eq!(s.offset(), 8);
+    s.scroll_to(0);
+    s.track(12..13);
+    assert_eq!(
+        s.offset(),
+        0,
+        "an unchanged selection does not pull the view back"
+    );
+    s.track(13..14);
+    assert_eq!(s.offset(), 9);
+}
+
+#[test]
+fn track_before_the_first_draw_waits_for_the_viewport() {
+    let s = ScrollState::new();
+    s.set_content(30);
+    s.track(20..21);
+    s.set_viewport(5);
+    assert_eq!(s.visible(), 16..21);
 }

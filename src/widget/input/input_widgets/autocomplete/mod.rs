@@ -12,7 +12,7 @@ pub use helper::autocomplete;
 pub use types::Suggestion;
 
 use crate::style::Color;
-use crate::utils::{FilterMode, Selection};
+use crate::utils::{FilterMode, ScrollState, Selection};
 use crate::widget::theme::{DARK_BG, DISABLED_FG, EDITOR_BG, SUBTLE_GRAY};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -30,6 +30,8 @@ pub struct Autocomplete {
     filtered: Vec<usize>,
     /// Selected suggestion index in filtered list
     selection: Selection,
+    /// Where the dropdown is scrolled to, one row per suggestion
+    dropdown_scroll: ScrollState,
     /// Is dropdown visible
     dropdown_visible: bool,
     /// Filter mode
@@ -72,6 +74,7 @@ impl Autocomplete {
             suggestions: Vec::new(),
             filtered: Vec::new(),
             selection: Selection::new(0),
+            dropdown_scroll: ScrollState::new(),
             dropdown_visible: false,
             filter_mode: FilterMode::Fuzzy,
             min_chars: 1,

@@ -214,3 +214,25 @@ fn test_autocomplete_draws_the_same_when_offset() {
     type_str(&mut a, "al");
     assert_same_when_offset(a, 20, 5);
 }
+
+/// The dropdown drew the first suggestions that fit while Down moved over
+/// all of them, so the highlighted one could be below the area (#882).
+#[test]
+fn test_autocomplete_dropdown_follows_the_highlight() {
+    let mut a = Autocomplete::new()
+        .suggestions((1..=10).map(|i| format!("item{i:02}")).collect::<Vec<_>>());
+    type_str(&mut a, "item");
+    for _ in 0..6 {
+        key(&mut a, Key::Down);
+    }
+    // 4 rows below the input: item04..item07, item07 highlighted
+    assert_eq!(
+        dropdown(&a, 20, 5),
+        ["item04", "item05", "item06", "item07"]
+    );
+    key(&mut a, Key::Up);
+    assert_eq!(
+        dropdown(&a, 20, 5),
+        ["item04", "item05", "item06", "item07"]
+    );
+}

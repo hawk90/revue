@@ -18,6 +18,7 @@ mod tests;
 mod view;
 
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::traits::{WidgetProps, WidgetState};
 
 // Re-export public types
@@ -83,8 +84,12 @@ pub struct MultiSelect {
     open: bool,
     /// Cursor position in dropdown
     dropdown_cursor: usize,
+    /// Where the open dropdown is scrolled to, one row per shown option
+    dropdown_scroll: ScrollState,
     /// Cursor position in tags (for navigation/deletion)
     tag_cursor: Option<usize>,
+    /// Where the tag row is scrolled to, in columns
+    tag_scroll: ScrollState,
     /// Search query for filtering
     query: String,
     /// Filtered option indices
@@ -115,6 +120,8 @@ impl MultiSelect {
             selected: Vec::new(),
             open: false,
             dropdown_cursor: 0,
+            dropdown_scroll: ScrollState::new(),
+            tag_scroll: ScrollState::new(),
             tag_cursor: None,
             query: String::new(),
             filtered: Vec::new(),
