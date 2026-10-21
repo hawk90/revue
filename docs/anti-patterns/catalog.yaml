@@ -1956,7 +1956,7 @@ entries:
       - "tail/scroll_to_bottom이 `len - 1`로 scroll해서 마지막 한 줄만 보인다"
     fix:
       - "공통 scroll model을 제공한다. revue에는 공통 model `utils::Selection`이 있다: offset과 visible을 `Cell`에 두고 render에서 `set_visible(height)`로 갱신하므로 선택이 위아래 어느 쪽으로 나가도 따라가고 offset은 `len - visible`에서 멈춘다. 새로 손으로 scroll을 짜지 말고 이것을 쓴다."
-      - "Selection이 감당하지 못하는 경우(선택과 무관한 scroll, tail, 가변 높이 행)는 위젯에서 따로 짜지 말고 Selection을 확장한다."
+      - "새 widget과 옮기는 widget은 `utils::ScrollState`를 쓴다 (#973 결정, 2026-10-22). scroll은 selection과 분리된 상태이고 단위는 행이다: offset은 `0..=content - viewport`, 선택이 바뀌면 `reveal(행 범위)`로 필요한 만큼만 scroll(`scrollIntoView({ block: \"nearest\" })`), 끝에 있을 때만 끝을 따라가고(tail), 위쪽에 행이 들어오거나 빠지면 offset을 같이 옮긴다. 선택 없는 scroll, tail, 높이가 다른 행을 widget에서 따로 짜지 않는다."
       - "4.0에서 selection·scroll 상태는 widget 밖의 상태 타입이고 slot이나 bind로 연결된다. viewport에 맞추는 일은 render가 아니라 layout 단계가 한다 (#1141, REV-RENDER-011)."
     observed:
       - "2026-10-12 기준 Selection을 가진 widget 10개 중 offset으로 scroll까지 하는 것은 command_palette, list, table 3개뿐이다. tree, select, autocomplete는 Selection을 들고도 offset을 무시하고 첫 행부터 그린다. 그 밖에 자기 `Cell`로 따로 짠 widget 4개(datagrid, textarea, input, code_editor), 선택이 있는데 scroll을 그냥 `usize`로 둔 widget 13개, 선택 없이 내용만 scroll하는 widget 5개. 목록은 #973."
@@ -2012,6 +2012,7 @@ entries:
     fix:
       - "선택은 항목의 안정된 식별자(key)로 들거나, 위치로 들 때는 목록을 바꾸는 모든 경로에서 선택한 항목의 새 위치를 다시 계산한다(Qt의 selection model이 persistent index로 정렬·삽입 뒤에도 같은 행을 따라가는 것과 같은 원리)."
       - "그 항목이 사라졌으면 가장 가까운 항목으로 옮기고, 사라진 것을 선택한 채로 두지 않는다."
+      - "`utils::KeyedSelection`이 이 규칙이다 (#975 결정, 2026-10-22): 선택은 항목의 key를 들고, 목록이 바뀌면 `sync(keys)`로 다시 찾는다. 식별자가 없는 목록은 index를 key로 쓴다(Vue의 `:key` 없는 `v-for`)."
       - "선택 상태는 widget 밖의 상태 타입이다 (#1141)."
     observed:
       - "csv_viewer 정렬 뒤 선택과 검색 결과 (#856, #970에서 고침), tree 펼치기·접기 뒤 다중 선택과 검색 결과 (#859), log_viewer 오래된 항목 잘라내기와 `clear_filter` 뒤 선택 (#975), datagrid 정렬 뒤 선택 (#975)."

@@ -40,6 +40,8 @@ mod once;
 mod path;
 #[path = "utils/profiler.rs"]
 mod profiler;
+#[path = "utils/scroll/mod.rs"]
+mod scroll;
 #[path = "utils/selection/mod.rs"]
 mod selection;
 #[path = "utils/shell.rs"]
