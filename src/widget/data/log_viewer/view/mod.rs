@@ -8,6 +8,7 @@ mod render;
 mod search;
 
 use crate::style::Color;
+use crate::utils::{KeyedSelection, ScrollState};
 use crate::widget::data::log_viewer::entry::{LogEntry, SearchMatch};
 use crate::widget::data::log_viewer::filter::LogFilter;
 use crate::widget::data::log_viewer::parser::LogParser;
@@ -21,10 +22,16 @@ use crate::{impl_props_builders, impl_styled_view};
 pub struct LogViewer {
     /// All log entries
     entries: Vec<LogEntry>,
-    /// Current scroll position
-    scroll: usize,
-    /// Selected entry index (in filtered view)
-    selected: usize,
+    /// A sequence id per entry, parallel to `entries`: the selection's key.
+    /// `line_number` repeats once old entries are trimmed.
+    ids: Vec<u64>,
+    /// The id the next entry gets
+    next_id: u64,
+    /// Where the filtered view is scrolled to, one row per entry. Following
+    /// the end is the live tail mode.
+    scroll: ScrollState,
+    /// The selected entry, by id
+    selection: KeyedSelection<u64>,
     /// Current filter
     filter: LogFilter,
     /// Search query (matched case-insensitively as plain text)
@@ -33,8 +40,6 @@ pub struct LogViewer {
     search_matches: Vec<SearchMatch>,
     /// Current search match index
     search_index: usize,
-    /// Live tail mode (auto-follow new entries)
-    tail_mode: bool,
     /// Show line numbers
     show_line_numbers: bool,
     /// Show timestamps
@@ -72,13 +77,14 @@ impl LogViewer {
     pub fn new() -> Self {
         Self {
             entries: Vec::new(),
-            scroll: 0,
-            selected: 0,
+            ids: Vec::new(),
+            next_id: 0,
+            scroll: ScrollState::new().follow_end(true),
+            selection: KeyedSelection::new(),
             filter: LogFilter::new(),
             search_query: String::new(),
             search_matches: Vec::new(),
             search_index: 0,
-            tail_mode: true,
             show_line_numbers: true,
             show_timestamps: true,
             show_levels: true,
@@ -109,18 +115,18 @@ impl LogViewer {
         self
     }
 
-    /// Enable/disable tail mode
+    /// Enable/disable tail mode: while on, the view follows new entries
     pub fn tail_mode(mut self, enable: bool) -> Self {
-        self.tail_mode = enable;
+        self.scroll.set_follow_end(enable);
         self
     }
 
-    /// Toggle tail mode
+    /// Toggle tail mode. Turning it off keeps the view where it is; turning
+    /// it on scrolls to the newest entries. The selection stays on its
+    /// entry either way.
     pub fn toggle_tail(&mut self) {
-        self.tail_mode = !self.tail_mode;
-        if self.tail_mode {
-            self.scroll_to_bottom();
-        }
+        let follow = !self.scroll.is_following();
+        self.scroll.set_follow_end(follow);
     }
 
     /// Enable/disable line numbers
@@ -197,16 +203,65 @@ impl LogViewer {
     /// Index into `entries` of the selected row
     fn selected_entry_index(&self) -> Option<usize> {
         self.filtered_entries()
-            .nth(self.selected)
+            .nth(self.selection.index()?)
             .map(|(idx, _)| idx)
     }
 
-    /// Ensure index is visible
-    fn ensure_visible(&mut self, idx: usize) {
-        if idx < self.scroll {
-            self.scroll = idx;
+    /// Select the row at `pos` in the filtered view (clamped) and scroll it
+    /// into view
+    fn select_row(&mut self, pos: usize) {
+        let len = self.filtered_len();
+        let pos = pos.min(len.saturating_sub(1));
+        let key = self.filtered_ids().nth(pos).unwrap_or_default();
+        self.selection.select(pos, len, |_| key);
+        self.reveal_selected();
+    }
+
+    /// Scroll the selected row into view
+    fn reveal_selected(&mut self) {
+        if let Some(pos) = self.selection.index() {
+            self.scroll.reveal(pos..pos + 1);
         }
-        // Note: actual visible height depends on render area
+    }
+
+    /// The ids of the filtered entries, in order
+    fn filtered_ids(&self) -> impl Iterator<Item = u64> + '_ {
+        self.entries
+            .iter()
+            .zip(&self.ids)
+            .filter(|(entry, _)| self.filter.matches(entry))
+            .map(|(_, id)| *id)
+    }
+
+    /// After the filtered view changed: find the selected entry again (the
+    /// nearest one if it is gone), select a first entry if there was none,
+    /// and give the scroll the new row count
+    fn sync_view(&mut self) {
+        let Self {
+            entries,
+            ids,
+            filter,
+            selection,
+            ..
+        } = self;
+        selection.sync(
+            entries
+                .iter()
+                .zip(ids.iter())
+                .filter(|(entry, _)| filter.matches(entry))
+                .map(|(_, id)| *id),
+        );
+        let len = self.filtered_len();
+        self.scroll.set_content(len);
+        if self.selection.index().is_none() && len > 0 {
+            let first = if self.scroll.is_following() {
+                len - 1
+            } else {
+                0
+            };
+            let key = self.filtered_ids().nth(first).unwrap_or_default();
+            self.selection.select(first, len, |_| key);
+        }
     }
 
     /// Get total entry count
@@ -236,26 +291,32 @@ impl LogViewer {
 
     /// Check if in tail mode
     pub fn is_tail_mode(&self) -> bool {
-        self.tail_mode
+        self.scroll.is_following()
     }
 
-    /// Set the active filter
+    /// Set the active filter. The selection stays on its entry if the filter
+    /// keeps it, and moves to the nearest shown entry if not.
     pub fn set_filter(&mut self, filter: LogFilter) {
         self.filter = filter;
-        self.selected = 0;
-        self.scroll = 0;
+        self.refilter();
     }
 
-    /// Update minimum level filter
+    /// Update minimum level filter (see [`set_filter`](Self::set_filter))
     pub fn set_min_level(&mut self, level: LogLevel) {
         self.filter.min_level = Some(level);
-        self.selected = 0;
-        self.scroll = 0;
+        self.refilter();
     }
 
-    /// Clear all filters
+    /// Clear all filters. The selection stays on its entry.
     pub fn clear_filter(&mut self) {
         self.filter = LogFilter::new();
+        self.refilter();
+    }
+
+    /// The filter changed: follow the selection into the new view
+    fn refilter(&mut self) {
+        self.sync_view();
+        self.reveal_selected();
     }
 
     /// Toggle expanded state of selected entry

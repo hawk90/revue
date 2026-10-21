@@ -84,10 +84,12 @@ impl View for LogViewer {
 
         let columns = Columns::new(self, area.width);
 
-        // Visible range
+        // Visible range: one row per entry
         let visible_height = area.height as usize;
-        let start = self.scroll.min(filtered.len().saturating_sub(1));
-        let end = (start + visible_height).min(filtered.len());
+        self.scroll.set_content(filtered.len());
+        self.scroll.set_viewport(visible_height);
+        let visible = self.scroll.visible();
+        let (start, end) = (visible.start, visible.end);
 
         for (view_idx, (entry_idx, entry)) in
             filtered.iter().enumerate().skip(start).take(end - start)
@@ -96,7 +98,7 @@ impl View for LogViewer {
             if y >= area.height {
                 break;
             }
-            let is_selected = view_idx == self.selected;
+            let is_selected = self.selection.is_selected(view_idx);
             let row = Row {
                 y,
                 entry_idx: *entry_idx,
@@ -115,7 +117,7 @@ impl View for LogViewer {
             self.draw_scroll_indicator(ctx, filtered.len());
         }
 
-        if self.tail_mode {
+        if self.scroll.is_following() {
             self.draw_tail_indicator(ctx);
         }
     }
@@ -260,7 +262,7 @@ impl LogViewer {
     fn draw_scroll_indicator(&self, ctx: &mut RenderContext, total: usize) {
         let area = ctx.area;
         let visible_height = area.height as usize;
-        let scroll_ratio = self.scroll as f32 / (total - visible_height) as f32;
+        let scroll_ratio = self.scroll.offset() as f32 / (total - visible_height) as f32;
         let indicator_pos = (scroll_ratio * (area.height as f32 - 1.0)) as u16;
         let indicator_y = indicator_pos.min(area.height - 1);
 

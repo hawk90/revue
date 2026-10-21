@@ -66,6 +66,13 @@ impl ScrollState {
         self
     }
 
+    /// Follow the end from now on, or stop following and keep the view
+    /// where it is (a paused log)
+    pub fn set_follow_end(&mut self, follow: bool) {
+        self.follow_end.set(follow);
+        self.settle();
+    }
+
     /// The first row shown
     pub fn offset(&self) -> usize {
         self.offset.get()
@@ -93,8 +100,8 @@ impl ScrollState {
 
     /// The rows on screen
     pub fn visible(&self) -> Range<usize> {
-        let offset = self.offset.get();
-        offset..(offset + self.viewport.get()).min(self.content.get())
+        let end = (self.offset.get() + self.viewport.get()).min(self.content.get());
+        self.offset.get().min(end)..end
     }
 
     /// Whether there are rows above the view
@@ -194,6 +201,10 @@ impl ScrollState {
     /// Scroll just enough to show `rows`, in either direction. A range taller
     /// than the view shows its first rows. Before the view is drawn, the
     /// reveal waits for [`set_viewport`](Self::set_viewport).
+    ///
+    /// Following the end changes only when the view moves: a reveal that
+    /// scrolls up stops it, one that scrolls to the end starts it, and one
+    /// already on screen leaves it as it is.
     pub fn reveal(&mut self, rows: Range<usize>) {
         let (start, end) = (rows.start, rows.end.max(rows.start + 1));
         if self.viewport.get() == 0 {
@@ -214,19 +225,20 @@ impl ScrollState {
         } else {
             offset
         };
-        self.offset.set(target.min(self.max_offset()));
-        self.follow_end.set(self.at_end());
+        let target = target.min(self.max_offset());
+        if target != offset {
+            self.offset.set(target);
+            self.follow_end.set(self.at_end());
+        }
     }
 
     fn at_end(&self) -> bool {
         self.offset.get() >= self.max_offset()
     }
 
-    /// Keep the offset in range, and on the last page while following
+    /// Keep the offset in range, and on the last page while following.
+    /// Before the view is drawn (viewport 0) the range is the whole content.
     fn settle(&self) {
-        if self.viewport.get() == 0 {
-            return;
-        }
         let max = self.max_offset();
         if self.follow_end.get() {
             self.offset.set(max);
