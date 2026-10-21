@@ -3,6 +3,7 @@
 use super::parse::{detect_delimiter, parse_csv};
 use super::types::{Delimiter, SortOrder};
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::theme::{DARK_GRAY, PLACEHOLDER_FG};
 use crate::widget::traits::WidgetProps;
 
@@ -19,7 +20,8 @@ pub struct CsvViewer {
     pub selected_row: usize,
     /// Selected column index
     pub selected_col: usize,
-    /// Scroll offset (row)
+    /// Scroll offset (row). Not read: the rows scroll with a ScrollState
+    /// that follows the selection (#969); the field goes in 4.0 (#1021).
     pub scroll_row: usize,
     /// Scroll offset (column)
     pub scroll_col: usize,
@@ -64,6 +66,8 @@ pub struct CsvViewer {
     pub bg: Option<Color>,
     /// CSS props
     pub props: WidgetProps,
+    /// Where the data rows are scrolled to
+    row_scroll: ScrollState,
 }
 
 impl Default for CsvViewer {
@@ -103,6 +107,7 @@ impl CsvViewer {
             fg: None,
             bg: None,
             props: WidgetProps::new(),
+            row_scroll: ScrollState::new(),
         }
     }
 
@@ -226,6 +231,11 @@ impl CsvViewer {
     ///
     /// This is the row's position on screen, counted from the first data row
     /// in the current sort order. Without sorting it is also its index for
+    /// Where the data rows are scrolled to (drawn in `view.rs`)
+    pub(super) fn row_scroll(&self) -> &ScrollState {
+        &self.row_scroll
+    }
+
     /// [`get_cell`](Self::get_cell).
     pub fn selected_row(&self) -> usize {
         self.selected_row

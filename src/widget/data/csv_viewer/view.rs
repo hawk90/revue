@@ -16,7 +16,12 @@ impl View for CsvViewer {
 
         let header_rows = usize::from(self.has_header);
         let visible_data_rows = (area.height as usize).saturating_sub(header_rows);
-        let scroll_row = self.scroll_offset(visible_data_rows);
+        // The rows in view, following the selection (#969)
+        self.row_scroll().set_content(self.sorted_indices.len());
+        self.row_scroll().set_viewport(visible_data_rows);
+        self.row_scroll()
+            .track(self.selected_row..self.selected_row + 1);
+        let scroll_row = self.row_scroll().offset();
 
         let mut y = 0u16;
         if self.has_header {
@@ -45,18 +50,6 @@ impl View for CsvViewer {
 }
 
 impl CsvViewer {
-    /// First shown position so the selection is in view
-    fn scroll_offset(&self, visible_data_rows: usize) -> usize {
-        if self.selected_row < self.scroll_row {
-            self.selected_row
-        } else if self.selected_row >= self.scroll_row + visible_data_rows {
-            self.selected_row
-                .saturating_sub(visible_data_rows.saturating_sub(1))
-        } else {
-            self.scroll_row
-        }
-    }
-
     fn column_width(&self, col: usize) -> u16 {
         self.column_widths.get(col).copied().unwrap_or(10)
     }
@@ -77,13 +70,18 @@ impl CsvViewer {
                 (true, SortOrder::Descending) => " ▼",
                 _ => "",
             };
-            let text = format!("{}{}", value, indicator);
+            // The name gives way to the sort indicator in a narrow column, so
+            // the sorted column stays marked (#969)
+            let width = self.column_width(col_idx);
+            let name_width =
+                (width as usize).saturating_sub(crate::utils::display_width(indicator));
+            let text = format!("{}{}", truncate_to_width(value, name_width), indicator);
             let style = CellStyle {
                 fg: self.header_fg,
                 bg: self.header_bg,
                 bold: true,
             };
-            x = self.draw_cell(ctx, x, 0, &text, self.column_width(col_idx), style);
+            x = self.draw_cell(ctx, x, 0, &text, width, style);
             x = self.draw_separator(ctx, x, 0, self.header_bg);
         }
     }
@@ -111,7 +109,9 @@ impl CsvViewer {
             return;
         };
         let mut x = self.row_number_width();
-        for (col_idx, value) in row_data.iter().enumerate() {
+        // A ragged row's cells past the columns are left out, as search and
+        // the selection leave them (#969)
+        for (col_idx, value) in row_data.iter().enumerate().take(self.column_count()) {
             let is_selected = is_selected_row && col_idx == self.selected_col;
             let is_match = self.search_matches.contains(&(row_idx, col_idx));
             let (fg, bg) = if is_selected {
