@@ -232,19 +232,16 @@ jobs:
           cache: false
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - uses: taiki-e/install-action@671164c891d3e20f5b8ece04798d0154d1262d65 # cargo-llvm-cov
-      # PR: Quick coverage check without report (run tests for coverage)
-      - name: Coverage (PR)
-        if: github.event_name == 'pull_request'
-        run: cargo llvm-cov --all-features --tests --no-report --ignore-run-fail
-      # Main: Full coverage with lcov for badge
-      - name: Coverage (Main)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: cargo llvm-cov --all-features --tests --lcov --output-path lcov.info --ignore-run-fail
+      # Codecov's own format carries llvm-cov's region counts, so a line where
+      # only some regions ran (one side of an `if`, a short-circuited `&&`)
+      # shows as partial. lcov from a stable toolchain has line counts only.
+      # Pull requests upload too, so the patch status in codecov.yml is checked.
+      - name: Coverage
+        run: cargo llvm-cov --all-features --tests --codecov --output-path codecov.json --ignore-run-fail
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: lcov.info
+          files: codecov.json
           fail_ci_if_error: false
 
   msrv:
