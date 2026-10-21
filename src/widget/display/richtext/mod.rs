@@ -103,11 +103,11 @@ impl RichText {
         for span in &self.spans {
             let mut lines = span.text.split('\n');
             if let Some(first) = lines.next() {
-                current += unicode_width::UnicodeWidthStr::width(first);
+                current += types::drawn_width(first);
             }
             for line in lines {
                 widest = widest.max(current);
-                current = unicode_width::UnicodeWidthStr::width(line);
+                current = types::drawn_width(line);
             }
         }
         widest.max(current)

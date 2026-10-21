@@ -170,6 +170,17 @@ impl Span {
 
     /// Get text width
     pub fn width(&self) -> usize {
-        unicode_width::UnicodeWidthStr::width(self.text.as_str())
+        drawn_width(&self.text)
+    }
+}
+
+/// The columns `text` takes when RichText draws it: control characters take
+/// none there (#1198), so they count for nothing here either.
+pub(super) fn drawn_width(text: &str) -> usize {
+    if text.chars().any(char::is_control) {
+        let printable: String = text.chars().filter(|c| !c.is_control()).collect();
+        unicode_width::UnicodeWidthStr::width(printable.as_str())
+    } else {
+        unicode_width::UnicodeWidthStr::width(text)
     }
 }
