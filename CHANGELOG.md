@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.3](https://github.com/hawk90/revue/compare/v3.10.2...v3.10.3) (2026-10-21)
+
+
+### Bug Fixes
+
+* **deps:** update rustls-webpki, webpki-root-certs and webpki-roots for the emSign distrust advisories ([#1220](https://github.com/hawk90/revue/issues/1220)) ([43ac934](https://github.com/hawk90/revue/commit/43ac9348a84bc6d3bdcdfcd0b5a3a85777e524ac))
+
 ## [3.10.2](https://github.com/hawk90/revue/compare/v3.10.1...v3.10.2) (2026-10-19)
 
 
