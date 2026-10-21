@@ -422,7 +422,9 @@ proptest! {
     }
 
     /// The context menu's box: moved left and up to fit, from the area's
-    /// origin when it is larger, with a full frame and nothing outside it.
+    /// origin when it is wider, no taller than the area (the items scroll,
+    /// #973), with a full frame and nothing outside it; nothing in an area
+    /// with no row inside a frame.
     #[test]
     fn prop_context_menu_box(
         labels in prop::collection::vec(prop::sample::select(vec!["a", "Open", "설정", "A longer label", ""]), 1..8),
@@ -434,7 +436,11 @@ proptest! {
         m.show(at.0, at.1);
         let b = render(&m, w, h);
         let bw = labels.iter().map(|l| display_width(l)).max().unwrap() as u16 + 4;
-        let bh = labels.len() as u16 + 2;
+        let bh = (labels.len() as u16 + 2).min(h);
+        if bh < 3 {
+            prop_assert!(b.cells().iter().all(|c| c.symbol == ' '));
+            return Ok(());
+        }
         let x0 = at.0.min(w.saturating_sub(bw));
         let y0 = at.1.min(h.saturating_sub(bh));
         let sym = |x: u16, y: u16| b.get(x, y).unwrap().symbol;

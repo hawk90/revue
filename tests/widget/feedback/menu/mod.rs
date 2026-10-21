@@ -303,3 +303,42 @@ mod snapshots {
         pilot.snapshot("menubar_shortcuts");
     }
 }
+
+// ============================================================================
+// Scrolling (#973)
+// ============================================================================
+
+/// A dropdown taller than the area was cut, and Down moved the selection
+/// onto rows that were not drawn.
+#[test]
+fn test_menu_bar_dropdown_shows_the_selected_item() {
+    let mut bar = MenuBar::new()
+        .menu(Menu::new("F").items((0..10).map(|i| MenuItem::new(format!("i{i}"))).collect()));
+    bar.open_menu(0);
+    for _ in 0..8 {
+        bar.handle_key(&Key::Down);
+    }
+    let buffer = render(&bar, 10, 6);
+    assert!(
+        (2..5).any(|y| row(&buffer, y).contains("i8")),
+        "{:?}",
+        (0..6).map(|y| row(&buffer, y)).collect::<Vec<_>>()
+    );
+}
+
+/// The context menu moved up to fit, then was clipped: no bottom border and
+/// the selected item off screen.
+#[test]
+fn test_context_menu_shows_the_selected_item() {
+    let mut m = ContextMenu::new().items((0..10).map(|i| MenuItem::new(format!("i{i}"))).collect());
+    m.show(0, 0);
+    for _ in 0..8 {
+        m.handle_key(&Key::Down);
+    }
+    let buffer = render(&m, 10, 6);
+    assert!((0..6).any(|y| row(&buffer, y).contains("i8")));
+    assert!(
+        row(&buffer, 5).starts_with('└'),
+        "the bottom border is drawn"
+    );
+}

@@ -213,8 +213,8 @@ fn a_long_name_is_cut_before_the_swatch() {
 proptest! {
     /// The open dropdown, against a plain model: a top border, one row per
     /// theme while a row is left for the bottom border, the marker on the
-    /// selected row, each name cut at the right border. The marker is checked
-    /// only when the selected row fits: the list does not scroll (#973).
+    /// selected row, each name cut at the right border. One draw scrolls the
+    /// list from the top just far enough to show the selected row (#973).
     #[test]
     fn open_dropdown_matches_the_model(
         picks in proptest::collection::vec(0..KNOWN.len(), 0..8),
@@ -249,8 +249,10 @@ proptest! {
 
         let shown = ids.len().min(height as usize - 3);
         let selected = moves.min(ids.len() - 1);
-        for (i, id) in ids.iter().take(shown).enumerate() {
-            let row: Vec<char> = rows[2 + i].chars().collect();
+        let offset = if shown > 0 { selected.saturating_sub(shown - 1).min(ids.len() - shown) } else { 0 };
+        for (k, id) in ids.iter().skip(offset).take(shown).enumerate() {
+            let i = offset + k;
+            let row: Vec<char> = rows[2 + k].chars().collect();
             prop_assert_eq!(row[0], '│');
             prop_assert_eq!(row[box_width - 1], '│');
             prop_assert_eq!(row[1], if i == selected { '▶' } else { ' ' });
@@ -265,4 +267,28 @@ proptest! {
             prop_assert_eq!(row.trim(), "");
         }
     }
+}
+
+/// The open list drew from the first theme, so once Down passed the rows
+/// that fit, no row showed the marker (#973).
+#[test]
+#[serial]
+fn the_selected_theme_stays_in_view() {
+    use revue::event::{Key, KeyEvent};
+    use revue::widget::traits::Interactive;
+    let mut p = ThemePicker::new().themes([
+        "dark",
+        "light",
+        "dracula",
+        "nord",
+        "monokai",
+        "solarized_dark",
+    ]);
+    p.open();
+    for _ in 0..5 {
+        p.handle_key(&KeyEvent::new(Key::Down));
+    }
+    // 5 rows: the header, the top border, two themes, the bottom border
+    let shown = rows(&render(&p, 30, 5), 30, 5).concat();
+    assert!(shown.contains('▶'), "only Dark and Light are drawn");
 }

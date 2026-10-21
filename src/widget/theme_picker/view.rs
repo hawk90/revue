@@ -134,16 +134,24 @@ impl ThemePicker {
             y += 1;
         }
 
-        // Theme list
-        for (i, theme_id) in self.themes.iter().enumerate() {
-            if y >= area.height - 1 {
-                break;
-            }
-            if let Some(theme) = get_theme(theme_id) {
-                let selected = i == self.selected_index;
-                self.draw_item(ctx, y, width, current_theme, &theme, selected);
-                y += 1;
-            }
+        // Theme list: the rows between the borders, scrolled to keep the
+        // selected theme in view (#973)
+        let known: Vec<(usize, Theme)> = self
+            .themes
+            .iter()
+            .enumerate()
+            .filter_map(|(i, id)| get_theme(id).map(|theme| (i, theme)))
+            .collect();
+        let room = usize::from(area.height.saturating_sub(y + 1));
+        self.scroll.set_content(known.len());
+        self.scroll.set_viewport(room.min(known.len()));
+        if let Some(row) = known.iter().position(|(i, _)| *i == self.selected_index) {
+            self.scroll.track(row..row + 1);
+        }
+        for (i, theme) in &known[self.scroll.visible()] {
+            let selected = *i == self.selected_index;
+            self.draw_item(ctx, y, width, current_theme, theme, selected);
+            y += 1;
         }
 
         // Border bottom

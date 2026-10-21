@@ -5,6 +5,7 @@ mod view;
 
 use super::types::MenuItem;
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::theme::DARK_BG;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -18,6 +19,8 @@ pub struct ContextMenu {
     y: u16,
     /// Selected item
     selected: usize,
+    /// Where the item rows are scrolled to
+    scroll: ScrollState,
     /// Visible
     visible: bool,
     /// Colors
@@ -43,6 +46,7 @@ impl ContextMenu {
             x: 0,
             y: 0,
             selected: 0,
+            scroll: ScrollState::new(),
             visible: false,
             bg: DARK_BG,
             fg: None,
