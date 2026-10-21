@@ -120,30 +120,50 @@ impl View for SelectionList {
             content = content.child(Text::new(count_text).fg(PLACEHOLDER_FG));
         }
 
-        // Calculate visible range
-        let max_visible = if self.max_visible > 0 {
-            self.max_visible
+        // The item rows (an item with a description takes two), scrolled to
+        // keep the highlighted item in view (#973). The window is the rows
+        // the area has left, or `max_visible` items' worth; when the items
+        // overflow it, a row each is kept for the "more" markers.
+        let mut rows = Vec::new();
+        let mut highlight = None;
+        let mut tallest = 1;
+        for i in 0..self.items.len() {
+            let item_rows = self.item_rows(i, ctx);
+            tallest = tallest.max(item_rows.len());
+            if i == self.highlighted {
+                highlight = Some(rows.len()..rows.len() + item_rows.len());
+            }
+            rows.extend(item_rows);
+        }
+        let fixed = usize::from(self.title.is_some())
+            + usize::from(self.show_count)
+            + usize::from(self.focused);
+        let room = (ctx.area.height as usize).saturating_sub(fixed);
+        let cap = if self.max_visible > 0 {
+            self.max_visible.saturating_mul(tallest)
         } else {
-            self.items.len()
+            usize::MAX
         };
+        let window = if rows.len() <= room.min(cap) {
+            rows.len()
+        } else {
+            cap.min(room.saturating_sub(2)).max(1)
+        };
+        self.scroll.set_content(rows.len());
+        self.scroll.set_viewport(window);
+        if let Some(highlight) = highlight {
+            self.scroll.track(highlight);
+        }
 
-        let start = self.scroll_offset;
-        let end = (start + max_visible).min(self.items.len());
-
-        // Show scroll indicator at top
-        if start > 0 {
+        if self.scroll.has_above() {
             content = content.child(Text::new("  ↑ more...").fg(DISABLED_FG));
         }
-
-        // Render items
-        for i in start..end {
-            for row in self.item_rows(i, ctx) {
-                content = content.child(row);
-            }
+        let shown = self.scroll.visible();
+        let (above, below) = (shown.start, rows.len() - shown.end);
+        for row in rows.into_iter().skip(above).take(shown.len()) {
+            content = content.child(row);
         }
-
-        // Show scroll indicator at bottom
-        if end < self.items.len() {
+        if below > 0 {
             content = content.child(Text::new("  ↓ more...").fg(DISABLED_FG));
         }
 
