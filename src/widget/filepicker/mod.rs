@@ -34,6 +34,7 @@ pub use types::{FileFilter, PickerEntry, PickerMode, PickerResult};
 pub use validation::FilePickerError;
 
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -48,9 +49,10 @@ pub struct FilePicker {
     entries: Vec<PickerEntry>,
     /// Highlighted index
     highlighted: usize,
-    /// Scroll offset
-    scroll_offset: usize,
-    /// Max visible items
+    /// Where the entry rows are scrolled to
+    scroll: ScrollState,
+    /// Max visible items: at most this many entry rows, and the area's
+    /// rows in any case
     max_visible: usize,
     /// Picker mode
     mode: PickerMode,
@@ -99,7 +101,7 @@ impl FilePicker {
             current_dir: current_dir.clone(),
             entries: Vec::new(),
             highlighted: 0,
-            scroll_offset: 0,
+            scroll: ScrollState::new(),
             max_visible: 15,
             mode: PickerMode::Open,
             filter: FileFilter::All,

@@ -33,12 +33,14 @@ impl FilePicker {
     pub fn toggle_selection(&mut self) {
         if let Some(entry) = self.entries.get_mut(self.highlighted) {
             if !entry.is_dir || self.mode == PickerMode::Directory {
-                entry.selected = !entry.selected;
-
-                if entry.selected {
-                    self.selected.push(entry.path.clone());
-                } else {
+                // Chosen or not by the chosen paths, so a path is never
+                // added twice (#894)
+                if self.selected.contains(&entry.path) {
                     self.selected.retain(|p| p != &entry.path);
+                    entry.selected = false;
+                } else {
+                    self.selected.push(entry.path.clone());
+                    entry.selected = true;
                 }
             }
         }

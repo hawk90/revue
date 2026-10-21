@@ -8,6 +8,12 @@ use std::path::Path;
 impl FilePicker {
     /// Refresh directory listing
     pub fn refresh(&mut self) {
+        // The highlighted entry, to find again in a listing of the same
+        // directory (#975)
+        let was = self
+            .entries
+            .get(self.highlighted)
+            .map(|entry| entry.path.clone());
         self.entries.clear();
 
         if let Ok(entries) = fs::read_dir(&self.current_dir) {
@@ -26,9 +32,27 @@ impl FilePicker {
 
         self.sort_entries();
 
-        // Reset selection
-        self.highlighted = 0;
-        self.scroll_offset = 0;
+        // The chosen paths stay chosen (#894)
+        for entry in &mut self.entries {
+            entry.selected = self.selected.contains(&entry.path);
+        }
+
+        // In the same directory the highlight stays on its entry, or the one
+        // now in its place; a new directory starts at the top
+        let same_dir = was
+            .as_deref()
+            .is_some_and(|path| path.parent() == Some(self.current_dir.as_path()));
+        self.highlighted = match was.filter(|_| same_dir) {
+            Some(path) => self
+                .entries
+                .iter()
+                .position(|entry| entry.path == path)
+                .unwrap_or(self.highlighted.min(self.entries.len().saturating_sub(1))),
+            None => {
+                self.scroll.scroll_to_top();
+                0
+            }
+        };
     }
 
     /// Whether `path`, read from the current directory, belongs in the
