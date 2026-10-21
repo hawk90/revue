@@ -137,9 +137,10 @@ fn test_grid_placement_span_cols_no_start() {
         row_end: 2,
     };
     let result = placement.span_cols(3);
-    // Should not modify if col_start is 0
+    // Auto placed: the span is kept as the end, which auto placement reads
+    // as the span, so a start set later keeps it (#1011)
     assert_eq!(result.col_start, 0);
-    assert_eq!(result.col_end, 0);
+    assert_eq!(result.col_end, 3);
 }
 
 #[test]
@@ -160,9 +161,9 @@ fn test_grid_placement_span_rows_no_start() {
         row_end: 0,
     };
     let result = placement.span_rows(3);
-    // Should not modify if row_start is 0
+    // Auto placed: the span is kept as the end (#1011)
     assert_eq!(result.row_start, 0);
-    assert_eq!(result.row_end, 0);
+    assert_eq!(result.row_end, 3);
 }
 
 #[test]
@@ -242,8 +243,9 @@ fn test_grid_item_col() {
 fn test_grid_item_col_preserves_end() {
     let item = GridItem::new(Text::new("Test")).at(1, 1).col_span(3).col(5);
     assert_eq!(item.placement.col_start, 5);
-    // col_end should be preserved when already set
-    assert_eq!(item.placement.col_end, 4);
+    // The span moves with the start (it used to leave the end at 4,
+    // before the start)
+    assert_eq!(item.placement.col_end, 8);
 }
 
 #[test]
@@ -259,8 +261,8 @@ fn test_grid_item_row() {
 fn test_grid_item_row_preserves_end() {
     let item = GridItem::new(Text::new("Test")).at(1, 1).row_span(2).row(5);
     assert_eq!(item.placement.row_start, 5);
-    // row_end should be preserved when already set
-    assert_eq!(item.placement.row_end, 3);
+    // The span moves with the start
+    assert_eq!(item.placement.row_end, 7);
 }
 
 #[test]

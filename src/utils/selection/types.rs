@@ -15,6 +15,33 @@ pub struct Selection {
     pub(crate) offset: Cell<usize>,
     /// Number of visible items
     pub(crate) visible: Cell<usize>,
+    /// An index set past the end (a builder before the items): kept until
+    /// [`set_len`](Selection::set_len) gives the items, so the same calls
+    /// in either order select the same item (#1011)
+    requested: Option<usize>,
+}
+
+impl Selection {
+    /// Create a new selection with given item count
+    pub fn new(len: usize) -> Self {
+        Self {
+            index: 0,
+            len,
+            offset: Cell::new(0),
+            visible: Cell::new(usize::MAX),
+            requested: None,
+        }
+    }
+
+    /// Remember (or forget) an index past the end
+    pub(super) fn set_request(&mut self, index: Option<usize>) {
+        self.requested = index;
+    }
+
+    /// The index remembered past the end, if any
+    pub(super) fn request(&self) -> Option<usize> {
+        self.requested
+    }
 }
 
 use std::collections::HashMap;

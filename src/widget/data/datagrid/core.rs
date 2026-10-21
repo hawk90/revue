@@ -223,15 +223,21 @@ impl DataGrid {
         &mut self.options
     }
 
-    /// Add a column
+    /// Add a column. Values `data` gave before there was a column at its
+    /// position become this column's (#1011).
     pub fn column(mut self, col: GridColumn) -> Self {
+        let position = self.columns.len();
+        claim_position(&mut self.rows, position, &col.key);
         self.columns.push(col);
+        self.recompute_cache();
         self
     }
 
     /// Add columns
     pub fn columns(mut self, cols: Vec<GridColumn>) -> Self {
-        self.columns.extend(cols);
+        for col in cols {
+            self = self.column(col);
+        }
         self
     }
 
@@ -254,9 +260,12 @@ impl DataGrid {
         for row_data in data {
             let mut row = GridRow::new();
             for (i, value) in row_data.into_iter().enumerate() {
-                if let Some(col) = self.columns.get(i) {
-                    row.data.push((col.key.clone(), value));
-                }
+                // A value past the columns waits for its column (#1011)
+                let key = match self.columns.get(i) {
+                    Some(col) => col.key.clone(),
+                    None => unclaimed_key(i),
+                };
+                row.data.push((key, value));
             }
             self.rows.push(row);
         }
@@ -339,3 +348,23 @@ impl Default for DataGrid {
 
 impl_styled_view!(DataGrid);
 impl_props_builders!(DataGrid);
+
+/// The key `data` gives a value at `position` before there is a column
+/// there. It starts with NUL, which no column key a caller writes does.
+fn unclaimed_key(position: usize) -> String {
+    format!("\u{0}{position}")
+}
+
+/// Give the values waiting at `position` (in `rows` and their children) to
+/// the column `key` now there
+fn claim_position(rows: &mut [GridRow], position: usize, key: &str) {
+    let unclaimed = unclaimed_key(position);
+    for row in rows {
+        for (k, _) in &mut row.data {
+            if *k == unclaimed {
+                *k = key.to_string();
+            }
+        }
+        claim_position(&mut row.children, position, key);
+    }
+}

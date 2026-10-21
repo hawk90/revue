@@ -9,18 +9,9 @@ impl Default for Selection {
 }
 
 impl Selection {
-    /// Create a new selection with given item count
-    pub fn new(len: usize) -> Self {
-        Self {
-            index: 0,
-            len,
-            offset: std::cell::Cell::new(0),
-            visible: std::cell::Cell::new(usize::MAX),
-        }
-    }
-
     /// Move to next item (wraps to 0 at end)
     pub fn next(&mut self) {
+        self.set_request(None);
         if self.len > 0 {
             self.index = (self.index + 1) % self.len;
             self.ensure_visible();
@@ -29,6 +20,7 @@ impl Selection {
 
     /// Move to previous item (wraps to end at 0)
     pub fn prev(&mut self) {
+        self.set_request(None);
         if self.len > 0 {
             self.index = if self.index == 0 {
                 self.len - 1
@@ -41,6 +33,7 @@ impl Selection {
 
     /// Move down without wrapping
     pub fn down(&mut self) {
+        self.set_request(None);
         if self.len > 0 && self.index < self.len - 1 {
             self.index += 1;
             self.ensure_visible();
@@ -49,6 +42,7 @@ impl Selection {
 
     /// Move up without wrapping
     pub fn up(&mut self) {
+        self.set_request(None);
         if self.index > 0 {
             self.index -= 1;
             self.ensure_visible();
@@ -57,21 +51,26 @@ impl Selection {
 
     /// Jump to first item
     pub fn first(&mut self) {
+        self.set_request(None);
         self.index = 0;
         self.offset.set(0);
     }
 
     /// Jump to last item
     pub fn last(&mut self) {
+        self.set_request(None);
         if self.len > 0 {
             self.index = self.len - 1;
             self.ensure_visible();
         }
     }
 
-    /// Set index with bounds check
+    /// Set index with bounds check. An index past the end is clamped and
+    /// remembered: [`set_len`](Self::set_len) selects it once the items
+    /// reach it, so a builder may come before or after the items (#1011).
     pub fn set(&mut self, index: usize) {
         self.index = index.min(self.len.saturating_sub(1));
+        self.set_request((index >= self.len).then_some(index));
         self.ensure_visible();
     }
 
@@ -83,6 +82,13 @@ impl Selection {
     /// Update length (adjusts index if needed)
     pub fn set_len(&mut self, len: usize) {
         self.len = len;
+        // An index asked for before the items were there
+        if let Some(requested) = self.request() {
+            if requested < len {
+                self.index = requested;
+                self.set_request(None);
+            }
+        }
         if self.index >= len && len > 0 {
             self.index = len - 1;
         }
@@ -154,6 +160,7 @@ impl Selection {
 
     /// Page down (move by visible count)
     pub fn page_down(&mut self) {
+        self.set_request(None);
         let visible = self.visible.get();
         if visible > 0 && self.len > 0 {
             self.index = (self.index + visible).min(self.len - 1);
@@ -163,6 +170,7 @@ impl Selection {
 
     /// Page up (move by visible count)
     pub fn page_up(&mut self) {
+        self.set_request(None);
         let visible = self.visible.get();
         if visible > 0 {
             self.index = self.index.saturating_sub(visible);

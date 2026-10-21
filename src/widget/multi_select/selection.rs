@@ -82,6 +82,7 @@ impl MultiSelect {
 
     /// Select an option by index
     pub fn select_option(&mut self, index: usize) {
+        self.requested = None;
         if index >= self.options.len() {
             return;
         }
@@ -95,12 +96,14 @@ impl MultiSelect {
 
     /// Deselect an option by index
     pub fn deselect_option(&mut self, index: usize) {
+        self.requested = None;
         self.selected.retain(|&i| i != index);
         self.clamp_tag_cursor();
     }
 
     /// Toggle selection of an option
     pub fn toggle_option(&mut self, index: usize) {
+        self.requested = None;
         if self.is_selected(index) {
             self.deselect_option(index);
         } else {
@@ -110,12 +113,14 @@ impl MultiSelect {
 
     /// Clear all selections
     pub fn clear_selection(&mut self) {
+        self.requested = None;
         self.selected.clear();
         self.clamp_tag_cursor();
     }
 
     /// Select all options
     pub fn select_all(&mut self) {
+        self.requested = None;
         self.selected = (0..self.options.len())
             .filter(|&i| !self.options[i].disabled)
             .collect();
@@ -127,6 +132,7 @@ impl MultiSelect {
 
     /// Remove the last selected tag
     pub fn remove_last_tag(&mut self) {
+        self.requested = None;
         self.selected.pop();
         self.clamp_tag_cursor();
     }
@@ -142,6 +148,7 @@ impl MultiSelect {
 
     /// Remove tag at cursor position
     pub fn remove_tag_at_cursor(&mut self) {
+        self.requested = None;
         if let Some(cursor) = self.tag_cursor {
             if cursor < self.selected.len() {
                 self.selected.remove(cursor);

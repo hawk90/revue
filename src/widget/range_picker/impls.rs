@@ -11,23 +11,38 @@ impl RangePicker {
     // Builder Methods
     // =========================================================================
 
-    /// Set start date (clamped to `min_date`/`max_date`)
+    /// Set start date (clamped to `min_date`/`max_date`). With an end date
+    /// before it, the two are taken in order, whichever builder came first.
     pub fn start_date(mut self, date: Date) -> Self {
-        self.start.date = date;
-        self.start_cursor_day = date.day;
-        self.active_preset = Some(PresetRange::Custom);
-        self.enforce_limits();
+        self.ask(true, date);
+        self.apply_asked();
         self
     }
 
-    /// Set end date (clamped to `min_date`/`max_date`)
+    /// Set end date (clamped to `min_date`/`max_date`). With a start date
+    /// after it, the two are taken in order, whichever builder came first.
     pub fn end_date(mut self, date: Date) -> Self {
-        self.end.date = date;
-        self.end_cursor_day = date.day;
+        self.ask(false, date);
+        self.apply_asked();
+        self
+    }
+
+    /// Make the range from the dates the builders were given (#1011): both
+    /// given, the earlier is the start whichever came first; one given, it
+    /// stays and the other side moves up to it when it is past it
+    fn apply_asked(&mut self) {
+        let (start, end) = match self.asked() {
+            (Some(a), Some(b)) => (a.min(b), a.max(b)),
+            (Some(start), None) => (start, self.end.date.max(start)),
+            (None, Some(end)) => (self.start.date.min(end), end),
+            (None, None) => (self.start.date, self.end.date),
+        };
+        self.start.date = start;
+        self.end.date = end;
+        self.start_cursor_day = start.day;
+        self.end_cursor_day = end.day;
         self.active_preset = Some(PresetRange::Custom);
         self.enforce_limits();
-        self.swap_if_needed();
-        self
     }
 
     /// Set start time

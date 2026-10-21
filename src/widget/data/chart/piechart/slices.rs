@@ -76,7 +76,7 @@ impl PieChart {
                     // Check if point is within the slice
                     let distance = (dx * dx + dy * dy).sqrt();
                     let inner_radius = if self.style == PieStyle::Donut {
-                        radius as f64 * self.donut_ratio
+                        radius as f64 * self.hole_ratio()
                     } else {
                         0.0
                     };

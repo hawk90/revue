@@ -20,6 +20,9 @@ pub struct Stepper {
     steps: Vec<Step>,
     /// Current step index
     current: usize,
+    /// A current step asked for before there were that many steps: applied
+    /// when they come, so the builders work in either order (#1011)
+    requested: Option<usize>,
     /// Orientation
     orientation: StepperOrientation,
     /// Style
@@ -49,6 +52,7 @@ impl Stepper {
         Self {
             steps: Vec::new(),
             current: 0,
+            requested: None,
             orientation: StepperOrientation::Horizontal,
             style: StepperStyle::Connected,
             show_descriptions: true,
@@ -65,26 +69,39 @@ impl Stepper {
     /// Add a step
     pub fn step(mut self, step: Step) -> Self {
         self.steps.push(step);
+        self.apply_request();
         self
     }
 
     /// Add step from string
     pub fn add_step(mut self, title: impl Into<String>) -> Self {
         self.steps.push(Step::new(title));
+        self.apply_request();
         self
     }
 
     /// Set all steps
     pub fn steps(mut self, steps: Vec<Step>) -> Self {
         self.steps = steps;
+        self.apply_request();
         self
     }
 
     /// Set current step
     pub fn current(mut self, index: usize) -> Self {
         self.current = index.min(self.steps.len().saturating_sub(1));
+        self.requested = (index >= self.steps.len()).then_some(index);
         self.update_statuses();
         self
+    }
+
+    /// Apply a current step asked for before its step was there
+    fn apply_request(&mut self) {
+        if let Some(index) = self.requested.filter(|&i| i < self.steps.len()) {
+            self.current = index;
+            self.requested = None;
+            self.update_statuses();
+        }
     }
 
     /// Set orientation

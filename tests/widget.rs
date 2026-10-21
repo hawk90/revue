@@ -2,6 +2,8 @@
 
 #[path = "widget/breadcrumb/mod.rs"]
 mod breadcrumb;
+#[path = "widget/builder_order.rs"]
+mod builder_order;
 #[path = "widget/callout/mod.rs"]
 mod callout;
 #[path = "widget/canvas/mod.rs"]

@@ -582,3 +582,38 @@ fn multi_select_right_after_select_all_does_not_panic() {
     s.handle_key(&Key::Right);
     assert!(s.get_selected_indices().is_empty());
 }
+
+// ── #1094: the builders keep the selection unique and bounded ───────────
+
+#[test]
+fn multi_select_builders_keep_the_selection_unique_and_bounded() {
+    let s = MultiSelect::new()
+        .options(vec!["A", "B"])
+        .selected_indices(vec![0, 0]);
+    assert_eq!(s.get_selected_indices(), &[0]);
+    let s = MultiSelect::new()
+        .options(vec!["A", "B"])
+        .selected_values(vec!["A", "A"]);
+    assert_eq!(s.get_selected_indices(), &[0]);
+    let s = MultiSelect::new()
+        .options(vec!["A", "B", "C"])
+        .max_selections(1)
+        .selected_indices(vec![0, 1, 2]);
+    assert_eq!(s.get_selected_indices(), &[0]);
+    let s = MultiSelect::new()
+        .selected_indices(vec![0, 1, 2])
+        .options(vec!["A", "B", "C"])
+        .max_selections(2);
+    assert_eq!(s.get_selected_indices(), &[0, 1]);
+}
+
+#[test]
+fn multi_select_select_all_keeps_the_tag_cursor_on_a_tag() {
+    use revue::event::Key;
+    let mut s = MultiSelect::new()
+        .options_detailed(vec![MultiSelectOption::new("A", "a").disabled(true)])
+        .selected_indices(vec![0]);
+    s.handle_key(&Key::Left);
+    s.handle_key(&Key::Char('a'));
+    assert_eq!(s.get_tag_cursor(), None);
+}

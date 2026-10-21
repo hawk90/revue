@@ -192,12 +192,21 @@ impl HeatMap {
     }
 
     /// Show cell values
+    ///
+    /// Shown values need cells at least 4 wide; the cells are drawn that
+    /// wide whatever order this and `cell_width` come in (#1011).
     pub fn show_values(mut self, show: bool) -> Self {
         self.show_values = show;
-        if show && self.cell_width < 4 {
-            self.cell_width = 4;
-        }
         self
+    }
+
+    /// The width cells are drawn: at least 4 while values are shown
+    pub(crate) fn drawn_cell_width(&self) -> usize {
+        if self.show_values {
+            self.cell_width.max(4)
+        } else {
+            self.cell_width
+        }
     }
 
     /// Set value decimal places

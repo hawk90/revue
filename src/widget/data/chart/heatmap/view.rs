@@ -27,8 +27,10 @@ impl HeatMap {
         }
 
         for label in labels.iter().take(self.cols) {
-            let truncated = truncate_to_width(label, self.cell_width);
-            let pad = self.cell_width.saturating_sub(display_width(truncated));
+            let truncated = truncate_to_width(label, self.drawn_cell_width());
+            let pad = self
+                .drawn_cell_width()
+                .saturating_sub(display_width(truncated));
             let centered = format!(
                 "{}{}{}",
                 " ".repeat(pad / 2),

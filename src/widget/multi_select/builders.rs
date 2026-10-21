@@ -2,7 +2,7 @@
 
 use crate::style::Color;
 
-use super::{MultiSelect, MultiSelectOption};
+use super::{MultiSelect, MultiSelectOption, Requested};
 
 impl MultiSelect {
     /// Set options from a vector of strings
@@ -12,6 +12,7 @@ impl MultiSelect {
             .map(|o| MultiSelectOption::simple(o))
             .collect();
         self.reset_filter();
+        self.apply_request();
         self
     }
 
@@ -19,6 +20,7 @@ impl MultiSelect {
     pub fn options_detailed(mut self, options: Vec<MultiSelectOption>) -> Self {
         self.options = options;
         self.reset_filter();
+        self.apply_request();
         self
     }
 
@@ -26,6 +28,7 @@ impl MultiSelect {
     pub fn option(mut self, label: impl Into<String>) -> Self {
         self.options.push(MultiSelectOption::simple(label));
         self.reset_filter();
+        self.apply_request();
         self
     }
 
@@ -33,24 +36,29 @@ impl MultiSelect {
     pub fn option_detailed(mut self, option: MultiSelectOption) -> Self {
         self.options.push(option);
         self.reset_filter();
+        self.apply_request();
         self
     }
 
     /// Set pre-selected indices
+    ///
+    /// Indices without an option yet are kept until the options come;
+    /// duplicates count once, and `max_selections` caps them (#1094).
     pub fn selected_indices(mut self, indices: Vec<usize>) -> Self {
-        self.selected = indices
-            .into_iter()
-            .filter(|&i| i < self.options.len())
-            .collect();
+        self.requested = Some(Requested::Indices(indices));
+        self.apply_request();
         self
     }
 
     /// Set pre-selected values
+    ///
+    /// Values without an option yet are kept until the options come;
+    /// duplicates count once, and `max_selections` caps them (#1094).
     pub fn selected_values(mut self, values: Vec<impl AsRef<str>>) -> Self {
-        self.selected = values
-            .iter()
-            .filter_map(|v| self.options.iter().position(|opt| opt.value == v.as_ref()))
-            .collect();
+        self.requested = Some(Requested::Values(
+            values.iter().map(|v| v.as_ref().to_string()).collect(),
+        ));
+        self.apply_request();
         self
     }
 
@@ -63,7 +71,37 @@ impl MultiSelect {
     /// Set maximum number of selections
     pub fn max_selections(mut self, max: usize) -> Self {
         self.max_selections = Some(max);
+        self.apply_request();
+        self.selected.truncate(max);
         self
+    }
+
+    /// Select what a builder asked for among the options there are: each
+    /// option once, in the order asked, up to the maximum
+    fn apply_request(&mut self) {
+        let Some(requested) = &self.requested else {
+            return;
+        };
+        let positions: Vec<usize> = match requested {
+            Requested::Indices(indices) => indices
+                .iter()
+                .copied()
+                .filter(|&i| i < self.options.len())
+                .collect(),
+            Requested::Values(values) => values
+                .iter()
+                .filter_map(|v| self.options.iter().position(|opt| opt.value == *v))
+                .collect(),
+        };
+        self.selected.clear();
+        for i in positions {
+            if !self.selected.contains(&i) {
+                self.selected.push(i);
+            }
+        }
+        if let Some(max) = self.max_selections {
+            self.selected.truncate(max);
+        }
     }
 
     /// Set widget width

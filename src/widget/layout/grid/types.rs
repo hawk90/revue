@@ -80,19 +80,31 @@ impl GridPlacement {
     }
 
     /// Span multiple columns
+    ///
+    /// Before a start column is set (0, auto) the span is kept as the end,
+    /// which auto placement reads as the span, so a later start keeps it.
     pub fn span_cols(mut self, span: u16) -> Self {
-        if self.col_start > 0 {
-            self.col_end = self.col_start + span;
-        }
+        self.col_end = self.col_start.saturating_add(span);
         self
     }
 
     /// Span multiple rows
+    ///
+    /// Before a start row is set (0, auto) the span is kept as the end, as
+    /// for [`span_cols`](Self::span_cols).
     pub fn span_rows(mut self, span: u16) -> Self {
-        if self.row_start > 0 {
-            self.row_end = self.row_start + span;
-        }
+        self.row_end = self.row_start.saturating_add(span);
         self
+    }
+
+    /// The columns spanned: at least one
+    fn col_count(&self) -> u16 {
+        self.col_end.saturating_sub(self.col_start).max(1)
+    }
+
+    /// The rows spanned: at least one
+    fn row_count(&self) -> u16 {
+        self.row_end.saturating_sub(self.row_start).max(1)
     }
 }
 
@@ -139,19 +151,18 @@ impl GridItem {
 
     /// Set column
     pub fn col(mut self, col: u16) -> Self {
+        // The span stays, set before or after (#1011)
+        let span = self.placement.col_count();
         self.placement.col_start = col;
-        if self.placement.col_end == 0 {
-            self.placement.col_end = col + 1;
-        }
+        self.placement.col_end = col.saturating_add(span);
         self
     }
 
     /// Set row
     pub fn row(mut self, row: u16) -> Self {
+        let span = self.placement.row_count();
         self.placement.row_start = row;
-        if self.placement.row_end == 0 {
-            self.placement.row_end = row + 1;
-        }
+        self.placement.row_end = row.saturating_add(span);
         self
     }
 }
