@@ -327,3 +327,20 @@ fn the_stats_bar_is_light_gray_and_counts_the_processes() {
         );
     }
 }
+
+/// `render` worked the first row out from the selection each frame and
+/// dropped it, so moving up inside the page scrolled the view (#973).
+#[test]
+fn moving_up_inside_the_page_keeps_the_page() {
+    let mut monitor = monitor_with(numbered(10)); // PIDs 100..109
+    monitor.page_down(7);
+    // 5 rows fit in 7: PIDs 103..107, 107 highlighted at the bottom
+    assert_eq!(
+        pids_on_screen(&draw(&monitor, 60, 7)),
+        [103, 104, 105, 106, 107]
+    );
+    monitor.select_prev();
+    let buffer = draw(&monitor, 60, 7);
+    assert_eq!(pids_on_screen(&buffer), [103, 104, 105, 106, 107]);
+    assert_eq!(highlighted_rows(&monitor, &buffer), [5]);
+}

@@ -15,6 +15,7 @@ mod types;
 
 pub use types::{ProcColors, ProcessInfo, ProcessSort, ProcessView};
 
+use crate::utils::{KeyedSelection, ScrollState};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -45,10 +46,11 @@ pub struct ProcessMonitor {
     sort_asc: bool,
     /// Filter string
     filter: String,
-    /// Selected row
-    selected: usize,
-    /// Scroll offset
-    scroll: usize,
+    /// The selected process, by PID: it stays on its process when a refresh
+    /// re-sorts the list (#975)
+    selected: KeyedSelection<u32>,
+    /// Where the rows are scrolled to
+    scroll: ScrollState,
     /// View mode
     view: ProcessView,
     /// User ID of this process's owner, for the `User` view
@@ -82,8 +84,8 @@ impl ProcessMonitor {
             sort: ProcessSort::default(),
             sort_asc: false,
             filter: String::new(),
-            selected: 0,
-            scroll: 0,
+            selected: KeyedSelection::new(),
+            scroll: ScrollState::new(),
             view: ProcessView::default(),
             current_user: None,
             colors: ProcColors::default(),

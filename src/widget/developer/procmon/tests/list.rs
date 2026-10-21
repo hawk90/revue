@@ -260,3 +260,28 @@ fn the_user_view_keeps_everything_when_the_user_is_unknown() {
     monitor.set_process_list(list);
     assert_eq!(monitor.process_count(), 2);
 }
+
+/// Every refresh re-sorted the list and kept the selection's position, so a
+/// different process slid under it (#975).
+#[test]
+fn the_selection_stays_on_its_process_when_a_refresh_reorders_the_list() {
+    let mut monitor = bare(); // sorted by CPU, descending
+    monitor.set_process_list(vec![
+        process(1, "build", 90.0, 0, 0.0, "Run", "", "0"),
+        process(2, "editor", 50.0, 0, 0.0, "Run", "", "0"),
+        process(3, "shell", 10.0, 0, 0.0, "Run", "", "0"),
+    ]);
+    monitor.select_next();
+    assert_eq!(monitor.selected_process().unwrap().name, "editor");
+    // A second later the shell is busiest and the editor last: neither the
+    // first row nor the editor's old row holds it
+    monitor.set_process_list(vec![
+        process(1, "build", 80.0, 0, 0.0, "Run", "", "0"),
+        process(2, "editor", 70.0, 0, 0.0, "Run", "", "0"),
+        process(3, "shell", 95.0, 0, 0.0, "Run", "", "0"),
+    ]);
+    assert_eq!(monitor.selected_process().unwrap().name, "editor");
+    // When it exits, the process now in its place is selected
+    monitor.set_process_list(vec![process(1, "build", 5.0, 0, 0.0, "Run", "", "0")]);
+    assert_eq!(monitor.selected_process().unwrap().name, "build");
+}

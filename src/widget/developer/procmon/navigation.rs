@@ -5,34 +5,34 @@ use super::{ProcessInfo, ProcessMonitor};
 impl ProcessMonitor {
     /// Select next process
     pub fn select_next(&mut self) {
-        if self.selected < self.processes.len().saturating_sub(1) {
-            self.selected += 1;
-        }
+        self.move_selection(1);
     }
 
     /// Select previous process
     pub fn select_prev(&mut self) {
-        if self.selected > 0 {
-            self.selected -= 1;
-        }
+        self.move_selection(-1);
     }
 
     /// Page down
     pub fn page_down(&mut self, page_size: usize) {
-        self.selected = self
-            .selected
-            .saturating_add(page_size)
-            .min(self.processes.len().saturating_sub(1));
+        self.move_selection(page_size.min(isize::MAX as usize) as isize);
     }
 
     /// Page up
     pub fn page_up(&mut self, page_size: usize) {
-        self.selected = self.selected.saturating_sub(page_size);
+        self.move_selection(-(page_size.min(isize::MAX as usize) as isize));
+    }
+
+    /// Move the selection by `delta` rows, stopping at either end
+    fn move_selection(&mut self, delta: isize) {
+        let processes = &self.processes;
+        self.selected
+            .move_by(delta, processes.len(), |i| processes[i].pid);
     }
 
     /// Get selected process
     pub fn selected_process(&self) -> Option<&ProcessInfo> {
-        self.processes.get(self.selected)
+        self.processes.get(self.selected.index()?)
     }
 
     /// Get process count

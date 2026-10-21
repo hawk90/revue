@@ -46,18 +46,6 @@ impl ProcessMonitor {
     fn format_bytes(bytes: u64) -> String {
         format_size_compact(bytes)
     }
-
-    /// The first process to draw when `visible_rows` fit: the stored scroll,
-    /// moved just enough to keep the selection visible
-    fn first_visible(&self, visible_rows: usize) -> usize {
-        if self.selected < self.scroll {
-            self.selected
-        } else if self.selected >= self.scroll + visible_rows {
-            self.selected - visible_rows + 1
-        } else {
-            self.scroll
-        }
-    }
 }
 
 impl View for ProcessMonitor {
@@ -81,8 +69,13 @@ impl View for ProcessMonitor {
         let list_start = 2u16;
         let visible_rows = (area.height - list_start) as usize;
 
-        // Adjust scroll to keep selection visible
-        let scroll = self.first_visible(visible_rows);
+        // The rows in view, following the selection (#973)
+        self.scroll.set_content(self.processes.len());
+        self.scroll.set_viewport(visible_rows);
+        if let Some(selected) = self.selected.index() {
+            self.scroll.track(selected..selected + 1);
+        }
+        let scroll = self.scroll.offset();
 
         for (i, proc) in self
             .processes
@@ -92,7 +85,7 @@ impl View for ProcessMonitor {
             .enumerate()
         {
             let y = list_start + i as u16;
-            let is_selected = scroll + i == self.selected;
+            let is_selected = self.selected.is_selected(scroll + i);
             self.render_row(ctx, y, proc, is_selected, row_fg);
         }
     }
