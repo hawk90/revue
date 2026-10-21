@@ -360,6 +360,12 @@ and friends.
 let props = WidgetProps::new().id("swatch").style(my_style);
 ```
 
+It wins only with values other than the default. A field left at, or set to,
+its default value (`display: flex`, a margin of 0, the default colors) reads as
+"not set", so a stylesheet rule for that property still applies. To set such a
+value, set it in the stylesheet. 4.0 fixes this
+([#1139](https://github.com/hawk90/revue/issues/1139)).
+
 ## Example: Complete Stylesheet
 
 ```css
