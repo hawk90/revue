@@ -1,7 +1,9 @@
 use super::types::*;
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::theme::DARK_BG;
 use crate::widget::traits::WidgetProps;
+use std::cell::Cell;
 
 /// A virtual list that only renders visible items
 pub struct VirtualList<T> {
@@ -43,6 +45,12 @@ pub struct VirtualList<T> {
     pub scroll_mode: ScrollMode,
     /// CSS styling properties (id, classes)
     pub props: WidgetProps,
+    /// Where the view is scrolled to, in rows (#971). `scroll_offset` and
+    /// `scroll_sub_offset` mirror it after each scroll call.
+    view: ScrollState,
+    /// The public offsets as last written from the view: when they differ,
+    /// the app set them, and the view takes them up
+    mirrored: Cell<(usize, u16)>,
 }
 
 impl<T: ToString + Clone> VirtualList<T> {
@@ -69,6 +77,8 @@ impl<T: ToString + Clone> VirtualList<T> {
             wrap_navigation: false,
             scroll_mode: ScrollMode::default(),
             props: WidgetProps::new(),
+            view: ScrollState::new(),
+            mirrored: Cell::new((0, 0)),
         }
     }
 
@@ -152,6 +162,22 @@ impl<T: ToString + Clone> VirtualList<T> {
         self
     }
 
+    /// Where the view is scrolled to, in rows (used by `scroll.rs` and
+    /// `view.rs`)
+    pub(super) fn view(&self) -> &ScrollState {
+        &self.view
+    }
+
+    /// The scroll state, to move it
+    pub(super) fn view_mut(&mut self) -> &mut ScrollState {
+        &mut self.view
+    }
+
+    /// The public offsets as last mirrored from the view
+    pub(super) fn mirrored(&self) -> &Cell<(usize, u16)> {
+        &self.mirrored
+    }
+
     /// Get total item count
     pub fn len(&self) -> usize {
         self.items.len()
@@ -231,7 +257,8 @@ impl<T: ToString + Clone> VirtualList<T> {
         self.items.clear();
         self.rebuild_height_cache();
         self.selected = None;
-        self.scroll_offset = 0;
+        self.view.scroll_to_top();
+        self.sync_offsets();
     }
 
     /// Select next item
@@ -276,7 +303,6 @@ impl<T: ToString + Clone> VirtualList<T> {
     pub fn select_first(&mut self) {
         if !self.items.is_empty() {
             self.selected = Some(0);
-            self.scroll_offset = 0;
         }
     }
 
@@ -301,6 +327,34 @@ impl<T: ToString + Clone> VirtualList<T> {
         let page_size = self.visible_count(viewport_height);
         if let Some(idx) = self.selected {
             self.selected = Some(idx.saturating_sub(page_size));
+        }
+    }
+}
+
+impl<T: ToString + Clone> Clone for VirtualList<T> {
+    fn clone(&self) -> Self {
+        Self {
+            items: self.items.clone(),
+            item_height: self.item_height,
+            height_calculator: None, // Can't clone closures
+            height_cache: self.height_cache.clone(),
+            cumulative_heights: self.cumulative_heights.clone(),
+            scroll_offset: self.scroll_offset,
+            scroll_sub_offset: self.scroll_sub_offset,
+            selected: self.selected,
+            selected_bg: self.selected_bg,
+            selected_fg: self.selected_fg,
+            item_fg: self.item_fg,
+            show_scrollbar: self.show_scrollbar,
+            scrollbar_fg: self.scrollbar_fg,
+            scrollbar_bg: self.scrollbar_bg,
+            renderer: None, // Can't clone closures
+            overscan: self.overscan,
+            wrap_navigation: self.wrap_navigation,
+            scroll_mode: self.scroll_mode,
+            props: self.props.clone(),
+            view: self.view.clone(),
+            mirrored: self.mirrored.clone(),
         }
     }
 }

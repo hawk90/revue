@@ -1,31 +1,5 @@
 use super::core::VirtualList;
 
-impl<T: ToString + Clone> Clone for VirtualList<T> {
-    fn clone(&self) -> Self {
-        Self {
-            items: self.items.clone(),
-            item_height: self.item_height,
-            height_calculator: None, // Can't clone closures
-            height_cache: self.height_cache.clone(),
-            cumulative_heights: self.cumulative_heights.clone(),
-            scroll_offset: self.scroll_offset,
-            scroll_sub_offset: self.scroll_sub_offset,
-            selected: self.selected,
-            selected_bg: self.selected_bg,
-            selected_fg: self.selected_fg,
-            item_fg: self.item_fg,
-            show_scrollbar: self.show_scrollbar,
-            scrollbar_fg: self.scrollbar_fg,
-            scrollbar_bg: self.scrollbar_bg,
-            renderer: None, // Can't clone closures
-            overscan: self.overscan,
-            wrap_navigation: self.wrap_navigation,
-            scroll_mode: self.scroll_mode,
-            props: self.props.clone(),
-        }
-    }
-}
-
 impl<T: ToString + Clone + Default> Default for VirtualList<T> {
     fn default() -> Self {
         Self::new(Vec::new())

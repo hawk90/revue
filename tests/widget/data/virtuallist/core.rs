@@ -236,16 +236,38 @@ fn test_jump_to_with_alignment_center() {
 
 #[test]
 fn test_jump_to_with_alignment_end() {
-    let mut list = VirtualList::new(vec!["A", "B", "C", "D"]);
+    // End places the item against the view's height: before a draw the
+    // jump waits for it, then the item is on the bottom row (#971)
+    let mut list = VirtualList::new(vec!["A", "B", "C", "D"]).show_scrollbar(false);
     list.jump_to_with_alignment(2, ScrollAlignment::End);
-    assert_eq!(list.scroll_offset, 2);
+    assert_eq!(list.selected, Some(2));
+    assert_eq!(drawn(&list, 2), ["B", "C"]);
 }
 
 #[test]
 fn test_jump_to_with_alignment_nearest() {
-    let mut list = VirtualList::new(vec!["A", "B", "C", "D"]);
+    // Nearest scrolls just enough: C below a two-row view at the top
+    let mut list = VirtualList::new(vec!["A", "B", "C", "D"]).show_scrollbar(false);
     list.jump_to_with_alignment(2, ScrollAlignment::Nearest);
-    assert_eq!(list.scroll_offset, 2);
+    assert_eq!(drawn(&list, 2), ["B", "C"]);
+}
+
+/// The first text of each row of `list` drawn 4 wide and `h` tall
+fn drawn(list: &VirtualList<&str>, h: u16) -> Vec<String> {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    let mut buffer = Buffer::new(4, h);
+    list.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 4, h)));
+    (0..h)
+        .map(|y| {
+            (0..4)
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim()
+                .to_string()
+        })
+        .collect()
 }
 
 // =========================================================================
