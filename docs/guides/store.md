@@ -64,15 +64,17 @@ impl Default for CounterStore {
 
 | Method | Purpose |
 |--------|---------|
-| `id()` | Unique identifier for this store instance |
+| `id()` | Key the registry keeps this store under |
 | `name()` | Human-readable name (used in devtools) |
 | `get_state()` | Snapshot of all state as string key-value pairs |
 | `get_getters()` | Snapshot of all computed/derived values |
 
 `#[derive(Store)]` writes these four for you. Its `id()` is
 `StoreId::from_path` of the type's full path, so every store type gets its
-own id. A hand-written store can do the same:
-`StoreId::from_path(concat!(module_path!(), "::CounterStore"))`.
+own id and every instance of one type shares it, as Pinia keys a store by
+its `defineStore` id. A hand-written store can do the same:
+`StoreId::from_path(concat!(module_path!(), "::CounterStore"))`, or take
+`StoreId::new()` when each instance needs its own entry in the registry.
 
 ## Using a Store
 
@@ -104,7 +106,8 @@ let store2 = create_store::<CounterStore>();
 // store1 and store2 are independent instances
 ```
 
-This is useful for testing or when you need isolated state.
+This is useful for testing or when you need isolated state. The instances
+still share the type's id, so registering both keeps only the later one.
 
 ## Actions
 
@@ -164,7 +167,7 @@ The global `StoreRegistry` tracks all active stores for devtools and debugging:
 use revue::reactive::store::{store_registry, StoreRegistry};
 use std::sync::Arc;
 
-// Register a store
+// Register a store; one already registered under the same id is replaced
 let store = Arc::new(CounterStore::default());
 store_registry().register(store.clone());
 
@@ -304,15 +307,9 @@ impl Store for TodoStore {
 
 ## DevTools Integration
 
-Stores expose their state via `get_state()` and `get_getters()`, which the devtools inspector uses to display live state. Enable devtools to inspect stores at runtime:
-
-```rust
-let app = App::builder()
-    .devtools(true)  // F12 to toggle
-    .build();
-```
-
-The **State Debugger** panel shows all registered stores with their current state and getter values.
+Stores expose their state via `get_state()` and `get_getters()` for inspection
+tools. The devtools State Debugger does not read the store registry yet: it
+shows the values the app adds to it.
 
 ## See Also
 
