@@ -9,7 +9,9 @@
 //! had spoken. The same shape `Text.align` had before it became an `Option`.
 //!
 //! Both directions are asserted. Without the silent-builder half, "always take
-//! the builder's value" would pass.
+//! the builder's value" would pass. When both halves fail together for one
+//! widget, suspect the fixture (the selector does not reach the widget, or the
+//! cell read is not the one the color lands on) before the wiring.
 
 use revue::prelude::*;
 use revue::style::Color;

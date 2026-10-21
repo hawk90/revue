@@ -25,6 +25,11 @@
 //! The ratchet: a layer fails if it sees a failure that is not listed in
 //! [`known_failures::KNOWN`], **or** if a listed failure no longer happens.
 //! The list can only shrink.
+//!
+//! The cases are enumerated, not generated with proptest: a random case cannot
+//! be matched to an exact key in the known-failures list, so a listed failure
+//! would come back under a new key on every run. The sizes layer enumerates
+//! the boundary sizes instead.
 
 pub mod catalog;
 pub mod contents;

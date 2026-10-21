@@ -20,8 +20,8 @@ impl View for Stack {
         let overflow_hidden = ctx.css_overflow_hidden();
         let parent_clip = ctx.clip();
 
-        // CSS wins when it specified one; `gap: 0` is the initial value and so
-        // reads as "not specified".
+        // CSS wins when it specified one, `gap: 0` included; a stylesheet that
+        // says nothing leaves the builder's gap.
         let gap = ctx.gap_or(self.gap);
 
         let wrap = ctx.css_flex_wrap();

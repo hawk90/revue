@@ -269,9 +269,32 @@ Each module should have a top-level doc comment:
 //! ```
 ```
 
+#### 7. Splitting a Large File
+
+Split a file when it holds code that changes for different reasons: a
+widget's types, builders, state changes, input handling and rendering, two or
+more of them each tens of lines long. Leave it whole when the size comes from
+one job, such as one parser or one layout algorithm.
+
+Follow the shape nearby widgets already use. A large widget becomes a
+directory with `types.rs`, `core.rs` (the struct and its constructor),
+`builders.rs`, `render.rs` (the `View` impl), input (`handler.rs` or
+`key_handling.rs`, `mouse.rs`) and state changes (`navigation.rs`,
+`editing.rs`, `selection.rs`); see `input` and `code_editor`. A widget with
+several concepts gets a folder per concept, each with its own builders, state
+and computation, as in `datagrid/{columns,rows,input,view}/`. Its tests
+follow the same shape.
+
 ---
 
 ## Testing Guidelines
+
+### A Test That Fails
+
+Do not merge a failing test behind `#[ignore]`. An ignored test reads as
+coverage and hides that the behavior is wrong. Fix the behavior and land the
+test with the fix, keeping the behavior change in a commit of its own so one
+revert undoes it.
 
 ### Test Coverage
 

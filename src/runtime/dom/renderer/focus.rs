@@ -129,8 +129,8 @@ impl DomRenderer {
     /// carries "what you inherit changed" to its subtree by itself, which
     /// covers both `:hover .child` rules and inherited properties.
     ///
-    /// Sibling combinators (`.a:hover + .b`) are outside this scope and still
-    /// go stale.
+    /// Later siblings are, because sibling combinators (`.a:hover + .b`) style
+    /// them from this node's state.
     fn invalidate_state_styles(&mut self, id: Option<DomId>) {
         let Some(id) = id else { return };
         self.invalidate_node_style(id);

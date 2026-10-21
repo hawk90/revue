@@ -122,8 +122,10 @@ matches anything. See
 ## 6. Unicode
 
 Every cell computation is width-aware: ASCII is one cell, CJK and emoji two, zero-width joiners and
-combining marks zero. Terminals and fonts disagree about ambiguous glyphs (Nerd Font icons especially),
-which is why a configurable `CharWidthTable` exists — wiring it into rendering is still open.
+combining marks zero. Terminals and fonts disagree about some glyphs: emoji (ZWJ sequences and
+variation selectors especially) and ambiguous ones such as Nerd Font icons can take one cell in one
+terminal and two in another, so no width table is right everywhere. That is why a configurable
+`CharWidthTable` exists — wiring it into rendering is still open.
 
 ## 7. Developer experience
 
