@@ -335,7 +335,7 @@ pub use table::{align_center, align_left, align_right, align_text, Align, Column
 pub use tree::{Indent, TreeIcons, TreeItem, TreeNav};
 
 // Selection with viewport
-pub use scroll::ScrollState;
+pub use scroll::{ScrollAlign, ScrollState};
 pub use selection::{wrap_next, wrap_prev, KeyedSelection, SectionedSelection, Selection};
 
 // Box layout

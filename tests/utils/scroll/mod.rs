@@ -199,3 +199,42 @@ fn track_before_the_first_draw_waits_for_the_viewport() {
     s.set_viewport(5);
     assert_eq!(s.visible(), 16..21);
 }
+
+#[test]
+fn aligned_reveals() {
+    use revue::utils::ScrollAlign;
+    let mut s = drawn(100, 10);
+    s.reveal_aligned(50..51, ScrollAlign::Start);
+    assert_eq!(s.offset(), 50);
+    s.reveal_aligned(50..51, ScrollAlign::End);
+    assert_eq!(s.offset(), 41);
+    s.reveal_aligned(50..51, ScrollAlign::Center);
+    assert_eq!(s.visible(), 45..55, "row 50 is the middle row");
+    s.reveal_aligned(98..99, ScrollAlign::Center);
+    assert_eq!(s.offset(), 90, "near the end it goes as far as it can");
+    s.reveal_aligned(50..51, ScrollAlign::Nearest);
+    assert_eq!(s.offset(), 50);
+}
+
+/// Start needs no viewport; the others wait for the first draw.
+#[test]
+fn aligned_reveals_before_the_first_draw() {
+    use revue::utils::ScrollAlign;
+    let mut s = ScrollState::new();
+    s.set_content(100);
+    s.reveal_aligned(40..41, ScrollAlign::Start);
+    assert_eq!(s.offset(), 40);
+    s.reveal_aligned(60..61, ScrollAlign::End);
+    assert_eq!(s.offset(), 40, "waits for the viewport");
+    s.set_viewport(10);
+    assert_eq!(s.offset(), 51);
+}
+
+#[test]
+fn set_offset_places_the_view_in_range() {
+    let s = drawn(20, 5);
+    s.set_offset(7);
+    assert_eq!(s.offset(), 7);
+    s.set_offset(100);
+    assert_eq!(s.offset(), 15);
+}

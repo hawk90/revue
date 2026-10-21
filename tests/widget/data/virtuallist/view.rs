@@ -381,3 +381,55 @@ fn test_virtual_list_in_a_stack_with_a_stylesheet() {
     assert_eq!(buffer.get(0, plain).unwrap().fg, Some(ink), "plain row");
     assert_eq!(buffer.get(0, lit[0]).unwrap().fg, Some(Color::BLACK));
 }
+
+// ---------------------------------------------------------------------------
+// #971: rows, the row offset, ScrollMode and jump alignment
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_virtual_list_draws_variable_heights() {
+    let list = VirtualList::new(vec!["A", "BB", "CCC"])
+        .variable_height(|s, _| s.len() as u16)
+        .show_scrollbar(false);
+    assert_eq!(
+        rows(&render(&list, 4, 6), 4),
+        ["A", "BB", "", "CCC", "", ""]
+    );
+}
+
+#[test]
+fn test_virtual_list_draws_the_row_offset() {
+    let mut list = VirtualList::new(vec!["a", "b", "c"])
+        .item_height(2)
+        .show_scrollbar(false);
+    list.scroll_by(1);
+    assert_eq!(rows(&render(&list, 4, 4), 4), ["", "b", "", "c"]);
+}
+
+#[test]
+fn test_virtual_list_center_mode_centers_the_selection() {
+    use revue::widget::data::virtuallist::ScrollMode;
+    let list = VirtualList::new((0..20).collect::<Vec<_>>())
+        .scroll_mode(ScrollMode::Center)
+        .selected(10)
+        .show_scrollbar(false);
+    assert_eq!(rows(&render(&list, 4, 5), 4)[2], "10");
+}
+
+#[test]
+fn test_virtual_list_jump_alignment() {
+    use revue::widget::data::virtuallist::ScrollAlignment;
+    let mut list = VirtualList::new((0..100).collect::<Vec<_>>()).show_scrollbar(false);
+    render(&list, 4, 20);
+    list.jump_to_with_alignment(50, ScrollAlignment::Center);
+    assert_eq!(rows(&render(&list, 4, 20), 4)[10], "50");
+    list.jump_to_with_alignment(50, ScrollAlignment::End);
+    assert_eq!(rows(&render(&list, 4, 20), 4)[19], "50");
+}
+
+#[test]
+fn test_virtual_list_jump_to_the_end_fills_the_view() {
+    let mut list = VirtualList::new((0..20).collect::<Vec<_>>()).show_scrollbar(false);
+    list.jump_to(19);
+    assert_eq!(rows(&render(&list, 4, 4), 4), ["16", "17", "18", "19"]);
+}

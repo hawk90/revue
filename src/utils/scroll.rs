@@ -45,6 +45,20 @@
 use std::cell::Cell;
 use std::ops::Range;
 
+/// Where a revealed range goes in the view
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ScrollAlign {
+    /// Scroll just enough to show it, in either direction
+    #[default]
+    Nearest,
+    /// Its first row on the view's top row
+    Start,
+    /// Its middle on the view's middle row
+    Center,
+    /// Its last row on the view's bottom row
+    End,
+}
+
 /// Where a view is scrolled to, in rows. See the [module docs](self).
 #[derive(Clone, Debug, Default)]
 pub struct ScrollState {
@@ -57,7 +71,7 @@ pub struct ScrollState {
     /// end.
     tail: Cell<bool>,
     /// A reveal made while the viewport was unknown
-    pending: Cell<Option<(usize, usize)>>,
+    pending: Cell<Option<(usize, usize, ScrollAlign)>>,
     /// The rows last given to [`track`](ScrollState::track)
     tracked: Cell<Option<(usize, usize)>>,
 }
@@ -132,8 +146,8 @@ impl ScrollState {
     pub fn set_viewport(&self, rows: usize) {
         self.viewport.set(rows);
         if rows > 0 {
-            if let Some((start, end)) = self.pending.take() {
-                self.apply_reveal(start, end);
+            if let Some((start, end, align)) = self.pending.take() {
+                self.apply_reveal(start, end, align);
             }
         }
         self.settle();
@@ -170,6 +184,18 @@ impl ScrollState {
             self.offset.set(at);
         }
         self.settle();
+    }
+
+    /// Put the view at `row` (kept in range), as a widget that also keeps
+    /// the offset in fields of its own does. Following the end changes as
+    /// for [`scroll_to`](Self::scroll_to).
+    pub fn set_offset(&self, row: usize) {
+        self.pending.set(None);
+        let target = row.min(self.max_offset());
+        if target != self.offset.get() {
+            self.offset.set(target);
+            self.follow_end.set(self.tail.get() && self.at_end());
+        }
     }
 
     /// Scroll by `rows` (negative is up), without moving any selection
@@ -232,12 +258,21 @@ impl ScrollState {
     /// scrolls up stops it, one that scrolls to the end starts it, and one
     /// already on screen leaves it as it is.
     pub fn reveal(&mut self, rows: Range<usize>) {
+        self.reveal_aligned(rows, ScrollAlign::Nearest);
+    }
+
+    /// Scroll to show `rows` at `align`: at the top, the middle or the
+    /// bottom of the view, or just enough ([`ScrollAlign::Nearest`], as
+    /// [`reveal`](Self::reveal)). The offset stays in range, so a range near
+    /// either end goes as far as it can.
+    pub fn reveal_aligned(&mut self, rows: Range<usize>, align: ScrollAlign) {
         let (start, end) = (rows.start, rows.end.max(rows.start + 1));
-        if self.viewport.get() == 0 {
-            self.pending.set(Some((start, end)));
+        if self.viewport.get() == 0 && align != ScrollAlign::Start {
+            // The others place the range against the view's height
+            self.pending.set(Some((start, end, align)));
             return;
         }
-        self.apply_reveal(start, end);
+        self.apply_reveal(start, end, align);
         self.settle();
     }
 
@@ -246,27 +281,34 @@ impl ScrollState {
     /// follows the selection whichever code moved it, and scrolling away from
     /// an unchanged selection is kept.
     pub fn track(&self, rows: Range<usize>) {
+        self.track_aligned(rows, ScrollAlign::Nearest);
+    }
+
+    /// [`track`](Self::track), revealing at `align`: with
+    /// [`ScrollAlign::Center`] the view keeps the selection in its middle
+    pub fn track_aligned(&self, rows: Range<usize>, align: ScrollAlign) {
         let key = (rows.start, rows.end.max(rows.start + 1));
         if self.tracked.replace(Some(key)) == Some(key) {
             return;
         }
         if self.viewport.get() == 0 {
-            self.pending.set(Some(key));
+            self.pending.set(Some((key.0, key.1, align)));
             return;
         }
-        self.apply_reveal(key.0, key.1);
+        self.apply_reveal(key.0, key.1, align);
         self.settle();
     }
 
-    fn apply_reveal(&self, start: usize, end: usize) {
+    fn apply_reveal(&self, start: usize, end: usize, align: ScrollAlign) {
         let viewport = self.viewport.get();
         let offset = self.offset.get();
-        let target = if start < offset || end - start > viewport {
-            start
-        } else if end > offset + viewport {
-            end - viewport
-        } else {
-            offset
+        let target = match align {
+            ScrollAlign::Nearest if start < offset || end - start > viewport => start,
+            ScrollAlign::Nearest if end > offset + viewport => end - viewport,
+            ScrollAlign::Nearest => offset,
+            ScrollAlign::Start => start,
+            ScrollAlign::End => end.saturating_sub(viewport),
+            ScrollAlign::Center => (start + (end - start) / 2).saturating_sub(viewport / 2),
         };
         let target = target.min(self.max_offset());
         if target != offset {
