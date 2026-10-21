@@ -259,6 +259,9 @@ impl<T: 'static> Signal<T> {
     /// count.set(2);  // No callback called
     /// ```
     ///
+    /// A callback may drop subscriptions, its own or another's. One dropped
+    /// while a change is being delivered is not called for that change.
+    ///
     /// A callback may set the signal again. One that does so without end
     /// makes the setter panic with "Maximum reactive update depth", as a
     /// circular dependency between effects does.
@@ -286,9 +289,8 @@ impl<T: 'static> Signal<T> {
     ///
     /// # Performance & Safety
     ///
-    /// Clones callbacks before invoking them to avoid holding the read lock
-    /// during callback execution. This prevents deadlock when callbacks
-    /// drop their own Subscription handles.
+    /// No lock is held while a callback runs, so a callback can drop
+    /// subscriptions; one dropped earlier in the same round is not called.
     fn notify(&self) {
         // A subscriber that sets this signal again nests here: count it like
         // any notification, so a loop ends in the depth panic, not a stack
@@ -318,17 +320,15 @@ impl<T: 'static> Signal<T> {
             return;
         }
 
-        // Clone callbacks while holding read lock
-        let callbacks: Vec<_> = {
-            let subs = read_or_recover(&self.subscribers);
-            subs.values().cloned().collect()
-            // Lock released here when `subs` goes out of scope
-        };
-
-        // Invoke callbacks without holding any lock
-        // This allows callbacks to safely drop their Subscription handles
-        for callback in callbacks {
-            callback();
+        // Take the ids, then look each one up just before calling it, with
+        // no lock held during the call: a callback can drop any subscription,
+        // and one dropped earlier in this round is not called (#1197).
+        let ids: Vec<SubscriptionId> = read_or_recover(&self.subscribers).keys().copied().collect();
+        for id in ids {
+            let callback = read_or_recover(&self.subscribers).get(&id).cloned();
+            if let Some(callback) = callback {
+                callback();
+            }
         }
     }
 
