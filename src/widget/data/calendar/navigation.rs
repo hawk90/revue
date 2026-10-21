@@ -1,6 +1,6 @@
 //! Moving the shown month and the selected date, by method or by key
 
-use super::{days_in_month, Calendar, Date};
+use super::{Calendar, Date};
 
 impl Calendar {
     /// Navigate to previous month
@@ -33,9 +33,19 @@ impl Calendar {
         self.year += 1;
     }
 
-    /// Select a date
+    /// Select a date, and show its month
     pub fn select(&mut self, date: Date) {
         self.selected = Some(date);
+        self.show_selected();
+    }
+
+    /// Show the month that holds the selection: the view follows every
+    /// change of it (#973). `[`, `]`, `{` and `}` move the view alone.
+    fn show_selected(&mut self) {
+        if let Some(date) = self.selected {
+            self.year = date.year;
+            self.month = date.month;
+        }
     }
 
     /// Clear selection
@@ -51,42 +61,20 @@ impl Calendar {
 
     /// Select next day
     pub fn select_next_day(&mut self) {
-        if let Some(date) = self.selected {
-            let days = days_in_month(date.year, date.month);
-            if date.day < days {
-                self.selected = Some(Date::new(date.year, date.month, date.day + 1));
-            } else if date.month < 12 {
-                self.selected = Some(Date::new(date.year, date.month + 1, 1));
-                self.month = date.month + 1;
-            } else {
-                self.selected = Some(Date::new(date.year + 1, 1, 1));
-                self.year = date.year + 1;
-                self.month = 1;
-            }
-        } else {
-            self.selected = Some(Date::new(self.year, self.month, 1));
-        }
+        self.selected = Some(match self.selected {
+            Some(date) => date.next_day(),
+            None => Date::new(self.year, self.month, 1),
+        });
+        self.show_selected();
     }
 
     /// Select previous day
     pub fn select_prev_day(&mut self) {
-        if let Some(date) = self.selected {
-            if date.day > 1 {
-                self.selected = Some(Date::new(date.year, date.month, date.day - 1));
-            } else if date.month > 1 {
-                let prev_month = date.month - 1;
-                let days = days_in_month(date.year, prev_month);
-                self.selected = Some(Date::new(date.year, prev_month, days));
-                self.month = prev_month;
-            } else {
-                let days = days_in_month(date.year - 1, 12);
-                self.selected = Some(Date::new(date.year - 1, 12, days));
-                self.year = date.year - 1;
-                self.month = 12;
-            }
-        } else {
-            self.selected = Some(Date::new(self.year, self.month, 1));
-        }
+        self.selected = Some(match self.selected {
+            Some(date) => date.prev_day(),
+            None => Date::new(self.year, self.month, 1),
+        });
+        self.show_selected();
     }
 
     /// Select next week
