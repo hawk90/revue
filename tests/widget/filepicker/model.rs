@@ -177,16 +177,23 @@ proptest! {
                     if idx + 1 < history.len() { idx += 1; cur = history[idx].clone(); hl = 0; }
                 }
                 Nav::Hidden => {
+                    // The highlight stays on its entry, or the one now in
+                    // its place (#975)
                     picker.toggle_hidden();
                     hidden = !hidden;
-                    hl = 0;
+                    let was = list.get(hl).cloned();
+                    let now = listing(&cur, hidden);
+                    hl = was
+                        .and_then(|name| now.iter().position(|n| *n == name))
+                        .unwrap_or(hl.min(now.len().saturating_sub(1)));
                 }
             }
+            let list = listing(&cur, hidden);
             if hl == 0 { offset = 0; }
+            offset = offset.min(list.len().saturating_sub(max_visible));
             if hl < offset { offset = hl; }
             if hl >= offset + max_visible { offset = hl + 1 - max_visible; }
 
-            let list = listing(&cur, hidden);
             let want_dir = at(&cur);
             prop_assert_eq!(picker.current_dir(), want_dir.as_path(), "after {:?}", op);
             prop_assert_eq!(

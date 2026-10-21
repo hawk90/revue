@@ -66,25 +66,47 @@ impl FilePicker {
     }
 
     /// The entries in view, with a "more" marker above and below when the
-    /// list goes on.
+    /// list goes on. The window is the rows the area has left after the
+    /// header and footer, at most `max_visible`; when the entries overflow
+    /// it, a row each is kept for the markers. It follows the highlight
+    /// (#973).
     fn rows(&self, mut content: Stack, ctx: &RenderContext) -> Stack {
-        // File list
-        let start = self.scroll_offset;
-        let end = (start + self.max_visible).min(self.entries.len());
+        let len = self.entries.len();
+        let room = (ctx.area.height as usize).saturating_sub(self.fixed_rows());
+        let window = if len <= room.min(self.max_visible) {
+            len
+        } else {
+            self.max_visible.min(room.saturating_sub(2))
+        };
+        self.scroll.set_content(len);
+        self.scroll.set_viewport(window);
+        if len > 0 {
+            self.scroll.track(self.highlighted..self.highlighted + 1);
+        }
+        let shown = self.scroll.visible();
 
-        if start > 0 {
+        if self.scroll.has_above() {
             content = content.child(Text::new("  ↑ more...").fg(DISABLED_FG));
         }
 
-        for i in start..end {
+        for i in shown.clone() {
             content = content.child(self.entry_row(i, ctx));
         }
 
-        if end < self.entries.len() {
+        if shown.end < len {
             content = content.child(Text::new("  ↓ more...").fg(DISABLED_FG));
         }
 
         content
+    }
+
+    /// The rows the header and footer take
+    fn fixed_rows(&self) -> usize {
+        let header = usize::from(self.title.is_some()) + 3;
+        let footer = 2
+            + usize::from(self.mode == PickerMode::Save)
+            + usize::from(self.mode == PickerMode::MultiSelect && !self.selected.is_empty());
+        header + footer
     }
 
     /// One entry: its selection mark, icon, name and size.

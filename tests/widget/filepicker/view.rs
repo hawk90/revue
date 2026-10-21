@@ -323,3 +323,46 @@ fn test_filepicker_shows_fifteen_entries_by_default() {
     assert_eq!(row(&buffer, 17), entry("  ", false, "f14.txt", "0 B"));
     assert_eq!(row(&buffer, 18), "  ↓ more...");
 }
+
+/// The window was `max_visible` entries whatever the area, so in a short
+/// area the highlight went below it (#973).
+#[test]
+fn test_filepicker_the_highlight_stays_on_screen_in_a_short_area() {
+    let dir = tempfile::tempdir().unwrap();
+    for i in 0..20 {
+        fs::write(dir.path().join(format!("f{i:02}.txt")), "").unwrap();
+    }
+    let mut picker = file_picker().start_dir(dir.path());
+    for _ in 0..9 {
+        picker.highlight_next();
+    }
+    assert_eq!(picker.highlighted_entry().unwrap().name, "f09.txt");
+    let text = rows(&draw(&picker, 60, 8)).join("\n");
+    assert!(text.contains("f09.txt"), "{text}");
+    assert!(text.contains("↑↓: Navigate"), "the help line stays: {text}");
+}
+
+/// Refreshing the listing dropped the ✓ but kept the chosen path, so
+/// toggling the file again chose it twice (#894). The highlight stays on
+/// its entry through the refresh.
+#[test]
+fn test_filepicker_refresh_keeps_the_chosen_and_highlighted_entries() {
+    use revue::widget::PickerResult;
+    let dir = tempfile::tempdir().unwrap();
+    for name in ["a.txt", "b.txt", ".h"] {
+        fs::write(dir.path().join(name), "").unwrap();
+    }
+    let mut picker = FilePicker::multi_select().start_dir(dir.path());
+    picker.toggle_selection(); // a
+    picker.highlight_next(); // b
+    picker.toggle_hidden();
+    assert_eq!(picker.highlighted_entry().unwrap().name, "b.txt");
+    picker.highlight_previous();
+    assert_eq!(picker.highlighted_entry().unwrap().name, "a.txt");
+    assert!(
+        picker.highlighted_entry().unwrap().selected,
+        "a keeps its ✓"
+    );
+    picker.toggle_selection(); // a off again, not chosen twice
+    assert!(matches!(picker.confirm(), PickerResult::None));
+}
