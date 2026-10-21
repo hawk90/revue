@@ -87,6 +87,8 @@ struct Model {
     history: Vec<(String, HttpMethod)>,
     index: usize,
     scroll: usize,
+    /// The content rows of the last draw that showed a response (0 before)
+    viewport: usize,
     state: RequestState,
     error: Option<&'static str>,
     status: Option<u16>,
@@ -117,6 +119,7 @@ proptest! {
             history: Vec::new(),
             index: 0,
             scroll: 0,
+            viewport: 0,
             state: RequestState::Idle,
             error: None,
             status: None,
@@ -146,6 +149,7 @@ proptest! {
                     m.state = RequestState::Success;
                     m.error = None;
                     m.status = Some(200);
+                    m.scroll = 0;
                     m.stale = false;
                 }
                 Op::Back => {
@@ -169,8 +173,10 @@ proptest! {
                     m.method = next_method(m.method);
                 }
                 Op::ScrollDown(n) => {
+                    // Bounded by the shown view's lines (#973); before a
+                    // draw the last line can be on top
                     c.scroll_down(n);
-                    m.scroll += n;
+                    m.scroll = (m.scroll + n).min(view_lines(&c).saturating_sub(m.viewport.max(1)));
                 }
                 Op::ScrollUp(n) => {
                     c.scroll_up(n);
@@ -194,6 +200,7 @@ proptest! {
                     // Skipped: an older error stays set and on screen (#1083).
                     m.stale |= m.error.is_some();
                     m.status = Some(status);
+                    m.scroll = 0;
                     m.state = if (200..300).contains(&status) {
                         RequestState::Success
                     } else {
@@ -209,7 +216,11 @@ proptest! {
                     m.stale = false;
                 }
                 Op::View(v) => {
-                    m.view = [ResponseView::Body, ResponseView::Headers, ResponseView::Raw][v];
+                    let view = [ResponseView::Body, ResponseView::Headers, ResponseView::Raw][v];
+                    if view != m.view {
+                        m.scroll = 0;
+                    }
+                    m.view = view;
                     c.set_view(m.view);
                 }
                 Op::ToggleHeaders => {
@@ -232,6 +243,12 @@ proptest! {
             prop_assert_eq!(c.view_for_testing(), m.view, "after {:?}", o);
             prop_assert_eq!(c.show_headers_for_testing(), m.show_headers, "after {:?}", o);
 
+            // The rows below draw the client at 60 x 12: a shown response
+            // has 8 content rows, and the draw keeps the last page full
+            if c.state() != RequestState::Sending && c.error().is_none() && c.response().is_some() {
+                m.viewport = 8;
+                m.scroll = m.scroll.min(view_lines(&c).saturating_sub(8));
+            }
             let top = format!("{} {}", m.method.name(), m.url);
             prop_assert!(row(&c, 0).starts_with(top.as_str()), "after {:?}: {:?}", o, row(&c, 0));
             if !m.stale {
@@ -390,4 +407,13 @@ fn json_value() -> impl Strategy<Value = String> {
             }),
         ]
     })
+}
+
+/// The lines the client's shown view has: the body's, or one per header
+fn view_lines(c: &HttpClient) -> usize {
+    match (c.response(), c.view_for_testing()) {
+        (None, _) => 0,
+        (Some(r), ResponseView::Headers) => r.headers.len(),
+        (Some(r), _) => r.body.lines().count(),
+    }
 }

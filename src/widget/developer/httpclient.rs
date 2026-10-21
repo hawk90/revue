@@ -55,6 +55,7 @@ pub use helpers::{delete, get, http_client, patch, post, put};
 pub use response::HttpResponse;
 pub use types::{ContentType, HttpColors, HttpMethod, RequestState, ResponseView};
 
+use crate::utils::ScrollState;
 use std::collections::HashMap;
 
 use crate::widget::traits::WidgetProps;
@@ -98,8 +99,8 @@ pub struct HttpClient {
     colors: HttpColors,
     /// URL cursor position
     url_cursor: usize,
-    /// Body scroll
-    body_scroll: usize,
+    /// Where the shown view (body, headers or raw) is scrolled to, in lines
+    scroll: ScrollState,
     /// Request history
     history: Vec<HttpRequest>,
     /// History index

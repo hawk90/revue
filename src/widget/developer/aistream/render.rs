@@ -30,8 +30,10 @@ impl AiStream {
         }
     }
 
-    /// Draw the visible text, wrapped at the area's edge when `wrap` is on;
-    /// returns the column and row after its last glyph, where the cursor goes
+    /// Draw the visible text, wrapped at the area's edge when `wrap` is on,
+    /// from the scrolled-to row: a stream follows its newest row (#973).
+    /// Returns where the cursor goes, the column and row after the last
+    /// glyph, on screen.
     fn render_text(
         &self,
         ctx: &mut RenderContext,
@@ -41,42 +43,48 @@ impl AiStream {
         let area = ctx.area;
         let visible = self.visible_text();
 
-        // Simple wrap and render, in terminal columns: a wide glyph takes two
-        // and wraps whole, a zero-width char takes none
-        let mut x = 0u16;
-        let mut y = 0u16;
-        let mut glyph = [0u8; 4];
-
+        // Lay out in terminal columns: a wide glyph takes two and wraps
+        // whole, a zero-width char takes none
+        let mut glyphs = Vec::new();
+        let (mut x, mut y) = (0u16, 0usize);
         for ch in visible.chars() {
             if ch == '\n' {
                 x = 0;
                 y += 1;
                 continue;
             }
-
             let w = crate::utils::char_width(ch) as u16;
             if w == 0 {
                 continue;
             }
-
             if self.wrap && x > 0 && x.saturating_add(w) > area.width {
                 x = 0;
                 y += 1;
             }
+            glyphs.push((x, y, ch));
+            x = x.saturating_add(w);
+        }
 
-            if y >= area.height {
-                break;
+        // The rows in view
+        self.scroll.set_content(y + 1);
+        self.scroll.set_viewport(area.height as usize);
+        let shown = self.scroll.visible();
+
+        let mut glyph = [0u8; 4];
+        for &(gx, gy, ch) in &glyphs {
+            if !shown.contains(&gy) {
+                continue;
             }
-
-            ctx.put_str_with(x, y, ch.encode_utf8(&mut glyph), area.width, |ch| {
+            let row = (gy - shown.start) as u16;
+            ctx.put_str_with(gx, row, ch.encode_utf8(&mut glyph), area.width, |ch| {
                 let mut cell = Cell::new(ch).fg(text_fg);
                 cell.bg = text_bg;
                 cell
             });
-
-            x = x.saturating_add(w);
         }
-        (x, y)
+        // Off screen when the cursor's row is scrolled away
+        let row = y.checked_sub(shown.start).map_or(area.height, |r| r as u16);
+        (x, row)
     }
 
     /// Draw the stream cursor at `(x, y)` while streaming, on even frames

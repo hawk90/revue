@@ -213,8 +213,10 @@ fn the_cursor_goes_to_the_next_row_after_a_newline() {
     assert_eq!(screen(&stream, 4, 2), ["ab  ", "█   "]);
 }
 
+/// While streaming, the view follows the row being written: the cursor row
+/// stays on screen when the text is taller than the area (#973).
 #[test]
-fn the_cursor_below_the_last_row_is_not_drawn() {
+fn a_stream_taller_than_the_area_shows_its_cursor_row() {
     // "1\n2\n" typed in a two-row area: the cursor row is the third
     let mut stream = AiStream::new()
         .typing_style(TypingStyle::Line)
@@ -223,7 +225,7 @@ fn the_cursor_below_the_last_row_is_not_drawn() {
     stream.tick();
     stream.tick();
     assert_eq!(stream.status(), StreamStatus::Streaming);
-    assert_eq!(screen(&stream, 2, 2), ["1 ", "2 "]);
+    assert_eq!(screen(&stream, 2, 2), ["2 ", "█ "]);
     assert_eq!(screen(&stream, 2, 3), ["1 ", "2 ", "█ "]);
 }
 
@@ -360,4 +362,36 @@ proptest! {
             prop_assert_eq!(row.trim_end(), want.trim_end(), "row {}", y);
         }
     }
+}
+
+/// `scroll_down`/`scroll_up` were stored but never read by render (#973).
+#[test]
+fn scroll_down_shows_the_rows_below() {
+    let mut stream = AiStream::new();
+    stream.set_content("1\n2\n3\n4\n5");
+    assert_eq!(screen(&stream, 1, 2), ["1", "2"]);
+    stream.scroll_down(3);
+    assert_eq!(screen(&stream, 1, 2), ["4", "5"]);
+    stream.scroll_down(100);
+    stream.scroll_up(1);
+    assert_eq!(
+        screen(&stream, 1, 2),
+        ["3", "4"],
+        "the offset stops at the last page"
+    );
+}
+
+/// A streaming answer taller than the area showed only its first rows.
+#[test]
+fn a_streaming_answer_taller_than_the_area_shows_its_newest_rows() {
+    let mut stream = AiStream::new()
+        .typing_style(TypingStyle::Line)
+        .typing_speed(0)
+        .content("1\n2\n3\n4\n5");
+    // Four ticks: four lines typed, blink frame 0, still streaming
+    for _ in 0..4 {
+        stream.tick();
+    }
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+    assert_eq!(screen(&stream, 1, 2), ["4", "█"]);
 }

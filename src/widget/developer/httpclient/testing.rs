@@ -31,13 +31,14 @@ impl HttpClient {
     /// Get body_scroll for testing (doc hidden)
     #[doc(hidden)]
     pub fn body_scroll_for_testing(&self) -> usize {
-        self.body_scroll
+        self.scroll.offset()
     }
 
     /// Set body_scroll for testing (doc hidden)
     #[doc(hidden)]
     pub fn set_body_scroll_for_testing(&mut self, value: usize) {
-        self.body_scroll = value;
+        self.scroll.set_content(self.view_lines());
+        self.scroll.scroll_to(value);
     }
 
     /// Get history for testing (doc hidden)

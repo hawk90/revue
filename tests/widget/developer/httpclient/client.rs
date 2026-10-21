@@ -244,9 +244,22 @@ fn test_http_client_clear() {
 // Scroll
 // =========================================================================
 
+/// The scroll is bounded by the shown view's lines (#973): with no response
+/// there is nothing to scroll.
 #[test]
 fn test_http_client_scroll() {
     let mut client = HttpClient::new();
+    client.scroll_down(10);
+    assert_eq!(client.body_scroll_for_testing(), 0);
+    let body: Vec<String> = (0..30).map(|i| format!("l{i}")).collect();
+    client.set_response(HttpResponse {
+        status: 200,
+        status_text: "OK".into(),
+        headers: Default::default(),
+        body: body.join("\n"),
+        time: std::time::Duration::from_millis(1),
+        size: 0,
+    });
     client.scroll_down(10);
     client.scroll_down(5);
     assert_eq!(client.body_scroll_for_testing(), 15);

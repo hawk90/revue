@@ -3,6 +3,7 @@
 use super::response::HttpResponse;
 use super::types::{HttpColors, HttpMethod, RequestState, ResponseView};
 use super::{HttpClient, HttpRequest};
+use crate::utils::ScrollState;
 
 use crate::widget::traits::WidgetProps;
 
@@ -17,7 +18,7 @@ impl HttpClient {
             view: ResponseView::Body,
             colors: HttpColors::default(),
             url_cursor: 0,
-            body_scroll: 0,
+            scroll: ScrollState::new(),
             history: Vec::new(),
             history_index: 0,
             show_headers: false,
