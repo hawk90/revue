@@ -52,6 +52,25 @@ use syn::{parse_macro_input, DeriveInput};
 #[proc_macro_derive(Store)]
 pub fn derive_store(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    // A store type has one id, hashed from its path: a generic type would be
+    // many types under one id, and a union has no fields to read state from
+    if !input.generics.params.is_empty() {
+        return syn::Error::new_spanned(
+            &input.generics,
+            "`#[derive(Store)]` does not take generic parameters: a store type has one id, and \
+             each instance of a generic type would share it",
+        )
+        .to_compile_error()
+        .into();
+    }
+    if let syn::Data::Union(data) = &input.data {
+        return syn::Error::new_spanned(
+            data.union_token,
+            "`#[derive(Store)]` works on structs and enums, not unions",
+        )
+        .to_compile_error()
+        .into();
+    }
     let struct_name = &input.ident;
     let struct_name_string = struct_name.to_string();
 

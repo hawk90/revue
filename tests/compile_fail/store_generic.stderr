@@ -1,0 +1,5 @@
+error: `#[derive(Store)]` does not take generic parameters: a store type has one id, and each instance of a generic type would share it
+ --> tests/compile_fail/store_generic.rs:3:13
+  |
+3 | struct Cache<T> {
+  |             ^^^

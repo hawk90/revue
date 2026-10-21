@@ -1,0 +1,5 @@
+error: `#[derive(Store)]` works on structs and enums, not unions
+ --> tests/compile_fail/store_union.rs:2:1
+  |
+2 | union Bits {
+  | ^^^^^
