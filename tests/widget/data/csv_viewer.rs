@@ -1020,3 +1020,34 @@ fn test_csv_in_a_stack_with_a_stylesheet() {
         "sibling lost: {rows:#?}"
     );
 }
+
+// =========================================================================
+// #969: the sort indicator, ragged rows, the view
+// =========================================================================
+
+#[test]
+fn test_csv_sort_indicator_survives_a_narrow_column() {
+    let mut v = CsvViewer::from_content("Age\n3\n1").show_row_numbers(false);
+    v.sort_by(0);
+    assert!(row_text(&render(&v, 20, 3), 0).contains('▲')); // was "Age│"
+}
+
+#[test]
+fn test_csv_ragged_cells_are_not_drawn() {
+    let v = CsvViewer::from_content("a,b\n1,2,EXTRA").show_row_numbers(false);
+    assert!(!row_text(&render(&v, 40, 2), 1).contains("EXTRA"));
+}
+
+#[test]
+fn test_csv_view_holds_while_selection_moves_inside_it() {
+    let content = std::iter::once("N".to_string())
+        .chain((0..20).map(|i| i.to_string()))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let mut v = CsvViewer::from_content(&content).show_row_numbers(false);
+    v.select_last_row();
+    let before = row_text(&render(&v, 10, 4), 1);
+    assert!(before.starts_with("17"), "{before:?}");
+    v.select_up();
+    assert_eq!(row_text(&render(&v, 10, 4), 1), before); // was "17" -> "16"
+}
