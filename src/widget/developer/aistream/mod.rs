@@ -11,6 +11,7 @@ mod typing;
 pub use types::{StreamCursor, StreamStatus, TypingStyle};
 
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 use std::time::Instant;
@@ -59,8 +60,9 @@ pub struct AiStream {
     thinking_frame: usize,
     /// Word wrap
     wrap: bool,
-    /// Scroll offset
-    scroll: usize,
+    /// Where the rows are scrolled to: a stream follows its newest row
+    /// until scrolled up
+    scroll: ScrollState,
     /// Markdown rendering
     render_markdown: bool,
     /// Widget properties
@@ -84,7 +86,7 @@ impl AiStream {
             show_thinking: true,
             thinking_frame: 0,
             wrap: true,
-            scroll: 0,
+            scroll: ScrollState::new().follow_end(true),
             render_markdown: true,
             props: WidgetProps::new(),
         }

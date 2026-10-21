@@ -18,6 +18,9 @@ impl AiStream {
         self.content = text.into();
         self.visible_chars = self.content.chars().count();
         self.status = StreamStatus::Complete;
+        // A finished answer is read from its start
+        self.scroll.set_follow_end(false);
+        self.scroll.scroll_to_top();
     }
 
     /// Clear content
@@ -25,7 +28,8 @@ impl AiStream {
         self.content.clear();
         self.visible_chars = 0;
         self.status = StreamStatus::Idle;
-        self.scroll = 0;
+        self.scroll.set_content(0);
+        self.scroll.set_follow_end(true);
     }
 
     /// Mark as complete
@@ -75,11 +79,13 @@ impl AiStream {
 
     /// Scroll down
     pub fn scroll_down(&mut self, amount: usize) {
-        self.scroll = self.scroll.saturating_add(amount);
+        self.scroll
+            .scroll_by(amount.min(isize::MAX as usize) as isize);
     }
 
     /// Scroll up
     pub fn scroll_up(&mut self, amount: usize) {
-        self.scroll = self.scroll.saturating_sub(amount);
+        self.scroll
+            .scroll_by(-(amount.min(isize::MAX as usize) as isize));
     }
 }

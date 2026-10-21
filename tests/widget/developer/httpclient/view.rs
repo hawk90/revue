@@ -391,7 +391,8 @@ proptest! {
     }
 
     /// The content rows show the body's lines from the scroll offset on, as
-    /// many as fit under the tabs, each cut at the width. Body and Raw draw
+    /// many as fit under the tabs, each cut at the width. The offset stops
+    /// where the last line is on the bottom row (#973). Body and Raw draw
     /// the same for a body that is not JSON.
     #[test]
     fn prop_body_rows_match_the_model(
@@ -401,17 +402,19 @@ proptest! {
         height in 10u16..30,
         raw in any::<bool>(),
     ) {
-        // Offsets past the last line are not checked: the scroll is not
-        // bounded by the body (#973).
-        let scroll = scroll_pick.min(lines.len());
         let mut client = with(
             response(200, "OK", &[("Content-Type", "text/plain")], &lines.join("\n"), 1),
             if raw { ResponseView::Raw } else { ResponseView::Body },
         );
-        client.scroll_down(scroll);
+        client.scroll_down(scroll_pick);
         let buffer = draw(&client, width, height);
         let joined = lines.join("\n");
         let body: Vec<&str> = joined.lines().collect();
+        // Before a draw the offset can put the last line on top; the draw
+        // then keeps the last page full under the four header rows
+        let scroll = scroll_pick
+            .min(body.len().saturating_sub(1))
+            .min(body.len().saturating_sub((height - 4) as usize));
         for y in 4..height {
             let want = body
                 .get(scroll + (y - 4) as usize)
@@ -437,4 +440,45 @@ proptest! {
         let want = format!("{k}: {v}");
         prop_assert_eq!(row(&buffer, 4), want.trim_end());
     }
+}
+
+/// `scroll_down` used to store any offset, so the content rows went blank
+/// past the last line (#973).
+#[test]
+fn body_scroll_stops_at_the_last_line() {
+    let body: Vec<String> = (0..10).map(|i| format!("l{i}")).collect();
+    let mut c = with(
+        response(200, "OK", &[], &body.join("\n"), 1),
+        ResponseView::Body,
+    );
+    c.scroll_down(100);
+    assert!(c.body_scroll_for_testing() <= 9);
+    // 8 content rows under the tabs: the last page is full
+    let buffer = draw(&c, 60, 12);
+    let shown: Vec<String> = (4..12).map(|y| row(&buffer, y)).collect();
+    assert_eq!(shown, body[2..]);
+}
+
+/// The Headers view used the body's offset, so after scrolling the body it
+/// started past the first headers, or showed nothing (#973).
+#[test]
+fn headers_view_is_not_scrolled_by_the_body() {
+    let headers: Vec<(String, String)> =
+        (0..10).map(|i| (format!("X-{i:02}"), "v".into())).collect();
+    let pairs: Vec<(&str, &str)> = headers
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
+    let body: Vec<String> = (0..20).map(|i| format!("l{i}")).collect();
+    let mut c = with(
+        response(200, "OK", &pairs, &body.join("\n"), 1),
+        ResponseView::Body,
+    );
+    c.scroll_down(3);
+    c.set_view(ResponseView::Headers);
+    // The headers come in map order (#1083): check the offset and that the
+    // eight content rows are all headers
+    assert_eq!(c.body_scroll_for_testing(), 0);
+    let buffer = draw(&c, 60, 12);
+    assert!((4..12).all(|y| row(&buffer, y).starts_with("X-")));
 }

@@ -201,7 +201,15 @@ impl HttpClient {
         }
     }
 
-    /// Body and Raw: the body's lines from `body_scroll` on.
+    /// The first line to draw in `height` rows: the offset kept in range
+    /// for the shown view's lines (#973)
+    fn scrolled(&self, height: u16) -> usize {
+        self.scroll.set_content(self.view_lines());
+        self.scroll.set_viewport(usize::from(height));
+        self.scroll.offset()
+    }
+
+    /// Body and Raw: the body's lines from the scrolled-to one on.
     fn draw_body(
         &self,
         ctx: &mut RenderContext,
@@ -213,7 +221,7 @@ impl HttpClient {
         for (i, line) in response
             .body
             .lines()
-            .skip(self.body_scroll)
+            .skip(self.scrolled(content_height))
             .take(content_height as usize)
             .enumerate()
         {
@@ -221,7 +229,7 @@ impl HttpClient {
         }
     }
 
-    /// Headers: one `key: value` row per header from `body_scroll` on, the
+    /// Headers: one `key: value` row per header from the scrolled-to one on, the
     /// key clipped to half the width.
     fn draw_headers(
         &self,
@@ -234,7 +242,7 @@ impl HttpClient {
         for (i, (key, value)) in response
             .headers
             .iter()
-            .skip(self.body_scroll)
+            .skip(self.scrolled(content_height))
             .take(content_height as usize)
             .enumerate()
         {

@@ -6,6 +6,10 @@ use super::HttpClient;
 impl HttpClient {
     /// Set response view
     pub fn set_view(&mut self, view: ResponseView) {
+        // Each view is scrolled on its own lines: switching starts at the top
+        if view != self.view {
+            self.scroll.scroll_to_top();
+        }
         self.view = view;
     }
 
@@ -29,12 +33,25 @@ impl HttpClient {
 
     /// Scroll body down
     pub fn scroll_down(&mut self, amount: usize) {
-        self.body_scroll = self.body_scroll.saturating_add(amount);
+        self.scroll.set_content(self.view_lines());
+        self.scroll
+            .scroll_by(amount.min(isize::MAX as usize) as isize);
     }
 
     /// Scroll body up
     pub fn scroll_up(&mut self, amount: usize) {
-        self.body_scroll = self.body_scroll.saturating_sub(amount);
+        self.scroll.set_content(self.view_lines());
+        self.scroll
+            .scroll_by(-(amount.min(isize::MAX as usize) as isize));
+    }
+
+    /// The lines of the shown view: the body's (Body, Raw) or one per header
+    pub(super) fn view_lines(&self) -> usize {
+        match (&self.response, self.view) {
+            (None, _) => 0,
+            (Some(response), ResponseView::Headers) => response.headers.len(),
+            (Some(response), _) => response.body.lines().count(),
+        }
     }
 
     /// Navigate history back

@@ -1,36 +1,43 @@
-//! Scrolling through the scrollback: the offset from the bottom and the
-//! lines it shows
+//! Scrolling through the scrollback: a ScrollState over the lines, from the
+//! top, that follows the newest line until scrolled back (#973)
 
 use super::Terminal;
 
 impl Terminal {
-    /// Scroll up
+    /// Scroll up, back through the scrollback
     pub fn scroll_up(&mut self, lines: usize) {
-        let max_scroll = self.lines.len().saturating_sub(self.height as usize);
-        self.scroll_offset = (self.scroll_offset + lines).min(max_scroll);
+        self.scroll
+            .scroll_by(-(lines.min(isize::MAX as usize) as isize));
     }
 
-    /// Scroll down
+    /// Scroll down, toward the newest line; reaching it follows new output
     pub fn scroll_down(&mut self, lines: usize) {
-        self.scroll_offset = self.scroll_offset.saturating_sub(lines);
+        self.scroll
+            .scroll_by(lines.min(isize::MAX as usize) as isize);
     }
 
-    /// Scroll to bottom
+    /// Scroll to bottom and follow new output
     pub fn scroll_to_bottom(&mut self) {
-        self.scroll_offset = 0;
+        self.scroll.scroll_to_end();
     }
 
     /// Scroll to top
     pub fn scroll_to_top(&mut self) {
-        self.scroll_offset = self.lines.len().saturating_sub(self.height as usize);
+        self.scroll.scroll_to_top();
     }
 
     /// Get visible lines range
     pub(super) fn visible_range(&self) -> std::ops::Range<usize> {
-        let total = self.lines.len();
-        let visible = self.height as usize;
-        let end = total.saturating_sub(self.scroll_offset);
-        let start = end.saturating_sub(visible);
-        start..end
+        self.scroll.visible()
+    }
+
+    /// How many lines are below the view: 0 when it shows the newest
+    pub(super) fn lines_below(&self) -> usize {
+        self.lines.len() - self.scroll.visible().end
+    }
+
+    /// The lines changed at the end: give the scroll their count
+    pub(super) fn sync_scroll(&self) {
+        self.scroll.set_content(self.lines.len());
     }
 }

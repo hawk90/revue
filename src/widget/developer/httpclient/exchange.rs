@@ -52,6 +52,7 @@ impl HttpClient {
             time: start.elapsed(),
             size: mock_body.len(),
         });
+        self.scroll.scroll_to_top();
 
         self.state = RequestState::Success;
     }
@@ -60,6 +61,8 @@ impl HttpClient {
     pub fn set_response(&mut self, response: HttpResponse) {
         let is_success = response.is_success();
         self.response = Some(response);
+        // A new response is read from its first line
+        self.scroll.scroll_to_top();
         self.state = if is_success {
             RequestState::Success
         } else {
@@ -78,7 +81,7 @@ impl HttpClient {
         self.response = None;
         self.error = None;
         self.state = RequestState::Idle;
-        self.body_scroll = 0;
+        self.scroll.set_content(0);
     }
 
     /// Record that a URL was refused: the message names the rules

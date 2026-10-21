@@ -104,9 +104,12 @@ impl ScrollState {
         self.follow_end.get()
     }
 
-    /// The largest offset: the one that shows the last page full
+    /// The largest offset: the one that shows the last page full. Before the
+    /// view is drawn, the one that puts the last row on top.
     pub fn max_offset(&self) -> usize {
-        self.content.get().saturating_sub(self.viewport.get())
+        self.content
+            .get()
+            .saturating_sub(self.viewport.get().max(1))
     }
 
     /// The rows on screen
@@ -183,8 +186,15 @@ impl ScrollState {
     /// content allows
     pub fn scroll_to(&mut self, row: usize) {
         self.pending.set(None);
-        self.offset.set(row.min(self.max_offset()));
-        self.follow_end.set(self.tail.get() && self.at_end());
+        let target = row.min(self.max_offset());
+        if target != self.offset.get() {
+            // A move: following is whether it ended at the end
+            self.offset.set(target);
+            self.follow_end.set(self.tail.get() && self.at_end());
+        } else if row >= target && self.at_end() {
+            // Asked for the end, or past it, while there: follow again
+            self.follow_end.set(self.tail.get());
+        }
     }
 
     /// Scroll to the first row
@@ -265,8 +275,10 @@ impl ScrollState {
         }
     }
 
+    /// Whether the view shows its last row. Unknown, so false, before the
+    /// view is drawn: a move then does not start following.
     fn at_end(&self) -> bool {
-        self.offset.get() >= self.max_offset()
+        self.viewport.get() > 0 && self.offset.get() >= self.max_offset()
     }
 
     /// Keep the offset in range, and on the last page while following.
