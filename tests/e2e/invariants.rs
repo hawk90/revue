@@ -532,6 +532,35 @@ fn inv07_control_characters_do_not_reach_the_buffer_verbatim() {
     );
 }
 
+/// RichText writes its own cells instead of going through `draw_text`, so it
+/// needs the same filter (#1198).
+#[test]
+fn inv07_rich_text_control_characters_do_not_reach_the_buffer_verbatim() {
+    let text = revue::widget::RichText::new()
+        .push("a\x1b[31mb", revue::widget::Style::new())
+        .push("\x07c", revue::widget::Style::new().bold());
+    let mut h = PipelineHarness::new(40, 3);
+    h.draw(&text);
+
+    let screen = h.screen_text();
+    assert!(
+        screen.starts_with("a[31mbc"),
+        "the printable text should run on without gaps: {screen:?}"
+    );
+    assert!(
+        !screen.contains('\x1b'),
+        "ESC survived into the cell buffer: {screen:?}"
+    );
+    assert!(
+        !screen.contains('\x07'),
+        "BEL survived into the cell buffer: {screen:?}"
+    );
+    assert!(
+        !contains_subslice(h.terminal_output(), b"\x07"),
+        "BEL from RichText reached the terminal"
+    );
+}
+
 fn contains_subslice(haystack: &[u8], needle: &[u8]) -> bool {
     haystack.windows(needle.len()).any(|w| w == needle)
 }

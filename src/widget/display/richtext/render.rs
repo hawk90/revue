@@ -91,7 +91,10 @@ impl View for RichText {
                     }
                     continue;
                 }
-                if x >= area.width {
+                // A control character takes no cell, as in `draw_text`: in
+                // the buffer it would reach the terminal and run there
+                // (INV-07, #1198).
+                if x >= area.width || ch.is_control() {
                     continue;
                 }
 
