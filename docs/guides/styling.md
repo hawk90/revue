@@ -61,6 +61,19 @@ Input, TextArea {
 }
 ```
 
+### Combinators
+
+```css
+.card .label  { color: gray; }  /* a .label anywhere inside a .card */
+.card > Text  { color: white; } /* a Text whose parent is the .card */
+.mark + Text  { color: red; }   /* the Text right after a .mark */
+.mark ~ Text  { color: red; }   /* every later Text sibling of a .mark */
+```
+
+Sibling combinators look forward only: `.a ~ .b` never styles a `.b` that
+comes before the `.a`. A rule such as `.a:hover + .b` restyles `.b` when the
+state of `.a` changes, even though `.b` itself did not change.
+
 ### Applying Classes
 
 ```rust
@@ -261,6 +274,11 @@ Button:disabled {
     color: gray;
 }
 ```
+
+The grey of a disabled widget is only its default, used when no rule and no
+builder color says otherwise. A matching `:disabled` rule, or `.fg()` / `.bg()`
+on the widget, still applies. What a disabled widget never gets is the hover,
+press and focus tint, because it does not react to the pointer.
 
 ### Structural pseudo-classes
 

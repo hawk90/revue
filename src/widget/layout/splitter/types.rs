@@ -29,7 +29,7 @@ pub enum SplitterStyle {
 pub struct Pane {
     /// Pane identifier
     pub id: String,
-    /// Minimum size (percentage or absolute)
+    /// Minimum size, in cells along the split
     pub min_size: u16,
     /// Maximum size (0 = unlimited)
     pub max_size: u16,

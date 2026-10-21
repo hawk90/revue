@@ -30,6 +30,12 @@
 //! The ratchet: a layer fails if a widget fails with a sequence that is not
 //! listed in [`known_failures::KNOWN`], **or** if a listed widget/sequence no
 //! longer fails. The list can only shrink.
+//!
+//! To search deeper than CI does, raise `CASES` in `keys.rs` / `mouse.rs` for
+//! a local run in release mode (`cargo test --release --test widget
+//! catalog::sequences`) and put it back before committing: the ratchet is
+//! matched to the committed `CASES`, so a raised count can fail on sequences
+//! nobody has triaged yet.
 
 pub mod catalog;
 pub mod keys;

@@ -113,6 +113,7 @@ impl View for Counter {
 |:------|:------------|
 | [App Builder](guides/app-builder.md) | Complete App Builder API reference |
 | [Styling](guides/styling.md) | CSS properties, selectors, and theming |
+| [Layout](guides/layout.md) | How stacks size children; `measure` and `fills` for custom widgets |
 | [State Management](guides/state.md) | Reactive state with signals |
 | [Testing](guides/testing.md) | Test your TUI apps |
 | [Accessibility](guides/accessibility.md) | Build inclusive apps |

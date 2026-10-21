@@ -272,8 +272,6 @@ items:
       - tests/runtime/layout/css_layout.rs::a_css_gap_is_ignored_without_the_flag
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
-    notes: 'Stale comment in src/widget/layout/stack/sizing.rs says "gap: 0 … reads as not specified"; behavior (and test) follow
-      the doc.'
   - id: CSS-016
     title: Flex/grid container properties from CSS (flex-direction, justify-content, align-items, flex-grow, flex, flex-wrap,
       align-self, order, grid-template-*)
@@ -494,9 +492,9 @@ items:
       - PR #687
     notes: Opt-in in 2.x; on by default since 3.0 (docs/migration/v3.0.0.md section 2). Widgets without an obvious
       natural size (lists, tables, editors, charts, Positioned, Gauge Arc/Circle) fill by design. Widgets that measure are
-      pinned by tests/widget/traits/view/measure.rs; the ones that still fill are #1100.
+      pinned by tests/widget/traits/view/measure.rs; the ones that still fill are tracked (#1100).
       Nested stacks are measured through the crate-internal View::measure_styled hook with the paint pass's
-      styled subtree (design doc section 3).
+      styled subtree (docs/refactor/design-content-sized-stack.md section 3, as of 8f9dcb2e).
   - id: RX-001
     title: 'signal(): get / set / update'
     area: reactive
@@ -677,7 +675,7 @@ items:
       - checkbox(label) with checked state
       - toggle via keyboard
     evidence:
-      - src/widget/input/input_widgets/checkbox.rs::checkbox
+      - src/widget/input/input_widgets/checkbox/mod.rs::checkbox
       - tests/widget/input/input_widgets/checkbox/basic.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / Checkbox
@@ -788,7 +786,7 @@ items:
       - tab labels, selected index
       - keyboard next/prev
     evidence:
-      - src/widget/layout/tabs.rs::tabs
+      - src/widget/layout/tabs/mod.rs::tabs
       - tests/e2e/scenarios.rs
     source:
       - FEATURES.md §4 Widgets / Navigation Widgets / Tabs
@@ -938,7 +936,7 @@ items:
       - Full/Compact/Minimal variants, custom icon
     evidence:
       - src/widget/display/empty_state/mod.rs::empty_state
-      - tests/widget/display/empty_state.rs
+      - tests/widget/display/empty_state
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / EmptyState
   - id: WID-023
@@ -1024,7 +1022,7 @@ items:
       - command list with fuzzy filtering
       - placeholder, show/hide
     evidence:
-      - src/widget/command_palette/helper.rs::command_palette
+      - src/widget/command_palette/mod.rs::command_palette
       - tests/utils/fuzzy.rs
       - examples/ide.rs
     source:
@@ -1178,7 +1176,7 @@ items:
     acceptance:
       - placeholder, query input
     evidence:
-      - src/widget/input/input_widgets/search_bar.rs::search_bar
+      - src/widget/input/input_widgets/search_bar/mod.rs::search_bar
       - tests/widget/traits/css/widgets/input.rs
     source:
       - FEATURES.md §Advanced Widgets / Search Bar
@@ -1249,7 +1247,7 @@ items:
       - value/min/max/step
     evidence:
       - src/widget/input/input_widgets/number_input/helper.rs::number_input
-      - tests/widget/input/input_widgets/number_input.rs
+      - tests/widget/input/input_widgets/number_input
     source:
       - FEATURES.md §Advanced Widgets / Number Input
     notes: No .on_change.
@@ -1601,7 +1599,7 @@ items:
     evidence:
       - src/widget/traits/render_context/edit_line.rs
       - tests/widget/traits/view/wide_chars/mod.rs
-      - tests/widget/layout/border.rs::wide_title_truncates_by_columns
+      - tests/widget/layout/border/mod.rs::wide_title_truncates_by_columns
       - tests/widget/input/input_widgets/wide_chars.rs
       - tests/widget/developer/code_editor/wide_chars.rs
       - tests/widget/traits/view/wide_chars/text_fields.rs

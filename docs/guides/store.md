@@ -6,6 +6,14 @@ Revue provides a Pinia-inspired centralized state management system using reacti
 
 Stores are singleton state containers that organize related state, actions, and getters into reusable units. They build on Revue's reactive primitives (`Signal`, `Computed`) to provide a scalable pattern for application-wide state.
 
+### Store or plain signal
+
+Put the application's domain state in a store: the data it loads, edits and
+saves, which several views read and which you want to follow in devtools. Keep
+state that belongs to one view in a plain `Signal` next to that view: hover,
+an animation's progress, a field's validation message, whether a panel is
+expanded.
+
 ## Defining a Store
 
 Implement the `Store` trait to create a store:
