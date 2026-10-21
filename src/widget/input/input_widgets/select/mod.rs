@@ -7,7 +7,7 @@ mod state;
 
 use super::dropdown::MIN_DROPDOWN_WIDTH;
 use crate::style::Color;
-use crate::utils::{display_width, Selection};
+use crate::utils::{display_width, ScrollState, Selection};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -51,6 +51,8 @@ pub struct Select {
     pub(crate) filtered: Vec<usize>,
     /// Selection state for filtered results (uses Selection utility)
     pub(crate) filtered_selection: Selection,
+    /// Where the open dropdown is scrolled to, one row per shown option
+    dropdown_scroll: ScrollState,
     /// Focused state
     pub(crate) focused: bool,
     /// Disabled state
@@ -78,6 +80,7 @@ impl Select {
             searchable: false,
             filtered: Vec::new(),
             filtered_selection: Selection::new(0),
+            dropdown_scroll: ScrollState::new(),
             focused: false,
             disabled: false,
             props: WidgetProps::new(),

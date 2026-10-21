@@ -131,10 +131,21 @@ impl View for Select {
             disabled_fg: None,
         };
 
-        // Build option descriptors
-        let dropdown_options: Vec<DropdownOption<'_>> = visible_options
+        // The rows in view: the dropdown follows the highlighted option (#882)
+        let scroll = &self.dropdown_scroll;
+        scroll.set_content(visible_options.len());
+        scroll.set_viewport(dropdown_h as usize);
+        if let Some(row) = visible_options
             .iter()
-            .take(dropdown_h as usize)
+            .position(|(i, _)| self.selection.is_selected(*i))
+        {
+            scroll.track(row..row + 1);
+        }
+        let shown = scroll.visible();
+
+        // Build option descriptors
+        let dropdown_options: Vec<DropdownOption<'_>> = visible_options[shown]
+            .iter()
             .map(|(option_idx, option)| {
                 let is_selected = self.selection.is_selected(*option_idx);
                 let indicator = if is_selected { '›' } else { ' ' };

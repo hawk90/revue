@@ -30,8 +30,11 @@ fn op() -> impl Strategy<Value = Op> {
 
 proptest! {
     #[test]
-    fn prop_scroll_state_keeps_its_rules(ops in prop::collection::vec(op(), 1..40)) {
-        let mut s = ScrollState::new();
+    fn prop_scroll_state_keeps_its_rules(
+        tail in any::<bool>(),
+        ops in prop::collection::vec(op(), 1..40),
+    ) {
+        let mut s = if tail { ScrollState::new().follow_end(false) } else { ScrollState::new() };
         s.set_viewport(5);
         for op in ops {
             let (before_offset, before_following) = (s.offset(), s.is_following());
@@ -54,7 +57,8 @@ proptest! {
                 Op::To(r) => s.scroll_to(r),
                 Op::End => {
                     s.scroll_to_end();
-                    prop_assert!(s.is_following());
+                    prop_assert_eq!(s.is_following(), tail);
+                    prop_assert_eq!(s.offset(), s.max_offset());
                 }
                 Op::Reveal(start, n) => {
                     let rows = start.min(s.content())..(start + n).min(s.content());
@@ -75,6 +79,7 @@ proptest! {
             if s.is_following() {
                 prop_assert_eq!(s.offset(), s.max_offset());
             }
+            prop_assert!(tail || !s.is_following(), "a view without a tail mode followed");
             prop_assert!(s.visible().start <= s.visible().end);
             prop_assert!(s.visible().end <= s.content());
         }

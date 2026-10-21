@@ -23,7 +23,7 @@ impl Combobox {
             self.filtered = (0..self.options.len()).collect();
             self.group_filtered();
             self.selected_idx = 0;
-            self.scroll_offset = 0;
+            self.scroll.scroll_to_top();
             return;
         }
 
@@ -73,7 +73,7 @@ impl Combobox {
         self.filtered = matches.into_iter().map(|(i, _)| i).collect();
         self.group_filtered();
         self.selected_idx = 0;
-        self.scroll_offset = 0;
+        self.scroll.scroll_to_top();
     }
 
     /// Keep each group's options together: ungrouped options first, then

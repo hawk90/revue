@@ -644,3 +644,36 @@ proptest! {
         prop_assert!(row(&b, shown as u16 + 1).trim().is_empty());
     }
 }
+
+// ── Scrolling (#882) ────────────────────────────────────────────────────
+
+/// The dropdown drew the first 10 options while Down moved the cursor over
+/// all of them.
+#[test]
+fn the_dropdown_follows_the_cursor() {
+    use revue::event::Key;
+    let mut v = multi_select().options((1..=15).map(|i| format!("O{i:02}")).collect());
+    v.open();
+    for _ in 0..12 {
+        v.handle_key(&Key::Down);
+    }
+    let b = render_in(&v, 20, 12);
+    let rows: Vec<String> = (1..11)
+        .map(|y| row(&b, y)[4..].trim().to_string())
+        .collect();
+    let expected: Vec<String> = (4..=13).map(|i| format!("O{i:02}")).collect();
+    assert_eq!(rows, expected);
+    assert_eq!(bg(&b, 0, 10), Some(CURSOR_ROW_BG), "O13 has the cursor");
+}
+
+/// Left onto the last tag used to leave it undrawn, so Backspace removed a
+/// tag the user could not see.
+#[test]
+fn the_tag_under_the_cursor_is_drawn() {
+    use revue::event::Key;
+    let mut v = MultiSelect::new().options((1..=12).map(|i| format!("Item {i}")).collect());
+    v.select_all();
+    v.handle_key(&Key::Left); // onto the last tag, Item 12
+    let b = render_in(&v, 30, 1);
+    assert!(row(&b, 0).contains("[Item 12]"), "{:?}", row(&b, 0));
+}

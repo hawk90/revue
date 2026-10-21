@@ -9,10 +9,12 @@
 //!   `0..=content - viewport`.
 //! - [`ScrollState::reveal`] scrolls just enough to show a range of rows, in
 //!   either direction, as `scrollIntoView({ block: "nearest" })` does. Call it
-//!   when the selection changes.
-//! - While the view is at the end it follows the end: content added below
-//!   keeps the last page in view. Scrolling up stops that; reaching the end
-//!   again starts it.
+//!   when the selection changes, or give the selected rows to
+//!   [`track`](ScrollState::track) where the view is drawn.
+//! - A view with a tail mode ([`follow_end`](ScrollState::follow_end)) follows
+//!   the end while it is at the end: content added below keeps the last page
+//!   in view. Scrolling up stops that; reaching the end again starts it. A
+//!   view without one never follows.
 //! - Rows inserted or removed above the view move the offset with them, so
 //!   the rows on screen stay put.
 //!
@@ -49,8 +51,14 @@ pub struct ScrollState {
     viewport: Cell<usize>,
     content: Cell<usize>,
     follow_end: Cell<bool>,
+    /// Whether the view has a tail mode at all: set once following is
+    /// turned on. A list without one never starts following by reaching its
+    /// end.
+    tail: Cell<bool>,
     /// A reveal made while the viewport was unknown
     pending: Cell<Option<(usize, usize)>>,
+    /// The rows last given to [`track`](ScrollState::track)
+    tracked: Cell<Option<(usize, usize)>>,
 }
 
 impl ScrollState {
@@ -61,6 +69,7 @@ impl ScrollState {
 
     /// Start following the end (a log or a stream), or not
     pub fn follow_end(self, follow: bool) -> Self {
+        self.tail.set(true);
         self.follow_end.set(follow);
         self.settle();
         self
@@ -69,6 +78,7 @@ impl ScrollState {
     /// Follow the end from now on, or stop following and keep the view
     /// where it is (a paused log)
     pub fn set_follow_end(&mut self, follow: bool) {
+        self.tail.set(self.tail.get() || follow);
         self.follow_end.set(follow);
         self.settle();
     }
@@ -173,7 +183,7 @@ impl ScrollState {
     pub fn scroll_to(&mut self, row: usize) {
         self.pending.set(None);
         self.offset.set(row.min(self.max_offset()));
-        self.follow_end.set(self.at_end());
+        self.follow_end.set(self.tail.get() && self.at_end());
     }
 
     /// Scroll to the first row
@@ -181,11 +191,16 @@ impl ScrollState {
         self.scroll_to(0);
     }
 
-    /// Scroll to the last page and follow the end
+    /// Scroll to the last page, and follow the end in a view with a tail
+    /// mode
     pub fn scroll_to_end(&mut self) {
         self.pending.set(None);
-        self.follow_end.set(true);
-        self.settle();
+        if self.tail.get() {
+            self.follow_end.set(true);
+            self.settle();
+        } else {
+            self.offset.set(self.max_offset());
+        }
     }
 
     /// Scroll up by one page
@@ -215,6 +230,23 @@ impl ScrollState {
         self.settle();
     }
 
+    /// Reveal `rows` when they differ from the rows given last time. Call it
+    /// where the view is drawn with the selected item's rows: the view then
+    /// follows the selection whichever code moved it, and scrolling away from
+    /// an unchanged selection is kept.
+    pub fn track(&self, rows: Range<usize>) {
+        let key = (rows.start, rows.end.max(rows.start + 1));
+        if self.tracked.replace(Some(key)) == Some(key) {
+            return;
+        }
+        if self.viewport.get() == 0 {
+            self.pending.set(Some(key));
+            return;
+        }
+        self.apply_reveal(key.0, key.1);
+        self.settle();
+    }
+
     fn apply_reveal(&self, start: usize, end: usize) {
         let viewport = self.viewport.get();
         let offset = self.offset.get();
@@ -228,7 +260,7 @@ impl ScrollState {
         let target = target.min(self.max_offset());
         if target != offset {
             self.offset.set(target);
-            self.follow_end.set(self.at_end());
+            self.follow_end.set(self.tail.get() && self.at_end());
         }
     }
 

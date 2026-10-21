@@ -18,7 +18,7 @@ impl Combobox {
     pub fn close_dropdown(&mut self) {
         self.open = false;
         self.selected_idx = 0;
-        self.scroll_offset = 0;
+        self.scroll.scroll_to_top();
     }
 
     /// Toggle dropdown
@@ -104,7 +104,7 @@ impl Combobox {
     /// Select first option
     pub fn select_first(&mut self) {
         self.selected_idx = 0;
-        self.scroll_offset = 0;
+        self.scroll.scroll_to_top();
     }
 
     /// Select last option
@@ -117,23 +117,37 @@ impl Combobox {
 
     /// Ensure selected option is visible in viewport
     pub fn ensure_visible(&mut self) {
-        // The scroll offset counts dropdown rows, which include group headers
-        let rows = self.display_rows();
-        let Some(row) = rows
-            .iter()
-            .position(|r| matches!(r, DisplayRow::Option(pos) if *pos == self.selected_idx))
-        else {
-            return;
-        };
-        // A group's first option brings its header into view with it, when
-        // there is room for both
-        let header_above =
-            self.max_visible > 1 && row > 0 && matches!(rows[row - 1], DisplayRow::Header(_));
-        let top = if header_above { row - 1 } else { row };
-        if top < self.scroll_offset {
-            self.scroll_offset = top;
-        } else if row >= self.scroll_offset + self.max_visible {
-            self.scroll_offset = row + 1 - self.max_visible;
+        let rows = self.highlight_rows();
+        self.sync_scroll();
+        if let Some(rows) = rows {
+            self.scroll.reveal(rows);
         }
+    }
+
+    /// The dropdown rows the highlighted option needs in view: its own, and
+    /// its group's header above it when it is the group's first option and
+    /// there is room for both
+    pub(super) fn highlight_rows(&self) -> Option<std::ops::Range<usize>> {
+        let rows = self.display_rows();
+        let row = rows
+            .iter()
+            .position(|r| matches!(r, DisplayRow::Option(pos) if *pos == self.selected_idx))?;
+        let header_above =
+            self.visible_count() > 1 && row > 0 && matches!(rows[row - 1], DisplayRow::Header(_));
+        let top = if header_above { row - 1 } else { row };
+        Some(top..row + 1)
+    }
+
+    /// How many rows the dropdown shows
+    pub(super) fn visible_count(&self) -> usize {
+        self.max_visible
+            .min(crate::widget::theme::MAX_DROPDOWN_VISIBLE as usize)
+    }
+
+    /// Give the scroll the dropdown's rows and height. The height is a
+    /// setting, so this needs no draw.
+    pub(super) fn sync_scroll(&self) {
+        self.scroll.set_content(self.display_rows().len());
+        self.scroll.set_viewport(self.visible_count());
     }
 }

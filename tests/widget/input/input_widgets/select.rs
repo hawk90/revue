@@ -1184,3 +1184,64 @@ mod snapshots {
         pilot.snapshot("select_basic");
     }
 }
+
+// ==================== Dropdown scrolling (#882) ====================
+
+fn fifteen() -> Select {
+    Select::new()
+        .options((1..=15).map(|i| format!("O{i:02}")).collect())
+        .focused(true)
+}
+
+/// The labels on the dropdown's rows (below the header), and the row of the
+/// highlighted one
+fn dropdown(s: &Select) -> (Vec<String>, Option<usize>) {
+    let rows = screen(s, 20, 12);
+    let rows = &rows[1..11];
+    let labels = rows
+        .iter()
+        .map(|r| r.chars().skip(2).collect::<String>().trim().to_string())
+        .collect();
+    (labels, rows.iter().position(|r| r.starts_with('›')))
+}
+
+fn labels(range: std::ops::RangeInclusive<usize>) -> Vec<String> {
+    range.map(|i| format!("O{i:02}")).collect()
+}
+
+/// The dropdown drew the first 10 options while Down moved over all 15, so
+/// the highlighted option could be one the user could not see.
+#[test]
+fn test_select_dropdown_follows_the_highlight() {
+    let mut s = fifteen();
+    s.open();
+    for _ in 0..12 {
+        s.handle_key(&Key::Down);
+    }
+    assert_eq!(s.value(), Some("O13"));
+    assert_eq!(dropdown(&s), (labels(4..=13), Some(9)));
+}
+
+/// Moving back up inside the shown options keeps them where they are.
+#[test]
+fn test_select_dropdown_keeps_its_page_while_moving_inside_it() {
+    let mut s = fifteen();
+    s.open();
+    for _ in 0..12 {
+        s.handle_key(&Key::Down);
+    }
+    dropdown(&s);
+    s.handle_key(&Key::Up);
+    assert_eq!(dropdown(&s), (labels(4..=13), Some(8)));
+}
+
+/// End and Home scroll to either end.
+#[test]
+fn test_select_dropdown_end_and_home() {
+    let mut s = fifteen();
+    s.open();
+    s.handle_key(&Key::End);
+    assert_eq!(dropdown(&s), (labels(6..=15), Some(9)));
+    s.handle_key(&Key::Home);
+    assert_eq!(dropdown(&s), (labels(1..=10), Some(0)));
+}

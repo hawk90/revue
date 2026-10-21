@@ -20,7 +20,7 @@ mod tests;
 pub use option::ComboOption;
 
 use crate::style::Color;
-use crate::utils::FilterMode;
+use crate::utils::{FilterMode, ScrollState};
 use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -75,8 +75,9 @@ pub struct Combobox {
     pub(super) empty_text: String,
     /// Max visible options in dropdown
     pub(super) max_visible: usize,
-    /// Scroll offset in dropdown
-    pub(super) scroll_offset: usize,
+    /// Where the dropdown is scrolled to, in rows (options and group
+    /// headers)
+    pub(super) scroll: ScrollState,
     // Styling
     pub(super) fg: Option<Color>,
     pub(super) bg: Option<Color>,
@@ -111,7 +112,7 @@ impl Combobox {
             loading_text: "Loading...".to_string(),
             empty_text: "No results".to_string(),
             max_visible: 5,
-            scroll_offset: 0,
+            scroll: ScrollState::new(),
             fg: None,
             bg: None,
             input_fg: None,

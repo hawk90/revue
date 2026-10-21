@@ -827,3 +827,28 @@ proptest! {
         prop_assert_eq!(cb.filtered_count(), expected);
     }
 }
+
+/// Navigation scrolled by the uncapped `max_visible` while the dropdown
+/// showed at most 10 rows, so with `.max_visible(20)` and 15 options the
+/// highlight went below the drawn rows (#882).
+#[test]
+fn test_combobox_dropdown_follows_the_highlight_past_the_row_cap() {
+    let mut cb = Combobox::new()
+        .options((1..=15).map(|i| format!("O{i:02}")).collect::<Vec<_>>())
+        .max_visible(20);
+    cb.open_dropdown();
+    for _ in 0..12 {
+        cb.select_next();
+    }
+    let mut buffer = Buffer::new(20, 12);
+    cb.render(&mut RenderContext::new(
+        &mut buffer,
+        Rect::new(0, 0, 20, 12),
+    ));
+    let rows: Vec<String> = (1..11)
+        .map(|y| (0..20).map(|x| buffer.get(x, y).unwrap().symbol).collect())
+        .collect();
+    let highlighted: Vec<&String> = rows.iter().filter(|r| r.starts_with('›')).collect();
+    assert_eq!(highlighted.len(), 1, "{rows:#?}");
+    assert!(highlighted[0].contains("O13"), "{rows:#?}");
+}

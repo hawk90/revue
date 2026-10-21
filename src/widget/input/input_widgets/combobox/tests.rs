@@ -98,7 +98,7 @@ fn test_combobox_scroll() {
     }
 
     // Should have scrolled
-    assert!(cb.scroll_offset > 0);
+    assert!(cb.scroll.offset() > 0);
 }
 
 #[test]
@@ -189,13 +189,13 @@ fn test_combobox_ensure_visible_scroll_up() {
     for _ in 0..7 {
         cb.select_next();
     }
-    assert!(cb.scroll_offset > 0);
+    assert!(cb.scroll.offset() > 0);
 
     // Now scroll back up
     for _ in 0..7 {
         cb.select_prev();
     }
-    assert_eq!(cb.scroll_offset, 0);
+    assert_eq!(cb.scroll.offset(), 0);
 }
 
 #[test]
@@ -206,7 +206,7 @@ fn test_combobox_open_dropdown() {
     cb.open_dropdown();
     assert!(cb.is_open());
     assert_eq!(cb.selected_idx, 0);
-    assert_eq!(cb.scroll_offset, 0);
+    assert_eq!(cb.scroll.offset(), 0);
 }
 
 #[test]
@@ -220,7 +220,7 @@ fn test_combobox_close_dropdown() {
     cb.close_dropdown();
     assert!(!cb.is_open());
     assert_eq!(cb.selected_idx, 0);
-    assert_eq!(cb.scroll_offset, 0);
+    assert_eq!(cb.scroll.offset(), 0);
 }
 
 #[test]
@@ -255,11 +255,11 @@ fn test_combobox_select_first_resets_scroll() {
     for _ in 0..5 {
         cb.select_next();
     }
-    assert!(cb.scroll_offset > 0);
+    assert!(cb.scroll.offset() > 0);
 
     cb.select_first();
     assert_eq!(cb.selected_idx, 0);
-    assert_eq!(cb.scroll_offset, 0);
+    assert_eq!(cb.scroll.offset(), 0);
 }
 
 #[test]
@@ -273,12 +273,12 @@ fn test_combobox_ensure_visible_above_viewport() {
     for _ in 0..5 {
         cb.select_next();
     }
-    assert!(cb.scroll_offset > 0);
+    assert!(cb.scroll.offset() > 0);
 
     // Now jump back to first
     cb.selected_idx = 0;
     cb.ensure_visible();
-    assert_eq!(cb.scroll_offset, 0);
+    assert_eq!(cb.scroll.offset(), 0);
 }
 
 #[test]
@@ -291,7 +291,7 @@ fn test_combobox_ensure_visible_below_viewport() {
     // Jump to last
     cb.selected_idx = 7;
     cb.ensure_visible();
-    assert!(cb.scroll_offset > 0);
+    assert!(cb.scroll.offset() > 0);
 }
 
 #[test]
@@ -302,9 +302,9 @@ fn test_combobox_ensure_visible_already_visible() {
 
     cb.open_dropdown();
     cb.select_next(); // Now at index 1
-    let initial_offset = cb.scroll_offset;
+    let initial_offset = cb.scroll.offset();
     cb.ensure_visible();
-    assert_eq!(cb.scroll_offset, initial_offset);
+    assert_eq!(cb.scroll.offset(), initial_offset);
 }
 
 #[test]
@@ -335,7 +335,7 @@ fn test_combobox_update_filter_empty_input() {
     cb.clear_input(); // Empty input
     assert_eq!(cb.filtered_count(), 3); // All shown
     assert_eq!(cb.selected_idx, 0);
-    assert_eq!(cb.scroll_offset, 0);
+    assert_eq!(cb.scroll.offset(), 0);
 }
 
 #[test]
@@ -347,5 +347,5 @@ fn test_combobox_update_filter_resets_selection() {
 
     cb.set_input("App");
     assert_eq!(cb.selected_idx, 0); // Reset to first match
-    assert_eq!(cb.scroll_offset, 0);
+    assert_eq!(cb.scroll.offset(), 0);
 }
