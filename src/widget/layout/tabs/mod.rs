@@ -3,11 +3,11 @@
 mod input;
 mod view;
 
-pub(crate) use view::label_spans;
+pub(crate) use view::{bar_window, label_spans, shift_spans};
 
 use crate::layout::Rect;
 use crate::style::Color;
-use crate::utils::Selection;
+use crate::utils::{ScrollState, Selection};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -32,6 +32,10 @@ impl Tab {
 pub struct Tabs {
     tabs: Vec<Tab>,
     selection: Selection,
+    /// Where the bar is scrolled to, in columns
+    scroll: ScrollState,
+    /// The first tab to draw, when the caller keeps the scroll (TabView)
+    first_tab: Option<usize>,
     fg: Option<Color>,
     bg: Option<Color>,
     active_fg: Option<Color>,
@@ -54,6 +58,8 @@ impl Tabs {
         Self {
             tabs: Vec::new(),
             selection: Selection::new(0),
+            scroll: ScrollState::new(),
+            first_tab: None,
             fg: None,
             bg: None,
             active_fg: Some(Color::rgb(220, 220, 220)),
@@ -84,6 +90,13 @@ impl Tabs {
     /// Set selected tab index
     pub fn selected(mut self, index: usize) -> Self {
         self.selection.set(index);
+        self
+    }
+
+    /// Draw from tab `first`: for a caller that keeps the bar's scroll
+    /// across frames, as TabView does in its TabState
+    pub(crate) fn first_tab(mut self, first: usize) -> Self {
+        self.first_tab = Some(first);
         self
     }
 

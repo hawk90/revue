@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use crate::event::{Key, MouseButton, MouseEvent, MouseEventKind};
 use crate::layout::Rect;
 use crate::utils::lock::lock_or_recover;
+use crate::utils::ScrollState;
 
 /// The state of a [`TabView`](super::TabView): which tab is selected.
 ///
@@ -33,6 +34,8 @@ struct Inner {
     selected: Option<String>,
     /// The last frame
     frame: Option<Frame>,
+    /// Where the bar is scrolled to, in columns
+    bar_scroll: ScrollState,
 }
 
 /// The tabs of a frame and where the bar was drawn
@@ -138,6 +141,21 @@ impl TabState {
             }
             None => false,
         }
+    }
+
+    /// The first tab the bar draws, keeping the shown tab in view (#973),
+    /// and the last frame's label columns as drawn from it
+    pub(super) fn scroll_bar(&self, spans: &[(u16, u16)]) -> usize {
+        let mut inner = self.lock();
+        let Inner {
+            frame, bar_scroll, ..
+        } = &mut *inner;
+        let Some(frame) = frame.as_mut() else {
+            return 0;
+        };
+        let first = super::super::tabs::bar_window(spans, bar_scroll, frame.shown, frame.bar.width);
+        frame.spans = super::super::tabs::shift_spans(spans, first);
+        first
     }
 
     /// Record the frame about to be drawn with `ids`; returns the index of

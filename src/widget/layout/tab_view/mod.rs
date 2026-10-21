@@ -140,17 +140,22 @@ impl View for TabView<'_> {
         let bar_height = if show_bar { area.height.min(1) } else { 0 };
         let bar = Rect::new(area.x, area.y, area.width, bar_height);
         let labels = || self.tabs.iter().map(|(_, label, _)| label.as_str());
+        let spans = label_spans(labels());
         let shown = self.state.record(
             self.tabs.iter().map(|(id, _, _)| id.clone()).collect(),
             bar,
-            label_spans(labels()),
+            spans.clone(),
         );
+        let first = self.state.scroll_bar(&spans);
         if self.tabs.is_empty() || area.height == 0 {
             return;
         }
 
         if show_bar {
-            let tabs = Tabs::new().tabs(labels().collect()).selected(shown);
+            let tabs = Tabs::new()
+                .tabs(labels().collect())
+                .selected(shown)
+                .first_tab(first);
             ctx.render_child(&tabs, bar);
         }
 

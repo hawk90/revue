@@ -222,3 +222,23 @@ fn clones_of_a_state_share_it() {
     clone.select("two");
     assert_eq!(state.selected().as_deref(), Some("two"));
 }
+
+/// A bar narrower than its tabs scrolls to the selected one (#973), and a
+/// click hits the tab drawn under it.
+#[test]
+fn a_scrolled_bar_shows_the_selected_tab_and_clicks_hit_what_is_drawn() {
+    let mut state = TabState::new();
+    fn five(state: &TabState) -> TabView<'static> {
+        ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"]
+            .into_iter()
+            .fold(tab_view(state), |v, l| v.tab(l, Text::new(l)))
+    }
+    render(&five(&state), 20, 2);
+    assert!(state.handle_key(&Key::End));
+    let bar = row(&render(&five(&state), 20, 2), 0, 20);
+    assert!(bar.contains("Epsilon"), "{bar:?}");
+    // The first tab drawn now starts at column 0
+    let first = bar.split('│').next().unwrap().trim().to_string();
+    assert!(state.handle_mouse(&click(2, 0)));
+    assert_eq!(state.selected().as_deref(), Some(first.as_str()));
+}

@@ -63,8 +63,10 @@ proptest! {
         }
     }
 
-    /// The bar is " label │ label │ ...", cut at the width; the active tab's
-    /// label is on the highlight's background wherever it is drawn.
+    /// The bar is " label │ label │ ...", cut at the width, scrolled to show
+    /// the active tab (#973): one draw scrolls from the left just far enough
+    /// to show it and starts at a whole tab. The active label is on the
+    /// highlight's background.
     #[test]
     fn prop_tabs_bar_layout(
         labels in prop::collection::vec("[a-z가]{0,6}", 1..6),
@@ -76,7 +78,17 @@ proptest! {
         // one, a wide glyph's second cell is left as a space (#974)
         let t = Tabs::new().tabs(labels.clone()).selected(sel).fg(Color::WHITE);
         let buffer = draw(&t, width, 1);
-        let full = format!(" {} ", labels.join(" │ "));
+        // Each tab's columns: " label " and a divider after it
+        let mut spans = Vec::new();
+        let mut x = 0;
+        for l in &labels {
+            spans.push((x, x + display_width(l) + 2));
+            x += display_width(l) + 3;
+        }
+        let (start, end) = spans[sel];
+        let offset = if end - start > width as usize { start } else { end.saturating_sub(width as usize) };
+        let first = spans.iter().position(|&(s, _)| s >= offset).unwrap();
+        let full = format!(" {} ", labels[first..].join(" │ "));
         let mut expected = String::new();
         let mut cols = 0;
         for c in full.chars() {
@@ -88,10 +100,13 @@ proptest! {
             cols += w;
         }
         prop_assert_eq!(row(&buffer, 0), expected.trim_end());
-        // The active label's first cell, when it is on screen
-        let start: usize = labels[..sel].iter().map(|l| display_width(l) + 3).sum::<usize>() + 1;
-        if !labels[sel].is_empty() && start + display_width(&labels[sel]) <= width as usize {
-            prop_assert_eq!(buffer.get(start as u16, 0).unwrap().bg, Some(Color::BLUE));
+        // The active label's first cell, drawn whenever its tab fits
+        let at = start - spans[first].0 + 1;
+        if !labels[sel].is_empty() && at + display_width(&labels[sel]) <= width as usize {
+            prop_assert_eq!(buffer.get(at as u16, 0).unwrap().bg, Some(Color::BLUE));
+        }
+        if end - spans[first].0 <= width as usize && !labels[sel].is_empty() {
+            prop_assert!(row(&buffer, 0).contains(labels[sel].as_str()));
         }
     }
 }
@@ -145,4 +160,18 @@ fn test_tabs_min_width_above_max_width() {
         .min_width(12)
         .max_width(5);
     assert_eq!(row(&draw(&t, 20, 1), 0), " One │ Two");
+}
+
+/// The bar used to draw from the first tab, so a selected tab past the
+/// width was not on screen (#973).
+#[test]
+fn tabs_keep_the_selected_tab_in_view() {
+    use revue::event::Key;
+    let mut t = Tabs::new().tabs(vec!["Alpha", "Beta", "Gamma", "Delta", "Epsilon"]);
+    t.handle_key(&Key::End);
+    let shown = row(&draw(&t, 20, 1), 0);
+    assert!(shown.contains("Epsilon"), "{shown:?}");
+    // Moving left inside the shown tabs keeps the bar where it is
+    t.handle_key(&Key::Left);
+    assert_eq!(row(&draw(&t, 20, 1), 0), shown);
 }

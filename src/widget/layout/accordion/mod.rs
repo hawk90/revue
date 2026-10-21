@@ -8,7 +8,7 @@ mod section;
 pub use section::AccordionSection;
 
 use crate::style::Color;
-use crate::utils::Selection;
+use crate::utils::{ScrollState, Selection};
 use crate::widget::theme::{EDITOR_BG, SECONDARY_TEXT};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -20,6 +20,9 @@ pub struct Accordion {
     sections: Vec<AccordionSection>,
     /// Selection state
     selection: Selection,
+    /// Where the sections are scrolled to, in rows: a header, the content
+    /// lines of an expanded section, and a divider
+    scroll: ScrollState,
     /// Allow multiple expanded sections
     multi_expand: bool,
     /// Header background color
@@ -54,6 +57,7 @@ impl Accordion {
         Self {
             sections: Vec::new(),
             selection: Selection::new(0),
+            scroll: ScrollState::new(),
             multi_expand: false,
             header_bg: Color::rgb(50, 50, 50),
             header_fg: Color::WHITE,
@@ -284,6 +288,11 @@ impl Accordion {
     pub fn remove_section(&mut self, index: usize) -> Option<AccordionSection> {
         if index < self.sections.len() {
             let section = self.sections.remove(index);
+            // The selection stays on its section (#975); removing the
+            // selected one selects the section now in its place
+            if index < self.selection.index {
+                self.selection.index -= 1;
+            }
             self.selection.set_len(self.sections.len());
             Some(section)
         } else {
