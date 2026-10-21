@@ -77,6 +77,8 @@ impl super::CodeEditor {
     /// Close find dialog
     pub fn close_find(&mut self) {
         self.find_mode = false;
+        // The highlights go with the dialog (#975)
+        self.find_matches.clear();
     }
 
     /// Check if find is active

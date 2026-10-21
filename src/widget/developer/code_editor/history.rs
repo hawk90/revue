@@ -24,6 +24,7 @@ impl super::CodeEditor {
             self.redo_stack.push(op);
             self.ensure_cursor_visible();
         }
+        self.text_changed();
     }
 
     /// Redo
@@ -33,6 +34,7 @@ impl super::CodeEditor {
             self.undo_stack.push(op);
             self.ensure_cursor_visible();
         }
+        self.text_changed();
     }
 
     /// Take `op` back

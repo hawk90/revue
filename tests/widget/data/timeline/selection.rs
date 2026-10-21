@@ -129,8 +129,12 @@ fn test_timeline_select_out_of_bounds() {
         .event(TimelineEvent::new("Event 1"))
         .event(TimelineEvent::new("Event 2"));
 
-    tl.select(Some(10)); // Out of bounds
-    assert!(tl.selected_event().is_none());
+    // Past the end: the nearest event, the last (#975)
+    tl.select(Some(10));
+    assert_eq!(
+        tl.selected_event().map(|e| e.title.as_str()),
+        Some("Event 2")
+    );
 }
 
 #[test]
@@ -187,10 +191,29 @@ fn test_timeline_selection_with_invalid_index() {
         .event(TimelineEvent::new("Event 2"));
 
     tl.select(Some(100));
-    assert!(
-        tl.selected_event().is_none(),
-        "Invalid index should return None"
+    assert_eq!(
+        tl.selected_event().map(|e| e.title.as_str()),
+        Some("Event 2"),
+        "an index past the end selects the last event"
     );
+}
+
+/// An index past the end was kept, and select_next on an empty timeline
+/// with an index set underflowed `len() - 1` (#975).
+#[test]
+fn timeline_selection_stays_on_an_event() {
+    let mut empty = Timeline::new();
+    empty.select(Some(0));
+    empty.select_next(); // panicked: `self.events.len() - 1` underflows
+    assert!(empty.selected_event().is_none());
+
+    let mut tl = Timeline::new()
+        .event(TimelineEvent::new("a"))
+        .event(TimelineEvent::new("b"));
+    tl.select(Some(5));
+    assert_eq!(tl.selected_event().map(|e| e.title.as_str()), Some("b"));
+    tl.select_prev();
+    assert_eq!(tl.selected_event().map(|e| e.title.as_str()), Some("a"));
 }
 
 #[test]

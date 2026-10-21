@@ -45,3 +45,16 @@ mod snapshots {
         pilot.snapshot("modal_basic");
     }
 }
+
+/// Replacing the buttons with fewer left the selected index past them:
+/// nothing was highlighted and Enter returned that index (#975).
+#[test]
+fn modal_selection_follows_new_buttons() {
+    use revue::event::Key;
+    use revue::widget::{Modal, ModalButton};
+    let mut m = Modal::new().yes_no_cancel();
+    m.next_button();
+    m.next_button();
+    let mut m = m.buttons(vec![ModalButton::new("Only")]);
+    assert_eq!(m.handle_key(&Key::Enter), Some(0)); // Some(2) before
+}

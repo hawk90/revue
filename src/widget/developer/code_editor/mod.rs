@@ -181,6 +181,8 @@ impl CodeEditor {
             self.lines.push(String::new());
         }
         self.cursor = (0, 0);
+        // A selection in the old text means nothing in the new one (#975)
+        self.anchor = None;
         self.scroll.set(0);
         self.scroll_x.set(0);
     }
