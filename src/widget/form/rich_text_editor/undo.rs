@@ -64,21 +64,23 @@ impl RichTextEditor {
                         new: old,
                     });
                 }
-                EditOp::MergeBlocks { index, split_col } => {
-                    // Undo merge: split the block at the stored column
-                    let (first_text, second_text) = self.blocks[index].split_text_at(split_col);
-
-                    // Create new blocks preserving the block type
-                    let original_type = self.blocks[index].block_type;
-
-                    self.blocks[index].set_text(first_text);
-                    let mut new_block = Block::new(original_type);
-                    new_block.set_text(second_text);
-                    self.blocks.insert(index + 1, new_block);
-
-                    self.cursor = (index, split_col);
-                    self.redo_stack
-                        .push(EditOp::MergeBlocks { index, split_col });
+                EditOp::ReplaceBlocks {
+                    index,
+                    old,
+                    new,
+                    cursor_before,
+                    cursor_after,
+                } => {
+                    self.blocks
+                        .splice(index..index + new.len(), old.iter().cloned());
+                    self.cursor = cursor_before;
+                    self.redo_stack.push(EditOp::ReplaceBlocks {
+                        index,
+                        old,
+                        new,
+                        cursor_before,
+                        cursor_after,
+                    });
                 }
                 EditOp::ChangeBlockType { block, old, new } => {
                     self.blocks[block].block_type = old;
@@ -148,13 +150,23 @@ impl RichTextEditor {
                         new,
                     });
                 }
-                EditOp::MergeBlocks { index, split_col } => {
-                    // Redo merge: merge the block with the next one
-                    self.join_with_next(index);
-
-                    self.cursor = (index, split_col);
-                    self.undo_stack
-                        .push(EditOp::MergeBlocks { index, split_col });
+                EditOp::ReplaceBlocks {
+                    index,
+                    old,
+                    new,
+                    cursor_before,
+                    cursor_after,
+                } => {
+                    self.blocks
+                        .splice(index..index + old.len(), new.iter().cloned());
+                    self.cursor = cursor_after;
+                    self.undo_stack.push(EditOp::ReplaceBlocks {
+                        index,
+                        old,
+                        new,
+                        cursor_before,
+                        cursor_after,
+                    });
                 }
                 EditOp::ChangeBlockType { block, old, new } => {
                     self.blocks[block].block_type = new;
@@ -187,9 +199,7 @@ impl RichTextEditor {
             EditOp::SplitBlock { block, col } => self.joined_chars(block).is_some_and(|n| col <= n),
             EditOp::InsertBlock { index, .. } => index < len && len > 1,
             EditOp::DeleteBlock { index, .. } => index <= len,
-            EditOp::MergeBlocks { index, split_col } => {
-                self.chars_in(index).is_some_and(|n| split_col <= n)
-            }
+            EditOp::ReplaceBlocks { index, ref new, .. } => index + new.len() <= len,
             EditOp::SetFormat { block, .. } | EditOp::ChangeBlockType { block, .. } => block < len,
         }
     }
@@ -203,11 +213,36 @@ impl RichTextEditor {
             EditOp::SplitBlock { block, col } => self.chars_in(block).is_some_and(|n| col <= n),
             EditOp::InsertBlock { index, .. } => index <= len,
             EditOp::DeleteBlock { index, .. } => index < len && len > 1,
-            EditOp::MergeBlocks { index, split_col } => {
-                self.joined_chars(index).is_some_and(|n| split_col <= n)
-            }
+            EditOp::ReplaceBlocks { index, ref old, .. } => index + old.len() <= len,
             EditOp::SetFormat { block, .. } | EditOp::ChangeBlockType { block, .. } => block < len,
         }
+    }
+
+    /// Make `edit` to blocks `index..index + count` one undo step: the blocks
+    /// before and after it are kept, with the cursor (#1131)
+    pub(super) fn record_blocks(
+        &mut self,
+        index: usize,
+        count: usize,
+        edit: impl FnOnce(&mut Self),
+    ) {
+        let len_before = self.blocks.len();
+        let old = self.blocks[index..index + count].to_vec();
+        let cursor_before = self.cursor;
+        edit(self);
+        let new_count = (count + self.blocks.len()).saturating_sub(len_before);
+        let new = self.blocks[index..index + new_count].to_vec();
+        self.undo_stack.push(EditOp::ReplaceBlocks {
+            index,
+            old,
+            new,
+            cursor_before,
+            cursor_after: self.cursor,
+        });
+        if self.undo_stack.len() > MAX_UNDO_HISTORY {
+            self.undo_stack.remove(0);
+        }
+        self.redo_stack.clear();
     }
 
     /// Drop the undo and redo history after an edit that is not recorded,

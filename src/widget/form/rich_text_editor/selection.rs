@@ -73,8 +73,14 @@ impl RichTextEditor {
         let Some((start, end)) = self.selection_range() else {
             return;
         };
-        self.forget_history();
+        // One undo step over the blocks it touches (#1131)
+        self.record_blocks(start.0, end.0 - start.0 + 1, |editor| {
+            editor.delete_range(start, end);
+        });
+    }
 
+    /// Remove the text from `start` to `end` (blocks between them go)
+    fn delete_range(&mut self, start: (usize, usize), end: (usize, usize)) {
         if start.0 == end.0 {
             // Single block deletion
             let block = &mut self.blocks[start.0];

@@ -112,17 +112,13 @@ impl RichTextEditor {
         }
 
         let prev_len = self.blocks[self.cursor.0 - 1].char_count();
-
-        // Record for undo
-        self.undo_stack.push(EditOp::MergeBlocks {
-            index: self.cursor.0 - 1,
-            split_col: prev_len,
+        // One undo step that brings both blocks back whole, the second one's
+        // type and formatting too (#1131)
+        self.record_blocks(self.cursor.0 - 1, 2, |editor| {
+            editor.join_with_next(editor.cursor.0 - 1);
+            editor.cursor.0 -= 1;
+            editor.cursor.1 = prev_len;
         });
-        self.redo_stack.clear();
-
-        self.join_with_next(self.cursor.0 - 1);
-        self.cursor.0 -= 1;
-        self.cursor.1 = prev_len;
     }
 
     /// Merge current block with next
@@ -131,14 +127,9 @@ impl RichTextEditor {
             return;
         }
 
-        // Record for undo
-        self.undo_stack.push(EditOp::MergeBlocks {
-            index: self.cursor.0,
-            split_col: self.blocks[self.cursor.0].char_count(),
+        self.record_blocks(self.cursor.0, 2, |editor| {
+            editor.join_with_next(editor.cursor.0);
         });
-        self.redo_stack.clear();
-
-        self.join_with_next(self.cursor.0);
     }
 
     /// Append the next block's text to block `index` and remove the next
@@ -165,11 +156,11 @@ impl RichTextEditor {
             }
             self.cursor.1 = 0;
         } else {
-            // The last block is emptied, not removed, and no EditOp
-            // records that
-            self.forget_history();
-            self.blocks[0].set_text("");
-            self.cursor.1 = 0;
+            // The last block is emptied, not removed
+            self.record_blocks(0, 1, |editor| {
+                editor.blocks[0].set_text("");
+                editor.cursor.1 = 0;
+            });
         }
     }
 }
