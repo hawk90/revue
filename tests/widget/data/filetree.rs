@@ -640,3 +640,100 @@ fn test_filetree_keys_follow_the_shown_order() {
     assert_eq!(names(&tree), ["a", "b"]);
     assert!(!tree.handle_key(&Key::Char('x')));
 }
+
+// =========================================================================
+// #967: the selection, Left, the view, the indent, a shared path
+// =========================================================================
+
+#[test]
+fn test_filetree_hiding_rows_keeps_a_selection() {
+    use revue::event::Key;
+    let mut t = file_tree()
+        .hidden(true)
+        .entry(FileEntry::file("a", "/a"))
+        .entry(FileEntry::file(".b", "/.b"));
+    t.select_next();
+    t.handle_key(&Key::Char('H'));
+    assert!(t.selected_entry().is_some());
+}
+
+#[test]
+fn test_filetree_collapse_all_keeps_a_selection() {
+    use revue::event::Key;
+    let mut t = file_tree()
+        .entry(dir_entry("d", "/d").expanded(true).children(vec![
+            FileEntry::file("x", "/d/x"),
+            FileEntry::file("y", "/d/y"),
+        ]))
+        .entry(FileEntry::file("z", "/z"));
+    t.select_next();
+    t.select_next(); // y, row 2
+    t.handle_key(&Key::Char('c'));
+    // The hidden child hands the selection to its directory, not to the
+    // row now in its place ("z")
+    assert_eq!(t.selected_entry().map(|e| e.name.as_str()), Some("d"));
+}
+
+#[test]
+fn test_filetree_left_never_expands() {
+    use revue::event::Key;
+    let mut t = file_tree().entry(dir_entry("d", "/d").child(FileEntry::file("x", "/d/x")));
+    t.handle_key(&Key::Left);
+    assert!(!t.selected_entry().unwrap().expanded);
+}
+
+#[test]
+fn test_filetree_left_on_a_child_selects_its_directory() {
+    use revue::event::Key;
+    let mut t = file_tree().entry(
+        dir_entry("d", "/d")
+            .expanded(true)
+            .child(FileEntry::file("x", "/d/x")),
+    );
+    t.select_next(); // x
+    t.handle_key(&Key::Left);
+    assert_eq!(t.selected_entry().map(|e| e.name.as_str()), Some("d"));
+    t.handle_key(&Key::Left);
+    assert!(!t.selected_entry().unwrap().expanded, "then collapses it");
+}
+
+#[test]
+fn test_filetree_view_holds_while_selection_moves_inside_it() {
+    let mut t = file_tree().icons(false);
+    for i in 0..10 {
+        t = t.entry(FileEntry::file(format!("f{i}"), format!("/f{i}")));
+    }
+    for _ in 0..9 {
+        t.select_next();
+    }
+    let before = rows(&render(&t, 6, 3));
+    assert_eq!(
+        before,
+        ["  f7", "  f8", "  f9"],
+        "the view follows the selection down"
+    );
+    t.select_prev();
+    assert_eq!(rows(&render(&t, 6, 3))[0], before[0]);
+}
+
+#[test]
+fn test_filetree_huge_indent() {
+    let t = file_tree().indent(u16::MAX).entry(
+        dir_entry("a", "/a").expanded(true).child(
+            dir_entry("b", "/a/b")
+                .expanded(true)
+                .child(FileEntry::file("c", "/a/b/c")),
+        ),
+    );
+    render(&t, 10, 3);
+}
+
+#[test]
+fn test_filetree_toggle_touches_one_entry() {
+    let mut t = file_tree()
+        .entry(dir_entry("a", "/same"))
+        .entry(dir_entry("b", "/same"));
+    t.toggle_selected();
+    t.select_next();
+    assert!(!t.selected_entry().unwrap().expanded);
+}

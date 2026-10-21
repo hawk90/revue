@@ -24,7 +24,13 @@ impl View for FileTree {
         } else {
             area.height
         } as usize;
-        let scroll = self.scroll_offset(visible_height);
+        // The rows in view, following the selection (#967, #973)
+        self.scroll.set_content(entries.len());
+        self.scroll
+            .set_viewport(visible_height.min(area.height as usize));
+        let selected = self.selected_index();
+        self.scroll.track(selected..selected + 1);
+        let scroll = self.scroll.offset();
 
         for (i, entry) in entries.iter().skip(scroll).take(visible_height).enumerate() {
             let y = i as u16;
@@ -33,7 +39,7 @@ impl View for FileTree {
             }
             let row = Row {
                 y,
-                bg: (scroll + i == self.selected).then_some(self.selected_bg),
+                bg: (scroll + i == selected).then_some(self.selected_bg),
                 base_fg,
             };
             self.render_row(ctx, entry, &row);
@@ -80,24 +86,13 @@ impl Row {
 }
 
 impl FileTree {
-    /// First row shown so the selection is in view
-    fn scroll_offset(&self, visible_height: usize) -> usize {
-        if self.selected >= self.scroll + visible_height {
-            self.selected - visible_height + 1
-        } else if self.selected < self.scroll {
-            self.selected
-        } else {
-            self.scroll
-        }
-    }
-
     fn render_row(&self, ctx: &mut RenderContext, entry: &FileEntry, row: &Row) {
         let width = ctx.area.width;
         for x in 0..width {
             ctx.set(x, row.y, row.blank());
         }
 
-        let mut x = entry.depth as u16 * self.indent;
+        let mut x = (entry.depth as u16).saturating_mul(self.indent);
 
         // Expand/collapse indicator, or the space it would take
         if entry.is_dir() {
