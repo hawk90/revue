@@ -58,16 +58,20 @@ impl Sidebar {
         // Get visible items
         let items = self.visible_items();
 
-        // Render items
-        for (idx, flat_item) in items.iter().skip(self.scroll).enumerate() {
-            if y >= area.height - footer_height {
-                break;
-            }
-
+        // Render items: the rows between the header and the footer, scrolled
+        // to keep the hovered row in view (#882)
+        let rows = (area.height.saturating_sub(footer_height).saturating_sub(y)) as usize;
+        self.scroll.set_content(items.len());
+        self.scroll.set_viewport(rows);
+        if let Some(hovered) = self.hover.index() {
+            self.scroll.track(hovered..hovered + 1);
+        }
+        let shown = self.scroll.visible();
+        for (idx, flat_item) in items.iter().enumerate().skip(shown.start).take(shown.len()) {
             match flat_item {
                 FlattenedItem::Section(title) => self.draw_section_row(ctx, bar, title, y),
                 FlattenedItem::Item { item, depth } => {
-                    self.draw_item_row(ctx, bar, item, *depth, self.scroll + idx, y)
+                    self.draw_item_row(ctx, bar, item, *depth, idx, y)
                 }
             }
             y += 1;
@@ -206,7 +210,7 @@ impl Sidebar {
     ) {
         let (is_collapsed, content_width) = (bar.collapsed, bar.width);
         let is_selected = self.selected.as_ref() == Some(&item.id);
-        let is_hovered = index == self.hovered;
+        let is_hovered = index == self.hovered_index();
 
         // Determine colors
         let (fg, bg) = if item.disabled {

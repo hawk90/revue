@@ -502,6 +502,16 @@ proptest! {
 
         let top = if header { 2 } else { 0 };
         let bottom = h - if footer { 2 } else { 0 };
+        // The item rows follow the hover (#882): one draw after the moves
+        // scrolls from the top just far enough to show it. Nothing is
+        // hovered until a move lands on an enabled item.
+        let room = bottom.saturating_sub(top) as usize;
+        let hover_set = downs > 0 && rows.iter().any(|(_, n)| n.as_ref().is_some_and(|n| !n.disabled));
+        let offset = if hover_set && room > 0 {
+            hovered.saturating_sub(room - 1).min(rows.len().saturating_sub(room))
+        } else {
+            0
+        };
         // The indicator and icon are placed without checking the bar's
         // width, so a deep row in a narrow bar draws past it (#1032).
         // Check "nothing right of the bar"
@@ -510,7 +520,7 @@ proptest! {
         for y in 0..h {
             prop_assert_eq!(buffer.get(cw - 1, y).unwrap().symbol, '│', "border y={}", y);
             let expected_bg = if y >= top && y < bottom {
-                match rows.get((y - top) as usize) {
+                match rows.get((y - top) as usize + offset) {
                     Some((Row::Item(id, depth, _), Some(n))) => {
                         let x_icon = if is_collapsed { 1 } else { 3 + 2 * *depth as u16 };
                         let indicator_out =
@@ -529,7 +539,7 @@ proptest! {
                             BAR_BG
                         } else if selected.as_deref() == Some(id.as_str()) {
                             Color::BLUE
-                        } else if (y - top) as usize == hovered {
+                        } else if (y - top) as usize + offset == hovered {
                             HOVER_BG
                         } else {
                             BAR_BG
@@ -566,4 +576,72 @@ proptest! {
             }
         }
     }
+}
+
+// ── Scroll and hover (#882, #975) ──────────────────────────────────────
+
+/// Nothing changed `scroll`, so hovering down moved the highlight past the
+/// last drawn row (#882).
+#[test]
+fn test_sidebar_view_follows_the_hover() {
+    let mut sb = Sidebar::new().items(
+        (0..10)
+            .map(|i| SidebarItem::new(format!("i{i}"), format!("Item {i}")))
+            .collect(),
+    );
+    for _ in 0..7 {
+        sb.hover_down();
+    }
+    assert_eq!(sb.hovered_index(), 7);
+    let buffer = screen(&sb, 20, 4);
+    let hovered: Vec<u16> = (0..4)
+        .filter(|&y| buffer.get(0, y).unwrap().bg == Some(HOVER_BG))
+        .collect();
+    assert_eq!(hovered, [3]);
+    assert!(super::row(&buffer, 3).contains("Item 7"));
+}
+
+#[test]
+fn test_sidebar_collapsing_keeps_the_hover_off_other_items() {
+    let mut sb = Sidebar::new().items(vec![
+        SidebarItem::new("p", "Parent")
+            .expanded(true)
+            .children(vec![SidebarItem::new("c", "Child")]),
+        SidebarItem::new("q", "Other"),
+    ]);
+    sb.hover_down(); // "c"
+    sb.toggle_item("p");
+    sb.select_hovered();
+    assert_eq!(
+        sb.selected_id(),
+        Some("p"),
+        "the collapsed parent takes the hover"
+    );
+}
+
+#[test]
+fn test_sidebar_expanding_above_keeps_the_hovered_item() {
+    let mut sb = Sidebar::new().items(vec![
+        SidebarItem::new("p", "Parent").children(vec![SidebarItem::new("c", "Child")]),
+        SidebarItem::new("q", "Other"),
+    ]);
+    sb.hover_down(); // "q"
+    sb.toggle_item("p");
+    sb.select_hovered();
+    assert_eq!(sb.selected_id(), Some("q")); // was "c"
+}
+
+#[test]
+fn test_sidebar_collapse_all_keeps_a_hover() {
+    let mut sb = Sidebar::new().items(vec![SidebarItem::new("p", "Parent")
+        .expanded(true)
+        .children(vec![
+            SidebarItem::new("c1", "C1"),
+            SidebarItem::new("c2", "C2"),
+        ])]);
+    sb.hover_down();
+    sb.hover_down(); // "c2", index 2
+    sb.collapse_all();
+    sb.select_hovered();
+    assert_eq!(sb.selected_id(), Some("p")); // was None: index 2 is past the one visible row
 }

@@ -23,6 +23,7 @@ pub mod types;
 pub use types::{CollapseMode, FlattenedItem, SidebarItem, SidebarSection};
 
 use crate::style::Color;
+use crate::utils::{KeyedSelection, ScrollState};
 use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{WidgetProps, DISABLED_FG};
 use crate::{impl_props_builders, impl_styled_view};
@@ -34,8 +35,9 @@ pub struct Sidebar {
     sections: Vec<SidebarSection>,
     /// Currently selected item ID
     selected: Option<String>,
-    /// Currently hovered item index in flattened list
-    hovered: usize,
+    /// The hovered row of the flattened list, by item id (`None` for a
+    /// section row). Nothing hovered reads as row 0.
+    hover: KeyedSelection<Option<String>>,
     /// Collapse mode
     collapse_mode: CollapseMode,
     /// Auto-collapse width threshold
@@ -48,8 +50,8 @@ pub struct Sidebar {
     header: Option<String>,
     /// Footer content (rendered at bottom)
     footer: Option<String>,
-    /// Scroll offset
-    scroll: usize,
+    /// Where the item rows are scrolled to, one row per flattened entry
+    scroll: ScrollState,
     // Styling
     fg: Option<Color>,
     bg: Option<Color>,
@@ -80,14 +82,14 @@ impl Sidebar {
         Self {
             sections: Vec::new(),
             selected: None,
-            hovered: 0,
+            hover: KeyedSelection::new(),
             collapse_mode: CollapseMode::Expanded,
             collapse_threshold: 20,
             expanded_width: 24,
             collapsed_width: 4,
             header: None,
             footer: None,
-            scroll: 0,
+            scroll: ScrollState::new(),
             fg: None,
             bg: Some(Color::rgb(30, 30, 40)),
             selected_fg: Some(Color::WHITE),

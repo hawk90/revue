@@ -29,7 +29,8 @@
 //! ```
 //! use revue::utils::ScrollState;
 //!
-//! let mut scroll = ScrollState::new();
+//! // A log: it has a tail mode, off until the view reaches the end
+//! let mut scroll = ScrollState::new().follow_end(false);
 //! scroll.set_content(100);
 //! scroll.set_viewport(10); // in render
 //!

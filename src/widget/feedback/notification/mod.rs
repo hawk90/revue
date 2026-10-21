@@ -17,6 +17,7 @@ mod view;
 
 pub use types::*;
 
+use crate::utils::KeyedSelection;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -39,8 +40,9 @@ pub struct NotificationCenter {
     spacing: u16,
     /// Current tick counter
     tick_counter: u64,
-    /// Selected notification (for dismissal)
-    selected: Option<usize>,
+    /// Selected notification (for dismissal), by id, among the shown ones:
+    /// the newest `max_visible`, newest first
+    selected: KeyedSelection<u64>,
     /// Focused state
     focused: bool,
     /// Widget properties
@@ -59,7 +61,7 @@ impl NotificationCenter {
             show_timer: true,
             spacing: 1,
             tick_counter: 0,
-            selected: None,
+            selected: KeyedSelection::new(),
             focused: false,
             props: WidgetProps::new(),
         }
