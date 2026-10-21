@@ -6,8 +6,6 @@ impl ProcessMonitor {
     /// Set filter string
     pub fn filter(&mut self, filter: impl Into<String>) {
         self.filter = filter.into().to_lowercase();
-        self.selected = 0;
-        self.scroll = 0;
     }
 
     /// Clear filter
@@ -116,9 +114,12 @@ impl ProcessMonitor {
             }
         });
 
-        // Adjust selection
-        if self.selected >= self.processes.len() {
-            self.selected = self.processes.len().saturating_sub(1);
+        // The selection stays on its process, or the one now in its place
+        // when it exited or was filtered out; with none, the first
+        self.selected.sync(self.processes.iter().map(|p| p.pid));
+        if self.selected.index().is_none() {
+            self.selected
+                .first(self.processes.len(), |i| self.processes[i].pid);
         }
     }
 

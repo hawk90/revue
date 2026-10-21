@@ -376,12 +376,11 @@ mod tests {
         let mut monitor = ProcessMonitor::new();
         monitor.refresh();
         monitor.select_next();
+        let before = selected_index(&monitor);
         monitor.filter("zz-no-such-process-zz");
-        // The selection starts over at the first process
-        assert_eq!(
-            selected_index(&monitor),
-            (monitor.process_count() > 0).then_some(0)
-        );
+        // The filter applies at the next refresh; until then the selection
+        // stays on its process (#975)
+        assert_eq!(selected_index(&monitor), before);
         // The next refresh lists only matches: none
         monitor.refresh();
         assert_eq!(monitor.process_count(), 0);
