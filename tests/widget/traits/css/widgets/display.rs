@@ -4,7 +4,7 @@
 //! DOM node, two read a computed style. Everything else paints from its own
 //! fields and hardcoded variant colors, so `color` and `background` reach
 //! almost nothing - the `F-5` half of
-//! `docs/refactor/findings-render-pipeline.md`, still open at scale.
+//! <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-render-pipeline.md>, still open at scale.
 //!
 //! Same rule as the rest of the sweep: assert against the painted buffer.
 

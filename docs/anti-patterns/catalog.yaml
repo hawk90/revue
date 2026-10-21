@@ -16,7 +16,15 @@ meta:
     - date: 2026-10-12
       event: "모듈 감사(#930) 중에 revue에서 나온 항목과 `observed` 근거를 더했다."
     - date: 2026-10-20
+      event: "docs/refactor/와 architecture-review.md를 지웠다. 4.0 결정은 결정 이슈(#1140~#1150)에 있다."
+    - date: 2026-10-20
       event: "4.0 설계 리뷰(#1151): 모든 항목을 코드·이슈·docs/refactor와 대조해 `status`·`assumes`·`decisions`를 붙이고, 새 항목을 더하고, 가져올 때 깨진 문장을 고쳤다."
+  # 근거에 적힌 docs/refactor/*.md, docs/anti-patterns/architecture-review.md, docs/ARCHITECTURE.md는
+  # 아래 commit의 판이다. 지운 뒤에도 이 주소로 연다: <base>/<경로>
+  sources:
+    commit: 8f9dcb2e850e85e04f252a388e52ed037fe57179
+    base: https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179
+    paths: ["docs/refactor/", "docs/anti-patterns/architecture-review.md", "docs/ARCHITECTURE.md"]
 
 # ---------------------------------------------------------------------------
 # status 값
@@ -2777,7 +2785,7 @@ entries:
     observed:
       - "datagrid 숫자 컬럼, gradient stop 위치, streamline layer 정렬이 NaN에서 total order panic, keyframe 시간은 `unwrap()` panic (#986). chart 통계는 NaN을 먼저 걸러서 안전하다."
       - "`HeatMap::from_flat`이 행×열보다 짧은 데이터에서 slice index panic (#993)."
-      - "`parse_duration`이 NaN·음수·무한 초에서, `SyntaxHighlighter`가 char index로 byte를 잘라서, `Diagram::parse`가 `A][`를 거꾸로 잘라서 panic했다(고침) (docs/refactor/findings-fault-injection.md 4c). `Slider::range(min > max)`는 `f64::clamp`에서 panic한다 (docs/refactor/findings-event-sequences.md)."
+      - "`parse_duration`이 NaN·음수·무한 초에서, `SyntaxHighlighter`가 char index로 byte를 잘라서, `Diagram::parse`가 `A][`를 거꾸로 잘라서 panic했다(고침) (docs/refactor/findings-fault-injection.md 4c). `Slider::range(min > max)`가 `f64::clamp`에서 panic했다(#783에서 min과 max를 정렬해 고침) (docs/refactor/findings-event-sequences.md)."
   - id: REV-RUST-008
     title: "Error String Erasure"
     category: rust
@@ -3201,7 +3209,7 @@ entries:
       - "prelude는 stable tier 전체이고 그것만 담는다. feature와 관계없이 같다. experimental은 `revue::experimental::*`로만 쓴다 (#1146)."
       - "std나 prelude 안의 다른 이름을 가리는 이름은 바꾼다. CI가 glob 모호성과 tier 누출을 확인하고, 모든 문서 예제를 prelude만으로 compile한다."
     observed:
-      - "2026-10-20: prelude가 task 도구(`EventBus`, `TimerEntry`, `TimerId`)와 profiler 내부(`FlameNode`, `Timing`, `ProfileGuard`)를 내보낸다 (src/prelude.rs). widget 이름 9개가 prelude 안의 이름과 충돌하고(`Animation`, `BreadcrumbItem`, `EventType`, `Form`, `FormField`, `Screen`, `Search`, `Timer`, `ValidationError`), `Arc`/`Element`/`Transform`은 std 이름을 가린다 (docs/refactor/findings-prelude-coverage.md)."
+      - "2026-10-20: prelude가 task 도구(`EventBus`, `TimerEntry`, `TimerId`)와 profiler 내부(`FlameNode`, `Timing`, `ProfileGuard`)를 내보낸다 (src/prelude.rs). 2026-08 조사에서는 widget 이름 9개가 prelude 안의 이름과 충돌했고(`Animation`, `BreadcrumbItem`, `EventType`, `Form`, `FormField`, `Screen`, `Search`, `Timer`, `ValidationError`), `Arc`/`Element`/`Transform`이 std 이름을 가렸다 (docs/refactor/findings-prelude-coverage.md). 2026-10-20 src/prelude.rs에는 `Arc`/`Element`/`Transform`이 없다."
       - "동시에 모자란다: 2026-08 기준 widget export 414개 중 299개가 prelude에 없었다."
   - id: REV-API-005
     title: "Convenience API Bypasses Core Invariants"
@@ -3216,7 +3224,7 @@ entries:
       - "4.0에서 자식은 render가 돌려준 node이고 `child.render(ctx)`로 직접 그리는 길이 없다 (#1140)."
     observed:
       - "`ctx.render_child(..)` 대신 `child.render(ctx)`로 자식을 그리는 container는 자식에게 DOM node를 주지 않아 cascade, `:focus`/`:hover`, hit test가 그 자식을 보지 못한다 (CHANGELOG.md 3.0). body를 `vstack()...render(ctx)`로 넘기는 view는 자기 node를 얻지 못한다 (docs/refactor/findings-render-pipeline.md)."
-      - "`ctx.buffer`에 직접 쓰는 widget이 `overflow: hidden`을 무시했다(#788에서 clip을 `Buffer`로 옮겨 고침). `RenderContext::get_mut`은 아직 clip을 건너뛴다. 기본값을 지정한 inline style은 stylesheet에 진다 (#1139)."
+      - "`ctx.buffer`에 직접 쓰는 widget이 `overflow: hidden`을 무시했다(#788에서 clip을 `Buffer`로 옮겨 고침). `RenderContext::get_mut`도 clip을 건너뛰었다(#783에서 고침). 기본값을 지정한 inline style은 stylesheet에 진다 (#1139)."
   - id: REV-API-006
     title: "Builder Result Depends on Call Order"
     category: api

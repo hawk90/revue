@@ -11,7 +11,7 @@
 //!   handler.
 //!
 //! Known failures live in `sequences/known_failures.rs`; the list may only
-//! shrink. See `docs/refactor/findings-event-sequences.md`.
+//! shrink. See <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-event-sequences.md>.
 //!
 //! Shared machinery for the event-sequence layers: the steps a sequence is
 //! made of, running one sequence against a widget with the invariants

@@ -7,7 +7,7 @@
 //! `margin-top` on a one-row `Text` would inset its one row to nothing, and a
 //! `height: 3` would grow it over the next sibling.
 //!
-//! The rule is written down in `docs/refactor/design-content-sized-stack.md`.
+//! The rule is written down in <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/design-content-sized-stack.md>.
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;

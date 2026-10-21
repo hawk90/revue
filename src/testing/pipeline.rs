@@ -112,7 +112,7 @@ impl PipelineHarness {
     /// reads the engine's output, so `App` skips it; the harness keeps it so
     /// layout queries keep answering. It has no effect on what is painted.
     /// Turn it off to measure the frame a real app pays for - see
-    /// `benches/frame.rs` and `docs/refactor/findings-layout.md`.
+    /// `benches/frame.rs` and <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>.
     pub fn layout_engine(mut self, enabled: bool) -> Self {
         self.app.set_layout_engine(enabled);
         self
@@ -303,7 +303,7 @@ impl PipelineHarness {
     ///
     /// This is what the user saw, which is not what
     /// [`layout_rect`](Self::layout_rect) reports - see
-    /// `docs/refactor/findings-layout.md`.
+    /// <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>.
     pub fn painted_rect(&self, element_id: &str) -> Option<Rect> {
         self.node_id(element_id)
             .and_then(|id| self.app.dom().painted_rect(id))
@@ -451,7 +451,7 @@ impl PipelineHarness {
     /// screen - that is what `LayoutEngine` produces.
     ///
     /// Nothing in the render path reads these yet; widgets still compute their
-    /// own geometry. See `docs/refactor/findings-layout.md`.
+    /// own geometry. See <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>.
     ///
     /// Requires [`layout_engine`](Self::layout_engine), which the harness turns
     /// on by default.

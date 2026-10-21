@@ -9,7 +9,7 @@
 //! - `matrix/pairwise.rs` - all pairs of {size, content, focus, path}.
 //!
 //! Known failures live in `matrix/known_failures.rs`; the list may only shrink.
-//! See `docs/refactor/findings-widget-matrix.md`.
+//! See <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-widget-matrix.md>.
 //!
 //! Shared machinery for the widget matrix: the inputs (areas, contents,
 //! focus, render paths), the two invariants every case is checked against,

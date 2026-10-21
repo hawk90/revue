@@ -198,7 +198,7 @@ where each node landed, the event loop asks that record what is under the
 pointer, `:hover` moves there, and a left click focuses the nearest enclosing
 focusable widget. Without it neither `:hover` nor `:focus` matches anything,
 which is what a running application did in 2.x — see
-[Phase 2 Hit Test](../refactor/phase2-hit-test.md).
+[Phase 2 Hit Test](https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/phase2-hit-test.md).
 
 Costs 1.5–2.8x per frame. See
 [Performance › DOM from the render traversal](performance.md#dom-from-the-render-traversal).
@@ -257,8 +257,8 @@ from outside. All three track whether the stylesheet specified them, so
 
 Not applied: `padding`, which insets a widget's content and would move the
 border of a widget that draws one; and `flex-*` / `grid-template-*`, which the
-container computes itself. Background:
-[Layout Findings](../refactor/findings-layout.md).
+container computes itself. 4.0 moves them onto one layout engine
+([#1144](https://github.com/hawk90/revue/issues/1144)).
 
 ### build()
 

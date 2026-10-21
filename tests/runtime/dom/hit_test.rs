@@ -6,7 +6,7 @@
 //! nothing in a running application - they were only reachable from tests.
 //!
 //! Why the paint record rather than the layout engine's rects:
-//! `docs/refactor/findings-layout.md`.
+//! <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-layout.md>.
 
 use revue::prelude::*;
 use revue::style::Color;

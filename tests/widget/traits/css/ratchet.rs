@@ -3,7 +3,7 @@
 //!
 //! Half the widget library paints from its own fields and hardcoded palettes,
 //! so a rule that names a color reaches nothing - `F-5` from
-//! `docs/refactor/findings-render-pipeline.md`. Wiring them is mechanical and
+//! <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-render-pipeline.md>. Wiring them is mechanical and
 //! proceeds by category; this keeps the work visible and stops it going
 //! backwards.
 //!

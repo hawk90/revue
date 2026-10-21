@@ -292,8 +292,7 @@ items:
       - FEATURES.md §1 CSS Styling / Supported Properties
     notes: 'Doc table lists them as supported, doc note says they are not applied. Code: all parse; only flex-wrap is read
       (Stack row wrap: each line as tall as its tallest item in a content-sized row; an equal-share row keeps the
-      2.x half-height lines). The rest are the container''s own builder state — see docs/refactor/findings-layout.md
-      L-2.'
+      2.x half-height lines). The rest are the container''s own builder state (layout finding L-2; 4.0: #1144).'
   - id: CSS-017
     title: opacity
     area: css
@@ -445,7 +444,7 @@ items:
       - FEATURES.md §2 Flexbox Layout
     notes: 'Engine exists and is tested, and the tree-linking bug (L-1) is fixed, but widgets still lay out their own children;
       engine rects only feed css_layout overrides. Open: L-2 (widget intent not in node style), L-3 (auto cross size collapses),
-      L-4 (layout before paint; the one-frame lag readers saw is fixed) in docs/refactor/findings-layout.md.'
+      L-4 (layout before paint; the one-frame lag readers saw is fixed); 4.0 work in #1144.'
   - id: LAY-006
     title: Content-sized stack children (View::measure, Stack::content_sized)
     area: layout
@@ -494,8 +493,8 @@ items:
     source:
       - PR #687
     notes: Opt-in in 2.x; on by default since 3.0 (docs/migration/v3.0.0.md section 2). Widgets without an obvious
-      natural size (lists, tables, editors, charts, Positioned, Gauge Arc/Circle) fill by design. Design and the
-      list of widgets that measure in docs/refactor/design-content-sized-stack.md.
+      natural size (lists, tables, editors, charts, Positioned, Gauge Arc/Circle) fill by design. Widgets that measure are
+      pinned by tests/widget/traits/view/measure.rs; the ones that still fill are #1100.
       Nested stacks are measured through the crate-internal View::measure_styled hook with the paint pass's
       styled subtree (design doc section 3).
   - id: RX-001

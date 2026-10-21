@@ -18,7 +18,7 @@
 //!   and failing plugins.
 //!
 //! Known failures live in `fault/known_failures.rs`; the list may only shrink.
-//! See `docs/refactor/findings-fault-injection.md`.
+//! See <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-fault-injection.md>.
 
 #[path = "fault/mod.rs"]
 mod fault;

@@ -58,7 +58,7 @@ that says nothing still leaves the builder's value alone — that is the point o
 
 `gap` (and `column-gap` / `row-gap`) reaches `vstack`, `hstack` and `grid` under `css_layout`. The
 remaining flow properties (`flex-*`, `grid-template-*`) are the container's own and are not applied from
-CSS — see [Layout Findings](refactor/findings-layout.md).
+CSS. 4.0 moves all of layout onto one engine fed by builders and CSS ([#1144](https://github.com/hawk90/revue/issues/1144)).
 
 `border-style: dashed` draws a single line: terminals have no dashed box-drawing set, and silently
 mapping it to something else would hide the fact.
@@ -73,7 +73,7 @@ the computed style, but nothing reads them at paint time. They stay parseable so
 - **z-index** — needs paint ordering. Widgets paint in traversal order today, and overlays are a separate
   queue.
 - **position** and its offsets — read by the layout engine, whose rects nothing paints from (see
-  [Layout Findings](refactor/findings-layout.md)).
+  [#1144](https://github.com/hawk90/revue/issues/1144)).
 
 `Positioned` and `Layers` cover absolute placement and stacking as builders.
 
@@ -84,7 +84,7 @@ grid solver with no third-party layout dependency, so the semantics stay under t
 practice containers (`vstack`, `hstack`, `grid`) still place their own children from builder settings
 (`gap`, `child_sized`, `child_flex`, `constrain`, and each unsized child's measured content size -
 `View::measure`); the engine's output is consulted only for the
-`css_layout` overrides. Closing that gap is tracked in [Layout Findings](refactor/findings-layout.md).
+`css_layout` overrides. Closing that gap is tracked in [#1144](https://github.com/hawk90/revue/issues/1144).
 
 ## 3. Reactivity
 
