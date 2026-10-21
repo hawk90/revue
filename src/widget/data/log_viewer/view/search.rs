@@ -43,13 +43,12 @@ impl LogViewer {
     fn scroll_to_match(&mut self, match_index: usize) {
         if let Some(m) = self.search_matches.get(match_index) {
             // Find position in filtered view
-            let filtered: Vec<_> = self.filtered_entries().collect();
-            for (view_idx, (entry_idx, _)) in filtered.iter().enumerate() {
-                if *entry_idx == m.entry_index {
-                    self.selected = view_idx;
-                    self.ensure_visible(view_idx);
-                    break;
-                }
+            let target = m.entry_index;
+            let pos = self
+                .filtered_entries()
+                .position(|(entry_idx, _)| entry_idx == target);
+            if let Some(pos) = pos {
+                self.select_row(pos);
             }
         }
     }

@@ -142,3 +142,20 @@ fn an_empty_view() {
     assert_eq!(s.visible(), 0..0);
     assert!(s.is_following(), "an empty view is at its end");
 }
+
+/// A paused log stays paused while the selection moves on screen.
+#[test]
+fn a_reveal_on_screen_leaves_following_as_it_is() {
+    let mut s = drawn(3, 5).follow_end(true);
+    s.set_follow_end(false);
+    s.reveal(2..3);
+    assert!(!s.is_following());
+    s.set_content(10);
+    assert_eq!(
+        s.visible(),
+        0..5,
+        "paused: new rows below do not move the view"
+    );
+    s.set_follow_end(true);
+    assert_eq!(s.visible(), 5..10);
+}

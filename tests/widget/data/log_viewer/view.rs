@@ -1,8 +1,9 @@
 //! LogViewer rendering: empty input, the column layout, highlights, a matrix
 //! over options, sizes and keys, and the widget inside a stack
 //!
-//! Only behaviour that holds today is asserted here. Open bugs (#858: the
-//! view does not follow the selection) are left to their issues.
+//! The view is a `ScrollState` and the selection a `KeyedSelection` (#973,
+//! #975): the view follows the selection and the tail, and the selection
+//! stays on its entry.
 
 use proptest::prelude::*;
 use revue::event::Key;
@@ -217,6 +218,118 @@ fn test_log_viewer_search_highlights_the_matched_characters() {
     assert!(lit.iter().all(|&x| (7..11).contains(&x)), "{lit:?}");
     assert_eq!(buffer.get(7, 0).unwrap().fg, Some(Color::BLACK));
     assert!((0..30).all(|x| buffer.get(x, 1).unwrap().bg != Some(Color::YELLOW)));
+}
+
+/// The messages on each row of a `bare()` viewer drawn `width` wide: the
+/// six cells after the bookmark column, clear of the right-hand markers
+fn messages(viewer: &LogViewer, width: u16, height: u16) -> Vec<String> {
+    let buffer = render(viewer, width, height);
+    (0..height)
+        .map(|y| cells(&buffer, 2, y, 6).trim_end().to_string())
+        .collect()
+}
+
+fn numbered(viewer: &mut LogViewer, n: usize) {
+    for i in 1..=n {
+        viewer.push(&format!("l{i}"));
+    }
+}
+
+// =========================================================================
+// Scrolling and selection (#858, #973, #975)
+// =========================================================================
+
+/// Tail mode used to scroll to the last entry and draw it alone on the top
+/// row (#858).
+#[test]
+fn test_log_viewer_tail_shows_a_full_last_page() {
+    let mut viewer = bare().tail_mode(true);
+    numbered(&mut viewer, 50);
+    assert_eq!(messages(&viewer, 30, 4), ["l47", "l48", "l49", "l50"]);
+    viewer.push("l51");
+    assert_eq!(messages(&viewer, 30, 4), ["l48", "l49", "l50", "l51"]);
+}
+
+/// Down past the bottom row used to leave the selection off screen (#858).
+#[test]
+fn test_log_viewer_view_follows_the_selection_down() {
+    let mut viewer = bare();
+    numbered(&mut viewer, 20);
+    render(&viewer, 30, 4);
+    for _ in 0..6 {
+        viewer.handle_key(&Key::Down);
+    }
+    assert_eq!(viewer.selected_text().as_deref(), Some("l7"));
+    let buffer = render(&viewer, 30, 4);
+    assert_eq!(highlighted_rows(&buffer), [3]);
+    assert_eq!(cells(&buffer, 2, 3, 6).trim_end(), "l7");
+}
+
+/// Moving up inside the page keeps the page.
+#[test]
+fn test_log_viewer_moving_up_on_screen_keeps_the_view() {
+    let mut viewer = bare();
+    numbered(&mut viewer, 20);
+    render(&viewer, 30, 4);
+    for _ in 0..6 {
+        viewer.handle_key(&Key::Down);
+    }
+    viewer.handle_key(&Key::Up);
+    assert_eq!(messages(&viewer, 30, 4), ["l4", "l5", "l6", "l7"]);
+}
+
+/// #975: trimming old entries moved the selection to the next one.
+#[test]
+fn test_log_viewer_trimming_keeps_the_selected_entry() {
+    let mut viewer = LogViewer::new().tail_mode(false).max_entries(3);
+    for i in 1..=3 {
+        viewer.push(&format!("l{i}"));
+    }
+    viewer.select_next();
+    viewer.push("l4");
+    assert_eq!(viewer.selected_entry().unwrap().message, "l2");
+}
+
+/// #975: `clear_filter` moved the selection to the entry at its position.
+#[test]
+fn test_log_viewer_clear_filter_keeps_the_selected_entry() {
+    let mut viewer = LogViewer::new().tail_mode(false);
+    viewer.load("INFO a\nERROR b\nINFO c");
+    viewer.set_min_level(LogLevel::Error);
+    viewer.clear_filter();
+    assert_eq!(viewer.selected_entry().unwrap().message, "b");
+}
+
+/// Reading back through a trimmed log: the rows on screen stay put as old
+/// entries go.
+#[test]
+fn test_log_viewer_trimming_keeps_a_scrolled_back_view_still() {
+    let mut viewer = bare().tail_mode(true).max_entries(10);
+    numbered(&mut viewer, 10);
+    render(&viewer, 30, 4);
+    viewer.scroll_up(3);
+    assert!(!viewer.is_tail_mode());
+    assert_eq!(messages(&viewer, 30, 4), ["l4", "l5", "l6", "l7"]);
+    viewer.push("l11");
+    viewer.push("l12");
+    assert_eq!(messages(&viewer, 30, 4), ["l4", "l5", "l6", "l7"]);
+}
+
+/// Scrolling back to the newest entries starts following again; the
+/// selection stays where it was.
+#[test]
+fn test_log_viewer_scrolling_to_the_end_resumes_the_tail() {
+    let mut viewer = bare().tail_mode(true);
+    numbered(&mut viewer, 10);
+    render(&viewer, 30, 4);
+    viewer.scroll_up(2);
+    viewer.scroll_down(5);
+    assert!(viewer.is_tail_mode());
+    viewer.push("l11");
+    assert_eq!(messages(&viewer, 30, 4), ["l8", "l9", "l10", "l11"]);
+    // Tail mode moves only the view: the selection is still the first entry,
+    // selected when it arrived
+    assert_eq!(viewer.selected_text().as_deref(), Some("l1"));
 }
 
 #[test]

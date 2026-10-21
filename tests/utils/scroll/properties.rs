@@ -17,7 +17,7 @@ enum Op {
 
 fn op() -> impl Strategy<Value = Op> {
     prop_oneof![
-        (1usize..12).prop_map(Op::Viewport),
+        (0usize..12).prop_map(Op::Viewport),
         (0usize..40).prop_map(Op::Content),
         (0usize..40, 0usize..6).prop_map(|(a, n)| Op::Insert(a, n)),
         (0usize..40, 0usize..6).prop_map(|(a, n)| Op::Remove(a, n)),
@@ -75,6 +75,7 @@ proptest! {
             if s.is_following() {
                 prop_assert_eq!(s.offset(), s.max_offset());
             }
+            prop_assert!(s.visible().start <= s.visible().end);
             prop_assert!(s.visible().end <= s.content());
         }
     }

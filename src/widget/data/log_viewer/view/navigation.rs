@@ -8,6 +8,8 @@ impl LogViewer {
     pub fn toggle_bookmark(&mut self) {
         if let Some(idx) = self.selected_entry_index() {
             self.entries[idx].toggle_bookmark();
+            // A filter on bookmarks shows or hides the entry
+            self.sync_view();
         }
     }
 
@@ -19,24 +21,27 @@ impl LogViewer {
     /// Jump to next bookmark
     pub fn next_bookmark(&mut self) {
         let marks = self.bookmarked_positions();
-        let target = marks.iter().find(|&&i| i > self.selected).or(marks.first());
+        let selected = self.selection.index();
+        let target = marks
+            .iter()
+            .find(|&&i| selected.is_none_or(|s| i > s))
+            .or(marks.first());
         if let Some(&i) = target {
-            self.selected = i;
-            self.ensure_visible(i);
+            self.select_row(i);
         }
     }
 
     /// Jump to previous bookmark
     pub fn prev_bookmark(&mut self) {
         let marks = self.bookmarked_positions();
+        let selected = self.selection.index();
         let target = marks
             .iter()
             .rev()
-            .find(|&&i| i < self.selected)
+            .find(|&&i| selected.is_none_or(|s| i < s))
             .or(marks.last());
         if let Some(&i) = target {
-            self.selected = i;
-            self.ensure_visible(i);
+            self.select_row(i);
         }
     }
 
@@ -66,8 +71,9 @@ impl LogViewer {
             }
         }
 
-        self.selected = best_idx;
-        self.ensure_visible(best_idx);
+        if !filtered.is_empty() {
+            self.select_row(best_idx);
+        }
     }
 
     /// Jump to line number
@@ -76,54 +82,58 @@ impl LogViewer {
 
         for (i, (entry_idx, _)) in filtered.iter().enumerate() {
             if self.entries[*entry_idx].line_number >= line {
-                self.selected = i;
-                self.ensure_visible(i);
+                self.select_row(i);
                 return;
             }
         }
     }
 
-    /// Scroll up
+    /// Scroll the view up, without moving the selection. Leaves tail mode
+    /// when the view moves off the newest entries.
     pub fn scroll_up(&mut self, lines: usize) {
-        self.scroll = self.scroll.saturating_sub(lines);
-        self.tail_mode = false;
+        self.scroll
+            .scroll_by(-(lines.min(isize::MAX as usize) as isize));
     }
 
-    /// Scroll down
+    /// Scroll the view down, without moving the selection. Reaching the
+    /// newest entries starts tail mode.
     pub fn scroll_down(&mut self, lines: usize) {
-        let count = self.filtered_entries().count();
-        self.scroll = (self.scroll + lines).min(count.saturating_sub(1));
+        self.scroll
+            .scroll_by(lines.min(isize::MAX as usize) as isize);
     }
 
-    /// Scroll to top
+    /// Select the first entry and scroll to it
     pub fn scroll_to_top(&mut self) {
-        self.scroll = 0;
-        self.selected = 0;
-        self.tail_mode = false;
+        self.select_row(0);
+        self.scroll.scroll_to_top();
     }
 
-    /// Scroll to bottom
+    /// Select the newest entry and follow new ones (tail mode)
     pub fn scroll_to_bottom(&mut self) {
-        let count = self.filtered_entries().count();
-        self.scroll = count.saturating_sub(1);
-        self.selected = count.saturating_sub(1);
+        self.select_row(usize::MAX);
+        self.scroll.scroll_to_end();
     }
 
-    /// Move selection up
+    /// Move selection up. With nothing selected, select the last row on
+    /// screen.
     pub fn select_prev(&mut self) {
-        if self.selected > 0 {
-            self.selected -= 1;
-            self.ensure_visible(self.selected);
+        match self.selection.index() {
+            Some(pos) => self.select_row(pos.saturating_sub(1)),
+            None if self.filtered_len() > 0 => {
+                let last_shown = self.scroll.visible().end.saturating_sub(1);
+                self.select_row(last_shown);
+            }
+            None => {}
         }
-        self.tail_mode = false;
     }
 
-    /// Move selection down
+    /// Move selection down. With nothing selected, select the first row on
+    /// screen.
     pub fn select_next(&mut self) {
-        let count = self.filtered_entries().count();
-        if self.selected < count.saturating_sub(1) {
-            self.selected += 1;
-            self.ensure_visible(self.selected);
+        match self.selection.index() {
+            Some(pos) => self.select_row(pos + 1),
+            None if self.filtered_len() > 0 => self.select_row(self.scroll.offset()),
+            None => {}
         }
     }
 }
