@@ -6,13 +6,13 @@
 //! of memory and the kernel panics (watchdog timeout, compressor full). The
 //! test binaries peak below 500 MB, so a binary holding more than [`LIMIT`] is
 //! a runaway. Past it, allocation fails and the binary aborts with
-//! "memory allocation of N bytes failed".
+//! "memory allocation of N bytes failed" - this cap refusing, while the
+//! machine still has memory to spare.
 //!
 //! Included with `#[path]` by `src/lib.rs` (unit tests) and by each
 //! `tests/*.rs` crate root, so each test binary installs it once.
 
 use std::alloc::{GlobalAlloc, Layout, System};
-use std::io::Write;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Live heap bytes one test binary may hold.
@@ -28,11 +28,6 @@ impl CappedAlloc {
         let mut used = self.used.load(Ordering::Relaxed);
         loop {
             let Some(total) = used.checked_add(size).filter(|&total| total <= LIMIT) else {
-                // `io::stderr()` is unbuffered and a static string needs no
-                // formatting, so this does not allocate.
-                let _ = std::io::stderr().write_all(
-                    b"refused an allocation past the test heap cap (tests/support/alloc_cap.rs)\n",
-                );
                 return false;
             };
             match self
