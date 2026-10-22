@@ -660,3 +660,54 @@ fn test_option_list_not_empty() {
 
     assert!(list.option_count() > 0);
 }
+
+// ============================================================================
+// The view follows the highlight (#973)
+// ============================================================================
+
+fn screen(list: &OptionList, width: u16, height: u16) -> Vec<String> {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+    list.render(&mut ctx);
+    (0..height)
+        .map(|y| {
+            (0..width)
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
+
+/// Options o0..o{n-1}, focused, 10 columns wide
+fn numbered(n: usize) -> OptionList {
+    (0..n).fold(OptionList::new().width(10).focused(true), |list, i| {
+        list.option(format!("o{i}"), "")
+    })
+}
+
+/// The highlight scrolled by `max_visible` options (10 by default), not by
+/// the rows the area has, so it went below a 5-row area undrawn
+#[test]
+fn test_option_list_highlight_scrolls_in_the_area_rows() {
+    let mut list = numbered(10);
+    for _ in 0..7 {
+        list.highlight_next();
+    }
+    // was ["  o0", "  o1", "  o2", "  o3", "  o4"]
+    assert_eq!(screen(&list, 10, 5), ["↑", "  o5", "  o6", "> o7", "↓"]);
+}
+
+/// `select` moved the highlight without scrolling to it
+#[test]
+fn test_option_list_select_scrolls_the_option_into_view() {
+    let mut list = numbered(20);
+    list.select(15);
+    let rows = screen(&list, 10, 12);
+    assert!(rows.iter().any(|r| r.ends_with("o15")), "{rows:?}");
+}

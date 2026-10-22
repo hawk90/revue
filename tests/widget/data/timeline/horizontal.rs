@@ -7,6 +7,21 @@ use revue::widget::traits::RenderContext;
 use revue::widget::View;
 use revue::widget::{Timeline, TimelineEvent};
 
+/// The events were drawn from the first, so a selected event past the width
+/// was not drawn (#973)
+#[test]
+fn test_timeline_horizontal_selected_event_scrolls_into_view() {
+    let mut tl = Timeline::new().horizontal().events(
+        (0..10)
+            .map(|i| TimelineEvent::new(format!("E{i}")))
+            .collect(),
+    );
+    tl.select(Some(7));
+    let rows = screen(&tl, 45, 3); // three events wide
+    assert!(rows[0].contains("E7"), "{:?}", rows[0]); // was E0, E1, E2
+    assert!(!rows[0].contains("E4"), "{:?}", rows[0]);
+}
+
 #[test]
 fn test_timeline_render_horizontal_empty() {
     let tl = Timeline::new().horizontal();

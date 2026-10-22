@@ -23,9 +23,18 @@ impl Timeline {
             ctx.set(x, line_y, cell);
         }
 
+        // The events in view, one per 15 columns, following the selection
+        // (#973). An event cut at the right edge is drawn but not counted.
+        self.scroll.set_content(self.events.len());
+        self.scroll
+            .set_viewport((area.width / event_width).max(1) as usize);
+        if let Some(i) = self.selected {
+            self.scroll.track(i..i + 1);
+        }
+
         // Draw events
         let mut x = 0u16;
-        for (i, event) in self.events.iter().enumerate() {
+        for (i, event) in self.events.iter().enumerate().skip(self.scroll.offset()) {
             if x >= area.width {
                 break;
             }

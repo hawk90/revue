@@ -20,35 +20,66 @@ impl Timeline {
         let content_x = icon_x + 3;
         let content_width = area.width.saturating_sub(timestamp_width + 3);
 
-        let mut y = 0u16;
+        // Each event's first row. An event takes its title row, its
+        // description's when shown, and a row of line down to the next one
+        let mut tops = Vec::with_capacity(self.events.len());
+        let mut rows = 0;
+        for (i, event) in self.events.iter().enumerate() {
+            tops.push(rows);
+            rows += self.event_rows(i, event);
+        }
 
-        for (i, event) in self.events.iter().enumerate().skip(self.scroll) {
-            if y >= area.height {
-                break;
+        // The rows in view, following the selected event's title and
+        // description (#973)
+        self.scroll.set_content(rows);
+        self.scroll.set_viewport(area.height as usize);
+        if let Some(i) = self.selected.filter(|&i| i < self.events.len()) {
+            let text = self.event_rows(i, &self.events[i]) - usize::from(i + 1 < self.events.len());
+            self.scroll.track(tops[i]..tops[i] + text);
+        }
+        let visible = self.scroll.visible();
+
+        for (i, event) in self.events.iter().enumerate() {
+            let top = tops[i];
+            let height = self.event_rows(i, event);
+            if top + height <= visible.start || top >= visible.end {
+                continue;
             }
-
             let is_selected = self.selected == Some(i);
-
-            self.draw_timestamp(ctx, event, y, timestamp_width);
-            self.draw_marker(ctx, i, event, y, icon_x, is_selected);
-            self.draw_title(ctx, event, y, content_x, content_width, is_selected);
-
-            y += 1;
-
-            if self.draw_description(ctx, i, event, y, icon_x, content_x, content_width) {
-                y += 1;
-            }
-
-            // Add spacing between events
-            if y < area.height && i < self.events.len() - 1 {
-                if self.style != TimelineStyle::Minimal {
-                    let mut line_cell = Cell::new('│');
-                    line_cell.fg = Some(self.line_color);
-                    ctx.set(icon_x, y, line_cell);
+            let has_description = self.shows_description(event);
+            for row in top.max(visible.start)..(top + height).min(visible.end) {
+                let y = (row - visible.start) as u16;
+                match row - top {
+                    0 => {
+                        self.draw_timestamp(ctx, event, y, timestamp_width);
+                        self.draw_marker(ctx, i, event, y, icon_x, is_selected);
+                        self.draw_title(ctx, event, y, content_x, content_width, is_selected);
+                    }
+                    1 if has_description => {
+                        self.draw_description(ctx, i, event, y, icon_x, content_x, content_width);
+                    }
+                    // The spacing between events
+                    _ => {
+                        if self.style != TimelineStyle::Minimal {
+                            let mut line_cell = Cell::new('│');
+                            line_cell.fg = Some(self.line_color);
+                            ctx.set(icon_x, y, line_cell);
+                        }
+                    }
                 }
-                y += 1;
             }
         }
+    }
+
+    /// Whether `event`'s description is drawn
+    fn shows_description(&self, event: &TimelineEvent) -> bool {
+        self.show_descriptions && event.description.is_some()
+    }
+
+    /// The rows event `i` takes: its title, its description when shown, and
+    /// a row of spacing before the next event
+    fn event_rows(&self, i: usize, event: &TimelineEvent) -> usize {
+        1 + usize::from(self.shows_description(event)) + usize::from(i + 1 < self.events.len())
     }
 
     /// The timestamp (when shown), cut to its gutter, on row `y`
@@ -160,7 +191,7 @@ impl Timeline {
         }
     }
 
-    /// The description (when shown) on row `y`, with the line beside it; whether it was drawn
+    /// The description on row `y`, with the line beside it
     fn draw_description(
         &self,
         ctx: &mut RenderContext,
@@ -170,38 +201,30 @@ impl Timeline {
         icon_x: u16,
         content_x: u16,
         content_width: u16,
-    ) -> bool {
-        let area = ctx.area;
+    ) {
+        let Some(ref desc) = event.description else {
+            return;
+        };
 
-        // Draw description
-        if self.show_descriptions {
-            if let Some(ref desc) = event.description {
-                if y < area.height {
-                    // Draw line continuation
-                    if i < self.events.len() - 1 && self.style != TimelineStyle::Minimal {
-                        let mut line_cell = Cell::new('│');
-                        line_cell.fg = Some(self.line_color);
-                        ctx.set(icon_x, y, line_cell);
-                    }
-
-                    // Draw description text
-                    let desc_truncated = truncate_to_width(desc, content_width as usize);
-                    let mut dx: u16 = 0;
-                    for ch in desc_truncated.chars() {
-                        let cw = char_width(ch) as u16;
-                        if dx + cw > content_width {
-                            break;
-                        }
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(self.desc_color);
-                        ctx.set(content_x + dx, y, cell);
-                        dx += cw;
-                    }
-
-                    return true;
-                }
-            }
+        // Draw line continuation
+        if i < self.events.len() - 1 && self.style != TimelineStyle::Minimal {
+            let mut line_cell = Cell::new('│');
+            line_cell.fg = Some(self.line_color);
+            ctx.set(icon_x, y, line_cell);
         }
-        false
+
+        // Draw description text
+        let desc_truncated = truncate_to_width(desc, content_width as usize);
+        let mut dx: u16 = 0;
+        for ch in desc_truncated.chars() {
+            let cw = char_width(ch) as u16;
+            if dx + cw > content_width {
+                break;
+            }
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(self.desc_color);
+            ctx.set(content_x + dx, y, cell);
+            dx += cw;
+        }
     }
 }

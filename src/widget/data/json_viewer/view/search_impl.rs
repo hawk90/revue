@@ -60,11 +60,13 @@ impl JsonViewer {
 
     fn go_to_match(&mut self) {
         let root = &self.root;
+        let mut selected = self.selection.index().unwrap_or(0);
         self.search_state
-            .go_to_match(&mut self.collapsed, &mut self.selected, |collapsed| {
+            .go_to_match(&mut self.collapsed, &mut selected, |collapsed| {
                 root.as_ref()
                     .map(|root| flatten_tree(root, collapsed))
                     .unwrap_or_default()
             });
+        self.select_row(selected);
     }
 }

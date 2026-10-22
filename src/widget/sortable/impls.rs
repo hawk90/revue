@@ -125,8 +125,8 @@ impl SortableList {
     pub fn update_drop_target(&mut self, y: u16, area_y: u16) {
         if self.dragging.is_some() {
             let relative_y = y.saturating_sub(area_y) as usize;
-            let target_idx =
-                (relative_y / self.item_height as usize + self.scroll).min(self.items.len());
+            let target_idx = (relative_y / self.item_height as usize + self.view().offset())
+                .min(self.items.len());
             self.drop_target = Some(target_idx);
         }
     }
@@ -149,14 +149,11 @@ impl SortableList {
             // A drag in progress holds indices into the old list
             self.cancel_drag();
             let item = self.items.remove(index);
+            // The selection stays on its item; when that is the one removed,
+            // the item now in its place, or the last one (#975)
             if let Some(sel) = self.selected {
-                if sel >= self.items.len() {
-                    self.selected = if self.items.is_empty() {
-                        None
-                    } else {
-                        Some(self.items.len() - 1)
-                    };
-                }
+                let sel = if index < sel { sel - 1 } else { sel };
+                self.selected = self.items.len().checked_sub(1).map(|last| sel.min(last));
             }
             Some(item)
         } else {

@@ -12,14 +12,22 @@ impl View for SortableList {
         let area = ctx.area;
         let visible_count = (area.height / self.item_height) as usize;
 
+        // The items in view, following the selection (#973)
+        self.view().set_content(self.items.len());
+        self.view().set_viewport(visible_count);
+        if let Some(selected) = self.selected {
+            self.view().track(selected..selected + 1);
+        }
+        let scroll = self.view().offset();
+
         for (i, item) in self
             .items
             .iter()
             .enumerate()
-            .skip(self.scroll)
+            .skip(scroll)
             .take(visible_count)
         {
-            let y = (i - self.scroll) as u16 * self.item_height;
+            let y = (i - scroll) as u16 * self.item_height;
 
             // Determine colors
             let is_selected = self.selected == Some(i);
@@ -85,7 +93,7 @@ impl View for SortableList {
         // Draw final drop indicator at end if needed
         if let Some(target) = self.drop_target {
             if target == self.items.len() && self.dragging.is_some() {
-                let y = visible_count.min(self.items.len() - self.scroll) as u16 * self.item_height;
+                let y = visible_count.min(self.items.len() - scroll) as u16 * self.item_height;
                 if y < area.height {
                     ctx.draw_hline(0, y, area.width, '─', self.drag_color);
                 }
@@ -150,7 +158,7 @@ impl Interactive for SortableList {
         }
 
         let relative_y = event.y.saturating_sub(area.y) as usize;
-        let clicked_idx = (relative_y / self.item_height as usize + self.scroll)
+        let clicked_idx = (relative_y / self.item_height as usize + self.view().offset())
             .min(self.items.len().saturating_sub(1));
 
         match event.kind {
@@ -174,14 +182,14 @@ impl Interactive for SortableList {
                 self.end_drag();
                 crate::widget::traits::EventResult::ConsumedAndRender
             }
+            // The wheel scrolls the view and leaves the selection
             crate::event::MouseEventKind::ScrollDown => {
-                if self.scroll < self.items.len().saturating_sub(1) {
-                    self.scroll += 1;
-                }
+                self.view().set_content(self.items.len());
+                self.view_mut().scroll_by(1);
                 crate::widget::traits::EventResult::ConsumedAndRender
             }
             crate::event::MouseEventKind::ScrollUp => {
-                self.scroll = self.scroll.saturating_sub(1);
+                self.view_mut().scroll_by(-1);
                 crate::widget::traits::EventResult::ConsumedAndRender
             }
             _ => crate::widget::traits::EventResult::Ignored,
