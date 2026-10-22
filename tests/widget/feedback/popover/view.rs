@@ -300,3 +300,39 @@ fn test_popover_auto_goes_below_when_it_just_fits() {
         .open(true);
     assert_eq!(corner(&render(&p)), Some((15, 14)));
 }
+
+#[test]
+fn a_word_longer_than_max_width_is_broken_by_columns() {
+    let p = Popover::new("the supercalifragilistic word")
+        .max_width(10)
+        .position(PopoverPosition::Bottom)
+        .anchor(10, 0)
+        .open(true);
+    let mut buffer = Buffer::new(30, 8);
+    p.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 30, 8)));
+    let (x, y) = corner(&buffer).unwrap();
+    let line = |row: u16| -> String { (x..x + 14).map(|cx| symbol(&buffer, cx, row)).collect() };
+    assert_eq!(line(y), "┌────────────┐");
+    assert_eq!(line(y + 1), "│ the        │");
+    assert_eq!(line(y + 2), "│ supercalif │");
+    assert_eq!(line(y + 3), "│ ragilistic │");
+    assert_eq!(line(y + 4), "│ word       │");
+    assert_eq!(line(y + 5), "└────────────┘");
+}
+
+#[test]
+fn the_content_wraps_to_a_narrow_area_and_the_box_keeps_its_right_border() {
+    let p = Popover::new("one two three four five six seven")
+        .anchor(5, 0)
+        .position(PopoverPosition::Bottom)
+        .open(true);
+    let mut buffer = Buffer::new(20, 8);
+    p.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 8)));
+    // Wrapped to the 16 columns the area leaves; the box takes the widest
+    // line, 13 columns
+    assert_eq!(row(&buffer, 1), "┌───────────────┐   ");
+    assert_eq!(row(&buffer, 2), "│ one two three │   ");
+    assert_eq!(row(&buffer, 3), "│ four five six │   ");
+    assert_eq!(row(&buffer, 4), "│ seven         │   ");
+    assert_eq!(row(&buffer, 5), "└───────────────┘   ");
+}

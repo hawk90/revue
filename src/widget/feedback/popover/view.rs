@@ -32,7 +32,7 @@ impl View for Popover {
         }
 
         let area = ctx.area;
-        let (popup_w, popup_h) = self.calculate_dimensions();
+        let (popup_w, popup_h) = self.calculate_dimensions(area.width);
         let (popup_x, popup_y, actual_position) = self.calculate_position(area.width, area.height);
         let frame = Frame {
             x: popup_x,
@@ -218,7 +218,7 @@ impl Popover {
             ..
         } = frame;
         let (fg, bg) = (colors.fg, colors.bg);
-        let lines = self.wrap_content();
+        let lines = self.wrap_content(area.width);
         let text_y_offset = if self.title.is_some() && self.popover_style.border_chars().is_some() {
             1
         } else {

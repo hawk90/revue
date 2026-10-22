@@ -35,8 +35,9 @@ fn cell_with(ch: char, cell_fg: Color, cell_bg: Color) -> Cell {
 
 impl Tooltip {
     /// The box as an overlay at `overlay_area`: the background, the border
-    /// with the title, and the text, in cells relative to the box.
-    fn draw_box(&self, overlay_area: Rect, fg: Color, bg: Color) -> OverlayEntry {
+    /// with the title, and the text wrapped for an area `area_width` wide,
+    /// in cells relative to the box.
+    fn draw_box(&self, overlay_area: Rect, area_width: u16, fg: Color, bg: Color) -> OverlayEntry {
         let (tooltip_w, tooltip_h) = (overlay_area.width, overlay_area.height);
         let mut entry = OverlayEntry::new(150, overlay_area);
 
@@ -62,6 +63,7 @@ impl Tooltip {
 
         self.draw_text(
             &mut entry,
+            area_width,
             (content_rx, content_ry),
             (tooltip_w, tooltip_h),
             fg,
@@ -127,13 +129,14 @@ impl Tooltip {
     fn draw_text(
         &self,
         entry: &mut OverlayEntry,
+        area_width: u16,
         (content_rx, content_ry): (u16, u16),
         (tooltip_w, tooltip_h): (u16, u16),
         fg: Color,
         bg: Color,
     ) {
         // Text content
-        let lines = self.wrap_text();
+        let lines = self.wrap_text(area_width);
         let text_y_off = if self.title.is_some() && self.style.border_chars().is_some() {
             1u16
         } else {
@@ -208,7 +211,7 @@ impl View for Tooltip {
         }
 
         let area = ctx.area;
-        let (tooltip_w, tooltip_h) = self.calculate_dimensions();
+        let (tooltip_w, tooltip_h) = self.calculate_dimensions(area.width);
         let (tooltip_x, tooltip_y, actual_position) =
             self.calculate_position(area.width, area.height);
 
@@ -219,7 +222,7 @@ impl View for Tooltip {
 
         // Build overlay entry (all coordinates relative to tooltip area)
         let overlay_area = Rect::new(tooltip_x, tooltip_y, tooltip_w, tooltip_h);
-        let entry = self.draw_box(overlay_area, fg, bg);
+        let entry = self.draw_box(overlay_area, area.width, fg, bg);
 
         // Arrow — queue as separate 1-cell overlay at higher z-index
         if !matches!(self.arrow, TooltipArrow::None) {

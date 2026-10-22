@@ -1,50 +1,34 @@
 use super::types::{PopoverArrow, PopoverPosition};
 use super::Popover;
+use crate::text::wrap_words;
 use crate::utils::unicode::display_width;
 
 impl Popover {
     /// Word wrap content
-    pub(super) fn wrap_content(&self) -> Vec<String> {
+    pub(super) fn wrap_content(&self, area_width: u16) -> Vec<String> {
         let max_width = if self.max_width > 0 {
             self.max_width as usize
         } else {
             40
         };
-
-        let mut lines = Vec::new();
-        // Widths are terminal columns, the unit the box is sized in.
-        for line in self.content.lines() {
-            if display_width(line) <= max_width {
-                lines.push(line.to_string());
-            } else {
-                let mut current_line = String::new();
-                for word in line.split_whitespace() {
-                    if current_line.is_empty() {
-                        current_line = word.to_string();
-                    } else if display_width(&current_line) + 1 + display_width(word) <= max_width {
-                        current_line.push(' ');
-                        current_line.push_str(word);
-                    } else {
-                        lines.push(current_line);
-                        current_line = word.to_string();
-                    }
-                }
-                if !current_line.is_empty() {
-                    lines.push(current_line);
-                }
-            }
-        }
-
-        if lines.is_empty() {
-            lines.push(String::new());
-        }
-
-        lines
+        // No wider than the area leaves inside the padding and border, so
+        // the box keeps its right edge in a narrow area
+        let chrome = if self.popover_style.border_chars().is_some() {
+            4
+        } else {
+            2
+        };
+        let width = max_width
+            .min((area_width as usize).saturating_sub(chrome))
+            .max(1);
+        // Widths are terminal columns, the unit the box is sized in; a word
+        // wider than the line is broken by columns
+        wrap_words(&self.content, width)
     }
 
     /// Calculate popover dimensions
-    pub(super) fn calculate_dimensions(&self) -> (u16, u16) {
-        let lines = self.wrap_content();
+    pub(super) fn calculate_dimensions(&self, area_width: u16) -> (u16, u16) {
+        let lines = self.wrap_content(area_width);
         let has_border = self.popover_style.border_chars().is_some();
         let has_title = self.title.is_some();
 
@@ -57,12 +41,18 @@ impl Popover {
             .unwrap_or(0);
         let text_width = content_width.max(title_width);
 
-        let width = text_width + if has_border { 4 } else { 2 };
+        let chrome = if has_border { 4 } else { 2 };
+        // No wider than the area, but with a column for the text even in
+        // an area too narrow for one (the box is cut there); a title wider
+        // than the box is cut at its edge
+        let width = (text_width + chrome)
+            .max(10)
+            .min(area_width.max(chrome + 1));
         let height = lines.len() as u16
             + if has_border { 2 } else { 0 }
             + if has_title && has_border { 1 } else { 0 };
 
-        (width.max(10), height.max(3))
+        (width, height.max(3))
     }
 
     /// Calculate position based on anchor and available space
@@ -71,7 +61,7 @@ impl Popover {
         area_width: u16,
         area_height: u16,
     ) -> (u16, u16, PopoverPosition) {
-        let (popup_w, popup_h) = self.calculate_dimensions();
+        let (popup_w, popup_h) = self.calculate_dimensions(area_width);
         let (anchor_x, anchor_y) = self.anchor;
         let arrow_offset: u16 = if matches!(self.arrow, PopoverArrow::None) {
             0
