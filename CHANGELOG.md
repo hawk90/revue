@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.0](https://github.com/hawk90/revue/compare/v3.10.2...v3.11.0) (2026-10-22)
+
+
+### Features
+
+* **utils:** add ScrollState and KeyedSelection, the shared scroll and selection models ([#1228](https://github.com/hawk90/revue/issues/1228)) ([a13cb8d](https://github.com/hawk90/revue/commit/a13cb8d0439906fdf889ff404e0e95dee3878740))
+
+
+### Bug Fixes
+
+* **aistream, httpclient, terminal:** scroll content views with ScrollState ([#1237](https://github.com/hawk90/revue/issues/1237)) ([f4eda62](https://github.com/hawk90/revue/commit/f4eda62252a85425e4b3e0aa9fdad2d8f0c5c409))
+* **builders:** give the same widget in any builder order ([#1243](https://github.com/hawk90/revue/issues/1243)) ([ebc083e](https://github.com/hawk90/revue/commit/ebc083e2a44048b1e79d322ed4d82249f20364a2))
+* **calendar:** show the month that holds the selection whenever it changes ([#1239](https://github.com/hawk90/revue/issues/1239)) ([b9ac292](https://github.com/hawk90/revue/commit/b9ac292c0bd6fee335c39fb3305e3c4c019e7bd9))
+* **cascade:** merge every inline style field, not 19 of the 39 ([#1227](https://github.com/hawk90/revue/issues/1227)) ([5713cf6](https://github.com/hawk90/revue/commit/5713cf631d0ef06b26be105e7d230d19ffbe81f3))
+* **csv_viewer:** keep the sort indicator, leave out ragged cells, and scroll without jumping ([#1241](https://github.com/hawk90/revue/issues/1241)) ([bba458c](https://github.com/hawk90/revue/commit/bba458c4911c95e23b3e13c475b7549f55deaea6))
+* **datagrid, timeline, modal, code_editor:** keep selections on their items when the items change ([#1244](https://github.com/hawk90/revue/issues/1244)) ([209eac4](https://github.com/hawk90/revue/commit/209eac42fddffdcf4e41899b7191b425ff88abc8))
+* **dropdowns, sidebar, notification:** keep the highlight on drawn rows and on its item ([#1231](https://github.com/hawk90/revue/issues/1231)) ([2efefd8](https://github.com/hawk90/revue/commit/2efefd891176ae043173c6b796e150399cf6904f))
+* **filepicker:** scroll in the area's rows, keep chosen paths and the highlight through a refresh ([#1236](https://github.com/hawk90/revue/issues/1236)) ([1fff5e7](https://github.com/hawk90/revue/commit/1fff5e71257e924ea2d690f3d6babdcc76a724a7))
+* **filetree:** keep the selection on its entry, collapse on Left, and scroll without jumping ([#1240](https://github.com/hawk90/revue/issues/1240)) ([2ded8e3](https://github.com/hawk90/revue/commit/2ded8e34fdff1e0fd4e45d9813db7e6bb011ed13))
+* **json_viewer, timeline, option_list, sortable:** scroll with ScrollState and keep the selection on its item ([#1249](https://github.com/hawk90/revue/issues/1249)) ([fa9c5b3](https://github.com/hawk90/revue/commit/fa9c5b38567487978831f6829a0051f7a2fecb90))
+* **log_viewer:** scroll with ScrollState and keep the selection by entry ([#1229](https://github.com/hawk90/revue/issues/1229)) ([cc27807](https://github.com/hawk90/revue/commit/cc278074af4b1991b5c6a9802bbcaf9ae78987e4))
+* **macros:** reject generic types and unions in derive(Store) with a clear error, and pin it ([#1247](https://github.com/hawk90/revue/issues/1247)) ([372dabf](https://github.com/hawk90/revue/commit/372dabf8f31118e330f8988a6d71027283f07d7b))
+* **menu, theme_picker:** scroll the selected item into view ([#1235](https://github.com/hawk90/revue/issues/1235)) ([c9a86d7](https://github.com/hawk90/revue/commit/c9a86d72810a06609af67bdfa4123444e7afa834))
+* **procmon:** keep the selection on its process and scroll it into view ([#1238](https://github.com/hawk90/revue/issues/1238)) ([1e9c98c](https://github.com/hawk90/revue/commit/1e9c98c89faa8cf70461105e81e217c28260b01c))
+* **reactive:** deliver a signal set on another thread to the dependents tracked here ([#1246](https://github.com/hawk90/revue/issues/1246)) ([5d82a6e](https://github.com/hawk90/revue/commit/5d82a6ebb8084837fb7e5282a4ef6c351d960e27))
+* **reactive:** skip a subscriber dropped earlier in the same notify round ([#1226](https://github.com/hawk90/revue/issues/1226)) ([2eadab9](https://github.com/hawk90/revue/commit/2eadab9a32a45cec30ace543717a2a0636bce4b6))
+* **rich_text_editor, diff, markdown_presentation:** scroll with ScrollState ([#1248](https://github.com/hawk90/revue/issues/1248)) ([39ba182](https://github.com/hawk90/revue/commit/39ba182f7e431d1f2be85b225f0c2260472fa217))
+* **rich_text_editor:** record shortcuts, selection deletes, merges and emptying the last block as one undo step ([#1245](https://github.com/hawk90/revue/issues/1245)) ([020e46f](https://github.com/hawk90/revue/commit/020e46fad2ebfd309d15c2246d4784653298937d))
+* **richlog:** scroll in rows with ScrollState and keep the selection by entry ([#1230](https://github.com/hawk90/revue/issues/1230)) ([3f3a3db](https://github.com/hawk90/revue/commit/3f3a3db1327b38b45dc04b948a49beb7c9ac43bd))
+* **richtext:** drop control characters instead of writing them into the buffer ([#1222](https://github.com/hawk90/revue/issues/1222)) ([cd1c9c4](https://github.com/hawk90/revue/commit/cd1c9c443fcb26bc36f50b8fd24aebce914d5500))
+* **selection_list:** scroll the highlight into view in the area's rows, and keep disabled items unselected ([#1234](https://github.com/hawk90/revue/issues/1234)) ([d525239](https://github.com/hawk90/revue/commit/d5252395c31f6300a9769dc6bea4aa59e5518a4e))
+* **store:** derive(Store) ids from the type's full path, not the first 8 bytes of its name ([#1224](https://github.com/hawk90/revue/issues/1224)) ([d9b6247](https://github.com/hawk90/revue/commit/d9b62470522853e3d65a420367f684243d358359))
+* **tabs, accordion:** scroll the selected tab and section into view ([#1232](https://github.com/hawk90/revue/issues/1232)) ([1dd87a2](https://github.com/hawk90/revue/commit/1dd87a246b027852a24e437168b6f6f532db2817))
+* **textarea, input, selection:** fix the undo, selection and paging bugs that new model-based state tests found ([#1250](https://github.com/hawk90/revue/issues/1250)) ([70c07c5](https://github.com/hawk90/revue/commit/70c07c5c66118acbe5882100e109596ab61549c1))
+* **tree:** keep the multi-selection on its nodes, search only selectable nodes, and scroll to the selection ([#1233](https://github.com/hawk90/revue/issues/1233)) ([1d2aa90](https://github.com/hawk90/revue/commit/1d2aa903167f1364a8cf555b112fa10b64a98465))
+* **virtuallist:** scroll in rows: draw variable heights, the row offset, Center mode and aligned jumps ([#1242](https://github.com/hawk90/revue/issues/1242)) ([03011ff](https://github.com/hawk90/revue/commit/03011ff335c5be2a5d56e02863bfddb04cf4a7fb))
+
 ## [3.10.2](https://github.com/hawk90/revue/compare/v3.10.1...v3.10.2) (2026-10-19)
 
 
