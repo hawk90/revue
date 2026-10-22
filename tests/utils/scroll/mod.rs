@@ -1,5 +1,6 @@
 //! `ScrollState`: the scroll model shared by views (#973)
 
+mod model;
 mod properties;
 
 use revue::utils::ScrollState;

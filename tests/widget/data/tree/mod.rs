@@ -1,5 +1,6 @@
 //! Tree widget public API tests
 
+mod model;
 mod navigation;
 mod rows;
 mod search;

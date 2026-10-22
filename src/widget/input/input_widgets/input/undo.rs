@@ -45,18 +45,13 @@ impl Input {
                 EditOperation::Replace {
                     ref old_value,
                     old_cursor,
-                    ref new_value,
-                    new_cursor,
+                    ..
                 } => {
-                    // Undo replace by restoring old value
+                    // Undo replace by restoring old value. Redo applies the
+                    // same operation again, so it goes on the stack as is.
                     self.value = old_value.clone();
                     self.cursor = old_cursor;
-                    self.redo_stack.push(EditOperation::Replace {
-                        old_value: new_value.clone(),
-                        old_cursor: new_cursor,
-                        new_value: old_value.clone(),
-                        new_cursor: old_cursor,
-                    });
+                    self.redo_stack.push(op);
                 }
             }
             self.clear_selection();
