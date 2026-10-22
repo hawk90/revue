@@ -1611,7 +1611,7 @@ items:
       - tests/widget/input/input_widgets/wide_chars.rs
       - tests/widget/developer/code_editor/wide_chars.rs
       - tests/widget/wide_glyphs.rs
-      - tests/runtime/render/buffer/mod.rs::set_gives_a_wide_glyph_its_continuation_cell
+      - tests/runtime/render/buffer/mod.rs::set_writes_the_continuation_with_the_glyph_s_style_and_link
       - tests/widget/traits/view/wide_chars/text_fields.rs
     source:
       - PR #684
