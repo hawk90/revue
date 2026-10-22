@@ -175,12 +175,8 @@ impl Span {
 }
 
 /// The columns `text` takes when RichText draws it: control characters take
-/// none there (#1198), so they count for nothing here either.
+/// none there (#1198), and none in
+/// [`display_width`](crate::utils::unicode::display_width) either.
 pub(super) fn drawn_width(text: &str) -> usize {
-    if text.chars().any(char::is_control) {
-        let printable: String = text.chars().filter(|c| !c.is_control()).collect();
-        unicode_width::UnicodeWidthStr::width(printable.as_str())
-    } else {
-        unicode_width::UnicodeWidthStr::width(text)
-    }
+    crate::utils::unicode::display_width(text)
 }

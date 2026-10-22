@@ -3,9 +3,9 @@
 use super::{StatusIndicator, StatusSize, StatusStyle};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::unicode::char_width;
 use crate::widget::theme::{DARK_BG, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View};
-use unicode_width::UnicodeWidthChar;
 
 impl View for StatusIndicator {
     crate::impl_view_meta!("StatusIndicator");
@@ -85,7 +85,7 @@ impl StatusIndicator {
 
         let mut offset = 0u16;
         for ch in label.chars() {
-            let char_width = ch.width().unwrap_or(0) as u16;
+            let char_width = char_width(ch) as u16;
             if char_width == 0 {
                 continue;
             }
@@ -108,7 +108,7 @@ impl StatusIndicator {
 
         let mut offset = 0u16;
         for ch in label.chars() {
-            let char_width = ch.width().unwrap_or(0) as u16;
+            let char_width = char_width(ch) as u16;
             if char_width == 0 {
                 continue;
             }
@@ -151,7 +151,7 @@ impl StatusIndicator {
         let max_label_width = total_width.saturating_sub(4);
         let mut offset = 0u16;
         for ch in label.chars() {
-            let char_width = ch.width().unwrap_or(0) as u16;
+            let char_width = char_width(ch) as u16;
             if char_width == 0 {
                 continue;
             }

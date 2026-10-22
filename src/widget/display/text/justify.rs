@@ -2,8 +2,8 @@
 
 use super::Text;
 use crate::render::Cell;
+use crate::utils::unicode::{char_width, display_width};
 use crate::widget::traits::{RenderContext, View};
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 /// The words of `content`, each with the spaces that follow it, spread
 /// across `width` columns.
@@ -19,7 +19,7 @@ pub(super) fn justify_words(content: &str, width: u16) -> Option<Vec<(&str, usiz
     }
 
     // Calculate total text width (without spaces)
-    let text_width: usize = words.iter().map(|w| w.width()).sum();
+    let text_width: usize = words.iter().map(|w| display_width(w)).sum();
     let available_width = width as usize;
 
     // If text is too wide, fall back to left alignment
@@ -84,7 +84,7 @@ impl Text {
                 cell.modifier = modifier;
                 cell.hyperlink_id = hyperlink_id;
                 ctx.set(x, 0, cell);
-                x += UnicodeWidthChar::width(ch).unwrap_or(0) as u16;
+                x += char_width(ch) as u16;
             }
 
             x += spaces as u16;

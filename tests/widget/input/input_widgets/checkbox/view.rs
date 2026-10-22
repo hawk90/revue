@@ -44,6 +44,18 @@ fn painted_width(c: &Checkbox) -> u16 {
         .unwrap_or(0)
 }
 
+#[test]
+fn test_checkbox_symbol_label_takes_one_cell_per_symbol() {
+    // ★ is one column on the terminal: no continuation cell after it, and
+    // the measure counts one (#1026)
+    let c = Checkbox::new("★ok");
+    let mut buffer = Buffer::new(20, 1);
+    c.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 1)));
+    let row: String = (0..8).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert_eq!(row, "[ ] ★ok ");
+    assert_eq!(c.measure(20, 1).unwrap().0, 7);
+}
+
 proptest! {
     /// `measure` gives the painted width for any style, label, state and
     /// focus.

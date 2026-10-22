@@ -774,14 +774,14 @@ fn emoji_title_resumes_border_right_after_glyph() {
 #[test]
 fn vs16_title_adds_no_cells() {
     // U+2699 U+FE0F: the variation selector is zero-width and must not take
-    // a cell of its own.
+    // a cell of its own. A cell holds one char, so the terminal gets a bare
+    // ⚙, which it draws in one column (#1026).
     let buffer = render_titled(20, "⚙\u{FE0F}Settings");
 
     assert_eq!(buffer.get(2, 0).unwrap().symbol, '⚙');
-    assert!(buffer.get(3, 0).unwrap().is_continuation());
-    assert_eq!(buffer.get(4, 0).unwrap().symbol, 'S');
-    assert_eq!(buffer.get(12, 0).unwrap().symbol, '─');
-    assert_eq!(row_text(&buffer, 0), "┌─⚙Settings───────┐");
+    assert_eq!(buffer.get(3, 0).unwrap().symbol, 'S');
+    assert_eq!(buffer.get(11, 0).unwrap().symbol, '─');
+    assert_eq!(row_text(&buffer, 0), "┌─⚙Settings────────┐");
 }
 
 #[test]

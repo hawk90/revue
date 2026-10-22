@@ -149,15 +149,16 @@ impl CharWidthTable {
     /// [`emoji`](Self::emoji) width for a character shown as emoji by
     /// default; the [`nerd_font`](Self::nerd_font) width for a Private Use
     /// Area character, where Nerd Font icons live; the [`cjk`](Self::cjk)
-    /// width for a wide (East Asian) character; otherwise the Unicode width.
+    /// width for a wide (East Asian) character; otherwise the width revue
+    /// draws with, [`char_width`].
+    ///
+    /// With the default widths this is [`char_width`] for every character.
     pub fn width(&self, ch: char) -> u8 {
         if let Some(&w) = self.overrides.get(&ch) {
             return w;
         }
 
-        // Emoji shown as emoji by default. Characters like '1', '#' or '©'
-        // have the Emoji property too but are drawn as text.
-        if unic_emoji_char::is_emoji_presentation(ch) {
+        if is_emoji_presentation(ch) {
             return self.emoji;
         }
 
@@ -165,10 +166,7 @@ impl CharWidthTable {
             return self.nerd_font;
         }
 
-        // Use unicode-width as base
-        let base = unicode_width::UnicodeWidthChar::width(ch)
-            .map(|w| w as u8)
-            .unwrap_or(1);
+        let base = char_width(ch);
         if base == 2 {
             self.cjk
         } else {
@@ -198,6 +196,22 @@ impl CharWidthTable {
         self.nerd_font = width;
         self
     }
+}
+
+/// Whether `ch` is shown as emoji by default (`Emoji_Presentation`).
+/// Characters like '1', '#' or '©' have the Emoji property too but are drawn
+/// as text. The regional indicator letters are left out: a flag is two of
+/// them, and terminals draw the pair in two columns, one per letter.
+fn is_emoji_presentation(ch: char) -> bool {
+    use unicode_properties::{EmojiStatus, UnicodeEmoji};
+
+    matches!(
+        ch.emoji_status(),
+        EmojiStatus::EmojiPresentation
+            | EmojiStatus::EmojiPresentationAndModifierBase
+            | EmojiStatus::EmojiPresentationAndEmojiComponent
+            | EmojiStatus::EmojiPresentationAndModifierAndEmojiComponent
+    ) && !unicode_properties::emoji::is_regional_indicator(ch)
 }
 
 /// Whether `ch` is in a Private Use Area, where Nerd Fonts put their icons

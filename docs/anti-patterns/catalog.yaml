@@ -1028,6 +1028,7 @@ entries:
     observed:
       - "terminal 감사(#930): 스크롤 표시 \"↑N\"을 `area.width - indicator.len() - 1`에 그린다. `↑`는 3바이트라 표시가 오른쪽 끝에서 한 칸이 아니라 세 칸 앞에서 끝나고, 같은 바이트 수로 너비를 검사해 좁은 영역에서는 두 칸 일찍 빠진다."
       - "`Cell`의 `symbol`이 `char`라 grapheme cluster를 한 칸에 담을 수 없다 (src/runtime/render/cell.rs, 4.0 설계 리뷰)."
+      - "폭 table이 둘이었다: `utils::unicode::char_width`는 손으로 쓴 범위로 Miscellaneous Symbols와 Dingbats 전체(★ ✓ ☐ 등 388자)와 Hangul Jamo 전체를 2칸으로 셌고, `Text`/`RichText`는 `unicode-width`로 1칸으로 셌다. 같은 label이 위젯마다 다르게 그려지고 measure가 한 글자당 한 칸 넓었다 (#1026, #879). 3.12에서 `char_width`를 `unicode-width`로 바꾸고 위젯의 직접 호출을 없앴다. 글자 단위라 VS16이 붙은 ⚙️ 같은 sequence는 아직 글자 폭의 합이다: cell이 char 하나라 terminal에는 VS16 없는 ⚙가 가므로 1칸이 맞고, emoji 표시는 grapheme cell(#1148)과 #1167에서 다룬다."
   - id: REV-RENDER-006
     title: "Partial Wide-Character Overwrite"
     category: render
