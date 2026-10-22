@@ -1,5 +1,8 @@
 //! Widget integration tests - split into modules by widget type
 
+#[path = "support/alloc_cap.rs"]
+mod alloc_cap;
+
 #[path = "widget/breadcrumb/mod.rs"]
 mod breadcrumb;
 #[path = "widget/builder_order.rs"]

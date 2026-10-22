@@ -2,6 +2,9 @@
 //!
 //! All tests use only public constants, functions, and types from revue.
 
+#[path = "support/alloc_cap.rs"]
+mod alloc_cap;
+
 #[path = "lib/field_visibility.rs"]
 mod field_visibility;
 
