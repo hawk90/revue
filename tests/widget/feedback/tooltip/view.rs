@@ -297,3 +297,22 @@ fn a_wide_word_is_broken_between_glyphs() {
     assert_eq!(text(y + 3), "사아  ");
     assert_eq!(symbol(&buffer, x + 9, y + 1), '│');
 }
+
+#[test]
+fn a_wide_glyph_gets_its_two_columns_in_an_area_too_narrow_for_them() {
+    // A 3-column area leaves 1 column inside the padding: "한" still gets
+    // 2, and the box is cut at the area's edge instead of dropping it
+    let t = Tooltip::new("한글")
+        .style(TooltipStyle::Plain)
+        .arrow(TooltipArrow::None)
+        .anchor(0, 0);
+    let buffer = render_in(&t, 3, 2);
+    for y in 0..2 {
+        assert!(buffer.get(0, y).unwrap().bg.is_some(), "row {y}");
+        assert!(buffer.get(2, y).unwrap().bg.is_some(), "row {y}");
+    }
+    assert_eq!(symbol(&buffer, 1, 0), '한');
+    assert!(buffer.get(2, 0).unwrap().is_continuation());
+    assert_eq!(symbol(&buffer, 1, 1), '글');
+    assert!(buffer.get(2, 1).unwrap().is_continuation());
+}

@@ -42,12 +42,13 @@ impl Popover {
         let text_width = content_width.max(title_width);
 
         let chrome = if has_border { 4 } else { 2 };
-        // No wider than the area, but with a column for the text even in
-        // an area too narrow for one (the box is cut there); a title wider
-        // than the box is cut at its edge
+        // No wider than the area, but wide enough for the widest line (at
+        // least one column) even where the area is not: a wide glyph alone
+        // on its line needs 2 (the box is cut at the area's edge); a title
+        // wider than the box is cut at its edge
         let width = (text_width + chrome)
             .max(10)
-            .min(area_width.max(chrome + 1));
+            .min(area_width.max(content_width.max(1) + chrome));
         let height = lines.len() as u16
             + if has_border { 2 } else { 0 }
             + if has_title && has_border { 1 } else { 0 };

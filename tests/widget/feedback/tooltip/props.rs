@@ -102,18 +102,18 @@ fn model_lines(text: &str, wrap_width: usize) -> Vec<String> {
 }
 
 /// The box size: the widest line, or the title plus 2, plus padding (and
-/// border), no wider than the area unless it leaves no column for the
-/// text; one row per line, plus the border and the title row
+/// border), no wider than the area unless the widest line (at least one
+/// column) does not fit; one row per line, plus the border and the title row
 fn model_size(
     lines: &[String],
     title: Option<&str>,
     bordered: bool,
     area_width: u16,
 ) -> (u16, u16) {
-    let text = lines.iter().map(|l| width(l)).max().unwrap_or(0);
-    let text = text.max(title.map_or(0, |t| width(t) + 2)) as u16;
+    let widest = lines.iter().map(|l| width(l)).max().unwrap_or(0) as u16;
+    let text = widest.max(title.map_or(0, |t| width(t) as u16 + 2));
     let chrome = if bordered { 4 } else { 2 };
-    let w = (text + chrome).min(area_width.max(chrome + 1));
+    let w = (text + chrome).min(area_width.max(widest.max(1) + chrome));
     let h =
         lines.len() as u16 + if bordered { 2 } else { 0 } + u16::from(title.is_some() && bordered);
     (w, h)

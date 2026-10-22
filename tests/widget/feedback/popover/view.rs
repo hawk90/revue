@@ -336,3 +336,21 @@ fn the_content_wraps_to_a_narrow_area_and_the_box_keeps_its_right_border() {
     assert_eq!(row(&buffer, 4), "│ seven         │   ");
     assert_eq!(row(&buffer, 5), "└───────────────┘   ");
 }
+
+#[test]
+fn a_wide_glyph_gets_its_two_columns_in_an_area_too_narrow_for_them() {
+    // A 5-column area leaves 1 column inside the border and padding: "한"
+    // still gets 2, and the box is cut at the area's edge
+    let p = Popover::new("한글")
+        .anchor(0, 0)
+        .position(PopoverPosition::Bottom)
+        .arrow(PopoverArrow::None)
+        .open(true);
+    let mut buffer = Buffer::new(5, 6);
+    p.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 5, 6)));
+    let y = (0..6).find(|&y| symbol(&buffer, 0, y) == '│').unwrap();
+    assert_eq!(symbol(&buffer, 2, y), '한');
+    assert!(buffer.get(3, y).unwrap().is_continuation());
+    assert_eq!(symbol(&buffer, 2, y + 1), '글');
+    assert!(buffer.get(3, y + 1).unwrap().is_continuation());
+}

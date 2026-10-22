@@ -78,13 +78,13 @@ fn model_lines(content: &str, wrap_width: usize) -> Vec<String> {
 }
 
 /// The box size: the widest line or the title plus 2, plus border and
-/// padding, at least 10 but no wider than the area (unless it leaves no
-/// column for the text); one row per line, the border and the title row,
+/// padding, at least 10 but no wider than the area (unless the widest
+/// line, at least one column, does not fit); one row per line, the border and the title row,
 /// at least 3
 fn model_size(lines: &[String], title: Option<&str>, area_width: u16) -> (u16, u16) {
-    let text = lines.iter().map(|l| l.len()).max().unwrap_or(0);
-    let text = text.max(title.map_or(0, |t| t.len() + 2)) as u16;
-    let w = (text + 4).max(10).min(area_width.max(5));
+    let widest = lines.iter().map(|l| l.len()).max().unwrap_or(0) as u16;
+    let text = widest.max(title.map_or(0, |t| t.len() as u16 + 2));
+    let w = (text + 4).max(10).min(area_width.max(widest.max(1) + 4));
     let h = lines.len() as u16 + 2 + u16::from(title.is_some());
     (w, h.max(3))
 }
