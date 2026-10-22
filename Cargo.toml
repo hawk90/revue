@@ -150,6 +150,7 @@ proptest = "1.12.0"
 tempfile = "3.27.0"
 serial_test = "4.0"
 yaml-rust2 = { version = "0.13.0", default-features = false }
+trybuild = "1.0.122"
 
 # The Windows key-release test (tests/runtime/event/windows_key_release.rs) writes key
 # records into the console input buffer.
