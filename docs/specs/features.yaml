@@ -1874,3 +1874,45 @@ items:
       - examples/worker_basic.rs
     source:
       - FEATURES.md §Advanced Widgets / Worker Pool
+  - id: UTIL-006
+    title: Scroll state in rows
+    area: util
+    priority: P1
+    status: done
+    phase: 3.11.0
+    acceptance:
+      - ScrollState keeps the offset in 0..=content - viewport
+      - reveal/track scroll just enough to show a row range, in either direction (scrollIntoView nearest); reveal_aligned
+        takes Start, Center or End
+      - a view with a tail mode follows the end only while it is at the end
+      - rows inserted or removed above the view keep the rows on screen in place
+      - every list and content widget scrolls with it (#973)
+    evidence:
+      - src/utils/scroll.rs::reveal
+      - src/utils/scroll.rs::track
+      - src/utils/scroll.rs::rows_inserted
+      - src/utils/scroll.rs::reveal_aligned
+      - tests/utils/scroll/mod.rs::following_the_end_shows_a_full_last_page
+      - tests/utils/scroll/mod.rs::reveal_scrolls_just_enough_in_either_direction
+      - tests/utils/scroll/model.rs::scroll_state_follows_the_model
+    source:
+      - 'issue #973 (scroll model decision, 2026-10-22)'
+    notes: datagrid, textarea, input and code_editor still keep their own Cell scroll state; moving them is #1257 (4.0).
+  - id: UTIL-007
+    title: Selection kept on its item
+    area: util
+    priority: P1
+    status: done
+    phase: 3.11.0
+    acceptance:
+      - KeyedSelection<K> holds the selected item's key; sync(keys) keeps it on that item when items are inserted, removed
+        or reordered
+      - a removed item hands the selection to the item now in its place, or to the new last item
+      - with no identity, the index is the key
+    evidence:
+      - src/utils/selection/keyed.rs::sync
+      - tests/utils/selection/keyed.rs::a_reorder_keeps_the_item
+      - tests/utils/selection/keyed.rs::a_removed_item_hands_the_selection_to_the_one_now_in_its_place
+      - tests/utils/selection/model.rs::keyed_selection_follows_the_model
+    source:
+      - 'issue #975 (selection by key decision, 2026-10-22)'

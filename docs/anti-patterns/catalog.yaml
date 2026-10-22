@@ -1955,13 +1955,14 @@ entries:
       - "`ensure_visible`이 위쪽으로만 scroll하거나 viewport 높이를 몰라서 아무것도 안 한다"
       - "tail/scroll_to_bottom이 `len - 1`로 scroll해서 마지막 한 줄만 보인다"
     fix:
-      - "공통 scroll model을 제공한다. revue에는 공통 model `utils::Selection`이 있다: offset과 visible을 `Cell`에 두고 render에서 `set_visible(height)`로 갱신하므로 선택이 위아래 어느 쪽으로 나가도 따라가고 offset은 `len - visible`에서 멈춘다. 새로 손으로 scroll을 짜지 말고 이것을 쓴다."
-      - "새 widget과 옮기는 widget은 `utils::ScrollState`를 쓴다 (#973 결정, 2026-10-22). scroll은 selection과 분리된 상태이고 단위는 행이다: offset은 `0..=content - viewport`, 선택이 바뀌면 `reveal(행 범위)`로 필요한 만큼만 scroll(`scrollIntoView({ block: \"nearest\" })`), 끝에 있을 때만 끝을 따라가고(tail), 위쪽에 행이 들어오거나 빠지면 offset을 같이 옮긴다. 선택 없는 scroll, tail, 높이가 다른 행을 widget에서 따로 짜지 않는다."
+      - "공통 scroll model을 쓴다. 새로 손으로 scroll을 짜지 않는다. 선택은 `utils::KeyedSelection`(item key, identity가 없으면 index)으로 두어 목록이 바뀌어도 그 item에 남게 한다 (#975)."
+      - "scroll은 `utils::ScrollState`를 쓴다 (#973 결정, 2026-10-22). scroll은 selection과 분리된 상태이고 단위는 행이다: offset은 `0..=content - viewport`, 선택이 바뀌면 `reveal(행 범위)`로 필요한 만큼만 scroll(`scrollIntoView({ block: \"nearest\" })`), 끝에 있을 때만 끝을 따라가고(tail), 위쪽에 행이 들어오거나 빠지면 offset을 같이 옮긴다. 선택 없는 scroll, tail, 높이가 다른 행을 widget에서 따로 짜지 않는다."
       - "4.0에서 selection·scroll 상태는 widget 밖의 상태 타입이고 slot이나 bind로 연결된다. viewport에 맞추는 일은 render가 아니라 layout 단계가 한다 (#1141, REV-RENDER-011)."
     observed:
       - "2026-10-12 기준 Selection을 가진 widget 10개 중 offset으로 scroll까지 하는 것은 command_palette, list, table 3개뿐이다. tree, select, autocomplete는 Selection을 들고도 offset을 무시하고 첫 행부터 그린다. 그 밖에 자기 `Cell`로 따로 짠 widget 4개(datagrid, textarea, input, code_editor), 선택이 있는데 scroll을 그냥 `usize`로 둔 widget 13개, 선택 없이 내용만 scroll하는 widget 5개. 목록은 #973."
       - "같은 결함이 widget마다 따로 이슈로 올라왔다: #858 (log_viewer), #882 (Select 등 5개), #967 3번 (filetree), #969 3번 (csv_viewer). Table은 #925에서 Selection으로 옮겨 고쳤다."
       - "목록이 아닌 widget에서도 같은 결함이 나온다: Calendar는 보이는 달이 view인데 `select()`와 날짜 이동이 그 달을 옮기지 않아 선택이 화면 밖에 남고, 달 경계에서는 달만 바꿔 다른 해의 같은 달을 보여 준다 (calendar 감사, 2026-10-13, #973 댓글)."
+      - "3.11.0 (2026-10-22): #973 목록의 widget을 모두 `ScrollState`로 옮겼다 (#1228–#1242, #1244, #1248, #1249). `ScrollState`/`Selection`/`KeyedSelection`은 model 기반 테스트로 고정했다 (#1250). 자기 `Cell`로 scroll하는 datagrid, textarea, input, code_editor는 동작은 맞고 4.0에서 옮긴다 (#1257)."
   - id: REV-WIDGET-009
     title: "Visual Variant as New Widget"
     category: widget
