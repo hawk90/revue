@@ -140,18 +140,18 @@ pub mod validators {
         }
     }
 
-    /// Validate minimum length
+    /// Validate minimum length, in characters (not bytes)
     pub fn min_length(value: &str, min: usize, field: impl Display) -> Result<(), ValidationError> {
-        if value.len() < min {
+        if value.chars().count() < min {
             Err(ValidationError::min_length(field, min))
         } else {
             Ok(())
         }
     }
 
-    /// Validate maximum length
+    /// Validate maximum length, in characters (not bytes)
     pub fn max_length(value: &str, max: usize, field: impl Display) -> Result<(), ValidationError> {
-        if value.len() > max {
+        if value.chars().count() > max {
             Err(ValidationError::max_length(field, max))
         } else {
             Ok(())
