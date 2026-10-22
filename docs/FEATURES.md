@@ -19,8 +19,8 @@
 | Developer experience (`DX-*`) | 3 | 1 | 0 | 0 | 4 |
 | Theming (`THEME-*`) | 2 | 0 | 1 | 0 | 3 |
 | Keyboard & clipboard (`KEY-*`) | 3 | 1 | 0 | 0 | 4 |
-| Utilities (`UTIL-*`) | 5 | 0 | 0 | 0 | 5 |
-| **Total** | **90** | **15** | **4** | **0** | **109** |
+| Utilities (`UTIL-*`) | 7 | 0 | 0 | 0 | 7 |
+| **Total** | **92** | **15** | **4** | **0** | **111** |
 
 Known gaps worth knowing before you build on them: CSS `transparent` paints black, `opacity` /
 `z-index` / `position` are parsed but not applied, CSS transitions are not triggered by state changes,
