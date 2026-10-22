@@ -286,10 +286,12 @@ fn test_validator_min_length_various_thresholds() {
 }
 
 #[test]
-fn test_validator_min_length_unicode() {
-    // Length is in bytes, not characters
-    assert!(validators::min_length("hello", 5, "Field").is_ok());
-    assert!(validators::min_length("こんにちは", 15, "Field").is_ok());
+fn test_validators_length_counts_characters_not_bytes() {
+    // "가나다" is 3 characters in 9 bytes
+    assert!(validators::max_length("가나다", 3, "Field").is_ok());
+    assert!(validators::max_length("가나다", 2, "Field").is_err());
+    assert!(validators::min_length("가나다", 3, "Field").is_ok());
+    assert!(validators::min_length("가나다", 4, "Field").is_err());
 }
 
 // ==================== Validators::max_length Tests ====================

@@ -48,6 +48,31 @@ fn test_format_relative_time_short() {
 }
 
 #[test]
+fn test_format_relative_time_never_says_zero_months_or_years() {
+    const DAY: u64 = 86400;
+    let cases = [
+        (27 * DAY, "3 weeks ago", "3w ago"),
+        (28 * DAY, "1 month ago", "1mo ago"),
+        (29 * DAY, "1 month ago", "1mo ago"),
+        (30 * DAY, "1 month ago", "1mo ago"),
+        (359 * DAY, "11 months ago", "11mo ago"),
+        (360 * DAY, "1 year ago", "1y ago"),
+        (364 * DAY, "1 year ago", "1y ago"),
+        (365 * DAY, "1 year ago", "1y ago"),
+        (730 * DAY, "2 years ago", "2y ago"),
+    ];
+    for (secs, long, short) in cases {
+        assert_eq!(format_relative_time(secs), long, "{} days", secs / DAY);
+        assert_eq!(
+            format_relative_time_short(secs),
+            short,
+            "{} days",
+            secs / DAY
+        );
+    }
+}
+
+#[test]
 fn test_format_size() {
     assert_eq!(format_size(500), "500 B");
     assert_eq!(format_size(1024), "1.0 KB");

@@ -75,10 +75,10 @@ pub fn required() -> Validator {
     })
 }
 
-/// Create a minimum length validator
+/// Create a minimum length validator, counting characters (not bytes)
 pub fn min_length(min: usize) -> Validator {
     Box::new(move |value: &str| {
-        if value.len() < min {
+        if value.chars().count() < min {
             Err(ValidationError::new(format!(
                 "Must be at least {} characters",
                 min
@@ -89,10 +89,10 @@ pub fn min_length(min: usize) -> Validator {
     })
 }
 
-/// Create a maximum length validator
+/// Create a maximum length validator, counting characters (not bytes)
 pub fn max_length(max: usize) -> Validator {
     Box::new(move |value: &str| {
-        if value.len() > max {
+        if value.chars().count() > max {
             Err(ValidationError::new(format!(
                 "Must be at most {} characters",
                 max
@@ -103,10 +103,10 @@ pub fn max_length(max: usize) -> Validator {
     })
 }
 
-/// Create a length range validator
+/// Create a length range validator, counting characters (not bytes)
 pub fn length_range(min: usize, max: usize) -> Validator {
     Box::new(move |value: &str| {
-        let len = value.len();
+        let len = value.chars().count();
         if len < min || len > max {
             Err(ValidationError::new(format!(
                 "Must be between {} and {} characters",
