@@ -1,6 +1,9 @@
 //! Tests for the runtime modules (`revue::{dom, event, layout, render, style}`),
 //! laid out like `src/runtime/`
 
+#[path = "support/alloc_cap.rs"]
+mod alloc_cap;
+
 #[path = "runtime/dom/mod.rs"]
 mod dom;
 #[path = "runtime/event/mod.rs"]

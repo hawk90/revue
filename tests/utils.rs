@@ -1,5 +1,8 @@
 //! Tests for `revue::utils`, laid out like `src/utils/`
 
+#[path = "support/alloc_cap.rs"]
+mod alloc_cap;
+
 #[path = "utils/accessibility/mod.rs"]
 mod accessibility;
 #[path = "utils/animation/mod.rs"]

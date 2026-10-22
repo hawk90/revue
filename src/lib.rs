@@ -255,6 +255,11 @@ pub mod text;
 pub mod utils;
 pub mod widget;
 
+// Heap cap for the unit-test binary
+#[cfg(test)]
+#[path = "../tests/support/alloc_cap.rs"]
+mod alloc_cap;
+
 // Re-export derive macros
 pub use revue_macros::Store;
 

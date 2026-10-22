@@ -1,5 +1,8 @@
 //! Tests for `revue::devtools`, laid out like `src/devtools/`
 
+#[path = "support/alloc_cap.rs"]
+mod alloc_cap;
+
 #[path = "devtools/inspector/mod.rs"]
 mod inspector;
 #[path = "devtools/render.rs"]
