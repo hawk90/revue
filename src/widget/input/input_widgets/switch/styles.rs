@@ -146,9 +146,8 @@ impl Switch {
         let ch = if self.on { '✅' } else { '❌' };
         let mut cell = Cell::new(ch);
         cell.fg = Some(if self.on { on_color } else { self.off_color });
+        // A wide emoji: `set` writes its continuation cell too
         ctx.set(x, y, cell);
-        // Wide emoji occupies 2 columns — clear the second cell to prevent artifacts
-        ctx.set(x + 1, y, Cell::new(' '));
     }
 
     /// Render block style

@@ -143,8 +143,9 @@ fn draw_marker(
     ctx.set(x, y, cell(indicator, fg, bg));
     let mut x = x + 1;
     if let Some(icon_ch) = node.icon {
+        // A wide icon (📁) takes two columns
         ctx.set(x, y, cell(icon_ch, fg, bg));
-        x += 1;
+        x += (crate::utils::char_width(icon_ch) as u16).max(1);
     }
     x
 }

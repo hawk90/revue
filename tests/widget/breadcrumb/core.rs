@@ -41,9 +41,11 @@ fn test_breadcrumb_new() {
     assert_eq!(bc.selected(), 0);
     // The home icon is shown by default
     let buffer = render(&bc.push("Docs"), 20);
+    // 🏠 takes columns 0-1, then a space, the separator and a space
     assert_eq!(buffer.get(0, 0).unwrap().symbol, '🏠');
-    assert_eq!(buffer.get(2, 0).unwrap().symbol, '›');
-    assert_eq!(buffer.get(4, 0).unwrap().symbol, 'D');
+    assert!(buffer.get(1, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(3, 0).unwrap().symbol, '›');
+    assert_eq!(buffer.get(5, 0).unwrap().symbol, 'D');
 }
 
 #[test]
@@ -757,8 +759,8 @@ fn test_breadcrumb_render_with_home() {
     let bc = Breadcrumb::new().home(true).push("Documents");
     let buffer = render(&bc, 40);
     assert_eq!(buffer.get(0, 0).unwrap().symbol, '🏠');
-    assert_eq!(buffer.get(2, 0).unwrap().symbol, '›');
-    let text: String = (4..13).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert_eq!(buffer.get(3, 0).unwrap().symbol, '›');
+    let text: String = (5..14).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
     assert_eq!(text, "Documents");
 }
 

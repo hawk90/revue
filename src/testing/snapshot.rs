@@ -157,10 +157,11 @@ fn buffer_to_string(buffer: &Buffer) -> String {
     for y in 0..buffer.height() {
         let mut line = String::new();
         for x in 0..buffer.width() {
-            if let Some(cell) = buffer.get(x, y) {
-                line.push(cell.symbol);
-            } else {
-                line.push(' ');
+            match buffer.get(x, y) {
+                // The right half of a wide glyph is part of the glyph
+                Some(cell) if cell.is_continuation() => {}
+                Some(cell) => line.push(cell.symbol),
+                None => line.push(' '),
             }
         }
         // Preserve line but trim trailing spaces
@@ -178,7 +179,6 @@ fn buffer_to_string(buffer: &Buffer) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Cell;
 
     fn make_buffer(text: &str) -> Buffer {
         let lines: Vec<&str> = text.lines().collect();
@@ -187,9 +187,7 @@ mod tests {
 
         let mut buffer = Buffer::new(width.max(1), height.max(1));
         for (y, line) in lines.iter().enumerate() {
-            for (x, ch) in line.chars().enumerate() {
-                buffer.set(x as u16, y as u16, Cell::new(ch));
-            }
+            buffer.put_str(0, y as u16, line);
         }
         buffer
     }

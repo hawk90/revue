@@ -79,6 +79,8 @@ mod theme_picker;
 mod transition;
 #[path = "widget/validation.rs"]
 mod validation;
+#[path = "widget/wide_glyphs.rs"]
+mod wide_glyphs;
 #[path = "widget/zen.rs"]
 mod zen;
 
