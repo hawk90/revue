@@ -3,7 +3,7 @@
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::char_width;
+use crate::utils::{char_width, display_width};
 use crate::widget::data::chart::chart_common::{Legend, LegendPosition};
 use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::RenderContext;
@@ -158,7 +158,7 @@ pub fn render_horizontal_legend(
     // Calculate total width needed
     let total_width: u16 = items
         .iter()
-        .map(|item| item.label.len() as u16 + 3)
+        .map(|item| display_width(item.label) as u16 + 3)
         .sum::<u16>()
         + (items.len() as u16 - 1) * 2;
 
@@ -184,16 +184,10 @@ pub fn render_horizontal_legend(
         // Space
         x += 1;
 
-        // Label
-        for ch in item.label.chars() {
-            if x >= area.x + area.width {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::WHITE);
-            ctx.set(x, legend_y, cell);
-            x += 1;
-        }
+        // Label, in terminal columns
+        x += ctx.put_str_with(x, legend_y, item.label, area.x + area.width, |ch| {
+            Cell::new(ch).fg(Color::WHITE)
+        });
 
         // Gap between items
         x += 2;

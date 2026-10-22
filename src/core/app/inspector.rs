@@ -331,15 +331,15 @@ impl Inspector {
             (Some(Color::WHITE), Some(self.bg_color))
         };
 
-        for (i, ch) in text.chars().take(state.max_width as usize).enumerate() {
+        let used = put_text(ctx, state.x, state.y, state.max_width, &text, |ch| {
             let mut cell = Cell::new(ch);
             cell.fg = fg;
             cell.bg = bg;
-            put(ctx, state.x.saturating_add(i as u16), state.y, cell);
-        }
+            cell
+        });
 
         // Fill rest of line with background
-        for i in text.len()..(state.max_width as usize) {
+        for i in used as usize..(state.max_width as usize) {
             let mut cell = Cell::new(' ');
             cell.bg = bg;
             put(ctx, state.x.saturating_add(i as u16), state.y, cell);
@@ -405,12 +405,10 @@ impl Inspector {
             }
 
             let prop_text = format!("{}: {}", key, value);
-            for (i, ch) in prop_text.chars().take(max_width as usize).enumerate() {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(MUTED_TEXT);
-                cell.bg = Some(self.bg_color);
-                put(ctx, x.saturating_add(i as u16), y, cell);
-            }
+            let bg = self.bg_color;
+            put_text(ctx, x, y, max_width, &prop_text, |ch| {
+                Cell::new(ch).fg(MUTED_TEXT).bg(bg)
+            });
             y = y.saturating_add(1);
         }
     }
@@ -460,6 +458,32 @@ fn put(ctx: &mut RenderContext, x: u16, y: u16, cell: Cell) {
     if in_area(ctx, x, y) {
         ctx.buffer.set(x, y, cell);
     }
+}
+
+/// Draw `text` from `(x, y)` in terminal columns, within `max_width`
+/// columns: a wide character takes two, and one that would cross the limit
+/// is left out. Returns the columns used.
+fn put_text(
+    ctx: &mut RenderContext,
+    x: u16,
+    y: u16,
+    max_width: u16,
+    text: &str,
+    make_cell: impl Fn(char) -> Cell,
+) -> u16 {
+    let mut dx = 0u16;
+    for ch in text.chars() {
+        let w = crate::utils::char_width(ch) as u16;
+        if w == 0 {
+            continue;
+        }
+        if dx + w > max_width {
+            break;
+        }
+        put(ctx, x.saturating_add(dx), y, make_cell(ch));
+        dx += w;
+    }
+    dx
 }
 
 impl Default for Inspector {

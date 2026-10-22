@@ -1046,12 +1046,14 @@ entries:
       - "x를 글자 폭만큼 옳게 옮겨도 깨진다: 그 칸에는 앞서 채운 공백이 남고, terminal 출력은 continuation이 아닌 cell을 모두 쓰므로 wide glyph의 오른쪽 절반 위에 공백을 다시 쓴다"
     fix:
       - "revue의 buffer에는 continuation cell이 이미 있다(`Cell::continuation`, `Buffer::set`이 잘린 반쪽을 비운다). 문제는 widget이 그것을 쓰지 않는 것이다."
+      - "3.12부터 `Buffer::set`/`RenderContext::set`이 폭 2 글자를 받으면 오른쪽 칸에 continuation을 직접 쓰고, 그 칸이 buffer·clip·영역 밖이면 반쪽 대신 공백을 그린다 (#974). 그래서 글자 폭만큼 x를 옮기는 루프는 그대로 맞다. x를 1씩 옮기는 루프는 여전히 틀린다(다음 글자가 오른쪽 반을 덮어 glyph가 지워진다): 폭만큼 옮기거나 `put_str_with`/`draw_text_clipped*`를 쓴다. `get_mut`으로 그리는 overlay는 `utils::overlay`의 helper를 쓴다."
       - "글자는 `RenderContext::draw_text_clipped*`(폭을 알고, continuation을 쓰고, 경계에서 wide glyph를 반으로 자르지 않는다)로 그린다. 한 글자씩 직접 그려야 하면 폭 2인 글자 다음 칸에 `Cell::continuation()`을 쓴다."
       - "4.0에서 Element는 글자를 paint context의 text helper로만 그린다 (#1148)."
     observed:
       - "log_viewer에 \"한글ab\"를 그려 terminal 출력을 보면 `한` 다음에 커서를 그 오른쪽 절반으로 옮겨 공백을 쓴다(`ESC[1;4H `): glyph가 지워진다."
       - "같은 패턴의 루프가 src/widget 아래 52개 파일에 있다(ASCII만 그리는 곳은 무해). 목록은 #974. filetree (#968), csv_viewer (#970), virtuallist (#972)는 감사 중에 고쳤다."
       - "continuation cell을 쓰는 루프도 오른쪽 끝에서 깨질 수 있다. RichText(`display/richtext/render.rs`)는 `x + 1 < area.width`일 때만 continuation을 쓰고, 영역의 마지막 칸에서 시작하는 폭 2 글자는 그대로 그린다. 오른쪽 반쪽이 영역 밖, 옆 widget의 칸을 덮는다. `Text`가 RichText로 그리므로 모든 Text가 같다 (richtext/text 감사, #974 댓글). `draw_text_clipped*`는 그 칸을 비운다."
+      - "3.12 (#974): 공통 수정 뒤 x를 1씩 옮기던 곳을 찾아 고쳤다: Tree 아이콘, Breadcrumb 아이콘, Terminal 화면 model(폭 2 글자 두 칸, 마지막 칸이면 줄바꿈), Timeline 연결선, Avatar 머리글자, RichTextEditor 툴바, Switch emoji 뒤 공백, RouterLink, DeclarativeRouter 404, 차트 범례, json_viewer, ThemePicker, SortableList, Inspector, devtools state, `draw_text_overlay`, DebugOverlay 패널 경계. 찾은 방법: `.chars()` 루프에서 x를 `enumerate` index나 `+= 1`로 옮기는 곳을 모두 읽고, 숫자·ASCII 상수만 그리는 곳은 뺐다."
   - id: REV-RENDER-007
     title: "Paint Without Clipping"
     category: render

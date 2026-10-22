@@ -43,8 +43,32 @@ impl Terminal {
         }
     }
 
-    /// Put a cell at current cursor position
+    /// Put a cell at current cursor position. As in a real terminal, a
+    /// wide character takes two columns (the second holds `'\0'`, its right
+    /// half) and goes to the next line when only the last column is left; a
+    /// zero-width one (a combining mark) takes none.
     fn put_cell(&mut self, cell: TermCell) {
+        let width = crate::utils::unicode::char_width(cell.ch);
+        if width == 0 {
+            return;
+        }
+        if width == 2 && self.width >= 2 {
+            if self.cursor_col + 1 >= self.width as usize {
+                self.wrap_line();
+            }
+            let half = TermCell {
+                ch: '\0',
+                ..cell.clone()
+            };
+            self.put_one(cell);
+            self.put_one(half);
+        } else {
+            self.put_one(cell);
+        }
+    }
+
+    /// Put one column at the cursor and move it on, wrapping at the edge
+    fn put_one(&mut self, cell: TermCell) {
         // Ensure we have enough lines
         while self.cursor_row >= self.lines.len() {
             self.lines
@@ -65,20 +89,24 @@ impl Terminal {
         // Advance cursor
         self.cursor_col += 1;
 
-        // Handle line wrapping
         if self.cursor_col >= self.width as usize {
-            self.cursor_col = 0;
-            self.cursor_row += 1;
-            if self.cursor_row >= self.lines.len() {
-                let mut new_line = TermLine::with_capacity(self.width as usize);
-                new_line.wrapped = true;
-                self.lines.push(new_line);
-            } else {
-                self.lines[self.cursor_row].wrapped = true;
-            }
-            self.sync_scroll();
-            self.trim_scrollback();
+            self.wrap_line();
         }
+    }
+
+    /// Continue on the next line, marked as wrapped from this one
+    fn wrap_line(&mut self) {
+        self.cursor_col = 0;
+        self.cursor_row += 1;
+        if self.cursor_row >= self.lines.len() {
+            let mut new_line = TermLine::with_capacity(self.width as usize);
+            new_line.wrapped = true;
+            self.lines.push(new_line);
+        } else {
+            self.lines[self.cursor_row].wrapped = true;
+        }
+        self.sync_scroll();
+        self.trim_scrollback();
     }
 
     /// Move to new line

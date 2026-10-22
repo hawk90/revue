@@ -249,11 +249,45 @@ impl Buffer {
 
     /// Set a cell at position. Over half of a wide glyph, the other half
     /// is blanked: the terminal erases the whole glyph.
+    ///
+    /// A wide glyph (CJK, emoji) takes the cell to its right too, as a
+    /// continuation with its colors, so the terminal output never writes
+    /// over its right half (#974). Where that cell is outside the buffer
+    /// or the clip, the glyph is not drawn: a space takes its place.
     pub fn set(&mut self, x: u16, y: u16, cell: Cell) {
-        if let Some(idx) = self.writable(x, y) {
+        let Some(idx) = self.writable(x, y) else {
+            return;
+        };
+        if cell.is_continuation() || char_width(cell.symbol) != 2 {
             self.split_wide_chars(y, x, x.saturating_add(1), !cell.is_continuation());
             self.cells[idx] = cell;
+            return;
         }
+        let right = x.checked_add(1).and_then(|rx| self.writable(rx, y));
+        match right {
+            Some(right_idx) => {
+                self.split_wide_chars(y, x, x.saturating_add(2), true);
+                self.cells[idx] = cell;
+                self.cells[right_idx] = Self::continuation_of(&cell);
+            }
+            None => {
+                self.split_wide_chars(y, x, x.saturating_add(1), true);
+                let mut space = cell;
+                Self::blank(&mut space);
+                self.cells[idx] = space;
+            }
+        }
+    }
+
+    /// The right half of `glyph`: a continuation with its colors, modifiers
+    /// and link
+    fn continuation_of(glyph: &Cell) -> Cell {
+        let mut cont = Cell::continuation();
+        cont.fg = glyph.fg;
+        cont.bg = glyph.bg;
+        cont.modifier = glyph.modifier;
+        cont.hyperlink_id = glyph.hyperlink_id;
+        cont
     }
 
     /// Before columns `x_start..x_end` of row `y` are overwritten, blank the
@@ -1069,6 +1103,26 @@ mod clip_tests {
             cells[5], ' ',
             "the glyph straddling the right edge was drawn"
         );
+    }
+
+    #[test]
+    fn set_draws_no_half_glyph_at_the_clip_edge() {
+        // The clip is columns 2-5: a wide glyph set at 5 has its right half
+        // outside, so a space is drawn there instead, and column 6 is left
+        // alone
+        let mut b = clipped();
+        b.set(5, 1, Cell::new('가').bg(Color::BLUE));
+        let cell = b.get(5, 1).unwrap();
+        assert_eq!((cell.symbol, cell.bg), (' ', Some(Color::BLUE)));
+        assert_eq!(b.get(6, 1).unwrap().symbol, ' ');
+        assert!(!b.get(6, 1).unwrap().is_continuation());
+        // Set at 4, both halves are inside
+        b.set(4, 1, Cell::new('가'));
+        assert_eq!(b.get(4, 1).unwrap().symbol, '가');
+        assert!(b.get(5, 1).unwrap().is_continuation());
+        // Set left of the clip, nothing is written
+        b.set(1, 1, Cell::new('가'));
+        assert_eq!(row(&b, 1).chars().nth(2), Some(' '));
     }
 
     #[test]

@@ -90,3 +90,32 @@ fn test_render_legend_hidden_or_empty() {
     });
     assert!(rows(&empty).iter().all(|r| r.trim().is_empty()));
 }
+
+#[test]
+fn test_render_horizontal_legend_lays_out_wide_labels_in_columns() {
+    // "매출" takes four columns: the next item starts after them (#974)
+    let items = [
+        LegendItem {
+            label: "매출",
+            color: Color::RED,
+        },
+        LegendItem {
+            label: "B",
+            color: Color::BLUE,
+        },
+    ];
+    let buffer = draw(30, 3, |ctx, area| {
+        revue::widget::data::chart::chart_render::render_horizontal_legend(
+            ctx,
+            area,
+            &Legend::top_left(),
+            &items,
+        );
+    });
+    let row: String = (0..30)
+        .map(|x| buffer.get(x, 1).unwrap())
+        .filter(|c| !c.is_continuation())
+        .map(|c| c.symbol)
+        .collect();
+    assert!(row.contains("● 매출  ● B"), "{row:?}");
+}

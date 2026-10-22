@@ -6,14 +6,13 @@ pub use crate::utils::overlay::{draw_separator_overlay as draw_separator, draw_t
 
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::utils::char_width;
 
 /// Draw `text` in overlay mode from `(x, y)`, stopping before column `max_x`.
 ///
-/// Unlike [`draw_text_overlay`], it advances by display width (a wide
-/// character takes two columns, its second a continuation cell) and draws
-/// no character that would cross `max_x` - so a long row stays inside its
-/// panel. `bg`, if given, also replaces each drawn cell's background.
+/// Like [`draw_text_overlay`], it advances by display width (a wide
+/// character takes two columns, its second a continuation cell); it also
+/// draws no character that would cross `max_x` - so a long row stays inside
+/// its panel. `bg`, if given, also replaces each drawn cell's background.
 pub fn draw_text_overlay_clipped(
     buffer: &mut Buffer,
     x: u16,
@@ -23,27 +22,7 @@ pub fn draw_text_overlay_clipped(
     fg: Color,
     bg: Option<Color>,
 ) {
-    let mut col = u32::from(x);
-    for ch in text.chars() {
-        let width = char_width(ch) as u32;
-        if width == 0 {
-            continue;
-        }
-        if col + width > u32::from(max_x) {
-            break;
-        }
-        for (i, cx) in (col..col + width).enumerate() {
-            // In range: `cx < max_x <= u16::MAX`.
-            if let Some(cell) = buffer.get_mut(cx as u16, y) {
-                cell.symbol = if i == 0 { ch } else { '\0' };
-                cell.fg = Some(fg);
-                if bg.is_some() {
-                    cell.bg = bg;
-                }
-            }
-        }
-        col += width;
-    }
+    crate::utils::overlay::overlay_str(buffer, x, y, max_x, text, fg, bg);
 }
 
 #[cfg(test)]

@@ -222,15 +222,15 @@ impl Breadcrumb {
         let mut width = 0u16;
 
         if self.show_home {
-            width += 2; // home icon + space
+            width += icon_columns(self.home_icon);
             if !self.items.is_empty() {
                 width += 2; // separator + space
             }
         }
 
         for (i, item) in self.items.iter().enumerate() {
-            if item.icon.is_some() {
-                width += 2; // icon + space
+            if let Some(icon) = item.icon {
+                width += icon_columns(icon);
             }
             width += crate::utils::display_width(&item.label) as u16;
 
@@ -241,6 +241,12 @@ impl Breadcrumb {
 
         width
     }
+}
+
+/// The columns an icon takes with the space after it: two for a narrow
+/// icon, three for a wide one (🏠, 📁)
+fn icon_columns(icon: char) -> u16 {
+    crate::utils::unicode::char_width(icon) as u16 + 1
 }
 
 impl Default for Breadcrumb {
@@ -286,7 +292,7 @@ impl View for Breadcrumb {
             let mut home = Cell::new(self.home_icon);
             home.fg = Some(item_color);
             ctx.set(x, 0, home);
-            x += 2;
+            x += icon_columns(self.home_icon);
 
             if !self.items.is_empty() {
                 let mut sep = Cell::new(self.separator.char());
@@ -319,7 +325,7 @@ impl View for Breadcrumb {
                     item_color
                 });
                 ctx.set(x, 0, cell);
-                x += 2;
+                x += icon_columns(icon);
             }
 
             let clip_width = max_width.saturating_sub(10).saturating_sub(x);
@@ -378,7 +384,7 @@ impl View for Breadcrumb {
                     item_color
                 });
                 ctx.set(x, 0, cell);
-                x += 2;
+                x += icon_columns(icon);
             }
 
             // Label

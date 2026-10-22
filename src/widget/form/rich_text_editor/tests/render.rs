@@ -54,7 +54,9 @@ fn screen(editor: &RichTextEditor, w: u16, h: u16) -> Buffer {
 /// The symbols of row `y`, trailing blanks trimmed
 fn row(buffer: &Buffer, y: u16) -> String {
     (0..buffer.width())
-        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .map(|x| buffer.get(x, y).unwrap())
+        .filter(|cell| !cell.is_continuation())
+        .map(|cell| cell.symbol)
         .collect::<String>()
         .trim_end()
         .to_string()
