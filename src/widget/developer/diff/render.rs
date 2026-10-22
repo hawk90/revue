@@ -59,6 +59,15 @@ impl DiffViewer {
         rows
     }
 
+    /// `rows` from the scrolled-to one on, as many as fit in `height`: the
+    /// offset kept so the last page is full (#973)
+    fn scrolled<'a>(&self, rows: Vec<Row<'a>>, height: usize) -> impl Iterator<Item = Row<'a>> {
+        self.scroll.set_content(rows.len());
+        self.scroll.set_viewport(height);
+        let offset = self.scroll.offset();
+        rows.into_iter().skip(offset).take(height)
+    }
+
     /// Draw a fold row across the width
     fn render_fold(&self, ctx: &mut RenderContext, y: u16, hidden: usize) {
         let text = format!("⋯ {hidden} unchanged lines");
@@ -86,13 +95,7 @@ impl DiffViewer {
 
         // Content
         let visible_lines = (area.height - 1) as usize;
-        for (i, row) in self
-            .rows()
-            .into_iter()
-            .skip(self.scroll)
-            .take(visible_lines)
-            .enumerate()
-        {
+        for (i, row) in self.scrolled(self.rows(), visible_lines).enumerate() {
             let y = 1 + i as u16;
             let line = match row {
                 Row::Line(line) => line,
@@ -250,13 +253,7 @@ impl DiffViewer {
         let content_width = area.width.saturating_sub(line_num_width + 1) as usize;
 
         let visible_lines = area.height as usize;
-        for (i, row) in self
-            .rows()
-            .into_iter()
-            .skip(self.scroll)
-            .take(visible_lines)
-            .enumerate()
-        {
+        for (i, row) in self.scrolled(self.rows(), visible_lines).enumerate() {
             let y = i as u16;
             let line = match row {
                 Row::Line(line) => line,

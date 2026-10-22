@@ -28,6 +28,7 @@ mod view;
 mod tests;
 
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::{impl_props_builders, impl_styled_view};
 
 // Public exports (also used internally)
@@ -111,8 +112,9 @@ pub struct RichTextEditor {
     cursor: (usize, usize),
     /// Selection anchor (if selecting)
     anchor: Option<(usize, usize)>,
-    /// Scroll offset
-    scroll: usize,
+    /// Where the blocks (one row each) are scrolled to: the view follows
+    /// the cursor's block, and the preview shares it
+    scroll: ScrollState,
     /// Current format for new text
     current_format: TextFormat,
     /// Undo stack
@@ -160,7 +162,7 @@ impl RichTextEditor {
             blocks: vec![Block::paragraph("")],
             cursor: (0, 0),
             anchor: None,
-            scroll: 0,
+            scroll: ScrollState::new(),
             current_format: TextFormat::default(),
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),

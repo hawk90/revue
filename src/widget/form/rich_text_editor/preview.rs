@@ -23,7 +23,7 @@ impl RichTextEditor {
         fill(ctx, x, y, width, height, self.preview_bg);
 
         // Render blocks as formatted text
-        for (row, block_idx) in (self.scroll..).take(height as usize).enumerate() {
+        for (row, block_idx) in (self.scroll.offset()..).take(height as usize).enumerate() {
             if block_idx >= self.blocks.len() {
                 break;
             }

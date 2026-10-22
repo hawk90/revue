@@ -102,7 +102,6 @@ impl RichTextEditor {
             .insert(self.cursor.0 + 1, Block::paragraph(second_text));
         self.cursor.0 += 1;
         self.cursor.1 = 0;
-        self.ensure_cursor_visible();
     }
 
     /// Merge current block with previous

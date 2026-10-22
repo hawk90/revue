@@ -225,6 +225,48 @@ fn test_reload() {
     assert_eq!(pres.current_index(), 0); // Reset after reload
 }
 
+// =========================================================================
+// Preview scrolling (#973)
+// =========================================================================
+
+/// Ten paragraphs, `p0` to `p9`: one row each in the preview
+fn ten_paragraphs() -> MarkdownPresentation {
+    let source = (0..10).map(|i| format!("p{i}")).collect::<Vec<_>>();
+    MarkdownPresentation::new(source.join("\n\n"))
+}
+
+/// The text at the start of each row of a 20 x 4 preview, without the mode
+/// badge on the right
+fn preview_rows(pres: &MarkdownPresentation) -> Vec<String> {
+    rows(&render(pres, 20, 4))
+        .iter()
+        .map(|r| r.split_whitespace().next().unwrap_or("").to_string())
+        .collect()
+}
+
+/// `scroll_down` moves the preview: it was stored but never read by
+/// render, which always drew from the first row (#973).
+#[test]
+fn test_preview_scroll_down_shows_the_rows_below() {
+    let mut pres = ten_paragraphs();
+    assert_eq!(preview_rows(&pres), ["p0", "p1", "p2", "p3"]);
+    pres.scroll_down(3);
+    assert_eq!(preview_rows(&pres), ["p3", "p4", "p5", "p6"]);
+    pres.scroll_to_top();
+    assert_eq!(preview_rows(&pres), ["p0", "p1", "p2", "p3"]);
+}
+
+/// The scroll stops at the last full page, so Up after scrolling past the
+/// end moves the view at once (#973).
+#[test]
+fn test_preview_scroll_stops_at_the_last_page() {
+    let mut pres = ten_paragraphs();
+    pres.scroll_down(100);
+    assert_eq!(preview_rows(&pres), ["p6", "p7", "p8", "p9"]);
+    pres.scroll_up(1);
+    assert_eq!(preview_rows(&pres), ["p5", "p6", "p7", "p8"]);
+}
+
 #[test]
 fn test_progress() {
     let pres = MarkdownPresentation::new("# A\n---\n# B\n---\n# C\n---\n# D");

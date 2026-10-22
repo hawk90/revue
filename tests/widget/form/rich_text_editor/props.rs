@@ -494,8 +494,8 @@ proptest! {
     /// Each visible block is drawn on its row as its type's marker and its
     /// text, cut at the width: the marker in the heading, quote or code
     /// color, link text in the link color, the cursor and the selection as
-    /// backgrounds. (The cursor is kept on a visible row: the view does not
-    /// scroll down to it, #973.)
+    /// backgrounds. The view is scrolled just far enough to show the
+    /// cursor's block (#973).
     #[test]
     fn prop_rich_text_editor_editor_view_follows_the_model(
         blocks in prop::collection::vec(block(), 1..8),
@@ -511,17 +511,18 @@ proptest! {
             editor.set_cursor(b, c);
             editor.start_selection();
         }
-        // The cursor row on screen
-        editor.set_cursor(cursor.0 % (height - 1) as usize, cursor.1);
+        editor.set_cursor(cursor.0, cursor.1);
         let cur = editor.cursor_position();
+        // The first block shown: the cursor's block on the last row, or 0
+        let top = (cur.0 + 1).saturating_sub((height - 1) as usize);
         let sel = anchor.map(|(b, c)| {
             let b = b.min(blocks.len() - 1);
             let a = (b, c.min(blocks[b].1.chars().count()));
             if a < cur { (a, cur) } else { (cur, a) }
         });
         let buffer = screen(&editor, width, height);
-        for (i, (t, text)) in blocks.iter().enumerate().take((height - 1) as usize) {
-            let y = 1 + i as u16;
+        for (i, (t, text)) in blocks.iter().enumerate().skip(top).take((height - 1) as usize) {
+            let y = 1 + (i - top) as u16;
             let prefix = editor_prefix(*t);
             let chars: Vec<char> = text.chars().collect();
             let line: String = prefix.chars().chain(chars.iter().copied()).take(width as usize).collect();
