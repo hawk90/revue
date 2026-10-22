@@ -213,7 +213,8 @@ pub fn format_relative_time(seconds_ago: u64) -> String {
         );
     }
 
-    let months = days / 30;
+    // 28 and 29 days are past four weeks but short of a 30-day month
+    let months = (days / 30).max(1);
     if months < 12 {
         return format!(
             "{} {} ago",
@@ -222,7 +223,8 @@ pub fn format_relative_time(seconds_ago: u64) -> String {
         );
     }
 
-    let years = days / 365;
+    // 360 to 364 days are twelve 30-day months but short of a 365-day year
+    let years = (days / 365).max(1);
     format!(
         "{} {} ago",
         years,
@@ -266,12 +268,14 @@ pub fn format_relative_time_short(seconds_ago: u64) -> String {
         return format!("{}w ago", weeks);
     }
 
-    let months = days / 30;
+    // 28 and 29 days are past four weeks but short of a 30-day month
+    let months = (days / 30).max(1);
     if months < 12 {
         return format!("{}mo ago", months);
     }
 
-    let years = days / 365;
+    // 360 to 364 days are twelve 30-day months but short of a 365-day year
+    let years = (days / 365).max(1);
     format!("{}y ago", years)
 }
 

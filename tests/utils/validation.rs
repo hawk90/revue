@@ -28,6 +28,17 @@ fn test_max_length() {
 }
 
 #[test]
+fn test_length_validators_count_characters_not_bytes() {
+    // "가나다" is 3 characters in 9 bytes
+    assert!(max_length(3)("가나다").is_ok());
+    assert!(max_length(2)("가나다").is_err());
+    assert!(min_length(3)("가나다").is_ok());
+    assert!(min_length(4)("가나다").is_err());
+    assert!(length_range(3, 3)("가나다").is_ok());
+    assert!(length_range(4, 9)("가나다").is_err());
+}
+
+#[test]
 fn test_email() {
     let v = email();
     assert!(v("user@example.com").is_ok());
