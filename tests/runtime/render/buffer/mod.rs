@@ -848,6 +848,7 @@ fn set_a_wide_glyph_over_a_narrow_one_and_back() {
     assert_eq!(row(&buffer), "ax d");
 }
 
+/// A guard: narrow and zero-width chars still write just their own cell
 #[test]
 fn set_a_narrow_or_zero_width_char_writes_one_cell() {
     let mut buffer = Buffer::new(3, 1);

@@ -7,7 +7,6 @@ use revue::core::app::{Inspector as AppInspector, WidgetInfo};
 use revue::layout::Rect;
 use revue::prelude::*;
 use revue::render::Buffer;
-use revue::testing::PipelineHarness;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
     avatar, multi_select, Alignment, Breadcrumb, BreadcrumbItem, DebugEvent, DebugOverlay,
@@ -43,24 +42,27 @@ fn toast_message() {
 
 #[test]
 fn rich_text_and_text_keep_a_wide_glyph_inside_their_area() {
-    // A 3-column view next to a Text: "ab日" has no room for 日's right half
-    let mut h = PipelineHarness::new(5, 1);
-    h.draw(
-        &hstack()
-            .child_sized(RichText::new().text("ab日"), 3)
-            .child(Text::new("Z")),
-    );
-    assert_eq!(h.buffer().get(3, 0).unwrap().symbol, 'Z');
-    assert_ne!(h.buffer().get(2, 0).unwrap().symbol, '日');
-
-    let mut h = PipelineHarness::new(5, 1);
-    h.draw(
-        &hstack()
-            .child_sized(Text::new("ab日"), 3)
-            .child(Text::new("Z")),
-    );
-    assert_eq!(h.buffer().get(3, 0).unwrap().symbol, 'Z');
-    assert_ne!(h.buffer().get(2, 0).unwrap().symbol, '日');
+    // A 3-column area at column 1 with a cell already drawn right of it:
+    // "ab日" has no room for 日's right half, so 日 is left out and the
+    // neighbor's cell stays (in a stack the neighbor may be drawn first)
+    fn drawn(v: &dyn View) -> Buffer {
+        let mut b = Buffer::new(6, 1);
+        b.put_str(0, 0, "......");
+        b.set(4, 0, revue::render::Cell::new('Z'));
+        v.render(&mut RenderContext::new(&mut b, Rect::new(1, 0, 3, 1)));
+        b
+    }
+    for b in [
+        drawn(&RichText::new().text("ab日")),
+        drawn(&Text::new("ab日")),
+    ] {
+        assert_eq!(row(&b, 0), ".ab Z.");
+        assert!(!b.get(4, 0).unwrap().is_continuation());
+    }
+    // A Text that fits keeps its glyph whole
+    let b = drawn(&Text::new("a日"));
+    assert_eq!(b.get(2, 0).unwrap().symbol, '日');
+    assert!(b.get(3, 0).unwrap().is_continuation());
 }
 
 #[test]
@@ -138,8 +140,9 @@ fn terminal_wraps_a_wide_character_at_every_line_end() {
 
 #[test]
 fn terminal_one_column_wide_does_not_hang_on_a_wide_character() {
-    // A wide character cannot fit at all: it takes the one column and the
-    // line wraps, as narrow ones do; drawing it there leaves a space
+    // A guard for the one-column branch: a wide character cannot fit at
+    // all, so it takes the one column and the line wraps, as narrow ones
+    // do, instead of wrapping again and again; drawing it leaves a space
     let mut t = Terminal::new(1, 3);
     t.write("한a");
     let b = draw(&t, 1, 3);
@@ -325,6 +328,24 @@ fn json_viewer_cuts_a_wide_value_at_the_edge() {
     let v = JsonViewer::from_content(r#"{"k": "한글한글한글한글"}"#);
     for w in 8..20 {
         let b = draw(&v, w, 3);
+        // The value's syllables that are drawn sit two columns apart, in
+        // order, up to the edge: none is erased by the next one
+        if let Some(y) = (0..3).find(|&y| col_of(&b, y, '한').is_some()) {
+            let heads: Vec<(u16, char)> = (0..w)
+                .map(|x| (x, b.get(x, y).unwrap().symbol))
+                .filter(|&(_, c)| c == '한' || c == '글')
+                .collect();
+            for pair in heads.windows(2) {
+                assert_eq!(pair[1].0, pair[0].0 + 2, "width {w}: {heads:?}");
+                assert_ne!(pair[1].1, pair[0].1, "width {w}: {heads:?}");
+            }
+            // At most one column is left unused before the edge
+            let (last, _) = *heads.last().unwrap();
+            assert!(
+                w - (last + 2) <= 1 || heads.len() == 8,
+                "width {w}: {heads:?}"
+            );
+        }
         for y in 0..3 {
             // The last column never holds a glyph whose right half is cut
             let last = b.get(w - 1, y).unwrap();

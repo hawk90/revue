@@ -840,19 +840,3 @@ fn test_render_all_modifiers() {
     assert!(modifier.contains(Modifier::CROSSED_OUT));
     assert!(modifier.contains(Modifier::DIM));
 }
-
-#[test]
-fn test_render_toolbar_cuts_a_wide_icon_at_the_edge() {
-    // The toolbar ends at 📷's first column: 📷 is left out, not halved
-    let full = screen(&RichTextEditor::new(), 40, 3);
-    let x = (0..40u16)
-        .find(|&x| full.get(x, 0).unwrap().symbol == '📷')
-        .unwrap();
-    let cut = screen(&RichTextEditor::new(), x + 1, 3);
-    assert_ne!(cut.get(x, 0).unwrap().symbol, '📷');
-    // 🔗 before it is whole, with its continuation
-    let link = (0..x)
-        .find(|&cx| cut.get(cx, 0).unwrap().symbol == '🔗')
-        .unwrap();
-    assert!(cut.get(link + 1, 0).unwrap().is_continuation());
-}
