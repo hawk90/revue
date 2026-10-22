@@ -340,7 +340,8 @@ fn the_content_wraps_to_a_narrow_area_and_the_box_keeps_its_right_border() {
 #[test]
 fn a_wide_glyph_gets_its_two_columns_in_an_area_too_narrow_for_them() {
     // A 5-column area leaves 1 column inside the border and padding: "한"
-    // still gets 2, and the box is cut at the area's edge
+    // still gets 2 and keeps its padding, and the box is cut at the area's
+    // edge (its right border falls outside)
     let p = Popover::new("한글")
         .anchor(0, 0)
         .position(PopoverPosition::Bottom)
@@ -353,4 +354,8 @@ fn a_wide_glyph_gets_its_two_columns_in_an_area_too_narrow_for_them() {
     assert!(buffer.get(3, y).unwrap().is_continuation());
     assert_eq!(symbol(&buffer, 2, y + 1), '글');
     assert!(buffer.get(3, y + 1).unwrap().is_continuation());
+    for y in y..y + 2 {
+        assert_eq!(symbol(&buffer, 4, y), ' ', "row {y}");
+        assert!(buffer.get(4, y).unwrap().bg.is_some(), "row {y}");
+    }
 }
