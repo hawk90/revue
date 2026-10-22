@@ -3,14 +3,16 @@
 //! draws half of one at an area's edge. The terminal output writes every
 //! cell that is not a continuation, so a plain cell there erases the glyph.
 
+use revue::core::app::{Inspector as AppInspector, WidgetInfo};
 use revue::layout::Rect;
 use revue::prelude::*;
 use revue::render::Buffer;
 use revue::testing::PipelineHarness;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
-    multi_select, Alignment, DebugEvent, DebugOverlay, DebugPosition, JsonViewer, OverlayQueue,
-    RichText, SortableList, Terminal, Toast, ToastPosition, Tree, TreeNode,
+    avatar, multi_select, Alignment, Breadcrumb, BreadcrumbItem, DebugEvent, DebugOverlay,
+    DebugPosition, JsonViewer, OverlayQueue, RichText, SortableList, Switch, SwitchStyle, Terminal,
+    Toast, ToastPosition, Tree, TreeNode,
 };
 
 fn draw(v: &dyn View, w: u16, h: u16) -> Buffer {
@@ -101,6 +103,68 @@ fn terminal_wraps_a_wide_character_that_does_not_fit() {
 }
 
 #[test]
+fn terminal_cursor_goes_after_both_columns_of_a_wide_character() {
+    let mut t = Terminal::new(10, 1);
+    t.focus();
+    t.write("한");
+    let b = draw(&t, 10, 1);
+    assert_eq!(b.get(0, 0).unwrap().symbol, '한');
+    assert!(b.get(1, 0).unwrap().is_continuation());
+    assert_eq!(b.get(2, 0).unwrap().symbol, '█');
+}
+
+#[test]
+fn terminal_gives_a_combining_mark_no_column() {
+    // e + U+0301 is one column; x follows it
+    let mut t = Terminal::new(10, 1);
+    t.write("e\u{301}x");
+    let b = draw(&t, 10, 1);
+    assert_eq!(b.get(0, 0).unwrap().symbol, 'e');
+    assert_eq!(b.get(1, 0).unwrap().symbol, 'x');
+}
+
+#[test]
+fn terminal_wraps_a_wide_character_at_every_line_end() {
+    // Five syllables in 5 columns: two per line, the last column left over
+    let mut t = Terminal::new(5, 3);
+    t.write("가나다라마");
+    let b = draw(&t, 5, 3);
+    assert_eq!(row(&b, 0).trim_end(), "가나");
+    assert_eq!(row(&b, 1).trim_end(), "다라");
+    assert_eq!(row(&b, 2).trim_end(), "마");
+    // The column a wide character could not use stays blank
+    assert_eq!(b.get(4, 0).unwrap().symbol, ' ');
+}
+
+#[test]
+fn terminal_one_column_wide_does_not_hang_on_a_wide_character() {
+    // A wide character cannot fit at all: it takes the one column and the
+    // line wraps, as narrow ones do; drawing it there leaves a space
+    let mut t = Terminal::new(1, 3);
+    t.write("한a");
+    let b = draw(&t, 1, 3);
+    assert_eq!(b.get(0, 0).unwrap().symbol, ' ');
+    assert_eq!(b.get(0, 1).unwrap().symbol, 'a');
+}
+
+#[test]
+fn tree_icon_in_a_narrow_area_and_at_depth() {
+    // A wide icon that would cross the area's edge is not drawn half
+    let tree = Tree::new().node(TreeNode::new("ab").icon('📁'));
+    let b = draw(&tree, 2, 1);
+    assert_eq!(b.get(1, 0).unwrap().symbol, ' ');
+    // Under a parent, the icon follows the connector
+    let tree = Tree::new().node(
+        TreeNode::new("p")
+            .expanded(true)
+            .child(TreeNode::new("c").icon('📁')),
+    );
+    let b = draw(&tree, 20, 2);
+    let r = row(&b, 1);
+    assert!(r.contains("📁c"), "{r:?}");
+}
+
+#[test]
 fn multi_select_tag_and_dropdown_label() {
     // The tag: '[' at 0, '한' at 1, its right half at 2
     let mut s = multi_select().options(vec!["한글"]).width(20);
@@ -141,8 +205,12 @@ fn json_viewer_keys_and_values() {
 fn sortable_list_label() {
     let list = SortableList::new(vec!["한글", "b"]);
     let b = draw(&list, 20, 2);
-    assert!(row(&b, 0).contains("한글"), "{:?}", row(&b, 0));
-    assert!(row(&b, 1).contains('b'));
+    let x = (0..20u16)
+        .find(|&x| b.get(x, 0).unwrap().symbol == '한')
+        .unwrap();
+    assert!(b.get(x + 1, 0).unwrap().is_continuation());
+    assert_eq!(b.get(x + 2, 0).unwrap().symbol, '글');
+    assert!(b.get(x + 3, 0).unwrap().is_continuation());
 }
 
 #[test]
@@ -170,4 +238,141 @@ fn debug_overlay_panel_edge_leaves_no_half_glyph() {
     let b = draw(&overlay, 20, 4);
     assert_eq!(b.get(9, 0).unwrap().symbol, '┌');
     assert_eq!(b.get(8, 0).unwrap().symbol, ' ');
+}
+
+/// The column of the first cell holding `ch` on row `y`
+fn col_of(b: &Buffer, y: u16, ch: char) -> Option<u16> {
+    (0..b.width()).find(|&x| b.get(x, y).unwrap().symbol == ch)
+}
+
+#[test]
+fn avatar_initials_fit_by_width() {
+    // Medium: two columns between the edges hold one wide initial; the
+    // second would cross the edge and is left out
+    let b = draw(&avatar("김 철수").medium().circle(), 10, 1);
+    assert_eq!(b.get(1, 0).unwrap().symbol, '김');
+    assert!(b.get(2, 0).unwrap().is_continuation());
+    assert_eq!(b.get(3, 0).unwrap().symbol, '◗');
+    // Large: three columns hold a wide initial and a blank
+    let b = draw(&avatar("김 철수").large().circle(), 10, 3);
+    assert_eq!(b.get(1, 1).unwrap().symbol, '김');
+    assert!(b.get(2, 1).unwrap().is_continuation());
+    assert_eq!(b.get(3, 1).unwrap().symbol, ' ');
+    assert_eq!(b.get(4, 1).unwrap().symbol, '│');
+    // ASCII initials still take one column each
+    let b = draw(&avatar("Ada Lovelace").medium().circle(), 10, 1);
+    assert_eq!(row(&b, 0).chars().take(4).collect::<String>(), "◖AL◗");
+}
+
+#[test]
+fn breadcrumb_wide_item_icons_and_a_narrow_area() {
+    let bc = Breadcrumb::new()
+        .home(false)
+        .item(BreadcrumbItem::new("Docs").icon('📁'))
+        .item(BreadcrumbItem::new("Work").icon('💼'));
+    let b = draw(&bc, 40, 1);
+    assert_eq!(row(&b, 0).trim_end(), "📁 Docs › 💼 Work");
+    assert_eq!(
+        bc.measure(40, 1).unwrap().0 as usize,
+        revue::utils::display_width("📁 Docs › 💼 Work")
+    );
+    // In 3 columns the home icon fits; nothing is drawn half
+    let b = draw(&Breadcrumb::new().push("x"), 3, 1);
+    for x in 0..3 {
+        let c = b.get(x, 0).unwrap();
+        if c.is_continuation() {
+            assert_eq!(b.get(x - 1, 0).unwrap().symbol, '🏠');
+        }
+    }
+}
+
+#[test]
+fn switch_emoji_keeps_its_right_half_and_the_label_follows() {
+    let s = Switch::new().style(SwitchStyle::Emoji).label("on");
+    let b = draw(&s, 20, 1);
+    let x = col_of(&b, 0, '❌').unwrap();
+    assert!(b.get(x + 1, 0).unwrap().is_continuation());
+    let r = row(&b, 0);
+    assert!(r.contains('❌') && r.contains("on"), "{r:?}");
+}
+
+#[test]
+fn sortable_list_label_cut_at_the_edge_and_styled_throughout() {
+    // Selected: every cell of the label, the right halves too, is bold
+    let mut list = SortableList::new(vec!["한글한글"]);
+    list.selected = Some(0);
+    let b = draw(&list, 20, 1);
+    let x = col_of(&b, 0, '한').unwrap();
+    for dx in 0..8 {
+        assert!(
+            b.get(x + dx, 0)
+                .unwrap()
+                .modifier
+                .contains(revue::render::Modifier::BOLD),
+            "column {}",
+            x + dx
+        );
+    }
+    // In an area that ends inside the third syllable, it is left out
+    let w = x + 5;
+    let b = draw(&list, w, 1);
+    assert_eq!(b.get(x + 4, 0).unwrap().symbol, ' ');
+    assert!(!b.get(x + 4, 0).unwrap().is_continuation());
+}
+
+#[test]
+fn json_viewer_cuts_a_wide_value_at_the_edge() {
+    let v = JsonViewer::from_content(r#"{"k": "한글한글한글한글"}"#);
+    for w in 8..20 {
+        let b = draw(&v, w, 3);
+        for y in 0..3 {
+            // The last column never holds a glyph whose right half is cut
+            let last = b.get(w - 1, y).unwrap();
+            assert!(
+                revue::utils::char_width(last.symbol) < 2,
+                "width {w} row {y}: {:?}",
+                last.symbol
+            );
+            for x in 1..w {
+                if b.get(x, y).unwrap().is_continuation() {
+                    let head = b.get(x - 1, y).unwrap().symbol;
+                    assert_eq!(revue::utils::char_width(head), 2, "width {w} ({x},{y})");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn inspector_tree_and_properties_in_columns() {
+    let mut i = AppInspector::new();
+    i.set_root(WidgetInfo::new("Text", Rect::new(0, 0, 10, 3)).property("내용", "한글"));
+    i.show();
+    let b = draw(&i, 60, 12);
+    let rows: Vec<String> = (0..12).map(|y| row(&b, y)).collect();
+    assert!(rows.iter().any(|r| r.contains("내용: 한글")), "{rows:#?}");
+    // Each syllable has its continuation
+    for y in 0..12 {
+        if let Some(x) = col_of(&b, y, '내') {
+            assert!(b.get(x + 1, y).unwrap().is_continuation());
+            assert_eq!(b.get(x + 2, y).unwrap().symbol, '용');
+        }
+    }
+}
+
+#[test]
+fn debug_overlay_panel_right_edge_leaves_no_half_glyph() {
+    // A top-left 11-column panel ends at column 10, inside the sixth 한
+    // (columns 10-11): its right half at 11 is blanked
+    let overlay = DebugOverlay::wrap(Text::new("한글한글한글한글한글"))
+        .position(DebugPosition::TopLeft)
+        .width(11)
+        .show_metrics(false);
+    let b = draw(&overlay, 20, 4);
+    assert_eq!(b.get(10, 0).unwrap().symbol, '┐');
+    assert!(!b.get(11, 0).unwrap().is_continuation());
+    assert_eq!(b.get(11, 0).unwrap().symbol, ' ');
+    // Past it the view's glyphs are whole
+    assert_eq!(b.get(12, 0).unwrap().symbol, '한');
+    assert!(b.get(13, 0).unwrap().is_continuation());
 }

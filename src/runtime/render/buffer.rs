@@ -1106,6 +1106,26 @@ mod clip_tests {
     }
 
     #[test]
+    fn set_draws_no_half_glyph_at_the_clip_edge() {
+        // The clip is columns 2-5: a wide glyph set at 5 has its right half
+        // outside, so a space is drawn there instead, and column 6 is left
+        // alone
+        let mut b = clipped();
+        b.set(5, 1, Cell::new('가').bg(Color::BLUE));
+        let cell = b.get(5, 1).unwrap();
+        assert_eq!((cell.symbol, cell.bg), (' ', Some(Color::BLUE)));
+        assert_eq!(b.get(6, 1).unwrap().symbol, ' ');
+        assert!(!b.get(6, 1).unwrap().is_continuation());
+        // Set at 4, both halves are inside
+        b.set(4, 1, Cell::new('가'));
+        assert_eq!(b.get(4, 1).unwrap().symbol, '가');
+        assert!(b.get(5, 1).unwrap().is_continuation());
+        // Set left of the clip, nothing is written
+        b.set(1, 1, Cell::new('가'));
+        assert_eq!(row(&b, 1).chars().nth(2), Some(' '));
+    }
+
+    #[test]
     fn a_sequence_the_clip_would_cut_is_not_written() {
         let mut b = clipped();
         b.put_sequence(4, 1, "\x1b]66;s=2;hi\x07", 4, 1);

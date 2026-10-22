@@ -141,6 +141,33 @@ mod tests {
     }
 
     #[test]
+    fn overlay_str_stops_before_max_x_and_skips_zero_width() {
+        // From column 2, max_x 6: "가" (2-3), the combining mark takes no
+        // column, "나" (4-5), "다" would cross 6
+        let mut buffer = Buffer::new(10, 1);
+        let end = overlay_str(
+            &mut buffer,
+            2,
+            0,
+            6,
+            "가\u{301}나다",
+            Color::WHITE,
+            Some(Color::BLUE),
+        );
+        assert_eq!(end, 6);
+        let cells: String = (0..10)
+            .map(|x| match buffer.get(x, 0).unwrap().symbol {
+                '\0' => '_',
+                c => c,
+            })
+            .collect();
+        assert_eq!(cells, "  가_나_    ");
+        // bg replaced on both halves, left alone past max_x
+        assert_eq!(buffer.get(3, 0).unwrap().bg, Some(Color::BLUE));
+        assert_eq!(buffer.get(6, 0).unwrap().bg, None);
+    }
+
+    #[test]
     fn test_draw_text_overlay_clips_at_boundary() {
         let mut buffer = Buffer::new(5, 1);
         // Try to draw text that extends beyond buffer
