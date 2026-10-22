@@ -74,9 +74,21 @@ impl<V: View> DebugOverlay<V> {
         );
     }
 
-    /// Fill background
+    /// Fill background. A wide glyph of the view that the panel's edge cuts
+    /// in half is blanked: the terminal erases it (#974).
     fn fill_panel(&self, buffer: &mut Buffer, rect: Rect) {
         for y in rect.y..rect.y + rect.height {
+            let right = rect.x + rect.width;
+            if rect.x > 0 && buffer.get(rect.x, y).is_some_and(|c| c.is_continuation()) {
+                if let Some(cell) = buffer.get_mut(rect.x - 1, y) {
+                    cell.symbol = ' ';
+                }
+            }
+            if buffer.get(right, y).is_some_and(|c| c.is_continuation()) {
+                if let Some(cell) = buffer.get_mut(right, y) {
+                    cell.symbol = ' ';
+                }
+            }
             for x in rect.x..rect.x + rect.width {
                 if let Some(cell) = buffer.get_mut(x, y) {
                     cell.symbol = ' ';

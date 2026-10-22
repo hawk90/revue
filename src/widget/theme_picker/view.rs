@@ -93,13 +93,9 @@ impl ThemePicker {
         let mut x = draw_run(ctx, 0, 0, "Theme: ", fg, bg);
 
         // Theme name
-        for ch in current_theme.name.chars() {
-            if x >= width.saturating_sub(6) {
-                break;
-            }
-            put(ctx, x, 0, ch, Some(fg), Some(bg));
-            x += 1;
-        }
+        x += ctx.put_str_with(x, 0, &current_theme.name, width.saturating_sub(6), |ch| {
+            Cell::new(ch).fg(fg).bg(bg)
+        });
 
         if self.show_preview {
             // Space
@@ -210,14 +206,14 @@ impl ThemePicker {
         cx += 1;
 
         // Name, up to the right border
-        let max_name_len = (width.saturating_sub(1).saturating_sub(cx)) as usize;
-        for (j, ch) in theme.name.chars().enumerate() {
-            if j >= max_name_len {
-                break;
-            }
-            put(ctx, cx, y, ch, Some(item_fg), Some(item_bg));
-            cx += 1;
-        }
+        let mut name = Cell::new(' ');
+        name.fg = Some(item_fg);
+        name.bg = Some(item_bg);
+        cx += ctx.put_str_with(cx, y, &theme.name, width.saturating_sub(1), |ch| {
+            let mut cell = name;
+            cell.symbol = ch;
+            cell
+        });
 
         // Padding
         while cx < width - 1 {
@@ -238,13 +234,9 @@ fn put(ctx: &mut RenderContext, x: u16, y: u16, ch: char, fg: Option<Color>, bg:
     ctx.set(x, y, cell);
 }
 
-/// Draw `text` one char per column from `x`; returns the column after it
-fn draw_run(ctx: &mut RenderContext, mut x: u16, y: u16, text: &str, fg: Color, bg: Color) -> u16 {
-    for ch in text.chars() {
-        put(ctx, x, y, ch, Some(fg), Some(bg));
-        x += 1;
-    }
-    x
+/// Draw `text` in terminal columns from `x`; returns the column after it
+fn draw_run(ctx: &mut RenderContext, x: u16, y: u16, text: &str, fg: Color, bg: Color) -> u16 {
+    x + ctx.put_str_with(x, y, text, u16::MAX, |ch| Cell::new(ch).fg(fg).bg(bg))
 }
 
 /// A box's top or bottom row `width` wide: the two corners and `─` between

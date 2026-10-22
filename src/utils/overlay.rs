@@ -18,14 +18,52 @@ use crate::style::Color;
 /// * `y` - Y position to draw at
 /// * `text` - Text to draw
 /// * `color` - Foreground color for the text
+///
+/// Text is laid out in terminal columns: a wide character takes two, the
+/// second a continuation cell, and one that would cross the buffer's edge
+/// is not drawn (#974).
 #[inline]
 pub fn draw_text_overlay(buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
-    for (i, ch) in text.chars().enumerate() {
-        if let Some(cell) = buffer.get_mut(x + i as u16, y) {
-            cell.symbol = ch;
-            cell.fg = Some(color);
+    let max_x = buffer.width();
+    overlay_str(buffer, x, y, max_x, text, color, None);
+}
+
+/// Draw `text` in overlay mode from `(x, y)` in terminal columns, stopping
+/// before a character that would cross column `max_x`: a wide character
+/// takes two columns, its second a continuation cell; a zero-width one
+/// none. `bg`, if given, also replaces each drawn cell's background.
+/// Returns the column after the last character drawn.
+pub(crate) fn overlay_str(
+    buffer: &mut Buffer,
+    x: u16,
+    y: u16,
+    max_x: u16,
+    text: &str,
+    fg: Color,
+    bg: Option<Color>,
+) -> u16 {
+    let mut col = u32::from(x);
+    for ch in text.chars() {
+        let width = crate::utils::char_width(ch) as u32;
+        if width == 0 {
+            continue;
         }
+        if col + width > u32::from(max_x) {
+            break;
+        }
+        for (i, cx) in (col..col + width).enumerate() {
+            // In range: `cx < max_x <= u16::MAX`.
+            if let Some(cell) = buffer.get_mut(cx as u16, y) {
+                cell.symbol = if i == 0 { ch } else { '\0' };
+                cell.fg = Some(fg);
+                if bg.is_some() {
+                    cell.bg = bg;
+                }
+            }
+        }
+        col += width;
     }
+    col as u16
 }
 
 /// Draw a horizontal separator line using overlay mode
@@ -87,6 +125,22 @@ mod tests {
     }
 
     #[test]
+    fn test_draw_text_overlay_wide_chars_take_two_columns() {
+        // "한글ab": 한 at 0-1, 글 at 2-3, a at 4 (#974)
+        let mut buffer = Buffer::new(10, 1);
+        draw_text_overlay(&mut buffer, 0, 0, "한글ab", Color::WHITE);
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '한');
+        assert!(buffer.get(1, 0).unwrap().is_continuation());
+        assert_eq!(buffer.get(2, 0).unwrap().symbol, '글');
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'a');
+        // A wide char that would cross the buffer's edge is not drawn
+        let mut buffer = Buffer::new(4, 1);
+        draw_text_overlay(&mut buffer, 0, 0, "a한글", Color::WHITE);
+        assert_eq!(buffer.get(1, 0).unwrap().symbol, '한');
+        assert_eq!(buffer.get(3, 0).unwrap().symbol, ' ');
+    }
+
+    #[test]
     fn test_draw_text_overlay_clips_at_boundary() {
         let mut buffer = Buffer::new(5, 1);
         // Try to draw text that extends beyond buffer
@@ -105,15 +159,6 @@ mod tests {
 
         // Nothing should change
         assert_eq!(buffer.get(0, 0).unwrap().symbol, original_symbol);
-    }
-
-    #[test]
-    fn test_draw_text_overlay_unicode() {
-        let mut buffer = Buffer::new(20, 1);
-        draw_text_overlay(&mut buffer, 0, 0, "한글", Color::WHITE);
-
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '한');
-        assert_eq!(buffer.get(1, 0).unwrap().symbol, '글');
     }
 
     #[test]

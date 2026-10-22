@@ -9,7 +9,8 @@ use revue::render::Buffer;
 use revue::testing::PipelineHarness;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
-    multi_select, Alignment, OverlayQueue, RichText, Terminal, Toast, ToastPosition, Tree, TreeNode,
+    multi_select, Alignment, DebugEvent, DebugOverlay, DebugPosition, JsonViewer, OverlayQueue,
+    RichText, SortableList, Terminal, Toast, ToastPosition, Tree, TreeNode,
 };
 
 fn draw(v: &dyn View, w: u16, h: u16) -> Buffer {
@@ -119,4 +120,54 @@ fn multi_select_tag_and_dropdown_label() {
     q.render_to(&mut b);
     assert_eq!(b.get(4, 1).unwrap().symbol, '한');
     assert!(b.get(5, 1).unwrap().is_continuation());
+}
+
+#[test]
+fn json_viewer_keys_and_values() {
+    let v = JsonViewer::from_content(r#"{"이름": "한글"}"#);
+    let b = draw(&v, 30, 3);
+    let text: String = (0..3).map(|y| row(&b, y)).collect::<Vec<_>>().join("\n");
+    assert!(text.contains("이름") && text.contains("한글"), "{text}");
+    // Each syllable keeps its right half
+    let (x, y) = (0..3u16)
+        .flat_map(|y| (0..30u16).map(move |x| (x, y)))
+        .find(|&(x, y)| b.get(x, y).unwrap().symbol == '이')
+        .unwrap();
+    assert!(b.get(x + 1, y).unwrap().is_continuation());
+    assert_eq!(b.get(x + 2, y).unwrap().symbol, '름');
+}
+
+#[test]
+fn sortable_list_label() {
+    let list = SortableList::new(vec!["한글", "b"]);
+    let b = draw(&list, 20, 2);
+    assert!(row(&b, 0).contains("한글"), "{:?}", row(&b, 0));
+    assert!(row(&b, 1).contains('b'));
+}
+
+#[test]
+fn debug_overlay_event_takes_two_columns_per_glyph() {
+    let mut overlay = DebugOverlay::wrap(Text::new(""))
+        .position(DebugPosition::TopLeft)
+        .width(20)
+        .show_metrics(false)
+        .show_events(true);
+    overlay.log_event(DebugEvent::Custom("한글ab".into()));
+    let b = draw(&overlay, 20, 6);
+    // Row 3 is the event: border, then 한 in columns 1-2
+    assert_eq!(b.get(1, 3).unwrap().symbol, '한');
+    assert!(b.get(2, 3).unwrap().is_continuation());
+    assert_eq!(b.get(3, 3).unwrap().symbol, '글');
+}
+
+#[test]
+fn debug_overlay_panel_edge_leaves_no_half_glyph() {
+    // A 20-column view; the 11-column panel starts at column 9, inside the
+    // fifth 한 (columns 8-9)
+    let overlay = DebugOverlay::wrap(Text::new("한글한글한글한글한글"))
+        .width(11)
+        .show_metrics(false);
+    let b = draw(&overlay, 20, 4);
+    assert_eq!(b.get(9, 0).unwrap().symbol, '┌');
+    assert_eq!(b.get(8, 0).unwrap().symbol, ' ');
 }

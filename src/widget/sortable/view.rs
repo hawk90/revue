@@ -75,18 +75,29 @@ impl View for SortableList {
             }
 
             // Item label
-            let max_len = area.width.saturating_sub(x) as usize;
-            for (j, ch) in item.label.chars().take(max_len).enumerate() {
-                if let Some(cell) = ctx.get_mut(x + j as u16, y) {
-                    cell.symbol = ch;
-                    cell.fg = Some(fg);
-                    if is_selected {
-                        cell.modifier |= crate::render::Modifier::BOLD;
-                    }
-                    if is_dragging {
-                        cell.modifier |= crate::render::Modifier::DIM;
+            // In terminal columns, keeping the background under it: a wide
+            // character takes two, the second its continuation
+            for ch in item.label.chars() {
+                let w = crate::utils::char_width(ch) as u16;
+                if w == 0 {
+                    continue;
+                }
+                if x + w > area.width {
+                    break;
+                }
+                for dx in 0..w {
+                    if let Some(cell) = ctx.get_mut(x + dx, y) {
+                        cell.symbol = if dx == 0 { ch } else { '\0' };
+                        cell.fg = Some(fg);
+                        if is_selected {
+                            cell.modifier |= crate::render::Modifier::BOLD;
+                        }
+                        if is_dragging {
+                            cell.modifier |= crate::render::Modifier::DIM;
+                        }
                     }
                 }
+                x += w;
             }
         }
 

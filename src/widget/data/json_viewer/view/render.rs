@@ -214,16 +214,13 @@ fn put(
     bg: Option<Color>,
     modifier: Modifier,
 ) -> u16 {
-    let mut x = x;
-    for ch in text.chars() {
-        if x < ctx.area.width {
-            let mut cell = Cell::new(ch);
-            cell.fg = fg;
-            cell.bg = bg;
-            cell.modifier |= modifier;
-            ctx.set(x, y, cell);
-            x += 1;
-        }
-    }
-    x
+    // In terminal columns: a key or value in CJK takes two per character
+    let max_x = ctx.area.width;
+    x + ctx.put_str_with(x, y, text, max_x, |ch| {
+        let mut cell = Cell::new(ch);
+        cell.fg = fg;
+        cell.bg = bg;
+        cell.modifier |= modifier;
+        cell
+    })
 }

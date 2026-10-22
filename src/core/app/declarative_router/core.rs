@@ -220,9 +220,7 @@ impl View for DeclarativeRouter {
         } else {
             // Default: render "404" text
             let msg = format!("No route: {}", self.router.current_path());
-            for (i, ch) in msg.chars().take(area.width as usize).enumerate() {
-                ctx.buffer.set(area.x + i as u16, area.y, Cell::new(ch));
-            }
+            ctx.put_str_with(0, 0, &msg, area.width, Cell::new);
         }
     }
 }

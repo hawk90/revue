@@ -279,17 +279,15 @@ impl StateDebugger {
             None
         };
 
-        for (i, ch) in line.chars().enumerate() {
-            if (i as u16) < ctx.width {
-                if let Some(cell) = ctx.buffer.get_mut(ctx.x + i as u16, y) {
-                    cell.symbol = ch;
-                    cell.fg = Some(fg);
-                    if let Some(b) = bg {
-                        cell.bg = Some(b);
-                    }
-                }
-            }
-        }
+        crate::utils::overlay::overlay_str(
+            ctx.buffer,
+            ctx.x,
+            y,
+            ctx.x.saturating_add(ctx.width),
+            &line,
+            fg,
+            bg,
+        );
     }
 
     fn render_details(ctx: &mut RenderCtx<'_>, y: u16, entry: &StateEntry) {
