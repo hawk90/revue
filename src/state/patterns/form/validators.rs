@@ -34,10 +34,10 @@ impl Validators {
         })
     }
 
-    /// Minimum length validator
+    /// Minimum length validator, counting characters (not bytes)
     pub fn min_length(min: usize) -> ValidatorFn {
         Box::new(move |value| {
-            if value.len() < min {
+            if value.chars().count() < min {
                 Err(ValidationError::new(format!(
                     "Must be at least {} characters",
                     min
@@ -48,10 +48,10 @@ impl Validators {
         })
     }
 
-    /// Maximum length validator
+    /// Maximum length validator, counting characters (not bytes)
     pub fn max_length(max: usize) -> ValidatorFn {
         Box::new(move |value| {
-            if value.len() > max {
+            if value.chars().count() > max {
                 Err(ValidationError::new(format!(
                     "Must be at most {} characters",
                     max
@@ -269,6 +269,15 @@ mod tests {
         assert!(validator("abc").is_ok());
         assert!(validator("abcde").is_ok());
         assert!(validator("abcdef").is_err());
+    }
+
+    #[test]
+    fn test_length_validators_count_characters_not_bytes() {
+        // "가나다" is 3 characters in 9 bytes
+        assert!(Validators::max_length(3)("가나다").is_ok());
+        assert!(Validators::max_length(2)("가나다").is_err());
+        assert!(Validators::min_length(3)("가나다").is_ok());
+        assert!(Validators::min_length(4)("가나다").is_err());
     }
 
     #[test]
