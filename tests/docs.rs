@@ -1,5 +1,8 @@
 //! Checks on `docs/` and the doc comments, not on `src/` behavior.
 
+#[path = "support/alloc_cap.rs"]
+mod alloc_cap;
+
 #[path = "docs/examples_ratchet.rs"]
 mod examples_ratchet;
 #[path = "docs/features_registry.rs"]
