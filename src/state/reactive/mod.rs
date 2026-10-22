@@ -121,6 +121,7 @@ mod async_state;
 mod batch;
 mod computed;
 mod context;
+pub(crate) mod cross_thread;
 mod effect;
 mod incremental;
 mod runtime;

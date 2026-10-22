@@ -37,6 +37,12 @@ std::thread::spawn(move || {
 });
 ```
 
+Computed values and effects track their signals on the thread that created
+them. A set on another thread reaches them there: the app applies it on its
+next frame, `flush()` applies it at once, and reading a computed value
+applies it first. `subscribe` callbacks run on the thread that sets the
+signal.
+
 ## Computed Values
 
 Computed values derive from other signals and automatically update:

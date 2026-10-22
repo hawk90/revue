@@ -94,6 +94,12 @@ impl Drop for Subscription {
 ///     count_clone.set(42);  // Updates from background thread
 /// });
 /// ```
+///
+/// Computed values and effects track signals on the thread that created
+/// them. A set on another thread reaches them there: the app applies it on
+/// its next frame, [`flush`](super::flush) at once, and reading a computed
+/// value first. [`subscribe`](Signal::subscribe) callbacks run on the
+/// setting thread.
 pub struct Signal<T> {
     id: SignalId,
     value: Arc<RwLock<T>>,

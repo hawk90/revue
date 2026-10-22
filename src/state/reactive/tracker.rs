@@ -239,6 +239,8 @@ pub fn with_tracker<R>(f: impl FnOnce(&mut DependencyTracker) -> R) -> R {
 
 /// Start tracking dependencies for a subscriber
 pub fn start_tracking(subscriber: Subscriber) {
+    // This thread now tracks dependents: changes on other threads reach it
+    super::cross_thread::register_current_thread();
     with_tracker(|t| t.start_tracking(subscriber));
 }
 
@@ -262,6 +264,14 @@ pub fn track_read(signal_id: SignalId) {
 /// Panics if recursion depth exceeds `MAX_NOTIFY_DEPTH` (100), which indicates
 /// a circular dependency in the reactive graph.
 pub fn notify_dependents(signal_id: SignalId) {
+    notify_local_dependents(signal_id);
+    // Dependents tracked on other threads hear of it when those threads
+    // drain (#873)
+    super::cross_thread::post(signal_id);
+}
+
+/// Notify the dependents tracked on this thread
+pub(crate) fn notify_local_dependents(signal_id: SignalId) {
     // Check and increment recursion depth
     let _depth = enter_notify();
     let batching = super::batch::is_batching();
