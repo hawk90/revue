@@ -73,7 +73,7 @@ impl RichTextEditor {
             self.blocks.push(Block::paragraph(""));
         }
         self.cursor = (0, 0);
-        self.scroll = 0;
+        self.scroll.scroll_to_top();
     }
 
     /// Parse a single markdown line

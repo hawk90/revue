@@ -20,7 +20,7 @@ impl RichTextEditor {
             self.blocks.push(Block::paragraph(""));
         }
         self.cursor = (0, 0);
-        self.scroll = 0;
+        self.scroll.scroll_to_top();
         self
     }
 
@@ -38,7 +38,7 @@ impl RichTextEditor {
             self.blocks.push(Block::paragraph(""));
         }
         self.cursor = (0, 0);
-        self.scroll = 0;
+        self.scroll.scroll_to_top();
         self.undo_stack.clear();
         self.redo_stack.clear();
     }
@@ -107,18 +107,10 @@ impl RichTextEditor {
         let block = block.min(self.blocks.len().saturating_sub(1));
         let col = col.min(self.blocks[block].char_count());
         self.cursor = (block, col);
-        self.ensure_cursor_visible();
     }
 
     /// Get block count
     pub fn block_count(&self) -> usize {
         self.blocks.len()
-    }
-
-    /// Ensure cursor is visible
-    pub(super) fn ensure_cursor_visible(&mut self) {
-        if self.cursor.0 < self.scroll {
-            self.scroll = self.cursor.0;
-        }
     }
 }

@@ -117,6 +117,5 @@ impl RichTextEditor {
 
         self.cursor = start;
         self.anchor = None;
-        self.ensure_cursor_visible();
     }
 }

@@ -45,6 +45,7 @@ use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::figlet::FigletFont;
 use crate::utils::text_sizing::is_supported as text_sizing_supported;
+use crate::utils::ScrollState;
 use crate::widget::slides::{SlideContent, SlideNav};
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, SEPARATOR_COLOR};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
@@ -72,8 +73,8 @@ pub struct MarkdownPresentation {
     nav: SlideNav,
     /// Current viewing mode
     mode: ViewMode,
-    /// Scroll offset for preview mode
-    scroll_offset: usize,
+    /// Where the preview's rows are scrolled to
+    scroll: ScrollState,
     /// Use text sizing protocol for headers
     use_text_sizing: bool,
     /// Figlet font for header fallback
@@ -114,7 +115,7 @@ impl MarkdownPresentation {
             source,
             nav,
             mode: ViewMode::Preview,
-            scroll_offset: 0,
+            scroll: ScrollState::new(),
             use_text_sizing: text_sizing_supported(),
             figlet_font: FigletFont::Block,
             bg: None,
@@ -141,7 +142,7 @@ impl MarkdownPresentation {
             source,
             nav,
             mode: ViewMode::Preview,
-            scroll_offset: 0,
+            scroll: ScrollState::new(),
             use_text_sizing: text_sizing_supported(),
             figlet_font: FigletFont::Block,
             bg: None,
@@ -317,24 +318,30 @@ impl MarkdownPresentation {
 
     /// Scroll up in preview mode
     pub fn scroll_up(&mut self, lines: usize) {
-        self.scroll_offset = self.scroll_offset.saturating_sub(lines);
+        self.scroll
+            .set_content(Markdown::new(&self.source).line_count());
+        self.scroll
+            .scroll_by(-(lines.min(isize::MAX as usize) as isize));
     }
 
     /// Scroll down in preview mode
     pub fn scroll_down(&mut self, lines: usize) {
-        self.scroll_offset = self.scroll_offset.saturating_add(lines);
+        self.scroll
+            .set_content(Markdown::new(&self.source).line_count());
+        self.scroll
+            .scroll_by(lines.min(isize::MAX as usize) as isize);
     }
 
     /// Reset scroll position
     pub fn scroll_to_top(&mut self) {
-        self.scroll_offset = 0;
+        self.scroll.scroll_to_top();
     }
 
     /// Reload from new source
     pub fn reload(&mut self, source: impl Into<String>) {
         self.source = source.into();
         self.nav = SlideNav::new(&self.source);
-        self.scroll_offset = 0;
+        self.scroll.scroll_to_top();
     }
 
     /// Render preview mode (full scrollable content)
@@ -343,10 +350,15 @@ impl MarkdownPresentation {
         self.fill_background(ctx);
 
         // Render full markdown using Markdown widget
-        let md = Markdown::new(&self.source)
+        let mut md = Markdown::new(&self.source)
             .link_fg(self.link_fg)
             .code_fg(self.code_fg)
             .heading_fg(self.heading_fg.unwrap_or_else(|| ctx.css_color(HEADING_FG)));
+
+        // From the scrolled-to row, kept so the last page is full (#973)
+        self.scroll.set_content(md.line_count());
+        self.scroll.set_viewport(usize::from(ctx.area.height));
+        md.lines.drain(..self.scroll.offset());
 
         md.render(ctx);
 

@@ -42,6 +42,12 @@ impl View for RichTextEditor {
             .height
             .saturating_sub(if self.show_toolbar { 1 } else { 0 });
 
+        // One row per block; the view shows the cursor's block wherever it
+        // moved, scrolling just far enough (#973)
+        self.scroll.set_content(self.blocks.len());
+        self.scroll.set_viewport(usize::from(content_height));
+        self.scroll.track(self.cursor.0..self.cursor.0 + 1);
+
         match self.view_mode {
             EditorViewMode::Editor => {
                 self.render_editor(ctx, 0, y, area.width, content_height);

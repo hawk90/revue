@@ -473,6 +473,69 @@ fn test_diff_scroll_with_scrolling_content() {
     viewer.render(&mut ctx);
 }
 
+/// The rows of `viewer` drawn in `w` x `h`, trailing blanks trimmed
+fn screen_rows(viewer: &DiffViewer, w: u16, h: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(w, h);
+    viewer.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, w, h)));
+    (0..h)
+        .map(|y| {
+            (0..w)
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
+
+/// Ten unchanged lines, `a` to `j`, unified and without line numbers
+fn ten_lines() -> DiffViewer {
+    let text = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n";
+    diff(text, text).mode(DiffMode::Unified).line_numbers(false)
+}
+
+/// The scroll stops at the last full page (#973): it used to stop with the
+/// last line on top and blank rows under it, and Up then had to undo the
+/// extra steps before the view moved.
+#[test]
+fn test_diff_scroll_down_stops_at_the_last_page() {
+    let mut viewer = ten_lines();
+    assert_eq!(screen_rows(&viewer, 20, 4), [" a", " b", " c", " d"]);
+    viewer.scroll_down(100);
+    assert_eq!(screen_rows(&viewer, 20, 4), [" g", " h", " i", " j"]);
+    viewer.scroll_up(1);
+    assert_eq!(screen_rows(&viewer, 20, 4), [" f", " g", " h", " i"]);
+}
+
+/// The split view's rows are the area under its header
+#[test]
+fn test_diff_split_scroll_stops_at_the_last_page() {
+    let mut viewer = ten_lines().mode(DiffMode::Split);
+    viewer.scroll_down(100);
+    let rows = screen_rows(&viewer, 30, 4);
+    assert_eq!(rows[0], "Original      │Modified");
+    assert_eq!(
+        rows[1..],
+        ["h             │h", "i             │i", "j             │j"]
+    );
+}
+
+/// Rows that shrink under a scrolled view (folding with `context`) keep the
+/// view on the rows there are
+#[test]
+fn test_diff_scroll_kept_in_range_when_the_rows_shrink() {
+    let mut viewer = diff("a\nb\nc\nd\ne\nf\ng\nh\n", "A\nb\nc\nd\ne\nf\ng\nh\n")
+        .mode(DiffMode::Unified)
+        .line_numbers(false);
+    let _ = screen_rows(&viewer, 20, 3);
+    viewer.scroll_down(6);
+    let viewer = viewer.context(1);
+    assert_eq!(
+        screen_rows(&viewer, 20, 3),
+        ["+A", " b", "⋯ 6 unchanged lines"]
+    );
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Edge Cases Tests (엣지 케이스 테스트)
 // ─────────────────────────────────────────────────────────────────────────

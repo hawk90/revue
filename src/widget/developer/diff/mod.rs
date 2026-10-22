@@ -8,6 +8,7 @@ mod types;
 
 pub use types::{ChangeType, DiffColors, DiffLine, DiffMode};
 
+use crate::utils::ScrollState;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 use similar::{ChangeTag, TextDiff};
@@ -40,8 +41,8 @@ pub struct DiffViewer {
     colors: DiffColors,
     /// Show line numbers
     show_line_numbers: bool,
-    /// Scroll position
-    scroll: usize,
+    /// Where the rows (diff lines and folds) are scrolled to
+    scroll: ScrollState,
     /// Unchanged lines kept around each change; `None` shows every line
     context_lines: Option<usize>,
     /// Computed diff lines (cached)
@@ -61,7 +62,7 @@ impl DiffViewer {
             mode: DiffMode::default(),
             colors: DiffColors::default(),
             show_line_numbers: true,
-            scroll: 0,
+            scroll: ScrollState::new(),
             context_lines: None,
             diff_lines: Vec::new(),
             props: WidgetProps::new(),
@@ -129,19 +130,25 @@ impl DiffViewer {
         self
     }
 
-    /// Set scroll position
+    /// Set scroll position: the first row shown, kept so the last page is
+    /// full once the viewer has been drawn (#973)
     pub fn set_scroll(&mut self, scroll: usize) {
-        self.scroll = scroll.min(self.rows().len().saturating_sub(1));
+        self.scroll.set_content(self.rows().len());
+        self.scroll.scroll_to(scroll);
     }
 
     /// Scroll down
     pub fn scroll_down(&mut self, amount: usize) {
-        self.set_scroll(self.scroll.saturating_add(amount));
+        self.scroll.set_content(self.rows().len());
+        self.scroll
+            .scroll_by(amount.min(isize::MAX as usize) as isize);
     }
 
     /// Scroll up
     pub fn scroll_up(&mut self, amount: usize) {
-        self.scroll = self.scroll.saturating_sub(amount);
+        self.scroll.set_content(self.rows().len());
+        self.scroll
+            .scroll_by(-(amount.min(isize::MAX as usize) as isize));
     }
 
     /// Compute the diff

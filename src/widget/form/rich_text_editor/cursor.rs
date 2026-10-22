@@ -14,7 +14,6 @@ impl RichTextEditor {
             self.cursor.1 = self.blocks[self.cursor.0].char_count();
         }
         self.clear_selection();
-        self.ensure_cursor_visible();
     }
 
     /// Move cursor right
@@ -27,7 +26,6 @@ impl RichTextEditor {
             self.cursor.1 = 0;
         }
         self.clear_selection();
-        self.ensure_cursor_visible();
     }
 
     /// Move cursor up
@@ -37,7 +35,6 @@ impl RichTextEditor {
             self.cursor.1 = self.cursor.1.min(self.blocks[self.cursor.0].char_count());
         }
         self.clear_selection();
-        self.ensure_cursor_visible();
     }
 
     /// Move cursor down
@@ -47,28 +44,24 @@ impl RichTextEditor {
             self.cursor.1 = self.cursor.1.min(self.blocks[self.cursor.0].char_count());
         }
         self.clear_selection();
-        self.ensure_cursor_visible();
     }
 
     /// Move to start of line
     pub fn move_home(&mut self) {
         self.cursor.1 = 0;
         self.clear_selection();
-        self.ensure_cursor_visible();
     }
 
     /// Move to end of line
     pub fn move_end(&mut self) {
         self.cursor.1 = self.blocks[self.cursor.0].char_count();
         self.clear_selection();
-        self.ensure_cursor_visible();
     }
 
     /// Move to document start
     pub fn move_document_start(&mut self) {
         self.cursor = (0, 0);
         self.clear_selection();
-        self.ensure_cursor_visible();
     }
 
     /// Move to document end
@@ -76,6 +69,5 @@ impl RichTextEditor {
         let last_block = self.blocks.len().saturating_sub(1);
         self.cursor = (last_block, self.blocks[last_block].char_count());
         self.clear_selection();
-        self.ensure_cursor_visible();
     }
 }
