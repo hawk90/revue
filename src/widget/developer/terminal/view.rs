@@ -75,6 +75,11 @@ impl Terminal {
                     if col >= area.width as usize {
                         break;
                     }
+                    // The right half of a wide character: `set` writes it
+                    // with the character
+                    if cell.ch == '\0' {
+                        continue;
+                    }
 
                     // Two cells read as "no ANSI code spoke for this": one
                     // the parser never touched, which is `Color::default()` -

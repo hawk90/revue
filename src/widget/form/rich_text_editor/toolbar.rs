@@ -49,10 +49,11 @@ impl RichTextEditor {
                 };
 
                 for ch in label.chars() {
-                    if col < x + width {
+                    let w = crate::utils::unicode::char_width(ch) as u16;
+                    if col + w <= x + width {
                         ctx.set(col, y, Cell::new(ch).fg(fg).bg(bg));
-                        col += 1;
                     }
+                    col += w;
                 }
                 col += 1; // Space between items
             }

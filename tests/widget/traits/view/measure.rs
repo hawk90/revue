@@ -473,8 +473,9 @@ fn breadcrumb_measures_its_trail() {
         .push("widget")
         .push("mod.rs");
     assert_eq!(no_home.measure(W, H), Some((21, 1)));
-    // The home icon and its separator add 4.
-    assert_eq!(trail.measure(W, H), Some((25, 1)));
+    // The home icon (🏠, two columns) with a space, its separator and a
+    // space add 5.
+    assert_eq!(trail.measure(W, H), Some((26, 1)));
 }
 
 #[test]

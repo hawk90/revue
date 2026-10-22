@@ -153,10 +153,12 @@ impl Timeline {
             TimelineStyle::Boxed => '─',
             TimelineStyle::Minimal => ' ',
         };
+        // After the icon, which a wide one (🎉) takes two columns of
         if self.style != TimelineStyle::Minimal {
             let mut conn_cell = Cell::new(connector);
             conn_cell.fg = Some(self.line_color);
-            ctx.set(icon_x + 1, y, conn_cell);
+            let icon_w = crate::utils::unicode::char_width(icon) as u16;
+            ctx.set(icon_x + icon_w.max(1), y, conn_cell);
         }
     }
 

@@ -20,12 +20,25 @@ impl super::RenderContext<'_> {
 
     /// Set a cell at relative position (0,0 = area top-left)
     ///
-    /// Respects the clipping region set by `overflow: hidden`.
-    pub fn set(&mut self, x: u16, y: u16, cell: Cell) {
+    /// Respects the clipping region set by `overflow: hidden`. A wide glyph
+    /// takes the cell to its right as well (see [`Buffer::set`]); where
+    /// that cell is outside the area or the clip, a space is drawn instead
+    /// of half the glyph.
+    ///
+    /// [`Buffer::set`]: crate::render::Buffer::set
+    pub fn set(&mut self, x: u16, y: u16, mut cell: Cell) {
         if x < self.area.width && y < self.area.height {
             let abs_x = self.area.x.saturating_add(x);
             let abs_y = self.area.y.saturating_add(y);
             if !self.is_clipped(abs_x, abs_y) {
+                let wide = !cell.is_continuation() && char_width(cell.symbol) == 2;
+                if wide
+                    && (x.saturating_add(1) >= self.area.width
+                        || self.is_clipped(abs_x.saturating_add(1), abs_y))
+                {
+                    cell.symbol = ' ';
+                    cell.sequence_id = None;
+                }
                 self.buffer.set(abs_x, abs_y, cell);
             }
         }

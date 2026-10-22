@@ -15,6 +15,29 @@ fn initial_cell(ch: char, fg: Color, bg: Color) -> Cell {
     cell
 }
 
+/// The first two initials from column `x` of row `y`, each as wide as it
+/// is drawn, within `cols` columns; one that would cross the last column is
+/// left out.
+fn draw_initials(
+    ctx: &mut RenderContext,
+    x: u16,
+    y: u16,
+    cols: u16,
+    initials: &str,
+    fg: Color,
+    bg: Color,
+) {
+    let mut dx = 0;
+    for ch in initials.chars().take(2) {
+        let w = crate::utils::unicode::char_width(ch) as u16;
+        if dx + w > cols {
+            break;
+        }
+        ctx.set(x + dx, y, initial_cell(ch, fg, bg));
+        dx += w;
+    }
+}
+
 /// An outline glyph drawn in the avatar's background color.
 fn edge_cell(ch: char, bg: Color) -> Cell {
     let mut cell = Cell::new(ch);
@@ -53,9 +76,7 @@ impl Avatar {
 
         ctx.set(0, 0, edge_cell(left, bg));
 
-        for (i, ch) in initials.chars().take(2).enumerate() {
-            ctx.set(1 + i as u16, 0, initial_cell(ch, fg, bg));
-        }
+        draw_initials(ctx, 1, 0, 2, initials, fg, bg);
 
         ctx.set(3, 0, edge_cell(right, bg));
 
@@ -92,16 +113,11 @@ impl Avatar {
         // Middle row
         ctx.set(0, 1, edge_cell('│', bg));
 
-        // Pre-collect initials chars for O(1) access
-        let initials_chars: Vec<char> = initials.chars().collect();
+        // The background fills the box, then the initials go over it
         for i in 1..4 {
-            let ch = if i == 1 || i == 2 {
-                initials_chars.get(i - 1).copied().unwrap_or(' ')
-            } else {
-                ' '
-            };
-            ctx.set(i as u16, 1, initial_cell(ch, fg, bg));
+            ctx.set(i, 1, initial_cell(' ', fg, bg));
         }
+        draw_initials(ctx, 1, 1, 3, initials, fg, bg);
 
         ctx.set(4, 1, edge_cell('│', bg));
 

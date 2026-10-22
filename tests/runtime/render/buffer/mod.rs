@@ -112,6 +112,61 @@ fn test_buffer_put_str_mixed() {
 }
 
 #[test]
+fn set_gives_a_wide_glyph_its_continuation_cell() {
+    // A widget that places glyphs one by one, advancing by their width
+    // (#974): the right half is a continuation with the glyph's colors, so
+    // the terminal output never writes a space over it
+    let mut buf = Buffer::new(6, 1);
+    buf.fill(0, 0, 6, 1, Cell::new(' '));
+    let mut glyph = Cell::new('한');
+    glyph.fg = Some(Color::RED);
+    glyph.bg = Some(Color::BLUE);
+    glyph.modifier = Modifier::BOLD;
+    buf.set(1, 0, glyph);
+    buf.set(3, 0, Cell::new('a'));
+    let cont = buf.get(2, 0).unwrap();
+    assert!(cont.is_continuation());
+    assert_eq!(
+        (cont.fg, cont.bg, cont.modifier),
+        (Some(Color::RED), Some(Color::BLUE), Modifier::BOLD)
+    );
+    assert_eq!(buf.get(1, 0).unwrap().symbol, '한');
+    assert_eq!(buf.get(3, 0).unwrap().symbol, 'a');
+}
+
+#[test]
+fn set_draws_no_half_glyph_at_the_last_column() {
+    let mut buf = Buffer::new(3, 1);
+    let mut glyph = Cell::new('日');
+    glyph.bg = Some(Color::BLUE);
+    buf.set(2, 0, glyph);
+    let cell = buf.get(2, 0).unwrap();
+    assert_eq!((cell.symbol, cell.bg), (' ', Some(Color::BLUE)));
+}
+
+#[test]
+fn set_over_a_glyph_s_right_half_blanks_the_glyph() {
+    // Advancing by one after a wide glyph writes over its right half: the
+    // terminal would erase the glyph, so the buffer does too
+    let mut buf = Buffer::new(4, 1);
+    buf.set(0, 0, Cell::new('한'));
+    buf.set(1, 0, Cell::new('a'));
+    assert_eq!(buf.get(0, 0).unwrap().symbol, ' ');
+    assert_eq!(buf.get(1, 0).unwrap().symbol, 'a');
+}
+
+#[test]
+fn a_wide_glyph_over_a_glyph_s_left_half_blanks_its_right_half() {
+    let mut buf = Buffer::new(5, 1);
+    buf.set(1, 0, Cell::new('한'));
+    buf.set(0, 0, Cell::new('글'));
+    assert_eq!(buf.get(0, 0).unwrap().symbol, '글');
+    assert!(buf.get(1, 0).unwrap().is_continuation());
+    // 한's right half has no glyph any more
+    assert_eq!(buf.get(2, 0).unwrap().symbol, ' ');
+}
+
+#[test]
 fn test_buffer_fill() {
     {
         let mut buf = Buffer::new(10, 10);

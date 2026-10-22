@@ -44,7 +44,10 @@ fn test_toast_queue_colors() {
         (corner.fg, corner.bg),
         (Some(Color::GREEN), Some(ToastLevel::Success.bg_color()))
     );
-    let fill = b.get(14, 2).unwrap();
+    // "Saved 저장" ends with 장 in columns 13-14: its right half is a
+    // continuation cell, then the fill
+    assert!(b.get(14, 2).unwrap().is_continuation());
+    let fill = b.get(15, 2).unwrap();
     assert_eq!((fill.symbol, fill.fg), (' ', None));
     assert_eq!(fill.bg, Some(ToastLevel::Success.bg_color()));
     let icon = b.get(3, 2).unwrap();

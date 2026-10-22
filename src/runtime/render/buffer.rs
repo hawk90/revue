@@ -249,11 +249,45 @@ impl Buffer {
 
     /// Set a cell at position. Over half of a wide glyph, the other half
     /// is blanked: the terminal erases the whole glyph.
+    ///
+    /// A wide glyph (CJK, emoji) takes the cell to its right too, as a
+    /// continuation with its colors, so the terminal output never writes
+    /// over its right half (#974). Where that cell is outside the buffer
+    /// or the clip, the glyph is not drawn: a space takes its place.
     pub fn set(&mut self, x: u16, y: u16, cell: Cell) {
-        if let Some(idx) = self.writable(x, y) {
+        let Some(idx) = self.writable(x, y) else {
+            return;
+        };
+        if cell.is_continuation() || char_width(cell.symbol) != 2 {
             self.split_wide_chars(y, x, x.saturating_add(1), !cell.is_continuation());
             self.cells[idx] = cell;
+            return;
         }
+        let right = x.checked_add(1).and_then(|rx| self.writable(rx, y));
+        match right {
+            Some(right_idx) => {
+                self.split_wide_chars(y, x, x.saturating_add(2), true);
+                self.cells[idx] = cell;
+                self.cells[right_idx] = Self::continuation_of(&cell);
+            }
+            None => {
+                self.split_wide_chars(y, x, x.saturating_add(1), true);
+                let mut space = cell;
+                Self::blank(&mut space);
+                self.cells[idx] = space;
+            }
+        }
+    }
+
+    /// The right half of `glyph`: a continuation with its colors, modifiers
+    /// and link
+    fn continuation_of(glyph: &Cell) -> Cell {
+        let mut cont = Cell::continuation();
+        cont.fg = glyph.fg;
+        cont.bg = glyph.bg;
+        cont.modifier = glyph.modifier;
+        cont.hyperlink_id = glyph.hyperlink_id;
+        cont
     }
 
     /// Before columns `x_start..x_end` of row `y` are overwritten, blank the

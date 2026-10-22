@@ -100,7 +100,9 @@ impl View for Link {
             (self.fg, None)
         };
 
-        for (i, ch) in self.label.chars().take(area.width as usize).enumerate() {
+        // In terminal columns: a wide glyph takes two, and one that would
+        // cross the area's edge is left out
+        ctx.put_str_with(0, 0, &self.label, area.width, |ch| {
             let mut cell = Cell::new(ch);
             cell.fg = fg;
             cell.bg = bg;
@@ -110,8 +112,8 @@ impl View for Link {
             if self.underline && !self.active {
                 cell.modifier |= crate::render::Modifier::UNDERLINE;
             }
-            ctx.buffer.set(area.x + i as u16, area.y, cell);
-        }
+            cell
+        });
     }
 }
 
