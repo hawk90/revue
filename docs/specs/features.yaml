@@ -765,17 +765,20 @@ items:
     area: widget
     priority: P2
     priority_inferred: true
-    status: done
+    status: partial
     acceptance:
       - add_cursor_at/above/below
       - Ctrl+Alt+Up/Down add cursor
       - Ctrl+D select next occurrence
       - Esc clears secondary cursors
+      - typing, Enter, Tab, Backspace and Delete apply at every cursor, as one undo step
     evidence:
       - src/widget/input/input_widgets/textarea/multi_cursor.rs
       - src/widget/input/input_widgets/textarea/mod.rs::handle_key_event
     source:
       - FEATURES.md §4 Widgets / Input Widgets / TextArea
+    notes: Cursors are added and drawn, but edits and moves apply at the primary cursor only, and the other cursors keep
+      their old columns (#1006).
   - id: WID-013
     title: Tabs
     area: widget
