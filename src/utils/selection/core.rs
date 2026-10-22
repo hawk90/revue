@@ -139,8 +139,9 @@ impl Selection {
     /// Get visible range (start..end indices)
     pub fn visible_range(&self) -> std::ops::Range<usize> {
         let offset = self.offset.get();
-        let end = (offset + self.visible.get()).min(self.len);
-        offset..end
+        let end = offset.saturating_add(self.visible.get()).min(self.len);
+        // An offset left past the end while nothing was shown
+        offset.min(end)..end
     }
 
     /// Reset offset to 0 (scroll to top)
@@ -163,7 +164,7 @@ impl Selection {
         self.set_request(None);
         let visible = self.visible.get();
         if visible > 0 && self.len > 0 {
-            self.index = (self.index + visible).min(self.len - 1);
+            self.index = self.index.saturating_add(visible).min(self.len - 1);
             self.ensure_visible();
         }
     }

@@ -1,6 +1,7 @@
 //! Tests for selection utilities
 
 mod keyed;
+mod model;
 
 use revue::utils::selection::{wrap_next, wrap_prev, SectionedSelection, Selection};
 

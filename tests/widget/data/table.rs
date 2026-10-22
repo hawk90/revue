@@ -996,3 +996,135 @@ mod snapshots {
         pilot.snapshot("table_with_header");
     }
 }
+
+// =========================================================================
+// Model: moves and draws at changing heights (#1162)
+// =========================================================================
+
+mod model {
+    use super::{render, row_text};
+    use proptest::prelude::*;
+    use revue::style::Color;
+    use revue::widget::data::{Column, Table};
+
+    #[derive(Clone, Debug)]
+    enum Op {
+        Next,
+        Prev,
+        First,
+        Last,
+        PageDown(usize),
+        PageUp(usize),
+        Jump(usize),
+        Draw(u16),
+    }
+
+    fn op() -> impl Strategy<Value = Op> {
+        prop_oneof![
+            2 => Just(Op::Next),
+            2 => Just(Op::Prev),
+            1 => Just(Op::First),
+            1 => Just(Op::Last),
+            1 => (0usize..6).prop_map(Op::PageDown),
+            1 => (0usize..6).prop_map(Op::PageUp),
+            1 => (0usize..20).prop_map(Op::Jump),
+            2 => (0u16..10).prop_map(Op::Draw),
+        ]
+    }
+
+    /// Of the windows of `height` rows that show `index`, the one nearest
+    /// `top`
+    fn nearest(top: usize, index: usize, len: usize, height: usize) -> usize {
+        (0..=len.saturating_sub(height))
+            .filter(|&o| o <= index && index < o + height)
+            .min_by_key(|&o| o.abs_diff(top))
+            .unwrap_or(0)
+    }
+
+    proptest! {
+        /// Any moves and draws, with or without the border: the selected
+        /// row is the model's (moves stop at the ends), it is drawn
+        /// highlighted, the data rows start at the model's top, and a draw
+        /// does not scroll while the selected row is already in view.
+        #[test]
+        fn table_follows_the_model(
+            len in 0usize..15,
+            border in any::<bool>(),
+            ops in prop::collection::vec(op(), 1..50),
+        ) {
+            let rows: Vec<Vec<String>> = (0..len).map(|i| vec![format!("r{i}")]).collect();
+            let mut table = Table::new(vec![Column::new("name").width(8)])
+                .rows(rows)
+                .border(border)
+                .selected_style(Color::BLACK, Color::CYAN);
+            // Rows above the data (top border, header, separator) and below
+            let (above, below) = if border { (3, 1) } else { (1, 0) };
+            let last = len.saturating_sub(1);
+            let (mut index, mut top, mut view) = (0usize, 0usize, None::<usize>);
+            for op in &ops {
+                match *op {
+                    Op::Next => {
+                        table.select_next();
+                        index = (index + 1).min(last);
+                    }
+                    Op::Prev => {
+                        table.select_prev();
+                        index = index.saturating_sub(1);
+                    }
+                    Op::First => {
+                        table.select_first();
+                        index = 0;
+                        top = 0;
+                    }
+                    Op::Last => {
+                        table.select_last();
+                        index = last;
+                    }
+                    Op::PageDown(n) => {
+                        table.page_down(n);
+                        index = (index + n).min(last);
+                    }
+                    Op::PageUp(n) => {
+                        table.page_up(n);
+                        index = index.saturating_sub(n);
+                    }
+                    Op::Jump(i) => {
+                        table.jump_to(i);
+                        index = i.min(last);
+                    }
+                    Op::Draw(shown) => {
+                        let shown = shown as usize;
+                        let was = top;
+                        if shown > 0 {
+                            top = nearest(top, index, len, shown);
+                            if was <= index && index < was + shown && was <= len.saturating_sub(shown) {
+                                prop_assert_eq!(top, was, "the view jumped");
+                            }
+                        }
+                        // A table under two rows tall draws nothing and
+                        // keeps the view it had
+                        if above + shown + below >= 2 {
+                            view = Some(shown);
+                        }
+                        let buffer = render(&table, 14, (above + shown + below) as u16);
+                        for y in 0..shown {
+                            let text = row_text(&buffer, (above + y) as u16);
+                            if top + y < len {
+                                let want = format!("r{}", top + y);
+                                prop_assert!(text.contains(&want), "row {}: {:?}, want {}", y, text, want);
+                            }
+                            let lit = buffer.get(border as u16 + 1, (above + y) as u16).unwrap().bg == Some(Color::CYAN);
+                            prop_assert_eq!(lit, len > 0 && top + y == index, "row {} lit", y);
+                        }
+                    }
+                }
+                if !matches!(op, Op::Draw(_) | Op::First) {
+                    if let Some(v) = view.filter(|&v| v > 0) {
+                        top = nearest(top, index, len, v);
+                    }
+                }
+                prop_assert_eq!(table.selected_index(), index, "after {:?}", op);
+            }
+        }
+    }
+}

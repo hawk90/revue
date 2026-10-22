@@ -3,6 +3,7 @@
 //! src/widget/input/input_widgets/input/mod.rs cover the rest.
 
 mod edit;
+mod model;
 mod render;
 
 use revue::event::Key;

@@ -158,6 +158,14 @@ impl TextArea {
         self.cursors.primary().is_selecting()
     }
 
+    /// Whether the primary cursor's selection holds any text
+    pub(super) fn selects_text(&self) -> bool {
+        self.cursors
+            .primary()
+            .anchor
+            .is_some_and(|anchor| anchor != self.cursors.primary().pos)
+    }
+
     /// Start selection at current cursor (primary)
     pub fn start_selection(&mut self) {
         self.cursors.primary_mut().start_selection();

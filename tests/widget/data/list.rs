@@ -1085,3 +1085,101 @@ mod snapshots {
         pilot.snapshot("list_selected");
     }
 }
+
+// =============================================================================
+// Model: keys and draws at changing heights (#1162)
+// =============================================================================
+
+mod model {
+    use super::render;
+    use proptest::prelude::*;
+    use revue::event::Key;
+    use revue::style::Color;
+    use revue::widget::List;
+
+    #[derive(Clone, Debug)]
+    enum Op {
+        Key(Key),
+        Draw(u16),
+    }
+
+    fn op() -> impl Strategy<Value = Op> {
+        prop_oneof![
+            3 => prop::sample::select(vec![
+                Key::Up,
+                Key::Down,
+                Key::Char('j'),
+                Key::Char('k'),
+                Key::Home,
+                Key::End,
+            ])
+            .prop_map(Op::Key),
+            1 => (1u16..9).prop_map(Op::Draw),
+        ]
+    }
+
+    /// Of the windows of `height` rows that show `index`, the one nearest
+    /// `top`
+    fn nearest(top: usize, index: usize, len: usize, height: usize) -> usize {
+        (0..=len.saturating_sub(height))
+            .filter(|&o| o <= index && index < o + height)
+            .min_by_key(|&o| o.abs_diff(top))
+            .unwrap_or(0)
+    }
+
+    proptest! {
+        /// Any keys and draws: the selected item is the model's (moves
+        /// wrap), it is drawn highlighted on its row, the rows show the
+        /// items from the model's top, and a draw does not scroll while the
+        /// selected item is already in view.
+        #[test]
+        fn list_follows_the_model(
+            len in 0usize..15,
+            ops in prop::collection::vec(op(), 1..50),
+        ) {
+            let items: Vec<String> = (0..len).map(|i| format!("i{i}")).collect();
+            let mut list = List::new(items.clone()).highlight_bg(Color::CYAN);
+            let (mut index, mut top, mut height) = (0usize, 0usize, None::<usize>);
+            for op in &ops {
+                match *op {
+                    Op::Key(key) => {
+                        prop_assert!(list.handle_key(&key));
+                        if len > 0 {
+                            index = match key {
+                                Key::Up | Key::Char('k') => (index + len - 1) % len,
+                                Key::Down | Key::Char('j') => (index + 1) % len,
+                                Key::Home => 0,
+                                _ => len - 1,
+                            };
+                        }
+                        if let Some(h) = height {
+                            top = nearest(top, index, len, h);
+                        }
+                    }
+                    Op::Draw(h) => {
+                        let h = h as usize;
+                        let was = top;
+                        top = nearest(top, index, len, h);
+                        if was <= index && index < was + h && was <= len.saturating_sub(h) {
+                            prop_assert_eq!(top, was, "the view jumped");
+                        }
+                        height = Some(h);
+                        let buffer = render(&list, 12, h as u16);
+                        for y in 0..h {
+                            let row: String = (0..12)
+                                .map(|x| buffer.get(x, y as u16).unwrap().symbol)
+                                .collect::<String>()
+                                .trim_end()
+                                .to_string();
+                            let want = items.get(top + y).cloned().unwrap_or_default();
+                            prop_assert_eq!(row, want, "row {} at height {}", y, h);
+                            let lit = buffer.get(11, y as u16).unwrap().bg == Some(Color::CYAN);
+                            prop_assert_eq!(lit, len > 0 && top + y == index, "row {} lit", y);
+                        }
+                    }
+                }
+                prop_assert_eq!(list.selected_index(), index, "after {:?}", op);
+            }
+        }
+    }
+}

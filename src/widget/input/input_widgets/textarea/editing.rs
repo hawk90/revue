@@ -10,10 +10,16 @@ impl TextArea {
             return;
         }
 
-        // Delete selection first if any
-        if self.has_selection() {
-            self.delete_selection();
+        // Typing over a selection replaces it as one undo step
+        if self.selects_text() {
+            let s = match ch {
+                '\t' => " ".repeat(self.tab_width),
+                ch => ch.to_string(),
+            };
+            self.insert_str(&s);
+            return;
         }
+        self.cursors.primary_mut().clear_selection();
 
         if ch == '\n' {
             self.insert_newline();
@@ -130,10 +136,12 @@ impl TextArea {
             return;
         }
 
-        if self.has_selection() {
+        if self.selects_text() {
             self.delete_selection();
             return;
         }
+        // An empty selection is no selection: the key deletes a char
+        self.cursors.primary_mut().clear_selection();
 
         let cursor_pos = self.cursors.primary().pos;
         let (line, col) = (cursor_pos.line, cursor_pos.col);
@@ -172,10 +180,12 @@ impl TextArea {
             return;
         }
 
-        if self.has_selection() {
+        if self.selects_text() {
             self.delete_selection();
             return;
         }
+        // An empty selection is no selection: the key deletes a char
+        self.cursors.primary_mut().clear_selection();
 
         let cursor_pos = self.cursors.primary().pos;
         let (line, col) = (cursor_pos.line, cursor_pos.col);
@@ -221,6 +231,8 @@ impl TextArea {
 
         let new_line = line.min(self.lines.len().saturating_sub(1));
         self.set_primary_cursor(new_line, 0);
+        // The anchor would now select text the user never selected
+        self.cursors.primary_mut().clear_selection();
     }
 
     /// Duplicate the current line

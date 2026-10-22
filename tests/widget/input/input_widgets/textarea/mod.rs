@@ -5,6 +5,7 @@ mod content;
 mod cursor;
 mod find_replace;
 mod input;
+mod model;
 mod selection;
 mod undo;
 mod unicode;
