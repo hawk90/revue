@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.1](https://github.com/hawk90/revue/compare/v3.11.0...v3.11.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **render:** give every wide glyph its continuation cell, and lay out caller text in terminal columns ([#1264](https://github.com/hawk90/revue/issues/1264)) ([21f79a3](https://github.com/hawk90/revue/commit/21f79a339caf310c7105368e9af7bbdcb5bfa713))
+* **text:** measure and draw with one width table, from Unicode's East Asian Width ([#1262](https://github.com/hawk90/revue/issues/1262)) ([f6ae389](https://github.com/hawk90/revue/commit/f6ae3897ac99816ef3157bd349dd5fea2cf6f2f0))
+
 ## [3.11.0](https://github.com/hawk90/revue/compare/v3.10.2...v3.11.0) (2026-10-22)
 
 
