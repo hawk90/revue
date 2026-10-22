@@ -76,6 +76,17 @@ fn test_sortable_list_remove_updates_selection() {
     assert_eq!(list.selected(), Some(1));
 }
 
+/// Removing an item above the selection left the index, so the selection
+/// moved to the next item (#975)
+#[test]
+fn test_sortable_list_remove_above_keeps_the_selected_item() {
+    let mut list = abc();
+    list.set_selected(Some(1)); // B
+    list.remove(0);
+    assert_eq!(list.selected(), Some(0)); // was 1, "C"
+    assert_eq!(labels(&list)[0], "B");
+}
+
 #[test]
 fn test_sortable_list_remove_all() {
     let mut list = SortableList::new(["A"]);
@@ -463,22 +474,41 @@ fn test_sortable_list_handle_mouse_drag_without_press_is_ignored() {
 
 #[test]
 fn test_sortable_list_handle_mouse_scroll() {
-    let mut list = abc();
+    let mut list = SortableList::new(["A", "B", "C", "D", "E"]);
     list.handle_mouse(&mouse(0, 0, MouseEventKind::ScrollDown), AREA);
     let buffer = render(&list, 6, 3);
     assert_eq!(row(&buffer, 0), "≡   B ");
 
-    // Scrolling stops with the last item at the top
-    list.handle_mouse(&mouse(0, 0, MouseEventKind::ScrollDown), AREA);
-    list.handle_mouse(&mouse(0, 0, MouseEventKind::ScrollDown), AREA);
+    // Scrolling stops at the last full page (#973: it went on until the
+    // last item was alone at the top)
+    for _ in 0..3 {
+        list.handle_mouse(&mouse(0, 0, MouseEventKind::ScrollDown), AREA);
+    }
     let buffer = render(&list, 6, 3);
-    assert_eq!(row(&buffer, 0), "≡   C ");
+    let rows: Vec<String> = (0..3).map(|y| row(&buffer, y)).collect();
+    assert_eq!(rows, ["≡   C ", "≡   D ", "≡   E "]);
 
-    list.handle_mouse(&mouse(0, 0, MouseEventKind::ScrollUp), AREA);
-    list.handle_mouse(&mouse(0, 0, MouseEventKind::ScrollUp), AREA);
-    list.handle_mouse(&mouse(0, 0, MouseEventKind::ScrollUp), AREA);
+    for _ in 0..3 {
+        list.handle_mouse(&mouse(0, 0, MouseEventKind::ScrollUp), AREA);
+    }
     let buffer = render(&list, 6, 3);
     assert_eq!(row(&buffer, 0), "≡   A ");
+}
+
+/// The keys moved the selection without scrolling, so a selected item
+/// below the area was not drawn (#973)
+#[test]
+fn test_sortable_list_selection_scrolls_into_view() {
+    let mut list = SortableList::new(["A", "B", "C", "D", "E"]);
+    list.handle_key(&KeyEvent::new(Key::End));
+    let buffer = render(&list, 6, 3);
+    assert_eq!(row(&buffer, 2), "≡ ▶ E "); // was "≡   C "
+                                           // Up inside the view keeps it, and the scroll follows mouse clicks
+    list.handle_key(&KeyEvent::new(Key::Up));
+    let buffer = render(&list, 6, 3);
+    assert_eq!(row(&buffer, 0), "≡   C ");
+    list.handle_mouse(&mouse(4, 0, MouseEventKind::Down(MouseButton::Left)), AREA);
+    assert_eq!(list.selected(), Some(2));
 }
 
 #[test]

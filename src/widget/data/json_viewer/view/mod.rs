@@ -5,6 +5,7 @@ mod render;
 mod search_impl;
 
 use crate::style::Color;
+use crate::utils::{KeyedSelection, ScrollState};
 use crate::widget::data::json_viewer::helpers::flatten_tree;
 use crate::widget::data::json_viewer::parser::parse_json;
 use crate::widget::data::json_viewer::search::{Search, SearchState};
@@ -23,10 +24,12 @@ pub struct JsonViewer {
     raw_json: String,
     /// Collapsed node paths
     collapsed: HashSet<String>,
-    /// Selected node index (in flattened tree)
-    selected: usize,
-    /// Scroll offset
-    scroll: usize,
+    /// The selected node, by its place in the tree (child positions from
+    /// the root), which expanding and collapsing do not change (#975).
+    /// Nothing selected reads as the first row.
+    selection: KeyedSelection<Vec<usize>>,
+    /// Where the rows are scrolled to
+    scroll: ScrollState,
     /// Show line numbers
     show_line_numbers: bool,
     /// Indent size
@@ -60,8 +63,8 @@ impl JsonViewer {
             root: None,
             raw_json: String::new(),
             collapsed: HashSet::new(),
-            selected: 0,
-            scroll: 0,
+            selection: KeyedSelection::new(),
+            scroll: ScrollState::new(),
             show_line_numbers: true,
             indent_size: 2,
             show_type_badges: false,
@@ -95,8 +98,8 @@ impl JsonViewer {
         self.raw_json = json.to_string();
         self.root = parse_json(json);
         self.collapsed.clear();
-        self.selected = 0;
-        self.scroll = 0;
+        self.select_row(0);
+        self.scroll.scroll_to_top();
         self.clear_search();
     }
 
@@ -216,7 +219,7 @@ impl JsonViewer {
 
     /// Get selected index
     pub fn selected_index(&self) -> usize {
-        self.selected
+        self.selection.index().unwrap_or(0)
     }
 
     /// Get count of visible nodes
@@ -235,7 +238,32 @@ impl JsonViewer {
 
     /// The visible node at the selection
     fn selected_node(&self) -> Option<JsonNode> {
-        self.get_visible_nodes().into_iter().nth(self.selected)
+        self.get_visible_nodes()
+            .into_iter()
+            .nth(self.selection.index()?)
+    }
+
+    /// Select the row at `index`
+    fn select_row(&mut self, index: usize) {
+        let places = self.visible_places();
+        self.selection
+            .select(index, places.len(), |i| places[i].clone());
+    }
+
+    /// After rows came or went: keep the selection on its node, or on the
+    /// row now in its place when a collapse took it away
+    fn rows_changed(&mut self) {
+        self.selection.sync(self.visible_places());
+    }
+
+    /// Each visible node's place in the tree, in row order: its child
+    /// positions from the root
+    fn visible_places(&self) -> Vec<Vec<usize>> {
+        let mut places = Vec::new();
+        if let Some(root) = &self.root {
+            push_places(root, &mut Vec::new(), &self.collapsed, &mut places);
+        }
+        places
     }
 
     /// Get flattened list of visible nodes
@@ -244,6 +272,24 @@ impl JsonViewer {
             flatten_tree(root, &self.collapsed)
         } else {
             Vec::new()
+        }
+    }
+}
+
+/// The places of `node` and of its visible descendants, as `flatten_tree`
+/// orders them
+fn push_places(
+    node: &JsonNode,
+    place: &mut Vec<usize>,
+    collapsed: &HashSet<String>,
+    out: &mut Vec<Vec<usize>>,
+) {
+    out.push(place.clone());
+    if node.is_container() && !collapsed.contains(&node.path) {
+        for (i, child) in node.children.iter().enumerate() {
+            place.push(i);
+            push_places(child, place, collapsed, out);
+            place.pop();
         }
     }
 }

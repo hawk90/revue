@@ -10,34 +10,39 @@ impl JsonViewer {
 
     /// Move selection down
     pub fn select_down(&mut self) {
-        let max = self.get_visible_nodes().len().saturating_sub(1);
-        self.selected = (self.selected + 1).min(max);
+        self.move_selection(1);
     }
 
     /// Move selection up
     pub fn select_up(&mut self) {
-        self.selected = self.selected.saturating_sub(1);
+        self.move_selection(-1);
     }
 
     /// Page down
     pub fn page_down(&mut self, page_size: usize) {
-        let max = self.get_visible_nodes().len().saturating_sub(1);
-        self.selected = (self.selected + page_size).min(max);
+        self.move_selection(page_size.min(isize::MAX as usize) as isize);
     }
 
     /// Page up
     pub fn page_up(&mut self, page_size: usize) {
-        self.selected = self.selected.saturating_sub(page_size);
+        self.move_selection(-(page_size.min(isize::MAX as usize) as isize));
     }
 
     /// Go to first node
     pub fn select_first(&mut self) {
-        self.selected = 0;
+        self.select_row(0);
     }
 
     /// Go to last node
     pub fn select_last(&mut self) {
-        self.selected = self.get_visible_nodes().len().saturating_sub(1);
+        self.select_row(usize::MAX);
+    }
+
+    /// Move the selection by `delta` rows, stopping at either end
+    fn move_selection(&mut self, delta: isize) {
+        let places = self.visible_places();
+        self.selection
+            .move_by(delta, places.len(), |i| places[i].clone());
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -50,6 +55,7 @@ impl JsonViewer {
             if node.is_container() && !self.collapsed.remove(&node.path) {
                 self.collapsed.insert(node.path);
             }
+            self.rows_changed();
         }
     }
 
@@ -57,6 +63,7 @@ impl JsonViewer {
     pub fn expand(&mut self) {
         if let Some(node) = self.selected_node() {
             self.collapsed.remove(&node.path);
+            self.rows_changed();
         }
     }
 
@@ -65,6 +72,7 @@ impl JsonViewer {
         if let Some(node) = self.selected_node() {
             if node.is_container() {
                 self.collapsed.insert(node.path);
+                self.rows_changed();
             }
         }
     }
@@ -72,6 +80,7 @@ impl JsonViewer {
     /// Expand all nodes
     pub fn expand_all(&mut self) {
         self.collapsed.clear();
+        self.rows_changed();
     }
 
     /// Collapse all nodes
@@ -79,10 +88,8 @@ impl JsonViewer {
         if let Some(root) = &self.root {
             collect_container_paths(root, &mut self.collapsed);
         }
-        // Rows below the root are gone: keep the selection on a visible one
-        let max = self.get_visible_nodes().len().saturating_sub(1);
-        self.selected = self.selected.min(max);
-        self.scroll = self.scroll.min(self.selected);
+        // Rows below the root are gone: the selection goes to the root
+        self.rows_changed();
     }
 }
 

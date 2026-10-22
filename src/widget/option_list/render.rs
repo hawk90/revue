@@ -23,28 +23,16 @@ impl View for OptionList {
             content = content.child(Text::new(title).bold());
         }
 
+        // Every entry's rows (an option with a description takes two), and
+        // the rows of each option
+        let mut rows = Vec::new();
+        let mut option_rows = Vec::new();
         let mut option_idx = 0;
-        let mut visible_count = 0;
-        let mut skipped = 0;
 
         for entry in &self.entries {
-            // Handle scrolling: the window holds the options from
-            // `scroll_offset` on, with the separators and group titles
-            // between them - not those before the first or after the last.
-            let is_option = matches!(entry, OptionEntry::Option(_));
-            if option_idx < self.scroll_offset {
-                if is_option {
-                    option_idx += 1;
-                    skipped += 1;
-                }
-                continue;
-            }
-            if visible_count >= self.max_visible {
-                break;
-            }
-
             match entry {
                 OptionEntry::Option(item) => {
+                    let first_row = rows.len();
                     let is_highlighted = option_idx == self.highlighted && self.focused;
                     let is_selected = self.selected == Some(option_idx);
 
@@ -99,38 +87,62 @@ impl View for OptionList {
                         text = text.bold();
                     }
 
-                    content = content.child(text);
+                    rows.push(text);
 
                     // Show description
                     if self.show_descriptions {
                         if let Some(desc) = &item.description {
-                            content = content
-                                .child(Text::new(format!("    {}", desc)).fg(PLACEHOLDER_FG));
+                            rows.push(Text::new(format!("    {}", desc)).fg(PLACEHOLDER_FG));
                         }
                     }
 
+                    option_rows.push(first_row..rows.len());
                     option_idx += 1;
-                    visible_count += 1;
                 }
                 OptionEntry::Separator => {
                     let line = self.separator_char().repeat(width);
-                    content = content.child(Text::new(line).fg(DARK_GRAY));
+                    rows.push(Text::new(line).fg(DARK_GRAY));
                 }
                 OptionEntry::Group(name) => {
-                    content = content.child(Text::new(name).fg(MUTED_TEXT).bold());
+                    rows.push(Text::new(name).fg(MUTED_TEXT).bold());
                 }
             }
         }
 
-        // Scroll indicators
-        if skipped > 0 {
-            content = vstack()
-                .child(Text::new("↑").fg(DISABLED_FG))
-                .child(content);
+        // The rows scroll to keep the highlighted option in view (#973). The
+        // window is the rows the area has left, or the most rows any
+        // `max_visible` options in a row take with the entries between them;
+        // when the rows overflow it, a row each is kept for the markers.
+        let room = (ctx.area.height as usize).saturating_sub(usize::from(self.title.is_some()));
+        let cap = if self.max_visible > 0 && option_rows.len() > self.max_visible {
+            option_rows
+                .windows(self.max_visible)
+                .map(|run| run[run.len() - 1].end - run[0].start)
+                .max()
+                .unwrap_or(usize::MAX)
+        } else {
+            usize::MAX
+        };
+        let window = if rows.len() <= room.min(cap) {
+            rows.len()
+        } else {
+            cap.min(room.saturating_sub(2)).max(1)
+        };
+        self.scroll.set_content(rows.len());
+        self.scroll.set_viewport(window);
+        if let Some(highlight) = option_rows.get(self.highlighted) {
+            self.scroll.track(highlight.clone());
         }
 
-        let remaining = self.option_count() - (self.scroll_offset + visible_count);
-        if remaining > 0 {
+        if self.scroll.has_above() {
+            content = content.child(Text::new("↑").fg(DISABLED_FG));
+        }
+        let shown = self.scroll.visible();
+        let below = rows.len() - shown.end;
+        for row in rows.into_iter().skip(shown.start).take(shown.len()) {
+            content = content.child(row);
+        }
+        if below > 0 {
             content = content.child(Text::new("↓").fg(DISABLED_FG));
         }
 
@@ -161,8 +173,10 @@ mod tests {
             .collect()
     }
 
+    /// `max_visible(2)` is the most rows two options in a row take with the
+    /// entries between them: three here, so any two adjacent options fit
     #[test]
-    fn scrolling_hides_the_entries_before_the_first_shown_option() {
+    fn the_window_holds_max_visible_options_with_the_entries_between() {
         let mut list = OptionList::new()
             .width(10)
             .max_visible(2)
@@ -175,8 +189,14 @@ mod tests {
             .option("d", "")
             .group("G3")
             .option("e", "");
-        list.scroll_offset = 2;
+        for _ in 0..3 {
+            list.highlight_next(); // d
+        }
         assert_eq!(rows(&list), ["↑", "G2", "  c", "  d", "↓"]);
+        list.highlight_previous(); // c, in view
+        assert_eq!(rows(&list), ["↑", "G2", "  c", "  d", "↓"]);
+        list.highlight_previous(); // b, above
+        assert_eq!(rows(&list), ["↑", "  b", "G2", "  c", "↓"]);
     }
 
     #[test]

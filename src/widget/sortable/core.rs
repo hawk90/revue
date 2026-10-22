@@ -2,6 +2,7 @@
 
 use crate::event::drag::DragId;
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::traits::{WidgetProps, WidgetState};
 
 use super::types::{generate_id, ReorderCallback, SortableItem};
@@ -12,7 +13,8 @@ pub struct SortableList {
     pub items: Vec<SortableItem>,
     /// Selected item index
     pub selected: Option<usize>,
-    /// Scroll offset
+    /// Scroll offset. Not read: the items scroll with a ScrollState that
+    /// follows the selection (#973); the field goes in 4.0 (#1021).
     pub scroll: usize,
     /// Item being dragged (index)
     pub dragging: Option<usize>,
@@ -36,6 +38,8 @@ pub struct SortableList {
     pub props: WidgetProps,
     /// Unique ID for drag operations (for future drag tracking)
     pub _id: DragId,
+    /// Where the items are scrolled to, in items
+    view: ScrollState,
 }
 
 impl SortableList {
@@ -68,6 +72,17 @@ impl SortableList {
             state: WidgetState::new(),
             props: WidgetProps::new(),
             _id: id,
+            view: ScrollState::new(),
         }
+    }
+
+    /// Where the items are scrolled to (drawn in `view.rs`)
+    pub(super) fn view(&self) -> &ScrollState {
+        &self.view
+    }
+
+    /// Where the items are scrolled to, to scroll it
+    pub(super) fn view_mut(&mut self) -> &mut ScrollState {
+        &mut self.view
     }
 }

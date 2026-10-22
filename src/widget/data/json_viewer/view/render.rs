@@ -18,14 +18,14 @@ impl View for JsonViewer {
         let line_num_width = line_number_width(self.show_line_numbers, nodes.len());
         let content_width = area.width.saturating_sub(line_num_width);
 
-        // Adjust scroll to keep selection visible
+        // The rows in view, following the selection (#973)
         let visible_rows = area.height as usize;
-        let mut scroll = self.scroll;
-        if self.selected < scroll {
-            scroll = self.selected;
-        } else if self.selected >= scroll + visible_rows {
-            scroll = self.selected.saturating_sub(visible_rows - 1);
+        self.scroll.set_content(nodes.len());
+        self.scroll.set_viewport(visible_rows);
+        if let Some(selected) = self.selection.index() {
+            self.scroll.track(selected..selected + 1);
         }
+        let scroll = self.scroll.offset();
 
         for (visible_idx, node) in nodes.iter().skip(scroll).take(visible_rows).enumerate() {
             let y = visible_idx as u16;
@@ -52,7 +52,7 @@ impl JsonViewer {
         line_num_width: u16,
         content_width: u16,
     ) {
-        let is_selected = line_idx == self.selected;
+        let is_selected = self.selection.is_selected(line_idx);
         let is_match = self.search_state.search_matches.contains(&node.path);
         let plain_bg = if is_selected {
             self.selected_bg

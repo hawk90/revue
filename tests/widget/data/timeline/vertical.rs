@@ -780,6 +780,39 @@ fn test_timeline_single_cell_area() {
     assert!(blank(&draw(&tl, 1, 1)));
 }
 
+/// Events E0..E{n-1}, without timestamps, each with a description d{i}
+fn described(n: usize) -> Timeline {
+    Timeline::new().timestamps(false).events(
+        (0..n)
+            .map(|i| TimelineEvent::new(format!("E{i}")).description(format!("d{i}")))
+            .collect(),
+    )
+}
+
+/// The view never scrolled, so a selected event below the area was not
+/// drawn (#973). It scrolls in rows, so the event above can be cut.
+#[test]
+fn test_timeline_vertical_selected_event_scrolls_into_view() {
+    let mut tl = described(10);
+    tl.select(Some(9));
+    let rows: Vec<String> = screen(&tl, 20, 4)
+        .iter()
+        .map(|r| r.trim_end().to_string())
+        .collect();
+    // E8 is cut to its description and the line below it
+    assert_eq!(rows, ["│  d8", "│", "●─ E9", "   d9"]); // was E0, d0, │, E1
+}
+
+#[test]
+fn test_timeline_vertical_view_holds_while_the_selection_moves_inside_it() {
+    let mut tl = described(10);
+    tl.select(Some(9));
+    let before = screen(&tl, 20, 6);
+    assert!(before[1].starts_with("●─ E8"), "{before:?}"); // followed it down
+    tl.select_prev(); // E8, on screen
+    assert_eq!(screen(&tl, 20, 6), before);
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 

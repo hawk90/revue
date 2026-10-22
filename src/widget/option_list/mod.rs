@@ -33,6 +33,7 @@ mod types;
 pub use types::{OptionEntry, OptionItem, SeparatorStyle};
 
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -67,8 +68,8 @@ pub struct OptionList {
     highlighted_bg: Option<Color>,
     /// Max visible items
     max_visible: usize,
-    /// Scroll offset
-    scroll_offset: usize,
+    /// Where the rows are scrolled to
+    scroll: ScrollState,
     /// Whether list is focused
     focused: bool,
     /// Show icons
@@ -95,7 +96,7 @@ impl OptionList {
             bg: None,
             highlighted_bg: None,
             max_visible: 10,
-            scroll_offset: 0,
+            scroll: ScrollState::new(),
             focused: false,
             show_icons: true,
             props: WidgetProps::new(),
@@ -191,7 +192,9 @@ impl OptionList {
         self
     }
 
-    /// Set max visible items
+    /// Set max visible items: the list shows at most the rows this many
+    /// options in a row take, with the separators and groups between them,
+    /// and the area's rows in any case. 0 shows them all.
     pub fn max_visible(mut self, max: usize) -> Self {
         self.max_visible = max;
         self
@@ -309,10 +312,10 @@ impl OptionList {
         self.max_visible
     }
 
-    /// Get scroll_offset (test-only)
+    /// Get the scroll offset, in rows (test-only)
     #[doc(hidden)]
     pub fn __test_scroll_offset(&self) -> usize {
-        self.scroll_offset
+        self.scroll.offset()
     }
 
     /// Get focused (test-only)

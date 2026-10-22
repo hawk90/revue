@@ -91,8 +91,6 @@ impl OptionList {
                 }
                 self.highlighted -= 1;
             }
-
-            self.ensure_visible();
         }
     }
 
@@ -111,8 +109,6 @@ impl OptionList {
                 }
                 self.highlighted += 1;
             }
-
-            self.ensure_visible();
         }
     }
 
@@ -129,8 +125,6 @@ impl OptionList {
             }
             self.highlighted += 1;
         }
-
-        self.scroll_offset = 0;
     }
 
     /// Move to last option
@@ -145,17 +139,6 @@ impl OptionList {
                 }
             }
             self.highlighted -= 1;
-        }
-
-        self.ensure_visible();
-    }
-
-    /// Ensure highlighted item is visible
-    fn ensure_visible(&mut self) {
-        if self.highlighted < self.scroll_offset {
-            self.scroll_offset = self.highlighted;
-        } else if self.highlighted >= self.scroll_offset + self.max_visible {
-            self.scroll_offset = self.highlighted - self.max_visible + 1;
         }
     }
 }

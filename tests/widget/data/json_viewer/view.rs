@@ -1,9 +1,8 @@
 //! JsonViewer rendering: empty input, the row layout and colors, a matrix
 //! over random documents and options, and the widget in a stack
 //!
-//! Only behaviour that holds today is asserted. Open bugs (#860 speed, the
-//! view not following the selection #973, wide characters #974) stay with
-//! their issues.
+//! Only behavior that holds today is asserted. Open bugs (#860 speed, wide
+//! characters #974) stay with their issues.
 
 use proptest::prelude::*;
 use revue::layout::Rect;
@@ -353,4 +352,37 @@ fn test_json_viewer_in_a_stack_with_a_stylesheet() {
     assert_eq!(shown[3], "footer", "{shown:#?}");
     assert_eq!(buffer.get(29, 0).unwrap().bg, Some(Color::BLUE), "selected");
     assert_eq!(buffer.get(29, 1).unwrap().bg, Some(paper), "plain row");
+}
+
+// =========================================================================
+// The view and the selection (#973, #975)
+// =========================================================================
+
+/// `render` worked the first row out from the selection each frame and
+/// dropped it, so moving up inside the view scrolled it
+#[test]
+fn test_json_viewer_view_holds_while_the_selection_moves_inside_it() {
+    let doc = format!(
+        "[{}]",
+        (0..20).map(|i| i.to_string()).collect::<Vec<_>>().join(",")
+    );
+    let mut viewer = JsonViewer::from_content(&doc).show_line_numbers(false);
+    viewer.select_last();
+    let before = row_text(&render(&viewer, 20, 4), 0);
+    assert_eq!(before.trim(), r#""[16]": 16"#); // followed the selection down
+    viewer.select_up();
+    assert_eq!(row_text(&render(&viewer, 20, 4), 0), before); // was "[15]"
+}
+
+/// Expanding a node above the selection put another node at its row
+#[test]
+fn test_json_viewer_expanding_above_keeps_the_selected_node() {
+    let mut viewer = JsonViewer::from_content(r#"{"a":{"x":1},"b":2}"#);
+    viewer.select_down(); // a
+    viewer.collapse();
+    viewer.select_down(); // b
+    let selected = viewer.selected_path();
+    assert!(selected.as_deref().is_some_and(|p| p.ends_with('b')));
+    viewer.expand_all();
+    assert_eq!(viewer.selected_path(), selected); // was the path of x
 }

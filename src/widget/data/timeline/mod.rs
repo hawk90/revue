@@ -11,6 +11,7 @@ mod view;
 pub use types::{EventType, TimelineEvent, TimelineOrientation, TimelineStyle};
 
 use crate::style::Color;
+use crate::utils::ScrollState;
 use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY, MUTED_TEXT};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -26,8 +27,9 @@ pub struct Timeline {
     style: TimelineStyle,
     /// Selected event index
     selected: Option<usize>,
-    /// Scroll offset
-    scroll: usize,
+    /// Where the view is scrolled to: in rows when vertical, in events
+    /// when horizontal
+    scroll: ScrollState,
     /// Show timestamps
     show_timestamps: bool,
     /// Show descriptions
@@ -52,7 +54,7 @@ impl Timeline {
             orientation: TimelineOrientation::Vertical,
             style: TimelineStyle::Line,
             selected: None,
-            scroll: 0,
+            scroll: ScrollState::new(),
             show_timestamps: true,
             show_descriptions: true,
             line_color: DARK_GRAY,
@@ -121,7 +123,7 @@ impl Timeline {
     pub fn clear(&mut self) {
         self.events.clear();
         self.selected = None;
-        self.scroll = 0;
+        self.scroll.scroll_to_top();
     }
 
     /// Add event dynamically
