@@ -1550,10 +1550,14 @@ items:
     acceptance:
       - ASCII 1, CJK 2, emoji 2
       - zero-width joiners/combining marks 0
+      - symbols drawn as text (★ ✓ ☐ ➜) 1, as terminals draw them; conjoining Hangul vowels and finals 0
+      - one width table for drawing, measuring and layout (Unicode East Asian Width via unicode-width)
     evidence:
       - src/utils/unicode.rs::char_width
       - src/utils/unicode.rs::display_width
       - tests/utils/unicode.rs
+      - tests/utils/unicode.rs::symbols_drawn_as_text_are_one_column
+      - tests/text/width.rs::defaults_are_the_width_revue_draws_with
     source:
       - FEATURES.md §6 Unicode & Font Support / Supported Characters
     notes: display_width sums per-char widths, so a ZWJ emoji sequence like the family emoji measures 8, not the doc's 2 (no
@@ -1574,8 +1578,9 @@ items:
       - tests/text/width.rs
     source:
       - FEATURES.md §6 Unicode & Font Support / Character Width Detection
-    notes: CharWidthTable::width honors the cjk, emoji and nerd_font widths and the overrides, but nothing in rendering consults
-      the table; buffer widths come from utils::unicode::char_width.
+    notes: CharWidthTable::width honors the cjk, emoji and nerd_font widths and the overrides, and with the defaults it equals
+      utils::unicode::char_width for every printable character (#1026); but nothing in rendering consults the table, so a
+      configured width does not reach the buffer.
   - id: TEXT-003
     title: revue.toml [font] width configuration
     area: unicode

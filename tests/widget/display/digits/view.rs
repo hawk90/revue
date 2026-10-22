@@ -359,3 +359,13 @@ fn each_style_draws_its_own_colon_dot_and_minus() {
         }
     }
 }
+
+#[test]
+fn a_symbol_label_is_measured_as_drawn() {
+    // ✓ is one column on the terminal and in the buffer; the measure used
+    // to count two per symbol (#1026)
+    let d = Digits::new("7").suffix("✓✓✓✓✓");
+    let buffer = render(&d, 20, 6);
+    assert_eq!(row(&buffer, 5).trim_end(), "7✓✓✓✓✓");
+    assert_eq!(d.measure(20, 6).unwrap().0, 6);
+}

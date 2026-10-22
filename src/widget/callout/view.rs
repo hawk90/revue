@@ -4,9 +4,9 @@ use super::core::Callout;
 use super::types::CalloutVariant;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::unicode::char_width;
 use crate::widget::theme::{MUTED_TEXT, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View};
-use unicode_width::UnicodeWidthChar;
 
 impl View for Callout {
     crate::impl_view_meta!("Callout");
@@ -102,7 +102,7 @@ impl Callout {
         let title = self.get_title();
         let max_title_x = area.width - 1;
         for ch in title.chars() {
-            let char_width = ch.width().unwrap_or(0) as u16;
+            let char_width = char_width(ch) as u16;
             if char_width == 0 {
                 continue;
             }
@@ -134,7 +134,7 @@ impl Callout {
 
                 let mut offset = 0u16;
                 for ch in line.chars() {
-                    let char_width = ch.width().unwrap_or(0) as u16;
+                    let char_width = char_width(ch) as u16;
                     if char_width == 0 {
                         continue;
                     }
@@ -188,7 +188,7 @@ impl Callout {
         let title = self.get_title();
         let max_title_x = area.width;
         for ch in title.chars() {
-            let char_width = ch.width().unwrap_or(0) as u16;
+            let char_width = char_width(ch) as u16;
             if char_width == 0 {
                 continue;
             }
@@ -218,7 +218,7 @@ impl Callout {
 
                 let mut offset = 0u16;
                 for ch in line.chars() {
-                    let char_width = ch.width().unwrap_or(0) as u16;
+                    let char_width = char_width(ch) as u16;
                     if char_width == 0 {
                         continue;
                     }
@@ -264,7 +264,7 @@ impl Callout {
         let title = self.get_title();
         let max_title_x = area.width;
         for ch in title.chars() {
-            let char_width = ch.width().unwrap_or(0) as u16;
+            let char_width = char_width(ch) as u16;
             if char_width == 0 {
                 continue;
             }
@@ -296,7 +296,7 @@ impl Callout {
 
                 let mut offset = 0u16;
                 for ch in line.chars() {
-                    let char_width = ch.width().unwrap_or(0) as u16;
+                    let char_width = char_width(ch) as u16;
                     if char_width == 0 {
                         continue;
                     }

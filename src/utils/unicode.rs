@@ -18,161 +18,23 @@
 
 /// Get the display width of a character
 ///
-/// Returns the number of terminal columns needed to display the character:
-/// - 0 for combining characters and zero-width characters
-/// - 1 for most ASCII and Latin characters
-/// - 2 for CJK characters, emojis, and other wide characters
+/// Returns the number of terminal columns needed to display the character,
+/// from Unicode's East Asian Width as the `unicode-width` crate gives it -
+/// the width terminals use:
+/// - 0 for combining marks, zero-width characters, the conjoining Hangul
+///   vowels and finals, and control characters
+/// - 2 for wide characters: CJK, Hangul syllables, fullwidth forms and
+///   emoji shown as emoji by default (😀, ✅, ⚡)
+/// - 1 for everything else, including the symbols in Miscellaneous Symbols
+///   and Dingbats that are drawn as text (★ ✓ ☐ ➜)
+///
+/// This is the one width revue draws, measures and lays out text with
+/// (#1026). It counts one character at a time: a sequence the terminal
+/// joins into one glyph (a flag, an emoji with a skin tone or a ZWJ, a
+/// character with VS16) counts as the sum of its characters.
 pub fn char_width(c: char) -> usize {
-    let cp = c as u32;
-
-    // Zero-width characters
-    if is_zero_width(c) {
-        return 0;
-    }
-
-    // Control characters
-    if cp < 0x20 || (0x7F..0xA0).contains(&cp) {
-        return 0;
-    }
-
-    // ASCII printable
-    if cp < 0x7F {
-        return 1;
-    }
-
-    // Wide characters (CJK, emojis, etc.)
-    if is_wide_char(c) {
-        return 2;
-    }
-
-    // Default to 1 for other characters
-    1
-}
-
-/// Check if character is zero-width
-fn is_zero_width(c: char) -> bool {
-    let cp = c as u32;
-
-    // Combining Diacritical Marks
-    if (0x0300..=0x036F).contains(&cp) {
-        return true;
-    }
-
-    // Combining Diacritical Marks Extended
-    if (0x1AB0..=0x1AFF).contains(&cp) {
-        return true;
-    }
-
-    // Combining Diacritical Marks Supplement
-    if (0x1DC0..=0x1DFF).contains(&cp) {
-        return true;
-    }
-
-    // Combining Diacritical Marks for Symbols
-    if (0x20D0..=0x20FF).contains(&cp) {
-        return true;
-    }
-
-    // Combining Half Marks
-    if (0xFE20..=0xFE2F).contains(&cp) {
-        return true;
-    }
-
-    // Zero Width Space, Zero Width Non-Joiner, Zero Width Joiner
-    if cp == 0x200B || cp == 0x200C || cp == 0x200D {
-        return true;
-    }
-
-    // Variation selectors
-    if (0xFE00..=0xFE0F).contains(&cp) || (0xE0100..=0xE01EF).contains(&cp) {
-        return true;
-    }
-
-    false
-}
-
-/// Check if character is wide (takes 2 columns)
-fn is_wide_char(c: char) -> bool {
-    let cp = c as u32;
-
-    // CJK Unified Ideographs and related
-    if (0x4E00..=0x9FFF).contains(&cp) {
-        // CJK Unified Ideographs
-        return true;
-    }
-    if (0x3400..=0x4DBF).contains(&cp) {
-        // CJK Unified Ideographs Extension A
-        return true;
-    }
-    if (0x20000..=0x2A6DF).contains(&cp) {
-        // CJK Unified Ideographs Extension B
-        return true;
-    }
-    if (0x2A700..=0x2B73F).contains(&cp) {
-        // CJK Unified Ideographs Extension C
-        return true;
-    }
-    if (0x2B740..=0x2B81F).contains(&cp) {
-        // CJK Unified Ideographs Extension D
-        return true;
-    }
-
-    // CJK Compatibility Ideographs
-    if (0xF900..=0xFAFF).contains(&cp) {
-        return true;
-    }
-
-    // Hangul (Korean)
-    if (0xAC00..=0xD7AF).contains(&cp) {
-        // Hangul Syllables
-        return true;
-    }
-    if (0x1100..=0x11FF).contains(&cp) {
-        // Hangul Jamo
-        return true;
-    }
-
-    // Japanese
-    if (0x3040..=0x309F).contains(&cp) {
-        // Hiragana
-        return true;
-    }
-    if (0x30A0..=0x30FF).contains(&cp) {
-        // Katakana
-        return true;
-    }
-
-    // Full-width characters
-    if (0xFF00..=0xFFEF).contains(&cp) {
-        // Halfwidth forms are not wide
-        if (0xFF61..=0xFFDC).contains(&cp) || (0xFFE8..=0xFFEE).contains(&cp) {
-            return false;
-        }
-        return true;
-    }
-
-    // Emojis (most common ranges)
-    if (0x1F300..=0x1F9FF).contains(&cp) {
-        // Miscellaneous Symbols and Pictographs, Emoticons, etc.
-        return true;
-    }
-    if (0x1FA00..=0x1FAFF).contains(&cp) {
-        // Chess, Extended-A
-        return true;
-    }
-    if (0x2600..=0x26FF).contains(&cp) {
-        // Miscellaneous Symbols
-        return true;
-    }
-    if (0x2700..=0x27BF).contains(&cp) {
-        // Dingbats
-        return true;
-    }
-
-    // Box Drawing and Block Elements (typically wide in some terminals)
-    // Actually these are usually width 1, so we don't include them
-
-    false
+    // `None` is a control character, which takes no cell
+    unicode_width::UnicodeWidthChar::width(c).unwrap_or(0)
 }
 
 /// Get the display width of a string

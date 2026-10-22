@@ -414,13 +414,13 @@ mod tests {
         render_border(&mut ctx, area, Color::WHITE);
         draw_border_title(&mut ctx, area, &BorderTitle::new("⚙\u{FE0F}Set").padding(1));
 
-        // 1: pad, 2-3: ⚙ (selector dropped), 4-6: Set, 7: pad, 8: border
+        // 1: pad, 2: ⚙ (selector dropped, so the terminal gets a bare ⚙,
+        // one column), 3-5: Set, 6: pad, 7: border
         assert_eq!(buffer.get(2, 0).unwrap().symbol, '⚙');
-        assert!(buffer.get(3, 0).unwrap().is_continuation());
-        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'S');
-        assert_eq!(buffer.get(6, 0).unwrap().symbol, 't');
-        assert_eq!(buffer.get(7, 0).unwrap().symbol, ' ');
-        assert_eq!(buffer.get(8, 0).unwrap().symbol, '─');
+        assert_eq!(buffer.get(3, 0).unwrap().symbol, 'S');
+        assert_eq!(buffer.get(5, 0).unwrap().symbol, 't');
+        assert_eq!(buffer.get(6, 0).unwrap().symbol, ' ');
+        assert_eq!(buffer.get(7, 0).unwrap().symbol, '─');
     }
 
     #[test]

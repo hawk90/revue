@@ -24,8 +24,8 @@
 │                              │                                   │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │                     Text Layer                           │   │
-│   │  unicode-width │ unicode-segmentation │ unic-emoji-char │   │
-│   │                     textwrap                             │   │
+│   │           unicode-width │ unicode-segmentation          │   │
+│   │              unicode-properties │ textwrap               │   │
 │   └─────────────────────────────────────────────────────────┘   │
 │                              │                                   │
 │   ┌─────────────────────────────────────────────────────────┐   │
@@ -64,7 +64,7 @@ See [Custom Implementations](#custom-implementations) below.
 |-------|---------|---------|-------|
 | **unicode-width** | 0.2 | Character width | Base width calculation |
 | **unicode-segmentation** | 1.10 | Grapheme clusters | Emoji, CJK |
-| **unic-emoji-char** | 0.9 | Emoji detection | Emoji width |
+| **unicode-properties** | 0.1 | Emoji presentation | `CharWidthTable` emoji width |
 | **textwrap** | 0.16 | Text wrapping | Line breaks |
 
 ### Markdown & Syntax
@@ -377,7 +377,7 @@ impl CharWidthTable {
             return w;
         }
 
-        if unic_emoji_char::is_emoji(ch) {
+        if is_emoji_presentation(ch) { // unicode-properties
             return self.emoji;
         }
 

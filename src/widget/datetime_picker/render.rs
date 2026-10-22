@@ -3,10 +3,10 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::display_width;
+use crate::utils::unicode::char_width;
 use crate::widget::data::calendar::{days_in_month, FirstDayOfWeek};
 use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::RenderContext;
-use unicode_width::UnicodeWidthChar;
 
 /// Rendering methods for DateTimePicker
 pub trait Rendering {
@@ -72,7 +72,7 @@ pub trait Rendering {
     ) {
         let mut offset = 0u16;
         for ch in text.chars() {
-            let char_width = ch.width().unwrap_or(0) as u16;
+            let char_width = char_width(ch) as u16;
             if char_width == 0 {
                 continue;
             }

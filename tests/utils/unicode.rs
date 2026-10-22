@@ -102,6 +102,40 @@ fn test_zero_width_chars() {
 }
 
 #[test]
+fn symbols_drawn_as_text_are_one_column() {
+    // Miscellaneous Symbols and Dingbats: terminals draw these in one cell
+    // (East Asian Width N or A), not two (#1026)
+    for s in ["☐", "☑", "★", "✓", "✗", "➜", "♥", "⚙"] {
+        assert_eq!(display_width(s), 1, "{s}");
+    }
+    // The ones shown as emoji by default stay wide
+    for s in ["✅", "⚡", "❌", "⭐"] {
+        assert_eq!(display_width(s), 2, "{s}");
+    }
+}
+
+#[test]
+fn decomposed_hangul_is_one_syllable_wide() {
+    // NFD 한: a leading consonant (2) and a conjoining vowel and final (0),
+    // as macOS writes file names (#879)
+    assert_eq!(display_width("\u{1112}\u{1161}\u{11AB}"), 2);
+    assert_eq!(display_width("한"), 2);
+}
+
+#[test]
+fn a_flag_is_two_columns() {
+    // Two regional indicator letters, drawn as one flag
+    assert_eq!(display_width("🇰🇷"), 2);
+}
+
+#[test]
+fn control_characters_take_no_column() {
+    for ch in ['\0', '\t', '\n', '\u{1b}', '\u{7f}', '\u{85}'] {
+        assert_eq!(char_width(ch), 0, "{ch:?}");
+    }
+}
+
+#[test]
 fn test_fullwidth_chars() {
     // Full-width ASCII characters
     assert_eq!(display_width("ＡＢＣ"), 6); // Full-width ABC

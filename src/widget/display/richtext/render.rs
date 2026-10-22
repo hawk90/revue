@@ -98,7 +98,7 @@ impl View for RichText {
                     continue;
                 }
 
-                let char_width = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16;
+                let char_width = crate::utils::unicode::char_width(ch) as u16;
 
                 let mut cell = Cell::new(ch);
                 cell.fg = span.style.fg.or(base_fg);
