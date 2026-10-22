@@ -13,7 +13,7 @@ use revue::widget::{
 };
 use std::time::Duration;
 
-use super::{render, row};
+use super::{corners, render, row};
 use crate::traits::placement::{assert_same_when_offset, assert_zero_areas_draw_nothing};
 
 fn shown(position: ToastPosition) -> ToastQueue {
@@ -250,9 +250,8 @@ proptest! {
 
     /// The visible toasts are stacked one cell in from the position's edges,
     /// `3 + gap` rows apart, newest last (Down) or first (Up), and each is
-    /// drawn as the model's box. At the bottom the stack ends 1 + gap rows
-    /// above the edge (#1059), so the bottom
-    /// positions run with no gap.
+    /// drawn as the model's box. The gap only goes between toasts: at the
+    /// bottom the stack ends one row above the edge.
     #[test]
     fn prop_toast_queue_stack_follows_the_model(
         toasts in prop::collection::vec((level(), "[a-z]{1,8}", any::<bool>()), 1..5),
@@ -267,7 +266,6 @@ proptest! {
             pos,
             ToastPosition::TopLeft | ToastPosition::TopCenter | ToastPosition::TopRight
         );
-        let gap = if top { gap } else { 0 };
         let dir = if up { StackDirection::Up } else { StackDirection::Down };
         let aw = tw + extra_w;
         let mut q = ToastQueue::new()
@@ -286,7 +284,8 @@ proptest! {
             ToastPosition::TopCenter | ToastPosition::BottomCenter => (aw - tw) / 2,
             _ => aw - tw - 1,
         } as usize;
-        let base = if top { 1 } else { ah.saturating_sub(n as u16 * (3 + gap) + 1) } as usize;
+        let stack = n as u16 * 3 + (n as u16 - 1) * gap;
+        let base = if top { 1 } else { ah.saturating_sub(stack + 1) } as usize;
         let mut grid = vec![vec![' '; aw as usize]; ah as usize];
         let tw = tw as usize;
         for (i, (level, msg, dismissible)) in toasts.iter().enumerate() {
@@ -343,4 +342,42 @@ proptest! {
             prop_assert_eq!(q.is_paused(), hover && inside);
         }
     }
+}
+
+#[test]
+fn a_narrow_toast_keeps_its_icon_inside_the_border() {
+    // At x = 1 the icon goes in column 3, which is inside the border only
+    // from 4 columns on
+    for width in 0..6u16 {
+        let mut q = ToastQueue::new()
+            .toast_width(width)
+            .position(ToastPosition::TopLeft);
+        q.info("x");
+        q.tick();
+        let b = render(&q, 10, 5);
+        let icons = (0..10).filter(|&x| b.get(x, 2).unwrap().symbol == 'ℹ');
+        let want: Vec<u16> = if width >= 4 { vec![3] } else { vec![] };
+        assert_eq!(icons.collect::<Vec<_>>(), want, "width {width}");
+        if width > 0 {
+            assert_eq!(b.get(width, 2).unwrap().symbol, '│', "width {width}");
+        }
+    }
+}
+
+#[test]
+fn the_gap_only_goes_between_toasts() {
+    // At the bottom the stack ends one row above the edge, as it starts one
+    // row below it at the top
+    let mut q = ToastQueue::new()
+        .toast_width(10)
+        .position(ToastPosition::BottomLeft)
+        .gap(2);
+    q.info("a");
+    q.info("b");
+    q.tick();
+    let b = render(&q, 14, 12);
+    // 3 + 2 + 3 rows ending at row 10 of 12
+    assert_eq!(corners(&b), [(1, 3), (1, 8)]);
+    assert_eq!(b.get(1, 10).unwrap().symbol, '╰');
+    assert_eq!(row(&b, 11).trim(), "");
 }
