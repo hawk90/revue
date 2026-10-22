@@ -330,7 +330,14 @@ fn json_viewer_cuts_a_wide_value_at_the_edge() {
         let b = draw(&v, w, 3);
         // The value's syllables that are drawn sit two columns apart, in
         // order, up to the edge: none is erased by the next one
-        if let Some(y) = (0..3).find(|&y| col_of(&b, y, '한').is_some()) {
+        // From 13 columns the value (its quote at column 10) has room for a
+        // syllable
+        let y = (0..3).find(|&y| col_of(&b, y, '"').is_some() && row(&b, y).contains(':'));
+        if w >= 13 {
+            let y = y.unwrap();
+            assert!(col_of(&b, y, '한').is_some(), "width {w}: {:?}", row(&b, y));
+        }
+        if let Some(y) = y.filter(|&y| col_of(&b, y, '한').is_some()) {
             let heads: Vec<(u16, char)> = (0..w)
                 .map(|x| (x, b.get(x, y).unwrap().symbol))
                 .filter(|&(_, c)| c == '한' || c == '글')
@@ -339,10 +346,15 @@ fn json_viewer_cuts_a_wide_value_at_the_edge() {
                 assert_eq!(pair[1].0, pair[0].0 + 2, "width {w}: {heads:?}");
                 assert_ne!(pair[1].1, pair[0].1, "width {w}: {heads:?}");
             }
-            // At most one column is left unused before the edge
-            let (last, _) = *heads.last().unwrap();
-            assert!(
-                w - (last + 2) <= 1 || heads.len() == 8,
+            // The value starts with 한 right after its opening quote
+            let first = heads[0].0;
+            assert_eq!(heads[0].1, '한', "width {w}: {heads:?}");
+            assert_eq!(b.get(first - 1, y).unwrap().symbol, '"', "width {w}");
+            // Every column from the first syllable to the edge is used, but
+            // for one too few for another syllable
+            assert_eq!(
+                heads.len() as u16,
+                ((w - first) / 2).min(8),
                 "width {w}: {heads:?}"
             );
         }
