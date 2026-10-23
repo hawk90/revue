@@ -105,68 +105,35 @@ impl TextWrapper {
                     .collect()
             }
             WrapMode::Char => {
-                let mut lines = Vec::new();
+                let mut lines: Vec<String> = Vec::new();
 
                 for line in text.lines() {
-                    let indent = if lines.is_empty() {
-                        &self.indent
-                    } else {
-                        &self.subsequent_indent
-                    };
-
-                    // Use display_width for indent width
-                    let indent_width = display_width(indent);
-                    let remaining_width = self.width.saturating_sub(indent_width);
-
-                    if remaining_width == 0 {
-                        lines.push(indent.clone());
-                        continue;
-                    }
-
-                    // If line fits, just add it
-                    if display_width(line) <= remaining_width {
-                        lines.push(format!("{}{}", indent, line));
-                        continue;
-                    }
-
-                    // Split by display width, not character count
-                    let mut pos = 0;
-                    let mut first_line = true;
-
-                    while pos < line.len() {
-                        // Get substring starting at pos
-                        let remaining_str = &line[pos..];
-
-                        // Get indent for this line
-                        let current_indent = if first_line {
+                    let mut rest = line;
+                    loop {
+                        // As in `WrapMode::Word`, the first indent is for the
+                        // first line of the whole text, not of each source line
+                        let indent = if lines.is_empty() {
                             &self.indent
                         } else {
                             &self.subsequent_indent
                         };
+                        let room = self.width.saturating_sub(display_width(indent));
 
-                        let indent_width = display_width(current_indent);
-                        let remaining_width = self.width.saturating_sub(indent_width);
+                        // Split by display width. Each line takes at least
+                        // one char, so a wide char wider than the room, or
+                        // any char after an indent that fills the width,
+                        // overflows the line instead of being dropped.
+                        let mut chunk = truncate_to_width(rest, room);
+                        if chunk.is_empty() {
+                            let first = rest.chars().next().map_or(0, char::len_utf8);
+                            chunk = &rest[..first];
+                        }
+                        lines.push(format!("{}{}", indent, chunk));
 
-                        if remaining_width == 0 {
+                        rest = &rest[chunk.len()..];
+                        if rest.is_empty() {
                             break;
                         }
-
-                        // Truncate to fit in remaining width. A wide char
-                        // wider than that gets a line of its own, so the
-                        // loop always advances.
-                        let mut chunk = truncate_to_width(remaining_str, remaining_width);
-                        if chunk.is_empty() {
-                            let first = remaining_str.chars().next().map_or(0, char::len_utf8);
-                            chunk = &remaining_str[..first];
-                        }
-                        lines.push(format!("{}{}", current_indent, chunk));
-
-                        pos += chunk.len();
-                        first_line = false;
-                    }
-
-                    if line.is_empty() && !indent.is_empty() {
-                        lines.push(indent.clone());
                     }
                 }
 
