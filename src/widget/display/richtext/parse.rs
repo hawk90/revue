@@ -1,5 +1,7 @@
 //! Building rich text from markup tags
 
+use std::collections::HashMap;
+
 use super::{RichText, Span, Style};
 use crate::style::Color;
 
@@ -130,34 +132,31 @@ enum Attr {
 }
 
 impl Attr {
-    /// Turn this on in `style` and `link`
-    fn apply(&self, style: &mut Style, link: &mut Option<String>) {
+    /// What a closing tag matches this by: the attribute, the exact color
+    /// for a color, and any link for a link
+    fn key(&self) -> Key {
+        let rgba = |c: &Color| u32::from_be_bytes([c.r, c.g, c.b, c.a]);
         match self {
-            Attr::Bold => style.bold = true,
-            Attr::Italic => style.italic = true,
-            Attr::Underline => style.underline = true,
-            Attr::Dim => style.dim = true,
-            Attr::Strike => style.strikethrough = true,
-            Attr::Reverse => style.reverse = true,
-            Attr::Fg(color) => style.fg = Some(*color),
-            Attr::Bg(color) => style.bg = Some(*color),
-            // A link is underlined, and cyan unless a color is already on
-            Attr::Link(url) => {
-                *link = Some(url.clone());
-                style.underline = true;
-                style.fg.get_or_insert(Color::CYAN);
-            }
+            Attr::Bold => Key::Modifier(0),
+            Attr::Italic => Key::Modifier(1),
+            Attr::Underline => Key::Modifier(2),
+            Attr::Dim => Key::Modifier(3),
+            Attr::Strike => Key::Modifier(4),
+            Attr::Reverse => Key::Modifier(5),
+            Attr::Fg(c) => Key::Fg(rgba(c)),
+            Attr::Bg(c) => Key::Bg(rgba(c)),
+            Attr::Link(_) => Key::Link,
         }
     }
+}
 
-    /// Whether `[/self]` closes `open`: the same attribute and color; any
-    /// link
-    fn closes(&self, open: &Attr) -> bool {
-        match (self, open) {
-            (Attr::Link(_), Attr::Link(_)) => true,
-            _ => self == open,
-        }
-    }
+/// See [`Attr::key`]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum Key {
+    Modifier(usize),
+    Fg(u32),
+    Bg(u32),
+    Link,
 }
 
 /// What the text between `[` and `]` does
@@ -184,8 +183,12 @@ fn parse_attrs(words: &str, closing: bool) -> Option<Vec<Attr>> {
     let mut attrs = Vec::new();
     let mut words = words.split_whitespace();
     while let Some(word) = words.next() {
-        let attr = if let Some(url) = word.strip_prefix("link=") {
-            Attr::Link(url.to_string())
+        let attr = if word.len() >= 5
+            && word.is_char_boundary(5)
+            && word[..5].eq_ignore_ascii_case("link=")
+        {
+            // The word is case-insensitive, the URL is not
+            Attr::Link(word[5..].to_string())
         } else {
             match word.to_lowercase().as_str() {
                 "link" if closing => Attr::Link(String::new()),
@@ -202,7 +205,11 @@ fn parse_attrs(words: &str, closing: bool) -> Option<Vec<Attr>> {
                 },
             }
         };
-        attrs.push(attr);
+        // A word given twice counts once: `[bold bold]` is closed by one
+        // `[/bold]`
+        if !attrs.contains(&attr) {
+            attrs.push(attr);
+        }
     }
     (!attrs.is_empty()).then_some(attrs)
 }
@@ -211,99 +218,96 @@ fn parse_attrs(words: &str, closing: bool) -> Option<Vec<Attr>> {
 fn color(word: &str) -> Option<Color> {
     // Only a name or `#hex`: CSS functions such as `rgb(..)` are not words
     // of a tag
-    if word.contains('(') {
+    // `transparent` is not a color here: there is no see-through text
+    if word.contains('(') || word.eq_ignore_ascii_case("transparent") {
         return None;
     }
     crate::style::parse_color(word)
 }
 
-/// One open tag: what it turns on, and the style and link before it
-#[derive(Default)]
-struct Frame {
-    attrs: Vec<Attr>,
-    style: Style,
-    link: Option<String>,
-}
-
-/// The open tags, oldest first, and the style and link they give. Each tag
-/// keeps the style before it, so opening one, or closing the newest, does
-/// not go back over the others: deep markup stays linear.
+/// What the open tags turn on, kept per attribute so that opening or
+/// closing a tag takes the same time however many others are open: the
+/// modifiers as counts, the colors and the link as stacks (the newest one
+/// wins), and for each attribute the tags that turned it on, newest last.
 #[derive(Default)]
 struct OpenTags {
-    frames: Vec<Frame>,
-    /// Each attribute that is on, and in how many open tags
-    on: Vec<(Attr, usize)>,
+    next: u64,
+    /// Bold, italic, underline, dim, strike, reverse: how many open tags
+    /// turn each on
+    counts: [usize; 6],
+    fg: Vec<(u64, Color)>,
+    bg: Vec<(u64, Color)>,
+    links: Vec<(u64, String)>,
+    by_attr: HashMap<Key, Vec<u64>>,
+    /// The style and link in effect
     style: Style,
     link: Option<String>,
 }
 
 impl OpenTags {
     fn open(&mut self, attrs: Vec<Attr>) {
-        let frame = Frame {
-            style: self.style.clone(),
-            link: self.link.clone(),
-            attrs,
-        };
-        for attr in &frame.attrs {
-            attr.apply(&mut self.style, &mut self.link);
-            match self.on.iter_mut().find(|(on, _)| on == attr) {
-                Some((_, n)) => *n += 1,
-                None => self.on.push((attr.clone(), 1)),
+        let id = self.next;
+        self.next += 1;
+        for attr in attrs {
+            let key = attr.key();
+            self.by_attr.entry(key).or_default().push(id);
+            match (key, attr) {
+                (Key::Modifier(i), _) => self.counts[i] += 1,
+                (_, Attr::Fg(c)) => self.fg.push((id, c)),
+                (_, Attr::Bg(c)) => self.bg.push((id, c)),
+                (_, Attr::Link(url)) => self.links.push((id, url)),
+                _ => {}
             }
         }
-        self.frames.push(frame);
+        self.restyle();
     }
 
     /// Turn off each attribute in `attrs` in the most recent open tag that
-    /// turned it on; a tag with nothing left on is closed
+    /// turned it on; one nothing turned on does nothing
     fn close(&mut self, attrs: &[Attr]) {
         for attr in attrs {
-            // Nothing open has it: nothing to look for
-            if !self.on.iter().any(|(on, n)| *n > 0 && attr.closes(on)) {
-                continue;
-            }
-            let Some((k, at)) = self
-                .frames
-                .iter()
-                .enumerate()
-                .rev()
-                .find_map(|(k, f)| Some((k, f.attrs.iter().position(|on| attr.closes(on))?)))
-            else {
+            let key = attr.key();
+            let Some(id) = self.by_attr.get_mut(&key).and_then(Vec::pop) else {
                 continue;
             };
-            let closed = self.frames[k].attrs.remove(at);
-            if let Some((_, n)) = self.on.iter_mut().find(|(on, _)| *on == closed) {
-                *n -= 1;
-            }
-            if self.frames[k].attrs.is_empty() {
-                let frame = self.frames.remove(k);
-                if let Some(next) = self.frames.get_mut(k) {
-                    next.style = frame.style;
-                    next.link = frame.link;
-                } else {
-                    self.style = frame.style;
-                    self.link = frame.link;
-                    continue;
+            // The entry that tag put there: the same tag and, for a color,
+            // the same color (one tag can name two)
+            fn remove<T>(stack: &mut Vec<(u64, T)>, id: u64, same: impl Fn(&T) -> bool) {
+                if let Some(at) = stack.iter().rposition(|(i, v)| *i == id && same(v)) {
+                    stack.remove(at);
                 }
             }
-            self.restyle_from(k);
-        }
-    }
-
-    /// Work the styles out again from the tag at `k` up, from the style
-    /// before it
-    fn restyle_from(&mut self, k: usize) {
-        let mut style = self.frames[k].style.clone();
-        let mut link = self.frames[k].link.clone();
-        for frame in &mut self.frames[k..] {
-            frame.style = style.clone();
-            frame.link = link.clone();
-            for attr in &frame.attrs {
-                attr.apply(&mut style, &mut link);
+            match (key, attr) {
+                (Key::Modifier(i), _) => self.counts[i] -= 1,
+                (_, Attr::Fg(c)) => remove(&mut self.fg, id, |v| v == c),
+                (_, Attr::Bg(c)) => remove(&mut self.bg, id, |v| v == c),
+                (_, Attr::Link(_)) => remove(&mut self.links, id, |_| true),
+                _ => {}
             }
         }
-        self.style = style;
-        self.link = link;
+        self.restyle();
+    }
+
+    /// The style and link the open tags give: a modifier any of them turns
+    /// on, the newest color and link; a link is underlined, and cyan when no
+    /// color is on
+    fn restyle(&mut self) {
+        let on = |i: usize| self.counts[i] > 0;
+        self.style = Style {
+            bold: on(0),
+            italic: on(1),
+            underline: on(2) || !self.links.is_empty(),
+            dim: on(3),
+            strikethrough: on(4),
+            reverse: on(5),
+            fg: self
+                .fg
+                .last()
+                .map(|(_, c)| *c)
+                .or_else(|| (!self.links.is_empty()).then_some(Color::CYAN)),
+            bg: self.bg.last().map(|(_, c)| *c),
+        };
+        self.link = self.links.last().map(|(_, url)| url.clone());
     }
 }
 

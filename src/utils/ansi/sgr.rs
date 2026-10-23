@@ -39,8 +39,10 @@ impl SgrState {
                 continue;
             }
             match code {
-                38 | 48 => {
-                    // `38;5;n` and `38;2;r;g;b` take the parameters after them
+                38 | 48 | 58 => {
+                    // `38;5;n` and `38;2;r;g;b` take the parameters after
+                    // them; so does 58, the underline color, which is not
+                    // drawn but must not have its numbers read as codes
                     let rest: Vec<u32> = groups[i + 1..].iter().map(|g| g[0]).collect();
                     let used = match rest.first() {
                         Some(5) => 2,
@@ -48,10 +50,10 @@ impl SgrState {
                         _ => 0,
                     };
                     if let Some(color) = extended(&rest[..used.min(rest.len())], false) {
-                        if code == 38 {
-                            self.fg = Some(color);
-                        } else {
-                            self.bg = Some(color);
+                        match code {
+                            38 => self.fg = Some(color),
+                            48 => self.bg = Some(color),
+                            _ => {}
                         }
                     }
                     i += used;

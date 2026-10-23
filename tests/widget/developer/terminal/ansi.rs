@@ -533,3 +533,13 @@ fn reverse_is_drawn() {
     assert!(cell(&buffer, 0, 0).modifier.contains(Modifier::REVERSE));
     assert!(!cell(&buffer, 1, 0).modifier.contains(Modifier::REVERSE));
 }
+
+#[test]
+fn line_breaks_inside_a_string_sequence_do_nothing() {
+    // A newline or tab in an OSC title or a DCS payload is part of it
+    for bytes in ["\x1b]0;a\nb\x07ok", "\x1bPq#0\n#1\t\x1b\\ok"] {
+        let buffer = written(bytes);
+        assert_eq!(row(&buffer, 0).trim_end(), "ok", "{bytes:?}");
+        assert_eq!(row(&buffer, 1).trim_end(), "", "{bytes:?}");
+    }
+}
