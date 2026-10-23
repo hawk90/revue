@@ -184,46 +184,15 @@ impl<V: View> TestApp<V> {
         self.render();
     }
 
-    /// Get screen as text
+    /// Get screen as text: a wide glyph is one character, trailing spaces
+    /// and blank rows are trimmed
     pub fn screen_text(&self) -> String {
-        let mut lines = Vec::new();
-        for y in 0..self.height {
-            let mut line = String::new();
-            for x in 0..self.width {
-                if let Some(cell) = self.buffer.get(x, y) {
-                    line.push(cell.symbol);
-                } else {
-                    line.push(' ');
-                }
-            }
-            // Trim trailing spaces
-            let trimmed = line.trim_end();
-            lines.push(trimmed.to_string());
-        }
-
-        // Remove trailing empty lines
-        while lines.last().map(|l| l.is_empty()).unwrap_or(false) {
-            lines.pop();
-        }
-
-        lines.join("\n")
+        super::screen_text::screen_text(&self.buffer)
     }
 
-    /// Get a specific line
+    /// Get a specific line, trailing spaces trimmed
     pub fn get_line(&self, row: u16) -> String {
-        if row >= self.height {
-            return String::new();
-        }
-
-        let mut line = String::new();
-        for x in 0..self.width {
-            if let Some(cell) = self.buffer.get(x, row) {
-                line.push(cell.symbol);
-            } else {
-                line.push(' ');
-            }
-        }
-        line.trim_end().to_string()
+        super::screen_text::row_text(&self.buffer, row)
     }
 
     /// Get cell at position
@@ -231,15 +200,9 @@ impl<V: View> TestApp<V> {
         self.buffer.get(x, y).map(|c| c.symbol)
     }
 
-    /// Find text on screen, returns position of first occurrence
+    /// Find text on screen: the column and row of its first occurrence
     pub fn find_text(&self, text: &str) -> Option<(u16, u16)> {
-        for y in 0..self.height {
-            let line = self.get_line(y);
-            if let Some(x) = line.find(text) {
-                return Some((x as u16, y));
-            }
-        }
-        None
+        super::screen_text::find(&self.buffer, text)
     }
 
     /// Check if screen contains text

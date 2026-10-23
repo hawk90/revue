@@ -44,41 +44,15 @@ impl RenderCapture {
         (self.width, self.height)
     }
 
-    /// Get all text content
+    /// Get all text content: a wide glyph is one character, trailing
+    /// spaces and blank rows are trimmed
     pub fn text(&self) -> String {
-        let mut lines = Vec::new();
-        for y in 0..self.height {
-            let mut line = String::new();
-            for x in 0..self.width {
-                if let Some(cell) = self.buffer.get(x, y) {
-                    line.push(cell.symbol);
-                } else {
-                    line.push(' ');
-                }
-            }
-            lines.push(line.trim_end().to_string());
-        }
-        // Remove trailing empty lines
-        while lines.last().is_some_and(|l| l.is_empty()) {
-            lines.pop();
-        }
-        lines.join("\n")
+        crate::testing::screen_text::screen_text(&self.buffer)
     }
 
-    /// Get a specific line
+    /// Get a specific line, trailing spaces trimmed
     pub fn line(&self, row: u16) -> String {
-        if row >= self.height {
-            return String::new();
-        }
-        let mut line = String::new();
-        for x in 0..self.width {
-            if let Some(cell) = self.buffer.get(x, row) {
-                line.push(cell.symbol);
-            } else {
-                line.push(' ');
-            }
-        }
-        line.trim_end().to_string()
+        crate::testing::screen_text::row_text(&self.buffer, row)
     }
 
     /// Check if contains text
@@ -86,15 +60,9 @@ impl RenderCapture {
         self.text().contains(text)
     }
 
-    /// Find text position
+    /// Find text position: the column and row of its first occurrence
     pub fn find(&self, text: &str) -> Option<(u16, u16)> {
-        for y in 0..self.height {
-            let line = self.line(y);
-            if let Some(x) = line.find(text) {
-                return Some((x as u16, y));
-            }
-        }
-        None
+        crate::testing::screen_text::find(&self.buffer, text)
     }
 
     /// Get character at position
