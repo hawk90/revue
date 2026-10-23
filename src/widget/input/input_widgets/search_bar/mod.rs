@@ -8,6 +8,7 @@ mod view;
 
 use crate::query::{ParseError, Query};
 use crate::style::Color;
+use crate::utils::EditState;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -33,10 +34,9 @@ use crate::{impl_props_builders, impl_styled_view};
 /// ```
 #[derive(Clone)]
 pub struct SearchBar {
-    /// Current input text
-    input: String,
-    /// Cursor position
-    cursor: usize,
+    /// The query text and its cursor, edited as every single-line field is
+    /// (#985)
+    state: EditState,
     /// Parsed query (if valid)
     parsed_query: Option<Query>,
     /// Parse error (if invalid)
@@ -66,8 +66,7 @@ impl SearchBar {
     /// Create a new search bar
     pub fn new() -> Self {
         Self {
-            input: String::new(),
-            cursor: 0,
+            state: EditState::single_line(),
             parsed_query: Some(Query::new()),
             parse_error: None,
             placeholder: "Search...".to_string(),
@@ -139,20 +138,20 @@ impl SearchBar {
 
     /// Get current input text
     pub fn get_input(&self) -> &str {
-        &self.input
+        self.state.line(0).unwrap_or("")
     }
 
-    /// Set input text
+    /// Set the query (the cursor goes to its end) and parse it
     pub fn set_query(&mut self, query: impl Into<String>) {
-        self.input = query.into();
-        self.cursor = self.input.chars().count();
+        self.state.set_text(query.into());
+        let end = self.state.end();
+        self.state.set_cursor(end);
         self.parse_input();
     }
 
     /// Clear input
     pub fn clear(&mut self) {
-        self.input.clear();
-        self.cursor = 0;
+        self.state.set_text("");
         self.parsed_query = Some(Query::new());
         self.parse_error = None;
     }

@@ -99,17 +99,18 @@ fn search_bar_icon_keeps_its_continuation_cell() {
 
 #[test]
 fn search_bar_scrolls_by_columns_and_keeps_text_and_cursor_aligned() {
-    // 12 wide leaves 6 columns for text (4..10); five syllables are 10.
+    // 12 wide leaves 5 columns for text (4..9; the error mark has 9, #1014);
+    // five syllables are 10.
     let bar = search_bar("안녕하세요");
     let buf = render(&bar.width(12), 12, 1);
     assert_eq!(
-        bg(&buf, 9, 0),
+        bg(&buf, 8, 0),
         SEARCH_CURSOR_BG,
         "row: {:?}",
         row_text(&buf, 0)
     );
-    assert_eq!(sym(&buf, 7, 0), '요', "row: {:?}", row_text(&buf, 0));
-    assert!(is_cont(&buf, 8, 0));
+    assert_eq!(sym(&buf, 6, 0), '요', "row: {:?}", row_text(&buf, 0));
+    assert!(is_cont(&buf, 7, 0));
 }
 
 // ─── Autocomplete ───────────────────────────────────────────────────────────
