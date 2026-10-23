@@ -24,6 +24,9 @@ pub(super) fn split_by_lines(
     }
 
     let mut line_spans: Vec<Vec<HighlightSpan>> = lines.iter().map(|_| Vec::new()).collect();
+    // Each line's char starts, made when a capture first lands on it, so a
+    // long line with many captures is measured once
+    let mut columns: Vec<Option<CharColumns>> = lines.iter().map(|_| None).collect();
     for &(start, end, style) in captures {
         // The first line that ends after the capture starts, and on while
         // the lines start before it ends
@@ -34,11 +37,9 @@ pub(super) fn split_by_lines(
             }
             let (a, b) = (start.max(line_start), end.min(line_end));
             if a < b {
-                let line = &code[line_start..line_end];
-                line_spans[i].push(style.span(
-                    char_column(line, a - line_start),
-                    char_column(line, b - line_start),
-                ));
+                let cols =
+                    columns[i].get_or_insert_with(|| CharColumns::new(&code[line_start..line_end]));
+                line_spans[i].push(style.span(cols.at(a - line_start), cols.at(b - line_start)));
             }
         }
     }
@@ -51,11 +52,22 @@ pub(super) fn split_by_lines(
     line_spans
 }
 
-/// The character index of byte offset `byte` in `text` (the characters that
-/// start before it)
-pub(super) fn char_column(text: &str, byte: usize) -> usize {
-    match text.get(..byte) {
-        Some(head) => head.chars().count(),
-        None => text.char_indices().take_while(|&(i, _)| i < byte).count(),
+/// Byte offsets to character indices for one line, in a binary search
+pub(super) struct CharColumns {
+    /// The byte offset where each character starts
+    starts: Vec<usize>,
+}
+
+impl CharColumns {
+    pub(super) fn new(text: &str) -> Self {
+        Self {
+            starts: text.char_indices().map(|(i, _)| i).collect(),
+        }
+    }
+
+    /// The character index of byte offset `byte` (the characters that
+    /// start before it)
+    pub(super) fn at(&self, byte: usize) -> usize {
+        self.starts.partition_point(|&s| s < byte)
     }
 }

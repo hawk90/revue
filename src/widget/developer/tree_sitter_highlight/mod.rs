@@ -110,14 +110,10 @@ impl TreeSitterHighlighter {
         };
 
         // Spans are in characters; tree-sitter counts bytes
+        let cols = lines::CharColumns::new(line);
         let mut spans: Vec<HighlightSpan> = captures
             .into_iter()
-            .map(|(start, end, style)| {
-                style.span(
-                    lines::char_column(line, start),
-                    lines::char_column(line, end),
-                )
-            })
+            .map(|(start, end, style)| style.span(cols.at(start), cols.at(end)))
             .collect();
 
         // Sort spans by start position
