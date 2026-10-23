@@ -4,7 +4,7 @@ use super::Input;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::theme::PLACEHOLDER_FG;
-use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Input {
@@ -28,71 +28,28 @@ impl View for Input {
         // An empty input shows its placeholder whether or not it is focused,
         // as browsers and most toolkits do. `Input::new()` starts focused, so
         // hiding the placeholder while focused meant it never showed at all.
-        // When focused, the cursor (at index 0) is drawn over the first
-        // placeholder cell, so it stays visible.
-        let value = self.line();
-        let is_placeholder = value.is_empty() && !self.placeholder.is_empty();
-        let display_text = if is_placeholder {
-            &self.placeholder
-        } else {
-            value
-        };
-        let cursor = self.cursor();
-        let selection = self.selection();
-
-        // Get CSS colors with priority: inline > CSS > default
+        // When focused, the cursor is drawn over the first placeholder cell,
+        // so it stays visible.
         let (css_fg, css_bg) = self.text_colors(ctx);
 
-        // The cursor is a char index (always the start of a cluster); the
-        // screen is in columns, where a wide
-        // glyph (Hangul, CJK, emoji) takes two. Scroll by columns so the
-        // cursor, and the whole glyph under it, stays in view.
-        let width = area.width as usize;
-        let char_len = display_text.chars().count();
-        let scroll = if is_placeholder {
-            0
-        } else {
-            let line_w = col_of(display_text, char_len) + 1;
-            scroll_to_cursor(
-                self.scroll_x.get(),
-                col_of(display_text, cursor),
-                cursor_width(display_text, cursor),
-                line_w,
-                width,
-            )
-        };
+        // Scrolled by columns (a wide glyph takes two) so the cursor, and
+        // the whole glyph under it, stays in view; the scroll follows the
+        // cursor focused or not
+        let scroll = EditField::of(&self.state, &self.placeholder, true)
+            .scroll(self.scroll_x.get(), area.width);
         self.scroll_x.set(scroll);
 
-        ctx.put_edit_line(0, 0, display_text, scroll, area.width, |i, ch| {
-            let is_cursor = self.focused && i == cursor;
-            let is_selected = selection.is_some_and(|(start, end)| i >= start && i < end);
+        let field = EditField::of(&self.state, &self.placeholder, self.focused);
+        ctx.put_edit_field(0, 0, area.width, &field, scroll, |kind, ch| {
             let mut cell = Cell::new(ch);
-
-            if is_cursor {
-                cell.fg = self.cursor_fg;
-                cell.bg = self.cursor_bg;
-            } else if is_selected {
-                cell.fg = Some(Color::WHITE);
-                cell.bg = self.selection_bg;
-            } else if is_placeholder {
-                cell.fg = Some(PLACEHOLDER_FG); // Gray for placeholder
-            } else {
-                cell.fg = css_fg;
-                cell.bg = css_bg;
-            }
+            (cell.fg, cell.bg) = match kind {
+                FieldCell::Cursor => (self.cursor_fg, self.cursor_bg),
+                FieldCell::Selected => (Some(Color::WHITE), self.selection_bg),
+                FieldCell::Placeholder => (Some(PLACEHOLDER_FG), None),
+                FieldCell::Text => (css_fg, css_bg),
+            };
             cell
         });
-
-        // Draw cursor at end if cursor is at the end of text
-        if self.focused && cursor >= char_len {
-            let x = col_of(display_text, char_len).saturating_sub(scroll);
-            if x < width {
-                let mut cursor_cell = Cell::new(' ');
-                cursor_cell.fg = self.cursor_fg;
-                cursor_cell.bg = self.cursor_bg;
-                ctx.set(x as u16, 0, cursor_cell);
-            }
-        }
     }
 
     crate::impl_view_meta!("Input", focusable);

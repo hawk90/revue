@@ -4,7 +4,7 @@
 use super::SearchBar;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for SearchBar {
@@ -67,61 +67,26 @@ impl SearchBar {
         // takes two cells; scroll so the cursor stays in view.
         let input_x: u16 = 4;
         let input_width = width.saturating_sub(7);
-        let input = self.get_input();
-        let cursor = self.cursor_char();
-
-        if input.is_empty() {
-            // The cursor goes over the placeholder's first letter, as in
-            // Input, and keeps it (#1014)
-            ctx.put_edit_line(input_x, 0, &self.placeholder, 0, input_width, |i, ch| {
-                let mut cell = Cell::new(ch);
-                if self.focused && i == 0 {
-                    cell.fg = Some(self.bg_color);
-                    cell.bg = Some(text_color);
-                } else {
-                    cell.fg = Some(self.placeholder_color);
-                    cell.bg = Some(self.bg_color);
-                }
-                cell
-            });
-        }
-
-        let scroll = scroll_to_cursor(
-            0,
-            col_of(input, cursor),
-            cursor_width(input, cursor),
-            col_of(input, usize::MAX) + 1,
-            input_width as usize,
-        );
         let input_fg = if self.parse_error.is_some() {
             self.error_color
         } else {
             text_color
         };
-        ctx.put_edit_line(input_x, 0, input, scroll, input_width, |i, ch| {
+        // The cursor goes over the placeholder's first letter, as in Input,
+        // and keeps it (#1014)
+        let field = EditField::of(&self.state, &self.placeholder, self.focused);
+        let scroll = field.scroll(self.scroll_x.get(), input_width);
+        self.scroll_x.set(scroll);
+        ctx.put_edit_field(input_x, 0, input_width, &field, scroll, |kind, ch| {
             let mut cell = Cell::new(ch);
-            if self.focused && i == cursor {
-                cell.fg = Some(self.bg_color);
-                cell.bg = Some(text_color);
-            } else {
-                cell.fg = Some(input_fg);
-                cell.bg = Some(self.bg_color);
-            }
+            (cell.fg, cell.bg) = match kind {
+                FieldCell::Cursor => (Some(self.bg_color), Some(text_color)),
+                FieldCell::Selected => (Some(self.bg_color), Some(self.placeholder_color)),
+                FieldCell::Placeholder => (Some(self.placeholder_color), Some(self.bg_color)),
+                FieldCell::Text => (Some(input_fg), Some(self.bg_color)),
+            };
             cell
         });
-
-        // Draw the cursor past the end of the text (over the placeholder's
-        // first letter when there is no text)
-        let at_end = cursor >= input.chars().count();
-        if self.focused && at_end && !(input.is_empty() && !self.placeholder.is_empty()) {
-            let x = col_of(input, usize::MAX).saturating_sub(scroll);
-            if x < input_width as usize {
-                let mut cursor_cell = Cell::new(' ');
-                cursor_cell.fg = Some(self.bg_color);
-                cursor_cell.bg = Some(text_color);
-                ctx.set(input_x + x as u16, 0, cursor_cell);
-            }
-        }
 
         // Draw error indicator, past the field
         if self.parse_error.is_some() {

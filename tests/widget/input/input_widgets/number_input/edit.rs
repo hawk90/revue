@@ -80,8 +80,10 @@ impl Model {
                     buf.remove(*cur);
                 }
             }
-            (Key::Left, Some((_, cur))) if *cur > 0 => *cur -= 1,
-            (Key::Right, Some((buf, cur))) if *cur < buf.len() => *cur += 1,
+            // A move is the field's even at an edge, as in every
+            // single-line field (#985)
+            (Key::Left, Some((_, cur))) => *cur = cur.saturating_sub(1),
+            (Key::Right, Some((buf, cur))) => *cur = (*cur + 1).min(buf.len()),
             _ => return false,
         }
         true
@@ -161,4 +163,37 @@ proptest! {
             prop_assert!((lo..=hi).contains(&input.get_value()), "{} after {:?}", input.get_value(), k);
         }
     }
+}
+
+// The standard editing keys while editing (#985)
+
+#[test]
+fn editing_takes_the_modified_editing_keys() {
+    use revue::event::KeyEvent;
+    let mut n = NumberInput::new().value(1234.0);
+    // Not editing: an editing key is not the field's
+    assert!(!n.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    n.handle_key(&Key::Enter);
+    // Shift+Left selects the last digit; typing replaces it
+    assert!(n.handle_key_event(&KeyEvent {
+        shift: true,
+        ..KeyEvent::new(Key::Left)
+    }));
+    n.handle_key(&Key::Char('9'));
+    assert_eq!(n.display_string(), "1239");
+    // Undo puts back the digit and its selection; past it, a word delete
+    // clears the number
+    assert!(n.handle_key_event(&KeyEvent::ctrl(Key::Char('z'))));
+    assert_eq!(n.display_string(), "1234");
+    n.handle_key(&Key::Right);
+    assert!(n.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    assert_eq!(n.display_string(), "");
+    // A letter is not typed, with or without Ctrl
+    assert!(!n.handle_key(&Key::Char('x')));
+    assert!(!n.handle_key_event(&KeyEvent::ctrl(Key::Char('x'))));
+    // `-` over a selection that starts the number is allowed
+    n.handle_key(&Key::Char('5'));
+    n.handle_key_event(&KeyEvent::ctrl(Key::Char('a')));
+    n.handle_key(&Key::Char('-'));
+    assert_eq!(n.display_string(), "-");
 }

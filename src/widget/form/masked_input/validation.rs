@@ -7,10 +7,10 @@ impl MaskedInput {
     /// Calculate password strength (0-4)
     pub fn password_strength(&self) -> usize {
         let len = self.char_count();
-        let has_lower = self.value.chars().any(|c| c.is_lowercase());
-        let has_upper = self.value.chars().any(|c| c.is_uppercase());
-        let has_digit = self.value.chars().any(|c| c.is_ascii_digit());
-        let has_special = self.value.chars().any(|c| !c.is_alphanumeric());
+        let has_lower = self.get_value().chars().any(|c| c.is_lowercase());
+        let has_upper = self.get_value().chars().any(|c| c.is_uppercase());
+        let has_digit = self.get_value().chars().any(|c| c.is_ascii_digit());
+        let has_special = self.get_value().chars().any(|c| !c.is_alphanumeric());
 
         let mut strength = 0;
 

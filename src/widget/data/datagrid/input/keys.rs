@@ -1,9 +1,20 @@
 //! DataGrid key handling
 
-use crate::event::Key;
+use crate::event::{Key, KeyEvent};
 use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
+    /// Handle a key with its modifiers: while a cell is edited, the
+    /// standard editing keys every single-line field shares (#985), word
+    /// moves and deletes, Shift selection, Ctrl+A, undo and redo included;
+    /// otherwise as [`handle_key`](Self::handle_key)
+    pub fn handle_key_event(&mut self, event: &KeyEvent) -> bool {
+        if self.edit_state.active {
+            return self.handle_edit_key_event(event);
+        }
+        self.handle_key(&event.key)
+    }
+
     /// Handle key input
     pub fn handle_key(&mut self, key: &Key) -> bool {
         // If editing, delegate to edit handler

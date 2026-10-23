@@ -59,6 +59,12 @@ fn test_search_bar_long_query_scrolls_to_the_cursor() {
     let buffer = screen(&s, 12, 1);
     assert_eq!(row(&buffer, 0), "│ 🔍ij한   │");
     assert_eq!(cursor_cells(&buffer), vec![8]);
+    // Two steps left stay inside the view: it does not move (#985)
+    s.cursor_left();
+    s.cursor_left();
+    let buffer = screen(&s, 12, 1);
+    assert_eq!(row(&buffer, 0), "│ 🔍ij한   │");
+    assert_eq!(cursor_cells(&buffer), vec![5]);
     s.cursor_home();
     let buffer = screen(&s, 12, 1);
     assert_eq!(row(&buffer, 0), "│ 🔍abcde  │");

@@ -4,7 +4,7 @@
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::fuzzy_match;
-use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
+use crate::widget::traits::render_context::edit_line::{col_of, EditField, FieldCell};
 use crate::widget::traits::{RenderContext, View};
 
 use super::Autocomplete;
@@ -21,53 +21,24 @@ impl Autocomplete {
             ctx.set(x, 0, Cell::new(' ').bg(self.input_bg));
         }
 
-        // Render input text or placeholder
-        let display_text = if self.value.is_empty() {
-            &self.placeholder
-        } else {
-            &self.value
-        };
         // Resolved once: the builder's color if it named one, else the
         // stylesheet's, else white.
         let input_fg = self.input_fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
 
-        // The typed value takes `color`; the placeholder keeps its own.
-        let text_fg = if self.value.is_empty() {
-            self.placeholder_fg
-        } else {
-            input_fg
-        };
-
-        // In columns: a wide glyph takes two cells. The cursor is a char
-        // index; while editing, scroll so it stays in view. Unfocused, show
-        // the value from its start - the cursor is not drawn, and the start is
-        // what identifies the value. The placeholder never scrolls.
-        let scroll = if self.value.is_empty() || !self.focused {
-            0
-        } else {
-            scroll_to_cursor(
-                0,
-                col_of(&self.value, self.cursor),
-                cursor_width(&self.value, self.cursor),
-                col_of(&self.value, usize::MAX) + 1,
-                input_width as usize,
-            )
-        };
-        // The cursor sits on the char at its index - over the first
-        // placeholder glyph when the value is empty - or past the end.
-        ctx.put_edit_line(0, 0, display_text, scroll, input_width, |i, ch| {
-            if self.focused && i == self.cursor {
-                Cell::new(ch).fg(self.input_bg).bg(input_fg)
-            } else {
-                Cell::new(ch).fg(text_fg).bg(self.input_bg)
-            }
+        // The value (or the placeholder), scrolled to keep the cursor in
+        // view while focused. Unfocused, the value shows from its start -
+        // the cursor is not drawn, and the start is what identifies the
+        // value. The typed value takes `color`; the placeholder keeps its
+        // own.
+        let field = EditField::of(&self.state, &self.placeholder, self.focused);
+        let scroll = field.scroll(self.scroll_x.get(), input_width);
+        self.scroll_x.set(scroll);
+        ctx.put_edit_field(0, 0, input_width, &field, scroll, |kind, ch| match kind {
+            FieldCell::Cursor => Cell::new(ch).fg(self.input_bg).bg(input_fg),
+            FieldCell::Selected => Cell::new(ch).fg(self.selected_fg).bg(self.selected_bg),
+            FieldCell::Placeholder => Cell::new(ch).fg(self.placeholder_fg).bg(self.input_bg),
+            FieldCell::Text => Cell::new(ch).fg(input_fg).bg(self.input_bg),
         });
-        if self.focused && self.cursor >= display_text.chars().count() {
-            let x = col_of(display_text, usize::MAX).saturating_sub(scroll);
-            if x < input_width as usize {
-                ctx.set(x as u16, 0, Cell::new(' ').fg(self.input_bg).bg(input_fg));
-            }
-        }
         input_fg
     }
 
@@ -122,7 +93,7 @@ impl Autocomplete {
 
                 // Label with highlight (fuzzy indices are char indices), in
                 // columns: a wide glyph takes two cells.
-                let matched = fuzzy_match(&self.value, &suggestion.label)
+                let matched = fuzzy_match(self.get_value(), &suggestion.label)
                     .map(|fm| fm.indices)
                     .unwrap_or_default();
                 let room = input_width.saturating_sub(x);

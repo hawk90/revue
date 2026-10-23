@@ -31,17 +31,18 @@ impl View for NumberInput {
 
         // Draw value (or input buffer when editing)
         let value_str = if self.editing {
-            &self.input_buffer
+            self.buffer()
         } else {
             &self.format_value()
         };
+        let cursor = self.edit.char_index(self.edit.cursor());
 
         for (i, ch) in value_str.chars().enumerate() {
             if x >= field_width {
                 break;
             }
 
-            let is_cursor_at_pos = self.editing && self.state.focused && i == self.cursor;
+            let is_cursor_at_pos = self.editing && self.state.focused && i == cursor;
 
             let mut cell = Cell::new(ch);
             if is_cursor_at_pos {
@@ -59,7 +60,7 @@ impl View for NumberInput {
         // Draw cursor at end if editing and cursor is at end
         if self.editing
             && self.state.focused
-            && self.cursor >= value_str.chars().count()
+            && cursor >= value_str.chars().count()
             && x < field_width
         {
             let mut cursor_cell = Cell::new(' ');

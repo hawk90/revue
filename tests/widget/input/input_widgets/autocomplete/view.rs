@@ -236,3 +236,53 @@ fn test_autocomplete_dropdown_follows_the_highlight() {
         ["item04", "item05", "item06", "item07"]
     );
 }
+
+// The field keeps its scroll and draws the selection (#985)
+
+/// The columns drawn with the cursor's colors (the input bg on the text
+/// color) on row 0
+fn cursor_cells(buffer: &Buffer, width: u16) -> Vec<u16> {
+    (0..width)
+        .filter(|&x| buffer.get(x, 0).unwrap().fg == Some(revue::widget::theme::EDITOR_BG))
+        .collect()
+}
+
+#[test]
+fn test_autocomplete_scroll_is_kept_while_the_cursor_moves_inside_the_view() {
+    let mut a = Autocomplete::new().value("abcdefghij");
+    a.focus();
+    // 6 columns: the end and the cursor after it
+    let buffer = render(&a, 6, 1);
+    assert_eq!(row(&buffer, 0, 6), "fghij ");
+    assert_eq!(cursor_cells(&buffer, 6), vec![5]);
+    // Two steps left stay inside the view: it does not move
+    key(&mut a, Key::Left);
+    key(&mut a, Key::Left);
+    let buffer = render(&a, 6, 1);
+    assert_eq!(row(&buffer, 0, 6), "fghij ");
+    assert_eq!(cursor_cells(&buffer, 6), vec![3]);
+    // Unfocused, the value shows from its start
+    a.blur();
+    assert_eq!(row(&render(&a, 6, 1), 0, 6), "abcdef");
+}
+
+#[test]
+fn test_autocomplete_selection_is_drawn() {
+    let mut a = Autocomplete::new().value("abcd");
+    a.focus();
+    a.handle_key(revue::event::KeyEvent {
+        shift: true,
+        ..revue::event::KeyEvent::ctrl(Key::Left)
+    });
+    let buffer = render(&a, 8, 1);
+    // The whole word is selected and the cursor sits on its first letter
+    assert_eq!(cursor_cells(&buffer, 8), vec![0]);
+    for x in 1..4 {
+        assert_eq!(
+            buffer.get(x, 0).unwrap().bg,
+            Some(Color::rgb(60, 100, 180)),
+            "{x}"
+        );
+    }
+    assert_ne!(buffer.get(4, 0).unwrap().bg, Some(Color::rgb(60, 100, 180)));
+}

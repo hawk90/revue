@@ -568,3 +568,20 @@ fn a_paste_past_max_lines_is_the_same_at_every_cursor() {
     assert!(s.paste("1\n2\n3"));
     assert_eq!(s.text(), "a123b123");
 }
+
+#[test]
+fn positions_convert_to_char_indices_and_back() {
+    // "e" + combining acute is one cluster of two chars; "한" one of one
+    let s = EditState::multi_line().with_text("ae\u{301}한b\nxy");
+    assert_eq!(s.char_index(EditPos::new(0, 0)), 0);
+    assert_eq!(s.char_index(EditPos::new(0, 2)), 3);
+    assert_eq!(s.char_index(EditPos::new(0, 4)), 5);
+    // Past the line: its end; past the text: the last line
+    assert_eq!(s.char_index(EditPos::new(0, 9)), 5);
+    assert_eq!(s.char_index(EditPos::new(5, 1)), 1);
+    assert_eq!(s.pos_at_char(0, 3), EditPos::new(0, 2));
+    // Inside a cluster rounds up to its end
+    assert_eq!(s.pos_at_char(0, 2), EditPos::new(0, 2));
+    assert_eq!(s.pos_at_char(0, 99), EditPos::new(0, 4));
+    assert_eq!(s.pos_at_char(9, 1), EditPos::new(1, 1));
+}

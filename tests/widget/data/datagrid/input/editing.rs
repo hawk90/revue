@@ -211,3 +211,57 @@ proptest! {
         prop_assert_eq!(grid.rows[0].get("name"), Some(model.as_str()));
     }
 }
+
+// The standard editing keys (#985)
+
+#[test]
+fn test_cell_edit_takes_the_modified_editing_keys() {
+    use revue::event::KeyEvent;
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("name", "Name").editable(true))
+        .row(GridRow::new().cell("name", "Ada Lovelace"));
+    grid.start_edit();
+    assert!(grid.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    assert_eq!(grid.edit_buffer(), Some("Ada "));
+    assert_eq!(grid.edit_state.cursor, 4);
+    assert!(grid.handle_key_event(&KeyEvent::ctrl(Key::Char('z'))));
+    assert_eq!(grid.edit_buffer(), Some("Ada Lovelace"));
+    // A Ctrl letter the editor does not use is the app's, not typed
+    assert!(!grid.handle_key_event(&KeyEvent::ctrl(Key::Char('k'))));
+    assert_eq!(grid.edit_buffer(), Some("Ada Lovelace"));
+    // A control character is not typed
+    grid.handle_key(&Key::Char('\u{7}'));
+    assert_eq!(grid.edit_buffer(), Some("Ada Lovelace"));
+}
+
+#[test]
+fn test_cell_edit_reads_back_a_written_buffer_and_cursor() {
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("name", "Name").editable(true))
+        .row(GridRow::new().cell("name", "Alice"));
+    grid.start_edit();
+    // The fields are public: what is written there is edited next
+    grid.edit_state.buffer = "Bob".to_string();
+    grid.edit_state.cursor = 1;
+    grid.handle_key(&Key::Char('x'));
+    assert_eq!(grid.edit_buffer(), Some("Bxob"));
+    assert_eq!(grid.edit_state.cursor, 2);
+    grid.handle_key(&Key::Enter);
+    assert_eq!(grid.rows[0].get("name"), Some("Bxob"));
+}
+
+#[test]
+fn test_cell_edit_enter_and_escape_take_any_modifier() {
+    use revue::event::KeyEvent;
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("name", "Name").editable(true))
+        .row(GridRow::new().cell("name", "Alice"));
+    grid.start_edit();
+    // Some terminals send Escape with Alt
+    assert!(grid.handle_key_event(&KeyEvent::alt(Key::Escape)));
+    assert!(!grid.is_editing());
+    grid.start_edit();
+    grid.handle_key(&Key::Char('!'));
+    assert!(grid.handle_key_event(&KeyEvent::ctrl(Key::Enter)));
+    assert_eq!(grid.rows[0].get("name"), Some("Alice!"));
+}

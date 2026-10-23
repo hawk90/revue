@@ -40,23 +40,23 @@ fn test_combobox_input_manipulation() {
     cb.insert_char('H');
     cb.insert_char('i');
     assert_eq!(cb.input(), "Hi");
-    assert_eq!(cb.cursor, 2);
+    assert_eq!(cb.cursor_char(), 2);
 
     cb.delete_backward();
     assert_eq!(cb.input(), "H");
-    assert_eq!(cb.cursor, 1);
+    assert_eq!(cb.cursor_char(), 1);
 
     cb.move_left();
-    assert_eq!(cb.cursor, 0);
+    assert_eq!(cb.cursor_char(), 0);
 
     cb.insert_char('O');
     assert_eq!(cb.input(), "OH");
 
     cb.move_to_end();
-    assert_eq!(cb.cursor, 2);
+    assert_eq!(cb.cursor_char(), 2);
 
     cb.move_to_start();
-    assert_eq!(cb.cursor, 0);
+    assert_eq!(cb.cursor_char(), 0);
 }
 
 #[test]
@@ -122,7 +122,7 @@ fn test_combobox_builder_methods() {
 fn test_combobox_move_right_at_end() {
     let mut cb = Combobox::new().value("Hi");
     cb.move_right(); // Already at end
-    assert_eq!(cb.cursor, 2);
+    assert_eq!(cb.cursor_char(), 2);
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn test_combobox_move_left_at_start() {
     let mut cb = Combobox::new().value("Hi");
     cb.move_to_start();
     cb.move_left(); // Already at start
-    assert_eq!(cb.cursor, 0);
+    assert_eq!(cb.cursor_char(), 0);
 }
 
 #[test]
@@ -139,10 +139,10 @@ fn test_combobox_handle_key_home_end() {
 
     let mut cb = Combobox::new().value("Hello");
     cb.handle_key(&Key::Home);
-    assert_eq!(cb.cursor, 0);
+    assert_eq!(cb.cursor_char(), 0);
 
     cb.handle_key(&Key::End);
-    assert_eq!(cb.cursor, 5);
+    assert_eq!(cb.cursor_char(), 5);
 }
 
 #[test]
@@ -151,10 +151,10 @@ fn test_combobox_handle_key_left_right() {
 
     let mut cb = Combobox::new().value("Hi");
     cb.handle_key(&Key::Left);
-    assert_eq!(cb.cursor, 1);
+    assert_eq!(cb.cursor_char(), 1);
 
     cb.handle_key(&Key::Right);
-    assert_eq!(cb.cursor, 2);
+    assert_eq!(cb.cursor_char(), 2);
 }
 
 #[test]
@@ -312,18 +312,18 @@ fn test_combobox_set_input_updates_cursor() {
     let mut cb = Combobox::new();
     cb.set_input("Hello");
     assert_eq!(cb.input(), "Hello");
-    assert_eq!(cb.cursor, 5);
+    assert_eq!(cb.cursor_char(), 5);
 }
 
 #[test]
 fn test_combobox_clear_input_resets_cursor() {
     let mut cb = Combobox::new();
     cb.set_input("Hello");
-    assert_eq!(cb.cursor, 5);
+    assert_eq!(cb.cursor_char(), 5);
 
     cb.clear_input();
     assert_eq!(cb.input(), "");
-    assert_eq!(cb.cursor, 0);
+    assert_eq!(cb.cursor_char(), 0);
 }
 
 #[test]

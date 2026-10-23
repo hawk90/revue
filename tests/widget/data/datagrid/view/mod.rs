@@ -487,3 +487,53 @@ fn test_datagrid_in_a_stack_with_a_stylesheet() {
     assert_eq!(&row_text(buffer, 3, 2), "r2");
     assert_eq!(&row_text(buffer, 4, 6), "footer");
 }
+
+// The cell editor scrolls to its cursor (#985)
+
+#[test]
+fn test_datagrid_edit_cell_scrolls_to_the_cursor() {
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("n", "Name").editable(true).width(8))
+        .row(GridRow::new().cell("n", "abcdefghijkl"));
+    assert!(grid.start_edit());
+    let buffer = render_to(&grid, 20, 4);
+    // The end of the value and the cursor after it, before the separator
+    assert_eq!(row_text(&buffer, 1, 20), "fghijkl │           ");
+    assert_eq!(
+        buffer.get(7, 1).unwrap().bg,
+        Some(revue::style::Color::WHITE)
+    );
+    // Two steps left stay inside the view: it does not move
+    grid.handle_key(&Key::Left);
+    grid.handle_key(&Key::Left);
+    let buffer = render_to(&grid, 20, 4);
+    assert_eq!(row_text(&buffer, 1, 20), "fghijkl │           ");
+    assert_eq!(
+        buffer.get(5, 1).unwrap().bg,
+        Some(revue::style::Color::WHITE)
+    );
+    // Home: the start of the value
+    grid.handle_key_event(&revue::event::KeyEvent::new(Key::Home));
+    let buffer = render_to(&grid, 20, 4);
+    assert_eq!(row_text(&buffer, 1, 20), "abcdefgh│           ");
+    assert_eq!(
+        buffer.get(0, 1).unwrap().bg,
+        Some(revue::style::Color::WHITE)
+    );
+}
+
+#[test]
+fn test_datagrid_edit_cell_draws_a_written_buffer() {
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("n", "Name").editable(true).width(8))
+        .row(GridRow::new().cell("n", "Alice"));
+    grid.start_edit();
+    grid.edit_state.buffer = "Bob".to_string();
+    grid.edit_state.cursor = 1;
+    let buffer = render_to(&grid, 20, 4);
+    assert!(row_text(&buffer, 1, 20).starts_with("Bob     │"));
+    assert_eq!(
+        buffer.get(1, 1).unwrap().bg,
+        Some(revue::style::Color::WHITE)
+    );
+}

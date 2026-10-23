@@ -112,15 +112,16 @@ fn test_masked_input_wide_glyphs_fill_two_columns_of_the_field() {
     for x in 9..12 {
         assert_eq!(buffer.get(x, 0).unwrap().symbol, ' ', "x={x}");
     }
-    // A glyph cut at the edge is left out whole (the field is then a
-    // column short, #1073, kept out of this test).
+    // A glyph cut at the edge is left out whole, and its column is a blank
+    // so the field keeps its width
     let mut input = MaskedInput::new()
         .value("비밀번호")
         .allow_reveal(true)
         .width(5);
     input.toggle_reveal();
-    assert!(row(&screen(&input, 30, 1), 0).starts_with("[비밀"));
-    assert!(!row(&screen(&input, 30, 1), 0).contains('번'));
+    let buffer = screen(&input, 30, 1);
+    assert_eq!(row(&buffer, 0), "[비밀  👁]");
+    assert_eq!(buffer.get(5, 0).unwrap().symbol, ' ');
 }
 
 #[test]
@@ -378,17 +379,13 @@ proptest! {
         input.set_cursor(cursor);
         let shown = fit(&input.masked_display(), width as usize);
         let text_cols: usize = shown.iter().map(|&c| revue::utils::char_width(c)).sum();
-        // A cursor past the last column draws one extra cell instead of
-        // scrolling the field (#985: long text is cut, not scrolled); keep
-        // the cursor inside the shown text.
-        prop_assume!(!focused || input.get_cursor() < shown.len());
-        // A wide glyph cut at the edge leaves the field a column short
-        // instead of padding it (a bug, not encoded here).
-        let masked = input.masked_display();
-        prop_assume!(
-            revue::utils::display_width(&masked) <= width as usize
-                || fit(&masked, width as usize).last() != Some(&' ')
-        );
+        // Hidden shows nothing, and its cursor stays at the start so it
+        // does not give the length away
+        let hidden = input.masked_display().is_empty();
+        let cursor_at = if hidden { 0 } else { input.get_cursor() };
+        // A cursor past the shown text scrolls the field (tested on its
+        // own); keep it inside, where the field shows from the start.
+        prop_assume!(!focused || cursor_at < shown.len());
 
         let buffer = screen(&input, 40, 1);
         prop_assert_eq!(buffer.get(0, 0).unwrap().symbol, '[');
@@ -402,7 +399,7 @@ proptest! {
 
         let cursors = cursor_cells(&buffer, 0);
         if focused {
-            let col = 1 + shown[..input.get_cursor()]
+            let col = 1 + shown[..cursor_at]
                 .iter()
                 .map(|&c| revue::utils::char_width(c) as u16)
                 .sum::<u16>();
@@ -411,4 +408,64 @@ proptest! {
             prop_assert!(cursors.is_empty());
         }
     }
+}
+
+// Long values scroll to the cursor (#985)
+
+#[test]
+fn test_masked_input_long_value_scrolls_to_the_cursor() {
+    // The failing case from #985: the shown end of ShowLast is in view
+    let mut input = MaskedInput::new()
+        .mask_style(MaskStyle::ShowLast(2))
+        .value("abcdefghij")
+        .width(6)
+        .focused(true);
+    let buffer = screen(&input, 20, 1);
+    assert_eq!(row(&buffer, 0), "[●●●ij ]");
+    assert_eq!(cursor_cells(&buffer, 0), vec![6]);
+    assert_eq!(buffer.get(7, 0).unwrap().symbol, ']');
+    // Two steps left stay inside the view: it does not move
+    input.move_left();
+    input.move_left();
+    let buffer = screen(&input, 20, 1);
+    assert_eq!(row(&buffer, 0), "[●●●ij ]");
+    assert_eq!(cursor_cells(&buffer, 0), vec![4]);
+    // Home: from the start; a step right inside the view keeps it there
+    input.move_start();
+    assert_eq!(row(&screen(&input, 20, 1), 0), "[●●●●●●]");
+    input.move_right();
+    let buffer = screen(&input, 20, 1);
+    assert_eq!(row(&buffer, 0), "[●●●●●●]");
+    assert_eq!(cursor_cells(&buffer, 0), vec![2]);
+}
+
+#[test]
+fn test_masked_input_hidden_cursor_does_not_show_the_length() {
+    // The same screen whatever the length, the cursor at the start
+    for value in ["", "s", "secret", "a much longer secret than the field"] {
+        let input = MaskedInput::new()
+            .mask_style(MaskStyle::Hidden)
+            .value(value)
+            .width(10)
+            .focused(true);
+        let buffer = screen(&input, 20, 1);
+        assert_eq!(row(&buffer, 0), "[          ]", "{value:?}");
+        assert_eq!(cursor_cells(&buffer, 0), vec![1], "{value:?}");
+    }
+}
+
+#[test]
+fn test_masked_input_selection_is_drawn() {
+    let mut input = MaskedInput::new().value("abcd").width(6).focused(true);
+    input.handle_key_event(&revue::event::KeyEvent {
+        shift: true,
+        ..revue::event::KeyEvent::new(revue::event::Key::Home)
+    });
+    let buffer = screen(&input, 20, 1);
+    // The cursor on the first char, the other three selected
+    assert_eq!(cursor_cells(&buffer, 0), vec![1]);
+    for x in 2..5 {
+        assert_eq!(buffer.get(x, 0).unwrap().bg, Some(Color::BLUE), "{x}");
+    }
+    assert_ne!(buffer.get(5, 0).unwrap().bg, Some(Color::BLUE));
 }

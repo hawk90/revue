@@ -30,9 +30,12 @@
 //!
 //! # Keys
 //!
-//! [`MaskedInput::handle_key`] types printable characters, deletes with
-//! `Backspace`/`Delete` and moves the cursor with `Left`, `Right`, `Home` and
-//! `End`, like [`Input::handle_key`](crate::widget::Input::handle_key).
+//! [`MaskedInput::handle_key_event`] takes the standard editing keys every
+//! single-line field shares ([`EditState::edit_key`](crate::utils::EditState::edit_key)),
+//! with two differences for a secret: typing stops at `max_length`, and the
+//! word keys (`Ctrl+Left`/`Right`, `Ctrl+Backspace`/`Delete`) go to the start
+//! or end of the value instead of a word's, so they cannot show where the
+//! spaces in it are (as Swing's and JavaFX's password fields).
 
 mod editing;
 mod mask;
@@ -43,6 +46,7 @@ mod validation;
 pub use types::{MaskStyle, ValidationState};
 
 use crate::style::Color;
+use crate::utils::{EditPos, EditState};
 use crate::widget::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -57,8 +61,12 @@ const DEFAULT_PEEK_TIMEOUT: usize = 10;
 /// `Debug` prints the value's length, never the value (#1073).
 #[derive(Clone)]
 pub struct MaskedInput {
-    /// Current value
-    value: String,
+    /// The value and its cursor, edited as every single-line field is
+    /// (#985)
+    state: EditState,
+    /// Horizontal scroll of the field, in columns, kept between renders so
+    /// the view moves only as far as the cursor needs
+    scroll_x: std::cell::Cell<usize>,
     /// Mask character
     mask_char: char,
     /// Mask style
@@ -71,8 +79,6 @@ pub struct MaskedInput {
     max_length: usize,
     /// Minimum length for validation
     min_length: usize,
-    /// Cursor position
-    cursor: usize,
     /// Whether input is focused
     focused: bool,
     /// Whether input is disabled
@@ -111,7 +117,7 @@ impl std::fmt::Debug for MaskedInput {
             .field("label", &self.label)
             .field("max_length", &self.max_length)
             .field("min_length", &self.min_length)
-            .field("cursor", &self.cursor)
+            .field("cursor", &self.get_cursor())
             .field("focused", &self.focused)
             .field("disabled", &self.disabled)
             .field("fg", &self.fg)
@@ -132,14 +138,14 @@ impl MaskedInput {
     /// Create new masked input
     pub fn new() -> Self {
         Self {
-            value: String::new(),
+            state: EditState::single_line(),
+            scroll_x: std::cell::Cell::new(0),
             mask_char: '●',
             mask_style: MaskStyle::Full,
             placeholder: None,
             label: None,
             max_length: 0,
             min_length: 0,
-            cursor: 0,
             focused: false,
             disabled: false,
             fg: None,
@@ -263,15 +269,16 @@ impl MaskedInput {
     /// Set initial value (cut to `max_length` chars when that is set)
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.end_peek();
-        self.value = value.into();
+        self.state.set_text(value.into());
         self.clamp_to_max_length();
-        self.cursor = self.char_count();
+        let end = self.state.end();
+        self.state.set_cursor(end);
         self
     }
 
     /// Get current value
     pub fn get_value(&self) -> &str {
-        &self.value
+        self.state.line(0).unwrap_or("")
     }
 
     /// Get mask character
@@ -304,15 +311,17 @@ impl MaskedInput {
         self.min_length
     }
 
-    /// Get cursor position
+    /// Get cursor position, in chars
     pub fn get_cursor(&self) -> usize {
-        self.cursor
+        self.state.char_index(self.state.cursor())
     }
 
-    /// Set cursor position
+    /// Set cursor position, in chars (inside a character made of several,
+    /// such as a letter with its accent, it goes to that character's end)
     pub fn set_cursor(&mut self, pos: usize) {
         self.end_peek();
-        self.cursor = pos.min(self.char_count());
+        let pos = self.state.pos_at_char(0, pos);
+        self.state.set_cursor(pos);
     }
 
     /// Get focused state
@@ -378,24 +387,30 @@ impl MaskedInput {
     /// Set value programmatically (cut to `max_length` chars when that is set)
     pub fn set_value(&mut self, value: impl Into<String>) {
         self.end_peek();
-        self.value = value.into();
+        let cursor = self.get_cursor();
+        self.state.set_text(value.into());
         self.clamp_to_max_length();
-        self.cursor = self.cursor.min(self.char_count());
+        let pos = self.state.pos_at_char(0, cursor);
+        self.state.set_cursor(pos);
     }
 
     /// Cut the value to `max_length` chars (0 = unlimited), as typing does
     fn clamp_to_max_length(&mut self) {
         if self.max_length > 0 && self.char_count() > self.max_length {
-            self.value.truncate(self.byte_at(self.max_length));
-            self.cursor = self.cursor.min(self.max_length);
+            let cursor = self.get_cursor().min(self.max_length);
+            let value = self.get_value();
+            let cut = value[..self.byte_at(self.max_length)].to_string();
+            self.state.set_text(cut);
+            self.state.set_cursor(EditPos::new(0, 0));
+            let pos = self.state.pos_at_char(0, cursor);
+            self.state.set_cursor(pos);
         }
     }
 
     /// Clear the input
     pub fn clear(&mut self) {
         self.end_peek();
-        self.value.clear();
-        self.cursor = 0;
+        self.state.set_text("");
     }
 
     /// Toggle reveal mode
@@ -408,12 +423,12 @@ impl MaskedInput {
     /// Length of the value in chars: the cursor, `max_length` and
     /// `min_length` all count chars, not bytes.
     fn char_count(&self) -> usize {
-        self.value.chars().count()
+        self.get_value().chars().count()
     }
 
     /// Byte offset of char index `idx` in the value.
     fn byte_at(&self, idx: usize) -> usize {
-        crate::utils::text::char_to_byte_index(&self.value, idx)
+        crate::utils::text::char_to_byte_index(self.get_value(), idx)
     }
 }
 

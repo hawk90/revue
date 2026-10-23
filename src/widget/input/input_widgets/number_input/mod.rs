@@ -14,6 +14,7 @@ mod view;
 
 pub use helper::{currency_input, integer_input, number_input, percentage_input};
 
+use crate::utils::EditState;
 use crate::widget::traits::{WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -65,10 +66,9 @@ pub struct NumberInput {
     suffix: Option<String>,
     /// Whether in direct editing mode
     editing: bool,
-    /// Buffer for direct text input
-    input_buffer: String,
-    /// Cursor position in input buffer (character index)
-    cursor: usize,
+    /// The text typed in direct editing mode and its cursor, edited as
+    /// every single-line field is (#985)
+    edit: EditState,
     /// Width of the input field (characters); `None` fills the area
     width: Option<u16>,
     /// Whether to show +/- buttons
@@ -91,8 +91,7 @@ impl NumberInput {
             prefix: None,
             suffix: None,
             editing: false,
-            input_buffer: String::new(),
-            cursor: 0,
+            edit: EditState::single_line(),
             width: None,
             show_buttons: true,
             state: WidgetState::new(),

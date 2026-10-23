@@ -1,99 +1,128 @@
 //! Editing the value: inserting, deleting, moving the cursor and the peek countdown
 
 use super::{MaskStyle, MaskedInput};
-use crate::event::Key;
+use crate::event::{Key, KeyEvent};
+use crate::utils::{EditMotion, EditOutcome};
 
 impl MaskedInput {
-    /// Handle key input, returns true if the key was handled
-    ///
-    /// Like [`Input::handle_key`](crate::widget::Input::handle_key): printable
-    /// characters are typed at the cursor (up to `max_length`), `Backspace`
-    /// and `Delete` remove a character, and `Left`, `Right`, `Home` and `End`
-    /// move the cursor. A disabled input handles no keys.
+    /// Handle a key without modifiers, as
+    /// [`handle_key_event`](Self::handle_key_event) does
     pub fn handle_key(&mut self, key: &Key) -> bool {
+        self.handle_key_event(&KeyEvent::new(*key))
+    }
+
+    /// Handle a key: the standard editing keys every single-line field
+    /// shares (#985), typing only up to `max_length`, and the word keys
+    /// going to the start or end of the value (see the module docs).
+    /// Returns whether the key was the field's; a disabled input handles no
+    /// keys.
+    pub fn handle_key_event(&mut self, event: &KeyEvent) -> bool {
         if self.disabled {
             return false;
         }
-        match key {
-            Key::Char(c) if !c.is_control() => self.insert_char(*c),
-            Key::Backspace => self.delete_backward(),
-            Key::Delete => self.delete_forward(),
-            Key::Left => self.move_left(),
-            Key::Right => self.move_right(),
-            Key::Home => self.move_start(),
-            Key::End => self.move_end(),
-            _ => return false,
+        let typing =
+            matches!(event.key, Key::Char(c) if event.ctrl == event.alt && !c.is_control());
+        if typing && self.is_full() {
+            return true;
+        }
+        if event.ctrl && !event.alt {
+            let whole = match event.key {
+                Key::Left => Some(EditMotion::LineStart),
+                Key::Right => Some(EditMotion::LineEnd),
+                Key::Backspace => Some(EditMotion::LineStart),
+                Key::Delete => Some(EditMotion::LineEnd),
+                _ => None,
+            };
+            if let Some(motion) = whole {
+                self.end_peek();
+                if matches!(event.key, Key::Backspace | Key::Delete) {
+                    // What a selection holds, else up to the start or end
+                    if !self.state.has_selection() {
+                        self.state.move_cursors(motion, true);
+                    }
+                    self.state.delete_selection();
+                } else {
+                    self.state.move_cursors(motion, event.shift);
+                }
+                return true;
+            }
+        }
+        match self.state.edit_key(event, 1) {
+            EditOutcome::Edited if typing => self.start_peek(),
+            EditOutcome::Unhandled => return false,
+            _ => self.end_peek(),
         }
         true
     }
 
-    /// Insert character at cursor
+    /// Insert character at cursor (up to `max_length`)
     pub fn insert_char(&mut self, c: char) {
-        if self.disabled {
+        if self.disabled || self.is_full() {
             return;
         }
-
-        // Check max length
-        if self.max_length > 0 && self.char_count() >= self.max_length {
-            return;
-        }
-
-        self.value.insert(self.byte_at(self.cursor), c);
-        self.cursor += 1;
-
-        // Start peek countdown
-        if matches!(self.mask_style, MaskStyle::Peek) {
-            self.peek_countdown = self.peek_timeout;
+        if self.state.insert(c.encode_utf8(&mut [0; 4])) {
+            self.start_peek();
         }
     }
 
     /// Delete character before cursor
     pub fn delete_backward(&mut self) {
         self.end_peek();
-        if self.disabled || self.cursor == 0 {
-            return;
+        if !self.disabled {
+            self.state.backspace();
         }
-
-        self.cursor -= 1;
-        self.value.remove(self.byte_at(self.cursor));
     }
 
     /// Delete character at cursor
     pub fn delete_forward(&mut self) {
         self.end_peek();
-        if self.disabled || self.cursor >= self.char_count() {
-            return;
+        if !self.disabled {
+            self.state.delete();
         }
-
-        self.value.remove(self.byte_at(self.cursor));
     }
 
     /// Move cursor left
     pub fn move_left(&mut self) {
-        self.end_peek();
-        if self.cursor > 0 {
-            self.cursor -= 1;
-        }
+        self.move_to(EditMotion::Left);
     }
 
     /// Move cursor right
     pub fn move_right(&mut self) {
-        self.end_peek();
-        if self.cursor < self.char_count() {
-            self.cursor += 1;
-        }
+        self.move_to(EditMotion::Right);
     }
 
     /// Move cursor to start
     pub fn move_start(&mut self) {
-        self.end_peek();
-        self.cursor = 0;
+        self.move_to(EditMotion::LineStart);
     }
 
     /// Move cursor to end
     pub fn move_end(&mut self) {
+        self.move_to(EditMotion::LineEnd);
+    }
+
+    fn move_to(&mut self, motion: EditMotion) {
         self.end_peek();
-        self.cursor = self.char_count();
+        self.state.move_cursors(motion, false);
+    }
+
+    /// Whether typing a char would go past `max_length`: the value is at
+    /// it and nothing selected would make room
+    fn is_full(&self) -> bool {
+        if self.max_length == 0 {
+            return false;
+        }
+        let cursor = self.state.primary();
+        let (from, to) = cursor.range();
+        let selected = self.state.char_index(to) - self.state.char_index(from);
+        self.char_count() - selected >= self.max_length
+    }
+
+    /// Show the char just typed for a while (the peek style)
+    fn start_peek(&mut self) {
+        if matches!(self.mask_style, MaskStyle::Peek) {
+            self.peek_countdown = self.peek_timeout;
+        }
     }
 
     /// End the peek: it shows the char before the cursor, which is the one

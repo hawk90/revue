@@ -20,7 +20,7 @@ mod tests;
 pub use option::ComboOption;
 
 use crate::style::Color;
-use crate::utils::{FilterMode, ScrollState};
+use crate::utils::{EditState, FilterMode, ScrollState};
 use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -32,12 +32,10 @@ use crate::{impl_props_builders, impl_styled_view};
 /// | Key | Action |
 /// |-----|--------|
 /// | `Char` | Insert character at cursor and open dropdown |
-/// | `Backspace` | Delete character before cursor |
-/// | `Delete` | Delete character at cursor |
-/// | `Left` | Move cursor left |
-/// | `Right` | Move cursor right |
-/// | `Home` | Move cursor to start of input |
-/// | `End` | Move cursor to end of input |
+/// | `Backspace`, `Delete` | Delete before or at the cursor (with Ctrl, a word) and open dropdown |
+/// | `Left`, `Right` | Move cursor (with Ctrl, by word; with Shift, select) |
+/// | `Home`, `End` | Move cursor to start or end of input (with Shift, select) |
+/// | `Ctrl+A`, `Ctrl+Z`, `Ctrl+Y` | Select all, undo, redo |
 /// | `Down` | Move to next option (when dropdown open) / Open dropdown (when closed) |
 /// | `Up` | Move to previous option (when dropdown open) |
 /// | `Enter` | Confirm highlighted option (when open) / Accept custom value (when closed, allow_custom mode) |
@@ -47,10 +45,12 @@ use crate::{impl_props_builders, impl_styled_view};
 pub struct Combobox {
     /// Available options
     pub(super) options: Vec<ComboOption>,
-    /// Current input value
-    pub(super) input: String,
-    /// Cursor position in input
-    pub(super) cursor: usize,
+    /// The typed text and its cursor, edited as every single-line field
+    /// is (#985)
+    state: EditState,
+    /// Horizontal scroll of the text, in columns, kept between renders so
+    /// the view moves only as far as the cursor needs
+    scroll_x: std::cell::Cell<usize>,
     /// Whether dropdown is open
     pub(super) open: bool,
     /// Selected index in filtered list
@@ -98,8 +98,8 @@ impl Combobox {
     pub fn new() -> Self {
         Self {
             options: Vec::new(),
-            input: String::new(),
-            cursor: 0,
+            state: EditState::single_line(),
+            scroll_x: std::cell::Cell::new(0),
             open: false,
             selected_idx: 0,
             filtered: Vec::new(),
@@ -245,8 +245,7 @@ impl Combobox {
 
     /// Set initial input value
     pub fn value(mut self, value: impl Into<String>) -> Self {
-        self.input = value.into();
-        self.cursor = self.input.chars().count();
+        self.replace_input(value.into());
         self.update_filter();
         self
     }
@@ -280,8 +279,7 @@ impl crate::widget::traits::Interactive for Combobox {
             return crate::widget::traits::EventResult::Ignored;
         }
 
-        let changed = self.handle_key(&event.key);
-        if changed {
+        if self.handle_key_event(event) {
             crate::widget::traits::EventResult::ConsumedAndRender
         } else {
             crate::widget::traits::EventResult::Ignored

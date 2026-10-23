@@ -1,10 +1,17 @@
 //! DataGrid cell editing
 
-use crate::event::Key;
+use crate::event::{Key, KeyEvent};
+use crate::utils::EditOutcome;
 use crate::widget::data::datagrid::DataGrid;
+use crate::widget::traits::render_context::edit_line::EditField;
 
 /// Cell editing state
-#[derive(Clone, Debug, Default)]
+///
+/// The cell's text is edited with the shared single-line
+/// [`EditState`](crate::utils::EditState) (#985). `buffer` and `cursor` are
+/// kept in step with it after every key, and a value written to them is
+/// read back before the next one.
+#[derive(Clone, Debug)]
 pub struct EditState {
     /// Currently editing
     pub active: bool,
@@ -14,8 +21,67 @@ pub struct EditState {
     pub col: usize,
     /// Edit buffer
     pub buffer: String,
-    /// Cursor position in buffer
+    /// Cursor position in buffer (character index)
     pub cursor: usize,
+    /// The edit model behind `buffer` and `cursor`
+    field: crate::utils::EditState,
+    /// Horizontal scroll of the cell, in columns, kept between renders
+    scroll: std::cell::Cell<usize>,
+}
+
+impl Default for EditState {
+    fn default() -> Self {
+        Self {
+            active: false,
+            row: 0,
+            col: 0,
+            buffer: String::new(),
+            cursor: 0,
+            field: crate::utils::EditState::single_line(),
+            scroll: std::cell::Cell::new(0),
+        }
+    }
+}
+
+impl EditState {
+    /// Editing `value` at `row`, `col`, the cursor at its end
+    fn editing(row: usize, col: usize, value: String) -> Self {
+        let mut state = Self {
+            active: true,
+            row,
+            col,
+            buffer: value,
+            ..Self::default()
+        };
+        state.cursor = state.buffer.chars().count();
+        state.read_back();
+        state
+    }
+
+    /// Take `buffer` and `cursor` into the model when they were changed
+    /// from outside it
+    fn read_back(&mut self) {
+        let text = self.field.line(0).unwrap_or("");
+        if text != self.buffer {
+            self.field.set_text(&self.buffer);
+            // The model may change the text (a newline becomes a space)
+            self.buffer = self.field.line(0).unwrap_or("").to_string();
+        }
+        if self.field.char_index(self.field.cursor()) != self.cursor {
+            let pos = self.field.pos_at_char(0, self.cursor);
+            self.field.set_cursor(pos);
+        }
+        self.sync();
+    }
+
+    /// Copy the model's text and cursor into `buffer` and `cursor`
+    fn sync(&mut self) {
+        let text = self.field.line(0).unwrap_or("");
+        if text != self.buffer {
+            self.buffer = text.to_string();
+        }
+        self.cursor = self.field.char_index(self.field.cursor());
+    }
 }
 
 impl DataGrid {
@@ -52,13 +118,7 @@ impl DataGrid {
         let col_key = &self.columns[selected_col].key;
         let value = self.rows[row_idx].get(col_key).unwrap_or("").to_string();
 
-        self.edit_state = EditState {
-            active: true,
-            row: row_idx,
-            col: selected_col,
-            cursor: value.chars().count(),
-            buffer: value,
-        };
+        self.edit_state = EditState::editing(row_idx, selected_col, value);
         true
     }
 
@@ -109,7 +169,15 @@ impl DataGrid {
 
     /// Handle key input in edit mode
     pub(crate) fn handle_edit_key(&mut self, key: &Key) -> bool {
-        match key {
+        self.handle_edit_key_event(&KeyEvent::new(*key))
+    }
+
+    /// Handle a key in edit mode: Escape cancels, Enter commits, and the
+    /// other keys are the standard editing keys every single-line field
+    /// shares (#985)
+    pub(crate) fn handle_edit_key_event(&mut self, event: &KeyEvent) -> bool {
+        // Escape and Enter whatever the modifiers, as before
+        match event.key {
             Key::Escape => {
                 self.cancel_edit();
                 true
@@ -118,86 +186,34 @@ impl DataGrid {
                 self.commit_edit();
                 true
             }
-            Key::Char(c) => {
-                let pos = self.edit_state.cursor;
-                self.edit_state.buffer.insert(
-                    self.edit_state
-                        .buffer
-                        .char_indices()
-                        .nth(pos)
-                        .map(|(i, _)| i)
-                        .unwrap_or(self.edit_state.buffer.len()),
-                    *c,
-                );
-                self.edit_state.cursor += 1;
-                true
+            _ => {
+                let edit = &mut self.edit_state;
+                edit.read_back();
+                let outcome = edit.field.edit_key(event, 1);
+                edit.sync();
+                outcome != EditOutcome::Unhandled
             }
-            Key::Backspace => {
-                if self.edit_state.cursor > 0 {
-                    self.edit_state.cursor -= 1;
-                    let byte_pos = self
-                        .edit_state
-                        .buffer
-                        .char_indices()
-                        .nth(self.edit_state.cursor)
-                        .map(|(i, _)| i)
-                        .unwrap_or(0);
-                    if let Some((_, ch)) = self
-                        .edit_state
-                        .buffer
-                        .char_indices()
-                        .nth(self.edit_state.cursor)
-                    {
-                        let end = byte_pos + ch.len_utf8();
-                        self.edit_state.buffer.drain(byte_pos..end);
-                    }
-                }
-                true
-            }
-            Key::Delete => {
-                let char_count = self.edit_state.buffer.chars().count();
-                if self.edit_state.cursor < char_count {
-                    let byte_pos = self
-                        .edit_state
-                        .buffer
-                        .char_indices()
-                        .nth(self.edit_state.cursor)
-                        .map(|(i, _)| i)
-                        .unwrap_or(0);
-                    if let Some((_, ch)) = self
-                        .edit_state
-                        .buffer
-                        .char_indices()
-                        .nth(self.edit_state.cursor)
-                    {
-                        let end = byte_pos + ch.len_utf8();
-                        self.edit_state.buffer.drain(byte_pos..end);
-                    }
-                }
-                true
-            }
-            Key::Left => {
-                if self.edit_state.cursor > 0 {
-                    self.edit_state.cursor -= 1;
-                }
-                true
-            }
-            Key::Right => {
-                let char_count = self.edit_state.buffer.chars().count();
-                if self.edit_state.cursor < char_count {
-                    self.edit_state.cursor += 1;
-                }
-                true
-            }
-            Key::Home => {
-                self.edit_state.cursor = 0;
-                true
-            }
-            Key::End => {
-                self.edit_state.cursor = self.edit_state.buffer.chars().count();
-                true
-            }
-            _ => false,
         }
+    }
+
+    /// The cell being edited, for drawing: its text, cursor and selection,
+    /// and the scroll it was last drawn at
+    pub(crate) fn edit_field(&self) -> (EditField<'_>, &std::cell::Cell<usize>) {
+        let edit = &self.edit_state;
+        let field = &edit.field;
+        let in_step = field.line(0) == Some(edit.buffer.as_str())
+            && field.char_index(field.cursor()) == edit.cursor;
+        let shown = if in_step {
+            EditField::of(field, "", true)
+        } else {
+            // Written from outside since the last key: draw what was written
+            EditField {
+                text: &edit.buffer,
+                placeholder: "",
+                cursor: Some(edit.cursor.min(edit.buffer.chars().count())),
+                selection: None,
+            }
+        };
+        (shown, &edit.scroll)
     }
 }

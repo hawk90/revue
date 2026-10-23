@@ -32,18 +32,16 @@ impl Combobox {
 
     /// Set input value
     pub fn set_input(&mut self, value: impl Into<String>) {
-        self.input = value.into();
-        self.cursor = self.input.chars().count();
+        self.replace_input(value.into());
         self.update_filter();
-        if !self.input.is_empty() {
+        if !self.input().is_empty() {
             self.open = true;
         }
     }
 
     /// Clear input
     pub fn clear_input(&mut self) {
-        self.input.clear();
-        self.cursor = 0;
+        self.state.set_text("");
         self.update_filter();
     }
 
@@ -69,8 +67,7 @@ impl Combobox {
                     self.selected_values.push(value);
                 }
             } else {
-                self.input = option.label.clone();
-                self.cursor = self.input.chars().count();
+                self.replace_input(option.label.clone());
                 self.close_dropdown();
             }
             return true;

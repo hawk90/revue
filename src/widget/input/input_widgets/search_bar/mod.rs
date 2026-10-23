@@ -37,6 +37,9 @@ pub struct SearchBar {
     /// The query text and its cursor, edited as every single-line field is
     /// (#985)
     state: EditState,
+    /// Horizontal scroll of the query, in columns, kept between renders so
+    /// the view moves only as far as the cursor needs
+    scroll_x: std::cell::Cell<usize>,
     /// Parsed query (if valid)
     parsed_query: Option<Query>,
     /// Parse error (if invalid)
@@ -67,6 +70,7 @@ impl SearchBar {
     pub fn new() -> Self {
         Self {
             state: EditState::single_line(),
+            scroll_x: std::cell::Cell::new(0),
             parsed_query: Some(Query::new()),
             parse_error: None,
             placeholder: "Search...".to_string(),

@@ -7,13 +7,13 @@ use super::Autocomplete;
 impl Autocomplete {
     /// Update filtered suggestions
     pub(super) fn update_filter(&mut self) {
-        if self.value.chars().count() < self.min_chars {
+        if self.get_value().chars().count() < self.min_chars {
             self.filtered.clear();
             self.dropdown_visible = false;
             return;
         }
 
-        let query = &self.value;
+        let query = self.get_value();
         self.filtered = self
             .suggestions
             .iter()

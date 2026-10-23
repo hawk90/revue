@@ -762,8 +762,9 @@ fn test_number_input_handle_key_left_at_start() {
     for _ in 0..3 {
         assert!(input.handle_key(&Key::Left));
     }
-    let handled = input.handle_key(&Key::Left);
-    assert!(!handled);
+    // At the start a move is still the field's key, as in every
+    // single-line field (#985); the cursor stays
+    assert!(input.handle_key(&Key::Left));
     assert_eq!(at_cursor(&input), "9123");
 }
 
@@ -786,8 +787,7 @@ fn test_number_input_handle_key_right_not_editing() {
 #[test]
 fn test_number_input_handle_key_right_at_end() {
     let mut input = editing(42.0, "123");
-    let handled = input.handle_key(&Key::Right);
-    assert!(!handled);
+    assert!(input.handle_key(&Key::Right));
     assert_eq!(at_cursor(&input), "1239");
 }
 
