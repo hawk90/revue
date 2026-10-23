@@ -3,6 +3,8 @@
 
 #[path = "support/alloc_cap.rs"]
 mod alloc_cap;
+#[path = "support/emulator.rs"]
+mod emulator;
 
 #[path = "runtime/dom/mod.rs"]
 mod dom;

@@ -30,18 +30,21 @@ impl View for Input {
         // hiding the placeholder while focused meant it never showed at all.
         // When focused, the cursor (at index 0) is drawn over the first
         // placeholder cell, so it stays visible.
-        let is_placeholder = self.value.is_empty() && !self.placeholder.is_empty();
+        let value = self.line();
+        let is_placeholder = value.is_empty() && !self.placeholder.is_empty();
         let display_text = if is_placeholder {
             &self.placeholder
         } else {
-            &self.value
+            value
         };
+        let cursor = self.cursor();
         let selection = self.selection();
 
         // Get CSS colors with priority: inline > CSS > default
         let (css_fg, css_bg) = self.text_colors(ctx);
 
-        // The cursor is a char index; the screen is in columns, where a wide
+        // The cursor is a char index (always the start of a cluster); the
+        // screen is in columns, where a wide
         // glyph (Hangul, CJK, emoji) takes two. Scroll by columns so the
         // cursor, and the whole glyph under it, stays in view.
         let width = area.width as usize;
@@ -52,8 +55,8 @@ impl View for Input {
             let line_w = col_of(display_text, char_len) + 1;
             scroll_to_cursor(
                 self.scroll_x.get(),
-                col_of(display_text, self.cursor),
-                cursor_width(display_text, self.cursor),
+                col_of(display_text, cursor),
+                cursor_width(display_text, cursor),
                 line_w,
                 width,
             )
@@ -61,7 +64,7 @@ impl View for Input {
         self.scroll_x.set(scroll);
 
         ctx.put_edit_line(0, 0, display_text, scroll, area.width, |i, ch| {
-            let is_cursor = self.focused && i == self.cursor;
+            let is_cursor = self.focused && i == cursor;
             let is_selected = selection.is_some_and(|(start, end)| i >= start && i < end);
             let mut cell = Cell::new(ch);
 
@@ -81,7 +84,7 @@ impl View for Input {
         });
 
         // Draw cursor at end if cursor is at the end of text
-        if self.focused && self.cursor >= char_len {
+        if self.focused && cursor >= char_len {
             let x = col_of(display_text, char_len).saturating_sub(scroll);
             if x < width {
                 let mut cursor_cell = Cell::new(' ');

@@ -1,12 +1,13 @@
 //! Widget tree inspector core implementation
 
-use super::super::helpers::draw_text_overlay;
+use super::super::helpers::{draw_text_overlay, draw_text_overlay_clipped};
 use super::super::DevToolsConfig;
 use super::picker::ComponentPicker;
 use super::types::{InspectorConfig, WidgetNode};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
+use crate::utils::unicode::display_width;
 use std::collections::HashMap;
 
 /// Widget tree inspector
@@ -316,7 +317,8 @@ impl Inspector {
         let depth = node.depth(&self.nodes);
         let indent = (depth * 2) as u16;
 
-        let mut px = x + indent;
+        let px = x.saturating_add(indent);
+        let max_x = x.saturating_add(width);
 
         // Expand/collapse indicator
         let indicator = if node.children.is_empty() {
@@ -326,42 +328,18 @@ impl Inspector {
         } else {
             "▶ "
         };
+        draw_text_overlay_clipped(buffer, px, y, max_x, indicator, config.accent_color, None);
 
-        for ch in indicator.chars() {
-            if px < x + width {
-                if let Some(cell) = buffer.get_mut(px, y) {
-                    cell.symbol = ch;
-                    cell.fg = Some(config.accent_color);
-                }
-                px += 1;
-            }
-        }
-
-        // Label
+        // Label, by display width: a wide glyph keeps its continuation cell
+        // (#1285)
         let label = self.tree_label(node);
-        let fg = if node.selected {
-            config.bg_color
+        let (fg, bg) = if node.selected {
+            (config.bg_color, Some(config.accent_color))
         } else {
-            config.fg_color
+            (config.fg_color, None)
         };
-        let bg = if node.selected {
-            Some(config.accent_color)
-        } else {
-            None
-        };
-
-        for ch in label.chars() {
-            if px < x + width {
-                if let Some(cell) = buffer.get_mut(px, y) {
-                    cell.symbol = ch;
-                    cell.fg = Some(fg);
-                    if let Some(b) = bg {
-                        cell.bg = Some(b);
-                    }
-                }
-                px += 1;
-            }
-        }
+        let px = px.saturating_add(display_width(indicator) as u16);
+        draw_text_overlay_clipped(buffer, px, y, max_x, &label, fg, bg);
     }
 
     /// A node's label in the tree: its type, then `#id` and `.class`es as

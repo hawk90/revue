@@ -1,8 +1,7 @@
 //! EditState: grapheme positions, words, the goal column, cursors, undo
 //! grouping, single-line and read-only rules, and the standard keys
 
-use std::cell::Cell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use revue::event::{Key, KeyEvent};
@@ -15,14 +14,17 @@ fn p(line: usize, col: usize) -> EditPos {
 }
 
 /// A clock the test moves by hand
-fn clock() -> (Rc<Cell<Instant>>, impl Fn() -> Instant + 'static) {
-    let now = Rc::new(Cell::new(Instant::now()));
+fn clock() -> (
+    Arc<Mutex<Instant>>,
+    impl Fn() -> Instant + Send + Sync + 'static,
+) {
+    let now = Arc::new(Mutex::new(Instant::now()));
     let shared = now.clone();
-    (now, move || shared.get())
+    (now, move || *shared.lock().unwrap())
 }
 
-fn wait(now: &Cell<Instant>, ms: u64) {
-    now.set(now.get() + Duration::from_millis(ms));
+fn wait(now: &Mutex<Instant>, ms: u64) {
+    *now.lock().unwrap() += Duration::from_millis(ms);
 }
 
 fn at(text: &str, pos: EditPos) -> EditState {
@@ -394,8 +396,13 @@ fn the_history_keeps_its_limit_and_a_new_edit_drops_redo() {
 
 #[test]
 fn a_single_line_field_keeps_one_line() {
-    let mut s = EditState::single_line().with_text("a\nb\r\nc");
+    let mut s = EditState::single_line().with_text("a\nb\r\nc\u{7}");
     assert_eq!(s.text(), "a b c");
+    // A tab is whitespace on one line too
+    s.set_cursor(s.end());
+    assert!(s.paste("\t"));
+    assert_eq!(s.text(), "a b c ");
+    assert!(s.undo());
     s.set_cursor(s.end());
     assert!(s.paste("\nd\n"));
     assert_eq!(s.text(), "a b c d ");
@@ -500,4 +507,64 @@ fn the_standard_keys() {
     assert_eq!(s.cursor(), p(3, 0));
     s.edit_key(&key(Key::Enter), 3);
     assert_eq!(s.line_count(), 7);
+}
+
+// Found by review
+
+#[test]
+fn edit_state_is_send_and_sync() {
+    // Widgets that hold one stay Send, as in 3.x
+    fn send_sync<T: Send + Sync>() {}
+    send_sync::<EditState>();
+}
+
+#[test]
+fn line_commands_with_several_cursors_take_whole_blocks() {
+    // Cursors on the last two lines delete both, with the break before them
+    let mut s = at("a\nb\nc", p(1, 0));
+    s.add_cursor(EditCursor::at(p(2, 0)));
+    assert!(s.delete_lines());
+    assert_eq!(s.text(), "a");
+    // Cursors on lines that meet duplicate each line once, in place
+    let mut s = at("a\nb\nc", p(0, 0));
+    s.add_cursor(EditCursor::at(p(1, 0)));
+    assert!(s.duplicate_lines());
+    assert_eq!(s.text(), "a\na\nb\nb\nc");
+}
+
+#[test]
+fn a_selection_ending_at_a_line_start_leaves_that_line() {
+    // Shift+Down from column 0 selects line 0 only
+    let mut s = at("a\nb\nc", p(0, 0));
+    s.select(p(0, 0), p(1, 0));
+    assert!(s.delete_lines());
+    assert_eq!(s.text(), "b\nc");
+    let mut s = at("a\nb\nc", p(0, 0));
+    s.select(p(0, 0), p(1, 0));
+    assert!(s.duplicate_lines());
+    assert_eq!(s.text(), "a\na\nb\nc");
+}
+
+#[test]
+fn copies_past_max_lines_are_not_made() {
+    let mut s = EditState::multi_line().max_lines(2).with_text("ab\ncd");
+    s.set_cursor(p(0, 1));
+    assert!(!s.duplicate_lines());
+    assert_eq!(s.text(), "ab\ncd");
+    assert_eq!(s.cursor(), p(0, 1));
+}
+
+#[test]
+fn max_lines_cuts_text_set_before_it() {
+    let s = EditState::multi_line().with_text("a\nb\nc").max_lines(2);
+    assert_eq!(s.text(), "a\nb");
+}
+
+#[test]
+fn a_paste_past_max_lines_is_the_same_at_every_cursor() {
+    let mut s = EditState::multi_line().max_lines(2).with_text("ab");
+    s.set_cursor(p(0, 1));
+    s.add_cursor(EditCursor::at(p(0, 2)));
+    assert!(s.paste("1\n2\n3"));
+    assert_eq!(s.text(), "a123b123");
 }

@@ -1,10 +1,8 @@
 //! Proptests against plain models: the screen any written bytes leave, the
 //! command line after any keys, and the lines shown after any scrolling.
 //!
-//! Left out of the generators, each with its issue: private and
-//! intermediate CSI sequences and resets with configured defaults (#878),
-//! wide characters (#974), RGB components above 255 (they wrap, filed with
-//! #878), and output written while scrolled up (#973).
+//! Left out of the generators, each with its issue: wide characters
+//! (#974), and output written while scrolled up (#973).
 
 use proptest::prelude::*;
 use revue::event::{Key, KeyEvent};
@@ -28,6 +26,10 @@ enum Piece {
     Control(char),
     /// `ESC[` params `m`
     Sgr(Vec<u16>),
+    /// An SGR in its colon form, and the same codes with semicolons
+    ColonSgr(&'static str, Vec<u16>),
+    /// An escape sequence that leaves the screen and the colors alone
+    Sequence(&'static str),
 }
 
 impl Piece {
@@ -42,26 +44,63 @@ impl Piece {
                 "\x1b[{}m",
                 p.iter().map(u16::to_string).collect::<Vec<_>>().join(";")
             ),
+            Piece::ColonSgr(raw, _) => raw.to_string(),
+            Piece::Sequence(raw) => raw.to_string(),
         }
     }
+}
+
+/// Sequences a program writes that draw nothing here: private modes, a
+/// cursor shape, cursor moves and keys, charset selection, saving the
+/// cursor, titles and links (ended by BEL or by ST, with a backslash in the
+/// payload, or empty), and device control strings
+const SEQUENCES: [&str; 14] = [
+    "\x1b[?25l",
+    "\x1b[?2004h",
+    "\x1b[2 q",
+    "\x1b[3~",
+    "\x1b[5A",
+    "\x1b[>4;1m",
+    "\x1b(B",
+    "\x1b7",
+    "\x1b]0;C:\\dir\x07",
+    "\x1b]2;title\x1b\\",
+    "\x1b]8;;http://x.example/a\\b\x1b\\",
+    "\x1b]\x07",
+    "\x1bP+q544e\x1b\\",
+    "\x1b_payload\x1b\\",
+];
+
+/// Colon-form SGRs and the codes they mean
+fn colon_sgr() -> impl Strategy<Value = Piece> {
+    prop::sample::select(vec![
+        ("\x1b[38:2:255:0:0m", vec![38u16, 2, 255, 0, 0]),
+        ("\x1b[38:2::0:128:255m", vec![38, 2, 0, 128, 255]),
+        ("\x1b[48:5:200m", vec![48, 5, 200]),
+        ("\x1b[48:2::300:0:0m", vec![48, 2, 300, 0, 0]),
+        ("\x1b[4:3m", vec![4]),
+        ("\x1b[4:0m", vec![24]),
+    ])
+    .prop_map(|(raw, codes)| Piece::ColonSgr(raw, codes))
 }
 
 fn sgr() -> impl Strategy<Value = Vec<u16>> {
     prop_oneof![
         4 => prop::sample::select(vec![
-            0u16, 1, 2, 3, 4, 5, 7, 8, 9, 22, 23, 24, 25, 27, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-            39, 40, 41, 42, 43, 44, 45, 46, 47, 49, 90, 91, 92, 93, 94, 95, 96, 97, 100, 101,
+            0u16, 1, 2, 3, 4, 5, 7, 8, 9, 21, 22, 23, 24, 25, 27, 29, 30, 31, 32, 33, 34, 35, 36,
+            37, 39, 40, 41, 42, 43, 44, 45, 46, 47, 49, 90, 91, 92, 93, 94, 95, 96, 97, 100, 101,
             102, 103, 104, 105, 106, 107, 53, 60,
         ])
         .prop_map(|c| vec![c]),
         // The modifiers on and off again, often enough that an "off" code
         // meets the modifier it should clear
-        3 => prop::sample::select(vec![1u16, 2, 3, 4, 9, 22, 23, 24, 29]).prop_map(|c| vec![c]),
+        3 => prop::sample::select(vec![1u16, 2, 3, 4, 7, 9, 22, 23, 24, 27, 29]).prop_map(|c| vec![c]),
         1 => Just(vec![]),
-        1 => (prop::sample::select(vec![38u16, 48]), 0u16..=255).prop_map(|(c, n)| vec![c, 5, n]),
-        1 => (prop::sample::select(vec![38u16, 48]), 0u16..=255, 0u16..=255, 0u16..=255)
+        // Indexes and components past 255 set nothing
+        1 => (prop::sample::select(vec![38u16, 48]), 0u16..=300).prop_map(|(c, n)| vec![c, 5, n]),
+        1 => (prop::sample::select(vec![38u16, 48]), 0u16..=300, 0u16..=255, 0u16..=300)
             .prop_map(|(c, r, g, b)| vec![c, 2, r, g, b]),
-        1 => prop::collection::vec(prop::sample::select(vec![1u16, 3, 31, 44, 0, 22, 97]), 2..4),
+        1 => prop::collection::vec(prop::sample::select(vec![1u16, 3, 31, 44, 0, 22, 97, 37]), 2..4),
     ]
 }
 
@@ -73,19 +112,23 @@ fn piece() -> impl Strategy<Value = Piece> {
         2 => Just(Piece::Tab),
         1 => prop::sample::select(vec!['\x00', '\x07', '\x08', '\x7f']).prop_map(Piece::Control),
         3 => sgr().prop_map(Piece::Sgr),
+        1 => colon_sgr(),
+        2 => prop::sample::select(SEQUENCES.to_vec()).prop_map(Piece::Sequence),
     ]
 }
 
+/// The colors and modifiers codes set: a color of `None` is the
+/// terminal's default one
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Pen {
-    fg: Color,
-    bg: Color,
+    fg: Option<Color>,
+    bg: Option<Color>,
     modifiers: Modifier,
 }
 
 /// The xterm palette as revue draws it: 16 named colors, a 6x6x6 cube, then
-/// 24 grays
-fn palette(n: u16) -> Color {
+/// 24 grays; none past 255
+fn palette(n: u16) -> Option<Color> {
     const SIXTEEN: [(u8, u8, u8); 16] = [
         (0, 0, 0),
         (255, 0, 0),
@@ -105,7 +148,7 @@ fn palette(n: u16) -> Color {
         (255, 255, 255),
     ];
     const LEVELS: [u8; 6] = [0, 95, 135, 175, 215, 255];
-    match n {
+    Some(match n {
         0..=15 => {
             let (r, g, b) = SIXTEEN[n as usize];
             Color::rgb(r, g, b)
@@ -114,18 +157,28 @@ fn palette(n: u16) -> Color {
             let i = (n - 16) as usize;
             Color::rgb(LEVELS[i / 36], LEVELS[i / 6 % 6], LEVELS[i % 6])
         }
-        _ => {
+        232..=255 => {
             let v = 8 + 10 * (n - 232) as u8;
             Color::rgb(v, v, v)
         }
-    }
+        _ => return None,
+    })
+}
+
+/// An RGB color; none with a component past 255
+fn rgb(r: u16, g: u16, b: u16) -> Option<Color> {
+    Some(Color::rgb(
+        u8::try_from(r).ok()?,
+        u8::try_from(g).ok()?,
+        u8::try_from(b).ok()?,
+    ))
 }
 
 impl Pen {
     fn reset() -> Self {
         Pen {
-            fg: Color::WHITE,
-            bg: Color::BLACK,
+            fg: None,
+            bg: None,
             modifiers: Modifier::empty(),
         }
     }
@@ -143,41 +196,39 @@ impl Pen {
                 1 => self.modifiers |= Modifier::BOLD,
                 2 => self.modifiers |= Modifier::DIM,
                 3 => self.modifiers |= Modifier::ITALIC,
-                4 => self.modifiers |= Modifier::UNDERLINE,
+                4 | 21 => self.modifiers |= Modifier::UNDERLINE,
+                7 => self.modifiers |= Modifier::REVERSE,
                 9 => self.modifiers |= Modifier::CROSSED_OUT,
                 22 => self.modifiers.remove(Modifier::BOLD | Modifier::DIM),
                 23 => self.modifiers.remove(Modifier::ITALIC),
                 24 => self.modifiers.remove(Modifier::UNDERLINE),
+                27 => self.modifiers.remove(Modifier::REVERSE),
                 29 => self.modifiers.remove(Modifier::CROSSED_OUT),
                 30..=37 => self.fg = palette(code - 30),
                 40..=47 => self.bg = palette(code - 40),
                 90..=97 => self.fg = palette(code - 90 + 8),
                 100..=107 => self.bg = palette(code - 100 + 8),
-                39 => self.fg = Color::WHITE,
-                49 => self.bg = Color::BLACK,
+                39 => self.fg = None,
+                49 => self.bg = None,
                 38 | 48 => {
+                    // The parameters are taken even when the color is out
+                    // of range, which sets nothing
                     let color = match params.get(i + 1) {
                         Some(5) if i + 2 < params.len() => {
-                            let c = palette(params[i + 2]);
                             i += 2;
-                            Some(c)
+                            palette(params[i])
                         }
                         Some(2) if i + 4 < params.len() => {
-                            let c = Color::rgb(
-                                params[i + 2] as u8,
-                                params[i + 3] as u8,
-                                params[i + 4] as u8,
-                            );
                             i += 4;
-                            Some(c)
+                            rgb(params[i - 2], params[i - 1], params[i])
                         }
                         _ => None,
                     };
                     if let Some(c) = color {
                         if code == 38 {
-                            self.fg = c;
+                            self.fg = Some(c);
                         } else {
-                            self.bg = c;
+                            self.bg = Some(c);
                         }
                     }
                 }
@@ -254,15 +305,18 @@ impl Grid {
                     self.put(' ');
                 }
             }
-            Piece::Control(_) => {}
-            Piece::Sgr(p) => self.pen.apply(p),
+            Piece::Control(_) | Piece::Sequence(_) => {}
+            Piece::Sgr(p) | Piece::ColonSgr(_, p) => self.pen.apply(p),
         }
     }
 }
 
 proptest! {
-    /// Any text, controls and SGR codes leave the cells, colors, modifiers
-    /// and cursor of a plain grid model.
+    /// Any text, controls, SGR codes and other escape sequences leave the
+    /// cells, colors, modifiers and cursor of a plain grid model. A color no
+    /// code set, or one reset by 0, 39 or 49, is drawn in the terminal's
+    /// default (configured, or white on black); a color a code named, white
+    /// and black included, is drawn as named.
     #[test]
     fn written_bytes_draw_the_model_grid(
         width in 1usize..12,
@@ -270,13 +324,19 @@ proptest! {
         scrollback in prop::sample::select(vec![0usize, 1, 3, 10_000]),
         extra in (0u16..3, 0u16..2),
         focused in any::<bool>(),
+        defaults in any::<bool>(),
         pieces in prop::collection::vec(piece(), 0..40),
     ) {
         let mut term = Terminal::new(width as u16, height as u16).max_scrollback(scrollback);
+        let (dfg, dbg) = if defaults {
+            (Color::YELLOW, Color::rgb(20, 20, 20))
+        } else {
+            (Color::WHITE, Color::BLACK)
+        };
+        if defaults {
+            term = term.default_fg(dfg).default_bg(dbg);
+        }
         let mut grid = Grid::new(width, height, scrollback);
-        // A reset first: text before any code gets the parser's
-        // `Color::default()` background (#1087)
-        term.write("\x1b[0m");
         for p in &pieces {
             term.write(&p.bytes());
             grid.write(p);
@@ -298,19 +358,46 @@ proptest! {
                 match line.and_then(|l| l.get(x)) {
                     _ if cursor => {
                         prop_assert_eq!(cell.symbol, '█');
-                        prop_assert_eq!(cell.fg, Some(Color::WHITE));
+                        prop_assert_eq!(cell.fg, Some(dfg));
                     }
                     Some(&(ch, pen)) => {
                         prop_assert_eq!(cell.symbol, ch, "({}, {})", x, y);
-                        prop_assert_eq!(cell.fg, Some(pen.fg), "({}, {})", x, y);
-                        prop_assert_eq!(cell.bg, Some(pen.bg), "({}, {})", x, y);
+                        prop_assert_eq!(cell.fg, Some(pen.fg.unwrap_or(dfg)), "({}, {})", x, y);
+                        prop_assert_eq!(cell.bg, Some(pen.bg.unwrap_or(dbg)), "({}, {})", x, y);
                         prop_assert_eq!(cell.modifier, pen.modifiers, "({}, {})", x, y);
                     }
                     None => {
                         prop_assert_eq!(cell.symbol, ' ', "({}, {})", x, y);
-                        prop_assert_eq!(cell.bg, Some(Color::BLACK), "({}, {})", x, y);
+                        prop_assert_eq!(cell.bg, Some(dbg), "({}, {})", x, y);
                     }
                 }
+            }
+        }
+    }
+}
+
+proptest! {
+    /// The same bytes written in two pieces, split anywhere (inside a
+    /// sequence too), draw what they draw written at once
+    #[test]
+    fn a_write_split_anywhere_draws_the_same(
+        pieces in prop::collection::vec(piece(), 0..20),
+        at in any::<prop::sample::Index>(),
+    ) {
+        let bytes: String = pieces.iter().map(Piece::bytes).collect();
+        let chars: Vec<char> = bytes.chars().collect();
+        let at = at.index(chars.len() + 1);
+        let head: String = chars[..at].iter().collect();
+        let tail: String = chars[at..].iter().collect();
+        let mut whole = Terminal::new(12, 4);
+        whole.write(&bytes);
+        let mut split = Terminal::new(12, 4);
+        split.write(&head);
+        split.write(&tail);
+        let (a, b) = (screen(&whole, 12, 4), screen(&split, 12, 4));
+        for y in 0..4 {
+            for x in 0..12 {
+                prop_assert_eq!(a.get(x, y), b.get(x, y), "({}, {})", x, y);
             }
         }
     }

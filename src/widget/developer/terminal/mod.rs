@@ -111,14 +111,12 @@ impl Terminal {
     /// Set default foreground color
     pub fn default_fg(mut self, color: Color) -> Self {
         self.default_fg = Some(color);
-        self.parser.reset_fg(color);
         self
     }
 
     /// Set default background color
     pub fn default_bg(mut self, color: Color) -> Self {
         self.default_bg = Some(color);
-        self.parser.reset_bg(color);
         self
     }
 

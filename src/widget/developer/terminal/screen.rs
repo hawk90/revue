@@ -23,17 +23,18 @@ impl Terminal {
             return;
         }
         if ch == '\t' {
-            // Tab to the next 8-column boundary, or to the right edge. Count
-            // the spaces up front: the cursor wraps to column 0 when a space
-            // fills the last column, and a space the ANSI parser swallows does
-            // not move it at all - a loop on the cursor never ends in either
-            // case.
+            // Tab to the next 8-column boundary, or to the right edge, in
+            // spaces of the colors in effect. They are put as cells, not
+            // read as text: a tab inside an escape sequence acts and the
+            // sequence goes on, as in a terminal. Count the spaces up
+            // front: the cursor wraps to column 0 when a space fills the
+            // last column.
             let next_tab = ((self.cursor_col / 8) + 1) * 8;
             let spaces = next_tab
                 .min(self.width as usize)
                 .saturating_sub(self.cursor_col);
             for _ in 0..spaces {
-                self.write_char(' ');
+                self.put_cell(self.parser.cell(' '));
             }
             return;
         }
@@ -80,7 +81,7 @@ impl Terminal {
 
         // Ensure line has enough cells
         while line.cells.len() <= self.cursor_col {
-            line.cells.push(TermCell::default());
+            line.cells.push(super::ansi::blank());
         }
 
         // Set cell
