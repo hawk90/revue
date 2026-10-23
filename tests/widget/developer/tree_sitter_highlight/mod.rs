@@ -30,7 +30,8 @@ fn numbered() -> SyntaxTheme {
     }
 }
 
-/// Spans as (covered text, theme field number, "B" bold, "I" italic)
+/// Spans as (covered text, theme field number, "B" bold, "I" italic); span
+/// offsets are characters
 fn described(line: &str, spans: &[HighlightSpan]) -> Vec<(String, u8, String)> {
     spans
         .iter()
@@ -40,7 +41,8 @@ fn described(line: &str, spans: &[HighlightSpan]) -> Vec<(String, u8, String)> {
                 if s.bold { "B" } else { "" },
                 if s.italic { "I" } else { "" }
             );
-            (line[s.start..s.end].to_string(), s.fg.r, style)
+            let text = line.chars().skip(s.start).take(s.end - s.start).collect();
+            (text, s.fg.r, style)
         })
         .collect()
 }
@@ -224,4 +226,32 @@ fn test_tree_sitter_builder_chain() {
     assert_eq!((spans[0].start, spans[0].end), (0, 3));
     assert_eq!(spans[0].fg, Color::MAGENTA);
     assert_eq!(spans[1].fg, SyntaxTheme::default().function);
+}
+
+// Nested captures, and offsets in characters (#1088)
+
+#[test]
+fn text_after_a_nested_capture_keeps_the_outer_color() {
+    // The escape is a capture inside the string: after it, `b"` is still
+    // string
+    let spans = highlighted(Language::Rust, r#"let s = "a\nb";"#);
+    let strings: String = spans
+        .iter()
+        .filter(|s| s.1 == 4)
+        .map(|s| s.0.as_str())
+        .collect();
+    assert!(strings.ends_with("b\""), "{spans:?}");
+    assert!(strings.starts_with("\"a"), "{spans:?}");
+}
+
+#[test]
+fn columns_are_characters() {
+    let mut hl = TreeSitterHighlighter::with_theme(Language::Python, numbered());
+    let spans = hl.highlight_line("한 = \"x\"");
+    let s = spans.iter().find(|s| s.fg.r == 4).unwrap();
+    assert_eq!((s.start, s.end), (4, 7));
+    // The same in a file's second line
+    let lines = hl.highlight_code("x = 1\n한글 = \"é\"\n");
+    let s = lines[1].iter().find(|s| s.fg.r == 4).unwrap();
+    assert_eq!((s.start, s.end), (5, 8));
 }
