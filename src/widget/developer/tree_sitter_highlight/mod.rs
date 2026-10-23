@@ -56,7 +56,7 @@ impl TreeSitterHighlighter {
         language != Language::None && get_configs().get(language).is_some()
     }
 
-    /// The captured source ranges of `source`, each with its style, in the
+    /// The captured byte ranges of `source`, each with its style, in the
     /// order tree-sitter reports them. `None` when there is nothing to
     /// highlight with: no language, an unsupported one, or a failed parse.
     fn captures(&mut self, source: &str) -> Option<Vec<(usize, usize, CaptureStyle)>> {
@@ -76,7 +76,9 @@ impl TreeSitterHighlighter {
             };
 
         let mut captures = Vec::new();
-        let mut current_highlight: Option<usize> = None;
+        // Highlights nest (an escape inside a string): the innermost one
+        // colors the text, and when it ends the one around it goes on
+        let mut open: Vec<usize> = Vec::new();
 
         for event in highlights {
             let Ok(event) = event else {
@@ -85,15 +87,13 @@ impl TreeSitterHighlighter {
 
             match event {
                 HighlightEvent::Source { start, end } => {
-                    if let Some(highlight_idx) = current_highlight {
+                    if let Some(&highlight_idx) = open.last() {
                         captures.push((start, end, CaptureStyle::of(highlight_idx, &self.theme)));
                     }
                 }
-                HighlightEvent::HighlightStart(highlight) => {
-                    current_highlight = Some(highlight.0);
-                }
+                HighlightEvent::HighlightStart(highlight) => open.push(highlight.0),
                 HighlightEvent::HighlightEnd => {
-                    current_highlight = None;
+                    open.pop();
                 }
             }
         }
@@ -109,9 +109,15 @@ impl TreeSitterHighlighter {
             return Vec::new();
         };
 
+        // Spans are in characters; tree-sitter counts bytes
         let mut spans: Vec<HighlightSpan> = captures
             .into_iter()
-            .map(|(start, end, style)| style.span(start, end))
+            .map(|(start, end, style)| {
+                style.span(
+                    lines::char_column(line, start),
+                    lines::char_column(line, end),
+                )
+            })
             .collect();
 
         // Sort spans by start position
