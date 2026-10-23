@@ -49,17 +49,30 @@ impl SearchBar {
         self.state.move_cursors(EditMotion::LineEnd, false);
     }
 
-    /// Handle key input: Escape clears the query; the other keys are the
-    /// standard editing keys every single-line field shares (#985).
-    /// Returns whether the key was the search bar's.
+    /// Handle key input without modifiers: Escape clears the query; the
+    /// other keys are the standard editing keys every single-line field
+    /// shares (#985). Returns whether the key was the search bar's.
     pub fn handle_key(&mut self, key: &crate::event::Key) -> bool {
-        use crate::event::{Key, KeyEvent};
+        self.key(&crate::event::KeyEvent::new(*key))
+    }
 
-        if *key == Key::Escape {
+    /// Handle a key with its modifiers, as [`handle_key`](Self::handle_key)
+    /// does, so the editing keys that need them work too: Ctrl+Z and
+    /// Ctrl+Y, word moves and deletes, Shift selection, Ctrl+A. Returns
+    /// false when the search bar is not focused, and for keys it leaves to
+    /// the app.
+    pub fn handle_key_event(&mut self, event: &crate::event::KeyEvent) -> bool {
+        self.focused && self.key(event)
+    }
+
+    fn key(&mut self, event: &crate::event::KeyEvent) -> bool {
+        use crate::event::Key;
+
+        if event.key == Key::Escape && !event.ctrl && !event.alt {
             self.clear();
             return true;
         }
-        match self.state.edit_key(&KeyEvent::new(*key), 1) {
+        match self.state.edit_key(event, 1) {
             EditOutcome::Edited => {
                 self.parse_input();
                 true
