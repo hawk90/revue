@@ -172,14 +172,16 @@ fn the_box_is_pushed_back_from_the_left_and_right_edges() {
 }
 
 #[test]
-fn a_box_larger_than_the_area_is_cut_at_its_edges() {
+fn a_box_taller_than_the_area_is_cut_at_its_bottom_edge() {
     let mut buffer = Buffer::new(12, 6);
     let t = Tooltip::new("A rather long hint").anchor(1, 1);
     let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 1, 6, 3));
     t.render(&mut ctx);
-    // Drawn from the area's corner, nothing outside it.
-    assert_eq!(symbol(&buffer, 2, 1), '┌');
-    assert_eq!(cols(&buffer, 2, 0..10), "  │ A ra  ");
+    // As wide as the area, with two columns of text per row, so it keeps
+    // its right border; drawn from the area's corner, nothing outside it.
+    assert_eq!(cols(&buffer, 1, 0..10), "  ┌────┐  ");
+    assert_eq!(cols(&buffer, 2, 0..10), "  │ A  │  ");
+    assert_eq!(cols(&buffer, 3, 0..10), "  │ ra │  ");
     for y in 0..6 {
         for x in 0..12 {
             if !(2..8).contains(&x) || !(1..4).contains(&y) {
@@ -237,4 +239,80 @@ fn anchor_at_u16_max_is_kept_inside_the_area() {
         t.render(&mut RenderContext::new(&mut b, Rect::new(0, 0, 10, 5)));
         assert!(find(&b, "Hi").is_some(), "{pos:?}");
     }
+}
+
+#[test]
+fn a_word_longer_than_max_width_is_broken_by_columns() {
+    // "supercalifragilistic" is 20 columns; max width 10 gives a 14-column
+    // box (10 + padding + border) and the word on two rows
+    let t = Tooltip::new("the supercalifragilistic word")
+        .max_width(10)
+        .position(TooltipPosition::Bottom)
+        .anchor(10, 0);
+    let buffer = render_in(&t, 30, 8);
+    let (x, y) = find(&buffer, "┌").unwrap();
+    assert_eq!(cols(&buffer, y, x..x + 14), "┌────────────┐");
+    assert_eq!(cols(&buffer, y + 1, x..x + 14), "│ the        │");
+    assert_eq!(cols(&buffer, y + 2, x..x + 14), "│ supercalif │");
+    assert_eq!(cols(&buffer, y + 3, x..x + 14), "│ ragilistic │");
+    assert_eq!(cols(&buffer, y + 4, x..x + 14), "│ word       │");
+    assert_eq!(cols(&buffer, y + 5, x..x + 14), "└────────────┘");
+}
+
+#[test]
+fn the_text_wraps_to_a_narrow_area_and_the_box_keeps_its_right_border() {
+    // 33 columns fit the default max width (40) but not a 20-column area:
+    // the text wraps to the 16 columns inside the padding and border, and
+    // the box takes the widest line, 13 columns
+    let t = Tooltip::new("one two three four five six seven")
+        .anchor(5, 0)
+        .position(TooltipPosition::Bottom);
+    let buffer = render_in(&t, 20, 8);
+    assert_eq!(row(&buffer, 2), "┌───────────────┐   ");
+    assert_eq!(row(&buffer, 3), "│ one two three │   ");
+    assert_eq!(row(&buffer, 4), "│ four five six │   ");
+    assert_eq!(row(&buffer, 5), "│ seven         │   ");
+    assert_eq!(row(&buffer, 6), "└───────────────┘   ");
+}
+
+#[test]
+fn a_wide_word_is_broken_between_glyphs() {
+    // Eight 2-column glyphs in a 6-column line: three per row, never half
+    // of one
+    let t = Tooltip::new("가나다라마바사아")
+        .max_width(6)
+        .position(TooltipPosition::Bottom)
+        .anchor(10, 0);
+    let buffer = render_in(&t, 30, 8);
+    let (x, y) = find(&buffer, "┌").unwrap();
+    let text = |row: u16| -> String {
+        (x + 2..x + 8)
+            .filter_map(|cx| buffer.get(cx, row))
+            .filter(|c| !c.is_continuation())
+            .map(|c| c.symbol)
+            .collect()
+    };
+    assert_eq!(text(y + 1), "가나다");
+    assert_eq!(text(y + 2), "라마바");
+    assert_eq!(text(y + 3), "사아  ");
+    assert_eq!(symbol(&buffer, x + 9, y + 1), '│');
+}
+
+#[test]
+fn a_wide_glyph_gets_its_two_columns_in_an_area_too_narrow_for_them() {
+    // A 3-column area leaves 1 column inside the padding: "한" still gets
+    // 2, and the box is cut at the area's edge instead of dropping it
+    let t = Tooltip::new("한글")
+        .style(TooltipStyle::Plain)
+        .arrow(TooltipArrow::None)
+        .anchor(0, 0);
+    let buffer = render_in(&t, 3, 2);
+    for y in 0..2 {
+        assert!(buffer.get(0, y).unwrap().bg.is_some(), "row {y}");
+        assert!(buffer.get(2, y).unwrap().bg.is_some(), "row {y}");
+    }
+    assert_eq!(symbol(&buffer, 1, 0), '한');
+    assert!(buffer.get(2, 0).unwrap().is_continuation());
+    assert_eq!(symbol(&buffer, 1, 1), '글');
+    assert!(buffer.get(2, 1).unwrap().is_continuation());
 }

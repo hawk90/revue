@@ -300,3 +300,62 @@ fn test_popover_auto_goes_below_when_it_just_fits() {
         .open(true);
     assert_eq!(corner(&render(&p)), Some((15, 14)));
 }
+
+#[test]
+fn a_word_longer_than_max_width_is_broken_by_columns() {
+    let p = Popover::new("the supercalifragilistic word")
+        .max_width(10)
+        .position(PopoverPosition::Bottom)
+        .anchor(10, 0)
+        .open(true);
+    let mut buffer = Buffer::new(30, 8);
+    p.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 30, 8)));
+    let (x, y) = corner(&buffer).unwrap();
+    let line = |row: u16| -> String { (x..x + 14).map(|cx| symbol(&buffer, cx, row)).collect() };
+    assert_eq!(line(y), "┌────────────┐");
+    assert_eq!(line(y + 1), "│ the        │");
+    assert_eq!(line(y + 2), "│ supercalif │");
+    assert_eq!(line(y + 3), "│ ragilistic │");
+    assert_eq!(line(y + 4), "│ word       │");
+    assert_eq!(line(y + 5), "└────────────┘");
+}
+
+#[test]
+fn the_content_wraps_to_a_narrow_area_and_the_box_keeps_its_right_border() {
+    let p = Popover::new("one two three four five six seven")
+        .anchor(5, 0)
+        .position(PopoverPosition::Bottom)
+        .open(true);
+    let mut buffer = Buffer::new(20, 8);
+    p.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 8)));
+    // Wrapped to the 16 columns the area leaves; the box takes the widest
+    // line, 13 columns
+    assert_eq!(row(&buffer, 1), "┌───────────────┐   ");
+    assert_eq!(row(&buffer, 2), "│ one two three │   ");
+    assert_eq!(row(&buffer, 3), "│ four five six │   ");
+    assert_eq!(row(&buffer, 4), "│ seven         │   ");
+    assert_eq!(row(&buffer, 5), "└───────────────┘   ");
+}
+
+#[test]
+fn a_wide_glyph_gets_its_two_columns_in_an_area_too_narrow_for_them() {
+    // A 5-column area leaves 1 column inside the border and padding: "한"
+    // still gets 2 and keeps its padding, and the box is cut at the area's
+    // edge (its right border falls outside)
+    let p = Popover::new("한글")
+        .anchor(0, 0)
+        .position(PopoverPosition::Bottom)
+        .arrow(PopoverArrow::None)
+        .open(true);
+    let mut buffer = Buffer::new(5, 6);
+    p.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 5, 6)));
+    let y = (0..6).find(|&y| symbol(&buffer, 0, y) == '│').unwrap();
+    assert_eq!(symbol(&buffer, 2, y), '한');
+    assert!(buffer.get(3, y).unwrap().is_continuation());
+    assert_eq!(symbol(&buffer, 2, y + 1), '글');
+    assert!(buffer.get(3, y + 1).unwrap().is_continuation());
+    for y in y..y + 2 {
+        assert_eq!(symbol(&buffer, 4, y), ' ', "row {y}");
+        assert!(buffer.get(4, y).unwrap().bg.is_some(), "row {y}");
+    }
+}
