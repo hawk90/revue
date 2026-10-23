@@ -165,23 +165,10 @@ impl PipelineHarness {
         self.app.presented_buffer()
     }
 
-    /// Rendered screen as text, trailing whitespace and blank lines trimmed.
+    /// Rendered screen as text, trailing whitespace and blank lines trimmed;
+    /// a wide glyph is one character.
     pub fn screen_text(&self) -> String {
-        let buffer = self.buffer();
-        let mut lines: Vec<String> = (0..buffer.height())
-            .map(|y| {
-                let mut line = String::new();
-                for x in 0..buffer.width() {
-                    line.push(buffer.get(x, y).map(|c| c.symbol).unwrap_or(' '));
-                }
-                line.trim_end().to_string()
-            })
-            .collect();
-
-        while lines.last().is_some_and(|l| l.is_empty()) {
-            lines.pop();
-        }
-        lines.join("\n")
+        super::screen_text::screen_text(self.buffer())
     }
 
     /// Bytes written to the terminal so far.

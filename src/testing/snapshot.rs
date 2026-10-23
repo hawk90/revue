@@ -153,27 +153,7 @@ impl Default for SnapshotManager {
 
 /// Convert buffer to string representation
 fn buffer_to_string(buffer: &Buffer) -> String {
-    let mut lines = Vec::new();
-    for y in 0..buffer.height() {
-        let mut line = String::new();
-        for x in 0..buffer.width() {
-            match buffer.get(x, y) {
-                // The right half of a wide glyph is part of the glyph
-                Some(cell) if cell.is_continuation() => {}
-                Some(cell) => line.push(cell.symbol),
-                None => line.push(' '),
-            }
-        }
-        // Preserve line but trim trailing spaces
-        lines.push(line.trim_end().to_string());
-    }
-
-    // Remove trailing empty lines
-    while lines.last().map(|l| l.is_empty()).unwrap_or(false) {
-        lines.pop();
-    }
-
-    lines.join("\n")
+    super::screen_text::screen_text(buffer)
 }
 
 #[cfg(test)]

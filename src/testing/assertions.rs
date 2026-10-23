@@ -222,42 +222,12 @@ impl Assertion for ScreenEquals {
 
 #[cfg(test)]
 fn buffer_to_string(buffer: &Buffer) -> String {
-    let mut lines = Vec::new();
-    for y in 0..buffer.height() {
-        let mut line = String::new();
-        for x in 0..buffer.width() {
-            if let Some(cell) = buffer.get(x, y) {
-                line.push(cell.symbol);
-            } else {
-                line.push(' ');
-            }
-        }
-        lines.push(line.trim_end().to_string());
-    }
-
-    // Remove trailing empty lines
-    while lines.last().map(|l| l.is_empty()).unwrap_or(false) {
-        lines.pop();
-    }
-
-    lines.join("\n")
+    super::screen_text::screen_text(buffer)
 }
 
 #[cfg(test)]
 fn get_line(buffer: &Buffer, row: u16) -> String {
-    if row >= buffer.height() {
-        return String::new();
-    }
-
-    let mut line = String::new();
-    for x in 0..buffer.width() {
-        if let Some(cell) = buffer.get(x, row) {
-            line.push(cell.symbol);
-        } else {
-            line.push(' ');
-        }
-    }
-    line.trim_end().to_string()
+    super::screen_text::row_text(buffer, row)
 }
 
 #[cfg(test)]
