@@ -474,6 +474,7 @@ entries:
       - "selector matcher가 `query()`(DomTree)와 cascade(StyleResolver)에 따로 있었다. `.mark ~ Text`가 query에서는 [b, c, d], 화면에서는 [b]였고, 조합자 index가 하나 어긋나 자손·형제 재시도가 돌지 않았다. 테스트와 devtools는 맞는 쪽을 써서 보이지 않았다. dom/selector/matching.rs 하나로 합쳤다 (docs/refactor/findings-selector-matchers.md)."
       - "글자 폭 table 두 개(#1026), `measure`와 `render`의 min/max 규칙(#1042, REV-LAYOUT-008)."
       - "2026-10-20 기준 남은 쌍둥이: profiler 3개(core::app, devtools, utils), inspector 2개(core/app/inspector.rs, devtools/inspector), accessibility 2벌(src/a11y, src/utils/accessibility), 내장 theme 체계 2개(`Themes`와 CSS `themes::BuiltinTheme`), event bus 3개와 keymap 2개 (docs/refactor/srp-audit.md, #1142)."
+      - "2026-10-24: 글자 폭 table은 하나로 합쳤다. 새 쌍: TextArea·CodeEditor의 편집 코드와 `EditState`(#1261에서 합친다), DataGrid의 공개 `edit_state.buffer`/`cursor`와 그 안의 `EditState`(키마다 맞춘다, 4.0에서 하나로)."
   - id: REV-ARCH-007
     title: "Wired to Nothing"
     category: architecture
@@ -1150,6 +1151,7 @@ entries:
     observed:
       - "`utils::Selection::set_visible`(src/utils/selection/core.rs)은 `List::render`에서 불려 `Cell`에 viewport 높이를 쓰고 offset을 고친다. 같은 모양의 render 중 쓰기: CodeEditor의 `scroll`/`scroll_x`/`page_height`(`Cell`), TextArea, Input, DataGrid `last_viewport_height`, ErrorBoundary의 `Cell<bool>`/`RefCell` (2026-10-20)."
       - "VirtualList는 scroll을 고치려고 render에서 자기를 복제했고 복제가 closure를 잃었다 (#857). #972에서 offset을 frame마다 `&self`로 계산하게 바꿨다."
+      - "2026-10-24: 한 줄 칸이 scroll을 render 사이에 유지하려고 같은 모양의 `Cell`을 더 가졌다: SearchBar, Combobox, Autocomplete, MaskedInput, NumberInput, DataGrid 셀 편집기의 `scroll_x`, TextArea의 `scroll_row`. Input을 따른 것이고 #1141에서 함께 옮긴다."
   - id: REV-RENDER-012
     title: "Glyph Write Erases Background"
     category: render
@@ -1306,6 +1308,7 @@ entries:
     observed:
       - "min/max를 `measure`는 작은 max가 이기게, `render`는 min이 이기게 읽는다: Border, Stack, Card (#1042)."
       - "폭 table이 두 개다: `utils::unicode`는 Misc Symbols와 Dingbats 388개를 2칸으로, unicode-width와 terminal은 1칸으로 센다 (#1026)."
+      - "2026-10-24: 폭 table은 하나가 되었다 (3.12, #1262/#1270; REV-RENDER-005). 남은 어긋남: TextArea 줄바꿈은 폭 0인 글자를 1칸으로 세고(`.max(1)`) 그리기는 0칸으로 센다."
   - id: REV-LAYOUT-009
     title: "Two Layout Authorities"
     category: layout
@@ -1642,6 +1645,7 @@ entries:
     observed:
       - "유일한 진입점 `App::run`의 handler가 `FnMut(&Event, &mut V, &mut Self) -> bool`(\"redraw 여부\")이다 (src/core/app/event_loop.rs). widget 파일 33개가 `fn handle_key(&mut self, key: &Key) -> bool`이고, 옆에 `EventResult{Ignored, Consumed, ConsumedAndRender}`가 따로 있다."
       - "Input의 Ctrl+C가 복사한 뒤 앱이 종료되었다. handler의 bool은 \"handled\"가 아니라 \"redraw\"라 loop가 widget이 key를 썼는지 알 수 없었다 (#958). `App::prevent_default()`로 땜질했다 (#959)."
+      - "2026-10-24: `handle_key(&Key) -> bool`이 있는 파일은 44개, 수정키를 받는 `handle_key_event` 짝이 7개다. 같은 `EditState::edit_key`를 쓰는 칸들도 bool의 뜻이 다르다: Input은 할 일이 없는 Backspace·Ctrl+Z에 false, 나머지는 true."
   - id: REV-EVENT-002
     title: "Global Event Match"
     category: event
@@ -1966,6 +1970,7 @@ entries:
       - "같은 결함이 widget마다 따로 이슈로 올라왔다: #858 (log_viewer), #882 (Select 등 5개), #967 3번 (filetree), #969 3번 (csv_viewer). Table은 #925에서 Selection으로 옮겨 고쳤다."
       - "목록이 아닌 widget에서도 같은 결함이 나온다: Calendar는 보이는 달이 view인데 `select()`와 날짜 이동이 그 달을 옮기지 않아 선택이 화면 밖에 남고, 달 경계에서는 달만 바꿔 다른 해의 같은 달을 보여 준다 (calendar 감사, 2026-10-13, #973 댓글)."
       - "3.11.0 (2026-10-22): #973 목록의 widget을 모두 `ScrollState`로 옮겼다 (#1228–#1242, #1244, #1248, #1249). `ScrollState`/`Selection`/`KeyedSelection`은 model 기반 테스트로 고정했다 (#1250). 자기 `Cell`로 scroll하는 datagrid, textarea, input, code_editor는 동작은 맞고 4.0에서 옮긴다 (#1257)."
+      - "2026-10-24: 한 줄 칸의 가로 scroll도 자기 `Cell`이다(Input, SearchBar, Combobox, Autocomplete, MaskedInput, NumberInput, DataGrid 셀; REV-RENDER-011)."
   - id: REV-WIDGET-009
     title: "Visual Variant as New Widget"
     category: widget
@@ -2037,13 +2042,15 @@ entries:
     detect:
       - "widget에 `String` 값과 `cursor: usize`가 있고 `Key::Char`/`Key::Backspace`/`Key::Delete`를 직접 처리한다"
       - "`char_indices().nth(cursor)`를 인라인으로 쓰거나 `char_to_byte_index`를 widget 안에 다시 정의한다"
+      - "widget이 글자를 돌며 커서나 선택 칸을 직접 칠한다 (`put_edit_field` 대신)"
       - "검증 입력: 같은 키 열(제어 문자, Ctrl+글자, ←→ Home End, 넓은 글자, 칸보다 긴 값)을 여러 widget에 넣고 결과를 비교한다"
     fix:
       - "편집은 `utils::EditState` 하나로 한다. 한 줄 칸과 여러 줄 편집기가 같은 model을 쓰고(한 줄 칸은 single_line), 표준 키 처리(삽입 규칙, 삭제, 이동, 단어 단위, 선택, undo)는 `edit_key`에 두며 widget은 자기 키를 먼저 처리하고 나머지를 넘긴다. `utils::TextBuffer`는 3.12에서 deprecated, 4.0에서 제거된다."
-      - "그리기는 이미 공통인 `put_edit_line`/`scroll_to_cursor`(#695)로 해서 긴 값도 커서를 따라 scroll한다."
+      - "그리기는 공통 `EditField`/`put_edit_field`(`put_edit_line`/`scroll_to_cursor` 위)로 해서 긴 값도 커서를 따라 scroll하고 선택과 placeholder 위 커서를 칸마다 같게 그린다."
       - "widget 고유 규칙(NumberInput의 숫자만 받기, spin button의 Home/End, CodeEditor의 자동 들여쓰기)은 EditState 바깥에서 감싼다."
     observed:
       - "2026-10-13 기준 커서가 있는 한 줄 편집기 7개(Input, Combobox, Autocomplete, SearchBar, MaskedInput, NumberInput, DataGrid 셀 편집)가 모두 따로 짜여 있고 TextBuffer를 쓰는 widget은 0개다. char→byte 변환은 4가지 방식이 섞여 있다. 목록은 #985."
+      - "2026-10-24: 한 줄 칸 7개(Input, SearchBar, Combobox, Autocomplete, MaskedInput, NumberInput, DataGrid 셀)가 모두 `EditState`로 편집하고 `EditField`/`put_edit_field`로 그린다 (#1284, #1291, #1294). 위젯 안 char→byte 변환은 Input `substring`과 MaskedInput `byte_at`이 남았다(EditState가 `&str` 범위를 주지 않아서). 남은 편집기는 TextArea와 CodeEditor(#1261), 덧붙이기만 하는 검색 칸들(#985)."
   - id: REV-WIDGET-013
     title: "Chrome Drawn Over Content"
     category: widget
@@ -2856,6 +2863,7 @@ entries:
       - "같은 날 전수 조사: 공개 타입 30개가 필드 313개를 `pub(super)`·`pub(crate)`로 열어 두었다. Combobox(26), TextArea(26), Sidebar(25), RichTextEditor(24), FilePicker(23), CodeEditor(21), RangePicker(20), Select(18) 등 대부분 위젯이고, 거의 모두 큰 파일을 나눈 리팩터링에서 열렸다 (#270, #271, #272, #512, select·accordion 분리, 2026-01~03). `pub(super)`는 그 타입 모듈의 부모 전체(예: Combobox는 input_widgets의 모든 위젯)에 필드를 연다. 목록은 `tests/lib/field_visibility.rs`의 `OPEN_FIELDS`이고, 줄어들기만 한다."
       - "2026-10-01 이후 `src`를 바꾼 커밋 144개를 구조체·메서드 정의 전후로 비교: 기존 private 필드를 넓힌 커밋은 없다. 이미 열린 구조체에 열린 필드를 더한 커밋은 4개(#695, #710, #750, #752: Input·TextArea·CodeEditor의 스크롤 상태). datagrid 감사(#989)는 폴더를 한 단계 깊게 나누면서 메서드 7개를 `pub(super)`에서 `pub(crate)`로 넓혔다. `pub(in crate::widget::data::datagrid)`면 충분했다."
       - "color_picker 감사(2026-10-14): `ColorPicker`의 필드 18개가 모두 그냥 `pub`이다. ratchet은 `pub(super)`·`pub(crate)`·`pub(in ..)`만 세므로 보이지 않았다. 큰 분리 커밋들을 부모 커밋과 필드 단위로 비교하니 #271과 #272가 구조체 40개의 private 필드 291개를 그냥 `pub`로 넓혔고, 289개가 아직 `pub`이다. 그중 35개 공개 타입의 271개는 사용자가 쓸 수 있는 공개 API다(DataGrid 33, CsvViewer 27, DateTimePicker 24, ColorPicker 18, CommandPalette 17 등). 닫는 것은 breaking change라 deprecate한 뒤 4.0에서 닫는다 (#1021, #801)."
+      - "2026-10-24: Combobox의 열린 필드가 26개에서 24개로 줄었다(편집 상태를 private `EditState`로, #1294). DataGrid의 새 편집 메서드는 `pub(in crate::widget::data::datagrid)`로 둔다."
   - id: REV-RUST-012
     title: "Callback Under Lock"
     category: rust
@@ -3352,6 +3360,7 @@ entries:
       - "2026-10-13 기준 control character 정책이 없다. 문자를 하나씩 그리는 widget은 `char_width`가 0인 `\\n`·`\\t`를 다음 문자로 덮어써 앞뒤 단어가 붙는다(Timeline 설명 `Line 1Line 2`). 정책은 공통 text helper 한 곳에 두는 것이 맞다 (#982 댓글)."
       - "반대 모양도 있다. RichText(그리고 RichText로 그리는 Text)는 `UnicodeWidthChar::width(ch).unwrap_or(1)`로 control character에 한 칸을 주고 cell에 그대로 넣는다. terminal writer는 `\\t`·`\\r`·ESC를 그대로 출력한다(`Text::new(\"ab\\rcd\")` → `ab\\r\\e[1;4Hcd`). 바로 뒤에 cursor 이동이 오기 때문에 지금은 그 칸만 칠해지지 않는다 (richtext/text 감사, #982 댓글)."
       - "INV-07 테스트는 `ctx.draw_text`만 확인하고 RichText 경로는 확인하지 않는다 (tests/e2e/invariants.rs)."
+      - "2026-10-24: RichText는 control character를 건너뛰고(`char_width`가 0) 공통 ANSI scanner를 쓴다 (3.12). 링크 URL의 control character는 `Buffer::register_hyperlink`가 percent-encoding한다 — 전에는 `[link=x\\x1bc]`가 OSC 8을 끝내고 RIS를 실행했다."
   - id: REV-SEC-002
     title: "OSC Sequence Trust"
     category: security
@@ -3361,6 +3370,7 @@ entries:
     summary: "clipboard, hyperlink, title 변경 등 OSC sequence를 무제한 허용한다. capability와 opt-in 정책이 필요하다."
     observed:
       - "terminal 감사(#930): Terminal 위젯은 OSC payload를 실행하지 않고 버린다(title·clipboard 변경 없음). 대신 끝을 BEL이나 `\\` 하나로 판단해, `\\`가 들어간 title이나 OSC 8 link는 중간에 끝나고 나머지가 글자로 찍힌다. `ESC ] BEL`은 첫 바이트로 BEL을 삼켜 끝나지 않으므로 그 뒤의 출력이 모두 사라진다 (#878 댓글)."
+      - "2026-10-24: Terminal은 공통 `utils::ansi::Scanner`를 쓴다(#1279, #1293): ST는 `ESC \\`이고 `ESC ] BEL`은 바로 끝난다. 위의 두 결함은 고쳐졌다."
   - id: REV-SEC-003
     title: "Untrusted CSS Resource Exhaustion"
     category: security

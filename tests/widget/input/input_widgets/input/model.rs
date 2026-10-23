@@ -62,8 +62,11 @@ proptest! {
     /// those of a single-line EditState given the same keys
     #[test]
     fn input_follows_its_edit_state(events in prop::collection::vec(event(), 0..80)) {
-        let mut input = Input::new();
-        let mut state = EditState::single_line();
+        // One frozen clock for both, so their undo steps group alike
+        // however long the run takes
+        let now = std::time::Instant::now();
+        let mut input = Input::new().clock(move || now);
+        let mut state = EditState::single_line().clock(move || now);
         for e in &events {
             input.handle_key_event(e);
             state.edit_key(e, 1);

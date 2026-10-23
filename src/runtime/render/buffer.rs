@@ -567,8 +567,12 @@ impl Buffer {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Register a hyperlink URL and return its ID
+    ///
+    /// The URL is written into an OSC 8 escape sequence, so its control
+    /// characters (C0, DEL, C1) are percent-encoded: an ESC or BEL in it
+    /// would end the sequence early and run the rest as terminal commands.
     pub fn register_hyperlink(&mut self, url: impl Into<String>) -> u16 {
-        let url = url.into();
+        let url = encode_controls(url.into());
         // Check cache first (O(1) lookup)
         if let Some(&id) = self.hyperlink_cache.get(&url) {
             return id;
@@ -720,6 +724,25 @@ impl Buffer {
             }
         }
     }
+}
+
+/// `url` with each control character (C0, DEL, C1) percent-encoded as its
+/// UTF-8 bytes
+fn encode_controls(url: String) -> String {
+    if !url.chars().any(char::is_control) {
+        return url;
+    }
+    let mut out = String::with_capacity(url.len() + 8);
+    for c in url.chars() {
+        if c.is_control() {
+            for byte in c.encode_utf8(&mut [0; 4]).bytes() {
+                out.push_str(&format!("%{byte:02X}"));
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 
 #[cfg(test)]

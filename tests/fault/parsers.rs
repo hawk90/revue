@@ -222,6 +222,19 @@ fn csv(s: &str) {
     paint(&viewer);
 }
 
+#[cfg(feature = "syntax-highlighting")]
+fn tree_sitter(s: &str) {
+    // One grammar, on inputs up to 100 KB: tree-sitter's own C parser is
+    // slow in a debug build (half a megabyte of markup takes it over a
+    // second), and what is revue's here - spreading the spans over the
+    // lines - is the same for every language and shows at this size
+    if s.len() > 100_000 {
+        return;
+    }
+    let mut h = revue::widget::TreeSitterHighlighter::new(revue::widget::Language::Json);
+    let _ = h.highlight_code(s);
+}
+
 fn syntax(s: &str) {
     for lang in ["rust", "python", "js", "json", "sh", "unknown"] {
         let _ = revue::utils::highlight(s, lang);
@@ -595,6 +608,9 @@ fn corpus() -> Vec<(&'static str, String)> {
         ("space", " ".into()),
         ("newline", "\n".into()),
         ("huge line", "x".repeat(200_000)),
+        // Many tokens on one line, as minified code: a highlighter that
+        // measures each token from the line's start is quadratic in it
+        ("tokens on one line", format!("[{}0]", "1,".repeat(40_000))),
         ("many lines", "line\n".repeat(20_000)),
         ("[ x10000", "[".repeat(deep)),
         ("] x10000", "]".repeat(deep)),
@@ -639,6 +655,14 @@ fn corpus() -> Vec<(&'static str, String)> {
             "markup many colors",
             (0..40_000)
                 .map(|i| format!("[#{i:06x}]x"))
+                .collect::<String>(),
+        ),
+        // Many colors closed oldest first, each under all the newer ones
+        (
+            "markup colors closed in order",
+            (0..40_000)
+                .map(|i| format!("[#{i:06x}]x"))
+                .chain((0..40_000).map(|i| format!("[/#{i:06x}]y")))
                 .collect::<String>(),
         ),
         (
@@ -728,6 +752,8 @@ fn targets() -> Vec<Target> {
     ];
     #[cfg(feature = "markdown")]
     targets.push(t("markdown", markdown, MARKDOWN_TOKENS));
+    #[cfg(feature = "syntax-highlighting")]
+    targets.push(t("tree-sitter", tree_sitter, SYNTAX_TOKENS));
     targets
 }
 

@@ -119,3 +119,37 @@ proptest! {
         }
     }
 }
+
+// The typed text is drawn as every single-line field is (#985)
+
+#[test]
+fn test_number_input_selection_is_drawn() {
+    use revue::event::KeyEvent;
+    let mut input = NumberInput::new().focused(true).show_buttons(false);
+    type_keys(&mut input, "12345");
+    for _ in 0..2 {
+        input.handle_key_event(&KeyEvent {
+            shift: true,
+            ..KeyEvent::new(Key::Left)
+        });
+    }
+    let (buffer, text) = render_row(&input, 10);
+    assert!(text.starts_with("12345"), "{text:?}");
+    // The cursor on "4", "5" selected, "3" neither
+    assert_eq!(buffer.get(3, 0).unwrap().bg, Some(Color::WHITE));
+    assert_eq!(buffer.get(4, 0).unwrap().bg, Some(Color::BLUE));
+    assert_ne!(buffer.get(2, 0).unwrap().bg, Some(Color::BLUE));
+}
+
+#[test]
+fn test_number_input_long_text_scrolls_to_the_cursor() {
+    let mut input = NumberInput::new()
+        .focused(true)
+        .show_buttons(false)
+        .width(6);
+    type_keys(&mut input, "1234567890");
+    let (buffer, text) = render_row(&input, 10);
+    // The end and the cursor after it, in the six columns of the field
+    assert_eq!(&text[..6], "67890 ");
+    assert_eq!(buffer.get(5, 0).unwrap().bg, Some(Color::WHITE));
+}

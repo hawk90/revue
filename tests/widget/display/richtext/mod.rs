@@ -1556,3 +1556,27 @@ fn link_is_read_in_any_case() {
     assert!(buffer.get(0, 0).unwrap().hyperlink_id.is_some());
     assert!(buffer.get(1, 0).unwrap().hyperlink_id.is_none());
 }
+
+#[test]
+fn colors_closed_oldest_first_keep_the_newest_in_effect() {
+    let fg = |markup: &str, x: u16| draw(&RichText::markup(markup), 6).get(x, 0).unwrap().fg;
+    let markup = "[red]a[blue]b[/red]c[/blue]d";
+    assert_eq!(fg(markup, 0), Some(Color::RED));
+    assert_eq!(fg(markup, 1), Some(Color::BLUE));
+    // Red closed under blue: blue stays
+    assert_eq!(fg(markup, 2), Some(Color::BLUE));
+    assert_eq!(fg(markup, 3), None);
+    // A red closed under blue is not back when a newer red closes
+    let markup = "[red]a[blue]b[/red]c[red]d[/red]e";
+    assert_eq!(fg(markup, 3), Some(Color::RED));
+    assert_eq!(fg(markup, 4), Some(Color::BLUE));
+    // The same color opened twice: one close leaves it on
+    assert_eq!(fg("[red]a[red]b[/red]c", 2), Some(Color::RED));
+}
+
+#[test]
+fn a_link_url_from_markup_cannot_carry_terminal_controls() {
+    let buffer = draw(&RichText::markup("[link=x\x1bc]a[/link]"), 2);
+    let id = buffer.get(0, 0).unwrap().hyperlink_id.unwrap();
+    assert_eq!(buffer.get_hyperlink(id), Some("x%1Bc"));
+}

@@ -1,6 +1,6 @@
 //! Building rich text from markup tags
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::{RichText, Span, Style};
 use crate::style::Color;
@@ -226,11 +226,14 @@ fn color(word: &str) -> Option<Color> {
 }
 
 /// What the open tags turn on, kept per attribute so that opening or
-/// closing a tag takes the same time however many others are open: the
-/// modifiers as counts, the colors and the link as stacks (the newest one
-/// wins), and for each attribute the tags that turned it on, newest last.
+/// closing a tag takes the same time however many others are open, in
+/// whatever order they close: the modifiers as counts, the colors and the
+/// link as stacks (the newest one wins), and for each attribute the entries
+/// that turned it on, newest last. An entry closed under newer ones is
+/// marked dead and dropped once it reaches the top of its stack.
 #[derive(Default)]
 struct OpenTags {
+    /// The next entry's number
     next: u64,
     /// Bold, italic, underline, dim, strike, reverse: how many open tags
     /// turn each on
@@ -239,6 +242,8 @@ struct OpenTags {
     bg: Vec<(u64, Color)>,
     links: Vec<(u64, String)>,
     by_attr: HashMap<Key, Vec<u64>>,
+    /// Entries closed while newer ones were above them
+    dead: HashSet<u64>,
     /// The style and link in effect
     style: Style,
     link: Option<String>,
@@ -246,16 +251,16 @@ struct OpenTags {
 
 impl OpenTags {
     fn open(&mut self, attrs: Vec<Attr>) {
-        let id = self.next;
-        self.next += 1;
         for attr in attrs {
+            let entry = self.next;
+            self.next += 1;
             let key = attr.key();
-            self.by_attr.entry(key).or_default().push(id);
+            self.by_attr.entry(key).or_default().push(entry);
             match (key, attr) {
                 (Key::Modifier(i), _) => self.counts[i] += 1,
-                (_, Attr::Fg(c)) => self.fg.push((id, c)),
-                (_, Attr::Bg(c)) => self.bg.push((id, c)),
-                (_, Attr::Link(url)) => self.links.push((id, url)),
+                (_, Attr::Fg(c)) => self.fg.push((entry, c)),
+                (_, Attr::Bg(c)) => self.bg.push((entry, c)),
+                (_, Attr::Link(url)) => self.links.push((entry, url)),
                 _ => {}
             }
         }
@@ -267,22 +272,14 @@ impl OpenTags {
     fn close(&mut self, attrs: &[Attr]) {
         for attr in attrs {
             let key = attr.key();
-            let Some(id) = self.by_attr.get_mut(&key).and_then(Vec::pop) else {
+            let Some(entry) = self.by_attr.get_mut(&key).and_then(Vec::pop) else {
                 continue;
             };
-            // The entry that tag put there: the same tag and, for a color,
-            // the same color (one tag can name two)
-            fn remove<T>(stack: &mut Vec<(u64, T)>, id: u64, same: impl Fn(&T) -> bool) {
-                if let Some(at) = stack.iter().rposition(|(i, v)| *i == id && same(v)) {
-                    stack.remove(at);
+            match key {
+                Key::Modifier(i) => self.counts[i] -= 1,
+                _ => {
+                    self.dead.insert(entry);
                 }
-            }
-            match (key, attr) {
-                (Key::Modifier(i), _) => self.counts[i] -= 1,
-                (_, Attr::Fg(c)) => remove(&mut self.fg, id, |v| v == c),
-                (_, Attr::Bg(c)) => remove(&mut self.bg, id, |v| v == c),
-                (_, Attr::Link(_)) => remove(&mut self.links, id, |_| true),
-                _ => {}
             }
         }
         self.restyle();
@@ -292,6 +289,14 @@ impl OpenTags {
     /// on, the newest color and link; a link is underlined, and cyan when no
     /// color is on
     fn restyle(&mut self) {
+        fn drop_dead<T>(stack: &mut Vec<(u64, T)>, dead: &mut HashSet<u64>) {
+            while stack.last().is_some_and(|(entry, _)| dead.remove(entry)) {
+                stack.pop();
+            }
+        }
+        drop_dead(&mut self.fg, &mut self.dead);
+        drop_dead(&mut self.bg, &mut self.dead);
+        drop_dead(&mut self.links, &mut self.dead);
         let on = |i: usize| self.counts[i] > 0;
         self.style = Style {
             bold: on(0),

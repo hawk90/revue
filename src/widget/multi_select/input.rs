@@ -14,6 +14,12 @@ impl Interactive for MultiSelect {
             return EventResult::Ignored;
         }
 
+        // A letter with Ctrl or Alt is the app's shortcut, not a letter to
+        // type or a list key (with both it is AltGr: a typed character)
+        if matches!(event.key, Key::Char(_)) && event.ctrl != event.alt {
+            return EventResult::Ignored;
+        }
+
         let changed = self.handle_key(&event.key);
         if changed {
             EventResult::ConsumedAndRender

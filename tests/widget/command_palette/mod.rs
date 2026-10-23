@@ -1467,3 +1467,15 @@ fn a_wide_glyph_that_would_cross_the_title_end_is_not_drawn() {
     assert_eq!(buffer.get(7, y).unwrap().symbol, ' ');
     assert!(!buffer.get(8, y).unwrap().is_continuation());
 }
+
+#[test]
+fn test_command_palette_leaves_a_ctrl_or_alt_letter_to_the_app() {
+    use revue::event::KeyEvent;
+    let mut palette = CommandPalette::new().commands(vec![Command::new("kill", "Kill")]);
+    palette.show();
+    assert!(!palette.handle_key_event(&KeyEvent::ctrl(Key::Char('k'))));
+    assert!(!palette.handle_key_event(&KeyEvent::alt(Key::Char('k'))));
+    assert_eq!(palette.get_query(), "");
+    assert!(palette.handle_key_event(&KeyEvent::new(Key::Char('k'))));
+    assert_eq!(palette.get_query(), "k");
+}

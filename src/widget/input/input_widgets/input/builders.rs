@@ -37,6 +37,14 @@ impl Input {
         self
     }
 
+    /// Where edit times come from (the system clock by default), so a test
+    /// or a replay can control how typing is grouped for undo; see
+    /// [`EditState::clock`]
+    pub fn clock(mut self, clock: impl Fn() -> std::time::Instant + Send + Sync + 'static) -> Self {
+        self.state = std::mem::take(&mut self.state).clock(clock);
+        self
+    }
+
     /// Set foreground color
     pub fn fg(mut self, color: Color) -> Self {
         self.fg = Some(color);
