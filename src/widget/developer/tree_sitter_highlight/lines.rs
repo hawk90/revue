@@ -3,53 +3,42 @@
 use super::captures::CaptureStyle;
 use crate::widget::syntax::HighlightSpan;
 
-/// One span list per line of `code` (as `str::lines` counts them). A capture
-/// that crosses line ends is cut at each one, with offsets made relative to
-/// the line it lands on; each line's spans are sorted by start.
+/// One span list per line of `code` (as `str::lines` counts and cuts them:
+/// a line ends before its `\n` or `\r\n`). A capture that crosses line
+/// ends is cut at each one; offsets are characters from the start of the
+/// line it lands on, as [`HighlightSpan`] has them; each line's spans are
+/// sorted by start.
 pub(super) fn split_by_lines(
     code: &str,
     captures: &[(usize, usize, CaptureStyle)],
 ) -> Vec<Vec<HighlightSpan>> {
-    // Build line offset map
-    let mut line_offsets: Vec<usize> = vec![0];
-    for (i, c) in code.char_indices() {
-        if c == '\n' {
-            line_offsets.push(i + 1);
-        }
+    // Each line's byte range, its line end left out
+    let mut lines: Vec<(usize, usize)> = Vec::new();
+    let mut start = 0;
+    for piece in code.split_inclusive('\n') {
+        let text = piece
+            .strip_suffix('\n')
+            .map_or(piece, |t| t.strip_suffix('\r').unwrap_or(t));
+        lines.push((start, start + text.len()));
+        start += piece.len();
     }
 
-    let num_lines = code.lines().count();
-    let mut line_spans: Vec<Vec<HighlightSpan>> = (0..num_lines).map(|_| Vec::new()).collect();
-
+    let mut line_spans: Vec<Vec<HighlightSpan>> = lines.iter().map(|_| Vec::new()).collect();
     for &(start, end, style) in captures {
-        // Find which lines this span covers
-        let start_line = line_offsets
-            .iter()
-            .position(|&offset| offset > start)
-            .map(|p| p.saturating_sub(1))
-            .unwrap_or(line_offsets.len().saturating_sub(1));
-        let end_line = line_offsets
-            .iter()
-            .position(|&offset| offset > end)
-            .map(|p| p.saturating_sub(1))
-            .unwrap_or(line_offsets.len().saturating_sub(1));
-
-        for line_idx in start_line..=end_line {
-            if line_idx >= num_lines {
+        // The first line that ends after the capture starts, and on while
+        // the lines start before it ends
+        let first = lines.partition_point(|&(_, line_end)| line_end <= start);
+        for (i, &(line_start, line_end)) in lines.iter().enumerate().skip(first) {
+            if line_start >= end {
                 break;
             }
-
-            let line_start = line_offsets[line_idx];
-            let line_end = line_offsets
-                .get(line_idx + 1)
-                .map(|&o| o.saturating_sub(1))
-                .unwrap_or(code.len());
-
-            let span_start_in_line = start.saturating_sub(line_start);
-            let span_end_in_line = end.min(line_end).saturating_sub(line_start);
-
-            if span_start_in_line < span_end_in_line {
-                line_spans[line_idx].push(style.span(span_start_in_line, span_end_in_line));
+            let (a, b) = (start.max(line_start), end.min(line_end));
+            if a < b {
+                let line = &code[line_start..line_end];
+                line_spans[i].push(style.span(
+                    char_column(line, a - line_start),
+                    char_column(line, b - line_start),
+                ));
             }
         }
     }
@@ -60,4 +49,13 @@ pub(super) fn split_by_lines(
     }
 
     line_spans
+}
+
+/// The character index of byte offset `byte` in `text` (the characters that
+/// start before it)
+pub(super) fn char_column(text: &str, byte: usize) -> usize {
+    match text.get(..byte) {
+        Some(head) => head.chars().count(),
+        None => text.char_indices().take_while(|&(i, _)| i < byte).count(),
+    }
 }

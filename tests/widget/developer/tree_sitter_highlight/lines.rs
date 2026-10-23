@@ -49,16 +49,30 @@ fn an_empty_line_inside_a_comment_has_no_span() {
 type Cut = (usize, usize, u8, bool, bool);
 
 /// The plain model: the whole file's spans (as `highlight_line` gives them
-/// for the file in one piece), each cut to every line it touches - the
-/// newline itself belongs to no line - with offsets from the line's start
+/// for the file in one piece, in characters), each cut to every line it
+/// touches - the `\n` or `\r\n` ending a line belongs to no line - with
+/// offsets from the line's start
 fn split_model(code: &str, whole: &[HighlightSpan]) -> Vec<Vec<Cut>> {
-    let mut starts = vec![0];
-    starts.extend(code.match_indices('\n').map(|(i, _)| i + 1));
-    let n = code.lines().count();
-    (0..n)
-        .map(|i| {
-            let start = starts[i];
-            let end = starts.get(i + 1).map_or(code.len(), |s| s - 1);
+    let chars: Vec<char> = code.chars().collect();
+    let mut lines = Vec::new();
+    let mut start = 0;
+    for (i, &c) in chars.iter().enumerate() {
+        if c == '\n' {
+            let end = if i > start && chars[i - 1] == '\r' {
+                i - 1
+            } else {
+                i
+            };
+            lines.push((start, end));
+            start = i + 1;
+        }
+    }
+    if start < chars.len() {
+        lines.push((start, chars.len()));
+    }
+    lines
+        .into_iter()
+        .map(|(start, end)| {
             let mut out: Vec<_> = whole
                 .iter()
                 .filter_map(|s| {
@@ -104,15 +118,19 @@ fn token() -> impl Strategy<Value = &'static str> {
         "None",
         "x.y",
         "[1, 2]",
+        "한",
+        "\"é글\"",
+        "// 주석",
+        "\r\n",
+        "/* a\r\nb */",
     ])
 }
 
 proptest! {
     /// Any code spreads its spans over its lines exactly as the model cuts
     /// the whole file's spans; every span is non-empty, inside its line,
-    /// and the spans of a line are sorted and do not overlap. (ASCII only,
-    /// LF only: offsets are bytes, and a CR is counted into the line, both
-    /// #1088.)
+    /// and the spans of a line are sorted and do not overlap. Offsets are
+    /// characters, and a line ends before its `\n` or `\r\n`.
     #[test]
     fn code_spans_are_the_file_spans_cut_at_line_ends(
         language in prop::sample::select(vec![
@@ -133,10 +151,29 @@ proptest! {
         for (spans, line) in lines.iter().zip(code.lines()) {
             let mut end = 0;
             for s in spans {
-                prop_assert!(s.start < s.end && s.end <= line.len(), "{:?} in {:?}", s, line);
+                prop_assert!(
+                    s.start < s.end && s.end <= line.chars().count(),
+                    "{:?} in {:?}", s, line
+                );
                 prop_assert!(s.start >= end, "overlap at {:?} in {:?}", s, line);
                 end = s.end;
             }
         }
+    }
+}
+
+#[test]
+fn a_crlf_line_end_is_not_part_of_the_line() {
+    let code = "let a = 1; // c\r\nlet b = 2;\r\n";
+    let lines: Vec<&str> = code.lines().collect();
+    let spans = code_spans(Language::Rust, code);
+    assert_eq!(spans.len(), 2);
+    let comment = described(lines[0], &spans[0]);
+    assert_eq!(comment.last().unwrap(), &d("// c", 6, "I"));
+    for (spans, line) in spans.iter().zip(&lines) {
+        assert!(
+            spans.iter().all(|s| s.end <= line.chars().count()),
+            "{line:?}"
+        );
     }
 }
