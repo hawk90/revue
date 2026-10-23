@@ -75,11 +75,11 @@ fn wrap_true_preserves_logical_newlines() {
     let ta = TextArea::new()
         .line_numbers(false)
         .wrap(true)
-        .content("hello world\nfoo"); // line 0 wraps at width 5, line 1 short
+        .content("hello worl\nfoo"); // line 0 wraps at width 5, line 1 short
     let buf = render(&ta, 5, 5);
 
     assert_eq!(row(&buf, 0, 5), "hello");
-    assert_eq!(row(&buf, 1, 5), "world");
+    assert_eq!(row(&buf, 1, 5), "worl");
     assert_eq!(row(&buf, 2, 5), "foo");
 }
 

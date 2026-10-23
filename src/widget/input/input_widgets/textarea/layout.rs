@@ -3,13 +3,14 @@
 
 use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
 
-use super::TextArea;
+use super::{CursorPos, TextArea};
 
 /// Split a logical line into visual segments `[start, end)` (character indices) that each
 /// fit within `width` display columns. Prefers breaking at word boundaries (after a space)
-/// and lets trailing spaces overflow onto the current row; falls back to a hard break when
-/// a single word is longer than the width. Always makes forward progress, so it terminates
-/// even for zero-width characters or `width == 0`.
+/// and lets one space hang past the end of a full row, rather than start the next row with
+/// it; further spaces go to the next row, so nothing else lies past the width (#1008).
+/// Falls back to a hard break when a single word is longer than the width. Always makes
+/// forward progress, so it terminates even for zero-width characters or `width == 0`.
 fn wrap_segments(chars: &[char], width: u16) -> Vec<(usize, usize)> {
     if chars.is_empty() {
         return vec![(0, 0)];
@@ -20,16 +21,19 @@ fn wrap_segments(chars: &[char], width: u16) -> Vec<(usize, usize)> {
     let mut start = 0usize;
     let mut col: u16 = 0;
     let mut last_space_end: Option<usize> = None;
+    let mut hung = false;
     let mut i = 0usize;
 
     while i < chars.len() {
         let cw = (crate::utils::char_width(chars[i]) as u16).max(1);
 
         if col + cw > width && i > start {
-            if chars[i] == ' ' {
-                // Trailing space overflowing the row: keep it on the current visual
-                // row rather than pushing a lone space to the next one.
+            if chars[i] == ' ' && !hung {
+                // One space past a full row hangs on it rather than starting
+                // the next row
+                hung = true;
                 i += 1;
+                last_space_end = Some(i);
                 continue;
             }
             let brk = match last_space_end {
@@ -40,6 +44,7 @@ fn wrap_segments(chars: &[char], width: u16) -> Vec<(usize, usize)> {
             start = brk;
             col = 0;
             last_space_end = None;
+            hung = false;
             i = brk;
             continue;
         }
@@ -68,84 +73,155 @@ impl TextArea {
     }
 
     /// Visual rows logical line `idx` takes: one, or one per wrapped segment.
+    /// When wrapping, a line whose last row fills the width gets one more,
+    /// empty row, where the cursor past its end is drawn (as Helix does, so
+    /// the cursor never disappears, #1008).
     pub(super) fn line_rows(&self, idx: usize, text_width: u16) -> Vec<(usize, usize)> {
         let line = self.lines.get(idx).map_or("", String::as_str);
         if self.wrap && text_width > 0 {
             let chars: Vec<char> = line.chars().collect();
-            wrap_segments(&chars, text_width)
+            let mut rows = wrap_segments(&chars, text_width);
+            let &(start, end) = rows.last().expect("one row at least");
+            let last: String = chars[start..end].iter().collect();
+            if end > start && col_of(&last, usize::MAX) >= text_width as usize {
+                rows.push((end, end));
+            }
+            rows
         } else {
             vec![(0, line.chars().count())]
         }
     }
 
-    /// The first visible line that keeps the primary cursor's visual row in a
-    /// view `visible_lines` rows high, moving the current scroll as little as
-    /// possible: the vertical counterpart of `scroll_to_cursor`.
-    pub(super) fn scroll_to_cursor_row(&self, text_width: u16, visible_lines: usize) -> usize {
-        let pos = self.cursors.primary().pos;
-        let cursor_line = pos.line.min(self.lines.len().saturating_sub(1));
-        let scroll = self.scroll.get().min(cursor_line);
-
-        // Rows from the top of the cursor's line down to the cursor's row.
-        let mut rows = self.cursor_segment(text_width).0 + 1;
-
-        // Walk up from the cursor's line while the lines above still fit,
-        // stopping at the current scroll so a cursor in view does not move it.
-        let mut top = cursor_line;
-        while top > scroll {
-            let above = self.line_rows(top - 1, text_width).len();
-            if rows + above > visible_lines {
-                break;
-            }
-            rows += above;
-            top -= 1;
+    /// Where `pos` is drawn on its line: the row index and the column within
+    /// that row. A position at a wrap point, or on a space hanging past a
+    /// full row, is drawn at the start of the next row.
+    pub(super) fn place(&self, pos: CursorPos, text_width: u16) -> (usize, usize) {
+        let line = pos.line.min(self.lines.len().saturating_sub(1));
+        let text = self.lines.get(line).map_or("", String::as_str);
+        let rows = self.line_rows(line, text_width);
+        let mut k = rows
+            .iter()
+            .position(|&(_, end)| pos.col < end)
+            .unwrap_or(rows.len() - 1);
+        let x = |k: usize| {
+            let (start, end) = rows[k];
+            let seg: String = text.chars().skip(start).take(end - start).collect();
+            col_of(&seg, pos.col.saturating_sub(start))
+        };
+        if self.wrap && k + 1 < rows.len() && x(k) >= text_width as usize {
+            k += 1;
+            return (k, 0);
         }
-        top
+        (k, x(k))
+    }
+
+    /// The first visible line and row within it that keep the primary
+    /// cursor's visual row in a view `visible_lines` rows high, moving the
+    /// current scroll as little as possible: the vertical counterpart of
+    /// `scroll_to_cursor`. Rows, not lines: the view can start partway down a
+    /// wrapped line taller than it (#1008).
+    pub(super) fn scroll_to_cursor_row(
+        &self,
+        text_width: u16,
+        visible_lines: usize,
+    ) -> (usize, usize) {
+        let pos = self.cursors.primary().pos;
+        let cursor = (
+            pos.line.min(self.lines.len().saturating_sub(1)),
+            self.place(pos, text_width).0,
+        );
+        let visible = visible_lines.max(1);
+        let top = (self.scroll.get(), self.scroll_row.get());
+        let top = (
+            top.0,
+            top.1.min(
+                self.line_rows(top.0.min(self.lines.len().saturating_sub(1)), text_width)
+                    .len()
+                    - 1,
+            ),
+        );
+        if cursor < top {
+            return cursor;
+        }
+        // The rows from the top down to the cursor's row
+        let mut rows = 0;
+        let mut at = top;
+        while at < cursor && rows < visible {
+            at = self.next_row(at, text_width);
+            rows += 1;
+        }
+        if rows < visible {
+            return top;
+        }
+        // Too far down: the cursor's row goes on the bottom row
+        let mut at = cursor;
+        for _ in 1..visible {
+            match self.prev_row(at, text_width) {
+                Some(prev) => at = prev,
+                None => break,
+            }
+        }
+        at
+    }
+
+    /// The visual row after `(line, row)`
+    fn next_row(&self, (line, row): (usize, usize), text_width: u16) -> (usize, usize) {
+        if row + 1 < self.line_rows(line, text_width).len() {
+            (line, row + 1)
+        } else {
+            (line + 1, 0)
+        }
+    }
+
+    /// The visual row before `(line, row)`, if any
+    fn prev_row(&self, (line, row): (usize, usize), text_width: u16) -> Option<(usize, usize)> {
+        if row > 0 {
+            Some((line, row - 1))
+        } else if line > 0 {
+            Some((line - 1, self.line_rows(line - 1, text_width).len() - 1))
+        } else {
+            None
+        }
     }
 
     /// The primary cursor's wrapped segment: its index within the cursor's
-    /// line and its `[start, end)` chars. A cursor at a wrap point is drawn
-    /// at the start of the next segment.
+    /// line and its `[start, end)` chars, as [`place`](Self::place) draws it.
     pub(super) fn cursor_segment(&self, text_width: u16) -> (usize, (usize, usize)) {
         let pos = self.cursors.primary().pos;
         let cursor_line = pos.line.min(self.lines.len().saturating_sub(1));
         let segments = self.line_rows(cursor_line, text_width);
-        let idx = segments
-            .iter()
-            .position(|&(_, end)| pos.col < end)
-            .unwrap_or(segments.len() - 1);
+        let idx = self.place(pos, text_width).0;
         (idx, segments[idx])
     }
 
     /// Build the list of visual rows to render, starting from the vertical scroll offset.
     ///
-    /// Each entry is `(line_idx, seg_start, seg_end, is_first_segment)`. When `wrap` is on a
-    /// single logical line may span several visual rows; otherwise every logical line maps to
+    /// Each entry is `(line_idx, seg_start, seg_end, row)`, `row` being the
+    /// row's index within its line. When `wrap` is on a single logical line
+    /// may span several visual rows; otherwise every logical line maps to
     /// exactly one visual row, scrolled horizontally when drawn.
     pub(super) fn visual_rows(
         &self,
         text_width: u16,
         visible_lines: usize,
-    ) -> Vec<(usize, usize, usize, bool)> {
+    ) -> Vec<(usize, usize, usize, usize)> {
         let mut rows = Vec::with_capacity(visible_lines);
         let mut line_idx = self.scroll.get();
+        let mut skip = self.scroll_row.get();
 
         while rows.len() < visible_lines && line_idx < self.lines.len() {
-            let char_count = self.lines[line_idx].chars().count();
-
-            if self.wrap && text_width > 0 {
-                let chars: Vec<char> = self.lines[line_idx].chars().collect();
-                for (k, (s, e)) in wrap_segments(&chars, text_width).into_iter().enumerate() {
-                    if rows.len() >= visible_lines {
-                        break;
-                    }
-                    rows.push((line_idx, s, e, k == 0));
+            for (k, (s, e)) in self
+                .line_rows(line_idx, text_width)
+                .into_iter()
+                .enumerate()
+                .skip(skip)
+            {
+                if rows.len() >= visible_lines {
+                    break;
                 }
-            } else {
-                // Unwrapped rows are scrolled by columns when drawn.
-                rows.push((line_idx, 0, char_count, true));
+                rows.push((line_idx, s, e, k));
             }
-
+            skip = 0;
             line_idx += 1;
         }
 

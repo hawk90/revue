@@ -166,8 +166,9 @@ impl TextArea {
         let page = page_size.max(1);
         let width = self.last_text_width.get();
         let pos = self.cursors.primary().pos;
-        // Settle the view on the cursor first, as render would.
-        let top = self.scroll_to_cursor_row(width, page);
+        // Settle the view on the cursor first, as render would. A page
+        // moves the view by lines, so it starts at the top of its line.
+        let (top, top_row) = self.scroll_to_cursor_row(width, page);
         let new_top = if down {
             self.page_down_top(top, width, page)
         } else {
@@ -177,6 +178,7 @@ impl TextArea {
         let Some(new_top) = new_top else {
             // The view cannot scroll further: go to the first or last line.
             self.scroll.set(top);
+            self.scroll_row.set(top_row);
             let line = if down {
                 self.lines.len().saturating_sub(1)
             } else {
@@ -196,10 +198,12 @@ impl TextArea {
         let x = col_of(&seg_text, pos.col.saturating_sub(seg_start));
         let rows_above: usize = (top..pos.line)
             .map(|l| self.line_rows(l, width).len())
-            .sum();
+            .sum::<usize>()
+            .saturating_sub(top_row);
         let row = (rows_above + seg_idx).min(page - 1);
 
         self.scroll.set(new_top);
+        self.scroll_row.set(0);
         let (line, col) = self.pos_at_row(new_top, row, width, x);
         self.set_primary_cursor(line, col);
         self.update_selection();

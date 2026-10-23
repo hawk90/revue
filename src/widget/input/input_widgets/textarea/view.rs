@@ -6,7 +6,6 @@ use crate::style::Color;
 use crate::utils::text::char_to_byte_index;
 use crate::widget::syntax::HighlightSpan;
 use crate::widget::theme::PLACEHOLDER_FG;
-use crate::widget::traits::render_context::edit_line::col_of;
 use crate::widget::traits::{RenderContext, View};
 
 use super::TextArea;
@@ -162,13 +161,15 @@ impl View for TextArea {
         self.scroll_x.set(scroll_x);
 
         // Scroll vertically, in visual rows, to keep the primary cursor in view.
-        self.scroll
-            .set(self.scroll_to_cursor_row(text_width, visible_lines));
+        let (top, top_row) = self.scroll_to_cursor_row(text_width, visible_lines);
+        self.scroll.set(top);
+        self.scroll_row.set(top_row);
         let css_fg = ctx.css_color_if_set();
 
         // Render visible visual rows (a logical line may span multiple rows when wrapping).
         let rows = self.visual_rows(text_width, visible_lines);
-        for (view_row, &(line_idx, seg_start, seg_end, is_first)) in rows.iter().enumerate() {
+        for (view_row, &(line_idx, seg_start, seg_end, row)) in rows.iter().enumerate() {
+            let is_first = row == 0;
             let y = view_row as u16;
 
             // Draw line numbers (only on the first visual row of a logical line)
@@ -178,8 +179,6 @@ impl View for TextArea {
 
             // Draw text. Columns, not chars: a wide glyph takes two cells.
             let line = &self.lines[line_idx];
-            let char_count = line.chars().count();
-            let is_last_segment = seg_end >= char_count;
             let seg = &line[char_to_byte_index(line, seg_start)..char_to_byte_index(line, seg_end)];
 
             // Get syntax highlighting spans for this line
@@ -189,18 +188,29 @@ impl View for TextArea {
                 self.text_cell(line_idx, seg_start + i, ch, &highlights, css_fg)
             });
 
-            // Draw cursors at end of line if needed (only on the last visual row of the line)
-            if self.focused && is_last_segment {
-                let end_x = col_of(seg, usize::MAX);
-                for cursor in self.cursors.iter() {
-                    if cursor.pos.line == line_idx && cursor.pos.col >= char_count {
-                        if let Some(x) = end_x.checked_sub(scroll_x) {
-                            if x < text_width as usize {
-                                let mut cell = Cell::new(' ');
-                                cell.bg = Some(Color::WHITE);
-                                ctx.set(text_start_x + x as u16, y, cell);
-                            }
-                        }
+            // Cursors the text cells do not show: past the line's end (on
+            // its last row, or the extra row of a full one), and one moved
+            // here from a space hanging past the row above (drawn over this
+            // row's first char)
+            if self.focused {
+                for cursor in self.cursors.iter().filter(|c| c.pos.line == line_idx) {
+                    let (k, x) = self.place(cursor.pos, text_width);
+                    if k != row || (seg_start..seg_end).contains(&cursor.pos.col) {
+                        continue;
+                    }
+                    let Some(x) = x.checked_sub(scroll_x) else {
+                        continue;
+                    };
+                    if x < text_width as usize {
+                        let under = if cursor.pos.col < seg_start {
+                            seg.chars().next()
+                        } else {
+                            None
+                        };
+                        let mut cell = Cell::new(under.unwrap_or(' '));
+                        cell.fg = self.cursor_fg;
+                        cell.bg = Some(Color::WHITE);
+                        ctx.set(text_start_x + x as u16, y, cell);
                     }
                 }
             }

@@ -215,10 +215,11 @@ fn page_keys_use_a_default_page_before_the_first_render() {
 }
 
 /// Wrapped at width 5, a 4-row view shows these rows:
-/// `aaaaa aaaaa b c | ddddd ddddd e f | g h i j`.
+/// `aaaaa aaaa b c | ddddd dddd e f | g h i j`. (The wrapped lines stop
+/// short of the width: a line that fills it takes one more row, #1008.)
 fn wrapped() -> TextArea {
     TextArea::new()
-        .content("aaaaaaaaaa\nb\nc\ndddddddddd\ne\nf\ng\nh\ni\nj")
+        .content("aaaaaaaaa\nb\nc\nddddddddd\ne\nf\ng\nh\ni\nj")
         .line_numbers(false)
         .wrap(true)
         .focused(true)
@@ -229,10 +230,10 @@ fn wrapped_lines_page_by_screen_rows() {
     let mut ta = wrapped();
     // Cursor on screen row 1: the second row of line 0, two columns in.
     ta.set_cursor(0, 7);
-    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaaa", "b", "c"]);
+    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaa", "b", "c"]);
 
     press(&mut ta, Key::PageDown, 1);
-    assert_eq!(rows(&ta, 5, 4), ["ddddd", "ddddd", "e", "f"]);
+    assert_eq!(rows(&ta, 5, 4), ["ddddd", "dddd", "e", "f"]);
     assert_eq!(ta.cursor_position(), (3, 7));
 
     // The last page: the view scrolls 4 rows and the cursor stays on row 1,
@@ -246,11 +247,11 @@ fn wrapped_lines_page_by_screen_rows() {
 
     // PageUp mirrors it: the cursor on row 3 stays on row 3.
     press(&mut ta, Key::PageUp, 1);
-    assert_eq!(rows(&ta, 5, 4), ["ddddd", "ddddd", "e", "f"]);
+    assert_eq!(rows(&ta, 5, 4), ["ddddd", "dddd", "e", "f"]);
     assert_eq!(ta.cursor_position(), (5, 1));
 
     press(&mut ta, Key::PageUp, 1);
-    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaaa", "b", "c"]);
+    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaa", "b", "c"]);
     assert_eq!(ta.cursor_position(), (2, 1));
 
     press(&mut ta, Key::PageUp, 1);
@@ -262,18 +263,18 @@ fn a_wrapped_line_across_the_bottom_edge_is_not_skipped() {
     // Line 2 takes rows 3 and 4, so only its first row shows; PageDown
     // brings it to the top instead of skipping its second row.
     let mut ta = TextArea::new()
-        .content("aaaaaaaaaa\nb\ncccccddddd\ne\nf\ng\nh")
+        .content("aaaaaaaaa\nb\ncccccdddd\ne\nf\ng\nh")
         .line_numbers(false)
         .wrap(true)
         .focused(true);
-    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaaa", "b", "ccccc"]);
+    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaa", "b", "ccccc"]);
 
     press(&mut ta, Key::PageDown, 1);
-    assert_eq!(rows(&ta, 5, 4), ["ccccc", "ddddd", "e", "f"]);
+    assert_eq!(rows(&ta, 5, 4), ["ccccc", "dddd", "e", "f"]);
     assert_eq!(ta.cursor_position(), (2, 0));
 
     press(&mut ta, Key::PageUp, 1);
-    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaaa", "b", "ccccc"]);
+    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaa", "b", "ccccc"]);
     assert_eq!(ta.cursor_position(), (0, 0));
 }
 
@@ -323,14 +324,16 @@ fn jumping_to_the_last_line_shows_it() {
 fn wrapped_lines_count_every_visual_row() {
     // Line 0 takes two rows at width 5, so line 2 is the fourth row.
     let mut ta = TextArea::new()
-        .content("aaaaaaaaaa\nb\nc")
+        .content("aaaaaaaaa\nb\nc")
         .line_numbers(false)
         .wrap(true)
         .focused(true);
-    assert_eq!(rows(&ta, 5, 3), ["aaaaa", "aaaaa", "b"]);
+    assert_eq!(rows(&ta, 5, 3), ["aaaaa", "aaaa", "b"]);
 
+    // The view scrolls by rows, as little as it can: line 2 goes on the
+    // bottom row, below the second row of line 0 (#1008)
     ta.set_cursor(2, 0);
-    assert_eq!(rows(&ta, 5, 3), ["b", "c", ""]);
+    assert_eq!(rows(&ta, 5, 3), ["aaaa", "b", "c"]);
 }
 
 #[test]
@@ -343,4 +346,75 @@ fn a_cursor_on_a_later_wrapped_row_of_its_line_is_shown() {
         .focused(true);
     ta.set_cursor(2, 7);
     assert_eq!(rows(&ta, 5, 3), ["b", "ccccc", "ddddd"]);
+}
+
+// The cursor is always drawn (#1008)
+
+/// The view's cursor cells (white background), as (x, y)
+fn cursor_cells(ta: &TextArea, w: u16, h: u16) -> Vec<(u16, u16)> {
+    let buf = render(ta, w, h);
+    (0..h)
+        .flat_map(|y| (0..w).map(move |x| (x, y)))
+        .filter(|&(x, y)| buf.get(x, y).unwrap().bg == Some(revue::style::Color::WHITE))
+        .collect()
+}
+
+fn wrapped_at(content: &str) -> TextArea {
+    TextArea::new()
+        .content(content)
+        .line_numbers(false)
+        .wrap(true)
+        .focused(true)
+}
+
+#[test]
+fn a_cursor_past_a_full_row_is_drawn_on_one_more_row() {
+    // "abcdefg" fills a 7-column row: the end of the line is a row of its
+    // own, as in Helix, and the next line moves down to make room
+    for content in ["abcdefg", "abcdefg\nx", "한한aaa"] {
+        let mut ta = wrapped_at(content);
+        let len = content.lines().next().unwrap().chars().count();
+        ta.set_cursor(0, len);
+        assert_eq!(cursor_cells(&ta, 7, 3), [(0, 1)], "{content:?}");
+        let shown = rows(&ta, 7, 3);
+        assert_eq!(shown[1], "", "{content:?}");
+    }
+    let ta = wrapped_at("abcdefg\nx");
+    assert_eq!(rows(&ta, 7, 3), ["abcdefg", "", "x"]);
+    // A row short of the width keeps the cursor on it
+    let mut ta = wrapped_at("abcdef");
+    ta.set_cursor(0, 6);
+    assert_eq!(cursor_cells(&ta, 7, 3), [(6, 0)]);
+}
+
+#[test]
+fn a_cursor_deep_in_a_line_taller_than_the_view_is_shown() {
+    // Line 1 wraps into five rows of a 5x3 view: the view starts partway
+    // down it to show the cursor's row
+    let mut ta = wrapped_at("a\nbbbbbcccccdddddeeeeefffff\nz");
+    for (col, row_text) in [(2, "bbbbb"), (12, "ddddd"), (22, "fffff")] {
+        ta.set_cursor(1, col);
+        let shown = rows(&ta, 5, 3);
+        let cells = cursor_cells(&ta, 5, 3);
+        assert_eq!(cells.len(), 1, "col {col}: {shown:?}");
+        let (x, y) = cells[0];
+        assert_eq!(shown[y as usize], row_text, "col {col}");
+        assert_eq!(x as usize, col % 5, "col {col}");
+    }
+}
+
+#[test]
+fn a_cursor_on_spaces_past_the_width_is_shown() {
+    // One space hangs past a full row; the cursor on it, and on the spaces
+    // after it, is drawn on the row below
+    let mut ta = wrapped_at("abcde   \nz");
+    for col in 5..=8 {
+        ta.set_cursor(0, col);
+        let cells = cursor_cells(&ta, 6, 4);
+        assert_eq!(cells.len(), 1, "col {col}: {:?}", rows(&ta, 6, 4));
+    }
+    ta.set_cursor(0, 5);
+    assert_eq!(cursor_cells(&ta, 6, 4), [(5, 0)]);
+    ta.set_cursor(0, 6);
+    assert_eq!(cursor_cells(&ta, 6, 4), [(0, 1)]);
 }

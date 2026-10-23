@@ -39,6 +39,7 @@ impl TextArea {
             .collect();
         self.cursors = CursorSet::default();
         self.scroll.set(0);
+        self.scroll_row.set(0);
         self.scroll_x.set(0);
         self.undo_stack.clear();
         self.redo_stack.clear();
