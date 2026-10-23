@@ -627,15 +627,17 @@ fn corpus() -> Vec<(&'static str, String)> {
         ),
         ("markup nested", "[bold]".repeat(deep)),
         // Tags closed under newer ones, and many distinct colors open: at
-        // 100k a parser quadratic in the open tags takes far past `SLOW`
-        // (RichText's did)
+        // 40k a parser quadratic in the open tags takes far past `SLOW`
+        // (RichText's did), while the linear parsers given the same input
+        // (Markdown, the syntax highlighter) stay well inside it in a debug
+        // build on CI
         (
             "markup interleaved",
-            format!("{}{}", "[b][i]x".repeat(100_000), "[/b]y".repeat(100_000)),
+            format!("{}{}", "[b][i]x".repeat(40_000), "[/b]y".repeat(40_000)),
         ),
         (
             "markup many colors",
-            (0..100_000)
+            (0..40_000)
                 .map(|i| format!("[#{i:06x}]x"))
                 .collect::<String>(),
         ),
