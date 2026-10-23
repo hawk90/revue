@@ -282,14 +282,17 @@ fn test_autocomplete_special_chars_in_value() {
 fn test_autocomplete_newline_chars() {
     let mut a = Autocomplete::new();
     a.set_value("line1\nline2");
-    assert_eq!(a.get_value(), "line1\nline2");
+    // One line, as every single-line field keeps it (#985)
+    assert_eq!(a.get_value(), "line1 line2");
 }
 
 #[test]
 fn test_autocomplete_tab_char() {
     let mut a = Autocomplete::new();
     a.set_value("tab\there");
-    assert_eq!(a.get_value(), "tab\there");
+    // One line of text: a tab becomes a space, as in every single-line
+    // field (#985)
+    assert_eq!(a.get_value(), "tab here");
 }
 
 #[test]
@@ -424,4 +427,22 @@ proptest! {
             prop_assert_eq!(a.get_value(), text.iter().collect::<String>());
         }
     }
+}
+
+// The standard editing keys (#985)
+
+#[test]
+fn test_autocomplete_takes_the_modified_editing_keys() {
+    use revue::event::KeyEvent;
+    let mut a = Autocomplete::new().value("new york");
+    assert!(a.handle_key(KeyEvent::ctrl(Key::Backspace)));
+    assert_eq!(a.get_value(), "new ");
+    assert!(a.handle_key(KeyEvent::ctrl(Key::Char('z'))));
+    assert_eq!(a.get_value(), "new york");
+    // A Ctrl letter the field does not use is the app's, not typed
+    assert!(!a.handle_key(KeyEvent::ctrl(Key::Char('k'))));
+    assert_eq!(a.get_value(), "new york");
+    // A control character is not typed
+    a.handle_key(KeyEvent::new(Key::Char('\u{7}')));
+    assert_eq!(a.get_value(), "new york");
 }

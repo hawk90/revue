@@ -12,7 +12,7 @@ pub use helper::autocomplete;
 pub use types::Suggestion;
 
 use crate::style::Color;
-use crate::utils::{FilterMode, ScrollState, Selection};
+use crate::utils::{EditState, FilterMode, ScrollState, Selection};
 use crate::widget::theme::{DARK_BG, DISABLED_FG, EDITOR_BG, SUBTLE_GRAY};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -20,10 +20,12 @@ use crate::{impl_props_builders, impl_styled_view};
 /// Autocomplete widget
 #[derive(Clone, Debug)]
 pub struct Autocomplete {
-    /// Current input value
-    value: String,
-    /// Cursor position
-    cursor: usize,
+    /// The typed text and its cursor, edited as every single-line field
+    /// is (#985)
+    state: EditState,
+    /// Horizontal scroll of the text, in columns, kept between renders so
+    /// the view moves only as far as the cursor needs
+    scroll_x: std::cell::Cell<usize>,
     /// All suggestions
     suggestions: Vec<Suggestion>,
     /// Filtered suggestions
@@ -69,8 +71,8 @@ impl Autocomplete {
     /// Create a new autocomplete widget
     pub fn new() -> Self {
         Self {
-            value: String::new(),
-            cursor: 0,
+            state: EditState::single_line(),
+            scroll_x: std::cell::Cell::new(0),
             suggestions: Vec::new(),
             filtered: Vec::new(),
             selection: Selection::new(0),
@@ -105,8 +107,7 @@ impl Autocomplete {
 
     /// Set initial value
     pub fn value(mut self, value: impl Into<String>) -> Self {
-        self.value = value.into();
-        self.cursor = self.value.chars().count();
+        self.replace_value(value.into());
         self
     }
 
@@ -157,13 +158,12 @@ impl Autocomplete {
 
     /// Get current value
     pub fn get_value(&self) -> &str {
-        &self.value
+        self.state.line(0).unwrap_or("")
     }
 
     /// Set value programmatically
     pub fn set_value(&mut self, value: impl Into<String>) {
-        self.value = value.into();
-        self.cursor = self.value.chars().count();
+        self.replace_value(value.into());
         self.update_filter();
     }
 
@@ -200,8 +200,8 @@ impl Autocomplete {
     /// Accept current selection
     pub fn accept_selection(&mut self) -> bool {
         if let Some(suggestion) = self.selected_suggestion() {
-            self.value = suggestion.value.clone();
-            self.cursor = self.value.chars().count();
+            let value = suggestion.value.clone();
+            self.replace_value(value);
             self.dropdown_visible = false;
             true
         } else {
