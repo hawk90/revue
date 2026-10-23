@@ -43,11 +43,11 @@ fn test_markup_mismatched_tags() {
 
 #[test]
 fn test_markup_empty_tag() {
-    let rt = RichText::markup("[]Text");
-
-    // Should handle empty tag gracefully
-    assert!(!rt.is_empty());
-    assert_eq!(rt.width(), 4);
+    // Brackets with nothing in them are not a tag: they are text
+    for (markup, shown) in [("[]Text", "[]Text"), ("[ ]Text", "[ ]Text")] {
+        let rt = RichText::markup(markup);
+        assert_eq!(row(&draw(&rt, 8), 0, 8), shown);
+    }
 }
 
 #[test]
@@ -75,9 +75,11 @@ fn test_markup_deep_nesting() {
 fn test_markup_adjacent_tags() {
     let rt = RichText::markup("[b]A[/b][i]B[/i]");
 
-    // Should create separate spans
+    // Each closing tag ends its own style: A is only bold, B only italic
     assert_eq!(rt.len(), 2);
-    assert_eq!(rt.width(), 2);
+    let buffer = draw(&rt, 3);
+    assert_eq!(buffer.get(0, 0).unwrap().modifier, Modifier::BOLD);
+    assert_eq!(buffer.get(1, 0).unwrap().modifier, Modifier::ITALIC);
 }
 
 #[test]
@@ -691,9 +693,18 @@ fn test_rich_text_props_builders() {
 
 #[test]
 fn test_markup_short_tags() {
-    let rt = RichText::markup("[b]Bold[/b][i]Italic[/i][u]Underline[/u]");
+    let rt = RichText::markup("[b]Bold[/b][i]Italic[/i][u]Underline[/u] end");
 
-    assert_eq!(rt.len(), 3);
+    assert_eq!(rt.len(), 4);
+    let buffer = draw(&rt, 24);
+    for (x, want) in [
+        (0, Modifier::BOLD),
+        (4, Modifier::ITALIC),
+        (10, Modifier::UNDERLINE),
+        (20, Modifier::empty()),
+    ] {
+        assert_eq!(buffer.get(x, 0).unwrap().modifier, want, "x {x}");
+    }
 }
 
 #[test]
@@ -1409,3 +1420,117 @@ fn test_style_preset_reverse() {
 }
 
 // =============================================================================
+
+// Closing tags, brackets that are not tags, and background and hex colors
+// (#1069, #1203, #1276)
+
+/// Modifier, fg and bg of the cell at `x`
+fn look(buffer: &Buffer, x: u16) -> (Modifier, Option<Color>, Option<Color>) {
+    let c = buffer.get(x, 0).unwrap();
+    (c.modifier, c.fg, c.bg)
+}
+
+#[test]
+fn a_named_closing_tag_ends_its_style() {
+    let buffer = draw(&RichText::markup("[b]A[/b] B [red]x[/red] y"), 12);
+    assert_eq!(row(&buffer, 0, 12), "A B x y");
+    assert_eq!(look(&buffer, 0), (Modifier::BOLD, None, None));
+    assert_eq!(look(&buffer, 2), (Modifier::empty(), None, None));
+    assert_eq!(
+        look(&buffer, 4),
+        (Modifier::empty(), Some(Color::RED), None)
+    );
+    assert_eq!(look(&buffer, 6), (Modifier::empty(), None, None));
+}
+
+#[test]
+fn a_closing_tag_turns_off_only_what_it_names() {
+    // From a tag of several words, and from a tag under a newer one
+    let buffer = draw(&RichText::markup("[bold red]a[/red]b[/bold]c"), 4);
+    assert_eq!(look(&buffer, 0), (Modifier::BOLD, Some(Color::RED), None));
+    assert_eq!(look(&buffer, 1), (Modifier::BOLD, None, None));
+    assert_eq!(look(&buffer, 2), (Modifier::empty(), None, None));
+
+    let buffer = draw(&RichText::markup("[b]A[i]B[/b]C[/i]D"), 5);
+    assert_eq!(buffer.get(0, 0).unwrap().modifier, Modifier::BOLD);
+    assert_eq!(
+        buffer.get(1, 0).unwrap().modifier,
+        Modifier::BOLD | Modifier::ITALIC
+    );
+    assert_eq!(buffer.get(2, 0).unwrap().modifier, Modifier::ITALIC);
+    assert_eq!(buffer.get(3, 0).unwrap().modifier, Modifier::empty());
+
+    // Nested alike: the inner one closes first, and the outer one is still on
+    let buffer = draw(&RichText::markup("[b]a[bold]b[/b]c[/bold]d"), 5);
+    for (x, bold) in [(0, true), (1, true), (2, true), (3, false)] {
+        assert_eq!(
+            buffer.get(x, 0).unwrap().modifier.contains(Modifier::BOLD),
+            bold,
+            "x {x}"
+        );
+    }
+}
+
+#[test]
+fn closing_a_link_keeps_an_underline_turned_on_apart() {
+    let buffer = draw(&RichText::markup("[u][link=https://x.example]a[/link]b"), 3);
+    assert!(buffer.get(0, 0).unwrap().hyperlink_id.is_some());
+    let b = buffer.get(1, 0).unwrap();
+    assert_eq!(
+        (b.hyperlink_id, b.fg, b.modifier),
+        (None, None, Modifier::UNDERLINE)
+    );
+}
+
+#[test]
+fn brackets_that_are_not_a_tag_are_text() {
+    for (markup, shown) in [
+        ("[x] done", "[x] done"),
+        ("[orange-ish]a", "[orange-ish]a"),
+        ("[bold on]a", "[bold on]a"),
+        ("[on nonsense]a", "[on nonsense]a"),
+        ("[rgb(1,2,3)]a", "[rgb(1,2,3)]a"),
+        ("a[/nonsense]b", "a[/nonsense]b"),
+        ("[link]a", "[link]a"),
+    ] {
+        let buffer = draw(&RichText::markup(markup), 20);
+        assert_eq!(row(&buffer, 0, 20), shown, "{markup:?}");
+        assert_eq!(
+            look(&buffer, 0),
+            (Modifier::empty(), None, None),
+            "{markup:?}"
+        );
+    }
+    // A `[` before a tag is text, and the tag still applies
+    let buffer = draw(&RichText::markup("[a[b]x"), 4);
+    assert_eq!(row(&buffer, 0, 4), "[ax");
+    assert_eq!(buffer.get(2, 0).unwrap().modifier, Modifier::BOLD);
+    // Text that is not a tag takes the style in effect
+    let buffer = draw(&RichText::markup("[b][x]"), 4);
+    assert_eq!(buffer.get(1, 0).unwrap().modifier, Modifier::BOLD);
+}
+
+#[test]
+fn backgrounds_and_hex_colors() {
+    let navy = Color::rgb(0x00, 0x33, 0x66);
+    for (markup, fg, bg) in [
+        ("[on blue]a", None, Some(Color::BLUE)),
+        ("[on_blue]a", None, Some(Color::BLUE)),
+        ("[ON #003366]a", None, Some(navy)),
+        ("[#003366]a", Some(navy), None),
+        ("[#f00]a", Some(Color::RED), None),
+        (
+            "[orange on navy]a",
+            Some(Color::rgb(255, 165, 0)),
+            Some(Color::rgb(0, 0, 128)),
+        ),
+    ] {
+        let buffer = draw(&RichText::markup(markup), 2);
+        assert_eq!(look(&buffer, 0), (Modifier::empty(), fg, bg), "{markup:?}");
+    }
+    let buffer = draw(&RichText::markup("[red on blue]a[/on blue]b"), 2);
+    assert_eq!(
+        look(&buffer, 1),
+        (Modifier::empty(), Some(Color::RED), None)
+    );
+}
