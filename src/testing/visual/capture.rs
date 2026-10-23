@@ -128,15 +128,22 @@ impl VisualCapture {
             self.width, self.height, self.include_styles, self.include_colors
         ));
 
-        // Text layer
+        // Text layer: the screen's text, a wide glyph as one character (its
+        // continuation cell is not written; reading the file puts it back
+        // from the glyph's width, #1281). A row with a continuation that no
+        // wide glyph explains (the span of an image or other escape
+        // sequence) is written one character per column, NUL included, so
+        // it reads back unchanged.
         output.push_str("## Text\n");
         for y in 0..self.height {
-            for x in 0..self.width {
-                if let Some(cell) = self.get(x, y) {
-                    output.push(cell.symbol);
-                } else {
-                    output.push(' ');
-                }
+            let cells: Vec<char> = (0..self.width)
+                .map(|x| self.get(x, y).map_or(' ', |c| c.symbol))
+                .collect();
+            let text: String = cells.iter().filter(|&&c| c != '\0').collect();
+            if text_columns(&text) == cells {
+                output.push_str(&text);
+            } else {
+                output.extend(cells);
             }
             output.push('\n');
         }
@@ -307,17 +314,17 @@ impl VisualCapture {
         if width == 0 && !text_lines.is_empty() {
             width = text_lines
                 .iter()
-                .map(|l| l.chars().count())
+                .map(|l| text_columns(l).len())
                 .max()
                 .unwrap_or(0) as u16;
         }
 
         for y in 0..height {
             let line = text_lines.get(y as usize).map(|s| s.as_str()).unwrap_or("");
-            let chars: Vec<char> = line.chars().collect();
+            let columns = text_columns(line);
 
             for x in 0..width {
-                let symbol = chars.get(x as usize).copied().unwrap_or(' ');
+                let symbol = columns.get(x as usize).copied().unwrap_or(' ');
                 let fg = color_data
                     .get(&(x, y, "fg".to_string()))
                     .map(|(r, g, b)| Color::rgb(*r, *g, *b));
@@ -349,6 +356,28 @@ impl VisualCapture {
             include_colors,
         })
     }
+}
+
+/// The symbol in each column of a text-layer line: a wide glyph takes its
+/// column and a continuation (`'\0'`) after it. A line written before #1281
+/// holds its continuations as NUL characters already, one per column.
+fn text_columns(line: &str) -> Vec<char> {
+    if line.contains('\0') {
+        return line.chars().collect();
+    }
+    let mut columns = Vec::new();
+    for ch in line.chars() {
+        match crate::utils::unicode::char_width(ch) {
+            // A mark or other zero-width char has no column of its own
+            0 => {}
+            1 => columns.push(ch),
+            _ => {
+                columns.push(ch);
+                columns.push('\0');
+            }
+        }
+    }
+    columns
 }
 
 #[cfg(test)]
@@ -608,6 +637,69 @@ AB
         assert!(capture.include_colors);
         assert_eq!(capture.cells[0].fg, Some(Color::rgb(255, 0, 0)));
         assert_eq!(capture.cells[1].bg, Some(Color::rgb(0, 0, 255)));
+    }
+
+    // Wide glyphs in the text layer (#1281)
+
+    /// A buffer showing `你好 OK` on its first row, colored after the glyphs
+    fn wide_buffer() -> Buffer {
+        let mut buffer = Buffer::new(8, 2);
+        buffer.put_str(0, 0, "你好 OK");
+        buffer.get_mut(5, 0).unwrap().fg = Some(Color::RED);
+        buffer
+    }
+
+    #[test]
+    fn a_wide_glyph_is_written_once_with_no_nul() {
+        let capture = VisualCapture::from_buffer(&wide_buffer(), false, true);
+        let file = capture.serialize();
+        assert!(!file.contains('\0'), "{file:?}");
+        assert!(file.contains("\n你好 OK \n"), "{file:?}");
+        // The colors still name the cell's column
+        assert!(file.contains("5:0,fg:#ff0000"), "{file:?}");
+    }
+
+    #[test]
+    fn reading_a_file_puts_the_continuation_cells_back() {
+        let capture = VisualCapture::from_buffer(&wide_buffer(), true, true);
+        let read = VisualCapture::deserialize(&capture.serialize()).unwrap();
+        assert_eq!(read.cells, capture.cells);
+        assert_eq!(read.get(1, 0).unwrap().symbol, '\0');
+        assert_eq!(read.get(4, 0).unwrap().symbol, ' ');
+        assert_eq!(read.get(5, 0).unwrap().fg, Some(Color::RED));
+    }
+
+    #[test]
+    fn a_file_with_nul_continuations_still_reads() {
+        // Written before #1281: one character per column, NUL for the
+        // right half of a wide glyph
+        let content = "# Visual Golden File\n# Size: 8x1\n# Styles: false\n# Colors: false\n\n## Text\n你\0好\0 OK \n";
+        let read = VisualCapture::deserialize(content).unwrap();
+        let symbols: String = read.cells.iter().map(|c| c.symbol).collect();
+        assert_eq!(symbols, "你\0好\0 OK ");
+    }
+
+    #[test]
+    fn a_row_with_a_sequence_span_reads_back_unchanged() {
+        // An escape sequence 3 cells wide at x 1: its other cells are
+        // continuations no wide glyph explains
+        let mut buffer = Buffer::new(6, 2);
+        buffer.put_str(0, 0, "abcdef");
+        buffer.put_sequence(1, 0, "\x1b_Gx\x1b\\", 3, 1);
+        buffer.put_str(0, 1, "你好");
+        let capture = VisualCapture::from_buffer(&buffer, false, false);
+        let file = capture.serialize();
+        let read = VisualCapture::deserialize(&file).unwrap();
+        assert_eq!(read.cells, capture.cells, "{file:?}");
+        // The row without one is still written as text
+        assert!(file.contains("\n你好  \n"), "{file:?}");
+    }
+
+    #[test]
+    fn the_size_of_a_file_without_one_counts_columns() {
+        let content = "# Visual Golden File\n# Size: 0x0\n# Styles: false\n# Colors: false\n\n## Text\n你好\nab";
+        let read = VisualCapture::deserialize(content).unwrap();
+        assert_eq!((read.width, read.height), (4, 2));
     }
 
     #[test]
