@@ -19,6 +19,8 @@ mod debounce;
 mod diff;
 #[path = "utils/easing/mod.rs"]
 mod easing;
+#[path = "utils/edit/mod.rs"]
+mod edit;
 #[path = "utils/filter.rs"]
 mod filter;
 #[path = "utils/format.rs"]

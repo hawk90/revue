@@ -82,6 +82,9 @@ pub struct TextArea {
     /// First visible line, kept between renders so the view only moves
     /// when the cursor would leave it
     scroll: std::cell::Cell<usize>,
+    /// The first visible row within that line: a wrapped line taller than
+    /// the view can start partway down (#1008)
+    scroll_row: std::cell::Cell<usize>,
     /// Horizontal scroll in terminal COLUMNS when not wrapping, kept between
     /// renders so the view only moves when the cursor would leave it
     scroll_x: std::cell::Cell<usize>,
@@ -139,6 +142,7 @@ impl TextArea {
             lines: vec![String::new()],
             cursors: CursorSet::default(),
             scroll: std::cell::Cell::new(0),
+            scroll_row: std::cell::Cell::new(0),
             scroll_x: std::cell::Cell::new(0),
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),

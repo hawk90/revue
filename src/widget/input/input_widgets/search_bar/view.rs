@@ -61,25 +61,36 @@ impl SearchBar {
 
     /// The placeholder or the query, the cursor, and the error mark
     fn draw_field(&self, ctx: &mut RenderContext, width: u16, text_color: Color) {
-        // Draw input or placeholder, in columns: a wide glyph takes two
-        // cells. The cursor is a char index; scroll so it stays in view.
+        // The field runs from x 4 to the column before the error mark, so
+        // the mark never covers text or the cursor, and the text does not
+        // shift when the query turns invalid (#1014). Columns: a wide glyph
+        // takes two cells; scroll so the cursor stays in view.
         let input_x: u16 = 4;
-        let input_width = width.saturating_sub(6);
+        let input_width = width.saturating_sub(7);
+        let input = self.get_input();
+        let cursor = self.cursor_char();
 
-        if self.input.is_empty() {
-            ctx.put_edit_line(input_x, 0, &self.placeholder, 0, input_width, |_, ch| {
+        if input.is_empty() {
+            // The cursor goes over the placeholder's first letter, as in
+            // Input, and keeps it (#1014)
+            ctx.put_edit_line(input_x, 0, &self.placeholder, 0, input_width, |i, ch| {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(self.placeholder_color);
-                cell.bg = Some(self.bg_color);
+                if self.focused && i == 0 {
+                    cell.fg = Some(self.bg_color);
+                    cell.bg = Some(text_color);
+                } else {
+                    cell.fg = Some(self.placeholder_color);
+                    cell.bg = Some(self.bg_color);
+                }
                 cell
             });
         }
 
         let scroll = scroll_to_cursor(
             0,
-            col_of(&self.input, self.cursor),
-            cursor_width(&self.input, self.cursor),
-            col_of(&self.input, usize::MAX) + 1,
+            col_of(input, cursor),
+            cursor_width(input, cursor),
+            col_of(input, usize::MAX) + 1,
             input_width as usize,
         );
         let input_fg = if self.parse_error.is_some() {
@@ -87,9 +98,9 @@ impl SearchBar {
         } else {
             text_color
         };
-        ctx.put_edit_line(input_x, 0, &self.input, scroll, input_width, |i, ch| {
+        ctx.put_edit_line(input_x, 0, input, scroll, input_width, |i, ch| {
             let mut cell = Cell::new(ch);
-            if self.focused && i == self.cursor {
+            if self.focused && i == cursor {
                 cell.fg = Some(self.bg_color);
                 cell.bg = Some(text_color);
             } else {
@@ -99,9 +110,11 @@ impl SearchBar {
             cell
         });
 
-        // Draw the cursor past the end of the text
-        if self.focused && self.cursor >= self.input.chars().count() {
-            let x = col_of(&self.input, usize::MAX).saturating_sub(scroll);
+        // Draw the cursor past the end of the text (over the placeholder's
+        // first letter when there is no text)
+        let at_end = cursor >= input.chars().count();
+        if self.focused && at_end && !(input.is_empty() && !self.placeholder.is_empty()) {
+            let x = col_of(input, usize::MAX).saturating_sub(scroll);
             if x < input_width as usize {
                 let mut cursor_cell = Cell::new(' ');
                 cursor_cell.fg = Some(self.bg_color);
@@ -110,7 +123,7 @@ impl SearchBar {
             }
         }
 
-        // Draw error indicator
+        // Draw error indicator, past the field
         if self.parse_error.is_some() {
             let mut error_cell = Cell::new('!');
             error_cell.fg = Some(self.error_color);
@@ -126,7 +139,7 @@ impl SearchBar {
         if self.show_hints && height > 1 && self.focused {
             let hint = if self.parse_error.is_some() {
                 "Invalid query syntax"
-            } else if self.input.is_empty() {
+            } else if self.get_input().is_empty() {
                 "Try: field:value, text~contains, age:>18"
             } else {
                 ""

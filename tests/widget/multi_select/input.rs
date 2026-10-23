@@ -355,9 +355,15 @@ impl Model {
         let len = self.filtered.len();
         match k {
             Key::Char(' ') if !self.searchable => self.toggle_current(),
-            Key::Down | Key::Char('j') if len > 0 => self.cursor = (self.cursor + 1) % len,
-            Key::Up | Key::Char('k') if len > 0 => self.cursor = (self.cursor + len - 1) % len,
-            Key::Down | Key::Up | Key::Char('j') | Key::Char('k') => {}
+            // j and k move only when they are not search text (#889)
+            Key::Down if len > 0 => self.cursor = (self.cursor + 1) % len,
+            Key::Up if len > 0 => self.cursor = (self.cursor + len - 1) % len,
+            Key::Char('j') if !self.searchable && len > 0 => self.cursor = (self.cursor + 1) % len,
+            Key::Char('k') if !self.searchable && len > 0 => {
+                self.cursor = (self.cursor + len - 1) % len
+            }
+            Key::Down | Key::Up => {}
+            Key::Char('j' | 'k') if !self.searchable => {}
             Key::Backspace if self.searchable => {
                 self.query.pop();
                 self.refilter();
@@ -441,11 +447,6 @@ proptest! {
             }
         }
         for k in &keys {
-            // j and k are typed as letters while searching in the fix of
-            // #889; today they move the cursor, so they are left out there.
-            if searchable && v.is_open() && matches!(k, Key::Char('j' | 'k')) {
-                continue;
-            }
             let want = m.press(k);
             prop_assert_eq!(v.handle_key(k), want, "{:?}", k);
             prop_assert_eq!(v.is_open(), m.open, "after {:?}", k);
@@ -461,4 +462,15 @@ proptest! {
             prop_assert!(v.get_tag_cursor().is_none_or(|t| t < sel.len()));
         }
     }
+}
+
+#[test]
+fn j_and_k_are_search_text_in_a_searchable_list() {
+    // Typing "jak" searches for "jak" (#889); without search they move
+    let mut v = fruits().searchable(true);
+    v.handle_key(&Key::Enter);
+    for ch in "jak".chars() {
+        v.handle_key(&Key::Char(ch));
+    }
+    assert_eq!(v.query(), "jak");
 }

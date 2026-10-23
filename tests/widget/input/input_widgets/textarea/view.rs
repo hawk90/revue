@@ -234,54 +234,11 @@ fn key() -> impl Strategy<Value = Key> {
     ]
 }
 
-fn columns(c: char) -> usize {
-    if c == '한' {
-        2
-    } else {
-        1
-    }
-}
-
-/// A model of how a line wraps into rows `[start, end)` of `width` columns:
-/// at the last space, a trailing space staying on its row, or hard.
-fn wrap_rows(chars: &[char], width: usize) -> Vec<(usize, usize)> {
-    if chars.is_empty() {
-        return vec![(0, 0)];
-    }
-    let width = width.max(1);
-    let (mut rows, mut start, mut col, mut last_space_end, mut i) = (Vec::new(), 0, 0, None, 0);
-    while i < chars.len() {
-        let cw = columns(chars[i]);
-        if col + cw > width && i > start {
-            if chars[i] == ' ' {
-                i += 1;
-                continue;
-            }
-            let brk = match last_space_end {
-                Some(b) if b > start => b,
-                _ => i,
-            };
-            rows.push((start, brk));
-            start = brk;
-            col = 0;
-            last_space_end = None;
-            i = brk;
-            continue;
-        }
-        col += cw;
-        if chars[i] == ' ' {
-            last_space_end = Some(i + 1);
-        }
-        i += 1;
-    }
-    rows.push((start, chars.len()));
-    rows
-}
-
 proptest! {
     /// After any edits and moves, the cursor is drawn once in the area,
-    /// wrapped or not, with or without the gutter, except where #1008 hides
-    /// it. (`min_height(0)`: the default of 3 keeps the cursor in rows the
+    /// wrapped or not, with or without the gutter: past a full row, on a
+    /// space past the width, and deep in a line taller than the view too
+    /// (#1008). (`min_height(0)`: the default of 3 keeps the cursor in rows the
     /// area does not have, #799.)
     #[test]
     fn prop_textarea_cursor_always_on_screen(
@@ -300,22 +257,6 @@ proptest! {
             ta.handle_key(k);
             // Render between keys, as an app does, so the scroll is kept
             render(&ta, w, h);
-        }
-        if wrap {
-            // #1008: the cursor at or past the right edge of its row (at the
-            // end of a full row, or on trailing spaces a row keeps past the
-            // width), and the cursor on a row of its line at or below the
-            // view's height, are not drawn
-            let (line, col) = ta.cursor_position();
-            let content = ta.get_content();
-            let chars: Vec<char> = content.split('\n').nth(line).unwrap().chars().collect();
-            let gutter = if numbers { ta.line_count().to_string().len() + 2 } else { 0 };
-            let text_width = w as usize - gutter;
-            let rows = wrap_rows(&chars, text_width);
-            let idx = rows.iter().position(|&(_, end)| col < end).unwrap_or(rows.len() - 1);
-            let x: usize = chars[rows[idx].0..col].iter().map(|&c| columns(c)).sum();
-            prop_assume!(idx < h as usize);
-            prop_assume!(x < text_width);
         }
         let buffer = render(&ta, w, h);
         let cells = cursor_cells(&buffer);

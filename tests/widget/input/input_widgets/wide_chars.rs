@@ -287,10 +287,11 @@ fn ta_key_shiftless_right(ta: &mut TextArea, n: usize) {
 
 #[test]
 fn textarea_wrapped_hangul_keeps_continuation_cells() {
-    // 5 syllables, 10 columns, in a 6-wide box: "안녕하" then "세요".
+    // 5 syllables, 10 columns, in a 7-wide box (wrapped text keeps the last
+    // column, #1008): "안녕하" then "세요".
     let ta = textarea("안녕하세요");
-    let buf = render(&ta, 6, 3);
-    assert_eq!(row_text(&buf, 0), "안녕하");
+    let buf = render(&ta, 7, 3);
+    assert_eq!(row_text(&buf, 0).trim_end(), "안녕하");
     assert!(is_cont(&buf, 1, 0) && is_cont(&buf, 3, 0) && is_cont(&buf, 5, 0));
     assert_eq!(row_text(&buf, 1).trim_end(), "세요");
     assert!(is_cont(&buf, 1, 1) && is_cont(&buf, 3, 1));

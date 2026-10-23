@@ -79,13 +79,21 @@ impl MultiSelect {
                 true
             }
 
-            // Dropdown navigation
-            Key::Down | Key::Char('j') => {
+            // Dropdown navigation; j and k only when they are not search text
+            Key::Down => {
+                self.cursor_down();
+                true
+            }
+            Key::Char('j') if !self.searchable => {
                 self.cursor_down();
                 true
             }
 
-            Key::Up | Key::Char('k') => {
+            Key::Up => {
+                self.cursor_up();
+                true
+            }
+            Key::Char('k') if !self.searchable => {
                 self.cursor_up();
                 true
             }

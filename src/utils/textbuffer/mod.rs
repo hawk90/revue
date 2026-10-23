@@ -20,11 +20,23 @@
 //! assert_eq!(buffer.char_count(), 4);  // Not 7 bytes!
 //! ```
 
+// The type is deprecated; its own code and tests still use it
+#![allow(deprecated)]
+
 /// A UTF-8 aware text buffer for single-line text editing
 ///
 /// All positions are in CHARACTER indices, not byte indices.
 /// This ensures correct handling of multi-byte UTF-8 characters
 /// (emoji, CJK, etc.).
+///
+/// Deprecated: [`EditState`](crate::utils::EditState) is the edit model for
+/// every text field, single-line or multi-line, with positions in grapheme
+/// clusters, several cursors and undo (#1261). `TextBuffer` keeps its char
+/// indices unchanged until it is removed in 4.0.
+#[deprecated(
+    since = "3.12.0",
+    note = "use revue::utils::EditState (EditState::single_line() for one line); TextBuffer is removed in 4.0"
+)]
 #[derive(Clone, Debug, Default)]
 pub struct TextBuffer {
     /// The text content

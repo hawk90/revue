@@ -643,8 +643,10 @@ items:
       - placeholder, value; the placeholder shows while the input is empty, focused or not
       - selection, undo/redo, copy/cut/paste
       - wide characters (CJK, emoji) laid out in columns; scrolls to keep the cursor in view
+      - edits with the shared EditState (UTIL-008): grapheme cursor, word moves, undo that restores the selection
     evidence:
       - src/widget/input/input_widgets/input/mod.rs::input
+      - tests/widget/input/input_widgets/input/model.rs::input_follows_its_edit_state
       - tests/widget/validation.rs
       - tests/widget/input/input_widgets/wide_chars.rs
     source:
@@ -1926,3 +1928,28 @@ items:
       - tests/utils/selection/model.rs::keyed_selection_follows_the_model
     source:
       - 'issue #975 (selection by key decision, 2026-10-22)'
+  - id: UTIL-008
+    title: One edit model for text fields
+    area: util
+    priority: P1
+    status: partial
+    phase: 3.12.0
+    acceptance:
+      - EditState holds lines, cursors with selections, and undo; one model for single-line and multi-line fields
+      - positions are grapheme clusters; Backspace takes the last code point of a cluster, an emoji sequence whole
+      - every edit applies at every cursor, and cursors that meet are merged
+      - word moves and deletes go by character category (as CodeMirror); Up/Down keep a goal column
+      - undo restores cursors and selections; typing and deletes within 500 ms with no cursor move are one step
+      - every text field edits with it (Input, Combobox, Autocomplete, SearchBar, MaskedInput, DataGrid cell, TextArea,
+        CodeEditor)
+    evidence:
+      - src/utils/edit/mod.rs::EditState
+      - src/utils/edit/keys.rs::edit_key
+      - src/widget/input/input_widgets/input/mod.rs::EditState
+      - tests/utils/edit/mod.rs::backspace_takes_the_last_code_point_but_an_emoji_sequence_whole
+      - tests/utils/edit/mod.rs::an_edit_applies_at_every_cursor
+      - tests/utils/edit/mod.rs::typing_close_together_is_one_undo_step
+      - tests/utils/edit/model.rs::one_cursor_follows_the_model
+    source:
+      - 'issue #1261 (edit model decisions, 2026-10-23)'
+    notes: Input uses it (#985); the other single-line fields, TextArea and CodeEditor move next (#985, #1261).
