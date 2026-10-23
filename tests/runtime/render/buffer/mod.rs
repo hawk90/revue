@@ -875,3 +875,15 @@ fn clearing_a_region_over_half_a_glyph_blanks_the_other_half() {
     buffer.clear_regions(&[Rect::new(1, 0, 1, 1)]);
     assert_eq!(row(&buffer), "  ab");
 }
+
+#[test]
+fn a_hyperlink_url_cannot_carry_terminal_controls() {
+    // An ESC, BEL or C1 control in a URL would end the OSC 8 sequence early
+    // and run the rest as terminal commands (here RIS, a full reset)
+    let mut buffer = Buffer::new(10, 1);
+    let id = buffer.register_hyperlink("x\x1bc\x07y\u{9b}z");
+    assert_eq!(buffer.get_hyperlink(id), Some("x%1Bc%07y%C2%9Bz"));
+    // Printable text, other scripts included, is kept as given
+    let id = buffer.register_hyperlink("https://例え.jp/a b");
+    assert_eq!(buffer.get_hyperlink(id), Some("https://例え.jp/a b"));
+}
