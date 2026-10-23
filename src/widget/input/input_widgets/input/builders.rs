@@ -2,15 +2,14 @@
 
 use super::Input;
 use crate::style::Color;
+use crate::utils::EditState;
 use crate::widget::traits::WidgetProps;
 
 impl Input {
     /// Create a new input widget
     pub fn new() -> Self {
         Self {
-            value: String::new(),
-            cursor: 0,
-            selection_anchor: None,
+            state: EditState::single_line(),
             placeholder: String::new(),
             fg: None,
             bg: None,
@@ -19,17 +18,16 @@ impl Input {
             selection_bg: Some(Color::rgb(70, 130, 180)), // Steel blue
             focused: true,
             clipboard: None,
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
             props: WidgetProps::new(),
             scroll_x: std::cell::Cell::new(0),
         }
     }
 
     /// Set initial value
+    /// (control characters are dropped and newlines become spaces; the
+    /// cursor goes to the end)
     pub fn value(mut self, value: impl Into<String>) -> Self {
-        self.value = value.into();
-        self.cursor = self.char_count();
+        self.set_value(value);
         self
     }
 
@@ -72,11 +70,11 @@ impl Input {
 
     /// Get current text content
     pub fn text(&self) -> &str {
-        &self.value
+        self.line()
     }
 
-    /// Get cursor position
+    /// Get cursor position, in characters from the start
     pub fn cursor(&self) -> usize {
-        self.cursor
+        self.char_of(self.state.cursor().col)
     }
 }

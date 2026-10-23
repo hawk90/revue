@@ -163,3 +163,29 @@ fn test_input_scroll_is_kept_while_the_cursor_moves_inside_the_view() {
     input.handle_key(&Key::Left);
     assert_eq!(row(&input), "ghij ");
 }
+
+// The cursor goes over grapheme clusters; positions are still characters
+// (#1261)
+
+#[test]
+fn the_cursor_steps_over_a_whole_cluster() {
+    // "e" + combining acute, then "x": the accent is never stepped into
+    let mut input = Input::new().value("e\u{301}x");
+    assert_eq!(input.cursor(), 3);
+    input.handle_key(&Key::Left);
+    assert_eq!(input.cursor(), 2);
+    input.handle_key(&Key::Left);
+    assert_eq!(input.cursor(), 0);
+    input.handle_key(&Key::Delete);
+    assert_eq!(input.text(), "x");
+}
+
+#[test]
+fn backspace_takes_an_accent_but_an_emoji_sequence_whole() {
+    let mut input = Input::new().value("e\u{301}");
+    input.handle_key(&Key::Backspace);
+    assert_eq!((input.text(), input.cursor()), ("e", 1));
+    let mut input = Input::new().value("a👨\u{200D}👩\u{200D}👧");
+    input.handle_key(&Key::Backspace);
+    assert_eq!((input.text(), input.cursor()), ("a", 1));
+}

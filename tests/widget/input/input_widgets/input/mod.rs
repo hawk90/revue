@@ -183,9 +183,12 @@ fn test_input_clone_independence() {
 
 #[test]
 fn test_input_undo_history_keeps_last_100_edits() {
+    // A move between edits keeps each its own step
     let mut input = Input::new();
     for _ in 0..150 {
         input.handle_key(&Key::Char('a'));
+        input.handle_key(&Key::Left);
+        input.handle_key(&Key::Right);
     }
     let mut undone = 0;
     while input.undo() {
