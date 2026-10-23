@@ -48,6 +48,9 @@ fn test_strip_ansi() {
 fn test_ansi_len() {
     let len = ansi_len("\x1b[31mRed\x1b[0m");
     assert_eq!(len, 3);
+    // Terminal columns, not bytes or chars
+    assert_eq!(ansi_len("\x1b[1m한글\x1b[0m é"), 6);
+    assert_eq!(ansi_len("\x1b]0;title\x07\x1b[?25l"), 0);
 }
 
 #[test]

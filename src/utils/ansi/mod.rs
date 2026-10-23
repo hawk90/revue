@@ -138,9 +138,10 @@ pub fn strip_ansi(input: &str) -> String {
         .collect()
 }
 
-/// Calculate the display length of ANSI text (excluding escape sequences)
+/// The display width of ANSI text in terminal columns, escape sequences
+/// left out: `"\x1b[1m한글"` is 4
 pub fn ansi_len(input: &str) -> usize {
-    strip_ansi(input).len()
+    crate::utils::unicode::display_width(&strip_ansi(input))
 }
 
 /// ANSI color codes for generating styled text
