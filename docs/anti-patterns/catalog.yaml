@@ -2029,7 +2029,7 @@ entries:
     status: observed
     assumes: [widget-library]
     decisions: ["#1141"]
-    summary: "텍스트 칸이 있는 widget마다 한 줄 편집(문자 삽입, 삭제, 커서 이동, char→byte 변환)을 따로 짠다. 공통 model `utils::TextBuffer`가 있는데 쓰는 widget이 없다."
+    summary: "텍스트 칸이 있는 widget마다 편집(문자 삽입, 삭제, 커서 이동, 선택, undo, char→byte 변환)을 따로 짠다. 공통 model `utils::EditState`(#1261)가 있는데 쓰지 않는다."
     problem:
       - "같은 키가 widget마다 다르게 동작한다: 제어 문자를 넣는 곳과 버리는 곳, Ctrl+글자를 입력하는 곳과 앱에 넘기는 곳, 단어 이동·선택·undo가 있는 곳(Input)과 없는 곳."
       - "한 widget에서 고친 편집 결함이 다른 widget에는 그대로 남는다."
@@ -2039,9 +2039,9 @@ entries:
       - "`char_indices().nth(cursor)`를 인라인으로 쓰거나 `char_to_byte_index`를 widget 안에 다시 정의한다"
       - "검증 입력: 같은 키 열(제어 문자, Ctrl+글자, ←→ Home End, 넓은 글자, 칸보다 긴 값)을 여러 widget에 넣고 결과를 비교한다"
     fix:
-      - "편집은 `utils::TextBuffer` 하나로 한다. 표준 키 처리(삽입 규칙, 삭제, 이동, 단어 단위, 선택)를 TextBuffer에 두고 widget은 그 결과로 다시 그릴지만 정한다."
+      - "편집은 `utils::EditState` 하나로 한다. 한 줄 칸과 여러 줄 편집기가 같은 model을 쓰고(한 줄 칸은 single_line), 표준 키 처리(삽입 규칙, 삭제, 이동, 단어 단위, 선택, undo)는 `edit_key`에 두며 widget은 자기 키를 먼저 처리하고 나머지를 넘긴다. `utils::TextBuffer`는 3.12에서 deprecated, 4.0에서 제거된다."
       - "그리기는 이미 공통인 `put_edit_line`/`scroll_to_cursor`(#695)로 해서 긴 값도 커서를 따라 scroll한다."
-      - "widget 고유 규칙(NumberInput의 숫자만 받기, spin button의 Home/End)은 TextBuffer 바깥에서 감싼다."
+      - "widget 고유 규칙(NumberInput의 숫자만 받기, spin button의 Home/End, CodeEditor의 자동 들여쓰기)은 EditState 바깥에서 감싼다."
     observed:
       - "2026-10-13 기준 커서가 있는 한 줄 편집기 7개(Input, Combobox, Autocomplete, SearchBar, MaskedInput, NumberInput, DataGrid 셀 편집)가 모두 따로 짜여 있고 TextBuffer를 쓰는 widget은 0개다. char→byte 변환은 4가지 방식이 섞여 있다. 목록은 #985."
   - id: REV-WIDGET-013
