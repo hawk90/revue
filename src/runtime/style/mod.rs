@@ -164,6 +164,8 @@ pub use error::{
 pub use parser::{
     apply_declaration, Declaration, KeyframeBlock, KeyframesDefinition, Rule, StyleSheet,
 };
+// A color word as CSS reads it, for markup that names colors
+pub(crate) use parser::parse_color;
 pub use properties::*;
 pub use theme::{
     shared_theme, theme_manager, Palette, SharedTheme, Theme, ThemeBuilder, ThemeChangeListener,

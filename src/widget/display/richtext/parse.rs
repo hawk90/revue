@@ -12,15 +12,25 @@ impl RichText {
     /// - `[underline]`, `[u]` - Underlined text
     /// - `[dim]` - Dimmed text
     /// - `[strike]`, `[s]` - Strikethrough
-    /// - `[red]`, `[green]`, `[blue]`, `[yellow]`, `[cyan]`, `[magenta]`, `[white]` - Colors
+    /// - `[reverse]`, `[rev]` - Reverse video
+    /// - `[red]`, `[#ff8800]`, `[orange]` - Text color: a CSS color name or
+    ///   hex code
+    /// - `[on blue]`, `[on_blue]`, `[on #003366]` - Background color
     /// - `[link=URL]` - Hyperlink
+    /// - `[/bold]`, `[/b]`, `[/red]`, `[/on blue]`, `[/link]` - Turn off what
+    ///   the most recent open tag with it turned on; the other tags stay
     /// - `[/]` - Reset to default
     ///
-    /// Tags can be combined: `[bold red]text[/]`
+    /// Tags can be combined: `[bold red]text[/]`, and closed a part at a
+    /// time: `[bold red]a[/red]b[/bold]`. A closing tag with nothing open to
+    /// close does nothing.
     ///
-    /// `[[` is a literal `[`: `"[[x] done"` shows `[x] done`. A `[` with no
-    /// `]` after it is shown as it is. Use [`escape`](Self::escape) on text
-    /// that must not be read as markup, such as user input.
+    /// Brackets that are not a tag are shown as they are: `"[x] done"` shows
+    /// `[x] done`, and so does `[orange-ish]` (every word in a tag has to be
+    /// one of the above). `[[` is a literal `[`: `"[[bold]"` shows `[bold]`,
+    /// and a `[` with no `]` after it is shown as it is. Use
+    /// [`escape`](Self::escape) on text that must not be read as markup,
+    /// such as user input.
     pub fn markup(text: &str) -> Self {
         let mut rich = Self::new();
         rich.parse_markup(text);
@@ -36,9 +46,9 @@ impl RichText {
     /// ```
     /// use revue::widget::RichText;
     ///
-    /// let name = "[draft] notes.txt";
-    /// assert_eq!(RichText::escape(name), "[[draft] notes.txt");
-    /// // Shows "[draft] notes.txt" in bold; without `escape`, `[draft]` would be read as a tag.
+    /// let name = "[bold] notes.txt";
+    /// assert_eq!(RichText::escape(name), "[[bold] notes.txt");
+    /// // Shows "[bold] notes.txt" in bold; without `escape`, `[bold]` would be read as a tag.
     /// let rich = RichText::markup(&format!("[bold]{}[/]", RichText::escape(name)));
     /// ```
     pub fn escape(text: &str) -> String {
@@ -47,46 +57,49 @@ impl RichText {
 
     /// Parse markup string
     fn parse_markup(&mut self, text: &str) {
-        let mut current_style = Style::default();
-        let mut current_link: Option<String> = None;
+        let mut open = OpenTags::default();
         let mut buffer = String::new();
-        let mut chars = text.char_indices();
-        let last_close = text.rfind(']');
+        let mut rest = text;
 
-        while let Some((i, ch)) = chars.next() {
+        while let Some(i) = rest.find('[') {
+            buffer.push_str(&rest[..i]);
+            let after = &rest[i + 1..];
             // `[[` is a literal `[`.
-            if ch == '[' && text[i + 1..].starts_with('[') {
-                chars.next();
+            if let Some(after) = after.strip_prefix('[') {
                 buffer.push('[');
+                rest = after;
                 continue;
             }
-            // A `[` that is never closed is plain text, as is everything after
-            // it (no later `[` can be closed either).
-            if ch == '[' && last_close.is_none_or(|close| close < i) {
-                buffer.push_str(&text[i..]);
-                break;
-            }
-            if ch == '[' {
-                // Flush buffer with current style
-                self.push_run(std::mem::take(&mut buffer), &current_style, &current_link);
-
-                // Parse tag
-                let mut tag = String::new();
-                for (_, c) in chars.by_ref() {
-                    if c == ']' {
-                        break;
-                    }
-                    tag.push(c);
-                }
-
-                apply_tag(&tag, &mut current_style, &mut current_link);
-            } else {
-                buffer.push(ch);
+            // A tag runs to the next `]`, with no `[` in it; otherwise this
+            // `[` is text
+            let Some(end) = after
+                .find(['[', ']'])
+                .filter(|&e| after[e..].starts_with(']'))
+            else {
+                buffer.push('[');
+                rest = after;
+                continue;
+            };
+            let tag = &after[..end];
+            rest = &after[end + 1..];
+            let Some(tag) = parse_tag(tag) else {
+                // Not a tag: the brackets and all are text
+                buffer.push('[');
+                buffer.push_str(tag);
+                buffer.push(']');
+                continue;
+            };
+            self.push_run(std::mem::take(&mut buffer), &open.style, &open.link);
+            match tag {
+                Tag::Reset => open = OpenTags::default(),
+                Tag::Open(attrs) => open.open(attrs),
+                Tag::Close(attrs) => open.close(&attrs),
             }
         }
+        buffer.push_str(rest);
 
         // Flush remaining buffer
-        self.push_run(buffer, &current_style, &current_link);
+        self.push_run(buffer, &open.style, &open.link);
     }
 
     /// Add `text` as a span with the style and link in effect, unless it is
@@ -102,63 +115,196 @@ impl RichText {
     }
 }
 
-/// Apply the tag between `[` and `]` to the style and link in effect
-fn apply_tag(tag: &str, current_style: &mut Style, current_link: &mut Option<String>) {
-    // Handle reset tag
-    if tag == "/" {
-        *current_style = Style::default();
-        *current_link = None;
-        return;
+/// One thing a tag turns on
+#[derive(Clone, Debug, PartialEq)]
+enum Attr {
+    Bold,
+    Italic,
+    Underline,
+    Dim,
+    Strike,
+    Reverse,
+    Fg(Color),
+    Bg(Color),
+    Link(String),
+}
+
+impl Attr {
+    /// Turn this on in `style` and `link`
+    fn apply(&self, style: &mut Style, link: &mut Option<String>) {
+        match self {
+            Attr::Bold => style.bold = true,
+            Attr::Italic => style.italic = true,
+            Attr::Underline => style.underline = true,
+            Attr::Dim => style.dim = true,
+            Attr::Strike => style.strikethrough = true,
+            Attr::Reverse => style.reverse = true,
+            Attr::Fg(color) => style.fg = Some(*color),
+            Attr::Bg(color) => style.bg = Some(*color),
+            // A link is underlined, and cyan unless a color is already on
+            Attr::Link(url) => {
+                *link = Some(url.clone());
+                style.underline = true;
+                style.fg.get_or_insert(Color::CYAN);
+            }
+        }
     }
 
-    // Parse tag attributes
-    for part in tag.split_whitespace() {
-        if let Some(link) = part.strip_prefix("link=") {
-            *current_link = Some(link.to_string());
-            current_style.underline = true;
-            if current_style.fg.is_none() {
-                current_style.fg = Some(Color::CYAN);
-            }
-        } else {
-            let part = part.to_lowercase();
-            match part.as_str() {
-                "bold" | "b" => current_style.bold = true,
-                "italic" | "i" => current_style.italic = true,
-                "underline" | "u" => current_style.underline = true,
-                "dim" => current_style.dim = true,
-                "strike" | "s" => current_style.strikethrough = true,
-                "reverse" | "rev" => current_style.reverse = true,
-                // Background colors with "on_" prefix
-                name => match name.strip_prefix("on_") {
-                    Some(bg) => {
-                        if let Some(color) = named_color(bg) {
-                            current_style.bg = Some(color);
-                        }
-                    }
-                    None => {
-                        if let Some(color) = named_color(name) {
-                            current_style.fg = Some(color);
-                        }
-                    }
-                },
-            }
+    /// Whether `[/self]` closes `open`: the same attribute and color; any
+    /// link
+    fn closes(&self, open: &Attr) -> bool {
+        match (self, open) {
+            (Attr::Link(_), Attr::Link(_)) => true,
+            _ => self == open,
         }
     }
 }
 
-/// The colors a tag can name, as text (`red`) or background (`on_red`)
-fn named_color(name: &str) -> Option<Color> {
-    Some(match name {
-        "red" => Color::RED,
-        "green" => Color::GREEN,
-        "blue" => Color::BLUE,
-        "yellow" => Color::YELLOW,
-        "cyan" => Color::CYAN,
-        "magenta" => Color::MAGENTA,
-        "white" => Color::WHITE,
-        "black" => Color::BLACK,
-        _ => return None,
-    })
+/// What the text between `[` and `]` does
+enum Tag {
+    /// `[/]`
+    Reset,
+    Open(Vec<Attr>),
+    Close(Vec<Attr>),
+}
+
+/// The tag `text` is, or `None` when it is not one: empty, or with a word
+/// that is not an attribute
+fn parse_tag(text: &str) -> Option<Tag> {
+    match text.strip_prefix('/') {
+        Some(rest) if rest.trim().is_empty() => Some(Tag::Reset),
+        Some(rest) => parse_attrs(rest, true).map(Tag::Close),
+        None => parse_attrs(text, false).map(Tag::Open),
+    }
+}
+
+/// The attributes the words of a tag name, or `None` if any word is not
+/// one (or there are none). A closing tag names a link as `link`.
+fn parse_attrs(words: &str, closing: bool) -> Option<Vec<Attr>> {
+    let mut attrs = Vec::new();
+    let mut words = words.split_whitespace();
+    while let Some(word) = words.next() {
+        let attr = if let Some(url) = word.strip_prefix("link=") {
+            Attr::Link(url.to_string())
+        } else {
+            match word.to_lowercase().as_str() {
+                "link" if closing => Attr::Link(String::new()),
+                "bold" | "b" => Attr::Bold,
+                "italic" | "i" => Attr::Italic,
+                "underline" | "u" => Attr::Underline,
+                "dim" => Attr::Dim,
+                "strike" | "s" => Attr::Strike,
+                "reverse" | "rev" => Attr::Reverse,
+                "on" => Attr::Bg(color(words.next()?)?),
+                name => match name.strip_prefix("on_") {
+                    Some(bg) => Attr::Bg(color(bg)?),
+                    None => Attr::Fg(color(name)?),
+                },
+            }
+        };
+        attrs.push(attr);
+    }
+    (!attrs.is_empty()).then_some(attrs)
+}
+
+/// A color word: a CSS color name or hex code
+fn color(word: &str) -> Option<Color> {
+    // Only a name or `#hex`: CSS functions such as `rgb(..)` are not words
+    // of a tag
+    if word.contains('(') {
+        return None;
+    }
+    crate::style::parse_color(word)
+}
+
+/// One open tag: what it turns on, and the style and link before it
+#[derive(Default)]
+struct Frame {
+    attrs: Vec<Attr>,
+    style: Style,
+    link: Option<String>,
+}
+
+/// The open tags, oldest first, and the style and link they give. Each tag
+/// keeps the style before it, so opening one, or closing the newest, does
+/// not go back over the others: deep markup stays linear.
+#[derive(Default)]
+struct OpenTags {
+    frames: Vec<Frame>,
+    /// Each attribute that is on, and in how many open tags
+    on: Vec<(Attr, usize)>,
+    style: Style,
+    link: Option<String>,
+}
+
+impl OpenTags {
+    fn open(&mut self, attrs: Vec<Attr>) {
+        let frame = Frame {
+            style: self.style.clone(),
+            link: self.link.clone(),
+            attrs,
+        };
+        for attr in &frame.attrs {
+            attr.apply(&mut self.style, &mut self.link);
+            match self.on.iter_mut().find(|(on, _)| on == attr) {
+                Some((_, n)) => *n += 1,
+                None => self.on.push((attr.clone(), 1)),
+            }
+        }
+        self.frames.push(frame);
+    }
+
+    /// Turn off each attribute in `attrs` in the most recent open tag that
+    /// turned it on; a tag with nothing left on is closed
+    fn close(&mut self, attrs: &[Attr]) {
+        for attr in attrs {
+            // Nothing open has it: nothing to look for
+            if !self.on.iter().any(|(on, n)| *n > 0 && attr.closes(on)) {
+                continue;
+            }
+            let Some((k, at)) = self
+                .frames
+                .iter()
+                .enumerate()
+                .rev()
+                .find_map(|(k, f)| Some((k, f.attrs.iter().position(|on| attr.closes(on))?)))
+            else {
+                continue;
+            };
+            let closed = self.frames[k].attrs.remove(at);
+            if let Some((_, n)) = self.on.iter_mut().find(|(on, _)| *on == closed) {
+                *n -= 1;
+            }
+            if self.frames[k].attrs.is_empty() {
+                let frame = self.frames.remove(k);
+                if let Some(next) = self.frames.get_mut(k) {
+                    next.style = frame.style;
+                    next.link = frame.link;
+                } else {
+                    self.style = frame.style;
+                    self.link = frame.link;
+                    continue;
+                }
+            }
+            self.restyle_from(k);
+        }
+    }
+
+    /// Work the styles out again from the tag at `k` up, from the style
+    /// before it
+    fn restyle_from(&mut self, k: usize) {
+        let mut style = self.frames[k].style.clone();
+        let mut link = self.frames[k].link.clone();
+        for frame in &mut self.frames[k..] {
+            frame.style = style.clone();
+            frame.link = link.clone();
+            for attr in &frame.attrs {
+                attr.apply(&mut style, &mut link);
+            }
+        }
+        self.style = style;
+        self.link = link;
+    }
 }
 
 #[cfg(test)]
