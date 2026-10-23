@@ -29,9 +29,9 @@
 //! - **Line commands** take the lines each cursor or selection touches, a
 //!   selection ending at a line's start leaving that line out (as
 //!   CodeMirror's `selectedLineBlocks`).
-//! - **Single-line** fields ([`EditState::single_line`]) turn a newline in
-//!   typed or pasted text into a space, and leave Enter, Up and Down to the
-//!   widget.
+//! - **Single-line** fields ([`EditState::single_line`]) turn a newline or
+//!   a tab in typed or pasted text into a space, and leave Enter, Up and
+//!   Down to the widget.
 //! - **Max lines** ([`max_lines`](EditState::max_lines)): new text that would
 //!   go past the limit loses its newlines, at every cursor alike, and line
 //!   copies that would go past it are not made.
@@ -189,8 +189,8 @@ impl EditState {
         }
     }
 
-    /// Empty text kept on one line: a newline typed or pasted becomes a
-    /// space, and Enter, Up and Down are left to the widget
+    /// Empty text kept on one line: a newline or tab typed or pasted
+    /// becomes a space, and Enter, Up and Down are left to the widget
     pub fn single_line() -> Self {
         Self {
             single_line: true,
@@ -283,16 +283,12 @@ impl EditState {
         self.lines.len() == 1 && self.lines[0].is_empty()
     }
 
-    /// Replace the text: `\r\n` reads as `\n`, a single-line field's
-    /// newlines become spaces, and lines past `max_lines` are dropped. The
+    /// Replace the text: `\r\n` reads as `\n`, control characters other
+    /// than tab and newline are dropped, a single-line field's newlines and
+    /// tabs become spaces, and lines past `max_lines` are dropped. The
     /// cursor goes to the start and the undo history is cleared.
     pub fn set_text(&mut self, text: impl AsRef<str>) {
-        let text = text.as_ref().replace("\r\n", "\n");
-        let text = if self.single_line {
-            text.replace('\n', " ")
-        } else {
-            text
-        };
+        let text = self.fit_text(&clean(text.as_ref()));
         self.lines = text.split('\n').map(String::from).collect();
         if self.max_lines > 0 {
             self.lines.truncate(self.max_lines);
@@ -750,10 +746,11 @@ impl EditState {
     // Rules for new text
     // -----------------------------------------------------------------
 
-    /// Text as this field takes it: on one line, newlines become spaces
+    /// Text as this field takes it: on one line, newlines and tabs become
+    /// spaces
     fn fit_text(&self, text: &str) -> String {
         if self.single_line {
-            text.replace('\n', " ")
+            text.replace(['\n', '\t'], " ")
         } else {
             text.to_string()
         }

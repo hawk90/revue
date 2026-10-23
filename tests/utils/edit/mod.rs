@@ -396,8 +396,13 @@ fn the_history_keeps_its_limit_and_a_new_edit_drops_redo() {
 
 #[test]
 fn a_single_line_field_keeps_one_line() {
-    let mut s = EditState::single_line().with_text("a\nb\r\nc");
+    let mut s = EditState::single_line().with_text("a\nb\r\nc\u{7}");
     assert_eq!(s.text(), "a b c");
+    // A tab is whitespace on one line too
+    s.set_cursor(s.end());
+    assert!(s.paste("\t"));
+    assert_eq!(s.text(), "a b c ");
+    assert!(s.undo());
     s.set_cursor(s.end());
     assert!(s.paste("\nd\n"));
     assert_eq!(s.text(), "a b c d ");

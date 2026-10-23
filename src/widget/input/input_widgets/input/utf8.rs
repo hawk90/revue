@@ -1,52 +1,63 @@
-//! UTF-8 helper methods for character-based operations
+//! Character indices for the public methods, over the edit state's
+//! grapheme columns
+
+use unicode_segmentation::UnicodeSegmentation;
 
 use super::Input;
+#[cfg(test)]
+use crate::utils::EditPos;
 
 impl Input {
-    // ─────────────────────────────────────────────────────────────────────────
-    // UTF-8 helper methods
-    // ─────────────────────────────────────────────────────────────────────────
+    /// The text (an Input has one line)
+    pub(super) fn line(&self) -> &str {
+        self.state.line(0).unwrap_or("")
+    }
 
-    /// Get byte index from character index
-    pub(super) fn char_to_byte_index(&self, char_idx: usize) -> usize {
-        self.value
+    /// The character index where column `col` starts
+    pub(super) fn char_of(&self, col: usize) -> usize {
+        self.line()
+            .graphemes(true)
+            .take(col)
+            .map(|g| g.chars().count())
+            .sum()
+    }
+
+    /// The column of character index `index`; inside a cluster it rounds
+    /// up to the cluster's end
+    #[cfg(test)]
+    pub(super) fn col_of_char(&self, index: usize) -> usize {
+        let line = self.line();
+        let byte = line
             .char_indices()
-            .nth(char_idx)
-            .map(|(i, _)| i)
-            .unwrap_or(self.value.len())
+            .nth(index)
+            .map_or(line.len(), |(i, _)| i);
+        line.grapheme_indices(true)
+            .take_while(|&(i, _)| i < byte)
+            .count()
     }
 
-    /// Get character count
-    pub(super) fn char_count(&self) -> usize {
-        self.value.chars().count()
-    }
-
-    /// Insert string at character position (returns new cursor position)
-    pub(super) fn insert_at_char(&mut self, char_idx: usize, s: &str) -> usize {
-        let byte_idx = self.char_to_byte_index(char_idx);
-        self.value.insert_str(byte_idx, s);
-        char_idx + s.chars().count()
-    }
-
-    /// Remove character at character position
-    pub(super) fn remove_char_at(&mut self, char_idx: usize) {
-        let byte_idx = self.char_to_byte_index(char_idx);
-        if let Some((_, ch)) = self.value.char_indices().nth(char_idx) {
-            self.value.drain(byte_idx..byte_idx + ch.len_utf8());
-        }
-    }
-
-    /// Remove range of characters (start..end in char indices)
-    pub(super) fn remove_char_range(&mut self, start: usize, end: usize) {
-        let start_byte = self.char_to_byte_index(start);
-        let end_byte = self.char_to_byte_index(end);
-        self.value.drain(start_byte..end_byte);
-    }
-
-    /// Get substring by character range
+    /// The text between two character indices
     pub(super) fn substring(&self, start: usize, end: usize) -> &str {
-        let start_byte = self.char_to_byte_index(start);
-        let end_byte = self.char_to_byte_index(end);
-        &self.value[start_byte..end_byte]
+        let line = self.line();
+        let byte = |index: usize| {
+            line.char_indices()
+                .nth(index)
+                .map_or(line.len(), |(i, _)| i)
+        };
+        &line[byte(start)..byte(end)]
+    }
+
+    /// The cursor at character index `index` (test setup)
+    #[cfg(test)]
+    pub(super) fn set_cursor_chars(&mut self, index: usize) {
+        let col = self.col_of_char(index);
+        self.state.set_cursor(EditPos::new(0, col));
+    }
+
+    /// A selection from `anchor` to `head`, character indices (test setup)
+    #[cfg(test)]
+    pub(super) fn select_chars(&mut self, anchor: usize, head: usize) {
+        let (a, h) = (self.col_of_char(anchor), self.col_of_char(head));
+        self.state.select(EditPos::new(0, a), EditPos::new(0, h));
     }
 }
