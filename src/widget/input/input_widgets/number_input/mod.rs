@@ -69,6 +69,9 @@ pub struct NumberInput {
     /// The text typed in direct editing mode and its cursor, edited as
     /// every single-line field is (#985)
     edit: EditState,
+    /// Horizontal scroll of the typed text, in columns, kept between
+    /// renders
+    scroll_x: std::cell::Cell<usize>,
     /// Width of the input field (characters); `None` fills the area
     width: Option<u16>,
     /// Whether to show +/- buttons
@@ -92,6 +95,7 @@ impl NumberInput {
             suffix: None,
             editing: false,
             edit: EditState::single_line(),
+            scroll_x: std::cell::Cell::new(0),
             width: None,
             show_buttons: true,
             state: WidgetState::new(),

@@ -5,7 +5,9 @@ use super::NumberInput;
 use crate::impl_view_meta;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::display_width;
 use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY, SEPARATOR_COLOR};
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for NumberInput {
@@ -29,46 +31,37 @@ impl View for NumberInput {
             x = x.saturating_add(prefix.chars().count() as u16);
         }
 
-        // Draw value (or input buffer when editing)
-        let value_str = if self.editing {
-            self.buffer()
+        // Draw the value, or the text being typed with its cursor and
+        // selection, as wide as it is (and a cell for the cursor past its
+        // end), scrolled to the cursor when the field is narrower
+        let formatted = self.format_value();
+        let field = if self.editing {
+            EditField::of(&self.edit, "", self.state.focused)
         } else {
-            &self.format_value()
+            EditField {
+                text: &formatted,
+                placeholder: "",
+                cursor: None,
+                selection: None,
+            }
         };
-        let cursor = self.edit.char_index(self.edit.cursor());
-
-        for (i, ch) in value_str.chars().enumerate() {
-            if x >= field_width {
-                break;
-            }
-
-            let is_cursor_at_pos = self.editing && self.state.focused && i == cursor;
-
+        let past_end = field
+            .cursor
+            .is_some_and(|c| c >= field.text.chars().count());
+        let text_w = display_width(field.text) + usize::from(past_end);
+        let w = (text_w.min(u16::MAX as usize) as u16).min(field_width.saturating_sub(x));
+        let scroll = field.scroll(self.scroll_x.get(), w);
+        self.scroll_x.set(scroll);
+        ctx.put_edit_field(x, 0, w, &field, scroll, |kind, ch| {
             let mut cell = Cell::new(ch);
-            if is_cursor_at_pos {
-                cell.fg = Some(Color::BLACK);
-                cell.bg = Some(Color::WHITE);
-            } else {
-                cell.fg = Some(fg);
-                cell.bg = Some(bg);
-            }
-
-            ctx.set(x, 0, cell);
-            x += 1;
-        }
-
-        // Draw cursor at end if editing and cursor is at end
-        if self.editing
-            && self.state.focused
-            && cursor >= value_str.chars().count()
-            && x < field_width
-        {
-            let mut cursor_cell = Cell::new(' ');
-            cursor_cell.fg = Some(Color::BLACK);
-            cursor_cell.bg = Some(Color::WHITE);
-            ctx.set(x, 0, cursor_cell);
-            x += 1;
-        }
+            (cell.fg, cell.bg) = match kind {
+                FieldCell::Cursor => (Some(Color::BLACK), Some(Color::WHITE)),
+                FieldCell::Selected => (Some(Color::WHITE), Some(Color::BLUE)),
+                FieldCell::Text | FieldCell::Placeholder => (Some(fg), Some(bg)),
+            };
+            cell
+        });
+        x += w;
 
         // Draw suffix
         if let Some(ref suffix) = self.suffix {
