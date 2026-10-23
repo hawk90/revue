@@ -1956,7 +1956,10 @@ items:
       - tests/widget/form/masked_input/edit.rs::word_keys_go_over_the_whole_value
       - tests/widget/input/input_widgets/number_input/edit.rs::editing_takes_the_modified_editing_keys
       - tests/widget/data/datagrid/input/editing.rs::test_cell_edit_takes_the_modified_editing_keys
+      - tests/widget/input/input_widgets/search_bar/mod.rs::modified_editing_keys_reach_the_search_bar
     source:
       - 'issue #1261 (edit model decisions, 2026-10-23)'
-    notes: Input, Combobox, Autocomplete, MaskedInput, NumberInput and DataGrid cells use it, drawn with one shared field
-      (#985); SearchBar (#1291), TextArea and CodeEditor move next (#1261).
+    notes: Input, SearchBar, Combobox, Autocomplete, MaskedInput, NumberInput and DataGrid cells use it, drawn with one
+      shared field (#985); TextArea and CodeEditor move next (#1261). The append-only query fields (CommandPalette,
+      Select/MultiSelect search, Tree search, CodeEditor find/goto, ColorPicker hex, FilePicker name) are still open in
+      #985.
