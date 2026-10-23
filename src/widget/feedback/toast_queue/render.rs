@@ -17,7 +17,11 @@ impl ToastQueue {
     fn calculate_base_position(&self, area_width: u16, area_height: u16) -> (u16, u16) {
         let margin = 1u16;
         let toast_w = self.toast_width;
-        let total_height = (self.visible.len() as u16) * (self.toast_height() + self.gap);
+        // The toasts and the gaps between them (none after the last)
+        let count = self.visible.len() as u16;
+        let total_height = count
+            .saturating_mul(self.toast_height())
+            .saturating_add(count.saturating_sub(1).saturating_mul(self.gap));
 
         let x = match self.position {
             ToastPosition::TopLeft | ToastPosition::BottomLeft => margin,
@@ -45,7 +49,7 @@ impl ToastQueue {
         let toast_w = self.toast_width.min(area.width.saturating_sub(x));
         let toast_h = self.toast_height();
 
-        if x >= area.width || y >= area.height {
+        if x >= area.width || y >= area.height || toast_w == 0 {
             return;
         }
 
@@ -119,12 +123,14 @@ fn draw_content(
     let content_x = x + 2;
     let content_y = y + 1;
 
-    // Icon
-    ctx.set(
-        content_x,
-        content_y,
-        cell(entry.level.icon(), Some(color), bg),
-    );
+    // Icon, inside the right border
+    if content_x < x + toast_w.saturating_sub(1) {
+        ctx.set(
+            content_x,
+            content_y,
+            cell(entry.level.icon(), Some(color), bg),
+        );
+    }
 
     // Message
     let msg_x = content_x + 2;
@@ -167,7 +173,9 @@ impl View for ToastQueue {
                 StackDirection::Down => i,
                 StackDirection::Up => count - 1 - i,
             };
-            let y = base_y.saturating_add((slot as u16) * (self.toast_height() + self.gap));
+            let y = base_y.saturating_add(
+                (slot as u16).saturating_mul(self.toast_height().saturating_add(self.gap)),
+            );
 
             if y < area.height {
                 self.render_toast(ctx, entry, base_x, y);
@@ -203,7 +211,7 @@ mod tests {
 
     #[test]
     fn stacking_up_puts_the_newest_toast_on_top_within_the_area() {
-        // Toasts are 3 rows with a 1-row gap; the margin is 1.
+        // Toasts are 3 rows with a 1-row gap between them; the margin is 1.
         assert_eq!(
             message_rows(ToastPosition::TopLeft, StackDirection::Down),
             [Some(2), Some(6)]
@@ -214,11 +222,11 @@ mod tests {
         );
         assert_eq!(
             message_rows(ToastPosition::BottomLeft, StackDirection::Down),
-            [Some(4), Some(8)]
+            [Some(5), Some(9)]
         );
         assert_eq!(
             message_rows(ToastPosition::BottomLeft, StackDirection::Up),
-            [Some(8), Some(4)]
+            [Some(9), Some(5)]
         );
     }
 }
