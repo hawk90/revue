@@ -132,13 +132,12 @@ fn op() -> impl Strategy<Value = Op> {
     prop_oneof![
         4 => (
             level(),
-            // High is documented as "shows immediately" and Critical as
-            // "cannot be dismissed"; the queue does neither (#1059).
-            // High is left out and Critical toasts are
-            // pushed non-dismissible, so the model does not depend on that.
+            // Priority only orders the pending queue: no level shows at
+            // once or is kept from being dismissed
             prop_oneof![
                 Just(ToastPriority::Low),
                 Just(ToastPriority::Normal),
+                Just(ToastPriority::High),
                 Just(ToastPriority::Critical),
             ],
             proptest::option::of(0u8..4),
@@ -148,7 +147,7 @@ fn op() -> impl Strategy<Value = Op> {
                 level,
                 priority,
                 id,
-                dismissible: dismissible && priority != ToastPriority::Critical,
+                dismissible,
             }),
         3 => Just(Op::Tick),
         1 => (0u8..4).prop_map(Op::Dismiss),
@@ -380,4 +379,31 @@ fn the_gap_only_goes_between_toasts() {
     assert_eq!(corners(&b), [(1, 3), (1, 8)]);
     assert_eq!(b.get(1, 10).unwrap().symbol, '╰');
     assert_eq!(row(&b, 11).trim(), "");
+}
+
+#[test]
+fn priority_only_orders_the_pending_queue() {
+    // High waits for a slot ahead of Normal; it does not push "first" out
+    let mut q = ToastQueue::new().max_visible(1);
+    q.info("first");
+    q.tick();
+    q.info("normal");
+    q.push_entry(ToastEntry::new("high", ToastLevel::Error).with_priority(ToastPriority::High));
+    q.tick();
+    assert_eq!(names(q.get_visible()), ["first"]);
+    assert_eq!(names(q.get_queue()), ["high", "normal"]);
+    q.dismiss_first();
+    q.tick();
+    assert_eq!(names(q.get_visible()), ["high"]);
+
+    // Critical is dismissed like any other unless it is made non-dismissible
+    let mut q = ToastQueue::new();
+    let critical =
+        ToastEntry::new("down", ToastLevel::Error).with_priority(ToastPriority::Critical);
+    q.push_entry(critical.clone());
+    q.push_entry(critical.dismissible(false).with_id("kept"));
+    q.tick();
+    q.dismiss_all();
+    assert_eq!(names(q.get_visible()), ["down"]);
+    assert_eq!(q.get_visible()[0].id.as_deref(), Some("kept"));
 }
