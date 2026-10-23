@@ -190,6 +190,7 @@ pub mod ci;
 pub mod mock;
 mod pilot;
 mod pipeline;
+mod screen_text;
 mod snapshot;
 mod test_app;
 pub mod visual;
