@@ -43,39 +43,79 @@ fn test_rich_text_wide_glyph_takes_its_span_background() {
 enum Token {
     /// Plain text, no brackets
     Text(String),
-    /// `[a b c]`: attribute and color names, any case, or `link=URL`
+    /// `[a b c]`: words from `OPEN`
     Tag(Vec<&'static str>),
+    /// `[/a b]`: words from `CLOSE`
+    Close(Vec<&'static str>),
     /// `[/]`
     Reset,
     /// `[[`, a literal `[`
     Bracket,
 }
 
-const PARTS: [&str; 18] = [
-    "b",
-    "bold",
-    "I",
-    "italic",
-    "u",
-    "underline",
-    "dim",
-    "s",
-    "strike",
-    "rev",
-    "reverse",
-    "RED",
-    "green",
-    "on_blue",
-    "On_Red",
-    "link=u1",
-    "link=u2",
-    "nonsense",
+/// What a tag word turns on, as the model keeps it
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum A {
+    M(Modifier),
+    Fg(Color),
+    Bg(Color),
+    Link(&'static str),
+    /// `[/link]`: closes any link
+    AnyLink,
+}
+
+/// Words of an opening tag, any case, and what each turns on (`None`: not
+/// an attribute, so the brackets are text). `on` takes the next word, so
+/// it only comes with its color here.
+const OPEN: [(&str, Option<A>); 21] = [
+    ("b", Some(A::M(Modifier::BOLD))),
+    ("bold", Some(A::M(Modifier::BOLD))),
+    ("I", Some(A::M(Modifier::ITALIC))),
+    ("italic", Some(A::M(Modifier::ITALIC))),
+    ("u", Some(A::M(Modifier::UNDERLINE))),
+    ("underline", Some(A::M(Modifier::UNDERLINE))),
+    ("dim", Some(A::M(Modifier::DIM))),
+    ("s", Some(A::M(Modifier::CROSSED_OUT))),
+    ("strike", Some(A::M(Modifier::CROSSED_OUT))),
+    ("rev", Some(A::M(Modifier::REVERSE))),
+    ("reverse", Some(A::M(Modifier::REVERSE))),
+    ("RED", Some(A::Fg(Color::RED))),
+    ("green", Some(A::Fg(Color::GREEN))),
+    ("orange", Some(A::Fg(Color::rgb(255, 165, 0)))),
+    ("#123456", Some(A::Fg(Color::rgb(0x12, 0x34, 0x56)))),
+    ("on_blue", Some(A::Bg(Color::BLUE))),
+    ("On_Red", Some(A::Bg(Color::RED))),
+    ("on green", Some(A::Bg(Color::GREEN))),
+    ("link=u1", Some(A::Link("u1"))),
+    ("link=u2", Some(A::Link("u2"))),
+    ("nonsense", None),
 ];
+
+/// Words of a closing tag
+const CLOSE: [(&str, Option<A>); 9] = [
+    ("b", Some(A::M(Modifier::BOLD))),
+    ("italic", Some(A::M(Modifier::ITALIC))),
+    ("U", Some(A::M(Modifier::UNDERLINE))),
+    ("red", Some(A::Fg(Color::RED))),
+    ("orange", Some(A::Fg(Color::rgb(255, 165, 0)))),
+    ("on blue", Some(A::Bg(Color::BLUE))),
+    ("on_red", Some(A::Bg(Color::RED))),
+    ("link", Some(A::AnyLink)),
+    ("nonsense", None),
+];
+
+fn words(table: &'static [(&'static str, Option<A>)]) -> impl Strategy<Value = Vec<&'static str>> {
+    prop::collection::vec(
+        prop::sample::select(table.iter().map(|w| w.0).collect::<Vec<_>>()),
+        1..4,
+    )
+}
 
 fn token() -> impl Strategy<Value = Token> {
     prop_oneof![
         3 => "[a-z ]{1,4}".prop_map(Token::Text),
-        3 => prop::collection::vec(prop::sample::select(PARTS.to_vec()), 1..4).prop_map(Token::Tag),
+        3 => words(&OPEN).prop_map(Token::Tag),
+        2 => words(&CLOSE).prop_map(Token::Close),
         1 => Just(Token::Reset),
         1 => Just(Token::Bracket),
     ]
@@ -90,49 +130,83 @@ type Expected = (
     Option<&'static str>,
 );
 
+/// What the words turn on, or `None` if one is not an attribute
+fn attrs(table: &[(&str, Option<A>)], words: &[&str]) -> Option<Vec<A>> {
+    words
+        .iter()
+        .map(|w| table.iter().find(|t| t.0 == *w).unwrap().1)
+        .collect()
+}
+
+/// The style the open tags give, oldest first: a link is underlined and
+/// cyan unless a color is already on
+fn style(open: &[Vec<A>]) -> (Option<Color>, Option<Color>, Modifier, Option<&'static str>) {
+    let (mut fg, mut bg, mut m, mut link) = (None, None, Modifier::empty(), None);
+    for a in open.iter().flatten() {
+        match *a {
+            A::M(x) => m |= x,
+            A::Fg(c) => fg = Some(c),
+            A::Bg(c) => bg = Some(c),
+            A::Link(url) => {
+                link = Some(url);
+                m |= Modifier::UNDERLINE;
+                fg = fg.or(Some(Color::CYAN));
+            }
+            A::AnyLink => unreachable!(),
+        }
+    }
+    (fg, bg, m, link)
+}
+
 /// The markup for `tokens`, and the cells a plain model says it draws
 fn model(tokens: &[Token]) -> (String, Vec<Expected>) {
     let mut markup = String::new();
     let mut cells = Vec::new();
-    let (mut fg, mut bg, mut m, mut link) = (None, None, Modifier::empty(), None);
+    let mut open: Vec<Vec<A>> = Vec::new();
+    let text = |s: &str, open: &[Vec<A>], cells: &mut Vec<Expected>| {
+        let (fg, bg, m, link) = style(open);
+        cells.extend(s.chars().map(|c| (c, fg, bg, m, link)));
+    };
     for t in tokens {
         match t {
             Token::Text(s) => {
                 markup.push_str(s);
-                cells.extend(s.chars().map(|c| (c, fg, bg, m, link)));
+                text(s, &open, &mut cells);
             }
             Token::Bracket => {
                 markup.push_str("[[");
-                cells.push(('[', fg, bg, m, link));
+                text("[", &open, &mut cells);
             }
             Token::Reset => {
                 markup.push_str("[/]");
-                (fg, bg, m, link) = (None, None, Modifier::empty(), None);
+                open.clear();
             }
-            Token::Tag(parts) => {
-                markup.push('[');
-                markup.push_str(&parts.join(" "));
-                markup.push(']');
-                for p in parts {
-                    if let Some(url) = p.strip_prefix("link=") {
-                        link = Some(url);
-                        m |= Modifier::UNDERLINE;
-                        fg = fg.or(Some(Color::CYAN));
-                        continue;
+            Token::Tag(words) => {
+                let tag = format!("[{}]", words.join(" "));
+                markup.push_str(&tag);
+                match attrs(&OPEN, words) {
+                    Some(a) => open.push(a),
+                    None => text(&tag, &open, &mut cells),
+                }
+            }
+            Token::Close(words) => {
+                let tag = format!("[/{}]", words.join(" "));
+                markup.push_str(&tag);
+                match attrs(&CLOSE, words) {
+                    // Each word turns off the most recent open one like it
+                    Some(close) => {
+                        for c in close {
+                            let like = |a: &A| match c {
+                                A::AnyLink => matches!(a, A::Link(_)),
+                                c => *a == c,
+                            };
+                            if let Some(tag) = open.iter_mut().rev().find(|t| t.iter().any(like)) {
+                                let at = tag.iter().position(like).unwrap();
+                                tag.remove(at);
+                            }
+                        }
                     }
-                    match p.to_lowercase().as_str() {
-                        "b" | "bold" => m |= Modifier::BOLD,
-                        "i" | "italic" => m |= Modifier::ITALIC,
-                        "u" | "underline" => m |= Modifier::UNDERLINE,
-                        "dim" => m |= Modifier::DIM,
-                        "s" | "strike" => m |= Modifier::CROSSED_OUT,
-                        "rev" | "reverse" => m |= Modifier::REVERSE,
-                        "red" => fg = Some(Color::RED),
-                        "green" => fg = Some(Color::GREEN),
-                        "on_blue" => bg = Some(Color::BLUE),
-                        "on_red" => bg = Some(Color::RED),
-                        _ => {}
-                    }
+                    None => text(&tag, &open, &mut cells),
                 }
             }
         }
@@ -142,14 +216,16 @@ fn model(tokens: &[Token]) -> (String, Vec<Expected>) {
 
 proptest! {
     /// Markup draws what a plain model of the tags gives: each tag adds to
-    /// the style in effect, `[/]` clears it and the link, a link is
-    /// underlined and cyan unless a color was named, `[[` is a `[`, unknown
-    /// names do nothing, and names match in any case.
+    /// the style in effect, a closing tag turns each of its words off in the
+    /// most recent open tag that has it (any link for `link`), `[/]` clears
+    /// everything, a link is underlined and cyan unless a color is on, `[[`
+    /// is a `[`, brackets holding a word that is not an attribute are text,
+    /// and names match in any case.
     #[test]
     fn prop_markup_follows_the_model(tokens in prop::collection::vec(token(), 0..12)) {
         let (markup, cells) = model(&tokens);
         let rt = RichText::markup(&markup);
-        let width = 60u16;
+        let width = 160u16;
         prop_assert!(cells.len() < width as usize);
         let buffer = draw(&rt, width, 1);
         for x in 0..width {
