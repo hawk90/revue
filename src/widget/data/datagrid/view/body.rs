@@ -6,7 +6,8 @@ use crate::style::Color;
 use crate::utils::{char_width, display_width, truncate_to_width};
 use crate::widget::data::datagrid::types::{Alignment, GridColumn, GridRow};
 use crate::widget::data::datagrid::DataGrid;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
+use crate::widget::traits::render_context::edit_line::FieldCell;
 use crate::widget::traits::RenderContext;
 
 impl DataGrid {
@@ -168,35 +169,21 @@ impl DataGrid {
         }
     }
 
-    /// Render cell in edit mode with cursor
+    /// Render cell in edit mode with cursor: the text scrolled to keep the
+    /// cursor in view, and the selection
     fn render_edit_cell(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16, bg: Color) {
-        let truncated =
-            truncate_to_width(&self.edit_state.buffer, (width as usize).saturating_sub(1));
-        let mut dx: u16 = 0;
-        let mut char_idx = 0;
-        for ch in truncated.chars() {
-            let cw = char_width(ch) as u16;
-            if dx + cw > width.saturating_sub(1) {
-                break;
-            }
-            let is_cursor = char_idx == self.edit_state.cursor;
+        let (field, kept) = self.edit_field();
+        let scroll = field.scroll(kept.get(), width);
+        kept.set(scroll);
+        ctx.put_edit_field(x, y, width, &field, scroll, |kind, ch| {
             let mut cell = Cell::new(ch);
-            cell.fg = Some(if is_cursor {
-                Color::BLACK
-            } else {
-                Color::WHITE
-            });
-            cell.bg = Some(if is_cursor { Color::WHITE } else { bg });
-            ctx.set(x + dx, y, cell);
-            dx += cw;
-            char_idx += 1;
-        }
-        // Draw cursor at end if needed
-        if self.edit_state.cursor >= char_idx && (dx as usize) < width as usize {
-            let mut cursor_cell = Cell::new(' ');
-            cursor_cell.bg = Some(Color::WHITE);
-            ctx.set(x + dx, y, cursor_cell);
-        }
+            (cell.fg, cell.bg) = match kind {
+                FieldCell::Cursor => (Some(Color::BLACK), Some(Color::WHITE)),
+                FieldCell::Selected => (Some(Color::BLACK), Some(LIGHT_GRAY)),
+                FieldCell::Text | FieldCell::Placeholder => (Some(Color::WHITE), Some(bg)),
+            };
+            cell
+        });
     }
 
     /// Render cell with value (respecting alignment)
