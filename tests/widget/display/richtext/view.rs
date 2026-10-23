@@ -130,12 +130,22 @@ type Expected = (
     Option<&'static str>,
 );
 
-/// What the words turn on, or `None` if one is not an attribute
+/// What the words turn on, or `None` if one is not an attribute. A tag is
+/// a set: a word given twice counts once.
 fn attrs(table: &[(&str, Option<A>)], words: &[&str]) -> Option<Vec<A>> {
-    words
+    let all: Option<Vec<A>> = words
         .iter()
         .map(|w| table.iter().find(|t| t.0 == *w).unwrap().1)
-        .collect()
+        .collect();
+    all.map(|all| {
+        let mut set = Vec::new();
+        for a in all {
+            if !set.contains(&a) {
+                set.push(a);
+            }
+        }
+        set
+    })
 }
 
 /// The style the open tags give, oldest first: a link is underlined and
@@ -201,7 +211,8 @@ fn model(tokens: &[Token]) -> (String, Vec<Expected>) {
                                 c => *a == c,
                             };
                             if let Some(tag) = open.iter_mut().rev().find(|t| t.iter().any(like)) {
-                                let at = tag.iter().position(like).unwrap();
+                                // Within a tag the later word is the more recent
+                                let at = tag.iter().rposition(like).unwrap();
                                 tag.remove(at);
                             }
                         }

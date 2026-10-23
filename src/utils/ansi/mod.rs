@@ -109,6 +109,7 @@ pub fn parse_ansi(input: &str) -> Vec<AnsiSpan> {
 
     for token in scan::tokens(input) {
         match token {
+            Token::Char(ch) if is_dropped_control(ch) => {}
             Token::Char(ch) => text.push(ch),
             // Other control sequences (cursor moves, modes) are dropped
             Token::Csi(csi) if csi.is_sgr() => {
@@ -132,10 +133,19 @@ pub fn parse_ansi(input: &str) -> Vec<AnsiSpan> {
 pub fn strip_ansi(input: &str) -> String {
     scan::tokens(input)
         .filter_map(|token| match token {
+            Token::Char(ch) if is_dropped_control(ch) => None,
             Token::Char(ch) => Some(ch),
             Token::Csi(_) => None,
         })
         .collect()
+}
+
+/// A control character that is not text: every C0 control but the line
+/// endings and tab (backspace, bell, ...) and every C1 control (U+0080 to
+/// U+009F, the 8-bit forms of ESC sequences). Written to a terminal they
+/// would act instead of showing.
+fn is_dropped_control(ch: char) -> bool {
+    ch.is_control() && !matches!(ch, '\n' | '\r' | '\t')
 }
 
 /// The display width of ANSI text in terminal columns, escape sequences

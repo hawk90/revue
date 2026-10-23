@@ -22,8 +22,9 @@ const ESC: char = '\x1b';
 const CAN: char = '\x18';
 const SUB: char = '\x1a';
 
-/// The parameter bytes kept for one control sequence; a longer one is read
-/// to its end and dropped, so a stream cannot grow the scanner
+/// The parameter or intermediate bytes kept for one control sequence; a
+/// longer one is read to its end and dropped, so a stream cannot grow the
+/// scanner
 const MAX_PARAMS: usize = 256;
 
 /// A control sequence: `ESC [`, its parameter and intermediate bytes, and
@@ -122,10 +123,11 @@ impl Scanner {
                 }
                 // A parameter after an intermediate byte, or too many
                 '\x30'..='\x3f' => self.go(State::CsiIgnore),
-                '\x20'..='\x2f' => {
+                '\x20'..='\x2f' if self.csi.intermediates.len() < MAX_PARAMS => {
                     self.csi.intermediates.push(ch);
                     None
                 }
+                '\x20'..='\x2f' => self.go(State::CsiIgnore),
                 '\x40'..='\x7e' => {
                     self.state = State::Ground;
                     self.csi.final_byte = ch;

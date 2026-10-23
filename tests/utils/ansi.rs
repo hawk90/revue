@@ -166,3 +166,33 @@ proptest::proptest! {
         proptest::prop_assert_eq!(spans, text);
     }
 }
+
+// Found by review (#878 follow-up)
+
+#[test]
+fn an_underline_color_is_read_whole() {
+    // 58 takes its color's numbers, as 38 does: 5;9 is not a strikethrough
+    // and 2;1;2;3 is not bold, dim and italic
+    for seq in ["\x1b[58;5;9m", "\x1b[58;2;1;2;3m", "\x1b[58:2::1:2:3m"] {
+        let spans = parse_ansi(&format!("{seq}x"));
+        assert_eq!(spans[0].modifiers, Modifier::empty(), "{seq:?}");
+        assert_eq!((spans[0].fg, spans[0].bg), (None, None), "{seq:?}");
+    }
+    // A code after it still applies
+    assert_eq!(parse_ansi("\x1b[58;5;9;1mx")[0].modifiers, Modifier::BOLD);
+}
+
+#[test]
+fn a_very_long_control_sequence_is_dropped_whole() {
+    let input = format!("a\x1b[{}mb", " ".repeat(100_000));
+    assert_eq!(strip_ansi(&input), "ab");
+}
+
+#[test]
+fn control_characters_are_not_text() {
+    // Backspace, bell and the 8-bit CSI would act on a terminal
+    assert_eq!(strip_ansi("a\u{9b}31mb\x08c\x07d"), "a31mbcd");
+    assert_eq!(strip_ansi("line\r\nnext\ttab"), "line\r\nnext\ttab");
+    let text: String = parse_ansi("a\x08b").into_iter().map(|s| s.text).collect();
+    assert_eq!(text, "ab");
+}
