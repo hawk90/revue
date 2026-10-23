@@ -19,12 +19,22 @@
 //! - **Up and Down** aim for the screen column the move started from, kept
 //!   across short lines.
 //! - **Undo** steps restore the text and the cursors and selections. Typing
-//!   and deletes made within [`group_delay`](EditState::group_delay) (500 ms)
-//!   of each other, with no cursor move between, are one step (as
-//!   CodeMirror's history); any other edit is a step of its own.
+//!   and deletes (they join each other) made within
+//!   [`group_delay`](EditState::group_delay) (500 ms) of each other, with no
+//!   cursor move between, are one step; any other edit (paste, a new line, a
+//!   line command) is a step of its own, and typing after it starts a new
+//!   one. This follows CodeMirror's history in its time limit and in
+//!   joining typing with deletes; CodeMirror also checks that the changes
+//!   touch, which an edit at an unmoved cursor always does.
+//! - **Line commands** take the lines each cursor or selection touches, a
+//!   selection ending at a line's start leaving that line out (as
+//!   CodeMirror's `selectedLineBlocks`).
 //! - **Single-line** fields ([`EditState::single_line`]) turn a newline in
 //!   typed or pasted text into a space, and leave Enter, Up and Down to the
 //!   widget.
+//! - **Max lines** ([`max_lines`](EditState::max_lines)): new text that would
+//!   go past the limit loses its newlines, at every cursor alike, and line
+//!   copies that would go past it are not made.
 //! - **Read-only** text moves and selects but does not change.
 //!
 //! [`EditState::edit_key`] applies the standard keys; a widget handles its
@@ -50,7 +60,7 @@ mod motion;
 mod pos;
 mod text;
 
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use engine::{Kind, Step};
@@ -140,7 +150,7 @@ pub struct EditState {
     /// Whether the next typing or delete may join the last undo step: true
     /// right after one, false after a move or any other edit
     joinable: bool,
-    clock: Rc<dyn Fn() -> Instant>,
+    clock: Arc<dyn Fn() -> Instant + Send + Sync>,
 }
 
 impl std::fmt::Debug for EditState {
@@ -175,7 +185,7 @@ impl EditState {
             history: UndoHistory::with_max_size(DEFAULT_HISTORY),
             group_delay: DEFAULT_GROUP_DELAY,
             joinable: false,
-            clock: Rc::new(Instant::now),
+            clock: Arc::new(Instant::now),
         }
     }
 
@@ -198,6 +208,13 @@ impl EditState {
     /// go past it are dropped from typed or pasted text.
     pub fn max_lines(mut self, max: usize) -> Self {
         self.max_lines = max;
+        if max > 0 && self.lines.len() > max {
+            // Text set before the limit is cut to it as well
+            self.lines.truncate(max);
+            let cursors = self.cursors.clone();
+            self.set_cursors(cursors);
+            self.history.clear();
+        }
         self
     }
 
@@ -232,8 +249,8 @@ impl EditState {
 
     /// Where edit times come from (the system clock by default), so a test
     /// can control how typing is grouped for undo
-    pub fn clock(mut self, clock: impl Fn() -> Instant + 'static) -> Self {
-        self.clock = Rc::new(clock);
+    pub fn clock(mut self, clock: impl Fn() -> Instant + Send + Sync + 'static) -> Self {
+        self.clock = Arc::new(clock);
         self
     }
 
@@ -341,7 +358,7 @@ impl EditState {
         self.select(EditPos::default(), self.end());
     }
 
-    /// Add a cursor at `pos`; it becomes the primary one
+    /// Add `cursor` (moved into the text); it becomes the primary one
     pub fn add_cursor(&mut self, cursor: EditCursor) {
         let cursor = EditCursor::selecting(self.clamp(cursor.anchor), self.clamp(cursor.head));
         self.cursors.push(cursor);
@@ -376,7 +393,7 @@ impl EditState {
         self.joinable = false;
     }
 
-    /// Whether the primary cursor selects anything
+    /// Whether any cursor selects anything
     pub fn has_selection(&self) -> bool {
         self.cursors.iter().any(EditCursor::has_selection)
     }
@@ -603,28 +620,60 @@ impl EditState {
         EditPos::new(pos.line, col)
     }
 
+    /// The blocks of lines the cursors touch, in order, and the block each
+    /// cursor is in. A selection that ends at the start of a line does not
+    /// take that line (as CodeMirror's `selectedLineBlocks`: Shift+Down from
+    /// a line start selects whole lines). Blocks on the same line are one;
+    /// with `adjacent`, so are blocks that meet.
+    fn line_blocks(&self, adjacent: bool) -> (Vec<(usize, usize)>, Vec<usize>) {
+        let mut blocks: Vec<(usize, usize)> = Vec::new();
+        let mut block_of = Vec::with_capacity(self.cursors.len());
+        for c in &self.cursors {
+            let (from, to) = c.range();
+            let last = if c.has_selection() && to.col == 0 && to.line > from.line {
+                to.line - 1
+            } else {
+                to.line
+            };
+            match blocks.last_mut() {
+                Some(prev) if from.line <= prev.1 + usize::from(adjacent) => {
+                    prev.1 = prev.1.max(last);
+                }
+                _ => blocks.push((from.line, last)),
+            }
+            block_of.push(blocks.len() - 1);
+        }
+        (blocks, block_of)
+    }
+
     /// Delete every line a cursor or its selection touches
     pub fn delete_lines(&mut self) -> bool {
-        let last = self.lines.len() - 1;
-        self.apply(Kind::Other, |s, c| {
-            let (from, to) = c.range();
-            Some(if to.line < last {
+        let last_line = self.lines.len() - 1;
+        let (blocks, block_of) = self.line_blocks(true);
+        let mut index = 0;
+        self.apply(Kind::Other, |s, _| {
+            let i = index;
+            index += 1;
+            // Only the first cursor of a block deletes it
+            if i > 0 && block_of[i] == block_of[i - 1] {
+                return None;
+            }
+            let (first, last) = blocks[block_of[i]];
+            Some(if last < last_line {
+                // The lines and the break after them
                 (
-                    EditPos::new(from.line, 0),
-                    EditPos::new(to.line + 1, 0),
+                    EditPos::new(first, 0),
+                    EditPos::new(last + 1, 0),
                     String::new(),
                 )
-            } else if from.line > 0 {
-                let prev = EditPos::new(from.line - 1, s.line_len(from.line - 1));
-                (
-                    prev,
-                    EditPos::new(to.line, s.line_len(to.line)),
-                    String::new(),
-                )
+            } else if first > 0 {
+                // The last lines and the break before them
+                let prev = EditPos::new(first - 1, s.line_len(first - 1));
+                (prev, EditPos::new(last, s.line_len(last)), String::new())
             } else {
                 (
                     EditPos::new(0, 0),
-                    EditPos::new(to.line, s.line_len(to.line)),
+                    EditPos::new(last, s.line_len(last)),
                     String::new(),
                 )
             })
@@ -632,21 +681,17 @@ impl EditState {
     }
 
     /// Copy every line a cursor or its selection touches below them (lines
-    /// several cursors touch are copied once); the cursors move to the copy
+    /// several cursors touch are copied once); the cursors move to the
+    /// copy. Nothing is copied when the copies would take the text past
+    /// `max_lines`.
     pub fn duplicate_lines(&mut self) -> bool {
         if self.single_line {
             return false;
         }
-        // The blocks of lines to copy, and the block each cursor is in
-        let mut blocks: Vec<(usize, usize)> = Vec::new();
-        let mut block_of = Vec::with_capacity(self.cursors.len());
-        for c in &self.cursors {
-            let (from, to) = c.range();
-            match blocks.last_mut() {
-                Some(last) if from.line <= last.1 => last.1 = last.1.max(to.line),
-                _ => blocks.push((from.line, to.line)),
-            }
-            block_of.push(blocks.len() - 1);
+        let (blocks, block_of) = self.line_blocks(false);
+        let added: usize = blocks.iter().map(|(f, l)| l - f + 1).sum();
+        if self.max_lines > 0 && self.lines.len() + added > self.max_lines {
+            return false;
         }
         let cursors = self.cursors.clone();
         let primary = self.primary;
@@ -714,8 +759,9 @@ impl EditState {
         }
     }
 
-    /// Drop the newlines that would take the text past `max_lines`, from
-    /// the last replacement back
+    /// When the new text would take the text past `max_lines`, drop the
+    /// newlines from every replacement, so each cursor gets the same text
+    /// (on one line) rather than some keeping their breaks
     fn limit_lines(&self, edits: &mut [(Vec<usize>, engine::Mark, engine::Mark, String)]) {
         if self.max_lines == 0 {
             return;
@@ -726,12 +772,9 @@ impl EditState {
                 text.matches('\n').count() as isize - (to.line - from.line) as isize
             })
             .sum();
-        let mut excess = (self.lines.len() as isize + added - self.max_lines as isize).max(0);
-        for (_, _, _, text) in edits.iter_mut().rev() {
-            while excess > 0 {
-                let Some(i) = text.rfind('\n') else { break };
-                text.remove(i);
-                excess -= 1;
+        if self.lines.len() as isize + added > self.max_lines as isize {
+            for (_, _, _, text) in edits.iter_mut() {
+                text.retain(|c| c != '\n');
             }
         }
     }
