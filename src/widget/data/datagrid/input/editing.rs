@@ -175,7 +175,10 @@ impl DataGrid {
     /// Handle a key in edit mode: Escape cancels, Enter commits, and the
     /// other keys are the standard editing keys every single-line field
     /// shares (#985)
-    pub(crate) fn handle_edit_key_event(&mut self, event: &KeyEvent) -> bool {
+    pub(in crate::widget::data::datagrid) fn handle_edit_key_event(
+        &mut self,
+        event: &KeyEvent,
+    ) -> bool {
         // Escape and Enter whatever the modifiers, as before
         match event.key {
             Key::Escape => {
@@ -198,7 +201,9 @@ impl DataGrid {
 
     /// The cell being edited, for drawing: its text, cursor and selection,
     /// and the scroll it was last drawn at
-    pub(crate) fn edit_field(&self) -> (EditField<'_>, &std::cell::Cell<usize>) {
+    pub(in crate::widget::data::datagrid) fn edit_field(
+        &self,
+    ) -> (EditField<'_>, &std::cell::Cell<usize>) {
         let edit = &self.edit_state;
         let field = &edit.field;
         let in_step = field.line(0) == Some(edit.buffer.as_str())

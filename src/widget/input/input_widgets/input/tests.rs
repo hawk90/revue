@@ -286,7 +286,8 @@ fn test_input_paste_utf8() {
 
 #[test]
 fn test_input_undo_redo_insert() {
-    let mut input = Input::new();
+    let now = std::time::Instant::now();
+    let mut input = Input::new().clock(move || now);
 
     // Type "abc" in a burst: one undo step
     input.handle_key(&Key::Char('a'));
@@ -935,6 +936,7 @@ fn test_input_has_selection_returns_true_when_different() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_input_start_selection_does_nothing_until_a_shift_move() {
     let mut input = Input::new().value("hello");
     input.set_cursor_chars(2);
@@ -949,6 +951,7 @@ fn test_input_start_selection_does_nothing_until_a_shift_move() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_input_start_selection_keeps_an_existing_selection() {
     let mut input = Input::new().value("hello");
     input.select_chars(1, 3);
@@ -1350,7 +1353,8 @@ fn test_input_clear_history_can_be_called_multiple_times() {
 #[test]
 fn test_input_undo_redo_cycle() {
     // Typing in a burst is one undo step; a paste is a step of its own
-    let mut input = Input::new();
+    let now = std::time::Instant::now();
+    let mut input = Input::new().clock(move || now);
     input.handle_key(&Key::Char('a'));
     input.handle_key(&Key::Char('b'));
     // (paste_text: the system clipboard is not the test's)

@@ -134,6 +134,9 @@ impl EditCursor {
 }
 
 /// The text a field edits. See the [module docs](self).
+///
+/// `Debug` prints the text: a field that holds a secret keeps it out of its
+/// own `Debug`, as `MaskedInput` does.
 #[derive(Clone)]
 pub struct EditState {
     lines: Vec<String>,

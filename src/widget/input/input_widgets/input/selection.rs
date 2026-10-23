@@ -25,6 +25,10 @@ impl Input {
 
     /// Kept for 3.x: a selection now starts with the first Shift move (or
     /// [`select_all`](Self::select_all)), so this does nothing
+    #[deprecated(
+        since = "3.12.0",
+        note = "does nothing: a selection starts with the first Shift move or select_all"
+    )]
     pub fn start_selection(&mut self) {}
 
     /// Clear selection, keeping the cursor where it is
