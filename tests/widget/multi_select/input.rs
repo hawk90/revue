@@ -474,3 +474,29 @@ fn j_and_k_are_search_text_in_a_searchable_list() {
     }
     assert_eq!(v.query(), "jak");
 }
+
+#[test]
+fn a_ctrl_or_alt_letter_is_left_to_the_app() {
+    // Not typed into the search, and not a list key either
+    let mut v = fruits().searchable(true);
+    v.handle_key(&Key::Enter);
+    assert_eq!(
+        Interactive::handle_key(&mut v, &KeyEvent::ctrl(Key::Char('k'))),
+        EventResult::Ignored
+    );
+    assert_eq!(
+        Interactive::handle_key(&mut v, &KeyEvent::alt(Key::Char('j'))),
+        EventResult::Ignored
+    );
+    assert_eq!(v.query(), "");
+    // Ctrl+Alt is AltGr: a character, typed
+    let altgr = KeyEvent {
+        alt: true,
+        ..KeyEvent::ctrl(Key::Char('@'))
+    };
+    assert_eq!(
+        Interactive::handle_key(&mut v, &altgr),
+        EventResult::ConsumedAndRender
+    );
+    assert_eq!(v.query(), "@");
+}
