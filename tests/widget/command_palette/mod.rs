@@ -726,23 +726,28 @@ fn test_command_palette_handle_key_backspace() {
 }
 
 #[test]
-fn test_command_palette_handle_key_vim_j() {
-    let mut palette =
-        CommandPalette::new().commands(vec![Command::new("a", "A"), Command::new("b", "B")]);
-
+fn test_command_palette_j_and_k_are_typed() {
+    // A command can start with j or k: "kill" and "jump" are queries,
+    // not moves (#889). Arrows move the selection.
+    let mut palette = CommandPalette::new().commands(vec![
+        Command::new("kill", "Kill"),
+        Command::new("jump", "Jump"),
+    ]);
     palette.show();
-    palette.handle_key(&Key::Char('j'));
-
-    assert_eq!(palette.selected_id(), Some("b"));
+    for ch in "kill".chars() {
+        palette.handle_key(&Key::Char(ch));
+    }
+    assert_eq!(palette.get_query(), "kill");
+    assert_eq!(palette.selected_id(), Some("kill"));
 }
 
 #[test]
-fn test_command_palette_handle_key_vim_k() {
+fn test_command_palette_up_wraps_to_the_last() {
     let mut palette =
         CommandPalette::new().commands(vec![Command::new("a", "A"), Command::new("b", "B")]);
 
     palette.show();
-    palette.handle_key(&Key::Char('k'));
+    palette.handle_key(&Key::Up);
 
     assert_eq!(palette.selected_id(), Some("b")); // Wrapped to last
 }
@@ -763,18 +768,16 @@ fn test_command_palette_handle_key_navigation_with_query() {
 }
 
 #[test]
-fn test_command_palette_handle_key_vim_jk_with_empty_query() {
+fn test_command_palette_arrows_move_with_an_empty_query() {
     let mut palette =
         CommandPalette::new().commands(vec![Command::new("a", "A"), Command::new("b", "B")]);
 
     palette.show();
-
-    // j and k should work with empty query
-    palette.handle_key(&Key::Char('j'));
+    palette.handle_key(&Key::Down);
     assert_eq!(palette.selected_id(), Some("b"));
-
-    palette.handle_key(&Key::Char('k'));
+    palette.handle_key(&Key::Up);
     assert_eq!(palette.selected_id(), Some("a"));
+    assert_eq!(palette.get_query(), "");
 }
 
 #[test]
@@ -1447,4 +1450,20 @@ fn test_command_palette_draws_descriptions() {
 
     let hidden = palette_text(&make(false));
     assert!(!hidden.contains("Write to disk"), "{hidden}");
+}
+
+#[test]
+fn a_wide_glyph_that_would_cross_the_title_end_is_not_drawn() {
+    // 10 wide: text from column 2 to 7, padding at 8, border at 9. "a가나다"
+    // fits "a가나" (5 columns); "다" would take 7-8 and is left out (#889)
+    let mut palette = CommandPalette::new().width(10).title("a가나다");
+    palette.show();
+    let mut buffer = Buffer::new(10, 8);
+    palette.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 10, 8)));
+    let y = (0..8)
+        .find(|&y| buffer.get(2, y).unwrap().symbol == 'a')
+        .expect("title row");
+    assert_eq!(buffer.get(5, y).unwrap().symbol, '나');
+    assert_eq!(buffer.get(7, y).unwrap().symbol, ' ');
+    assert!(!buffer.get(8, y).unwrap().is_continuation());
 }
