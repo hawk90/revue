@@ -74,7 +74,7 @@ impl NumberInput {
     /// Get the full display string (with prefix/suffix)
     pub fn display_string(&self) -> String {
         let value_str = if self.editing {
-            self.input_buffer.clone()
+            self.buffer().to_string()
         } else {
             self.format_value()
         };

@@ -1,33 +1,35 @@
 //! Direct entry: the edit buffer and its cursor, and the keys
 
 use super::NumberInput;
-use crate::event::Key;
+use crate::event::{Key, KeyEvent};
+use crate::utils::EditOutcome;
 
 impl NumberInput {
     /// Enter direct editing mode
     pub fn start_editing(&mut self) {
         if !self.editing {
             self.editing = true;
-            self.input_buffer = self.format_value();
-            self.cursor = self.input_buffer.chars().count();
+            self.edit.set_text(self.format_value());
+            let end = self.edit.end();
+            self.edit.set_cursor(end);
         }
     }
 
     /// Commit the edited value and exit editing mode
     pub fn commit_edit(&mut self) {
         if self.editing {
-            if let Ok(value) = self.input_buffer.parse::<f64>() {
+            if let Ok(value) = self.buffer().parse::<f64>() {
                 self.value = self.clamp_value(value);
             }
             self.editing = false;
-            self.input_buffer.clear();
+            self.edit.set_text("");
         }
     }
 
     /// Cancel editing and restore original value
     pub fn cancel_edit(&mut self) {
         self.editing = false;
-        self.input_buffer.clear();
+        self.edit.set_text("");
     }
 
     /// Check if in editing mode
@@ -35,53 +37,34 @@ impl NumberInput {
         self.editing
     }
 
-    fn char_to_byte_index(s: &str, char_idx: usize) -> usize {
-        s.char_indices()
-            .nth(char_idx)
-            .map(|(i, _)| i)
-            .unwrap_or(s.len())
+    /// The text typed in direct editing mode
+    pub(super) fn buffer(&self) -> &str {
+        self.edit.line(0).unwrap_or("")
     }
 
-    fn buffer_char_count(&self) -> usize {
-        self.input_buffer.chars().count()
-    }
-
-    fn insert_char_at_cursor(&mut self, ch: char) {
-        let byte_idx = Self::char_to_byte_index(&self.input_buffer, self.cursor);
-        self.input_buffer.insert(byte_idx, ch);
-        self.cursor += 1;
-    }
-
-    fn delete_char_before_cursor(&mut self) {
-        if self.cursor > 0 {
-            self.cursor -= 1;
-            let byte_idx = Self::char_to_byte_index(&self.input_buffer, self.cursor);
-            // Get char directly from byte index for O(1) instead of O(n²) with .chars().nth()
-            if let Some(ch) = self.input_buffer[byte_idx..].chars().next() {
-                self.input_buffer.drain(byte_idx..byte_idx + ch.len_utf8());
-            }
-        }
-    }
-
-    fn delete_char_at_cursor(&mut self) {
-        let char_count = self.buffer_char_count();
-        if self.cursor < char_count {
-            let byte_idx = Self::char_to_byte_index(&self.input_buffer, self.cursor);
-            // Get char directly from byte index for O(1) instead of O(n²) with .chars().nth()
-            if let Some(ch) = self.input_buffer[byte_idx..].chars().next() {
-                self.input_buffer.drain(byte_idx..byte_idx + ch.len_utf8());
-            }
-        }
-    }
-
-    /// Handle key input, returns true if value changed or needs redraw
+    /// Handle a key without modifiers, as
+    /// [`handle_key_event`](Self::handle_key_event) does
     pub fn handle_key(&mut self, key: &Key) -> bool {
+        self.handle_key_event(&KeyEvent::new(*key))
+    }
+
+    /// Handle a key: the step keys (Up/Down and `k`/`j`, PageUp/PageDown,
+    /// Home/End for the minimum and maximum) commit an edit and step;
+    /// Enter starts or commits an edit and Escape cancels it; a digit, `.`
+    /// or `-` starts an edit or is typed. While editing, the other standard
+    /// editing keys every single-line field shares work too (#985):
+    /// Backspace, Delete, Left, Right, word moves and deletes, Shift
+    /// selection, Ctrl+A, undo and redo. Returns true if the value changed
+    /// or a redraw is needed.
+    pub fn handle_key_event(&mut self, event: &KeyEvent) -> bool {
         if self.state.disabled {
             return false;
         }
+        let plain = !event.ctrl && !event.alt;
 
         // The step keys commit an edit first
-        let step: Option<fn(&mut Self)> = match key {
+        let step: Option<fn(&mut Self)> = match event.key {
+            _ if !plain => None,
             Key::Up | Key::Char('k') => Some(Self::increment),
             Key::Down | Key::Char('j') => Some(Self::decrement),
             Key::PageUp => Some(Self::increment_large),
@@ -98,9 +81,9 @@ impl NumberInput {
             return true;
         }
 
-        match key {
+        match event.key {
             // Enter editing mode or commit
-            Key::Enter => {
+            Key::Enter if plain => {
                 if self.editing {
                     self.commit_edit();
                 } else {
@@ -110,55 +93,46 @@ impl NumberInput {
             }
 
             // Cancel editing
-            Key::Escape if self.editing => {
+            Key::Escape if plain && self.editing => {
                 self.cancel_edit();
                 true
             }
 
             // Direct numeric input
-            Key::Char(c) if c.is_ascii_digit() || *c == '.' || *c == '-' => {
+            Key::Char(c) if plain && (c.is_ascii_digit() || c == '.' || c == '-') => {
                 if !self.editing {
                     self.start_editing();
-                    self.input_buffer.clear();
-                    self.cursor = 0;
+                    self.edit.set_text("");
                 }
-
-                // Validate input
-                let valid = match c {
-                    '-' => self.cursor == 0 && !self.input_buffer.contains('-'),
-                    '.' => !self.input_buffer.contains('.'),
-                    _ => true,
-                };
-
-                if valid {
-                    self.insert_char_at_cursor(*c);
+                if self.accepts(c) {
+                    self.edit.insert(c.encode_utf8(&mut [0; 4]));
                 }
                 true
             }
 
-            // Backspace in editing mode
-            Key::Backspace if self.editing => {
-                self.delete_char_before_cursor();
-                true
-            }
+            // Other characters are not typed
+            Key::Char(_) if plain || (event.ctrl && event.alt) => false,
 
-            // Delete in editing mode
-            Key::Delete if self.editing => {
-                self.delete_char_at_cursor();
-                true
-            }
-
-            // Cursor movement in editing mode
-            Key::Left if self.editing && self.cursor > 0 => {
-                self.cursor -= 1;
-                true
-            }
-            Key::Right if self.editing && self.cursor < self.buffer_char_count() => {
-                self.cursor += 1;
-                true
-            }
-
+            _ if self.editing => self.edit.edit_key(event, 1) != EditOutcome::Unhandled,
             _ => false,
+        }
+    }
+
+    /// Whether `c` may be typed at the cursor, replacing any selection: one
+    /// `-`, at the start, and one `.`
+    fn accepts(&self, c: char) -> bool {
+        let (from, to) = self.edit.primary().range();
+        let (from, to) = (self.edit.char_index(from), self.edit.char_index(to));
+        let rest = self
+            .buffer()
+            .chars()
+            .enumerate()
+            .filter(|&(i, _)| i < from || i >= to)
+            .map(|(_, ch)| ch);
+        match c {
+            '-' => from == 0 && !rest.clone().any(|ch| ch == '-'),
+            '.' => !rest.clone().any(|ch| ch == '.'),
+            _ => true,
         }
     }
 }
