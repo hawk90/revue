@@ -38,9 +38,12 @@ impl View for Toast {
         let overlay_area = crate::layout::Rect::new(abs_x, abs_y, toast_width, toast_height);
         let mut entry = crate::widget::traits::OverlayEntry::new(200, overlay_area); // z=200: above dropdowns
 
-        // Draw border (relative to overlay area)
+        // Draw border (relative to overlay area); a borderless toast is
+        // filled with its background all the same
         if self.show_border {
             push_frame(&mut entry, toast_width, toast_height, color, bg);
+        } else {
+            push_fill(&mut entry, toast_width, toast_height, color, bg);
         }
         self.push_content(&mut entry, toast_width, color, bg);
 
@@ -90,27 +93,74 @@ fn push_frame(
     }
 }
 
+/// The box with no border: every cell on the background
+fn push_fill(
+    entry: &mut OverlayEntry,
+    toast_width: u16,
+    toast_height: u16,
+    color: Color,
+    bg: Color,
+) {
+    for row in 0..toast_height {
+        for col in 0..toast_width {
+            push(entry, col, row, ' ', color, bg);
+        }
+    }
+}
+
 impl Toast {
+    /// The columns left of the content (the border and its padding) and
+    /// right of it (the border, or a 2-cell padding without one)
+    fn insets(&self) -> (u16, u16) {
+        if self.show_border {
+            (2, 2)
+        } else {
+            (0, 2)
+        }
+    }
+
+    /// The icon's columns: the icon and the space after it
+    fn icon_width(&self) -> u16 {
+        if self.show_icon {
+            2
+        } else {
+            0
+        }
+    }
+
+    /// The columns the message gets in a box `width` wide
+    fn text_width(&self, width: u16) -> u16 {
+        let (left, right) = self.insets();
+        width.saturating_sub(left + right + self.icon_width())
+    }
+
+    /// The message's lines in a box `width` wide: the shared word wrap at
+    /// the columns it gets, or one line (the box's) when it gets none
+    fn lines(&self, width: u16) -> Vec<String> {
+        match self.text_width(width) {
+            0 => vec![String::new()],
+            w => {
+                let lines = crate::text::wrap_words(&self.message, w as usize);
+                if lines.is_empty() {
+                    vec![String::new()]
+                } else {
+                    lines
+                }
+            }
+        }
+    }
+
     /// Calculate toast dimensions
     fn calculate_size(&self, max_width: u16) -> (u16, u16) {
-        let icon_width = if self.show_icon { 2 } else { 0 };
-        let border_width = if self.show_border { 2 } else { 0 };
-        let padding = 2; // 1 char padding on each side
-
-        let content_width = crate::utils::unicode::display_width(&self.message) as u16 + icon_width;
-        let total_width = self.width.unwrap_or(content_width + border_width + padding);
-        let width = total_width.min(max_width);
-
-        // Calculate height based on message wrapping
-        let inner_width = width.saturating_sub(border_width + padding + icon_width);
-        let msg_cols = crate::utils::unicode::display_width(&self.message) as u16;
-        let lines = msg_cols
-            .saturating_add(inner_width.saturating_sub(1))
-            .checked_div(inner_width)
-            .unwrap_or(1);
-        let height = lines + if self.show_border { 2 } else { 0 };
-
-        (width, height.max(if self.show_border { 3 } else { 1 }))
+        let (left, right) = self.insets();
+        let natural = crate::utils::unicode::display_width(&self.message) as u16
+            + self.icon_width()
+            + left
+            + right;
+        let width = self.width.unwrap_or(natural).min(max_width);
+        // One row per line the message wraps to, plus the border
+        let height = self.lines(width).len() as u16 + if self.show_border { 2 } else { 0 };
+        (width, height)
     }
 
     /// Calculate toast position
@@ -123,8 +173,12 @@ impl Toast {
     ) -> (u16, u16) {
         let margin = 1u16;
 
+        // The margin at the Left and Top positions goes where the box would
+        // not fit beside it (the other positions saturate at 0)
         let x = match self.position {
-            ToastPosition::TopLeft | ToastPosition::BottomLeft => margin,
+            ToastPosition::TopLeft | ToastPosition::BottomLeft => {
+                margin.min(area_width.saturating_sub(toast_width))
+            }
             ToastPosition::TopCenter | ToastPosition::BottomCenter => {
                 area_width.saturating_sub(toast_width) / 2
             }
@@ -134,7 +188,9 @@ impl Toast {
         };
 
         let y = match self.position {
-            ToastPosition::TopLeft | ToastPosition::TopCenter | ToastPosition::TopRight => margin,
+            ToastPosition::TopLeft | ToastPosition::TopCenter | ToastPosition::TopRight => {
+                margin.min(area_height.saturating_sub(toast_height))
+            }
             ToastPosition::BottomLeft
             | ToastPosition::BottomCenter
             | ToastPosition::BottomRight => area_height.saturating_sub(toast_height + margin),
@@ -143,31 +199,29 @@ impl Toast {
         (x, y)
     }
 
-    /// The icon and the message on the first content row
+    /// The icon on the first content row and the message's lines beside
+    /// it, kept between the insets: an icon or glyph that does not fit
+    /// there is not drawn
     fn push_content(&self, entry: &mut OverlayEntry, toast_width: u16, color: Color, bg: Color) {
-        // Content position (relative)
-        let cx = if self.show_border { 2 } else { 0 };
+        let (left, right) = self.insets();
+        let end = toast_width.saturating_sub(right);
         let cy = if self.show_border { 1 } else { 0 };
 
-        if self.show_icon {
-            push(entry, cx, cy, self.level.icon(), color, bg);
+        if self.show_icon && left < end {
+            push(entry, left, cy, self.level.icon(), color, bg);
         }
 
-        // Message text
-        let msg_x = cx + if self.show_icon { 2 } else { 0 };
-        let max_text = toast_width.saturating_sub(msg_x + if self.show_border { 1 } else { 0 });
-        let truncated = crate::utils::truncate_to_width(&self.message, max_text as usize);
-        let mut tx = msg_x;
-        for ch in truncated.chars() {
-            let cw = crate::utils::char_width(ch) as u16;
-            if tx + cw > msg_x + max_text {
-                break;
+        let msg_x = left + self.icon_width();
+        for (row, line) in self.lines(toast_width).iter().enumerate() {
+            let mut tx = msg_x;
+            for ch in line.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if tx + cw > end {
+                    break;
+                }
+                push(entry, tx, cy + row as u16, ch, Color::WHITE, bg);
+                tx += cw;
             }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::WHITE);
-            cell.bg = Some(bg);
-            entry.push(tx, cy, cell);
-            tx += cw;
         }
     }
 }

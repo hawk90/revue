@@ -406,14 +406,14 @@ fn test_toast_queue_render_toast() {
 
 #[test]
 fn test_toast_queue_render_positions() {
-    // 40 wide, 3 tall, 1 cell margin.
+    // 40 wide, 3 tall, 1 cell margin (the gap only goes between toasts).
     let cases = [
         (ToastPosition::TopLeft, (1, 1)),
         (ToastPosition::TopCenter, (5, 1)),
         (ToastPosition::TopRight, (9, 1)),
-        (ToastPosition::BottomLeft, (1, 15)),
-        (ToastPosition::BottomCenter, (5, 15)),
-        (ToastPosition::BottomRight, (9, 15)),
+        (ToastPosition::BottomLeft, (1, 16)),
+        (ToastPosition::BottomCenter, (5, 16)),
+        (ToastPosition::BottomRight, (9, 16)),
     ];
     for (position, corner) in cases {
         let mut queue = ToastQueue::new().position(position);
