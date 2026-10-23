@@ -130,15 +130,20 @@ impl VisualCapture {
 
         // Text layer: the screen's text, a wide glyph as one character (its
         // continuation cell is not written; reading the file puts it back
-        // from the glyph's width, #1281)
+        // from the glyph's width, #1281). A row with a continuation that no
+        // wide glyph explains (the span of an image or other escape
+        // sequence) is written one character per column, NUL included, so
+        // it reads back unchanged.
         output.push_str("## Text\n");
         for y in 0..self.height {
-            for x in 0..self.width {
-                match self.get(x, y) {
-                    Some(cell) if cell.symbol == '\0' => {}
-                    Some(cell) => output.push(cell.symbol),
-                    None => output.push(' '),
-                }
+            let cells: Vec<char> = (0..self.width)
+                .map(|x| self.get(x, y).map_or(' ', |c| c.symbol))
+                .collect();
+            let text: String = cells.iter().filter(|&&c| c != '\0').collect();
+            if text_columns(&text) == cells {
+                output.push_str(&text);
+            } else {
+                output.extend(cells);
             }
             output.push('\n');
         }
@@ -672,6 +677,22 @@ AB
         let read = VisualCapture::deserialize(content).unwrap();
         let symbols: String = read.cells.iter().map(|c| c.symbol).collect();
         assert_eq!(symbols, "你\0好\0 OK ");
+    }
+
+    #[test]
+    fn a_row_with_a_sequence_span_reads_back_unchanged() {
+        // An escape sequence 3 cells wide at x 1: its other cells are
+        // continuations no wide glyph explains
+        let mut buffer = Buffer::new(6, 2);
+        buffer.put_str(0, 0, "abcdef");
+        buffer.put_sequence(1, 0, "\x1b_Gx\x1b\\", 3, 1);
+        buffer.put_str(0, 1, "你好");
+        let capture = VisualCapture::from_buffer(&buffer, false, false);
+        let file = capture.serialize();
+        let read = VisualCapture::deserialize(&file).unwrap();
+        assert_eq!(read.cells, capture.cells, "{file:?}");
+        // The row without one is still written as text
+        assert!(file.contains("\n你好  \n"), "{file:?}");
     }
 
     #[test]
