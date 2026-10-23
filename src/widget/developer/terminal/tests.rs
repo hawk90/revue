@@ -60,8 +60,9 @@ fn test_terminal_ansi_colors() {
     assert_eq!(text(&term, 0), "Red Normal");
     let cells = &term.lines[0].cells;
     assert!(cells[..3].iter().all(|c| c.fg == Color::RED));
-    assert!(cells[3..].iter().all(|c| c.fg == Color::WHITE));
-    assert_eq!(term.parser.fg(), Color::WHITE);
+    // After the reset the cells take the terminal's default color
+    assert!(cells[3..].iter().all(|c| c.fg == Color::default()));
+    assert_eq!(term.parser.sgr().fg, None);
 }
 
 #[test]
@@ -191,10 +192,6 @@ fn test_terminal_presets() {
     let shell = Terminal::shell(80, 24);
     assert_eq!(shell.default_fg, Some(SECONDARY_TEXT));
     assert_eq!(shell.default_bg, Some(EDITOR_BG));
-    assert_eq!(
-        (shell.parser.fg(), shell.parser.bg()),
-        (SECONDARY_TEXT, EDITOR_BG)
-    );
     assert_eq!(shell.cursor_style, CursorStyle::Block);
     assert!(shell.show_cursor);
 
@@ -236,14 +233,15 @@ fn a_tab_at_the_right_edge_ends() {
     assert!(terminal.cursor_col < 16);
 }
 
-/// Spaces a pending escape sequence swallows do not move the cursor.
+/// A tab inside an escape sequence acts, and the sequence goes on: the
+/// spaces are not read as its intermediate bytes
 #[test]
-fn a_tab_inside_an_escape_sequence_ends() {
+fn a_tab_inside_an_escape_sequence_acts_and_the_sequence_goes_on() {
     let mut terminal = Terminal::new(16, 4);
-    terminal.write("\x1b[\t\tX");
-    // The first space ends the sequence; seven more reach column 7, the
-    // second tab goes on to 8
+    terminal.write("\x1b[\t31mX");
+    // The tab puts 8 spaces; `31m` ends the sequence and X is red
     assert_eq!(text(&terminal, 0), "        X");
+    assert_eq!(terminal.lines[0].cells[8].fg, Color::RED);
     assert_eq!((terminal.cursor_row, terminal.cursor_col), (0, 9));
 }
 

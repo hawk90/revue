@@ -56,8 +56,12 @@ pub fn mirror_char(c: char) -> char {
 }
 
 /// Reverse a string while preserving grapheme clusters
+///
+/// Each user-perceived character (extended grapheme cluster) keeps its code
+/// points in order: a base with its combining marks, decomposed Hangul, an
+/// emoji ZWJ sequence or a flag stays whole.
 pub fn reverse_graphemes(text: &str) -> String {
-    // Simple character-based reversal
-    // For proper grapheme handling, use unicode-segmentation crate
-    text.chars().rev().collect()
+    use unicode_segmentation::UnicodeSegmentation;
+
+    text.graphemes(true).rev().collect()
 }

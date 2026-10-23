@@ -39,7 +39,7 @@ impl View for Terminal {
 
         // The rows in view: as many as the area has (#973)
         self.scroll.set_viewport(area.height as usize);
-        self.draw_lines(ctx, area, default_fg);
+        self.draw_lines(ctx, area, default_fg, default_bg);
 
         // Render cursor if visible and focused
         if self.show_cursor && self.focused {
@@ -60,7 +60,13 @@ impl View for Terminal {
 
 impl Terminal {
     /// The lines `visible_range` picks, one per row from the top
-    fn draw_lines(&self, ctx: &mut RenderContext, area: Rect, default_fg: Color) {
+    fn draw_lines(
+        &self,
+        ctx: &mut RenderContext,
+        area: Rect,
+        default_fg: Color,
+        default_bg: Color,
+    ) {
         // Get visible lines
         let visible = self.visible_range();
         let mut render_y = 0u16;
@@ -81,20 +87,22 @@ impl Terminal {
                         continue;
                     }
 
-                    // Two cells read as "no ANSI code spoke for this": one
-                    // the parser never touched, which is `Color::default()` -
-                    // the same sentinel the cascade uses for unspecified - and
-                    // one reset by code 39, which asks for the *default*
-                    // foreground by name. Both are what `default_fg` is for,
-                    // so both go through it. A cell the content actually
-                    // colored keeps that color, the reading a syntax
-                    // highlighter's tokens get.
-                    let fg = if cell.fg.is_default() || cell.fg == Color::WHITE {
+                    // `Color::default()` is a color no ANSI code set (never
+                    // set, or reset by 0, 39 or 49): the terminal's default.
+                    // Any other color, white and black included, is the
+                    // content's own, the reading a syntax highlighter's
+                    // tokens get.
+                    let fg = if cell.fg.is_default() {
                         default_fg
                     } else {
                         cell.fg
                     };
-                    let mut render_cell = Cell::new(cell.ch).fg(fg).bg(cell.bg);
+                    let bg = if cell.bg.is_default() {
+                        default_bg
+                    } else {
+                        cell.bg
+                    };
+                    let mut render_cell = Cell::new(cell.ch).fg(fg).bg(bg);
                     render_cell.modifier = cell.modifiers;
                     ctx.set(col as u16, render_y, render_cell);
                 }

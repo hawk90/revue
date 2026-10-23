@@ -20,14 +20,6 @@ impl CommandPalette {
                 self.execute();
                 true
             }
-            Key::Up | Key::Char('k') if self.query.is_empty() => {
-                self.select_prev();
-                true
-            }
-            Key::Down | Key::Char('j') if self.query.is_empty() => {
-                self.select_next();
-                true
-            }
             Key::Up => {
                 self.select_prev();
                 true
