@@ -23,7 +23,8 @@ impl CommandPalette {
         let mut dx: u16 = 0;
         for ch in title.chars() {
             let cw = char_width(ch) as u16;
-            if title_x + dx >= layout.text_end {
+            // A glyph that would cross the border is not drawn
+            if title_x + dx + cw > layout.text_end {
                 break;
             }
             let mut cell = Cell::new(ch);
@@ -65,7 +66,7 @@ impl CommandPalette {
         let mut dx: u16 = 0;
         for ch in display_text.chars() {
             let cw = char_width(ch) as u16;
-            if input_x + dx >= text_end {
+            if input_x + dx + cw > text_end {
                 break;
             }
             let mut cell = Cell::new(ch);
