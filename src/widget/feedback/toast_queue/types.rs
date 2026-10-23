@@ -14,16 +14,22 @@ pub enum StackDirection {
 }
 
 /// Priority level for toasts (higher = more important)
+///
+/// Priority only orders the pending queue: a toast waits behind the
+/// pending ones of its priority or higher and goes ahead of the lower
+/// ones, then shows when `max_visible` leaves a slot. It does not push out
+/// a visible toast, and it does not change what can be dismissed: that is
+/// [`ToastEntry::dismissible`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ToastPriority {
-    /// Low priority (can be suppressed)
+    /// Low priority: waits behind every other pending toast
     Low = 0,
     /// Normal priority
     #[default]
     Normal = 1,
-    /// High priority (shows immediately)
+    /// High priority: waits only behind pending High and Critical toasts
     High = 2,
-    /// Critical priority (cannot be dismissed)
+    /// Critical priority: waits only behind pending Critical toasts
     Critical = 3,
 }
 
