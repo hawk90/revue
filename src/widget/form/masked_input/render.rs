@@ -5,7 +5,7 @@ use crate::style::Color;
 use crate::utils::char_width;
 use crate::widget::stack::{hstack, vstack, Stack};
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
-use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
+use crate::widget::traits::render_context::edit_line::{visible_from, EditField, FieldCell};
 use crate::widget::Text;
 use crate::widget::{RenderContext, View};
 
@@ -25,6 +25,9 @@ impl MaskedInput {
         // and does not give the length away.
         let mut field = EditField::of(&self.state, placeholder, editing);
         field.text = &masked;
+        // A zero-width char takes no cell: the cursor on one is drawn on
+        // the next glyph
+        field.cursor = field.cursor.map(|c| visible_from(&masked, c));
         let scroll = field.scroll(self.scroll_x.get(), width);
         self.scroll_x.set(scroll);
 

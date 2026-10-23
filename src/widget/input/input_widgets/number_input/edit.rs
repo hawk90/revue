@@ -83,7 +83,7 @@ impl NumberInput {
 
         match event.key {
             // Enter editing mode or commit
-            Key::Enter if plain => {
+            Key::Enter => {
                 if self.editing {
                     self.commit_edit();
                 } else {
@@ -93,7 +93,7 @@ impl NumberInput {
             }
 
             // Cancel editing
-            Key::Escape if plain && self.editing => {
+            Key::Escape if self.editing => {
                 self.cancel_edit();
                 true
             }

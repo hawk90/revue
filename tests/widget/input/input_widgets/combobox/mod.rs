@@ -704,11 +704,40 @@ fn test_combobox_wide_text_never_covers_the_arrow() {
 }
 
 #[test]
-fn test_combobox_cursor_sits_on_the_placeholder() {
+fn test_combobox_cursor_sits_on_the_placeholder_while_focused() {
+    use revue::dom::NodeState;
+    use revue::style::Style;
     let cb = Combobox::new().placeholder("Pick");
+    // Unfocused: the placeholder alone
     let buffer = render(&cb, 10, 5);
     assert_eq!(row(&buffer, 0), " Pick   ▼ ");
+    assert!(cursor_cells(&buffer).is_empty());
+    // Focused: the cursor on its first letter
+    let mut buffer = Buffer::new(10, 5);
+    let style = Style::default();
+    let state = NodeState {
+        focused: true,
+        ..Default::default()
+    };
+    cb.render(&mut RenderContext::full(
+        &mut buffer,
+        Rect::new(0, 0, 10, 5),
+        &style,
+        &state,
+    ));
+    assert_eq!(row(&buffer, 0), " Pick   ▼ ");
     assert_eq!(cursor_cells(&buffer), vec![1]);
+}
+
+#[test]
+fn test_combobox_cursor_on_a_zero_width_char_is_drawn_on_the_next() {
+    let mut cb = Combobox::new().value("a\u{200B}b");
+    cb.move_to_start();
+    cb.move_right();
+    // On the zero-width space: drawn on "b", which follows it
+    let buffer = render(&cb, 10, 1);
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, 'b');
+    assert_eq!(cursor_cells(&buffer), vec![2]);
 }
 
 #[test]

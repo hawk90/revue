@@ -64,7 +64,8 @@ impl Combobox {
     /// dropdown. Returns whether the key was the combobox's, a cursor move
     /// included.
     pub fn handle_key_event(&mut self, event: &KeyEvent) -> bool {
-        if !event.ctrl && !event.alt && self.dropdown_key(event.key) {
+        // The dropdown's keys whatever the modifiers, as before
+        if self.dropdown_key(event.key) {
             return true;
         }
         match self.state.edit_key(event, 1) {

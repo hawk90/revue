@@ -66,6 +66,16 @@ pub(crate) fn scroll_to_cursor(
     }
 }
 
+/// The first char at or after `idx` that takes a cell (the char count when
+/// none does): where a cursor at `idx` is drawn
+pub(crate) fn visible_from(text: &str, idx: usize) -> usize {
+    text.chars()
+        .enumerate()
+        .skip(idx)
+        .find(|&(_, c)| char_width(c) > 0)
+        .map_or(text.chars().count(), |(i, _)| i)
+}
+
 /// What a cell of a one-line edit field shows, for styling it
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum FieldCell {
@@ -152,8 +162,11 @@ impl super::RenderContext<'_> {
             (field.text, scroll)
         };
         let selected = |i: usize| field.selection.is_some_and(|(a, b)| a <= i && i < b);
+        // A zero-width char takes no cell, so a cursor on one is drawn on
+        // the next glyph that has one
+        let cursor = field.cursor.map(|c| visible_from(text, c));
         self.put_edit_line(x, y, text, scroll, width, |i, ch| {
-            let kind = if field.cursor == Some(i) {
+            let kind = if cursor == Some(i) {
                 FieldCell::Cursor
             } else if placeholder {
                 FieldCell::Placeholder
@@ -165,7 +178,7 @@ impl super::RenderContext<'_> {
             style(kind, ch)
         });
         let len = field.text.chars().count();
-        if !placeholder && field.cursor.is_some_and(|c| c >= len) {
+        if !placeholder && cursor.is_some_and(|c| c >= len) {
             let col = col_of(field.text, usize::MAX).saturating_sub(scroll);
             if col < width as usize {
                 self.set(

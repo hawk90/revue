@@ -441,14 +441,17 @@ fn test_masked_input_long_value_scrolls_to_the_cursor() {
 
 #[test]
 fn test_masked_input_hidden_cursor_does_not_show_the_length() {
-    let input = MaskedInput::new()
-        .mask_style(MaskStyle::Hidden)
-        .value("secret")
-        .width(10)
-        .focused(true);
-    let buffer = screen(&input, 20, 1);
-    assert_eq!(row(&buffer, 0), "[          ]");
-    assert_eq!(cursor_cells(&buffer, 0), vec![1]);
+    // The same screen whatever the length, the cursor at the start
+    for value in ["", "s", "secret", "a much longer secret than the field"] {
+        let input = MaskedInput::new()
+            .mask_style(MaskStyle::Hidden)
+            .value(value)
+            .width(10)
+            .focused(true);
+        let buffer = screen(&input, 20, 1);
+        assert_eq!(row(&buffer, 0), "[          ]", "{value:?}");
+        assert_eq!(cursor_cells(&buffer, 0), vec![1], "{value:?}");
+    }
 }
 
 #[test]

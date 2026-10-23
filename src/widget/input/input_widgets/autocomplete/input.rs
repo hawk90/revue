@@ -12,7 +12,8 @@ impl Autocomplete {
     /// again. Returns whether the key was the field's, a cursor move
     /// included.
     pub fn handle_key(&mut self, key: KeyEvent) -> bool {
-        if !key.ctrl && !key.alt && self.dropdown_visible {
+        // The suggestions' keys whatever the modifiers, as before
+        if self.dropdown_visible {
             match key.key {
                 Key::Up => {
                     self.selection.up();

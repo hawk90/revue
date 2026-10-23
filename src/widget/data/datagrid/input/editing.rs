@@ -176,13 +176,13 @@ impl DataGrid {
     /// other keys are the standard editing keys every single-line field
     /// shares (#985)
     pub(crate) fn handle_edit_key_event(&mut self, event: &KeyEvent) -> bool {
-        let plain = !event.ctrl && !event.alt;
+        // Escape and Enter whatever the modifiers, as before
         match event.key {
-            Key::Escape if plain => {
+            Key::Escape => {
                 self.cancel_edit();
                 true
             }
-            Key::Enter if plain => {
+            Key::Enter => {
                 self.commit_edit();
                 true
             }

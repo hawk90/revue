@@ -249,3 +249,19 @@ fn test_cell_edit_reads_back_a_written_buffer_and_cursor() {
     grid.handle_key(&Key::Enter);
     assert_eq!(grid.rows[0].get("name"), Some("Bxob"));
 }
+
+#[test]
+fn test_cell_edit_enter_and_escape_take_any_modifier() {
+    use revue::event::KeyEvent;
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("name", "Name").editable(true))
+        .row(GridRow::new().cell("name", "Alice"));
+    grid.start_edit();
+    // Some terminals send Escape with Alt
+    assert!(grid.handle_key_event(&KeyEvent::alt(Key::Escape)));
+    assert!(!grid.is_editing());
+    grid.start_edit();
+    grid.handle_key(&Key::Char('!'));
+    assert!(grid.handle_key_event(&KeyEvent::ctrl(Key::Enter)));
+    assert_eq!(grid.rows[0].get("name"), Some("Alice!"));
+}
