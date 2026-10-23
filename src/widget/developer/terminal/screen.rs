@@ -12,35 +12,31 @@ impl Terminal {
         }
     }
 
-    /// Write a single character
+    /// Write a single character. It goes through the ANSI scanner first, so
+    /// a newline, carriage return or tab inside an OSC or DCS string is part
+    /// of the string and does nothing; elsewhere (inside a control sequence
+    /// too) it acts, as in a terminal.
     pub(super) fn write_char(&mut self, ch: char) {
-        if ch == '\n' {
-            self.newline();
+        let Some(cell) = self.parser.parse(ch) else {
             return;
-        }
-        if ch == '\r' {
-            self.cursor_col = 0;
-            return;
-        }
-        if ch == '\t' {
-            // Tab to the next 8-column boundary, or to the right edge, in
-            // spaces of the colors in effect. They are put as cells, not
-            // read as text: a tab inside an escape sequence acts and the
-            // sequence goes on, as in a terminal. Count the spaces up
-            // front: the cursor wraps to column 0 when a space fills the
-            // last column.
-            let next_tab = ((self.cursor_col / 8) + 1) * 8;
-            let spaces = next_tab
-                .min(self.width as usize)
-                .saturating_sub(self.cursor_col);
-            for _ in 0..spaces {
-                self.put_cell(self.parser.cell(' '));
+        };
+        match cell.ch {
+            '\n' => self.newline(),
+            '\r' => self.cursor_col = 0,
+            '\t' => {
+                // Tab to the next 8-column boundary, or to the right edge,
+                // in spaces of the colors in effect. Count the spaces up
+                // front: the cursor wraps to column 0 when a space fills the
+                // last column.
+                let next_tab = ((self.cursor_col / 8) + 1) * 8;
+                let spaces = next_tab
+                    .min(self.width as usize)
+                    .saturating_sub(self.cursor_col);
+                for _ in 0..spaces {
+                    self.put_cell(self.parser.cell(' '));
+                }
             }
-            return;
-        }
-
-        if let Some(cell) = self.parser.parse(ch) {
-            self.put_cell(cell);
+            _ => self.put_cell(cell),
         }
     }
 

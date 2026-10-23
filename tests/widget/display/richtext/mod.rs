@@ -1534,3 +1534,25 @@ fn backgrounds_and_hex_colors() {
         (Modifier::empty(), Some(Color::RED), None)
     );
 }
+
+// Found by review
+
+#[test]
+fn a_word_given_twice_in_a_tag_is_closed_once() {
+    let buffer = draw(&RichText::markup("[bold bold]x[/bold]y"), 3);
+    assert_eq!(buffer.get(1, 0).unwrap().modifier, Modifier::empty());
+}
+
+#[test]
+fn transparent_is_not_a_markup_color() {
+    // There is no see-through text: the brackets are shown as they are
+    let buffer = draw(&RichText::markup("[transparent]a"), 16);
+    assert_eq!(row(&buffer, 0, 16), "[transparent]a");
+}
+
+#[test]
+fn link_is_read_in_any_case() {
+    let buffer = draw(&RichText::markup("[LINK=https://x.example]a[/LINK]b"), 3);
+    assert!(buffer.get(0, 0).unwrap().hyperlink_id.is_some());
+    assert!(buffer.get(1, 0).unwrap().hyperlink_id.is_none());
+}
