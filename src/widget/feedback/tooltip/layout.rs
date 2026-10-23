@@ -1,52 +1,35 @@
 //! Wrapping the text, sizing the box, and placing it next to the anchor
 
 use super::{Tooltip, TooltipArrow, TooltipPosition};
+use crate::text::wrap_words;
 use crate::utils::unicode::display_width;
 
 impl Tooltip {
     /// Word wrap text
-    pub(super) fn wrap_text(&self) -> Vec<String> {
+    pub(super) fn wrap_text(&self, area_width: u16) -> Vec<String> {
         let max_width = if self.max_width > 0 {
             self.max_width as usize
         } else {
             40
         };
-
-        let mut lines = Vec::new();
-        // Widths are terminal columns, the unit the box is sized in.
-        for line in self.text.lines() {
-            if display_width(line) <= max_width {
-                lines.push(line.to_string());
-            } else {
-                // Simple word wrap
-                let mut current_line = String::new();
-                for word in line.split_whitespace() {
-                    if current_line.is_empty() {
-                        current_line = word.to_string();
-                    } else if display_width(&current_line) + 1 + display_width(word) <= max_width {
-                        current_line.push(' ');
-                        current_line.push_str(word);
-                    } else {
-                        lines.push(current_line);
-                        current_line = word.to_string();
-                    }
-                }
-                if !current_line.is_empty() {
-                    lines.push(current_line);
-                }
-            }
-        }
-
-        if lines.is_empty() {
-            lines.push(String::new());
-        }
-
-        lines
+        // No wider than the area leaves inside the padding and border, so
+        // the box keeps its right edge in a narrow area
+        let chrome = if self.style.border_chars().is_some() {
+            4
+        } else {
+            2
+        };
+        let width = max_width
+            .min((area_width as usize).saturating_sub(chrome))
+            .max(1);
+        // Widths are terminal columns, the unit the box is sized in; a word
+        // wider than the line is broken by columns
+        wrap_words(&self.text, width)
     }
 
     /// Calculate tooltip dimensions
-    pub(super) fn calculate_dimensions(&self) -> (u16, u16) {
-        let lines = self.wrap_text();
+    pub(super) fn calculate_dimensions(&self, area_width: u16) -> (u16, u16) {
+        let lines = self.wrap_text(area_width);
         let has_border = self.style.border_chars().is_some();
         let has_title = self.title.is_some();
 
@@ -58,7 +41,13 @@ impl Tooltip {
             .unwrap_or(0);
         let text_width = content_width.max(title_width);
 
-        let width = text_width + if has_border { 4 } else { 2 }; // padding + border
+        // Padding and border
+        let chrome = if has_border { 4 } else { 2 };
+        // No wider than the area, but wide enough for the widest line (at
+        // least one column) even where the area is not: a wide glyph alone
+        // on its line needs 2 (the box is cut at the area's edge); a title
+        // wider than the box is cut at its edge
+        let width = (text_width + chrome).min(area_width.max(content_width.max(1) + chrome));
         let height = lines.len() as u16
             + if has_border { 2 } else { 0 }
             + if has_title && has_border { 1 } else { 0 };
@@ -147,7 +136,7 @@ impl Tooltip {
         area_width: u16,
         area_height: u16,
     ) -> (u16, u16, TooltipPosition) {
-        let (tooltip_w, tooltip_h) = self.calculate_dimensions();
+        let (tooltip_w, tooltip_h) = self.calculate_dimensions(area_width);
         let position = self.resolve_position(area_width, area_height, tooltip_w, tooltip_h);
         let (x, y) = self.place(position, tooltip_w, tooltip_h);
 

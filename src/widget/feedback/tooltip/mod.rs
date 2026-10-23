@@ -91,7 +91,7 @@ mod tests {
     #[test]
     fn test_tooltip_wrap_text() {
         let t = Tooltip::new("This is a very long text that should be wrapped").max_width(20);
-        let lines = t.wrap_text();
+        let lines = t.wrap_text(80);
         assert!(lines.len() > 1);
         assert!(lines.iter().all(|l| l.len() <= 20));
     }
@@ -99,7 +99,7 @@ mod tests {
     #[test]
     fn test_tooltip_calculate_dimensions() {
         let t = Tooltip::new("Short").style(TooltipStyle::Bordered);
-        let (w, h) = t.calculate_dimensions();
+        let (w, h) = t.calculate_dimensions(80);
         assert!(w > 5);
         assert!(h >= 3); // At least border + 1 line
     }
@@ -110,7 +110,7 @@ mod tests {
             .title("Title")
             .style(TooltipStyle::Bordered);
 
-        let (_, h) = t.calculate_dimensions();
+        let (_, h) = t.calculate_dimensions(80);
         assert!(h >= 4); // border + title + content
     }
 
