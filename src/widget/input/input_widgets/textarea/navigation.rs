@@ -141,23 +141,19 @@ impl TextArea {
     /// with it, keeping its screen row and column. When the view is already
     /// at the top, the cursor moves to the first line instead.
     ///
-    /// With wrapping on, rows are screen rows. The view starts at a line, so
-    /// a line that only partly fits above is left for the next page rather
-    /// than cut (the view then scrolls a little less than a page), and a line
-    /// taller than the page scrolls by that one line.
+    /// With wrapping on, rows are screen rows, and the view can start
+    /// partway down a wrapped line, so a line taller than the page pages
+    /// through it too.
     pub fn page_up(&mut self, page_size: usize) {
         self.page(page_size, false);
     }
 
     /// Page down: scroll the view down `page_size` rows and move the cursor
     /// down with it, keeping its screen row and column. The view stops with
-    /// the last line on its bottom row; once there, the cursor moves to the
-    /// last line instead.
+    /// the last row of the text on its bottom row; once there, the cursor
+    /// moves to the last line instead.
     ///
-    /// With wrapping on, rows are screen rows. The view starts at a line, so
-    /// a line across the bottom edge becomes the new top line rather than
-    /// having its hidden rows skipped (the view then scrolls a little less
-    /// than a page), and a line taller than the page scrolls by that one line.
+    /// With wrapping on, rows are screen rows, as for [`page_up`](Self::page_up).
     pub fn page_down(&mut self, page_size: usize) {
         self.page(page_size, true);
     }
@@ -166,19 +162,25 @@ impl TextArea {
         let page = page_size.max(1);
         let width = self.last_text_width.get();
         let pos = self.cursors.primary().pos;
-        // Settle the view on the cursor first, as render would. A page
-        // moves the view by lines, so it starts at the top of its line.
-        let (top, top_row) = self.scroll_to_cursor_row(width, page);
+        // Settle the view on the cursor first, as render would.
+        let top = self.scroll_to_cursor_row(width, page);
+        let mut rows = RowCounts::new(self, width);
+        let (k, x) = self.place(pos, width);
+        // The cursor's screen row, kept across the scroll
+        let row = rows.between(top, (pos.line, k), page).min(page - 1);
         let new_top = if down {
-            self.page_down_top(top, width, page)
+            // The furthest the view goes: the last row on the bottom row
+            let end = rows.end();
+            let max_top = rows.back(end, page - 1);
+            (top < max_top).then(|| rows.forward(top, page).min(max_top))
         } else {
-            self.page_up_top(top, width, page)
+            (top > (0, 0)).then(|| rows.back(top, page))
         };
 
         let Some(new_top) = new_top else {
             // The view cannot scroll further: go to the first or last line.
-            self.scroll.set(top);
-            self.scroll_row.set(top_row);
+            self.scroll.set(top.0);
+            self.scroll_row.set(top.1);
             let line = if down {
                 self.lines.len().saturating_sub(1)
             } else {
@@ -190,101 +192,29 @@ impl TextArea {
             return;
         };
 
-        // The cursor's screen row and its column within that row, kept
-        // across the scroll.
-        let (seg_idx, (seg_start, _)) = self.cursor_segment(width);
-        let line_text = self.lines.get(pos.line).map_or("", String::as_str);
-        let seg_text: String = line_text.chars().skip(seg_start).collect();
-        let x = col_of(&seg_text, pos.col.saturating_sub(seg_start));
-        let rows_above: usize = (top..pos.line)
-            .map(|l| self.line_rows(l, width).len())
-            .sum::<usize>()
-            .saturating_sub(top_row);
-        let row = (rows_above + seg_idx).min(page - 1);
-
-        self.scroll.set(new_top);
-        self.scroll_row.set(0);
-        let (line, col) = self.pos_at_row(new_top, row, width, x);
+        self.scroll.set(new_top.0);
+        self.scroll_row.set(new_top.1);
+        let (line, row) = rows.forward(new_top, row);
+        let col = self.col_at(line, row, width, x);
         self.set_primary_cursor(line, col);
         self.update_selection();
     }
 
-    /// The first line of the view a page below one starting at `top`: the
-    /// line holding the first row below the view, at least one line on, and
-    /// no further than the top that puts the last line on the bottom row.
-    /// `None` when the view is already there.
-    fn page_down_top(&self, top: usize, width: u16, page: usize) -> Option<usize> {
-        let last = self.lines.len().saturating_sub(1);
-        let mut max_top = last;
-        let mut rows = self.line_rows(last, width).len();
-        while max_top > 0 {
-            let above = self.line_rows(max_top - 1, width).len();
-            if rows + above > page {
-                break;
-            }
-            rows += above;
-            max_top -= 1;
+    /// The char index `x` columns into visual row `row` of `line`. Only a
+    /// line's last row holds the position at the row's end: elsewhere that
+    /// position is drawn at the start of the next row.
+    fn col_at(&self, line: usize, row: usize, width: u16, x: usize) -> usize {
+        let segments = self.line_rows(line, width);
+        let k = row.min(segments.len() - 1);
+        let (start, end) = segments[k];
+        let text = self.lines.get(line).map_or("", String::as_str);
+        let seg: String = text.chars().skip(start).take(end - start).collect();
+        let col = start + char_at_col(&seg, x);
+        if k + 1 < segments.len() && col >= end {
+            end.saturating_sub(1).max(start)
+        } else {
+            col
         }
-        if top >= max_top {
-            return None;
-        }
-
-        let mut next = top;
-        let mut rows = 0;
-        while next < last {
-            let here = self.line_rows(next, width).len();
-            if rows + here > page {
-                break;
-            }
-            rows += here;
-            next += 1;
-        }
-        Some(next.max(top + 1).min(max_top))
-    }
-
-    /// The first line of the view a page above one starting at `top`: the
-    /// furthest line up whose rows down to `top` fit in a page, at least one
-    /// line up. `None` at the top.
-    fn page_up_top(&self, top: usize, width: u16, page: usize) -> Option<usize> {
-        if top == 0 {
-            return None;
-        }
-        let mut prev = top;
-        let mut rows = 0;
-        while prev > 0 {
-            let above = self.line_rows(prev - 1, width).len();
-            if rows + above > page {
-                break;
-            }
-            rows += above;
-            prev -= 1;
-        }
-        Some(prev.min(top - 1))
-    }
-
-    /// The position on screen row `row` of a view starting at line `top`,
-    /// `x` columns into that row (the last row when `row` is past the text).
-    fn pos_at_row(&self, top: usize, row: usize, width: u16, x: usize) -> (usize, usize) {
-        let last = self.lines.len().saturating_sub(1);
-        let mut remaining = row;
-        for line in top..=last {
-            let segments = self.line_rows(line, width);
-            if remaining < segments.len() || line == last {
-                let k = remaining.min(segments.len() - 1);
-                let (start, end) = segments[k];
-                let text = self.lines.get(line).map_or("", String::as_str);
-                let seg: String = text.chars().skip(start).take(end - start).collect();
-                let mut col = start + char_at_col(&seg, x);
-                // Only a line's last row holds the cursor at the row's end:
-                // elsewhere that spot is drawn at the start of the next row.
-                if k + 1 < segments.len() && col >= end {
-                    col = end.saturating_sub(1).max(start);
-                }
-                return (line, col);
-            }
-            remaining -= segments.len();
-        }
-        (last, 0)
     }
 
     /// The char index on `line` under the screen column of `pos`, so moving
@@ -309,5 +239,6 @@ impl TextArea {
     }
 }
 
+use super::layout::RowCounts;
 use super::TextArea;
 use crate::widget::traits::render_context::edit_line::{char_at_col, col_of};

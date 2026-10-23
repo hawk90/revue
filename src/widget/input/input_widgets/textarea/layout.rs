@@ -8,9 +8,10 @@ use super::{CursorPos, TextArea};
 /// Split a logical line into visual segments `[start, end)` (character indices) that each
 /// fit within `width` display columns. Prefers breaking at word boundaries (after a space)
 /// and lets one space hang past the end of a full row, rather than start the next row with
-/// it; further spaces go to the next row, so nothing else lies past the width (#1008).
-/// Falls back to a hard break when a single word is longer than the width. Always makes
-/// forward progress, so it terminates even for zero-width characters or `width == 0`.
+/// it; further spaces go to the next row. The caller wraps one column short of the view,
+/// so the hanging space sits in the last column, visible (#1008). Falls back to a hard
+/// break when a single word is longer than the width. Always makes forward progress, so it
+/// terminates even for zero-width characters or `width == 0`.
 fn wrap_segments(chars: &[char], width: u16) -> Vec<(usize, usize)> {
     if chars.is_empty() {
         return vec![(0, 0)];
@@ -73,14 +74,18 @@ impl TextArea {
     }
 
     /// Visual rows logical line `idx` takes: one, or one per wrapped segment.
-    /// When wrapping, a line whose last row fills the width gets one more,
-    /// empty row, where the cursor past its end is drawn (as Helix does, so
-    /// the cursor never disappears, #1008).
+    ///
+    /// When wrapping, text takes one column less than the view: the last
+    /// column holds a space hanging past a full row and the cursor at the
+    /// end of a full row, so every position has a cell of its own (as nano
+    /// does when it wraps at blanks, #1008). A line whose last row reaches
+    /// the last column anyway (it ends in a hanging space) gets one more,
+    /// empty row for the cursor past its end.
     pub(super) fn line_rows(&self, idx: usize, text_width: u16) -> Vec<(usize, usize)> {
         let line = self.lines.get(idx).map_or("", String::as_str);
         if self.wrap && text_width > 0 {
             let chars: Vec<char> = line.chars().collect();
-            let mut rows = wrap_segments(&chars, text_width);
+            let mut rows = wrap_segments(&chars, text_width.saturating_sub(1).max(1));
             let &(start, end) = rows.last().expect("one row at least");
             let last: String = chars[start..end].iter().collect();
             if end > start && col_of(&last, usize::MAX) >= text_width as usize {
@@ -93,26 +98,13 @@ impl TextArea {
     }
 
     /// Where `pos` is drawn on its line: the row index and the column within
-    /// that row. A position at a wrap point, or on a space hanging past a
-    /// full row, is drawn at the start of the next row.
+    /// that row. A position at a wrap point is drawn at the start of the
+    /// next row.
     pub(super) fn place(&self, pos: CursorPos, text_width: u16) -> (usize, usize) {
         let line = pos.line.min(self.lines.len().saturating_sub(1));
-        let text = self.lines.get(line).map_or("", String::as_str);
         let rows = self.line_rows(line, text_width);
-        let mut k = rows
-            .iter()
-            .position(|&(_, end)| pos.col < end)
-            .unwrap_or(rows.len() - 1);
-        let x = |k: usize| {
-            let (start, end) = rows[k];
-            let seg: String = text.chars().skip(start).take(end - start).collect();
-            col_of(&seg, pos.col.saturating_sub(start))
-        };
-        if self.wrap && k + 1 < rows.len() && x(k) >= text_width as usize {
-            k += 1;
-            return (k, 0);
-        }
-        (k, x(k))
+        let text = self.lines.get(line).map_or("", String::as_str);
+        place_in(&rows, text, pos.col, text_width, self.wrap)
     }
 
     /// The first visible line and row within it that keep the primary
@@ -126,72 +118,23 @@ impl TextArea {
         visible_lines: usize,
     ) -> (usize, usize) {
         let pos = self.cursors.primary().pos;
-        let cursor = (
-            pos.line.min(self.lines.len().saturating_sub(1)),
-            self.place(pos, text_width).0,
-        );
+        let mut rows = RowCounts::new(self, text_width);
+        let line = pos.line.min(self.lines.len().saturating_sub(1));
+        let cursor = (line, self.place(pos, text_width).0);
         let visible = visible_lines.max(1);
-        let top = (self.scroll.get(), self.scroll_row.get());
+        let top_line = self.scroll.get().min(self.lines.len().saturating_sub(1));
         let top = (
-            top.0,
-            top.1.min(
-                self.line_rows(top.0.min(self.lines.len().saturating_sub(1)), text_width)
-                    .len()
-                    - 1,
-            ),
+            top_line,
+            self.scroll_row.get().min(rows.count(top_line) - 1),
         );
         if cursor < top {
             return cursor;
         }
-        // The rows from the top down to the cursor's row
-        let mut rows = 0;
-        let mut at = top;
-        while at < cursor && rows < visible {
-            at = self.next_row(at, text_width);
-            rows += 1;
-        }
-        if rows < visible {
+        if rows.between(top, cursor, visible) < visible {
             return top;
         }
         // Too far down: the cursor's row goes on the bottom row
-        let mut at = cursor;
-        for _ in 1..visible {
-            match self.prev_row(at, text_width) {
-                Some(prev) => at = prev,
-                None => break,
-            }
-        }
-        at
-    }
-
-    /// The visual row after `(line, row)`
-    fn next_row(&self, (line, row): (usize, usize), text_width: u16) -> (usize, usize) {
-        if row + 1 < self.line_rows(line, text_width).len() {
-            (line, row + 1)
-        } else {
-            (line + 1, 0)
-        }
-    }
-
-    /// The visual row before `(line, row)`, if any
-    fn prev_row(&self, (line, row): (usize, usize), text_width: u16) -> Option<(usize, usize)> {
-        if row > 0 {
-            Some((line, row - 1))
-        } else if line > 0 {
-            Some((line - 1, self.line_rows(line - 1, text_width).len() - 1))
-        } else {
-            None
-        }
-    }
-
-    /// The primary cursor's wrapped segment: its index within the cursor's
-    /// line and its `[start, end)` chars, as [`place`](Self::place) draws it.
-    pub(super) fn cursor_segment(&self, text_width: u16) -> (usize, (usize, usize)) {
-        let pos = self.cursors.primary().pos;
-        let cursor_line = pos.line.min(self.lines.len().saturating_sub(1));
-        let segments = self.line_rows(cursor_line, text_width);
-        let idx = self.place(pos, text_width).0;
-        (idx, segments[idx])
+        rows.back(cursor, visible - 1)
     }
 
     /// Build the list of visual rows to render, starting from the vertical scroll offset.
@@ -244,6 +187,112 @@ impl TextArea {
                 text_width as usize,
             )
         }
+    }
+}
+
+/// Where char `col` is drawn among a line's `rows`: the row index and the
+/// column within that row. A position at a wrap point is drawn at the start
+/// of the next row; one at or past the view's width (the end of a row that
+/// reaches the last column) at the start of the row after it.
+pub(super) fn place_in(
+    rows: &[(usize, usize)],
+    text: &str,
+    col: usize,
+    text_width: u16,
+    wrap: bool,
+) -> (usize, usize) {
+    let mut k = rows
+        .iter()
+        .position(|&(_, end)| col < end)
+        .unwrap_or(rows.len() - 1);
+    let x = |k: usize| {
+        let (start, end) = rows[k];
+        let seg: String = text.chars().skip(start).take(end - start).collect();
+        col_of(&seg, col.saturating_sub(start))
+    };
+    if wrap && k + 1 < rows.len() && x(k) >= text_width as usize {
+        k += 1;
+        return (k, 0);
+    }
+    (k, x(k))
+}
+
+/// Visual rows counted per line once, for walking the view row by row
+pub(super) struct RowCounts<'a> {
+    area: &'a TextArea,
+    width: u16,
+    counts: std::collections::HashMap<usize, usize>,
+}
+
+impl<'a> RowCounts<'a> {
+    pub(super) fn new(area: &'a TextArea, width: u16) -> Self {
+        Self {
+            area,
+            width,
+            counts: std::collections::HashMap::new(),
+        }
+    }
+
+    /// The rows line `line` takes
+    pub(super) fn count(&mut self, line: usize) -> usize {
+        let (area, width) = (self.area, self.width);
+        *self
+            .counts
+            .entry(line)
+            .or_insert_with(|| area.line_rows(line, width).len())
+    }
+
+    /// The last row of the text
+    pub(super) fn end(&mut self) -> (usize, usize) {
+        let last = self.area.lines.len().saturating_sub(1);
+        (last, self.count(last) - 1)
+    }
+
+    /// `n` rows after `at`, stopping at the last row
+    pub(super) fn forward(
+        &mut self,
+        (mut line, mut row): (usize, usize),
+        n: usize,
+    ) -> (usize, usize) {
+        let end = self.end();
+        for _ in 0..n {
+            if (line, row) >= end {
+                break;
+            }
+            if row + 1 < self.count(line) {
+                row += 1;
+            } else {
+                line += 1;
+                row = 0;
+            }
+        }
+        (line, row)
+    }
+
+    /// `n` rows before `at`, stopping at the first row
+    pub(super) fn back(&mut self, (mut line, mut row): (usize, usize), n: usize) -> (usize, usize) {
+        for _ in 0..n {
+            if row > 0 {
+                row -= 1;
+            } else if line > 0 {
+                line -= 1;
+                row = self.count(line) - 1;
+            } else {
+                break;
+            }
+        }
+        (line, row)
+    }
+
+    /// Rows from `a` down to `b`, counted up to `limit`
+    pub(super) fn between(&mut self, a: (usize, usize), b: (usize, usize), limit: usize) -> usize {
+        let mut at = a;
+        let mut n = 0;
+        while at < b && n < limit {
+            at = self.forward(at, 1);
+            n += 1;
+        }
+        n
     }
 }
 

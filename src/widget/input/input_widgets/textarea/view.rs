@@ -8,6 +8,7 @@ use crate::widget::syntax::HighlightSpan;
 use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View};
 
+use super::layout::place_in;
 use super::TextArea;
 
 impl TextArea {
@@ -168,6 +169,8 @@ impl View for TextArea {
 
         // Render visible visual rows (a logical line may span multiple rows when wrapping).
         let rows = self.visual_rows(text_width, visible_lines);
+        let mut placed_line = None;
+        let mut placed: Vec<(usize, usize, usize)> = Vec::new();
         for (view_row, &(line_idx, seg_start, seg_end, row)) in rows.iter().enumerate() {
             let is_first = row == 0;
             let y = view_row as u16;
@@ -189,20 +192,32 @@ impl View for TextArea {
             });
 
             // Cursors the text cells do not show: past the line's end (on
-            // its last row, or the extra row of a full one), and one moved
-            // here from a space hanging past the row above (drawn over this
-            // row's first char)
+            // its last row, or the extra row of one ending in a hanging
+            // space). The line's rows are wrapped once per line, not per
+            // row and cursor.
             if self.focused {
-                for cursor in self.cursors.iter().filter(|c| c.pos.line == line_idx) {
-                    let (k, x) = self.place(cursor.pos, text_width);
-                    if k != row || (seg_start..seg_end).contains(&cursor.pos.col) {
+                if placed_line != Some(line_idx) {
+                    placed_line = Some(line_idx);
+                    let rows = self.line_rows(line_idx, text_width);
+                    placed = self
+                        .cursors
+                        .iter()
+                        .filter(|c| c.pos.line == line_idx)
+                        .map(|c| {
+                            let (k, x) = place_in(&rows, line, c.pos.col, text_width, self.wrap);
+                            (c.pos.col, k, x)
+                        })
+                        .collect();
+                }
+                for &(col, k, x) in &placed {
+                    if k != row || (seg_start..seg_end).contains(&col) {
                         continue;
                     }
                     let Some(x) = x.checked_sub(scroll_x) else {
                         continue;
                     };
                     if x < text_width as usize {
-                        let under = if cursor.pos.col < seg_start {
+                        let under = if col < seg_start {
                             seg.chars().next()
                         } else {
                             None

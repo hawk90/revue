@@ -214,7 +214,8 @@ fn page_keys_use_a_default_page_before_the_first_render() {
     assert_eq!(ta.cursor_position(), (0, 0));
 }
 
-/// Wrapped at width 5, a 4-row view shows these rows:
+/// Wrapped at text width 5 (a 6-column view: wrapped text leaves the last
+/// column, #1008), a 4-row view shows these rows:
 /// `aaaaa aaaa b c | ddddd dddd e f | g h i j`. (The wrapped lines stop
 /// short of the width: a line that fills it takes one more row, #1008.)
 fn wrapped() -> TextArea {
@@ -230,16 +231,16 @@ fn wrapped_lines_page_by_screen_rows() {
     let mut ta = wrapped();
     // Cursor on screen row 1: the second row of line 0, two columns in.
     ta.set_cursor(0, 7);
-    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaa", "b", "c"]);
+    assert_eq!(rows(&ta, 6, 4), ["aaaaa", "aaaa", "b", "c"]);
 
     press(&mut ta, Key::PageDown, 1);
-    assert_eq!(rows(&ta, 5, 4), ["ddddd", "dddd", "e", "f"]);
+    assert_eq!(rows(&ta, 6, 4), ["ddddd", "dddd", "e", "f"]);
     assert_eq!(ta.cursor_position(), (3, 7));
 
     // The last page: the view scrolls 4 rows and the cursor stays on row 1,
     // its column clamped to the one-char line.
     press(&mut ta, Key::PageDown, 1);
-    assert_eq!(rows(&ta, 5, 4), ["g", "h", "i", "j"]);
+    assert_eq!(rows(&ta, 6, 4), ["g", "h", "i", "j"]);
     assert_eq!(ta.cursor_position(), (7, 1));
 
     press(&mut ta, Key::PageDown, 1);
@@ -247,11 +248,11 @@ fn wrapped_lines_page_by_screen_rows() {
 
     // PageUp mirrors it: the cursor on row 3 stays on row 3.
     press(&mut ta, Key::PageUp, 1);
-    assert_eq!(rows(&ta, 5, 4), ["ddddd", "dddd", "e", "f"]);
+    assert_eq!(rows(&ta, 6, 4), ["ddddd", "dddd", "e", "f"]);
     assert_eq!(ta.cursor_position(), (5, 1));
 
     press(&mut ta, Key::PageUp, 1);
-    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaa", "b", "c"]);
+    assert_eq!(rows(&ta, 6, 4), ["aaaaa", "aaaa", "b", "c"]);
     assert_eq!(ta.cursor_position(), (2, 1));
 
     press(&mut ta, Key::PageUp, 1);
@@ -259,22 +260,23 @@ fn wrapped_lines_page_by_screen_rows() {
 }
 
 #[test]
-fn a_wrapped_line_across_the_bottom_edge_is_not_skipped() {
-    // Line 2 takes rows 3 and 4, so only its first row shows; PageDown
-    // brings it to the top instead of skipping its second row.
+fn a_page_moves_by_exactly_a_page_of_rows() {
+    // Line 2 takes rows 3 and 4, so only its first row shows. PageDown
+    // moves the view four rows: its second row is the new top row, nothing
+    // skipped and nothing repeated. The cursor keeps its screen row.
     let mut ta = TextArea::new()
         .content("aaaaaaaaa\nb\ncccccdddd\ne\nf\ng\nh")
         .line_numbers(false)
         .wrap(true)
         .focused(true);
-    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaa", "b", "ccccc"]);
+    assert_eq!(rows(&ta, 6, 4), ["aaaaa", "aaaa", "b", "ccccc"]);
 
     press(&mut ta, Key::PageDown, 1);
-    assert_eq!(rows(&ta, 5, 4), ["ccccc", "dddd", "e", "f"]);
-    assert_eq!(ta.cursor_position(), (2, 0));
+    assert_eq!(rows(&ta, 6, 4), ["dddd", "e", "f", "g"]);
+    assert_eq!(ta.cursor_position(), (2, 5));
 
     press(&mut ta, Key::PageUp, 1);
-    assert_eq!(rows(&ta, 5, 4), ["aaaaa", "aaaa", "b", "ccccc"]);
+    assert_eq!(rows(&ta, 6, 4), ["aaaaa", "aaaa", "b", "ccccc"]);
     assert_eq!(ta.cursor_position(), (0, 0));
 }
 
@@ -286,11 +288,11 @@ fn a_wrapped_line_taller_than_the_view_still_pages() {
         .line_numbers(false)
         .wrap(true)
         .focused(true);
-    rows(&ta, 5, 4);
+    rows(&ta, 6, 4);
     for _ in 0..4 {
         press(&mut ta, Key::PageDown, 1);
         let (line, _) = ta.cursor_position();
-        let shown = rows(&ta, 5, 4);
+        let shown = rows(&ta, 6, 4);
         let text = ["a", "bbbbb", "c", "d"][line];
         assert!(shown.contains(&text.to_string()), "{line}: {shown:?}");
     }
@@ -305,19 +307,19 @@ fn enter_on_the_last_visible_row_scrolls_to_the_new_line() {
         .wrap(false)
         .focused(true);
     ta.set_cursor(2, 1);
-    assert_eq!(rows(&ta, 5, 3), ["a", "b", "c"]);
+    assert_eq!(rows(&ta, 6, 3), ["a", "b", "c"]);
 
     ta.handle_key(&Key::Enter);
     ta.handle_key(&Key::Char('d'));
     assert_eq!(ta.cursor_position(), (3, 1));
-    assert_eq!(rows(&ta, 5, 3), ["b", "c", "d"]);
+    assert_eq!(rows(&ta, 6, 3), ["b", "c", "d"]);
 }
 
 #[test]
 fn jumping_to_the_last_line_shows_it() {
     let mut ta = numbered();
     ta.set_cursor(19, 0);
-    assert_eq!(rows(&ta, 5, 3), ["l17", "l18", "l19"]);
+    assert_eq!(rows(&ta, 6, 3), ["l17", "l18", "l19"]);
 }
 
 #[test]
@@ -328,12 +330,12 @@ fn wrapped_lines_count_every_visual_row() {
         .line_numbers(false)
         .wrap(true)
         .focused(true);
-    assert_eq!(rows(&ta, 5, 3), ["aaaaa", "aaaa", "b"]);
+    assert_eq!(rows(&ta, 6, 3), ["aaaaa", "aaaa", "b"]);
 
     // The view scrolls by rows, as little as it can: line 2 goes on the
     // bottom row, below the second row of line 0 (#1008)
     ta.set_cursor(2, 0);
-    assert_eq!(rows(&ta, 5, 3), ["aaaa", "b", "c"]);
+    assert_eq!(rows(&ta, 6, 3), ["aaaa", "b", "c"]);
 }
 
 #[test]
@@ -345,7 +347,7 @@ fn a_cursor_on_a_later_wrapped_row_of_its_line_is_shown() {
         .wrap(true)
         .focused(true);
     ta.set_cursor(2, 7);
-    assert_eq!(rows(&ta, 5, 3), ["b", "ccccc", "ddddd"]);
+    assert_eq!(rows(&ta, 6, 3), ["b", "ccccc", "ddddd"]);
 }
 
 // The cursor is always drawn (#1008)
@@ -368,53 +370,85 @@ fn wrapped_at(content: &str) -> TextArea {
 }
 
 #[test]
-fn a_cursor_past_a_full_row_is_drawn_on_one_more_row() {
-    // "abcdefg" fills a 7-column row: the end of the line is a row of its
-    // own, as in Helix, and the next line moves down to make room
-    for content in ["abcdefg", "abcdefg\nx", "한한aaa"] {
+fn a_cursor_past_a_full_row_is_drawn_in_the_last_column() {
+    // A 7-column view wraps text at 6: the last column holds the cursor at
+    // the end of a full row, as nano reserves it (#1008)
+    for content in ["abcdef", "abcdef\nx", "한한aa"] {
         let mut ta = wrapped_at(content);
         let len = content.lines().next().unwrap().chars().count();
         ta.set_cursor(0, len);
-        assert_eq!(cursor_cells(&ta, 7, 3), [(0, 1)], "{content:?}");
-        let shown = rows(&ta, 7, 3);
-        assert_eq!(shown[1], "", "{content:?}");
+        assert_eq!(cursor_cells(&ta, 7, 3), [(6, 0)], "{content:?}");
     }
-    let ta = wrapped_at("abcdefg\nx");
-    assert_eq!(rows(&ta, 7, 3), ["abcdefg", "", "x"]);
-    // A row short of the width keeps the cursor on it
-    let mut ta = wrapped_at("abcdef");
-    ta.set_cursor(0, 6);
-    assert_eq!(cursor_cells(&ta, 7, 3), [(6, 0)]);
+    let ta = wrapped_at("abcdef\nx");
+    assert_eq!(rows(&ta, 7, 3), ["abcdef", "x", ""]);
+    // A seventh char goes to the next row
+    let mut ta = wrapped_at("abcdefg");
+    ta.set_cursor(0, 7);
+    assert_eq!(rows(&ta, 7, 3), ["abcdef", "g", ""]);
+    assert_eq!(cursor_cells(&ta, 7, 3), [(1, 1)]);
 }
 
 #[test]
 fn a_cursor_deep_in_a_line_taller_than_the_view_is_shown() {
-    // Line 1 wraps into five rows of a 5x3 view: the view starts partway
-    // down it to show the cursor's row
+    // Line 1 wraps into five rows of a 6x3 view (text width 5): the view
+    // starts partway down it to show the cursor's row
     let mut ta = wrapped_at("a\nbbbbbcccccdddddeeeeefffff\nz");
-    for (col, row_text) in [(2, "bbbbb"), (12, "ddddd"), (22, "fffff")] {
+    for (col, row_text) in [(2, "bbbbb"), (12, "ddddd"), (22, "fffff"), (25, "fffff")] {
         ta.set_cursor(1, col);
-        let shown = rows(&ta, 5, 3);
-        let cells = cursor_cells(&ta, 5, 3);
+        let shown = rows(&ta, 6, 3);
+        let cells = cursor_cells(&ta, 6, 3);
         assert_eq!(cells.len(), 1, "col {col}: {shown:?}");
         let (x, y) = cells[0];
         assert_eq!(shown[y as usize], row_text, "col {col}");
-        assert_eq!(x as usize, col % 5, "col {col}");
+        let want = if col == 25 { 5 } else { col % 5 };
+        assert_eq!(x as usize, want, "col {col}");
     }
 }
 
 #[test]
-fn a_cursor_on_spaces_past_the_width_is_shown() {
-    // One space hangs past a full row; the cursor on it, and on the spaces
-    // after it, is drawn on the row below
+fn every_cursor_on_spaces_past_a_full_row_has_its_own_cell() {
+    // Text width 5: one space hangs in the last column, the others start
+    // the next row; each position is drawn in a cell of its own
     let mut ta = wrapped_at("abcde   \nz");
-    for col in 5..=8 {
+    assert_eq!(rows(&ta, 6, 4), ["abcde", "", "z", ""]);
+    for (col, cell) in [(5, (5, 0)), (6, (0, 1)), (7, (1, 1)), (8, (2, 1))] {
         ta.set_cursor(0, col);
-        let cells = cursor_cells(&ta, 6, 4);
-        assert_eq!(cells.len(), 1, "col {col}: {:?}", rows(&ta, 6, 4));
+        assert_eq!(cursor_cells(&ta, 6, 4), [cell], "col {col}");
     }
-    ta.set_cursor(0, 5);
-    assert_eq!(cursor_cells(&ta, 6, 4), [(5, 0)]);
-    ta.set_cursor(0, 6);
-    assert_eq!(cursor_cells(&ta, 6, 4), [(0, 1)]);
+}
+
+#[test]
+fn a_page_moves_by_rows_through_a_line_taller_than_the_view() {
+    // One line of 25 chars is five rows of a 6x3 view (text width 5).
+    // PageDown moves the view three rows, stopping with the last row at
+    // the bottom; PageUp moves it back. It used to page by lines and could
+    // not move inside the one line.
+    let mut ta = wrapped_at("bbbbbcccccdddddeeeeefffff");
+    ta.set_cursor(0, 2);
+    assert_eq!(rows(&ta, 6, 3), ["bbbbb", "ccccc", "ddddd"]);
+    press(&mut ta, Key::PageDown, 1);
+    assert_eq!(rows(&ta, 6, 3), ["ddddd", "eeeee", "fffff"]);
+    assert_eq!(ta.cursor_position(), (0, 12));
+    press(&mut ta, Key::PageUp, 1);
+    assert_eq!(rows(&ta, 6, 3), ["bbbbb", "ccccc", "ddddd"]);
+    assert_eq!(ta.cursor_position(), (0, 2));
+}
+
+#[test]
+fn page_down_keeps_the_cursors_row_when_the_view_starts_partway_down_a_line() {
+    // Found by review: the cursor's screen row was counted from the top of
+    // its line, not from the view's first row
+    let mut ta = wrapped_at(&format!("{}\nb\nc\nd\ne", "a".repeat(48)));
+    // Line 0 is ten rows of text width 5. The cursor goes to its ninth row
+    // (the view's bottom row), then to its eighth: the middle row of a view
+    // that starts on the line's seventh row
+    ta.set_cursor(0, 42);
+    rows(&ta, 6, 3);
+    ta.set_cursor(0, 37);
+    let before = cursor_cells(&ta, 6, 3)[0].1;
+    assert_eq!(before, 1);
+    press(&mut ta, Key::PageDown, 1);
+    let after = cursor_cells(&ta, 6, 3);
+    assert_eq!(after.len(), 1);
+    assert_eq!(after[0].1, before, "{:?}", rows(&ta, 6, 3));
 }
