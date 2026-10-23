@@ -7,6 +7,7 @@ use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
+use revue::text::wrap_words;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{Popover, PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger};
 
@@ -59,49 +60,33 @@ fn title() -> impl Strategy<Value = Option<String>> {
     ]
 }
 
-/// The lines the content should wrap to: a line that fits stays as it is,
-/// a longer one is filled word by word
-fn model_lines(content: &str, max_width: u16) -> Vec<String> {
+/// The columns a line gets: the max width (0 means 40), but no more than
+/// the area leaves inside the border and padding, and at least 1
+fn model_wrap_width(max_width: u16, area_width: u16) -> usize {
     let max = if max_width == 0 {
         40
     } else {
         max_width as usize
     };
-    let mut lines = Vec::new();
-    for line in content.lines() {
-        if line.len() <= max {
-            lines.push(line.to_string());
-            continue;
-        }
-        let mut current = String::new();
-        for word in line.split_whitespace() {
-            if current.is_empty() {
-                current = word.to_string();
-            } else if current.len() + 1 + word.len() <= max {
-                current = format!("{current} {word}");
-            } else {
-                lines.push(std::mem::replace(&mut current, word.to_string()));
-            }
-        }
-        if !current.is_empty() {
-            lines.push(current);
-        }
-    }
-    if lines.is_empty() {
-        lines.push(String::new());
-    }
-    lines
+    max.min((area_width as usize).saturating_sub(4)).max(1)
+}
+
+/// The lines the content wraps to: the shared word wrap (checked in
+/// `tests/text`) at the model's width
+fn model_lines(content: &str, wrap_width: usize) -> Vec<String> {
+    wrap_words(content, wrap_width)
 }
 
 /// The box size: the widest line or the title plus 2, plus border and
-/// padding; one row per line, the border and the title row; at least 10 x 3
-fn model_size(lines: &[String], title: Option<&str>, bordered: bool) -> (u16, u16) {
-    let text = lines.iter().map(|l| l.len()).max().unwrap_or(0);
-    let text = text.max(title.map_or(0, |t| t.len() + 2)) as u16;
-    let w = text + if bordered { 4 } else { 2 };
-    let h =
-        lines.len() as u16 + if bordered { 2 } else { 0 } + u16::from(title.is_some() && bordered);
-    (w.max(10), h.max(3))
+/// padding, at least 10 but no wider than the area (unless the widest
+/// line, at least one column, does not fit); one row per line, the border and the title row,
+/// at least 3
+fn model_size(lines: &[String], title: Option<&str>, area_width: u16) -> (u16, u16) {
+    let widest = lines.iter().map(|l| l.len()).max().unwrap_or(0) as u16;
+    let text = widest.max(title.map_or(0, |t| t.len() as u16 + 2));
+    let w = (text + 4).max(10).min(area_width.max(widest.max(1) + 4));
+    let h = lines.len() as u16 + 2 + u16::from(title.is_some());
+    (w, h.max(3))
 }
 
 /// The side the box takes: the requested one, or for Auto the first of
@@ -215,12 +200,19 @@ proptest! {
         style in prop::sample::select(BORDERED.to_vec()),
         arrow in prop::sample::select(vec![PopoverArrow::None, PopoverArrow::Simple, PopoverArrow::Unicode]),
         side in prop::sample::select(SIDES.to_vec()),
-        (extra_w, extra_h) in (0u16..40, 0u16..20),
+        (area_w, extra_h) in (5u16..60, 0u16..20),
         (fx, fy) in (0.0f64..1.0, 0.0f64..1.0),
     ) {
-        let lines = model_lines(&text, max_width);
-        let size = model_size(&lines, title.as_deref(), true);
-        let area = (size.0 + extra_w, size.1 + extra_h);
+        let wrap_width = model_wrap_width(max_width, area_w);
+        let lines = model_lines(&text, wrap_width);
+        for line in &lines {
+            // A word wider than the line is broken by columns
+            prop_assert!(line.len() <= wrap_width, "{:?} wider than {}", line, wrap_width);
+        }
+        let kept: String = lines.concat().split_whitespace().collect();
+        prop_assert_eq!(kept, text.split_whitespace().collect::<String>());
+        let size = model_size(&lines, title.as_deref(), area_w);
+        let area = (area_w, size.1 + extra_h);
         let anchor = ((fx * area.0 as f64) as u16, (fy * area.1 as f64) as u16);
         let mut p = Popover::new(text.clone())
             .max_width(max_width)
@@ -248,8 +240,10 @@ proptest! {
         prop_assert!(x + w <= area.0 && y + h <= area.1);
         let first = y + 1 + u16::from(title.is_some());
         if let Some(t) = &title {
-            let shown: String = (x + 2..x + 2 + t.len() as u16).map(|cx| symbol(&b, cx, y + 1)).collect();
-            prop_assert_eq!(&shown, t);
+            // A title wider than the box is cut at its padding
+            let room = (w - 4) as usize;
+            let shown: String = (x + 2..x + w - 2).map(|cx| symbol(&b, cx, y + 1)).collect();
+            prop_assert_eq!(shown.trim_end(), t[..t.len().min(room)].trim_end());
         }
         for (i, line) in lines.iter().enumerate() {
             let shown: String = (x + 2..x + w - 2).map(|cx| symbol(&b, cx, first + i as u16)).collect();

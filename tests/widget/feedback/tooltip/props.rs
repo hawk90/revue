@@ -5,6 +5,7 @@
 use proptest::prelude::*;
 use revue::layout::Rect;
 use revue::render::Buffer;
+use revue::text::wrap_words;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{OverlayQueue, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle};
 
@@ -82,47 +83,37 @@ fn title() -> impl Strategy<Value = Option<String>> {
     ]
 }
 
-/// The lines the text should wrap to: a line that fits stays as it is, a
-/// longer one is filled word by word (a word is never broken); max width
-/// 0 means 40
-fn model_lines(text: &str, max_width: u16) -> Vec<String> {
+/// The columns a line gets: the max width (0 means 40), but no more than
+/// the area leaves inside the padding and border, and at least 1
+fn model_wrap_width(max_width: u16, area_width: u16, bordered: bool) -> usize {
     let max = if max_width == 0 {
         40
     } else {
         max_width as usize
     };
-    let mut lines = Vec::new();
-    for line in text.lines() {
-        if width(line) <= max {
-            lines.push(line.to_string());
-            continue;
-        }
-        let mut current = String::new();
-        for word in line.split_whitespace() {
-            if current.is_empty() {
-                current = word.to_string();
-            } else if width(&current) + 1 + width(word) <= max {
-                current = format!("{current} {word}");
-            } else {
-                lines.push(std::mem::replace(&mut current, word.to_string()));
-            }
-        }
-        if !current.is_empty() {
-            lines.push(current);
-        }
-    }
-    if lines.is_empty() {
-        lines.push(String::new());
-    }
-    lines
+    let chrome = if bordered { 4 } else { 2 };
+    max.min((area_width as usize).saturating_sub(chrome)).max(1)
+}
+
+/// The lines the text wraps to: the shared word wrap (checked in
+/// `tests/text`) at the model's width
+fn model_lines(text: &str, wrap_width: usize) -> Vec<String> {
+    wrap_words(text, wrap_width)
 }
 
 /// The box size: the widest line, or the title plus 2, plus padding (and
-/// border); one row per line, plus the border and the title row
-fn model_size(lines: &[String], title: Option<&str>, bordered: bool) -> (u16, u16) {
-    let text = lines.iter().map(|l| width(l)).max().unwrap_or(0);
-    let text = text.max(title.map_or(0, |t| width(t) + 2)) as u16;
-    let w = text + if bordered { 4 } else { 2 };
+/// border), no wider than the area unless the widest line (at least one
+/// column) does not fit; one row per line, plus the border and the title row
+fn model_size(
+    lines: &[String],
+    title: Option<&str>,
+    bordered: bool,
+    area_width: u16,
+) -> (u16, u16) {
+    let widest = lines.iter().map(|l| width(l)).max().unwrap_or(0) as u16;
+    let text = widest.max(title.map_or(0, |t| width(t) as u16 + 2));
+    let chrome = if bordered { 4 } else { 2 };
+    let w = (text + chrome).min(area_width.max(widest.max(1) + chrome));
     let h =
         lines.len() as u16 + if bordered { 2 } else { 0 } + u16::from(title.is_some() && bordered);
     (w, h)
@@ -234,9 +225,21 @@ impl Case {
         u16::from(self.arrow != TooltipArrow::None)
     }
 
+    fn wrap_width(&self) -> usize {
+        model_wrap_width(self.max_width, self.area.0, self.bordered())
+    }
+
+    fn lines(&self) -> Vec<String> {
+        model_lines(&self.text, self.wrap_width())
+    }
+
     fn size(&self) -> (u16, u16) {
-        let lines = model_lines(&self.text, self.max_width);
-        model_size(&lines, self.title.as_deref(), self.bordered())
+        model_size(
+            &self.lines(),
+            self.title.as_deref(),
+            self.bordered(),
+            self.area.0,
+        )
     }
 
     fn side_taken(&self) -> TooltipPosition {
@@ -341,7 +344,7 @@ proptest! {
             let corner = buffer.get(x + w - 1, y + h - 1).unwrap().symbol;
             prop_assert!(matches!(corner, '┘' | '╯'), "corner {:?}", corner);
         }
-        let lines = model_lines(&c.text, c.max_width);
+        let lines = c.lines();
         let first = lines[0].chars().find(|ch| !ch.is_whitespace());
         let lead = lines[0].chars().take_while(|ch| ch.is_whitespace()).count() as u16;
         let tx = x + if c.bordered() { 2 } else { 1 } + lead;
@@ -351,6 +354,22 @@ proptest! {
                 prop_assert_eq!(buffer.get(tx, ty).unwrap().symbol, first);
             }
         }
+    }
+
+    /// Every line fits the width the box gives it (a single glyph wider
+    /// than that has to go somewhere), and every word is kept, in order
+    #[test]
+    fn prop_lines_fit_and_keep_every_word(c in case()) {
+        let lines = c.lines();
+        for line in &lines {
+            prop_assert!(
+                width(line) <= c.wrap_width() || line.chars().count() == 1,
+                "{:?} wider than {}", line, c.wrap_width()
+            );
+        }
+        let kept: String = lines.concat().split_whitespace().collect();
+        let text: String = c.text.split_whitespace().collect();
+        prop_assert_eq!(kept, text);
     }
 
     /// With room on the side the box takes, the anchor's cell stays free
