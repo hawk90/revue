@@ -10,10 +10,7 @@ use crate::emulator::{difference, emulate};
 
 /// Widgets whose screen does not read back yet, each with its issue. The
 /// list may only shrink: a listed widget that reads back fails the test.
-const KNOWN: &[(&str, &str)] = &[
-    // Its tree labels are drawn one cell per char (#1285)
-    ("DevToolsInspector", "#1285"),
-];
+const KNOWN: &[(&str, &str)] = &[];
 
 #[test]
 fn every_widget_reads_back_through_a_terminal_emulator() {
