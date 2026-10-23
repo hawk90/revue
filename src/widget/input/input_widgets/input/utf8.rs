@@ -1,10 +1,7 @@
 //! Character indices for the public methods, over the edit state's
 //! grapheme columns
 
-use unicode_segmentation::UnicodeSegmentation;
-
 use super::Input;
-#[cfg(test)]
 use crate::utils::EditPos;
 
 impl Input {
@@ -15,25 +12,7 @@ impl Input {
 
     /// The character index where column `col` starts
     pub(super) fn char_of(&self, col: usize) -> usize {
-        self.line()
-            .graphemes(true)
-            .take(col)
-            .map(|g| g.chars().count())
-            .sum()
-    }
-
-    /// The column of character index `index`; inside a cluster it rounds
-    /// up to the cluster's end
-    #[cfg(test)]
-    pub(super) fn col_of_char(&self, index: usize) -> usize {
-        let line = self.line();
-        let byte = line
-            .char_indices()
-            .nth(index)
-            .map_or(line.len(), |(i, _)| i);
-        line.grapheme_indices(true)
-            .take_while(|&(i, _)| i < byte)
-            .count()
+        self.state.char_index(EditPos::new(0, col))
     }
 
     /// The text between two character indices
@@ -50,14 +29,17 @@ impl Input {
     /// The cursor at character index `index` (test setup)
     #[cfg(test)]
     pub(super) fn set_cursor_chars(&mut self, index: usize) {
-        let col = self.col_of_char(index);
-        self.state.set_cursor(EditPos::new(0, col));
+        let pos = self.state.pos_at_char(0, index);
+        self.state.set_cursor(pos);
     }
 
     /// A selection from `anchor` to `head`, character indices (test setup)
     #[cfg(test)]
     pub(super) fn select_chars(&mut self, anchor: usize, head: usize) {
-        let (a, h) = (self.col_of_char(anchor), self.col_of_char(head));
-        self.state.select(EditPos::new(0, a), EditPos::new(0, h));
+        let (a, h) = (
+            self.state.pos_at_char(0, anchor),
+            self.state.pos_at_char(0, head),
+        );
+        self.state.select(a, h);
     }
 }
