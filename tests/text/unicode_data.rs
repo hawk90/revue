@@ -124,23 +124,14 @@ fn other_characters_take_at_most_one_column() {
     let found = mismatches(
         |_, eaw, _| !matches!(eaw, "W" | "F"),
         |c| char_width(c).min(1),
-        // KHMER INDEPENDENT VOWEL QAQ and KHMER SIGN BEYYAL: unicode-width
-        // measures their usual spelled-out forms, terminals give one column
-        // (#1269)
-        &[(0x17A4, 2), (0x17D8, 3)],
+        &[],
     );
     assert!(found.is_empty(), "{found:#?}");
 }
 
 #[test]
 fn combining_marks_and_controls_take_no_column() {
-    let found = mismatches(
-        |_, _, gc| matches!(gc, "Mn" | "Me" | "Cc"),
-        |_| 0,
-        // TIFINAGH CONSONANT JOINER: unicode-width draws it as a visible
-        // joiner, terminals give it no column (#1269)
-        &[(0x2D7F, 1)],
-    );
+    let found = mismatches(|_, _, gc| matches!(gc, "Mn" | "Me" | "Cc"), |_| 0, &[]);
     assert!(found.is_empty(), "{found:#?}");
 }
 
