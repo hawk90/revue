@@ -5,6 +5,7 @@ mod batch;
 mod buffer;
 mod cell;
 mod diff;
+mod emulated;
 mod image_protocol;
 mod pipeline;
 mod terminal;

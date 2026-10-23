@@ -35,13 +35,13 @@ fn wrap_true_flows_long_line_onto_multiple_rows() {
     let ta = TextArea::new()
         .line_numbers(false)
         .wrap(true)
-        .content("abcdefghij"); // 10 chars, width 5 -> two rows
-    let buf = render(&ta, 5, 5);
+        .content("abcdefghij"); // 10 chars, text width 5 (a 6-column view keeps its last column, #1008) -> two rows
+    let buf = render(&ta, 6, 5);
 
-    assert_eq!(row(&buf, 0, 5), "abcde");
-    assert_eq!(row(&buf, 1, 5), "fghij");
+    assert_eq!(row(&buf, 0, 6), "abcde");
+    assert_eq!(row(&buf, 1, 6), "fghij");
     // Nothing lost, nothing on a third row.
-    assert_eq!(row(&buf, 2, 5), "");
+    assert_eq!(row(&buf, 2, 6), "");
 }
 
 #[test]
@@ -75,12 +75,12 @@ fn wrap_true_preserves_logical_newlines() {
     let ta = TextArea::new()
         .line_numbers(false)
         .wrap(true)
-        .content("hello world\nfoo"); // line 0 wraps at width 5, line 1 short
-    let buf = render(&ta, 5, 5);
+        .content("hello worl\nfoo"); // line 0 wraps at text width 5 (6 columns, the last kept), line 1 short
+    let buf = render(&ta, 6, 5);
 
-    assert_eq!(row(&buf, 0, 5), "hello");
-    assert_eq!(row(&buf, 1, 5), "world");
-    assert_eq!(row(&buf, 2, 5), "foo");
+    assert_eq!(row(&buf, 0, 6), "hello");
+    assert_eq!(row(&buf, 1, 6), "worl");
+    assert_eq!(row(&buf, 2, 6), "foo");
 }
 
 #[test]

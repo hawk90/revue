@@ -1,142 +1,56 @@
-//! Text editing operations for the Input widget
+//! The value, and undo and redo
 
-use super::types::EditOperation;
 use super::Input;
 
 impl Input {
-    // ─────────────────────────────────────────────────────────────────────────
-    // Word navigation and editing
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /// Move cursor to the left by one word (zero allocation)
-    pub(super) fn move_word_left(&mut self) {
-        if self.cursor == 0 {
-            return;
-        }
-
-        // Get substring before cursor and iterate in reverse (no allocation)
-        let byte_pos = self.char_to_byte_index(self.cursor);
-        let before_cursor = &self.value[..byte_pos];
-
-        let mut new_pos = self.cursor;
-
-        // Skip whitespace going backwards
-        for ch in before_cursor.chars().rev() {
-            if ch.is_whitespace() {
-                new_pos -= 1;
-            } else {
-                break;
-            }
-        }
-
-        // Skip word characters going backwards
-        let byte_pos = self.char_to_byte_index(new_pos);
-        let before_new_pos = &self.value[..byte_pos];
-        for ch in before_new_pos.chars().rev() {
-            if !ch.is_whitespace() {
-                new_pos -= 1;
-            } else {
-                break;
-            }
-        }
-
-        self.cursor = new_pos;
-    }
-
-    /// Move cursor to the right by one word (zero allocation)
-    pub(super) fn move_word_right(&mut self) {
-        let char_len = self.char_count();
-        if self.cursor >= char_len {
-            return;
-        }
-
-        // Get substring after cursor (no allocation)
-        let byte_pos = self.char_to_byte_index(self.cursor);
-        let after_cursor = &self.value[byte_pos..];
-
-        let mut advance = 0;
-
-        // Skip current word characters
-        for ch in after_cursor.chars() {
-            if !ch.is_whitespace() {
-                advance += 1;
-            } else {
-                break;
-            }
-        }
-
-        // Get remaining substring and skip whitespace
-        let new_byte_pos = self.char_to_byte_index(self.cursor + advance);
-        let remaining = &self.value[new_byte_pos..];
-        for ch in remaining.chars() {
-            if ch.is_whitespace() {
-                advance += 1;
-            } else {
-                break;
-            }
-        }
-
-        self.cursor = (self.cursor + advance).min(char_len);
-    }
-
-    /// Delete word to the left with undo support; with a selection, delete
-    /// the selection instead, as Backspace does. Returns whether the value
-    /// changed.
-    pub(super) fn delete_word_left(&mut self) -> bool {
-        if self.has_selection() {
-            return self.delete_selection_with_undo();
-        }
-        // An empty selection (anchor at the cursor) must not outlive the
-        // edit and turn into a stale range
-        self.clear_selection();
-        if self.cursor == 0 {
-            return false;
-        }
-
-        let end = self.cursor;
-        self.move_word_left();
-        let start = self.cursor;
-
-        // Get deleted text for undo
-        let deleted = self.substring(start, end).to_string();
-        self.push_undo(EditOperation::Delete {
-            pos: start,
-            text: deleted,
-        });
-
-        // Delete characters between new cursor position and old cursor position
-        self.remove_char_range(start, end);
-        true
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Value management
-    // ─────────────────────────────────────────────────────────────────────────
-
     /// Get the current value
     pub fn get_value(&self) -> &str {
-        &self.value
+        self.line()
     }
 
     /// Clear the input (also clears undo history)
     pub fn clear(&mut self) {
-        self.value.clear();
-        self.cursor = 0;
-        self.clear_selection();
-        self.clear_history();
+        self.state.set_text("");
     }
 
-    /// Set value programmatically (also clears undo history).
-    /// Control characters (newlines, tabs, null bytes) are stripped
-    /// since Input is a single-line widget.
+    /// Set value programmatically (also clears undo history). Control
+    /// characters are dropped, and newlines and tabs become spaces, since
+    /// Input is a single-line widget. The cursor goes to the end.
     pub fn set_value(&mut self, value: impl Into<String>) {
-        self.value = value
-            .into()
-            .chars()
-            .filter(|c| !c.is_control() || *c == ' ')
-            .collect();
-        self.cursor = self.char_count();
-        self.clear_selection();
-        self.clear_history();
+        self.state.set_text(value.into());
+        let end = self.state.end();
+        self.state.set_cursor(end);
+    }
+
+    /// Undo the last edit, putting back the cursor and selection it started
+    /// with
+    pub fn undo(&mut self) -> bool {
+        self.state.undo()
+    }
+
+    /// Redo the last undone edit
+    pub fn redo(&mut self) -> bool {
+        self.state.redo()
+    }
+
+    /// Whether there is an edit to undo
+    pub fn can_undo(&self) -> bool {
+        self.state.can_undo()
+    }
+
+    /// Whether there is an edit to redo
+    pub fn can_redo(&self) -> bool {
+        self.state.can_redo()
+    }
+
+    /// Forget the undo and redo history
+    pub fn clear_history(&mut self) {
+        self.state.clear_history();
+    }
+
+    /// Insert `text` at the cursor, replacing the selection, as one undo
+    /// step (paste)
+    pub(super) fn paste_text(&mut self, text: &str) -> bool {
+        self.state.paste(text)
     }
 }

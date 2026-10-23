@@ -825,3 +825,25 @@ fn test_search_bar_default_show_hints() {
     s.focus();
     assert!(row(&screen(&s, 50, 3), 1).starts_with("Try: "));
 }
+
+#[test]
+fn modified_editing_keys_reach_the_search_bar() {
+    use revue::event::KeyEvent;
+    let mut s = SearchBar::new();
+    s.set_query("author:john sort:name");
+    // Not focused: nothing
+    assert!(!s.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    s.focus();
+    // A word delete, then undo
+    assert!(s.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    assert_eq!(s.get_input(), "author:john sort:");
+    assert!(s.handle_key_event(&KeyEvent::ctrl(Key::Char('z'))));
+    assert_eq!(s.get_input(), "author:john sort:name");
+    // Shift+Ctrl+Left selects the last word; typing replaces it
+    s.handle_key_event(&KeyEvent {
+        shift: true,
+        ..KeyEvent::ctrl(Key::Left)
+    });
+    s.handle_key_event(&KeyEvent::new(Key::Char('x')));
+    assert_eq!(s.get_input(), "author:john sort:x");
+}

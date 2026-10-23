@@ -33,8 +33,19 @@
 /// joins into one glyph (a flag, an emoji with a skin tone or a ZWJ, a
 /// character with VS16) counts as the sum of its characters.
 pub fn char_width(c: char) -> usize {
-    // `None` is a control character, which takes no cell
-    unicode_width::UnicodeWidthChar::width(c).unwrap_or(0)
+    match c {
+        // unicode-width measures these as they are drawn in running text
+        // (two Khmer signs spelled out, a visible joiner); terminals
+        // (wcwidth) give a Lo or Po character one column and a
+        // nonspacing mark none (#1269)
+        '\u{17A4}' | '\u{17D8}' => 1,
+        '\u{2D7F}' => 0,
+        // `None` is a control character, which takes no cell. A cell holds
+        // at most two columns.
+        _ => unicode_width::UnicodeWidthChar::width(c)
+            .unwrap_or(0)
+            .min(2),
+    }
 }
 
 /// Get the display width of a string

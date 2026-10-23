@@ -54,13 +54,14 @@ fn test_search_bar_long_query_scrolls_to_the_cursor() {
     let mut s = SearchBar::new().width(12);
     s.set_query("abcdefghij한");
     s.focus();
-    // 6 columns: the end of the text and the cursor after it
+    // 5 columns (the error mark keeps the sixth, #1014): the end of the
+    // text and the cursor after it
     let buffer = screen(&s, 12, 1);
-    assert_eq!(row(&buffer, 0), "│ 🔍hij한  │");
-    assert_eq!(cursor_cells(&buffer), vec![9]);
+    assert_eq!(row(&buffer, 0), "│ 🔍ij한   │");
+    assert_eq!(cursor_cells(&buffer), vec![8]);
     s.cursor_home();
     let buffer = screen(&s, 12, 1);
-    assert_eq!(row(&buffer, 0), "│ 🔍abcdef │");
+    assert_eq!(row(&buffer, 0), "│ 🔍abcde  │");
     assert_eq!(cursor_cells(&buffer), vec![4]);
 }
 
@@ -106,4 +107,35 @@ proptest! {
             prop_assert!(s.get_input().contains(field.trim()), "{:?} in {:?}", field, s.get_input());
         }
     }
+}
+
+// The error mark and the placeholder (#1014)
+
+#[test]
+fn the_error_mark_covers_neither_text_nor_cursor() {
+    let mut s = SearchBar::new().width(12);
+    s.set_query("sort:x:bad");
+    assert!(!s.is_valid());
+    s.cursor_home();
+    s.focus();
+    let buffer = screen(&s, 12, 1);
+    // The field shows "sort:"; the mark has its own column after it
+    assert_eq!(row(&buffer, 0), "│ 🔍sort:! │");
+    s.cursor_end();
+    let buffer = screen(&s, 12, 1);
+    assert_eq!(cursor_cells(&buffer), vec![8]);
+    assert_eq!(buffer.get(9, 0).unwrap().symbol, '!');
+}
+
+#[test]
+fn the_cursor_keeps_the_placeholders_first_letter() {
+    let mut s = SearchBar::new();
+    s.focus();
+    let buffer = screen(&s, 30, 1);
+    assert!(
+        row(&buffer, 0).starts_with("│ 🔍Search..."),
+        "{:?}",
+        row(&buffer, 0)
+    );
+    assert_eq!(cursor_cells(&buffer), vec![4]);
 }

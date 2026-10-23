@@ -335,6 +335,7 @@ impl TextArea {
         let cursor_line = self.cursors.primary().pos.line;
         if cursor_line < self.scroll.get() {
             self.scroll.set(cursor_line);
+            self.scroll_row.set(0);
         }
     }
 
