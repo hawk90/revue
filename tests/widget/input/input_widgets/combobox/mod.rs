@@ -664,14 +664,51 @@ fn test_combobox_render_height_one() {
     assert!(row(&buffer, 0).contains('▲'));
 }
 
+/// The columns drawn with the cursor's colors on row 0
+fn cursor_cells(buffer: &Buffer) -> Vec<u16> {
+    (0..buffer.width())
+        .filter(|&x| buffer.get(x, 0).unwrap().bg == Some(Color::WHITE))
+        .collect()
+}
+
 #[test]
-fn test_combobox_cursor_render_boundary() {
-    let cb = Combobox::new().value("Very long text that exceeds width");
+fn test_combobox_long_text_scrolls_to_the_cursor() {
+    // 10 wide: the text takes columns 1 to 7, the arrow column 8 (#985)
+    let mut cb = Combobox::new().value("Very long text that exceeds width");
     let buffer = render(&cb, 10, 5);
-    let header = row(&buffer, 0);
-    // The text is truncated to fit in front of the arrow
-    assert!(header.starts_with(" Very"));
-    assert!(!header.contains("exceeds"));
+    assert_eq!(row(&buffer, 0), "  width ▼ ");
+    assert_eq!(cursor_cells(&buffer), vec![7]);
+    cb.move_to_start();
+    let buffer = render(&cb, 10, 5);
+    assert_eq!(row(&buffer, 0), " Very lo▼ ");
+    assert_eq!(cursor_cells(&buffer), vec![1]);
+    // Moving back right inside the view keeps it where it is
+    cb.move_right();
+    cb.move_right();
+    let buffer = render(&cb, 10, 5);
+    assert_eq!(row(&buffer, 0), " Very lo▼ ");
+    assert_eq!(cursor_cells(&buffer), vec![3]);
+}
+
+#[test]
+fn test_combobox_wide_text_never_covers_the_arrow() {
+    let cb = Combobox::new().value("가나다라마");
+    let buffer = render(&cb, 10, 5);
+    // The last three glyphs and the cursor after them; a wide glyph is not
+    // cut at the field's edge
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, '다');
+    assert_eq!(buffer.get(3, 0).unwrap().symbol, '라');
+    assert_eq!(buffer.get(5, 0).unwrap().symbol, '마');
+    assert_eq!(cursor_cells(&buffer), vec![7]);
+    assert_eq!(buffer.get(8, 0).unwrap().symbol, '▼');
+}
+
+#[test]
+fn test_combobox_cursor_sits_on_the_placeholder() {
+    let cb = Combobox::new().placeholder("Pick");
+    let buffer = render(&cb, 10, 5);
+    assert_eq!(row(&buffer, 0), " Pick   ▼ ");
+    assert_eq!(cursor_cells(&buffer), vec![1]);
 }
 
 #[test]
@@ -851,4 +888,67 @@ fn test_combobox_dropdown_follows_the_highlight_past_the_row_cap() {
     let highlighted: Vec<&String> = rows.iter().filter(|r| r.starts_with('›')).collect();
     assert_eq!(highlighted.len(), 1, "{rows:#?}");
     assert!(highlighted[0].contains("O13"), "{rows:#?}");
+}
+
+// The standard editing keys (#985)
+
+#[test]
+fn test_combobox_takes_the_modified_editing_keys() {
+    use revue::event::KeyEvent;
+    let mut cb = Combobox::new().options(vec!["new york", "newark"]);
+    cb.set_input("new york");
+    cb.close_dropdown();
+    // A word delete opens the dropdown and filters again
+    assert!(cb.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    assert_eq!(cb.input(), "new ");
+    assert!(cb.is_open());
+    assert!(cb.handle_key_event(&KeyEvent::ctrl(Key::Char('z'))));
+    assert_eq!(cb.input(), "new york");
+    // Shift+Ctrl+Left selects the last word; typing replaces it
+    assert!(cb.handle_key_event(&KeyEvent {
+        shift: true,
+        ..KeyEvent::ctrl(Key::Left)
+    }));
+    assert!(cb.handle_key_event(&KeyEvent::new(Key::Char('j'))));
+    assert_eq!(cb.input(), "new j");
+    // A Ctrl letter the field does not use is the app's
+    assert!(!cb.handle_key_event(&KeyEvent::ctrl(Key::Char('k'))));
+    assert_eq!(cb.input(), "new j");
+}
+
+#[test]
+fn test_combobox_cursor_moves_ask_for_a_redraw() {
+    let mut cb = Combobox::new().value("abc");
+    for key in [Key::Left, Key::Home, Key::Right, Key::End] {
+        assert!(cb.handle_key(&key), "{key:?}");
+    }
+}
+
+#[test]
+fn test_combobox_drops_control_characters() {
+    let mut cb = Combobox::new();
+    cb.handle_key(&Key::Char('\u{7}'));
+    cb.insert_char('\u{1b}');
+    assert_eq!(cb.input(), "");
+}
+
+#[test]
+fn test_combobox_selection_is_drawn() {
+    let mut cb = Combobox::new().value("abcd");
+    cb.handle_key_event(&revue::event::KeyEvent {
+        shift: true,
+        ..revue::event::KeyEvent::new(Key::Left)
+    });
+    let buffer = render(&cb, 10, 1);
+    // "d" is selected; the cursor is on it
+    assert_eq!(cursor_cells(&buffer), vec![4]);
+    cb.handle_key_event(&revue::event::KeyEvent {
+        shift: true,
+        ..revue::event::KeyEvent::new(Key::Left)
+    });
+    let buffer = render(&cb, 10, 1);
+    // "cd" selected, the cursor on "c": "d" in the selection colors
+    assert_eq!(cursor_cells(&buffer), vec![3]);
+    assert_eq!(buffer.get(4, 0).unwrap().bg, Some(Color::BLUE));
+    assert_ne!(buffer.get(2, 0).unwrap().bg, Some(Color::BLUE));
 }

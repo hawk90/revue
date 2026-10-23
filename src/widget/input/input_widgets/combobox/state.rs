@@ -9,12 +9,12 @@ impl Combobox {
 
     /// Get current input text
     pub fn input(&self) -> &str {
-        &self.input
+        self.state.line(0).unwrap_or("")
     }
 
     /// Get the current input value (what the user typed or selected)
     pub fn get_value(&self) -> &str {
-        &self.input
+        self.input()
     }
 
     /// Get the selected value (for single-select mode)
@@ -24,17 +24,18 @@ impl Combobox {
         }
 
         // If input matches an option, return that option's value
+        let input = self.input();
         if let Some(opt) = self
             .options
             .iter()
-            .find(|o| o.label == self.input || o.get_value() == self.input)
+            .find(|o| o.label == input || o.get_value() == input)
         {
             return Some(opt.get_value());
         }
 
         // Allow custom values if enabled
-        if self.allow_custom && !self.input.is_empty() {
-            Some(self.input.as_str())
+        if self.allow_custom && !input.is_empty() {
+            Some(input)
         } else {
             None
         }

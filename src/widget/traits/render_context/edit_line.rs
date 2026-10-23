@@ -9,6 +9,7 @@
 
 use crate::render::Cell;
 use crate::utils::unicode::char_width;
+use crate::utils::EditState;
 
 /// Columns from the start of `text` to char index `idx` (the end of the text
 /// when `idx` is past it).
@@ -65,7 +66,117 @@ pub(crate) fn scroll_to_cursor(
     }
 }
 
+/// What a cell of a one-line edit field shows, for styling it
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum FieldCell {
+    /// The text
+    Text,
+    /// Selected text
+    Selected,
+    /// The placeholder, shown while the text is empty
+    Placeholder,
+    /// The cursor: over a glyph, over the placeholder's first one, or a
+    /// blank past the end of the text
+    Cursor,
+}
+
+/// A one-line edit field to draw with
+/// [`put_edit_field`](super::RenderContext::put_edit_field)
+pub(crate) struct EditField<'a> {
+    /// The text
+    pub text: &'a str,
+    /// Shown while the text is empty
+    pub placeholder: &'a str,
+    /// The cursor as a char index into `text`, or `None` when it is not
+    /// drawn (the field is not focused)
+    pub cursor: Option<usize>,
+    /// The selected chars, `start..end`
+    pub selection: Option<(usize, usize)>,
+}
+
+impl<'a> EditField<'a> {
+    /// The field for the first line of `state`, its primary cursor drawn
+    /// when `focused`
+    pub(crate) fn of(state: &'a EditState, placeholder: &'a str, focused: bool) -> Self {
+        let cursor = state.primary();
+        Self {
+            text: state.line(0).unwrap_or(""),
+            placeholder,
+            cursor: focused.then(|| state.char_index(cursor.head())),
+            selection: cursor.has_selection().then(|| {
+                let (from, to) = cursor.range();
+                (state.char_index(from), state.char_index(to))
+            }),
+        }
+    }
+
+    /// The scroll (in columns) for a view `width` columns wide that was at
+    /// `scroll`: the least move that keeps the cursor in view, and the
+    /// start of the text when the cursor is not drawn or the placeholder is
+    /// shown
+    pub(crate) fn scroll(&self, scroll: usize, width: u16) -> usize {
+        match self.cursor {
+            Some(cursor) if !self.text.is_empty() => scroll_to_cursor(
+                scroll,
+                col_of(self.text, cursor),
+                cursor_width(self.text, cursor),
+                col_of(self.text, usize::MAX) + 1,
+                width as usize,
+            ),
+            _ => 0,
+        }
+    }
+}
+
 impl super::RenderContext<'_> {
+    /// Draw a one-line edit field at relative `(x, y)`, `width` columns
+    /// wide and scrolled `scroll` columns (see [`EditField::scroll`]): the
+    /// text, or the placeholder while it is empty, and the cursor over the
+    /// glyph at its index, over the placeholder's first glyph, or as a
+    /// blank past the end. `style(kind, ch)` makes each cell.
+    pub(crate) fn put_edit_field<F>(
+        &mut self,
+        x: u16,
+        y: u16,
+        width: u16,
+        field: &EditField,
+        scroll: usize,
+        style: F,
+    ) where
+        F: Fn(FieldCell, char) -> Cell,
+    {
+        let placeholder = field.text.is_empty() && !field.placeholder.is_empty();
+        let (text, scroll) = if placeholder {
+            (field.placeholder, 0)
+        } else {
+            (field.text, scroll)
+        };
+        let selected = |i: usize| field.selection.is_some_and(|(a, b)| a <= i && i < b);
+        self.put_edit_line(x, y, text, scroll, width, |i, ch| {
+            let kind = if field.cursor == Some(i) {
+                FieldCell::Cursor
+            } else if placeholder {
+                FieldCell::Placeholder
+            } else if selected(i) {
+                FieldCell::Selected
+            } else {
+                FieldCell::Text
+            };
+            style(kind, ch)
+        });
+        let len = field.text.chars().count();
+        if !placeholder && field.cursor.is_some_and(|c| c >= len) {
+            let col = col_of(field.text, usize::MAX).saturating_sub(scroll);
+            if col < width as usize {
+                self.set(
+                    x.saturating_add(col as u16),
+                    y,
+                    style(FieldCell::Cursor, ' '),
+                );
+            }
+        }
+    }
+
     /// Draw `text` at relative `(x, y)`, scrolled `scroll` columns to the
     /// left and at most `width` columns wide.
     ///

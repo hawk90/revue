@@ -64,7 +64,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use engine::{Kind, Step};
-use text::{backspace_len, byte_of, category, cluster_at, cluster_count, Category};
+use text::{backspace_len, byte_of, category, cluster_at, cluster_count, col_of, Category};
 
 pub use keys::EditOutcome;
 pub use motion::EditMotion;
@@ -315,6 +315,26 @@ impl EditState {
     pub fn clamp(&self, pos: EditPos) -> EditPos {
         let line = pos.line.min(self.lines.len() - 1);
         EditPos::new(line, pos.col.min(self.line_len(line)))
+    }
+
+    /// The chars (code points) on `pos`'s line before it, for an API that
+    /// counts positions in chars
+    pub fn char_index(&self, pos: EditPos) -> usize {
+        let pos = self.clamp(pos);
+        let line = &self.lines[pos.line];
+        line[..byte_of(line, pos.col)].chars().count()
+    }
+
+    /// The position `index` chars into `line`: an index inside a cluster
+    /// rounds up to the cluster's end, one past the line is its end
+    pub fn pos_at_char(&self, line: usize, index: usize) -> EditPos {
+        let line = line.min(self.lines.len() - 1);
+        let text = &self.lines[line];
+        let byte = text
+            .char_indices()
+            .nth(index)
+            .map_or(text.len(), |(i, _)| i);
+        EditPos::new(line, col_of(text, byte))
     }
 
     // -----------------------------------------------------------------

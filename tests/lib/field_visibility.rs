@@ -41,7 +41,7 @@ const OPEN_FIELDS: &[(&str, &str, usize)] = &[
     ("widget/data/chart/heatmap/mod.rs", "HeatMap", 5),
     ("widget/data/datagrid/core.rs", "DataGrid", 1),
     ("widget/data/filetree/mod.rs", "FileTree", 15),
-    ("widget/input/input_widgets/combobox/mod.rs", "Combobox", 26),
+    ("widget/input/input_widgets/combobox/mod.rs", "Combobox", 24),
     ("widget/input/input_widgets/select/mod.rs", "Select", 18),
     ("widget/range_picker/core.rs", "RangePicker", 20),
     ("widget/traits/render_context/mod.rs", "PaintNode", 2),
