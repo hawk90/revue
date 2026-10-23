@@ -107,6 +107,7 @@ pub mod color;
 pub mod debounce;
 pub mod diff;
 pub mod easing;
+pub mod edit;
 pub mod figlet;
 pub mod filter;
 pub mod format;
@@ -311,6 +312,7 @@ pub use accessibility_signal::{
 };
 
 // Text Buffer
+#[allow(deprecated)]
 pub use textbuffer::TextBuffer;
 
 // Undo/Redo
@@ -335,6 +337,7 @@ pub use table::{align_center, align_left, align_right, align_text, Align, Column
 pub use tree::{Indent, TreeIcons, TreeItem, TreeNav};
 
 // Selection with viewport
+pub use edit::{EditCursor, EditMotion, EditOutcome, EditPos, EditState};
 pub use scroll::{ScrollAlign, ScrollState};
 pub use selection::{wrap_next, wrap_prev, KeyedSelection, SectionedSelection, Selection};
 
@@ -424,6 +427,7 @@ mod tests {
     // without executing functionality, which is tested in individual modules.
 
     #[test]
+    #[allow(deprecated)] // TextBuffer, until 4.0
     fn test_all_modules_compile() {
         // This test ensures that importing and using the utility API compiles correctly.
         // The actual functionality is tested in each module's own test suite.
