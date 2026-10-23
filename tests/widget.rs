@@ -2,6 +2,8 @@
 
 #[path = "support/alloc_cap.rs"]
 mod alloc_cap;
+#[path = "support/emulator.rs"]
+mod emulator;
 
 #[path = "widget/breadcrumb/mod.rs"]
 mod breadcrumb;
