@@ -31,14 +31,11 @@ fn fgs(buffer: &Buffer, y: u16, x0: u16, x1: u16) -> Vec<Option<Color>> {
 
 #[test]
 fn test_ansi_parser_new() {
-    // A fresh parser: the default foreground, no modifiers. (The background
-    // is not checked: text written before any background code is drawn on
-    // `Color::default()`, not on the terminal's background - filed from the
-    // audit that wrote this test.)
+    // A fresh parser: the default colors (white on black), no modifiers
     let buffer = written("A");
     let a = cell(&buffer, 0, 0);
     assert_eq!(a.symbol, 'A');
-    assert_eq!(a.fg, Some(Color::WHITE));
+    assert_eq!((a.fg, a.bg), (Some(Color::WHITE), Some(Color::BLACK)));
     assert_eq!(a.modifier, Modifier::empty());
 }
 
@@ -447,4 +444,92 @@ fn test_ansi_parse_multiple_lines() {
     assert_eq!(row(&buffer, 1).trim_end(), "Line2Red");
     assert_eq!(cell(&buffer, 4, 1).fg, Some(Color::WHITE));
     assert_eq!(fgs(&buffer, 1, 5, 8), [Some(Color::RED); 3]);
+}
+
+// =========================================================================
+// Escape sequences other than SGR draw nothing (#878)
+// =========================================================================
+
+#[test]
+fn sequences_other_than_sgr_leave_no_text() {
+    for (bytes, shown) in [
+        ("\x1b[?25lhello\x1b[?25h", "hello"),
+        ("\x1b[?2004h\x1b[?1049lok", "ok"),
+        ("\x1b[2 qok", "ok"),
+        ("\x1b[3~\x1b[5Aok", "ok"),
+        // tput sgr0
+        ("\x1b(B\x1b[mok", "ok"),
+        ("\x1b7\x1b8ok", "ok"),
+        // An OSC ends at BEL or at ESC \, not at a backslash in its payload
+        ("\x1b]0;C:\\dir\x07ok", "ok"),
+        (
+            "\x1b]8;;http://x.example/a\\b\x1b\\link\x1b]8;;\x1b\\",
+            "link",
+        ),
+        // An empty OSC ends at its BEL
+        ("\x1b]\x07ok", "ok"),
+        ("\x1bP+q544e\x1b\\ok", "ok"),
+        // CAN cancels a sequence; ESC starts another
+        ("\x1b[12\x18ok", "ok"),
+        ("\x1b[12\x1b[31mok", "ok"),
+        // A character with no place in a sequence ends it and is shown
+        ("\x1b[1한", "한"),
+    ] {
+        let buffer = written(bytes);
+        // Without the right half of a wide glyph
+        let text = row(&buffer, 0).replace('\0', "");
+        assert_eq!(text.trim_end(), shown, "{bytes:?}");
+    }
+}
+
+#[test]
+fn colon_sgr_sets_the_color() {
+    let buffer = written("\x1b[38:2:255:128:0ma\x1b[38:2::0:0:255mb\x1b[48:5:196mc");
+    assert_eq!(cell(&buffer, 0, 0).fg, Some(Color::rgb(255, 128, 0)));
+    assert_eq!(cell(&buffer, 1, 0).fg, Some(Color::rgb(0, 0, 255)));
+    assert_eq!(cell(&buffer, 2, 0).bg, Some(Color::rgb(255, 0, 0)));
+    assert_eq!(row(&buffer, 0).trim_end(), "abc");
+}
+
+#[test]
+fn a_component_or_index_past_255_sets_nothing() {
+    let buffer = written("\x1b[31m\x1b[38;2;300;0;0ma\x1b[38;5;256mb\x1b[32mc");
+    assert_eq!(
+        fgs(&buffer, 0, 0, 3),
+        [Some(Color::RED), Some(Color::RED), Some(Color::GREEN)]
+    );
+}
+
+#[test]
+fn a_reset_goes_back_to_the_configured_defaults() {
+    let mut term = Terminal::new(20, 1)
+        .default_fg(Color::YELLOW)
+        .default_bg(Color::rgb(20, 20, 20));
+    term.write("a\x1b[31;44mb\x1b[0mc\x1b[31;44md\x1b[39;49me");
+    let buffer = screen(&term, 20, 1);
+    let look = |x| (cell(&buffer, x, 0).fg, cell(&buffer, x, 0).bg);
+    let default = (Some(Color::YELLOW), Some(Color::rgb(20, 20, 20)));
+    assert_eq!(look(0), default);
+    assert_eq!(look(1), (Some(Color::RED), Some(Color::BLUE)));
+    assert_eq!(look(2), default);
+    assert_eq!(look(4), default);
+}
+
+#[test]
+fn explicit_white_and_black_are_drawn_as_named() {
+    let mut term = Terminal::new(10, 1)
+        .default_fg(Color::YELLOW)
+        .default_bg(Color::BLUE);
+    term.write("\x1b[37;40mw\x1b[97mb");
+    let buffer = screen(&term, 10, 1);
+    assert_eq!(cell(&buffer, 0, 0).fg, Some(Color::WHITE));
+    assert_eq!(cell(&buffer, 0, 0).bg, Some(Color::BLACK));
+    assert_eq!(cell(&buffer, 1, 0).fg, Some(Color::rgb(255, 255, 255)));
+}
+
+#[test]
+fn reverse_is_drawn() {
+    let buffer = written("\x1b[7ma\x1b[27mb");
+    assert!(cell(&buffer, 0, 0).modifier.contains(Modifier::REVERSE));
+    assert!(!cell(&buffer, 1, 0).modifier.contains(Modifier::REVERSE));
 }
