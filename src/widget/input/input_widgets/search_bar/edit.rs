@@ -1,8 +1,6 @@
 //! The edit model: inserting and deleting at the cursor, cursor moves,
 //! keys, and parsing the query after each change
 
-use unicode_segmentation::UnicodeSegmentation;
-
 use super::SearchBar;
 use crate::query::Query;
 use crate::utils::{EditMotion, EditOutcome};
@@ -80,15 +78,6 @@ impl SearchBar {
             EditOutcome::Moved => true,
             EditOutcome::Unhandled => false,
         }
-    }
-
-    /// The cursor as a character index into the query
-    pub(super) fn cursor_char(&self) -> usize {
-        let line = self.get_input();
-        line.graphemes(true)
-            .take(self.state.cursor().col)
-            .map(|g| g.chars().count())
-            .sum()
     }
 
     /// Parse input and update query
