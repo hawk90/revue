@@ -35,10 +35,13 @@ impl Input {
         self.edit(&KeyEvent::new(*key))
     }
 
-    /// Apply a standard editing key: true for a move or a change; a delete
-    /// with nothing to delete is false
+    /// Apply a standard editing key: true for a move or a change. As in
+    /// 3.x, a key that edits but finds nothing to do is false: Backspace or
+    /// Delete with nothing to delete, Ctrl+Z or Ctrl+Y with nothing to undo
+    /// or redo.
     fn edit(&mut self, event: &KeyEvent) -> bool {
-        let deletes = matches!(event.key, Key::Backspace | Key::Delete);
+        let undo_redo = event.ctrl && matches!(event.key, Key::Char('z' | 'y' | 'Z'));
+        let deletes = undo_redo || matches!(event.key, Key::Backspace | Key::Delete);
         match self.state.edit_key(event, 1) {
             EditOutcome::Edited => true,
             EditOutcome::Moved => !deletes,

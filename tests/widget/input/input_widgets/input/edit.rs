@@ -189,3 +189,14 @@ fn backspace_takes_an_accent_but_an_emoji_sequence_whole() {
     input.handle_key(&Key::Backspace);
     assert_eq!((input.text(), input.cursor()), ("a", 1));
 }
+
+#[test]
+fn undo_and_redo_with_nothing_to_do_are_not_handled() {
+    // As in 3.x: the app may use the key when the input does nothing
+    let mut input = Input::new();
+    assert!(!input.handle_key_event(&KeyEvent::ctrl(Key::Char('z'))));
+    assert!(!input.handle_key_event(&KeyEvent::ctrl(Key::Char('y'))));
+    input.handle_key(&Key::Char('a'));
+    assert!(input.handle_key_event(&KeyEvent::ctrl(Key::Char('z'))));
+    assert!(input.handle_key_event(&KeyEvent::ctrl(Key::Char('y'))));
+}
