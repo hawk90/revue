@@ -57,9 +57,7 @@ impl RichText {
 
     /// Parse markup string
     fn parse_markup(&mut self, text: &str) {
-        // The open tags, oldest first; the style and link in effect are
-        // what they turn on, in order
-        let mut open: Vec<Vec<Attr>> = Vec::new();
+        let mut open = OpenTags::default();
         let mut buffer = String::new();
         let mut rest = text;
 
@@ -91,19 +89,17 @@ impl RichText {
                 buffer.push(']');
                 continue;
             };
-            let (style, link) = style_of(&open);
-            self.push_run(std::mem::take(&mut buffer), &style, &link);
+            self.push_run(std::mem::take(&mut buffer), &open.style, &open.link);
             match tag {
-                Tag::Reset => open.clear(),
-                Tag::Open(attrs) => open.push(attrs),
-                Tag::Close(attrs) => close(&mut open, &attrs),
+                Tag::Reset => open = OpenTags::default(),
+                Tag::Open(attrs) => open.open(attrs),
+                Tag::Close(attrs) => open.close(&attrs),
             }
         }
         buffer.push_str(rest);
 
         // Flush remaining buffer
-        let (style, link) = style_of(&open);
-        self.push_run(buffer, &style, &link);
+        self.push_run(buffer, &open.style, &open.link);
     }
 
     /// Add `text` as a span with the style and link in effect, unless it is
@@ -221,29 +217,94 @@ fn color(word: &str) -> Option<Color> {
     crate::style::parse_color(word)
 }
 
-/// Turn off each attribute in `attrs` in the most recent open tag that
-/// turned it on; a tag with nothing left on is closed
-fn close(open: &mut Vec<Vec<Attr>>, attrs: &[Attr]) {
-    for attr in attrs {
-        let found = open.iter_mut().rev().find_map(|tag| {
-            let at = tag.iter().position(|on| attr.closes(on))?;
-            tag.remove(at);
-            Some(())
-        });
-        if found.is_some() {
-            open.retain(|tag| !tag.is_empty());
-        }
-    }
+/// One open tag: what it turns on, and the style and link before it
+#[derive(Default)]
+struct Frame {
+    attrs: Vec<Attr>,
+    style: Style,
+    link: Option<String>,
 }
 
-/// The style and link the open tags turn on, oldest first
-fn style_of(open: &[Vec<Attr>]) -> (Style, Option<String>) {
-    let mut style = Style::default();
-    let mut link = None;
-    for attr in open.iter().flatten() {
-        attr.apply(&mut style, &mut link);
+/// The open tags, oldest first, and the style and link they give. Each tag
+/// keeps the style before it, so opening one, or closing the newest, does
+/// not go back over the others: deep markup stays linear.
+#[derive(Default)]
+struct OpenTags {
+    frames: Vec<Frame>,
+    /// Each attribute that is on, and in how many open tags
+    on: Vec<(Attr, usize)>,
+    style: Style,
+    link: Option<String>,
+}
+
+impl OpenTags {
+    fn open(&mut self, attrs: Vec<Attr>) {
+        let frame = Frame {
+            style: self.style.clone(),
+            link: self.link.clone(),
+            attrs,
+        };
+        for attr in &frame.attrs {
+            attr.apply(&mut self.style, &mut self.link);
+            match self.on.iter_mut().find(|(on, _)| on == attr) {
+                Some((_, n)) => *n += 1,
+                None => self.on.push((attr.clone(), 1)),
+            }
+        }
+        self.frames.push(frame);
     }
-    (style, link)
+
+    /// Turn off each attribute in `attrs` in the most recent open tag that
+    /// turned it on; a tag with nothing left on is closed
+    fn close(&mut self, attrs: &[Attr]) {
+        for attr in attrs {
+            // Nothing open has it: nothing to look for
+            if !self.on.iter().any(|(on, n)| *n > 0 && attr.closes(on)) {
+                continue;
+            }
+            let Some((k, at)) = self
+                .frames
+                .iter()
+                .enumerate()
+                .rev()
+                .find_map(|(k, f)| Some((k, f.attrs.iter().position(|on| attr.closes(on))?)))
+            else {
+                continue;
+            };
+            let closed = self.frames[k].attrs.remove(at);
+            if let Some((_, n)) = self.on.iter_mut().find(|(on, _)| *on == closed) {
+                *n -= 1;
+            }
+            if self.frames[k].attrs.is_empty() {
+                let frame = self.frames.remove(k);
+                if let Some(next) = self.frames.get_mut(k) {
+                    next.style = frame.style;
+                    next.link = frame.link;
+                } else {
+                    self.style = frame.style;
+                    self.link = frame.link;
+                    continue;
+                }
+            }
+            self.restyle_from(k);
+        }
+    }
+
+    /// Work the styles out again from the tag at `k` up, from the style
+    /// before it
+    fn restyle_from(&mut self, k: usize) {
+        let mut style = self.frames[k].style.clone();
+        let mut link = self.frames[k].link.clone();
+        for frame in &mut self.frames[k..] {
+            frame.style = style.clone();
+            frame.link = link.clone();
+            for attr in &frame.attrs {
+                attr.apply(&mut style, &mut link);
+            }
+        }
+        self.style = style;
+        self.link = link;
+    }
 }
 
 #[cfg(test)]
