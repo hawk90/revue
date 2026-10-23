@@ -2,92 +2,126 @@
 
 use super::{MaskedInput, ValidationState};
 use crate::style::Color;
-use crate::utils::display_width;
+use crate::utils::char_width;
 use crate::widget::stack::{hstack, vstack, Stack};
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::Text;
 use crate::widget::{RenderContext, View};
 
 impl MaskedInput {
-    /// The text inside the brackets: the masked value, or the placeholder
-    /// while the value is empty, padded or cut to the field width
-    fn field_text(&self) -> String {
-        // Input field
-        let display = if self.value.is_empty() {
-            self.placeholder.clone().unwrap_or_default()
-        } else {
-            self.masked_display()
-        };
+    /// The field's cells, `width` columns: the masked value (or the
+    /// placeholder while it is empty) scrolled to keep the cursor in view,
+    /// then blanks. Each glyph comes with what it shows; a wide glyph cut
+    /// by an edge of the view becomes blanks.
+    fn field_cells(&self) -> Vec<(char, FieldCell)> {
+        let width = self.width.unwrap_or(20);
+        let masked = self.masked_display();
+        let placeholder = self.placeholder.as_deref().unwrap_or("");
+        let editing = self.focused && !self.disabled;
+        // The cursor and selection are char indices into the value, and so
+        // into the masked text, which has a char for each. Hidden masks to
+        // nothing, so its cursor is drawn at the start whatever its index,
+        // and does not give the length away.
+        let mut field = EditField::of(&self.state, placeholder, editing);
+        field.text = &masked;
+        let scroll = field.scroll(self.scroll_x.get(), width);
+        self.scroll_x.set(scroll);
 
-        // Build input display with pre-allocated padding
-        let width = self.width.unwrap_or(20) as usize;
-        let display_w = display_width(&display);
-        if display_w < width {
-            let mut result = String::with_capacity(width);
-            result.push_str(&display);
-            result.extend(std::iter::repeat_n(' ', width - display_w));
-            result
+        let shows_placeholder = self.get_value().is_empty() && !placeholder.is_empty();
+        let (text, scroll) = if shows_placeholder {
+            (placeholder, 0)
         } else {
-            crate::utils::truncate_to_width(&display, width).to_owned()
+            (field.text, scroll)
+        };
+        let end = scroll + width as usize;
+        let mut cells = Vec::with_capacity(width as usize);
+        let mut col = 0;
+        for (i, ch) in text.chars().enumerate() {
+            let w = char_width(ch);
+            if w == 0 {
+                continue;
+            }
+            let next = col + w;
+            if next > end {
+                break;
+            }
+            let kind = if field.cursor == Some(i) {
+                FieldCell::Cursor
+            } else if shows_placeholder {
+                FieldCell::Placeholder
+            } else if field.selection.is_some_and(|(a, b)| a <= i && i < b) {
+                FieldCell::Selected
+            } else {
+                FieldCell::Text
+            };
+            if col >= scroll {
+                cells.push((ch, kind));
+            } else if next > scroll {
+                cells.extend(std::iter::repeat_n((' ', kind), next - scroll));
+            }
+            col = next;
         }
+        // The rest of the field: blanks, the first one the cursor when it
+        // is past the end of the text
+        let used: usize = cells.iter().map(|&(c, _)| char_width(c)).sum();
+        let past_end =
+            !shows_placeholder && field.cursor.is_some_and(|c| c >= text.chars().count());
+        for i in used..width as usize {
+            let kind = if past_end && i == used {
+                FieldCell::Cursor
+            } else {
+                FieldCell::Text
+            };
+            cells.push((' ', kind));
+        }
+        cells
     }
 
     /// The field between the brackets: its text with the cursor when
     /// focused, and the reveal indicator when revealing is allowed
     fn field(&self, ctx: &RenderContext) -> Stack {
-        let is_placeholder = self.value.is_empty() && self.placeholder.is_some();
-        let padded = self.field_text();
-
-        // Insert cursor if focused
-        let display_with_cursor = if self.focused && !self.disabled {
-            let cursor_pos = self.cursor.min(padded.chars().count());
-            // Use iterators for O(n) instead of O(n²) with .chars().nth()
-            let before: String = padded.chars().take(cursor_pos).collect();
-            let cursor_char = padded.chars().skip(cursor_pos).next().unwrap_or(' ');
-            let after: String = padded.chars().skip(cursor_pos + 1).collect();
-            (before, cursor_char, after)
+        let text_fg = if self.disabled {
+            Some(DISABLED_FG)
         } else {
-            (padded.clone(), ' ', String::new())
+            // The typed value takes `color`. The placeholder, the disabled
+            // grey and the strength scale keep theirs - the scale in
+            // particular runs red to green, and one `color` cannot say that.
+            self.fg.or_else(|| ctx.css_color_if_set())
+        };
+        let style = |kind: FieldCell| match kind {
+            FieldCell::Cursor => (Some(Color::BLACK), Some(Color::WHITE)),
+            FieldCell::Selected => (Some(Color::WHITE), Some(Color::BLUE)),
+            FieldCell::Placeholder => (Some(PLACEHOLDER_FG), self.bg),
+            FieldCell::Text => (text_fg, self.bg),
         };
 
-        // Render input box
-        let mut input_text = if self.focused && !self.disabled {
-            // A focused empty field still shows its placeholder in grey
-            let around_cursor = |s: String| {
-                let mut text = Text::new(s);
-                if is_placeholder {
-                    text = text.fg(PLACEHOLDER_FG);
+        // One Text per run of cells drawn alike
+        let mut input_text = hstack();
+        let mut run = String::new();
+        let mut run_kind = None;
+        let flush = |stack: Stack, run: &mut String, kind: Option<FieldCell>| match kind {
+            Some(kind) if !run.is_empty() => {
+                let (fg, bg) = style(kind);
+                let mut text = Text::new(std::mem::take(run));
+                if let Some(fg) = fg {
+                    text = text.fg(fg);
                 }
-                if let Some(bg) = self.bg {
+                if let Some(bg) = bg {
                     text = text.bg(bg);
                 }
-                text
-            };
-            hstack()
-                .child(around_cursor(display_with_cursor.0))
-                .child(
-                    Text::new(display_with_cursor.1.to_string())
-                        .bg(Color::WHITE)
-                        .fg(Color::BLACK),
-                )
-                .child(around_cursor(display_with_cursor.2))
-        } else {
-            let mut text = Text::new(&padded);
-            if is_placeholder {
-                text = text.fg(PLACEHOLDER_FG);
-            } else if self.disabled {
-                text = text.fg(DISABLED_FG);
-            } else if let Some(fg) = self.fg.or_else(|| ctx.css_color_if_set()) {
-                // The typed value takes `color`. The placeholder, the disabled
-                // grey and the strength scale keep theirs - the scale in
-                // particular runs red to green, and one `color` cannot say that.
-                text = text.fg(fg);
+                stack.child(text)
             }
-            if let Some(bg) = self.bg {
-                text = text.bg(bg);
-            }
-            hstack().child(text)
+            _ => stack,
         };
+        for (ch, kind) in self.field_cells() {
+            if run_kind != Some(kind) {
+                input_text = flush(input_text, &mut run, run_kind);
+                run_kind = Some(kind);
+            }
+            run.push(ch);
+        }
+        input_text = flush(input_text, &mut run, run_kind);
 
         // Add reveal indicator
         if self.allow_reveal {
@@ -156,7 +190,7 @@ impl View for MaskedInput {
         content = content.child(bordered);
 
         // Password strength indicator
-        if self.show_strength && !self.value.is_empty() {
+        if self.show_strength && !self.get_value().is_empty() {
             content = content.child(self.strength_bar());
         }
 

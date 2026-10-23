@@ -174,3 +174,53 @@ proptest! {
         }
     }
 }
+
+// The standard editing keys, with the word keys over the whole value (#985)
+
+#[test]
+fn word_keys_go_over_the_whole_value() {
+    use revue::event::KeyEvent;
+    let mut input = MaskedInput::new().value("my secret pass");
+    input.set_cursor(9);
+    // Ctrl+Left goes to the start, not to "secret"
+    assert!(input.handle_key_event(&KeyEvent::ctrl(Key::Left)));
+    assert_eq!(input.get_cursor(), 0);
+    assert!(input.handle_key_event(&KeyEvent::ctrl(Key::Right)));
+    assert_eq!(input.get_cursor(), 14);
+    // Ctrl+Backspace deletes back to the start
+    input.set_cursor(9);
+    assert!(input.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    assert_eq!(input.get_value(), " pass");
+    assert_eq!(input.get_cursor(), 0);
+    // Undo puts it back; Ctrl+Delete deletes to the end
+    assert!(input.handle_key_event(&KeyEvent::ctrl(Key::Char('z'))));
+    assert_eq!(input.get_value(), "my secret pass");
+    input.set_cursor(2);
+    assert!(input.handle_key_event(&KeyEvent::ctrl(Key::Delete)));
+    assert_eq!(input.get_value(), "my");
+    // Shift+Ctrl+Left selects to the start; typing replaces it
+    assert!(input.handle_key_event(&KeyEvent {
+        shift: true,
+        ..KeyEvent::ctrl(Key::Left)
+    }));
+    input.handle_key_event(&KeyEvent::new(Key::Char('x')));
+    assert_eq!(input.get_value(), "x");
+    // A Ctrl letter it does not use is the app's
+    assert!(!input.handle_key_event(&KeyEvent::ctrl(Key::Char('k'))));
+}
+
+#[test]
+fn typing_over_a_selection_is_allowed_at_max_length() {
+    use revue::event::KeyEvent;
+    let mut input = MaskedInput::new().max_length(4).value("1234");
+    // Full: a typed char is eaten
+    assert!(input.handle_key(&Key::Char('5')));
+    assert_eq!(input.get_value(), "1234");
+    // With the last char selected, typing replaces it
+    input.handle_key_event(&KeyEvent {
+        shift: true,
+        ..KeyEvent::new(Key::Left)
+    });
+    assert!(input.handle_key(&Key::Char('5')));
+    assert_eq!(input.get_value(), "1235");
+}

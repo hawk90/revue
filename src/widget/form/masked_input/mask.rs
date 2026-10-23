@@ -10,8 +10,9 @@ impl MaskedInput {
     /// - Avoiding repeated `.to_string().repeat()` calls
     /// - Using `extend` with char iterators instead of format!
     pub fn masked_display(&self) -> String {
+        let value = self.get_value();
         if self.revealing {
-            return self.value.clone();
+            return value.to_string();
         }
 
         let len = self.char_count();
@@ -26,39 +27,34 @@ impl MaskedInput {
             }
             MaskStyle::ShowLast(n) => {
                 if len <= n {
-                    self.value.clone()
+                    value.to_string()
                 } else {
                     let mask_count = len - n;
                     let mut result = String::with_capacity(len);
                     result.extend(std::iter::repeat_n(self.mask_char, mask_count));
-                    result.push_str(&self.value[self.byte_at(len - n)..]);
+                    result.push_str(&value[self.byte_at(len - n)..]);
                     result
                 }
             }
             MaskStyle::ShowFirst(n) => {
                 if len <= n {
-                    self.value.clone()
+                    value.to_string()
                 } else {
                     let mut result = String::with_capacity(len);
-                    result.push_str(&self.value[..self.byte_at(n)]);
+                    result.push_str(&value[..self.byte_at(n)]);
                     result.extend(std::iter::repeat_n(self.mask_char, len - n));
                     result
                 }
             }
             MaskStyle::Peek => {
-                if self.peek_countdown > 0 && self.cursor > 0 && self.cursor <= len {
+                let cursor = self.get_cursor();
+                if self.peek_countdown > 0 && cursor > 0 && cursor <= len {
                     // Show the last typed character
-                    // Use char_indices for O(n) instead of O(n²) with .chars().nth()
-                    let last_char = self
-                        .value
-                        .char_indices()
-                        .nth(self.cursor - 1)
-                        .map(|(_, c)| c)
-                        .unwrap_or(' ');
+                    let last_char = value.chars().nth(cursor - 1).unwrap_or(' ');
                     let mut result = String::with_capacity(len);
-                    result.extend(std::iter::repeat_n(self.mask_char, self.cursor - 1));
+                    result.extend(std::iter::repeat_n(self.mask_char, cursor - 1));
                     result.push(last_char);
-                    result.extend(std::iter::repeat_n(self.mask_char, len - self.cursor));
+                    result.extend(std::iter::repeat_n(self.mask_char, len - cursor));
                     result
                 } else {
                     std::iter::repeat_n(self.mask_char, len).collect()
