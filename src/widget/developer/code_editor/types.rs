@@ -74,6 +74,10 @@ impl Default for EditorConfig {
 
 /// Edit operation for undo/redo. The editor no longer records these: its
 /// undo history is the [`EditState`](crate::utils::EditState)'s
+#[deprecated(
+    since = "3.12.0",
+    note = "CodeEditor's undo history is revue::utils::EditState's; EditOp is removed in 4.0"
+)]
 #[derive(Clone, Debug)]
 pub enum EditOp {
     /// Insert text at position
