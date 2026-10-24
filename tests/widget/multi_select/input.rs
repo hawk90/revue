@@ -95,10 +95,14 @@ fn arrows_move_tags_only_while_closed() {
     assert_eq!(v.get_tag_cursor(), Some(1));
     press(&mut v, &[Key::Right, Key::Right]);
     assert_eq!(v.get_tag_cursor(), None);
-    // Open: Left and Right do nothing, and Up and Down leave the tags
+    // Open: Left and Right move in the search query, and Up and Down
+    // leave the tags; without search they do nothing
     v.open();
-    assert_eq!(press(&mut v, &[Key::Left, Key::Right]), [false, false]);
+    assert_eq!(press(&mut v, &[Key::Left, Key::Right]), [true, true]);
     assert_eq!(v.get_tag_cursor(), None);
+    let mut plain = fruits().searchable(false);
+    plain.open();
+    assert_eq!(press(&mut plain, &[Key::Left, Key::Right]), [false, false]);
     // Closed: Up and Down do nothing
     v.close();
     assert_eq!(press(&mut v, &[Key::Up, Key::Down]), [false, false]);
@@ -181,7 +185,8 @@ fn other_keys_are_ignored() {
     let keys = [Key::Home, Key::End, Key::PageDown, Key::Char('x'), Key::Tab];
     assert_eq!(press(&mut v, &keys), [false; 5]);
     v.open();
-    assert_eq!(press(&mut v, &[Key::Home, Key::PageUp]), [false, false]);
+    // Home is a search field key; PageUp is nothing here
+    assert_eq!(press(&mut v, &[Key::Home, Key::PageUp]), [true, false]);
     assert!(v.is_open());
 }
 
@@ -280,6 +285,8 @@ struct Model {
     cursor: usize,
     tag: Option<usize>,
     query: String,
+    /// Where the query's cursor is, in chars
+    at: usize,
     filtered: Vec<usize>,
 }
 
@@ -330,6 +337,7 @@ impl Model {
     fn close(&mut self) {
         self.open = false;
         self.query.clear();
+        self.at = 0;
         self.refilter();
     }
 
@@ -364,15 +372,29 @@ impl Model {
             }
             Key::Down | Key::Up => {}
             Key::Char('j' | 'k') if !self.searchable => {}
-            Key::Backspace if self.searchable => {
-                self.query.pop();
-                self.refilter();
-            }
-            Key::Char(c) if self.searchable => {
-                self.query.push(*c);
-                self.refilter();
-            }
             Key::Tab => self.close(),
+            // The search field: the editing keys (the query is ASCII here)
+            Key::Backspace if self.searchable => {
+                if self.at > 0 {
+                    self.at -= 1;
+                    self.query.remove(self.at);
+                    self.refilter();
+                }
+            }
+            Key::Delete if self.searchable => {
+                if self.at < self.query.len() {
+                    self.query.remove(self.at);
+                    self.refilter();
+                }
+            }
+            Key::Left if self.searchable => self.at = self.at.saturating_sub(1),
+            Key::Right if self.searchable => self.at = (self.at + 1).min(self.query.len()),
+            Key::Home if self.searchable => self.at = 0,
+            Key::Char(c) if self.searchable => {
+                self.query.insert(self.at, *c);
+                self.at += 1;
+                self.refilter();
+            }
             _ => return false,
         }
         true
@@ -499,4 +521,96 @@ fn a_ctrl_or_alt_letter_is_left_to_the_app() {
         EventResult::ConsumedAndRender
     );
     assert_eq!(v.query(), "@");
+}
+
+/// The query only grew at its end: it is edited as every single-line field
+/// is, and drawn after the tags with its cursor (#985)
+#[test]
+fn the_search_query_is_an_edit_field() {
+    use revue::event::KeyEvent;
+    let mut v = fruits().searchable(true).focused(true);
+    v.open();
+    for k in [Key::Char('a'), Key::Char('e'), Key::Left, Key::Char('p')] {
+        v.handle_key(&k);
+    }
+    assert_eq!(v.query(), "ape");
+    assert!(v.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    assert_eq!(v.query(), "e");
+    // Ctrl and an unbound letter is the app's
+    assert!(!v.handle_key_event(&KeyEvent::ctrl(Key::Char('q'))));
+    assert_eq!(v.query(), "e");
+
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    let mut buffer = Buffer::new(20, 6);
+    v.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 6)));
+    let header: String = (0..20).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert!(header.starts_with(" e "), "{header:?}");
+    // The cursor sits on "e", where Ctrl+Backspace left it
+    assert_eq!(
+        buffer.get(1, 0).unwrap().bg,
+        Some(revue::style::Color::WHITE)
+    );
+}
+
+/// Tags that filled the row left the query no room, so it was not drawn,
+/// and the query was drawn over the tags' `...` marker
+#[test]
+fn the_search_query_keeps_room_after_tags() {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    let header = |v: &MultiSelect, w: u16| -> String {
+        let mut buffer = Buffer::new(w, 6);
+        v.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, w, 6)));
+        (0..w).map(|x| buffer.get(x, 0).unwrap().symbol).collect()
+    };
+    let mut v = multi_select()
+        .options(vec!["abcdefg", "hijklmn", "opq"])
+        .searchable(true)
+        .width(12)
+        .focused(true);
+    v.select_option(0);
+    v.open();
+    v.handle_key(&Key::Char('o'));
+    let row = header(&v, 12);
+    assert!(row.contains('o'), "{row:?}");
+
+    let mut v = multi_select()
+        .options(vec!["aa", "bb", "cc", "dd", "ee"])
+        .searchable(true)
+        .width(20)
+        .focused(true);
+    v.select_all();
+    v.open();
+    v.handle_key(&Key::Char('d'));
+    let row = header(&v, 20);
+    assert!(row.contains("... d"), "{row:?}");
+}
+
+/// Tags that exactly filled the row hid the rest without a `...` marker,
+/// and the tag cursor stays in view with the marker after it
+#[test]
+fn hidden_tags_are_always_marked() {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    let header = |v: &MultiSelect| -> String {
+        let mut buffer = Buffer::new(12, 1);
+        v.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 12, 1)));
+        (0..12).map(|x| buffer.get(x, 0).unwrap().symbol).collect()
+    };
+    // Room for 10 columns: "[aa] [bb] " fills it, "[cc]" is hidden
+    let mut v = multi_select().options(vec!["aa", "bb", "cc"]).width(12);
+    v.select_all();
+    let row = header(&v);
+    assert!(row.contains("..."), "{row:?}");
+    // The tag cursor on the first tag: in view, with the marker after it
+    for _ in 0..3 {
+        v.handle_key(&Key::Left);
+    }
+    assert_eq!(v.get_tag_cursor(), Some(0));
+    let row = header(&v);
+    assert!(row.starts_with("[aa]") && row.contains("..."), "{row:?}");
 }

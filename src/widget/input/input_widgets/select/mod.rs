@@ -7,7 +7,7 @@ mod state;
 
 use super::dropdown::MIN_DROPDOWN_WIDTH;
 use crate::style::Color;
-use crate::utils::{display_width, ScrollState, Selection};
+use crate::utils::{display_width, EditState, ScrollState, Selection};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -23,11 +23,10 @@ use crate::{impl_props_builders, impl_styled_view};
 /// | `Down` / `j` | Move to next option (when open, non-searchable mode) |
 /// | `Up` | Move to previous option (when open, searchable mode) |
 /// | `Down` | Move to next option (when open, searchable mode) |
-/// | `Home` | Jump to first option (when open) |
-/// | `End` | Jump to last option (when open) |
-/// | `Escape` | Close dropdown and clear search query (when open) |
-/// | `Backspace` | Delete last character from search query (when open, searchable mode) |
-/// | `Char` | Append character to search query (when open, searchable mode) |
+/// | `Home` | Jump to first option (when open, non-searchable mode) |
+/// | `End` | Jump to last option (when open, non-searchable mode) |
+/// | `Escape`, `Tab` | Close dropdown and clear search query (when open) |
+/// | the editing keys | Edit the search query (when open, searchable mode): the standard keys every single-line field shares (see [`EditState::edit_key`](crate::utils::EditState::edit_key)) |
 #[derive(Clone, Debug)]
 pub struct Select {
     pub(crate) options: Vec<String>,
@@ -43,8 +42,11 @@ pub struct Select {
     pub(crate) width: Option<u16>,
     /// Cached auto-calculated width (invalidated on options change)
     pub(crate) cached_auto_width: Option<u16>,
-    /// Search query for filtering options
-    pub(crate) query: String,
+    /// Search query for filtering options, edited as every single-line
+    /// field is (#985)
+    pub(crate) query: EditState,
+    /// Horizontal scroll of the search query in the header, in columns
+    query_scroll: std::cell::Cell<usize>,
     /// Enable fuzzy search when typing
     pub(crate) searchable: bool,
     /// Filtered indices (into options) based on query
@@ -76,7 +78,8 @@ impl Select {
             highlight_fg: Some(Color::YELLOW),
             width: None,
             cached_auto_width: None,
-            query: String::new(),
+            query: EditState::single_line(),
+            query_scroll: std::cell::Cell::new(0),
             searchable: false,
             filtered: Vec::new(),
             filtered_selection: Selection::new(0),

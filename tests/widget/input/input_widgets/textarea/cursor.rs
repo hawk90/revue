@@ -1,4 +1,7 @@
-//! Tests for public cursor APIs
+//! Tests for public cursor APIs. `Cursor` and `CursorSet` are deprecated
+//! (3.12) and removed in 4.0, with these tests.
+
+#![allow(deprecated)]
 
 use revue::widget::input_widgets::textarea::{Cursor, CursorPos, CursorSet};
 

@@ -664,9 +664,11 @@ items:
     evidence:
       - src/widget/input/input_widgets/select/mod.rs::select
       - tests/e2e/widget_interaction.rs
+      - tests/widget/input/input_widgets/select.rs::test_select_search_query_is_edited_like_a_field
     source:
       - FEATURES.md §4 Widgets / Input Widgets / Select
-    notes: No .on_change; state-based.
+    notes: No .on_change; state-based. The search query is edited with the shared EditState (UTIL-008) and drawn with
+      its cursor.
   - id: WID-007
     title: Checkbox
     area: widget
@@ -1972,5 +1974,6 @@ items:
     notes: Every editing widget uses it - Input, SearchBar, Combobox, Autocomplete, MaskedInput, NumberInput and DataGrid
       cells, drawn with one shared field (#985), and TextArea and CodeEditor (#1261), each keeping its char-column API.
       CodeEditor's auto-indent and closed brackets are edits through it (`insert_pair`), so they undo with the typing.
-      The append-only query fields (CommandPalette, Select/MultiSelect search, Tree search, CodeEditor find/goto,
-      ColorPicker hex, FilePicker name) are still open in #985.
+      Select and MultiSelect search queries use it too. Still append-only (#985) - Tree search, CodeEditor find/goto,
+      ColorPicker hex, FilePicker name, Terminal input; CommandPalette's query is a public String field, so it waits
+      for 4.0.

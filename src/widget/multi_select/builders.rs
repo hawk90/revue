@@ -149,7 +149,7 @@ impl MultiSelect {
     /// Get query string for testing
     #[doc(hidden)]
     pub fn get_query(&self) -> &str {
-        &self.query
+        self.query()
     }
 
     /// Get placeholder text for testing

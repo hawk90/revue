@@ -4,6 +4,7 @@ use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::truncate_to_width;
 use crate::widget::theme::PLACEHOLDER_FG;
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::{RenderContext, View};
 
 use super::super::dropdown::{
@@ -49,11 +50,7 @@ impl View for Select {
         let bg = self.bg.or_else(|| ctx.css_background_if_set());
 
         // Render the closed/header row
-        let display_text = if self.open && self.searchable && !self.query.is_empty() {
-            &self.query
-        } else {
-            self.value().unwrap_or(&self.placeholder)
-        };
+        let display_text = self.value().unwrap_or(&self.placeholder);
         let arrow = if self.open { "▲" } else { "▼" };
 
         // Draw background for header
@@ -75,15 +72,33 @@ impl View for Select {
         cell.bg = bg;
         ctx.set(ICON_COL, 0, cell);
 
-        // Draw text
-        let truncated = truncate_to_width(display_text, text_width);
-        let mut cx = HEADER_TEXT_COL;
-        for ch in truncated.chars() {
-            let mut cell = Cell::new(ch);
-            cell.fg = fg;
-            cell.bg = bg;
-            ctx.set(cx, 0, cell);
-            cx += crate::utils::char_width(ch) as u16;
+        // While searching, the query is a field with its cursor: the
+        // current value stands in for it while it is empty
+        if self.open && self.searchable {
+            let field = EditField::of(&self.query, display_text, self.focused);
+            let w = text_width as u16;
+            let scroll = field.scroll(self.query_scroll.get(), w);
+            self.query_scroll.set(scroll);
+            ctx.put_edit_field(HEADER_TEXT_COL, 0, w, &field, scroll, |kind, ch| {
+                let mut cell = Cell::new(ch);
+                (cell.fg, cell.bg) = match kind {
+                    FieldCell::Cursor => (Some(Color::BLACK), Some(Color::WHITE)),
+                    FieldCell::Selected => (self.selected_fg, self.selected_bg),
+                    FieldCell::Placeholder => (Some(PLACEHOLDER_FG), bg),
+                    FieldCell::Text => (fg, bg),
+                };
+                cell
+            });
+        } else {
+            let truncated = truncate_to_width(display_text, text_width);
+            let mut cx = HEADER_TEXT_COL;
+            for ch in truncated.chars() {
+                let mut cell = Cell::new(ch);
+                cell.fg = fg;
+                cell.bg = bg;
+                ctx.set(cx, 0, cell);
+                cx += crate::utils::char_width(ch) as u16;
+            }
         }
 
         // If open, render dropdown options as overlay

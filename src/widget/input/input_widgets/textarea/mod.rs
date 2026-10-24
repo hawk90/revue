@@ -12,6 +12,7 @@
 //! - Find/replace functionality
 
 mod content;
+#[allow(deprecated)] // Cursor and CursorSet, deprecated in 3.12
 mod cursor;
 mod editing;
 mod find_impl;
@@ -24,6 +25,8 @@ mod selection;
 mod undo;
 mod view;
 
+// Cursor and CursorSet are deprecated (3.12), re-exported until 4.0
+#[allow(deprecated)]
 pub use cursor::{Cursor, CursorPos, CursorSet};
 pub use find_replace::{FindMatch, FindOptions, FindReplaceMode, FindReplaceState};
 pub use selection::Selection;

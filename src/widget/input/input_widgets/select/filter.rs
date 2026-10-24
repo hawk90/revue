@@ -1,6 +1,7 @@
 //! Fuzzy search and filtering for Select
 
-use crate::utils::{fuzzy_match, FuzzyMatch};
+use crate::event::KeyEvent;
+use crate::utils::{fuzzy_match, EditOutcome, FuzzyMatch};
 
 use super::Select;
 
@@ -10,6 +11,19 @@ impl Select {
         self.filtered = (0..self.options.len()).collect();
         self.filtered_selection.set_len(self.filtered.len());
         self.filtered_selection.first();
+    }
+
+    /// Apply an editing key to the search query, filtering again when the
+    /// text changed; whether the key was an editing key
+    pub(crate) fn edit_query(&mut self, event: &KeyEvent) -> bool {
+        match self.query.edit_key(event, 1) {
+            EditOutcome::Edited => {
+                self.update_filter();
+                true
+            }
+            EditOutcome::Moved => true,
+            EditOutcome::Unhandled => false,
+        }
     }
 
     /// Update filter based on current query
@@ -24,7 +38,7 @@ impl Select {
             .options
             .iter()
             .enumerate()
-            .filter_map(|(i, opt)| fuzzy_match(&self.query, opt).map(|m| (i, m.score)))
+            .filter_map(|(i, opt)| fuzzy_match(self.query(), opt).map(|m| (i, m.score)))
             .collect();
 
         // Sort by score descending
@@ -45,7 +59,7 @@ impl Select {
         if self.query.is_empty() {
             None
         } else {
-            fuzzy_match(&self.query, option)
+            fuzzy_match(self.query(), option)
         }
     }
 
