@@ -149,6 +149,22 @@ fn test_masked_input_wide_glyph_cut_by_the_edge_keeps_its_cursor() {
     assert!(cursor_cells(&buffer, 0).is_empty());
 }
 
+/// A cursor on a wide glyph the right edge cuts scrolls the field one
+/// column, so the whole glyph shows
+#[test]
+fn test_masked_input_cursor_on_a_cut_wide_glyph_scrolls_it_into_view() {
+    let mut input = MaskedInput::new()
+        .mask_style(MaskStyle::ShowLast(1))
+        .width(8)
+        .focused(true)
+        .value("aaaaaaa한");
+    input.set_cursor(7);
+    let buffer = screen(&input, 40, 1);
+    assert_eq!(row(&buffer, 0).trim_end(), "[●●●●●●한]");
+    assert_eq!(cursor_cells(&buffer, 0).first(), Some(&7));
+    assert_eq!(buffer.get(8, 0).unwrap().bg, Some(Color::WHITE));
+}
+
 #[test]
 fn test_masked_input_cursor_drawn_on_its_char_only_when_focused() {
     let mut input = MaskedInput::new().value("abcd").width(8);
@@ -408,9 +424,16 @@ proptest! {
         // does not give the length away
         let hidden = input.masked_display().is_empty();
         let cursor_at = if hidden { 0 } else { input.get_cursor() };
-        // A cursor past the shown text scrolls the field (tested on its
+        // A cursor past the shown text, or on a wide glyph the right edge
+        // cuts, scrolls the field so the whole glyph shows (tested on its
         // own); keep it inside, where the field shows from the start.
-        prop_assume!(!focused || cursor_at < shown.len());
+        let masked: Vec<char> = input.masked_display().chars().collect();
+        let cursor_end: usize = masked[..cursor_at.min(masked.len())]
+            .iter()
+            .map(|&c| revue::utils::char_width(c))
+            .sum::<usize>()
+            + masked.get(cursor_at).map_or(1, |&c| revue::utils::char_width(c).max(1));
+        prop_assume!(!focused || (cursor_at < shown.len() && cursor_end <= width as usize));
 
         let buffer = screen(&input, 40, 1);
         prop_assert_eq!(buffer.get(0, 0).unwrap().symbol, '[');
