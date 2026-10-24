@@ -2,7 +2,7 @@
 //! text, checked for "no panic, no hang, errors reported" - and a little more
 //! per layer.
 //!
-//! Six layers, one file or folder each, so a failure names its layer:
+//! Seven layers, one file or folder each, so a failure names its layer:
 //!
 //! - `fault/output.rs` - writers that fail, write short, refuse to flush or
 //!   are interrupted, under `Terminal` and `CrosstermBackend`;
@@ -13,6 +13,9 @@
 //! - `fault/sessions/` - random key, paste, resize and draw sequences on
 //!   every editing widget (the driver in `targets.rs`, which `fuzz/` runs
 //!   too);
+//! - `fault/trees/` - random widget trees with random stylesheets, drawn
+//!   through the real pipeline: a tree drawn after another must look as in
+//!   a fresh app (the driver in `targets.rs`, which `fuzz/` runs too);
 //! - `fault/resources.rs` - missing, unreadable, huge, corrupt and streaming
 //!   files, clipboard tools that fail or hang, a file watcher losing its
 //!   files, and an HTTP backend that errors or sends garbage;

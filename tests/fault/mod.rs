@@ -13,6 +13,7 @@ pub mod output;
 pub mod parsers;
 pub mod resources;
 pub mod sessions;
+pub mod trees;
 
 use std::cell::{Cell as StdCell, RefCell};
 use std::collections::BTreeSet;

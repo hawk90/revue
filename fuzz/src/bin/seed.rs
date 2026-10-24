@@ -1,8 +1,8 @@
 //! Write each target's seed corpus and libFuzzer dictionary:
 //! `seed <corpus dir> <dict dir>` makes `<corpus dir>/<target>/` with every
 //! fault-layer corpus entry up to 64 KiB and each of the target's tokens,
-//! and `<dict dir>/<target>.dict` with the tokens; for the editing sessions,
-//! a few random byte streams and no dictionary.
+//! and `<dict dir>/<target>.dict` with the tokens; for the editing sessions
+//! and the widget trees, a few random byte streams and no dictionary.
 
 use std::fs;
 use std::path::PathBuf;
@@ -32,12 +32,15 @@ fn main() -> std::io::Result<()> {
         }
         fs::write(dict_dir.join(format!("{name}.dict")), dict)?;
     }
-    // The editing sessions read bytes as steps: a few random sessions as
-    // seeds, and no dictionary (libFuzzer refuses an empty one)
-    let dir = corpus_dir.join("editing");
-    fs::create_dir_all(&dir)?;
-    for seed in 0..8u64 {
-        fs::write(dir.join(format!("random-{seed}")), xorshift(seed, 512))?;
+    // The editing sessions and the widget trees read bytes as structure: a
+    // few random streams as seeds, and no dictionary (libFuzzer refuses an
+    // empty one)
+    for (name, len) in [("editing", 512), ("trees", 256)] {
+        let dir = corpus_dir.join(name);
+        fs::create_dir_all(&dir)?;
+        for seed in 0..8u64 {
+            fs::write(dir.join(format!("random-{seed}")), xorshift(seed, len))?;
+        }
     }
     Ok(())
 }
