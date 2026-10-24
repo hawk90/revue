@@ -13,7 +13,6 @@
 
 mod content;
 mod cursor;
-mod edit;
 mod editing;
 mod find_impl;
 mod find_replace;
@@ -30,12 +29,10 @@ pub use find_replace::{FindMatch, FindOptions, FindReplaceMode, FindReplaceState
 pub use selection::Selection;
 
 use crate::style::Color;
+use crate::utils::EditState;
 use crate::widget::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
-
-/// Maximum undo history size
-const MAX_UNDO_HISTORY: usize = 100;
 
 /// A multi-line text editor widget
 ///
@@ -55,30 +52,37 @@ const MAX_UNDO_HISTORY: usize = 100;
 ///
 /// # Keyboard Shortcuts
 ///
+/// The text, cursors, selections and undo are an
+/// [`EditState`]: the standard editing keys every
+/// text field shares, applied at every cursor. Columns in this API are
+/// chars; a cursor is never placed inside a character the user sees as one.
+///
 /// | Key | Action |
 /// |-----|--------|
-/// | `Char` | Insert character at cursor |
-/// | `Enter` | Insert newline |
-/// | `Tab` | Insert tab (rendered as spaces based on `tab_width`) |
-/// | `Backspace` | Delete character before cursor (or merge with previous line) |
-/// | `Delete` | Delete character at cursor (or merge with next line) |
-/// | `Left` | Move cursor left (clears selection) |
-/// | `Right` | Move cursor right (clears selection) |
-/// | `Up` | Move cursor up one line (clears selection) |
-/// | `Down` | Move cursor down one line (clears selection) |
-/// | `Home` | Move cursor to start of line (clears selection) |
-/// | `End` | Move cursor to end of line (clears selection) |
-/// | `PageUp` | Scroll the view up a page, moving the cursor with it (to the first line at the top) |
-/// | `PageDown` | Scroll the view down a page, moving the cursor with it (to the last line at the end) |
+/// | `Char` | Type it at every cursor, replacing the selection |
+/// | `Enter` | New line (not past `max_lines`) |
+/// | `Tab` | Type `tab_width` spaces |
+/// | `Backspace` / `Delete` | Delete before / after the cursor, or the selection; with Ctrl, a word |
+/// | `Left` / `Right` | Move a character; with Ctrl, a word |
+/// | `Up` / `Down` | Move a line, keeping the screen column |
+/// | `Home` / `End` | Line start / end; with Ctrl, the text's |
+/// | `PageUp` / `PageDown` | Scroll the view a page, moving the cursor with it (to the first or last line at the ends) |
+/// | Shift + a move | Select |
+/// | `Ctrl+A` | Select all |
+/// | `Ctrl+Z` / `Ctrl+Y`, `Ctrl+Shift+Z` | Undo / redo |
+/// | `Ctrl+Shift+K` | Delete the lines the cursors touch |
 ///
-/// A page is the height of the view at the last render (10 rows before the
-/// first render). With wrapping on, pages are counted in screen rows.
+/// See [`handle_key_event`](Self::handle_key_event) for find, replace and
+/// multi-cursor keys. A page is the height of the view at the last render
+/// (10 rows before the first render). With wrapping on, pages are counted in
+/// screen rows.
 #[derive(Clone)]
 pub struct TextArea {
-    /// Lines of text
-    lines: Vec<String>,
-    /// Multiple cursors (primary cursor is at index 0)
-    cursors: CursorSet,
+    /// The text, its cursors with their selections, and undo (#1261)
+    edit: EditState,
+    /// Set by [`start_selection`](Self::start_selection): the move methods
+    /// extend the selection even before it holds any text
+    selecting: bool,
     /// First visible line, kept between renders so the view only moves
     /// when the cursor would leave it
     scroll: std::cell::Cell<usize>,
@@ -88,24 +92,16 @@ pub struct TextArea {
     /// Horizontal scroll in terminal COLUMNS when not wrapping, kept between
     /// renders so the view only moves when the cursor would leave it
     scroll_x: std::cell::Cell<usize>,
-    /// Undo history
-    undo_stack: Vec<edit::EditOperation>,
-    /// Redo history
-    redo_stack: Vec<edit::EditOperation>,
     /// Show line numbers
     show_line_numbers: bool,
     /// Enable word wrap
     wrap: bool,
-    /// Read-only mode
-    read_only: bool,
     /// Focused state
     focused: bool,
     /// Tab width
     tab_width: usize,
     /// Placeholder text
     placeholder: Option<String>,
-    /// Maximum lines (0 = unlimited)
-    max_lines: usize,
     /// Minimum height in rows (0 = no constraint). Defaults to 3.
     min_height: u16,
     /// Text color
@@ -139,20 +135,16 @@ impl TextArea {
     /// Create a new empty text area
     pub fn new() -> Self {
         Self {
-            lines: vec![String::new()],
-            cursors: CursorSet::default(),
+            edit: EditState::multi_line(),
+            selecting: false,
             scroll: std::cell::Cell::new(0),
             scroll_row: std::cell::Cell::new(0),
             scroll_x: std::cell::Cell::new(0),
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
             show_line_numbers: false,
             wrap: true,
-            read_only: false,
             focused: false,
             tab_width: 4,
             placeholder: None,
-            max_lines: 0,
             min_height: 3,
             fg: None,
             bg: None,
@@ -194,7 +186,7 @@ impl TextArea {
 
     /// Set read-only mode
     pub fn read_only(mut self, read_only: bool) -> Self {
-        self.read_only = read_only;
+        self.edit.set_read_only(read_only);
         self
     }
 
@@ -216,9 +208,18 @@ impl TextArea {
         self
     }
 
-    /// Set maximum lines (0 = unlimited)
+    /// Set maximum lines (0 = unlimited). Typed or pasted text that would
+    /// go past it loses all its line breaks (at every cursor alike), and
+    /// text set before is cut to it.
     pub fn max_lines(mut self, max: usize) -> Self {
-        self.max_lines = max;
+        self.edit = std::mem::take(&mut self.edit).max_lines(max);
+        self
+    }
+
+    /// Where edit times come from (the system clock by default), so a test
+    /// can control how typing is grouped for undo
+    pub fn clock(mut self, clock: impl Fn() -> std::time::Instant + Send + Sync + 'static) -> Self {
+        self.edit = std::mem::take(&mut self.edit).clock(clock);
         self
     }
 
@@ -300,7 +301,7 @@ pub fn textarea() -> TextArea {
     TextArea::new()
 }
 
-// KEEP HERE - Private implementation tests (all tests access private fields: lines, scroll, show_line_numbers, etc.)
+// KEEP HERE - Private implementation tests (all tests access private fields: edit, scroll, show_line_numbers, etc.)
 
 #[cfg(test)]
 mod tests {
@@ -310,40 +311,35 @@ mod tests {
     #[test]
     fn test_textarea_new_creates_empty_editor() {
         let textarea = TextArea::new();
-        assert_eq!(textarea.lines.len(), 1);
-        assert_eq!(textarea.lines[0], "");
+        assert_eq!(textarea.edit.lines(), [""]);
         assert_eq!(textarea.scroll.get(), 0);
         assert_eq!(textarea.scroll_x.get(), 0);
         assert!(!textarea.show_line_numbers);
         assert!(textarea.wrap); // wrap defaults to true for intuitive multi-line editing
-        assert!(!textarea.read_only);
+        assert!(!textarea.edit.is_read_only());
         assert!(!textarea.focused);
         assert_eq!(textarea.tab_width, 4);
         assert!(textarea.placeholder.is_none());
-        assert_eq!(textarea.max_lines, 0);
         assert_eq!(textarea.min_height, 3); // min_height defaults to 3 to stay visible in layouts
     }
 
     #[test]
     fn test_textarea_default_trait() {
         let textarea = TextArea::default();
-        assert_eq!(textarea.lines.len(), 1);
+        assert_eq!(textarea.edit.line_count(), 1);
         assert_eq!(textarea.tab_width, 4);
     }
 
     #[test]
     fn test_textarea_content_builder() {
         let textarea = TextArea::new().content("Hello\nWorld");
-        assert_eq!(textarea.lines.len(), 2);
-        assert_eq!(textarea.lines[0], "Hello");
-        assert_eq!(textarea.lines[1], "World");
+        assert_eq!(textarea.edit.lines(), ["Hello", "World"]);
     }
 
     #[test]
     fn test_textarea_content_builder_single_line() {
         let textarea = TextArea::new().content("Single line");
-        assert_eq!(textarea.lines.len(), 1);
-        assert_eq!(textarea.lines[0], "Single line");
+        assert_eq!(textarea.edit.lines(), ["Single line"]);
     }
 
     #[test]
@@ -367,10 +363,10 @@ mod tests {
     #[test]
     fn test_textarea_read_only_builder() {
         let textarea = TextArea::new().read_only(true);
-        assert!(textarea.read_only);
+        assert!(textarea.edit.is_read_only());
 
         let textarea = TextArea::new().read_only(false);
-        assert!(!textarea.read_only);
+        assert!(!textarea.edit.is_read_only());
     }
 
     #[test]
@@ -399,11 +395,15 @@ mod tests {
 
     #[test]
     fn test_textarea_max_lines_builder() {
-        let textarea = TextArea::new().max_lines(100);
-        assert_eq!(textarea.max_lines, 100);
+        let mut textarea = TextArea::new().max_lines(2).focused(true);
+        textarea.handle_key(&Key::Enter);
+        textarea.handle_key(&Key::Enter);
+        assert_eq!(textarea.line_count(), 2);
 
-        let textarea = TextArea::new().max_lines(0);
-        assert_eq!(textarea.max_lines, 0);
+        let mut textarea = TextArea::new().max_lines(0).focused(true);
+        textarea.handle_key(&Key::Enter);
+        textarea.handle_key(&Key::Enter);
+        assert_eq!(textarea.line_count(), 3);
     }
 
     #[test]
@@ -497,14 +497,13 @@ mod tests {
             .fg(Color::WHITE)
             .bg(Color::BLACK);
 
-        assert_eq!(textarea.lines[0], "Test content");
+        assert_eq!(textarea.edit.lines(), ["Test content"]);
         assert!(textarea.show_line_numbers);
         assert!(textarea.wrap);
-        assert!(!textarea.read_only);
+        assert!(!textarea.edit.is_read_only());
         assert!(textarea.focused);
         assert_eq!(textarea.tab_width, 4);
         assert_eq!(textarea.placeholder, Some("Placeholder".to_string()));
-        assert_eq!(textarea.max_lines, 100);
         assert_eq!(textarea.fg, Some(Color::WHITE));
         assert_eq!(textarea.bg, Some(Color::BLACK));
     }
@@ -637,15 +636,10 @@ mod tests {
     }
 
     #[test]
-    fn test_textarea_empty_undo_stack() {
+    fn test_textarea_empty_undo_and_redo() {
         let textarea = TextArea::new();
-        assert_eq!(textarea.undo_stack.len(), 0);
-    }
-
-    #[test]
-    fn test_textarea_empty_redo_stack() {
-        let textarea = TextArea::new();
-        assert_eq!(textarea.redo_stack.len(), 0);
+        assert!(!textarea.can_undo());
+        assert!(!textarea.can_redo());
     }
 
     #[test]
@@ -705,10 +699,10 @@ mod tests {
     fn test_handle_key_event_escape_collapses_cursors() {
         let mut textarea = TextArea::new().content("aa\naa").focused(true);
         textarea.add_cursor_below();
-        assert!(!textarea.cursors.is_single());
+        assert_eq!(textarea.cursor_count(), 2);
         // No find panel open, so Escape collapses secondary cursors.
         assert!(textarea.handle_key_event(&KeyEvent::new(Key::Escape)));
-        assert!(textarea.cursors.is_single());
+        assert_eq!(textarea.cursor_count(), 1);
     }
 
     #[test]
@@ -721,9 +715,13 @@ mod tests {
     #[test]
     fn test_handle_key_event_ctrl_d_adds_cursor_on_next_occurrence() {
         let mut textarea = TextArea::new().content("foo foo").focused(true);
-        // Cursor starts on the first "foo".
+        // Cursor starts on the first "foo": the first press selects it, the
+        // second adds the next one
         assert!(textarea.handle_key_event(&KeyEvent::ctrl(Key::Char('d'))));
-        assert_eq!(textarea.cursors.len(), 2);
+        assert_eq!(textarea.cursor_count(), 1);
+        assert_eq!(textarea.get_selection().as_deref(), Some("foo"));
+        assert!(textarea.handle_key_event(&KeyEvent::ctrl(Key::Char('d'))));
+        assert_eq!(textarea.cursor_count(), 2);
     }
 
     #[test]
@@ -754,13 +752,13 @@ mod tests {
         let mut event = KeyEvent::ctrl(Key::Down);
         event.alt = true;
         assert!(textarea.handle_key_event(&event));
-        assert_eq!(textarea.cursors.len(), 2);
+        assert_eq!(textarea.cursor_count(), 2);
     }
 
     #[test]
     fn test_handle_key_event_plain_char_delegates_to_insert() {
         let mut textarea = TextArea::new().focused(true);
         assert!(textarea.handle_key_event(&KeyEvent::new(Key::Char('x'))));
-        assert_eq!(textarea.lines[0], "x");
+        assert_eq!(textarea.edit.lines(), ["x"]);
     }
 }

@@ -138,22 +138,21 @@ fn test_textarea_empty_content_operations() {
 
 #[test]
 fn test_textarea_rapid_undo_redo() {
-    let mut ta = textarea().focused(true);
+    // Typing in quick succession is one undo step
+    let now = std::time::Instant::now();
+    let mut ta = textarea().focused(true).clock(move || now);
     ta.insert_char('a');
     ta.insert_char('b');
     ta.insert_char('c');
     assert_eq!(ta.get_content(), "abc");
 
     ta.undo();
-    ta.undo();
-    ta.undo();
+    assert_eq!(ta.get_content(), "");
     ta.undo(); // extra undo — should not panic
     assert_eq!(ta.get_content(), "");
 
     ta.redo();
-    assert_eq!(ta.get_content(), "a");
-    ta.redo();
-    ta.redo();
+    assert_eq!(ta.get_content(), "abc");
     ta.redo(); // extra redo — should not panic
     assert_eq!(ta.get_content(), "abc");
 }

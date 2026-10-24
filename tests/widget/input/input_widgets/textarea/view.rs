@@ -129,6 +129,27 @@ fn test_textarea_cursor_drawn_only_when_focused() {
     assert!(cell.modifier.contains(Modifier::BOLD));
 }
 
+/// A zero-width char takes no cell, so a cursor before one was not drawn:
+/// it is drawn on the next glyph, or past the end when none follows
+#[test]
+fn test_textarea_cursor_on_a_zero_width_char_is_drawn() {
+    let mut ta = TextArea::new().content("a\u{200B}b").focused(true);
+    ta.set_cursor(0, 1);
+    let buffer = render(&ta, 6, 1);
+    assert_eq!(cursor_cells(&buffer), vec![(1, 0)]);
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, 'b');
+
+    let mut ta = TextArea::new().content("a\u{200B}").focused(true);
+    ta.set_cursor(0, 1);
+    assert_eq!(cursor_cells(&render(&ta, 6, 1)), vec![(1, 0)]);
+
+    // A combining mark at the start of a line is a character of its own
+    let ta = TextArea::new().content("\u{301}b").focused(true);
+    let buffer = render(&ta, 6, 1);
+    assert_eq!(cursor_cells(&buffer), vec![(0, 0)]);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'b');
+}
+
 #[test]
 fn test_textarea_cursor_past_the_end_drawn_after_the_text() {
     let mut ta = TextArea::new().content("ab\n한").focused(true);

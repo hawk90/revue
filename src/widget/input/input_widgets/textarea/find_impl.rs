@@ -3,6 +3,7 @@
 use super::cursor::CursorPos;
 use super::find_replace::{FindMatch, FindOptions, FindReplaceMode, FindReplaceState};
 use crate::utils::text::find_chars;
+use crate::utils::EditCursor;
 
 impl TextArea {
     /// Open find panel (Ctrl+F)
@@ -85,7 +86,7 @@ impl TextArea {
 
     /// Replace current match
     pub fn replace_current(&mut self) {
-        if self.read_only {
+        if self.edit.is_read_only() {
             return;
         }
 
@@ -126,32 +127,25 @@ impl TextArea {
         }
     }
 
-    /// Replace all matches (Ctrl+Shift+H)
+    /// Replace all matches (Ctrl+Shift+H), as one undo step; the cursor
+    /// ends after the last replacement
     pub fn replace_all(&mut self) {
-        if self.read_only {
+        let Some(state) = self.find_replace.as_ref() else {
+            return;
+        };
+        if self.edit.is_read_only() || state.matches.is_empty() {
             return;
         }
-
-        let replacements: Vec<(CursorPos, CursorPos, String)> = {
-            let state = match self.find_replace.as_ref() {
-                Some(s) => s,
-                None => return,
-            };
-            if state.matches.is_empty() {
-                return;
-            }
-            state
-                .matches
-                .iter()
-                .map(|m| (m.start, m.end, state.replace_with.clone()))
-                .collect()
-        };
-
-        // Apply in reverse order to maintain position validity
-        for (start, end, replace_with) in replacements.into_iter().rev() {
-            self.replace_range(start, end, &replace_with);
-        }
-
+        let replace_with = state.replace_with.clone();
+        // A cursor selecting each match, then one paste over them all
+        let cursors = state
+            .matches
+            .iter()
+            .map(|m| EditCursor::selecting(self.edit_pos(m.start), self.edit_pos(m.end)))
+            .collect();
+        self.edit.set_cursors(cursors);
+        self.edit.paste(&replace_with);
+        self.edit.clear_secondary();
         self.refresh_matches();
     }
 
@@ -199,11 +193,16 @@ impl TextArea {
         if options.use_regex {
             self.collect_regex_matches(&query, &options, &mut matches);
         } else {
-            for (line_idx, line) in self.lines.iter().enumerate() {
+            for (line_idx, line) in self.edit.lines().iter().enumerate() {
                 self.find_literal_matches(line_idx, line, &query, &options, &mut matches);
             }
         }
 
+        // A match must start and end between characters the user sees as
+        // one: an "e" inside "e" + combining accent is not one, and could
+        // not be selected or replaced on its own
+        let on_boundary = |p: CursorPos| self.char_pos(self.edit_pos(p)) == p;
+        matches.retain(|m| on_boundary(m.start) && on_boundary(m.end));
         if let Some(ref mut state) = self.find_replace {
             state.current_match = if matches.is_empty() { None } else { Some(0) };
             state.matches = matches;
@@ -225,7 +224,7 @@ impl TextArea {
         let Some(re) = build_regex(query, options) else {
             return;
         };
-        for (line_idx, line) in self.lines.iter().enumerate() {
+        for (line_idx, line) in self.edit.lines().iter().enumerate() {
             for m in re.find_iter(line) {
                 // Skip zero-width matches (e.g. `a*` matching the empty string):
                 // they can't be highlighted or replaced meaningfully.
@@ -251,7 +250,7 @@ impl TextArea {
         options: &FindOptions,
         matches: &mut Vec<FindMatch>,
     ) {
-        for (line_idx, line) in self.lines.iter().enumerate() {
+        for (line_idx, line) in self.edit.lines().iter().enumerate() {
             self.find_literal_matches(line_idx, line, query, options, matches);
         }
     }
@@ -332,17 +331,18 @@ impl TextArea {
     /// Ensure cursor is visible by adjusting scroll. Only scrolling up can
     /// be settled here; render scrolls down once it knows the view height.
     fn ensure_cursor_visible(&mut self) {
-        let cursor_line = self.cursors.primary().pos.line;
+        let cursor_line = self.edit.cursor().line;
         if cursor_line < self.scroll.get() {
             self.scroll.set(cursor_line);
             self.scroll_row.set(0);
         }
     }
 
-    /// Replace text in range, as one undo step
+    /// Replace text in range (in chars), as one undo step
     fn replace_range(&mut self, start: CursorPos, end: CursorPos, replacement: &str) {
-        self.replace_with_undo(start, end, replacement);
-        self.clamp_cursors();
+        let (from, to) = (self.edit_pos(start), self.edit_pos(end));
+        self.edit.select(from, to);
+        self.edit.paste(replacement);
     }
 }
 

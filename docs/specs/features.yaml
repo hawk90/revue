@@ -739,12 +739,16 @@ items:
       - src/widget/input/input_widgets/textarea/editing.rs::duplicate_line
       - tests/widget/input/input_widgets/textarea/undo.rs
       - tests/widget/input/input_widgets/textarea/undo.rs::pasting_lines_is_one_undo_step
+      - tests/widget/input/input_widgets/textarea/model.rs::shift_with_a_move_selects
+      - tests/widget/input/input_widgets/textarea/model.rs::undo_puts_back_the_cursors_and_selection
+      - tests/widget/input/input_widgets/textarea/model.rs::deleting_lines_takes_every_cursors_line
       - tests/widget/input/input_widgets/modified_keys.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / TextArea
-    notes: 'handle_key_event binds Ctrl+Z, Ctrl+Y / Ctrl+Shift+Z, Ctrl+A and Ctrl+Shift+K; an unbound Ctrl or Alt letter is
-      left to the app, not typed (#888). Edits that span lines (delete, paste, replace) are one undo step each. Not yet: Shift/Ctrl+Shift+Arrow selection. Doc assigns Ctrl+D to both duplicate-line
-      and select-next-occurrence; code binds select-next-occurrence.'
+    notes: 'Edits with the shared EditState (UTIL-008): Shift with any move selects, Ctrl+arrows go by word, undo restores
+      the cursors and selections, and typing in quick succession is one undo step. Ctrl+Shift+K deletes every line the
+      cursors touch; an unbound Ctrl or Alt letter is left to the app, not typed (#888). Not yet: a key for duplicate_line
+      - the doc assigns Ctrl+D to both duplicate-line and select-next-occurrence; code binds select-next-occurrence.'
   - id: WID-011
     title: TextArea find/replace
     area: widget
@@ -767,7 +771,7 @@ items:
     area: widget
     priority: P2
     priority_inferred: true
-    status: partial
+    status: done
     acceptance:
       - add_cursor_at/above/below
       - Ctrl+Alt+Up/Down add cursor
@@ -777,10 +781,12 @@ items:
     evidence:
       - src/widget/input/input_widgets/textarea/multi_cursor.rs
       - src/widget/input/input_widgets/textarea/mod.rs::handle_key_event
+      - tests/widget/input/input_widgets/textarea/model.rs::typing_goes_in_at_every_cursor
+      - tests/widget/input/input_widgets/textarea/model.rs::textarea_follows_its_edit_state
     source:
       - FEATURES.md §4 Widgets / Input Widgets / TextArea
-    notes: Cursors are added and drawn, but edits and moves apply at the primary cursor only, and the other cursors keep
-      their old columns (#1006).
+    notes: Edits and moves apply at every cursor and cursors that meet merge (#1006). An added cursor becomes the primary
+      one, so adding below again goes a line further. Paging keeps the primary cursor only.
   - id: WID-013
     title: Tabs
     area: widget
@@ -1957,9 +1963,10 @@ items:
       - tests/widget/input/input_widgets/number_input/edit.rs::editing_takes_the_modified_editing_keys
       - tests/widget/data/datagrid/input/editing.rs::test_cell_edit_takes_the_modified_editing_keys
       - tests/widget/input/input_widgets/search_bar/mod.rs::modified_editing_keys_reach_the_search_bar
+      - tests/widget/input/input_widgets/textarea/model.rs::textarea_follows_its_edit_state
     source:
       - 'issue #1261 (edit model decisions, 2026-10-23)'
     notes: Input, SearchBar, Combobox, Autocomplete, MaskedInput, NumberInput and DataGrid cells use it, drawn with one
-      shared field (#985); TextArea and CodeEditor move next (#1261). The append-only query fields (CommandPalette,
+      shared field (#985); TextArea uses it, keeping its char-column API; CodeEditor moves next (#1261). The append-only query fields (CommandPalette,
       Select/MultiSelect search, Tree search, CodeEditor find/goto, ColorPicker hex, FilePicker name) are still open in
       #985.

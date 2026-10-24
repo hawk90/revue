@@ -107,3 +107,15 @@ fn wrap_true_line_numbers_only_on_first_visual_row() {
     // But it must still contain wrapped text.
     assert!(!r1.is_empty(), "continuation row should carry wrapped text");
 }
+
+/// Wrapping counted a zero-width char as a column the drawing does not
+/// give it, so a row with some broke early
+#[test]
+fn wrap_gives_zero_width_chars_no_column() {
+    let ta = TextArea::new()
+        .wrap(true)
+        .content("a\u{200B}\u{200B}\u{200B}bcd"); // text width 3
+    let buf = render(&ta, 4, 3);
+    assert_eq!(row(&buf, 0, 4), "abc");
+    assert_eq!(row(&buf, 1, 4), "d");
+}

@@ -1,35 +1,49 @@
 //! Where text goes: wrapping lines into rows, the line-number gutter, and
 //! the scroll that keeps the primary cursor in view
 
+use unicode_segmentation::UnicodeSegmentation;
+
 use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
 
 use super::{CursorPos, TextArea};
 
 /// Split a logical line into visual segments `[start, end)` (character indices) that each
-/// fit within `width` display columns. Prefers breaking at word boundaries (after a space)
-/// and lets one space hang past the end of a full row, rather than start the next row with
-/// it; further spaces go to the next row. The caller wraps one column short of the view,
-/// so the hanging space sits in the last column, visible (#1008). Falls back to a hard
-/// break when a single word is longer than the width. Always makes forward progress, so it
-/// terminates even for zero-width characters or `width == 0`.
-fn wrap_segments(chars: &[char], width: u16) -> Vec<(usize, usize)> {
-    if chars.is_empty() {
+/// fit within `width` display columns, breaking only between grapheme clusters, so a
+/// character the user sees as one (an accent on its letter, an emoji sequence) is never
+/// split between rows. A cluster is as wide as its chars, as it is drawn: a zero-width one
+/// takes no column. Prefers breaking at word boundaries (after a space) and lets one space
+/// hang past the end of a full row, rather than start the next row with it; further spaces
+/// go to the next row. The caller wraps one column short of the view, so the hanging space
+/// sits in the last column, visible (#1008). Falls back to a hard break when a single word
+/// is longer than the width. Every row takes a cluster at least, so it terminates even for
+/// `width == 0`.
+fn wrap_segments(line: &str, width: u16) -> Vec<(usize, usize)> {
+    // Each cluster's first char index and width; a last entry for the end
+    let mut clusters: Vec<(usize, usize, bool)> = Vec::new();
+    let mut idx = 0;
+    for g in line.graphemes(true) {
+        clusters.push((idx, g.chars().map(crate::utils::char_width).sum(), g == " "));
+        idx += g.chars().count();
+    }
+    if clusters.is_empty() {
         return vec![(0, 0)];
     }
+    let chars = idx;
+    let start_of = |i: usize| clusters.get(i).map_or(chars, |c| c.0);
 
-    let width = width.max(1);
+    let width = width.max(1) as usize;
     let mut segments = Vec::new();
     let mut start = 0usize;
-    let mut col: u16 = 0;
+    let mut col = 0usize;
     let mut last_space_end: Option<usize> = None;
     let mut hung = false;
     let mut i = 0usize;
 
-    while i < chars.len() {
-        let cw = (crate::utils::char_width(chars[i]) as u16).max(1);
+    while i < clusters.len() {
+        let (_, cw, space) = clusters[i];
 
         if col + cw > width && i > start {
-            if chars[i] == ' ' && !hung {
+            if space && !hung {
                 // One space past a full row hangs on it rather than starting
                 // the next row
                 hung = true;
@@ -41,7 +55,7 @@ fn wrap_segments(chars: &[char], width: u16) -> Vec<(usize, usize)> {
                 Some(b) if b > start => b,
                 _ => i,
             };
-            segments.push((start, brk));
+            segments.push((start_of(start), start_of(brk)));
             start = brk;
             col = 0;
             last_space_end = None;
@@ -51,13 +65,13 @@ fn wrap_segments(chars: &[char], width: u16) -> Vec<(usize, usize)> {
         }
 
         col += cw;
-        if chars[i] == ' ' {
+        if space {
             last_space_end = Some(i + 1);
         }
         i += 1;
     }
 
-    segments.push((start, chars.len()));
+    segments.push((start_of(start), chars));
     segments
 }
 
@@ -65,7 +79,7 @@ impl TextArea {
     /// Get line number width
     pub(super) fn line_number_width(&self) -> u16 {
         if self.show_line_numbers {
-            let max_line = self.lines.len();
+            let max_line = self.edit.line_count();
             let digits = format!("{}", max_line).len();
             (digits + 2) as u16 // digits + space + separator
         } else {
@@ -82,12 +96,11 @@ impl TextArea {
     /// the last column anyway (it ends in a hanging space) gets one more,
     /// empty row for the cursor past its end.
     pub(super) fn line_rows(&self, idx: usize, text_width: u16) -> Vec<(usize, usize)> {
-        let line = self.lines.get(idx).map_or("", String::as_str);
+        let line = self.line_text(idx);
         if self.wrap && text_width > 0 {
-            let chars: Vec<char> = line.chars().collect();
-            let mut rows = wrap_segments(&chars, text_width.saturating_sub(1).max(1));
+            let mut rows = wrap_segments(line, text_width.saturating_sub(1).max(1));
             let &(start, end) = rows.last().expect("one row at least");
-            let last: String = chars[start..end].iter().collect();
+            let last: String = line.chars().skip(start).take(end - start).collect();
             if end > start && col_of(&last, usize::MAX) >= text_width as usize {
                 rows.push((end, end));
             }
@@ -101,9 +114,9 @@ impl TextArea {
     /// that row. A position at a wrap point is drawn at the start of the
     /// next row.
     pub(super) fn place(&self, pos: CursorPos, text_width: u16) -> (usize, usize) {
-        let line = pos.line.min(self.lines.len().saturating_sub(1));
+        let line = pos.line.min(self.edit.line_count() - 1);
         let rows = self.line_rows(line, text_width);
-        let text = self.lines.get(line).map_or("", String::as_str);
+        let text = self.line_text(line);
         place_in(&rows, text, pos.col, text_width, self.wrap)
     }
 
@@ -117,12 +130,12 @@ impl TextArea {
         text_width: u16,
         visible_lines: usize,
     ) -> (usize, usize) {
-        let pos = self.cursors.primary().pos;
+        let pos = self.primary_pos();
         let mut rows = RowCounts::new(self, text_width);
-        let line = pos.line.min(self.lines.len().saturating_sub(1));
+        let line = pos.line;
         let cursor = (line, self.place(pos, text_width).0);
         let visible = visible_lines.max(1);
-        let top_line = self.scroll.get().min(self.lines.len().saturating_sub(1));
+        let top_line = self.scroll.get().min(self.edit.line_count() - 1);
         let top = (
             top_line,
             self.scroll_row.get().min(rows.count(top_line) - 1),
@@ -152,7 +165,7 @@ impl TextArea {
         let mut line_idx = self.scroll.get();
         let mut skip = self.scroll_row.get();
 
-        while rows.len() < visible_lines && line_idx < self.lines.len() {
+        while rows.len() < visible_lines && line_idx < self.edit.line_count() {
             for (k, (s, e)) in self
                 .line_rows(line_idx, text_width)
                 .into_iter()
@@ -177,8 +190,8 @@ impl TextArea {
         if self.wrap {
             0
         } else {
-            let pos = self.cursors.primary().pos;
-            let line = self.lines.get(pos.line).map_or("", String::as_str);
+            let pos = self.primary_pos();
+            let line = self.line_text(pos.line);
             scroll_to_cursor(
                 self.scroll_x.get(),
                 col_of(line, pos.col),
@@ -244,7 +257,7 @@ impl<'a> RowCounts<'a> {
 
     /// The last row of the text
     pub(super) fn end(&mut self) -> (usize, usize) {
-        let last = self.area.lines.len().saturating_sub(1);
+        let last = self.area.edit.line_count() - 1;
         (last, self.count(last) - 1)
     }
 
@@ -300,14 +313,10 @@ impl<'a> RowCounts<'a> {
 mod wrap_segment_tests {
     use super::wrap_segments;
 
-    fn chars(s: &str) -> Vec<char> {
-        s.chars().collect()
-    }
-
     /// Every segment must reconstruct the original line exactly, in order.
     fn assert_lossless(s: &str, width: u16) -> Vec<(usize, usize)> {
-        let cs = chars(s);
-        let segs = wrap_segments(&cs, width);
+        let cs: Vec<char> = s.chars().collect();
+        let segs = wrap_segments(s, width);
         // Contiguous, covering, in order.
         assert_eq!(
             segs.first().map(|s| s.0),
@@ -328,28 +337,25 @@ mod wrap_segment_tests {
 
     #[test]
     fn empty_line_yields_single_empty_segment() {
-        assert_eq!(wrap_segments(&[], 5), vec![(0, 0)]);
+        assert_eq!(wrap_segments("", 5), vec![(0, 0)]);
     }
 
     #[test]
     fn short_line_is_not_split() {
-        assert_eq!(wrap_segments(&chars("hello"), 10), vec![(0, 5)]);
+        assert_eq!(wrap_segments("hello", 10), vec![(0, 5)]);
         // exact fit
-        assert_eq!(wrap_segments(&chars("hello"), 5), vec![(0, 5)]);
+        assert_eq!(wrap_segments("hello", 5), vec![(0, 5)]);
     }
 
     #[test]
     fn long_word_hard_wraps_at_width() {
-        assert_eq!(
-            wrap_segments(&chars("abcdefgh"), 3),
-            vec![(0, 3), (3, 6), (6, 8)]
-        );
+        assert_eq!(wrap_segments("abcdefgh", 3), vec![(0, 3), (3, 6), (6, 8)]);
     }
 
     #[test]
     fn wraps_at_word_boundary_and_keeps_trailing_space() {
         // "aa " stays together, "bb" moves to the next row.
-        assert_eq!(wrap_segments(&chars("aa bb"), 3), vec![(0, 3), (3, 5)]);
+        assert_eq!(wrap_segments("aa bb", 3), vec![(0, 3), (3, 5)]);
     }
 
     #[test]
@@ -358,11 +364,22 @@ mod wrap_segment_tests {
         let segs = assert_lossless("hello world", 5);
         assert!(segs.len() >= 2);
         // No segment is just a single space.
-        let cs = chars("hello world");
+        let cs: Vec<char> = "hello world".chars().collect();
         for (s, e) in &segs {
             let seg: String = cs[*s..*e].iter().collect();
             assert_ne!(seg, " ", "no lone-space segment: {:?}", segs);
         }
+    }
+
+    #[test]
+    fn breaks_only_between_clusters() {
+        // "e" and its accent stay on one row: the accent takes no column
+        assert_eq!(wrap_segments("abe\u{301}c", 3), vec![(0, 4), (4, 5)]);
+        // An emoji sequence goes to the next row whole, not split at the
+        // joiner
+        assert_eq!(wrap_segments("a👩\u{200D}💻", 3), vec![(0, 1), (1, 4)]);
+        // A wide glyph wider than the row still takes a row of its own
+        assert_eq!(wrap_segments("한a", 1), vec![(0, 1), (1, 2)]);
     }
 
     #[test]

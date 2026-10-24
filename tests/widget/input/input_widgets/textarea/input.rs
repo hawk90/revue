@@ -15,23 +15,21 @@ fn width(c: char) -> usize {
     }
 }
 
-/// A plain model of the text and the cursor (line, char index).
+/// A plain model of the text and the cursor (line, char index), and the
+/// screen column Up and Down aim for, kept across short lines.
 struct Model {
     lines: Vec<Vec<char>>,
     line: usize,
     col: usize,
+    goal: Option<usize>,
 }
 
 impl Model {
-    /// The char index on `to` under the screen column of the cursor.
-    fn same_column(&self, to: usize) -> usize {
-        let col: usize = self.lines[self.line][..self.col]
-            .iter()
-            .map(|&c| width(c))
-            .sum();
+    /// The char index on `to` under screen column `goal`.
+    fn at_column(&self, to: usize, goal: usize) -> usize {
         let mut start = 0;
         for (i, &c) in self.lines[to].iter().enumerate() {
-            if col < start + width(c) {
+            if goal < start + width(c) {
                 return i;
             }
             start += width(c);
@@ -41,6 +39,43 @@ impl Model {
 
     fn key(&mut self, key: &Key) {
         let len = self.lines[self.line].len();
+        if matches!(key, Key::Up | Key::Down) {
+            let col = self.lines[self.line][..self.col]
+                .iter()
+                .map(|&c| width(c))
+                .sum();
+            let goal = *self.goal.get_or_insert(col);
+            match key {
+                // On the first line Up goes to the start, on the last line
+                // Down to the end
+                Key::Up if self.line == 0 => self.col = 0,
+                Key::Up => {
+                    self.line -= 1;
+                    self.col = self.at_column(self.line, goal);
+                }
+                _ if self.line + 1 == self.lines.len() => self.col = len,
+                _ => {
+                    self.line += 1;
+                    self.col = self.at_column(self.line, goal);
+                }
+            }
+            return;
+        }
+        // A move drops the goal column; so does an edit, unless it had
+        // nothing to do (Backspace at the start), which leaves the cursor
+        // as it was
+        let before = self.lines.clone();
+        let moved = !matches!(
+            key,
+            Key::Char(_) | Key::Tab | Key::Enter | Key::Backspace | Key::Delete
+        );
+        self.edit_or_move(key, len);
+        if moved || self.lines != before {
+            self.goal = None;
+        }
+    }
+
+    fn edit_or_move(&mut self, key: &Key, len: usize) {
         match key {
             Key::Char(c) => {
                 self.lines[self.line].insert(self.col, *c);
@@ -84,14 +119,6 @@ impl Model {
                 self.line += 1;
                 self.col = 0;
             }
-            Key::Up if self.line > 0 => {
-                self.col = self.same_column(self.line - 1);
-                self.line -= 1;
-            }
-            Key::Down if self.line + 1 < self.lines.len() => {
-                self.col = self.same_column(self.line + 1);
-                self.line += 1;
-            }
             Key::Home => self.col = 0,
             Key::End => self.col = len,
             _ => {}
@@ -133,7 +160,7 @@ proptest! {
     fn prop_textarea_keys_follow_the_model(keys in prop::collection::vec(key(), 0..80)) {
         let mut plain = TextArea::new().focused(true);
         let mut event = TextArea::new().focused(true);
-        let mut model = Model { lines: vec![Vec::new()], line: 0, col: 0 };
+        let mut model = Model { lines: vec![Vec::new()], line: 0, col: 0, goal: None };
         for k in &keys {
             prop_assert!(plain.handle_key(k));
             prop_assert!(event.handle_key_event(&KeyEvent::new(*k)));

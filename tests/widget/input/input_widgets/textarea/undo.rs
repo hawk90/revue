@@ -307,9 +307,10 @@ fn test_undo_redo_delete_at_after_multibyte_text() {
     textarea.delete_char_at(); // deletes '本'
     assert_eq!(textarea.get_content(), "日語x");
 
+    // Undo puts the cursor back where the delete was made
     textarea.undo();
     assert_eq!(textarea.get_content(), "日本語x");
-    assert_eq!(textarea.cursor_position(), (0, 2));
+    assert_eq!(textarea.cursor_position(), (0, 1));
 
     textarea.redo();
     assert_eq!(textarea.get_content(), "日語x");
@@ -416,8 +417,10 @@ fn replacing_with_lines_splits_the_line_and_undoes() {
 }
 
 #[test]
-fn a_paste_past_max_lines_drops_the_line_breaks_that_do_not_fit() {
-    // As typing does: Enter is refused at the limit, the text still goes in
+fn a_paste_past_max_lines_drops_its_line_breaks() {
+    // As typing does: Enter is refused at the limit, the text still goes in.
+    // A paste that would not fit loses all its line breaks, so every cursor
+    // gets the same text.
     let mut ta = TextArea::new().content("xy").max_lines(1);
     ta.set_cursor(0, 0);
     ta.insert_str("a\nb");
@@ -426,5 +429,9 @@ fn a_paste_past_max_lines_drops_the_line_breaks_that_do_not_fit() {
     let mut ta = TextArea::new().content("xy").max_lines(2);
     ta.set_cursor(0, 2);
     ta.insert_str("\n1\n2");
-    assert_eq!(ta.get_content(), "xy\n12");
+    assert_eq!(ta.get_content(), "xy12");
+
+    // One that fits keeps them
+    ta.insert_str("\n3");
+    assert_eq!(ta.get_content(), "xy12\n3");
 }

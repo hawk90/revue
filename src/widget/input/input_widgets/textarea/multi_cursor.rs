@@ -1,76 +1,74 @@
 //! Multiple cursor methods for TextArea
+//!
+//! An added cursor becomes the primary one (the one the view follows and
+//! [`cursor_position`](TextArea::cursor_position) gives), so adding a cursor
+//! below again goes one more line down.
 
-use super::cursor::{Cursor, CursorPos};
+use super::cursor::{CursorPos, MAX_CURSORS};
+use crate::utils::EditCursor;
 
 impl TextArea {
-    /// Add cursor at position (Alt+Click)
+    /// Add a cursor `cursor`, unless there are [`MAX_CURSORS`] already
+    fn push_cursor(&mut self, cursor: EditCursor) {
+        if self.edit.cursors().len() < MAX_CURSORS {
+            self.edit.add_cursor(cursor);
+        }
+    }
+
+    /// Add cursor at position, in chars (Alt+Click)
     pub fn add_cursor_at(&mut self, line: usize, col: usize) {
-        let line = line.min(self.lines.len().saturating_sub(1));
-        let col = col.min(self.line_len(line));
-        self.cursors.add_at(CursorPos::new(line, col));
+        let pos = self.edit_pos(CursorPos::new(line, col));
+        self.push_cursor(EditCursor::at(pos));
     }
 
-    /// Add cursor above current (Ctrl+Alt+Up)
+    /// Add a cursor on the line above the topmost cursor, at its screen
+    /// column (Ctrl+Alt+Up)
     pub fn add_cursor_above(&mut self) {
-        let primary = self.cursors.primary().pos;
-        if primary.line > 0 {
-            let new_line = primary.line - 1;
-            let new_col = primary.col.min(self.line_len(new_line));
-            self.cursors.add_at(CursorPos::new(new_line, new_col));
+        let top = self.char_pos(self.edit.cursors()[0].head());
+        if top.line > 0 {
+            self.add_cursor_on(top, top.line - 1);
         }
     }
 
-    /// Add cursor below current (Ctrl+Alt+Down)
+    /// Add a cursor on the line below the bottommost cursor, at its screen
+    /// column (Ctrl+Alt+Down)
     pub fn add_cursor_below(&mut self) {
-        let primary = self.cursors.primary().pos;
-        if primary.line + 1 < self.lines.len() {
-            let new_line = primary.line + 1;
-            let new_col = primary.col.min(self.line_len(new_line));
-            self.cursors.add_at(CursorPos::new(new_line, new_col));
+        let cursors = self.edit.cursors();
+        let bottom = self.char_pos(cursors[cursors.len() - 1].head());
+        if bottom.line + 1 < self.edit.line_count() {
+            self.add_cursor_on(bottom, bottom.line + 1);
         }
+    }
+
+    fn add_cursor_on(&mut self, from: CursorPos, line: usize) {
+        let col = self.same_column_on(from, line);
+        self.add_cursor_at(line, col);
     }
 
     /// Clear all secondary cursors (Escape)
     pub fn clear_secondary_cursors(&mut self) {
-        self.cursors.clear_secondary();
+        self.edit.clear_secondary();
     }
 
-    /// Get word at cursor position
-    fn get_word_at_cursor(&self) -> String {
-        let pos = self.cursors.primary().pos;
-        let Some(line) = self.lines.get(pos.line) else {
-            return String::new();
-        };
-        let chars: Vec<char> = line.chars().collect();
-
-        if chars.is_empty() || pos.col >= chars.len() {
-            return String::new();
-        }
-
-        let mut start = pos.col;
-        let mut end = pos.col;
-
-        // Expand left
+    /// The start and end (in chars) of the word (letters, digits) at the
+    /// primary cursor, touching it on either side; `None` when there is none
+    fn word_at_cursor(&self) -> Option<(CursorPos, CursorPos)> {
+        let pos = self.primary_pos();
+        let chars: Vec<char> = self.line_text(pos.line).chars().collect();
+        let mut start = pos.col.min(chars.len());
+        let mut end = start;
         while start > 0 && chars[start - 1].is_alphanumeric() {
             start -= 1;
         }
-
-        // Expand right
         while end < chars.len() && chars[end].is_alphanumeric() {
             end += 1;
         }
-
-        chars[start..end].iter().collect()
-    }
-
-    /// Get current word or selection text
-    fn get_word_or_selection(&self) -> String {
-        // If selection exists, return selected text
-        if let Some(text) = self.get_selection() {
-            return text;
-        }
-        // Otherwise get word under cursor
-        self.get_word_at_cursor()
+        (start < end).then(|| {
+            (
+                CursorPos::new(pos.line, start),
+                CursorPos::new(pos.line, end),
+            )
+        })
     }
 
     /// Find next occurrence of text from a given position
@@ -83,10 +81,17 @@ impl TextArea {
         if query.is_empty() {
             return None;
         }
+        let line_count = self.edit.line_count();
+        let heads: Vec<CursorPos> = self
+            .edit
+            .cursors()
+            .iter()
+            .map(|c| self.char_pos(c.head()))
+            .collect();
 
         // Search from the position after `from`
-        for line_idx in from.line..self.lines.len() {
-            let chars: Vec<char> = self.lines[line_idx].chars().collect();
+        for line_idx in from.line..line_count {
+            let chars: Vec<char> = self.line_text(line_idx).chars().collect();
             let start_col = if line_idx == from.line {
                 from.col + 1
             } else {
@@ -98,8 +103,8 @@ impl TextArea {
         }
 
         // Wrap around to beginning
-        for line_idx in 0..=from.line.min(self.lines.len().saturating_sub(1)) {
-            let chars: Vec<char> = self.lines[line_idx].chars().collect();
+        for line_idx in 0..=from.line.min(line_count - 1) {
+            let chars: Vec<char> = self.line_text(line_idx).chars().collect();
             // On `from`'s own line, only matches starting at or before it.
             let limit = if line_idx == from.line {
                 (from.col + query.len()).min(chars.len())
@@ -110,7 +115,7 @@ impl TextArea {
             if let Some(col) = find_chars(&chars[..limit], &query, 0, false) {
                 let found_pos = CursorPos::new(line_idx, col);
                 // Don't return if it's the same as one of our existing cursors
-                if !self.cursors.iter().any(|c| c.pos == found_pos) {
+                if !heads.contains(&found_pos) {
                     return Some(found_pos);
                 }
             }
@@ -119,26 +124,32 @@ impl TextArea {
         None
     }
 
-    /// Select next occurrence of current word/selection (Ctrl+D)
+    /// Select the word under the cursor; when the primary cursor already
+    /// selects text, add a cursor selecting its next occurrence after the
+    /// last cursor, wrapping to the start (Ctrl+D)
     pub fn select_next_occurrence(&mut self) {
-        let text = self.get_word_or_selection();
-        if text.is_empty() {
+        let Some(text) = self.get_selection() else {
+            if let Some((start, end)) = self.word_at_cursor() {
+                let (start, end) = (self.edit_pos(start), self.edit_pos(end));
+                let mut cursors = self.edit.cursors().to_vec();
+                let primary = cursors
+                    .iter()
+                    .position(|c| c == self.edit.primary())
+                    .unwrap_or(0);
+                cursors[primary] = EditCursor::selecting(start, end);
+                self.set_cursors_keeping_primary(cursors);
+            }
             return;
-        }
+        };
 
         // Find next occurrence after the last cursor
-        let last_pos = self
-            .cursors
-            .iter()
-            .map(|c| c.pos)
-            .max()
-            .unwrap_or(CursorPos::new(0, 0));
+        let last = self.edit.cursors().last().map(|c| c.head());
+        let last_pos = last.map_or(CursorPos::new(0, 0), |p| self.char_pos(p));
 
-        if let Some(match_pos) = self.find_next_from(&text, last_pos) {
-            let end_col = match_pos.col + text.chars().count();
-            let new_cursor =
-                Cursor::with_selection(CursorPos::new(match_pos.line, end_col), match_pos);
-            self.cursors.add(new_cursor);
+        if let Some(start) = self.find_next_from(&text, last_pos) {
+            let end = CursorPos::new(start.line, start.col + text.chars().count());
+            let cursor = EditCursor::selecting(self.edit_pos(start), self.edit_pos(end));
+            self.push_cursor(cursor);
         }
     }
 }

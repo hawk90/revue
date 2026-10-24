@@ -313,3 +313,22 @@ fn a_match_rejected_as_no_whole_word_does_not_hide_the_next() {
 fn replace_all_rewrites_every_line() {
     assert_eq!(replace_all("ab\nab ab", "ab", "c"), "c\nc c");
 }
+
+/// Matches inside a character made of several chars snapped to its edges,
+/// so replacing "e" in "e" + combining accent took the accent too
+#[test]
+fn matches_inside_a_cluster_are_not_found() {
+    let mut ta = TextArea::new().content("e\u{301}x e");
+    ta.open_replace();
+    ta.set_find_query("e");
+    assert_eq!(ta.find_state().unwrap().match_count(), 1);
+    ta.set_replace_text("E");
+    ta.replace_all();
+    assert_eq!(ta.get_content(), "e\u{301}x E");
+
+    ta.set_find_query("\u{301}");
+    assert_eq!(ta.find_state().unwrap().match_count(), 0);
+    // A whole cluster is found
+    ta.set_find_query("e\u{301}");
+    assert_eq!(ta.find_state().unwrap().match_count(), 1);
+}

@@ -126,3 +126,30 @@ fn test_textarea_multiline_insert_cjk() {
     assert_eq!(t.get_content(), "첫째줄\n둘째줄");
     assert_eq!(t.line_count(), 2);
 }
+
+/// Columns are chars, but the cursor goes over what the user sees as one
+/// character: Right over a letter with a combining accent takes both chars,
+/// Backspace takes the accent first, and a cursor set inside goes to its end
+#[test]
+fn test_textarea_cursor_moves_over_a_whole_cluster() {
+    let mut t = textarea().focused(true).content("e\u{301}x");
+    t.handle_key(&Key::Right);
+    assert_eq!(t.cursor_position(), (0, 2));
+    t.handle_key(&Key::Backspace);
+    assert_eq!(t.get_content(), "ex");
+    assert_eq!(t.cursor_position(), (0, 1));
+
+    let mut t = textarea().focused(true).content("e\u{301}x");
+    t.set_cursor(0, 1);
+    assert_eq!(t.cursor_position(), (0, 2));
+}
+
+/// An emoji sequence is one character: Backspace removes all of it
+#[test]
+fn test_textarea_backspace_removes_an_emoji_sequence_whole() {
+    let mut t = textarea().focused(true).content("a👩‍💻");
+    t.handle_key(&Key::End);
+    assert_eq!(t.cursor_position(), (0, 4));
+    t.handle_key(&Key::Backspace);
+    assert_eq!(t.get_content(), "a");
+}

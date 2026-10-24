@@ -452,3 +452,25 @@ fn page_down_keeps_the_cursors_row_when_the_view_starts_partway_down_a_line() {
     assert_eq!(after.len(), 1);
     assert_eq!(after[0].1, before, "{:?}", rows(&ta, 6, 3));
 }
+
+/// Paging onto a wrapped row ending in a character made of several chars
+/// put the cursor inside it, which then rounded to its end: the start of
+/// the next row, not the row the cursor kept
+#[test]
+fn paging_onto_a_row_ending_in_a_cluster_keeps_the_row() {
+    let mut ta = TextArea::new()
+        .content("abcde fghij\nabcde\u{301}fgh\nx")
+        .focused(true);
+    ta.set_cursor(0, 5);
+    render(&ta, 6, 2); // text width 6, rows wrap at 5
+    ta.handle_key(&Key::PageDown);
+    // Row 0 of line 1 is "abcdé": the cursor goes to the start of "é"
+    assert_eq!(ta.cursor_position(), (1, 4));
+
+    // Adding a cursor below at the column of the second half of an emoji
+    // sequence lands on its start
+    let mut ta = TextArea::new().content("abcd\n👩\u{200D}💻").focused(true);
+    ta.set_cursor(0, 2);
+    ta.add_cursor_below();
+    assert_eq!(ta.cursor_positions(), [(0, 2), (1, 0)]);
+}

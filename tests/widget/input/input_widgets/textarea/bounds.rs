@@ -110,21 +110,17 @@ fn test_secondary_cursors_stay_in_the_text_after_an_edit() {
     ta.handle_key(&Key::PageUp);
     ta.add_cursor_below();
     assert_eq!(ta.cursor_count(), 2);
+    // Delete at every cursor: the line break, and the "x" after it
     ta.handle_key(&Key::Delete);
-    assert_eq!(ta.get_content(), "x");
-    for (line, col) in ta.cursor_positions() {
-        assert_eq!(line, 0);
-        assert!(col <= 1);
-    }
+    assert_eq!(ta.get_content(), "");
+    assert_eq!(ta.cursor_positions(), [(0, 0)]);
 
     // Backspace joining a line removes the line a secondary cursor was on
     let mut ta = TextArea::new().content("ab\ncd").focused(true);
     ta.set_cursor(1, 0);
     ta.add_cursor_at(1, 2);
+    // Backspace at both: the line break, and the "d"
     ta.handle_key(&Key::Backspace);
-    assert_eq!(ta.get_content(), "abcd");
-    for (line, col) in ta.cursor_positions() {
-        assert_eq!(line, 0);
-        assert!(col <= 4);
-    }
+    assert_eq!(ta.get_content(), "abc");
+    assert_eq!(ta.cursor_positions(), [(0, 2), (0, 3)]);
 }
