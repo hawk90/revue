@@ -503,6 +503,24 @@ fn render(cb: &Combobox, width: u16, height: u16) -> Buffer {
     buffer
 }
 
+/// Render as the runtime does while the combobox has focus: only then is
+/// its cursor drawn
+fn render_focused(cb: &Combobox, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let style = revue::style::Style::default();
+    let state = revue::dom::NodeState {
+        focused: true,
+        ..Default::default()
+    };
+    cb.render(&mut RenderContext::full(
+        &mut buffer,
+        Rect::new(0, 0, width, height),
+        &style,
+        &state,
+    ));
+    buffer
+}
+
 fn row(buffer: &Buffer, y: u16) -> String {
     (0..buffer.width())
         .map(|x| buffer.get(x, y).unwrap().symbol)
@@ -675,17 +693,17 @@ fn cursor_cells(buffer: &Buffer) -> Vec<u16> {
 fn test_combobox_long_text_scrolls_to_the_cursor() {
     // 10 wide: the text takes columns 1 to 7, the arrow column 8 (#985)
     let mut cb = Combobox::new().value("Very long text that exceeds width");
-    let buffer = render(&cb, 10, 5);
+    let buffer = render_focused(&cb, 10, 5);
     assert_eq!(row(&buffer, 0), "  width ▼ ");
     assert_eq!(cursor_cells(&buffer), vec![7]);
     cb.move_to_start();
-    let buffer = render(&cb, 10, 5);
+    let buffer = render_focused(&cb, 10, 5);
     assert_eq!(row(&buffer, 0), " Very lo▼ ");
     assert_eq!(cursor_cells(&buffer), vec![1]);
     // Moving back right inside the view keeps it where it is
     cb.move_right();
     cb.move_right();
-    let buffer = render(&cb, 10, 5);
+    let buffer = render_focused(&cb, 10, 5);
     assert_eq!(row(&buffer, 0), " Very lo▼ ");
     assert_eq!(cursor_cells(&buffer), vec![3]);
 }
@@ -693,7 +711,7 @@ fn test_combobox_long_text_scrolls_to_the_cursor() {
 #[test]
 fn test_combobox_wide_text_never_covers_the_arrow() {
     let cb = Combobox::new().value("가나다라마");
-    let buffer = render(&cb, 10, 5);
+    let buffer = render_focused(&cb, 10, 5);
     // The last three glyphs and the cursor after them; a wide glyph is not
     // cut at the field's edge
     assert_eq!(buffer.get(1, 0).unwrap().symbol, '다');
@@ -705,28 +723,27 @@ fn test_combobox_wide_text_never_covers_the_arrow() {
 
 #[test]
 fn test_combobox_cursor_sits_on_the_placeholder_while_focused() {
-    use revue::dom::NodeState;
-    use revue::style::Style;
     let cb = Combobox::new().placeholder("Pick");
     // Unfocused: the placeholder alone
     let buffer = render(&cb, 10, 5);
     assert_eq!(row(&buffer, 0), " Pick   ▼ ");
     assert!(cursor_cells(&buffer).is_empty());
     // Focused: the cursor on its first letter
-    let mut buffer = Buffer::new(10, 5);
-    let style = Style::default();
-    let state = NodeState {
-        focused: true,
-        ..Default::default()
-    };
-    cb.render(&mut RenderContext::full(
-        &mut buffer,
-        Rect::new(0, 0, 10, 5),
-        &style,
-        &state,
-    ));
+    let buffer = render_focused(&cb, 10, 5);
     assert_eq!(row(&buffer, 0), " Pick   ▼ ");
     assert_eq!(cursor_cells(&buffer), vec![1]);
+}
+
+/// The cursor was drawn on the text while the combobox was not focused,
+/// unlike the other fields (#1296)
+#[test]
+fn test_combobox_cursor_on_its_text_only_while_focused() {
+    let cb = Combobox::new().value("ab");
+    let buffer = render(&cb, 10, 1);
+    assert_eq!(row(&buffer, 0), " ab     ▼ ");
+    assert!(cursor_cells(&buffer).is_empty());
+    let buffer = render_focused(&cb, 10, 1);
+    assert_eq!(cursor_cells(&buffer), vec![3]);
 }
 
 #[test]
@@ -735,7 +752,7 @@ fn test_combobox_cursor_on_a_zero_width_char_is_drawn_on_the_next() {
     cb.move_to_start();
     cb.move_right();
     // On the zero-width space: drawn on "b", which follows it
-    let buffer = render(&cb, 10, 1);
+    let buffer = render_focused(&cb, 10, 1);
     assert_eq!(buffer.get(2, 0).unwrap().symbol, 'b');
     assert_eq!(cursor_cells(&buffer), vec![2]);
 }
@@ -968,14 +985,14 @@ fn test_combobox_selection_is_drawn() {
         shift: true,
         ..revue::event::KeyEvent::new(Key::Left)
     });
-    let buffer = render(&cb, 10, 1);
+    let buffer = render_focused(&cb, 10, 1);
     // "d" is selected; the cursor is on it
     assert_eq!(cursor_cells(&buffer), vec![4]);
     cb.handle_key_event(&revue::event::KeyEvent {
         shift: true,
         ..revue::event::KeyEvent::new(Key::Left)
     });
-    let buffer = render(&cb, 10, 1);
+    let buffer = render_focused(&cb, 10, 1);
     // "cd" selected, the cursor on "c": "d" in the selection colors
     assert_eq!(cursor_cells(&buffer), vec![3]);
     assert_eq!(buffer.get(4, 0).unwrap().bg, Some(Color::BLUE));
