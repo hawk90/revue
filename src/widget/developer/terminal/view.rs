@@ -9,6 +9,7 @@ use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::theme::{DARK_BG, SEPARATOR_COLOR};
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Terminal {
@@ -155,16 +156,16 @@ impl Terminal {
             px += cw;
         }
 
-        // Render input
-        let mut ix = px;
-        for ch in self.input_buffer.chars() {
-            let cw = crate::utils::char_width(ch) as u16;
-            if ix + cw > area.width {
-                break;
-            }
-            ctx.set(ix, input_y, Cell::new(ch).fg(default_fg).bg(DARK_BG));
-            ix += cw;
-        }
+        // Render input, with its cursor, scrolled to it
+        let field = EditField::of(&self.input_buffer, "", true);
+        let width = area.width.saturating_sub(px);
+        let scroll = field.scroll(self.input_scroll.get(), width);
+        self.input_scroll.set(scroll);
+        ctx.put_edit_field(px, input_y, width, &field, scroll, |kind, ch| match kind {
+            FieldCell::Cursor => Cell::new(ch).fg(DARK_BG).bg(default_fg),
+            FieldCell::Selected => Cell::new(ch).fg(Color::WHITE).bg(Color::BLUE),
+            FieldCell::Text | FieldCell::Placeholder => Cell::new(ch).fg(default_fg).bg(DARK_BG),
+        });
     }
 
     /// `↑n` near the top-right corner: how many lines the view is scrolled up

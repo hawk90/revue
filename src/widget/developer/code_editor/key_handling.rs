@@ -34,10 +34,10 @@ impl super::CodeEditor {
     pub fn handle_key_event(&mut self, event: &KeyEvent) -> bool {
         // Handle modal modes first
         if self.goto_line_mode {
-            return self.handle_goto_input(&event.key);
+            return self.handle_goto_input(event);
         }
         if self.find_mode {
-            return self.handle_find_input(&event.key);
+            return self.handle_find_input(event);
         }
         // In selection mode the moving keys extend the selection, as with
         // Shift

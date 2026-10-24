@@ -147,15 +147,60 @@ fn test_code_editor_find_box_shows_query_and_count() {
     assert_eq!(buffer.get(35, 0).unwrap().bg, editor.bg);
     // The lines start below it
     assert_eq!(row(&buffer, 1), "1  abc");
-    // A long query scrolls to its end, before the count
+    // A long query scrolls to its end, before the count, with a cell for
+    // the cursor after it
     for ch in "cdefghijklmnopqrstuvwxyz".chars() {
         editor.handle_key(&Key::Char(ch));
     }
     let buffer = screen(&editor, 40, 4);
     assert_eq!(
         row(&buffer, 0),
-        format!("{:<32}0/0", "     Find: klmnopqrstuvwxyz")
+        format!("{:<32}0/0", "     Find: lmnopqrstuvwxyz")
     );
+    assert_eq!(
+        buffer.get(26, 0).unwrap().bg,
+        Some(Color::rgb(166, 227, 161))
+    );
+}
+
+/// The find and go-to-line boxes only grew at the end and shrank from it:
+/// they are edited as every single-line field is (#985)
+#[test]
+fn test_code_editor_dialog_boxes_are_edit_fields() {
+    use revue::event::KeyEvent;
+    let mut editor = CodeEditor::new().content("one two\nthree").focused(true);
+    editor.open_find();
+    for k in [Key::Char('t'), Key::Char('o'), Key::Left, Key::Char('w')] {
+        editor.handle_key(&k);
+    }
+    assert_eq!(editor.find_match_count(), 1, "the query is \"two\"");
+    // Ctrl+Backspace deletes "tw" before the cursor: the query is "o"
+    editor.handle_key_event(&KeyEvent::ctrl(Key::Backspace));
+    assert_eq!(editor.find_match_count(), 2);
+    // Typed at the cursor, the start: "ho"
+    editor.handle_key(&Key::Char('h'));
+    assert_eq!(editor.find_match_count(), 0);
+    editor.handle_key(&Key::Escape);
+
+    // The line number: digits only, edited in place
+    let text: Vec<String> = (1..=20).map(|i| format!("line {i}")).collect();
+    let mut editor = CodeEditor::new().content(text.join("\n")).focused(true);
+    editor.open_goto_line();
+    for k in [Key::Char('1'), Key::Char('x'), Key::Char('2')] {
+        editor.handle_key(&k);
+    }
+    editor.handle_key(&Key::Enter);
+    assert_eq!(
+        editor.cursor_position().0,
+        11,
+        "went to line 12, the x not typed"
+    );
+    editor.open_goto_line();
+    for k in [Key::Char('1'), Key::Char('5'), Key::Home, Key::Delete] {
+        editor.handle_key(&k);
+    }
+    editor.handle_key(&Key::Enter);
+    assert_eq!(editor.cursor_position().0, 4, "went to line 5");
 }
 
 #[test]
