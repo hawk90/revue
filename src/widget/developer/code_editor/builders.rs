@@ -51,9 +51,16 @@ impl CodeEditor {
         self
     }
 
+    /// Where edit times come from (the system clock by default), so a test
+    /// can control how typing is grouped for undo
+    pub fn clock(mut self, clock: impl Fn() -> std::time::Instant + Send + Sync + 'static) -> Self {
+        self.edit = std::mem::take(&mut self.edit).clock(clock);
+        self
+    }
+
     /// Enable/disable read-only mode
     pub fn read_only(mut self, read_only: bool) -> Self {
-        self.read_only = read_only;
+        self.edit.set_read_only(read_only);
         self
     }
 

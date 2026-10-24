@@ -2054,6 +2054,7 @@ entries:
       - "2026-10-13 기준 커서가 있는 한 줄 편집기 7개(Input, Combobox, Autocomplete, SearchBar, MaskedInput, NumberInput, DataGrid 셀 편집)가 모두 따로 짜여 있고 TextBuffer를 쓰는 widget은 0개다. char→byte 변환은 4가지 방식이 섞여 있다. 목록은 #985."
       - "2026-10-24: 한 줄 칸 7개(Input, SearchBar, Combobox, Autocomplete, MaskedInput, NumberInput, DataGrid 셀)가 모두 `EditState`로 편집하고 `EditField`/`put_edit_field`로 그린다 (#1284, #1291, #1294). 위젯 안 char→byte 변환은 Input `substring`과 MaskedInput `byte_at`이 남았다(EditState가 `&str` 범위를 주지 않아서). 남은 편집기는 TextArea와 CodeEditor(#1261), 덧붙이기만 하는 검색 칸들(#985)."
       - "2026-10-24: TextArea가 `EditState`로 편집한다. 자기 키(Tab, 찾기, 여러 커서 추가, 화면 단위 PageUp/PageDown, Ctrl+Shift+K)를 먼저 처리하고 나머지는 `edit_key`로 넘긴다. Shift 선택(#1252), 모든 커서에서의 편집(#1006), 커서를 되돌리는 undo(#1251), 여러 줄 삭제(#1253)가 이것으로 고쳐졌다. 남은 여러 줄 편집기는 CodeEditor."
+      - "2026-10-24: CodeEditor가 자기 줄·커서·undo(`EditOp`)를 버리고 `EditState`로 편집한다 (#1261). 자동 들여쓰기와 닫는 괄호도 model을 거치는 편집(`insert`, `insert_pair`)이라 undo 한 단계로 함께 되돌려진다(#892). 읽기 전용과 들여쓰기 0 검사도 model과 한 곳에 있다(#1080). 셀렉션 모드(`start_selection` 뒤 모든 이동이 선택을 늘림)는 3.x 호환으로 유지했다."
   - id: REV-WIDGET-013
     title: "Chrome Drawn Over Content"
     category: widget

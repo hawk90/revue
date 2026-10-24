@@ -507,6 +507,34 @@ impl EditState {
         self.replace_selections(text, Kind::Other)
     }
 
+    /// Type `open` and `close` at every cursor, replacing what each
+    /// selects, with the cursor left between them: an editor closing the
+    /// bracket or quote just typed. One undo step with the typing around it
+    /// (redo puts the cursors between the pair too). `close` is kept on one
+    /// line: its newlines are dropped.
+    pub fn insert_pair(&mut self, open: &str, close: &str) -> bool {
+        if self.read_only {
+            return false;
+        }
+        let close: String = close.chars().filter(|&c| c != '\n').collect();
+        let pair = clean(&self.fit_text(&format!("{open}{close}")));
+        let opened = clean(&self.fit_text(open));
+        // The columns `close` adds: none when it joins `open`'s last
+        // character (a combining mark), which leaves no place between them
+        let back = cluster_count(&pair).saturating_sub(cluster_count(&opened));
+        let changed = self.insert(&pair);
+        // Typed over the same text, the edit made no change but the
+        // cursors still moved past it
+        for c in &mut self.cursors {
+            // Each cursor ends after its `close`, on that line
+            *c = EditCursor::at(EditPos::new(c.head.line, c.head.col.saturating_sub(back)));
+        }
+        if changed {
+            self.set_last_step_cursors();
+        }
+        changed
+    }
+
     fn replace_selections(&mut self, text: &str, kind: Kind) -> bool {
         let text = clean(text);
         self.apply(kind, |_, c| {

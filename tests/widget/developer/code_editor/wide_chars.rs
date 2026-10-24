@@ -123,7 +123,7 @@ fn up_down_keep_the_screen_column_across_wide_chars() {
 
 #[test]
 fn undo_redo_hangul_edits() {
-    let mut ed = editor("가");
+    let mut ed = editor("가").clock(super::stepping_clock());
     press(&mut ed, Key::Char('나'));
     press(&mut ed, Key::Char('다'));
     ed.undo();
@@ -229,4 +229,23 @@ fn find_dialog_draws_a_hangul_query_in_columns() {
     assert!(is_cont(&buf, 12, 0));
     assert_eq!(sym(&buf, 13, 0), '글');
     assert!(is_cont(&buf, 14, 0));
+}
+
+/// The cursor goes over what the user sees as one character, and a cursor
+/// before a zero-width char (which takes no cell) is drawn on the next glyph
+#[test]
+fn the_cursor_goes_over_clusters_and_shows_on_zero_width_chars() {
+    let mut ed = editor("e\u{301}x");
+    ed.set_cursor(0, 0);
+    press(&mut ed, Key::Right);
+    assert_eq!(ed.cursor_position(), (0, 2));
+    press(&mut ed, Key::Backspace);
+    assert_eq!(ed.get_content(), "ex");
+
+    let mut ed = editor("a\u{200B}b");
+    ed.set_cursor(0, 1);
+    let buffer = render(&ed, 6, 1);
+    assert_eq!(sym(&buffer, 1, 0), 'b');
+    assert_eq!(bg(&buffer, 1, 0), CURSOR_BG);
+    assert_ne!(bg(&buffer, 0, 0), CURSOR_BG);
 }

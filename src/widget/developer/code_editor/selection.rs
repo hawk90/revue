@@ -1,106 +1,60 @@
 //! Code editor selection
 
-use super::editing::byte_at;
-
 impl super::CodeEditor {
     // =========================================================================
     // Selection
     // =========================================================================
 
-    /// Start selection
+    /// Start selection mode at the cursor: every move (the move methods,
+    /// the moving keys, [`set_cursor`](Self::set_cursor)) extends the
+    /// selection from here until it is cleared or the text is edited. Shift
+    /// with a moving key selects without it.
     pub fn start_selection(&mut self) {
-        // Only set anchor if there isn't one already (don't overwrite existing selection)
-        if self.anchor.is_none() {
-            self.anchor = Some(self.cursor);
-        }
+        self.selecting = true;
     }
 
-    /// Clear selection
+    /// Clear the selection, keeping the cursor where it is
     pub fn clear_selection(&mut self) {
-        self.anchor = None;
+        self.selecting = false;
+        let head = self.edit.cursor();
+        self.edit.set_cursor(head);
     }
 
-    /// Check if there's a selection
+    /// Whether text is selected, or selection mode is on
     pub fn has_selection(&self) -> bool {
-        self.anchor.is_some()
+        self.selecting || self.edit.has_selection()
     }
 
-    /// Get selected text
+    /// Get selected text: empty in selection mode before the cursor moves
     pub fn get_selection(&self) -> Option<String> {
-        let anchor = self.anchor?;
-        let (start, end) = if anchor < self.cursor {
-            (anchor, self.cursor)
+        let cursor = self.edit.primary();
+        if cursor.has_selection() {
+            let (from, to) = cursor.range();
+            Some(self.edit.text_in(from, to))
         } else {
-            (self.cursor, anchor)
-        };
-
-        let mut result = String::new();
-        for line_idx in start.0..=end.0 {
-            if line_idx >= self.lines.len() {
-                break;
-            }
-            let line = &self.lines[line_idx];
-            let start_col = if line_idx == start.0 { start.1 } else { 0 };
-            let end_col = if line_idx == end.0 { end.1 } else { usize::MAX };
-
-            let (from, to) = (byte_at(line, start_col), byte_at(line, end_col));
-            if from < to {
-                result.push_str(&line[from..to]);
-            }
-            if line_idx < end.0 {
-                result.push('\n');
-            }
+            self.selecting.then(String::new)
         }
-
-        Some(result)
     }
 
-    /// Delete selection
+    /// Delete the selected text (nothing in a read-only editor)
     pub fn delete_selection(&mut self) {
-        let anchor = match self.anchor {
-            Some(a) => a,
-            None => return,
-        };
-
-        let (start, end) = if anchor < self.cursor {
-            (anchor, self.cursor)
-        } else {
-            (self.cursor, anchor)
-        };
-
-        if start.0 == end.0 {
-            // Single line
-            if let Some(line) = self.lines.get_mut(start.0) {
-                let range = byte_at(line, start.1)..byte_at(line, end.1);
-                let deleted: String = line.drain(range).collect();
-                self.push_undo(super::types::EditOp::Delete {
-                    line: start.0,
-                    col: start.1,
-                    text: deleted,
-                });
-            }
-        } else {
-            // Multi-line
-            let before: String = self.lines[start.0].chars().take(start.1).collect();
-            let after: String = self.lines[end.0].chars().skip(end.1).collect();
-
-            for _ in start.0..=end.0 {
-                if start.0 < self.lines.len() {
-                    self.lines.remove(start.0);
-                }
-            }
-
-            self.lines.insert(start.0, format!("{}{}", before, after));
-        }
-
-        self.cursor = start;
-        self.anchor = None;
+        let changed = self.edit.delete_selection();
+        self.edited(changed);
     }
 
-    /// Select all
+    /// Select all, in selection mode (a move then extends the selection
+    /// from the start of the text)
     pub fn select_all(&mut self) {
-        self.anchor = Some((0, 0));
-        let last_line = self.lines.len().saturating_sub(1);
-        self.cursor = (last_line, self.line_len(last_line));
+        self.edit.select_all();
+        self.selecting = true;
+    }
+
+    /// The selection's start and end, in chars, when anything is selected
+    pub(super) fn selection_chars(&self) -> Option<((usize, usize), (usize, usize))> {
+        let cursor = self.edit.primary();
+        cursor.has_selection().then(|| {
+            let (from, to) = cursor.range();
+            (self.char_pos(from), self.char_pos(to))
+        })
     }
 }

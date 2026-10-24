@@ -8,7 +8,7 @@ use super::*;
 #[test]
 fn test_code_editor_read_only() {
     let editor = CodeEditor::new().read_only(true);
-    assert!(editor.read_only);
+    assert!(editor.edit.is_read_only());
 }
 
 #[test]

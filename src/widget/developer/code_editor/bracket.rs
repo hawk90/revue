@@ -13,9 +13,8 @@ impl super::CodeEditor {
             return None;
         }
 
-        let line = self.lines.get(self.cursor.0)?;
-        let chars: Vec<char> = line.chars().collect();
-        let col = self.cursor.1;
+        let (line_idx, col) = self.cursor_position();
+        let chars: Vec<char> = self.edit.line(line_idx)?.chars().collect();
 
         if col >= chars.len() {
             return None;
@@ -33,9 +32,9 @@ impl super::CodeEditor {
         };
 
         if forward {
-            self.find_matching_bracket_forward(open, close, self.cursor.0, col)
+            self.find_matching_bracket_forward(open, close, line_idx, col)
         } else {
-            self.find_matching_bracket_backward(open, close, self.cursor.0, col)
+            self.find_matching_bracket_backward(open, close, line_idx, col)
         }
     }
 
@@ -51,8 +50,9 @@ impl super::CodeEditor {
         let mut line_idx = start_line;
         let mut col_idx = start_col + 1;
 
-        while line_idx < self.lines.len() {
-            let line = &self.lines[line_idx];
+        let lines = self.edit.lines();
+        while line_idx < lines.len() {
+            let line = &lines[line_idx];
             let chars: Vec<char> = line.chars().collect();
 
             while col_idx < chars.len() {
@@ -90,8 +90,9 @@ impl super::CodeEditor {
         let mut line_idx = start_line;
         let mut col_idx = start_col;
 
+        let lines = self.edit.lines();
         loop {
-            let line = &self.lines[line_idx];
+            let line = &lines[line_idx];
             let chars: Vec<char> = line.chars().collect();
 
             while col_idx > 0 {
@@ -114,7 +115,7 @@ impl super::CodeEditor {
                 break;
             }
             line_idx -= 1;
-            col_idx = self.lines[line_idx].chars().count();
+            col_idx = lines[line_idx].chars().count();
         }
 
         None

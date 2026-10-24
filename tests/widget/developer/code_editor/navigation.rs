@@ -169,8 +169,9 @@ fn test_move_up_basic() {
 fn test_move_up_at_top() {
     let mut editor = CodeEditor::new().content("line1\nline2");
     editor.set_cursor(0, 2);
+    // Up on the first line goes to its start
     editor.move_up();
-    assert_eq!(editor.cursor_position(), (0, 2));
+    assert_eq!(editor.cursor_position(), (0, 0));
 }
 
 #[test]
@@ -207,8 +208,9 @@ fn test_move_down_basic() {
 fn test_move_down_at_bottom() {
     let mut editor = CodeEditor::new().content("line1\nline2");
     editor.set_cursor(1, 2);
+    // Down on the last line goes to its end
     editor.move_down();
-    assert_eq!(editor.cursor_position(), (1, 2));
+    assert_eq!(editor.cursor_position(), (1, 5));
 }
 
 #[test]
@@ -402,7 +404,7 @@ fn test_move_word_right_basic() {
     let mut editor = CodeEditor::new().content("hello world");
     editor.set_cursor(0, 2);
     editor.move_word_right();
-    assert_eq!(editor.cursor_position(), (0, 6)); // After "hello"
+    assert_eq!(editor.cursor_position(), (0, 5)); // The end of "hello"
 }
 
 #[test]
@@ -418,8 +420,11 @@ fn test_move_word_right_over_whitespace() {
     let mut editor = CodeEditor::new().content("hello   world");
     editor.set_cursor(0, 2);
     editor.move_word_right();
-    // move_word_right lands at start of next word ("world" at position 8)
-    assert_eq!(editor.cursor_position(), (0, 8));
+    // A word move stops at the end of the word
+    assert_eq!(editor.cursor_position(), (0, 5));
+    // From there it skips the spaces and goes over "world"
+    editor.move_word_right();
+    assert_eq!(editor.cursor_position(), (0, 13));
 }
 
 #[test]
@@ -529,9 +534,9 @@ fn test_cursor_move_down() {
     assert_eq!(editor.cursor_position(), (1, 0));
     editor.move_down();
     assert_eq!(editor.cursor_position(), (2, 0));
-    // Should stop at last line
+    // On the last line, Down goes to its end
     editor.move_down();
-    assert_eq!(editor.cursor_position(), (2, 0));
+    assert_eq!(editor.cursor_position(), (2, 5));
 }
 
 #[test]
@@ -579,9 +584,9 @@ fn test_cursor_document_navigation() {
 fn test_cursor_word_navigation() {
     let mut editor = CodeEditor::new().content("hello world foo");
     editor.move_word_right();
-    assert_eq!(editor.cursor_position(), (0, 6)); // After "hello "
+    assert_eq!(editor.cursor_position(), (0, 5)); // The end of "hello"
     editor.move_word_right();
-    assert_eq!(editor.cursor_position(), (0, 12)); // After "world "
+    assert_eq!(editor.cursor_position(), (0, 11)); // The end of "world"
 
     editor.move_word_left();
     assert_eq!(editor.cursor_position(), (0, 6));

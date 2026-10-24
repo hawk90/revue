@@ -585,3 +585,49 @@ fn positions_convert_to_char_indices_and_back() {
     assert_eq!(s.pos_at_char(0, 99), EditPos::new(0, 4));
     assert_eq!(s.pos_at_char(9, 1), EditPos::new(1, 1));
 }
+
+// ---------------------------------------------------------------------------
+// Pairs
+// ---------------------------------------------------------------------------
+
+/// A closed pair goes in at every cursor over the selection, the cursor
+/// between; one undo step with the typing around it, and redo puts the
+/// cursors back between
+#[test]
+fn insert_pair_leaves_the_cursor_between_and_undoes_as_typing() {
+    let (_now, clock) = clock();
+    let mut s = at("ab\ncd", p(0, 1)).clock(clock);
+    s.add_cursor(EditCursor::selecting(p(1, 0), p(1, 2)));
+    s.insert(">");
+    assert!(s.insert_pair("(", ")"));
+    assert_eq!(s.text(), "a>()b\n>()");
+    let heads: Vec<EditPos> = s.cursors().iter().map(|c| c.head()).collect();
+    assert_eq!(heads, [p(0, 3), p(1, 2)]);
+    s.insert("x");
+    assert_eq!(s.text(), "a>(x)b\n>(x)");
+    assert!(s.undo());
+    assert_eq!(s.text(), "ab\ncd");
+    assert!(s.redo());
+    assert_eq!(s.text(), "a>(x)b\n>(x)");
+
+    // Undo of just the pair, then redo: the cursor is between again
+    let mut s = at("", p(0, 0));
+    s.insert_pair("\"", "\"");
+    assert!(s.undo());
+    assert!(s.redo());
+    assert_eq!(s.cursor(), p(0, 1));
+
+    // Read-only: nothing
+    let mut s = at("ab", p(0, 1)).read_only(true);
+    assert!(!s.insert_pair("(", ")"));
+    assert_eq!(s.text(), "ab");
+}
+
+/// A `close` that joins `open` (a combining mark) leaves no place between:
+/// the cursor goes after the pair
+#[test]
+fn insert_pair_whose_close_joins_the_open_puts_the_cursor_after_it() {
+    let mut s = at("", p(0, 0));
+    assert!(s.insert_pair("e", "\u{301}"));
+    assert_eq!(s.cursor(), p(0, 1));
+}

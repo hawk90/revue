@@ -23,6 +23,17 @@ use revue::widget::traits::View;
 use revue::widget::CodeEditor;
 use revue::widget::Language;
 
+/// A clock that moves on a second at each reading, so every edit is an undo
+/// step of its own
+pub(super) fn stepping_clock() -> impl Fn() -> std::time::Instant + Send + Sync + 'static {
+    let start = std::time::Instant::now();
+    let ticks = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+    move || {
+        let n = ticks.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        start + std::time::Duration::from_secs(n)
+    }
+}
+
 // =========================================================================
 // Creation and initialization tests
 // =========================================================================

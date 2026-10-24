@@ -28,7 +28,7 @@ impl CodeEditor {
         }
 
         // Calculate minimap scale
-        let total_lines = self.lines.len();
+        let total_lines = self.edit.line_count();
         let minimap_height = area.height as usize;
         let lines_per_row = (total_lines as f32 / minimap_height as f32).max(1.0);
 
@@ -47,7 +47,7 @@ impl CodeEditor {
             }
 
             // Draw condensed line representation
-            if let Some(line) = self.lines.get(start_line) {
+            if let Some(line) = self.edit.line(start_line) {
                 let chars: Vec<char> = line.chars().collect();
                 for (i, &ch) in chars.iter().take(minimap_width as usize).enumerate() {
                     if !ch.is_whitespace() {
