@@ -62,10 +62,9 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
 
     // Draw the text or placeholder and the cursor, from column 1 up to the
     // column before the arrow, scrolled so the cursor stays in view
-    // Combobox has no focus state of its own: the cursor is drawn on its
-    // text, and on the placeholder only while focused
-    let focused = ctx.is_focused() || !combobox.input().is_empty();
-    let field = EditField::of(&combobox.state, &combobox.placeholder, focused);
+    // Combobox has no focus state of its own: the cursor is drawn, on the
+    // text or the placeholder, only while the runtime gives it focus
+    let field = EditField::of(&combobox.state, &combobox.placeholder, ctx.is_focused());
     let field_width = width - ARROW_RIGHT_OFFSET - INPUT_TEXT_COL;
     let scroll = field.scroll(combobox.scroll_x.get(), field_width);
     combobox.scroll_x.set(scroll);
