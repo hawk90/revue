@@ -576,6 +576,16 @@ pub fn corpus() -> Vec<(&'static str, String)> {
         // Many tokens on one line, as minified code: a highlighter that
         // measures each token from the line's start is quadratic in it
         ("tokens on one line", format!("[{}0]", "1,".repeat(40_000))),
+        // A var() cycle with two references per step, used by many rules:
+        // each declaration expanded it again, 2^16 times, until each
+        // variable was resolved once (found by the nightly fuzz run, #1158)
+        (
+            "var cycle used by many rules",
+            format!(
+                ":root {{ --a: var(--b) var(--b); --b: var(--a) var(--a); }}\n{}",
+                "a { color: var(--a); background: var(--b); }\n".repeat(200)
+            ),
+        ),
         ("many lines", "line\n".repeat(20_000)),
         ("[ x10000", "[".repeat(deep)),
         ("] x10000", "]".repeat(deep)),
