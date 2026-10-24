@@ -67,8 +67,7 @@ impl MultiSelect {
     /// Close the dropdown
     pub fn close(&mut self) {
         self.open = false;
-        self.query.clear();
-        self.reset_filter();
+        self.clear_query();
     }
 
     /// Toggle dropdown
