@@ -41,8 +41,16 @@ impl Default for HotReloadConfig {
 }
 
 /// Hot reload watcher
+///
+/// Dropping it does not wait for the file-system watcher to stop: that is
+/// left to a thread of its own. On macOS, notify's watcher stops by asking
+/// `fseventsd` for the current event id and purging up to it, and waits for
+/// that; with `fseventsd` slow it took many seconds, and the thread that
+/// dropped the `HotReload` (the UI thread, in an app) waited with it
+/// (#1265). notify 9 drops the purge.
 pub struct HotReload {
-    _watcher: notify::RecommendedWatcher,
+    /// Always `Some` until dropped
+    watcher: Option<notify::RecommendedWatcher>,
     receiver: Receiver<HotReloadEvent>,
     watched_paths: Vec<PathBuf>,
     /// Per-event debounce tracking: maps `debounce_key` -> last_event_time
@@ -111,7 +119,7 @@ impl HotReload {
             )?;
 
         Ok(Self {
-            _watcher: watcher,
+            watcher: Some(watcher),
             receiver: rx,
             watched_paths: Vec::new(),
             last_events: HashMap::new(),
@@ -119,6 +127,12 @@ impl HotReload {
             debounce: config.debounce,
             recursive: config.recursive,
         })
+    }
+
+    fn watcher_mut(&mut self) -> &mut notify::RecommendedWatcher {
+        self.watcher
+            .as_mut()
+            .expect("the watcher is only taken when HotReload is dropped")
     }
 
     /// Watch a file or directory for changes
@@ -159,7 +173,7 @@ impl HotReload {
             RecursiveMode::NonRecursive
         };
 
-        self._watcher.watch(&path, mode)?;
+        self.watcher_mut().watch(&path, mode)?;
         self.watched_paths.push(path);
         Ok(())
     }
@@ -171,7 +185,7 @@ impl HotReload {
     /// Returns `notify::Error` if the path was not being watched.
     pub fn unwatch(&mut self, path: impl AsRef<Path>) -> Result<(), notify::Error> {
         let path = path.as_ref();
-        self._watcher.unwatch(path)?;
+        self.watcher_mut().unwatch(path)?;
         self.watched_paths.retain(|p| p != path);
         Ok(())
     }
@@ -326,6 +340,19 @@ pub fn hot_reload() -> HotReloadBuilder {
     HotReloadBuilder::new()
 }
 // KEEP HERE - Private implementation tests (accesses private fields)
+
+impl Drop for HotReload {
+    fn drop(&mut self) {
+        let Some(watcher) = self.watcher.take() else {
+            return;
+        };
+        // Stop the watcher off this thread (see the type's docs). Should the
+        // thread not start, it stops here as it always did.
+        let _ = std::thread::Builder::new()
+            .name("revue-hot-reload-stop".into())
+            .spawn(move || drop(watcher));
+    }
+}
 
 #[cfg(test)]
 mod tests {

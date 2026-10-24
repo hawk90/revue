@@ -62,9 +62,7 @@ pre-push:
       fail_text: "Documentation build failed. Check for broken intra-doc links or invalid code blocks."
 
     test:
-      # Run tests for changed Rust files. The file-watcher fault cases are
-      # quarantined (#1265: they sometimes hang on macOS): skipped here, run
-      # with retries in CI. Remove the --skip once #1265 is fixed.
+      # Run tests for changed Rust files
       run: |
         CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '\.rs$' || true)
         if [ -n "$CHANGED" ]; then
@@ -73,7 +71,7 @@ pre-push:
           # Run all tests if any src/ file changed
           if echo "$CHANGED" | grep -q "^src/"; then
             echo "Running all tests (src/ changed)..."
-            cargo test --all-features -- --skip file_watch_faults || exit 1
+            cargo test --all-features || exit 1
           else
             # Run tests for specific test files that changed
             TEST_TARGETS=()
@@ -81,7 +79,7 @@ pre-push:
               if echo "$file" | grep -qE "^tests/[^/]+/"; then
                 # Test directories - run all tests
                 echo "Test directory changed, running all tests..."
-                cargo test --all-features -- --skip file_watch_faults || exit 1
+                cargo test --all-features || exit 1
                 exit 0
               elif echo "$file" | grep -qE "^tests/[^/]+\.rs$" && [ -f "$file" ]; then
                 # Top-level test files (e.g., tests/buffer_tests.rs); a deleted
@@ -92,7 +90,7 @@ pre-push:
             done
             if [ ${#TEST_TARGETS[@]} -gt 0 ]; then
               echo "Running test targets: ${TEST_TARGETS[*]}"
-              cargo test "${TEST_TARGETS[@]}" --all-features -- --skip file_watch_faults || exit 1
+              cargo test "${TEST_TARGETS[@]}" --all-features || exit 1
             fi
           fi
         else
