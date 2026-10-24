@@ -25,6 +25,12 @@ impl MaskedInput {
         if typing && self.is_full() {
             return true;
         }
+        // Masked, Backspace takes a whole character: taking an accent alone
+        // would change nothing the mask shows
+        if event.key == Key::Backspace && !event.ctrl && !event.alt && self.masks() {
+            self.delete_backward();
+            return true;
+        }
         if event.ctrl && !event.alt {
             let whole = match event.key {
                 Key::Left => Some(EditMotion::LineStart),
@@ -65,12 +71,24 @@ impl MaskedInput {
         }
     }
 
-    /// Delete character before cursor
+    /// Delete the character before the cursor (while masked, the whole
+    /// character as seen; shown, as Backspace does in any field)
     pub fn delete_backward(&mut self) {
         self.end_peek();
-        if !self.disabled {
+        if self.disabled {
+            return;
+        }
+        if self.masks() && !self.state.has_selection() {
+            self.state.move_cursors(EditMotion::Left, true);
+            self.state.delete_selection();
+        } else {
             self.state.backspace();
         }
+    }
+
+    /// Whether the value is shown masked
+    fn masks(&self) -> bool {
+        !self.revealing
     }
 
     /// Delete character at cursor
@@ -112,10 +130,8 @@ impl MaskedInput {
         if self.max_length == 0 {
             return false;
         }
-        let cursor = self.state.primary();
-        let (from, to) = cursor.range();
-        let selected = self.state.char_index(to) - self.state.char_index(from);
-        self.char_count() - selected >= self.max_length
+        let (from, to) = self.state.primary().range();
+        self.len() - (to.col - from.col) >= self.max_length
     }
 
     /// Show the char just typed for a while (the peek style)

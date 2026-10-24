@@ -36,6 +36,10 @@ impl From<CursorPos> for (usize, usize) {
 }
 
 /// A cursor with optional selection anchor
+#[deprecated(
+    since = "3.12.0",
+    note = "TextArea keeps its cursors in revue::utils::EditState (EditCursor); Cursor is removed in 4.0"
+)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Cursor {
     /// Current position
@@ -92,6 +96,10 @@ impl Cursor {
 }
 
 /// Collection of cursors (always has at least one - the primary cursor)
+#[deprecated(
+    since = "3.12.0",
+    note = "TextArea keeps its cursors in revue::utils::EditState; CursorSet is removed in 4.0"
+)]
 #[derive(Clone, Debug)]
 pub struct CursorSet {
     /// All cursors, primary is at index 0
