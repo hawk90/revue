@@ -23,6 +23,8 @@ use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
 // Public exports
+// EditOp is deprecated (3.12), re-exported until 4.0
+#[allow(deprecated)]
 pub use types::{BracketMatch, BracketPair, EditOp, EditorConfig, IndentStyle};
 
 /// Lines PageUp and PageDown scroll the view (and move the cursor) before
