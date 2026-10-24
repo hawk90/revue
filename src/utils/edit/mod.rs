@@ -207,8 +207,8 @@ impl EditState {
         self
     }
 
-    /// The most lines the text may have (0: no limit). Newlines that would
-    /// go past it are dropped from typed or pasted text.
+    /// The most lines the text may have (0: no limit). Typed or pasted text
+    /// whose newlines would go past it loses all of them, at every cursor.
     pub fn max_lines(mut self, max: usize) -> Self {
         self.max_lines = max;
         if max > 0 && self.lines.len() > max {

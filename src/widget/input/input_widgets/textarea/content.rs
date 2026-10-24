@@ -1,8 +1,11 @@
 //! Content access methods for TextArea
+//!
+//! The text, cursors and selections live in an [`EditState`](crate::utils::EditState), whose columns
+//! are grapheme clusters; this API counts columns in chars, as it always
+//! has, and turns them into the model's positions and back.
 
-use super::cursor::{CursorPos, CursorSet};
-use super::edit::EditOperation;
-use super::selection::Selection;
+use super::cursor::CursorPos;
+use crate::utils::{EditCursor, EditPos};
 use crate::widget::syntax::{Language, SyntaxHighlighter};
 
 impl TextArea {
@@ -25,272 +28,143 @@ impl TextArea {
 
     /// Get the current text content
     pub fn get_content(&self) -> String {
-        self.lines.join("\n")
+        self.edit.text()
     }
 
     /// Set the text content. A final line break is kept (as an empty last
     /// line), so [`get_content`](Self::get_content) gives the text back;
-    /// `\r\n` line breaks read as `\n`.
+    /// `\r\n` line breaks read as `\n`, other control characters but tab
+    /// are dropped, and lines past [`max_lines`](Self::max_lines) are cut.
+    /// The cursor goes to the start and the undo history is cleared.
     pub fn set_content(&mut self, text: &str) {
-        // Not `str::lines`, which drops a final line break
-        self.lines = text
-            .split('\n')
-            .map(|line| line.strip_suffix('\r').unwrap_or(line).to_string())
-            .collect();
-        self.cursors = CursorSet::default();
+        self.edit.set_text(text);
+        self.selecting = false;
         self.scroll.set(0);
         self.scroll_row.set(0);
         self.scroll_x.set(0);
-        self.undo_stack.clear();
-        self.redo_stack.clear();
     }
 
     /// Get the number of lines
     pub fn line_count(&self) -> usize {
-        self.lines.len()
+        self.edit.line_count()
     }
 
-    /// Get the cursor position (primary cursor for backward compatibility)
+    /// Get the cursor position (the primary cursor), in chars
     pub fn cursor_position(&self) -> (usize, usize) {
-        let pos = self.cursors.primary().pos;
-        (pos.line, pos.col)
+        self.primary_pos().into()
     }
 
-    /// Get all cursor positions
+    /// Get all cursor positions, in text order
     pub fn cursor_positions(&self) -> Vec<(usize, usize)> {
-        self.cursors
+        self.edit
+            .cursors()
             .iter()
-            .map(|c| (c.pos.line, c.pos.col))
+            .map(|c| self.char_pos(c.head()).into())
             .collect()
     }
 
     /// Get the number of cursors
     pub fn cursor_count(&self) -> usize {
-        self.cursors.len()
+        self.edit.cursors().len()
     }
 
-    /// Set the cursor position (primary cursor, clears secondary cursors)
+    /// Set the cursor position, in chars (one cursor; a column inside a
+    /// character the user sees as one goes to its end)
     pub fn set_cursor(&mut self, line: usize, col: usize) {
-        let line = line.min(self.lines.len().saturating_sub(1));
-        let col = col.min(self.line_len(line));
-        self.cursors = CursorSet::new(CursorPos::new(line, col));
+        let pos = self.edit_pos(CursorPos::new(line, col));
+        self.edit.set_cursor(pos);
+        self.selecting = false;
     }
 
-    /// Get length of a specific line (in characters, not bytes)
-    pub(super) fn line_len(&self, line: usize) -> usize {
-        self.lines.get(line).map(|l| l.chars().count()).unwrap_or(0)
+    /// The text of line `line` (empty past the last)
+    pub(super) fn line_text(&self, line: usize) -> &str {
+        self.edit.line(line).unwrap_or("")
     }
 
-    /// Get selected text (from primary cursor)
+    /// The primary cursor's position, in chars
+    pub(super) fn primary_pos(&self) -> CursorPos {
+        self.char_pos(self.edit.cursor())
+    }
+
+    /// The char index where the character the user sees as one (the
+    /// grapheme cluster) holding char `idx` of `line` starts: `idx` itself
+    /// on a boundary or past the end
+    pub(super) fn cluster_start(&self, line: usize, idx: usize) -> usize {
+        let text = self.line_text(line);
+        let pos = self.edit.pos_at_char(line, idx);
+        let at = self.edit.char_index(pos);
+        if at == idx || idx >= text.chars().count() {
+            return idx;
+        }
+        // Rounded up to the cluster's end: step back one cluster
+        self.edit
+            .char_index(EditPos::new(line, pos.col.saturating_sub(1)))
+    }
+
+    /// A model position in chars
+    pub(super) fn char_pos(&self, pos: EditPos) -> CursorPos {
+        CursorPos::new(pos.line, self.edit.char_index(pos))
+    }
+
+    /// A position in chars as the model's
+    pub(super) fn edit_pos(&self, pos: CursorPos) -> EditPos {
+        self.edit.pos_at_char(pos.line, pos.col)
+    }
+
+    /// Get the selected text (of the primary cursor)
     pub fn get_selection(&self) -> Option<String> {
-        let sel = self.cursors.primary().selection()?.normalized();
-        self.get_text_in_selection(&sel)
+        let cursor = self.edit.primary();
+        cursor.has_selection().then(|| {
+            let (from, to) = cursor.range();
+            self.edit.text_in(from, to)
+        })
     }
 
-    /// Get text within a selection range
-    fn get_text_in_selection(&self, sel: &Selection) -> Option<String> {
-        let mut result = String::new();
-
-        for line_idx in sel.start.0..=sel.end.0 {
-            if line_idx >= self.lines.len() {
-                break;
-            }
-            let line = &self.lines[line_idx];
-            let char_count = line.chars().count();
-            let start_col = if line_idx == sel.start.0 {
-                sel.start.1
-            } else {
-                0
-            };
-            let end_col = if line_idx == sel.end.0 {
-                sel.end.1
-            } else {
-                char_count
-            };
-
-            if start_col < char_count {
-                let start_byte = crate::utils::text::char_to_byte_index(line, start_col);
-                let end_byte =
-                    crate::utils::text::char_to_byte_index(line, end_col.min(char_count));
-                result.push_str(&line[start_byte..end_byte]);
-            }
-            if line_idx < sel.end.0 {
-                result.push('\n');
-            }
-        }
-
-        Some(result)
-    }
-
-    /// Delete selected text (from primary cursor)
+    /// Delete the selected text, at every cursor
     pub fn delete_selection(&mut self) {
-        let sel = match self.cursors.primary().selection() {
-            Some(s) => s.normalized(),
-            None => return,
-        };
-
-        if sel.start.0 == sel.end.0 {
-            // Single line selection
-            if let Some(line) = self.lines.get_mut(sel.start.0) {
-                let char_count = line.chars().count();
-                let start_byte = crate::utils::text::char_to_byte_index(line, sel.start.1);
-                let end_byte =
-                    crate::utils::text::char_to_byte_index(line, sel.end.1.min(char_count));
-                let deleted: String = line.drain(start_byte..end_byte).collect();
-                self.push_undo(EditOperation::Delete {
-                    line: sel.start.0,
-                    col: sel.start.1,
-                    text: deleted,
-                });
-            }
-        } else {
-            // Multi-line selection
-            let start = CursorPos::new(sel.start.0, sel.start.1);
-            let end = CursorPos::new(sel.end.0, sel.end.1);
-            self.replace_with_undo(start, end, "");
-        }
-
-        // Update cursor to selection start
-        self.cursors = CursorSet::new(CursorPos::new(sel.start.0, sel.start.1));
+        self.selecting = false;
+        self.edit.delete_selection();
     }
 
-    /// Check if primary cursor has a selection
+    /// Whether the primary cursor selects any text
     pub fn has_selection(&self) -> bool {
-        self.cursors.primary().is_selecting()
+        self.edit.primary().has_selection()
     }
 
-    /// Whether the primary cursor's selection holds any text
-    pub(super) fn selects_text(&self) -> bool {
-        self.cursors
-            .primary()
-            .anchor
-            .is_some_and(|anchor| anchor != self.cursors.primary().pos)
-    }
-
-    /// Start selection at current cursor (primary)
+    /// Start a selection at the cursor: the move methods
+    /// ([`move_left`](Self::move_left) and the others) extend it from here
+    /// until the selection is cleared, the text is edited or the cursor is
+    /// set. Shift with a moving key selects without this.
     pub fn start_selection(&mut self) {
-        self.cursors.primary_mut().start_selection();
+        self.selecting = true;
     }
 
-    /// Update selection to current cursor position
-    pub(super) fn update_selection(&mut self) {
-        // Selection is automatically updated because anchor stays fixed
-        // while cursor position moves. No explicit update needed.
-    }
-
-    /// Clear selection (all cursors)
+    /// Clear the selection of every cursor, keeping the cursors where they
+    /// are
     pub fn clear_selection(&mut self) {
-        for cursor in self.cursors.iter_mut() {
-            cursor.clear_selection();
-        }
+        self.selecting = false;
+        let cursors = self
+            .edit
+            .cursors()
+            .iter()
+            .map(|c| EditCursor::at(c.head()))
+            .collect::<Vec<_>>();
+        self.set_cursors_keeping_primary(cursors);
     }
 
-    /// Push an operation to the undo stack
-    pub(super) fn push_undo(&mut self, op: EditOperation) {
-        self.undo_stack.push(op);
-        if self.undo_stack.len() > super::MAX_UNDO_HISTORY {
-            self.undo_stack.remove(0);
-        }
-        self.redo_stack.clear();
-    }
-
-    /// The text from `start` to `end`, `'\n'` between lines; positions
-    /// past the end of a line or the text are clamped
-    pub(super) fn text_between(&self, start: CursorPos, end: CursorPos) -> String {
-        let last = self.lines.len().saturating_sub(1);
-        let (start_line, end_line) = (start.line.min(last), end.line.min(last));
-        let mut text = String::new();
-        for line_idx in start_line..=end_line {
-            let line = &self.lines[line_idx];
-            let from = if line_idx == start_line { start.col } else { 0 };
-            let to = if line_idx == end_line {
-                end.col
-            } else {
-                usize::MAX
-            };
-            text.extend(line.chars().skip(from).take(to.saturating_sub(from)));
-            if line_idx < end_line {
-                text.push('\n');
-            }
-        }
-        text
-    }
-
-    /// Replace `removed`, the text at `line`/`col`, with `inserted`; either
-    /// may span lines. Returns the position just after `inserted`.
-    pub(super) fn splice(
-        &mut self,
-        line: usize,
-        col: usize,
-        removed: &str,
-        inserted: &str,
-    ) -> CursorPos {
-        let last = self.lines.len().saturating_sub(1);
-        let line = line.min(last);
-        let end_line = (line + removed.matches('\n').count()).min(last);
-        let end_col = match removed.rsplit_once('\n') {
-            Some((_, tail)) => tail.chars().count(),
-            None => col + removed.chars().count(),
-        };
-
-        let before: String = self.lines[line].chars().take(col).collect();
-        let after: String = self.lines[end_line].chars().skip(end_col).collect();
-        let text = format!("{before}{inserted}{after}");
-        self.lines
-            .splice(line..=end_line, text.split('\n').map(String::from));
-
-        match inserted.rsplit_once('\n') {
-            Some((_, tail)) => {
-                CursorPos::new(line + inserted.matches('\n').count(), tail.chars().count())
-            }
-            None => CursorPos::new(line, col + inserted.chars().count()),
-        }
-    }
-
-    /// Replace the text from `start` to `end` with `inserted`, as one undo
-    /// step. Returns the position just after `inserted`.
-    pub(super) fn replace_with_undo(
-        &mut self,
-        start: CursorPos,
-        end: CursorPos,
-        inserted: &str,
-    ) -> CursorPos {
-        let removed = self.text_between(start, end);
-        let after = self.splice(start.line, start.col, &removed, inserted);
-        self.push_undo(EditOperation::Replace {
-            line: start.line,
-            col: start.col,
-            removed,
-            inserted: inserted.to_string(),
-        });
-        after
-    }
-
-    /// Set primary cursor position (internal helper, clamped to valid range)
-    pub(super) fn set_primary_cursor(&mut self, line: usize, col: usize) {
-        let line = line.min(self.lines.len().saturating_sub(1));
-        let col = col.min(self.line_len(line));
-        self.cursors.set_primary(CursorPos::new(line, col));
-        self.clamp_cursors();
-    }
-
-    /// Keep every cursor (and selection anchor) inside the text.
-    ///
-    /// Edits move only the primary cursor; when they remove text, the other
-    /// cursors would otherwise be left past the end of a line or the text.
-    pub(super) fn clamp_cursors(&mut self) {
-        let last_line = self.lines.len().saturating_sub(1);
-        let clamp = |pos: CursorPos, lines: &[String]| {
-            let line = pos.line.min(last_line);
-            let len = lines.get(line).map_or(0, |l| l.chars().count());
-            CursorPos::new(line, pos.col.min(len))
-        };
-        for cursor in self.cursors.all_mut() {
-            cursor.pos = clamp(cursor.pos, &self.lines);
-            cursor.anchor = cursor.anchor.map(|a| clamp(a, &self.lines));
-        }
+    /// Replace the cursors, the primary one staying primary
+    pub(super) fn set_cursors_keeping_primary(&mut self, mut cursors: Vec<EditCursor>) {
+        let primary = self
+            .edit
+            .cursors()
+            .iter()
+            .position(|c| c == self.edit.primary())
+            .unwrap_or(0);
+        // The last cursor given is the primary one
+        let last = cursors.len() - 1;
+        cursors.swap(primary.min(last), last);
+        self.edit.set_cursors(cursors);
     }
 }
 
-// These methods need access to TextArea fields
 use super::TextArea;

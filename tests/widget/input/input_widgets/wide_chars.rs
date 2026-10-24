@@ -392,6 +392,9 @@ fn textarea_find_whole_word_in_hangul_text() {
 fn textarea_select_next_occurrence_in_hangul_text() {
     let mut ta = textarea("한글 한글");
     ta.set_cursor(0, 0);
+    // The first press selects the word, the second adds the next one
+    ta.handle_key_event(&KeyEvent::ctrl(Key::Char('d')));
+    assert_eq!(ta.get_selection().as_deref(), Some("한글"));
     ta.handle_key_event(&KeyEvent::ctrl(Key::Char('d')));
     let positions = ta.cursor_positions();
     assert_eq!(positions.len(), 2, "{positions:?}");

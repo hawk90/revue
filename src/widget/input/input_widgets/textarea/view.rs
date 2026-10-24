@@ -8,8 +8,47 @@ use crate::widget::syntax::HighlightSpan;
 use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View};
 
+use super::cursor::CursorPos;
 use super::layout::place_in;
+use super::selection::Selection;
 use super::TextArea;
+use crate::widget::traits::render_context::edit_line::visible_from;
+
+/// The cursors and selections in chars, worked out once per render
+struct Marks {
+    /// Where each cursor is drawn: a cursor on a zero-width char (which
+    /// takes no cell) on the next glyph that has one, or past the line's end
+    cursors: Vec<CursorPos>,
+    selections: Vec<Selection>,
+}
+
+impl TextArea {
+    fn marks(&self) -> Marks {
+        let cursors = self.edit.cursors();
+        Marks {
+            cursors: if self.focused {
+                cursors
+                    .iter()
+                    .map(|c| {
+                        let pos = self.char_pos(c.head());
+                        let line = self.line_text(pos.line);
+                        CursorPos::new(pos.line, visible_from(line, pos.col))
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            },
+            selections: cursors
+                .iter()
+                .filter(|c| c.has_selection())
+                .map(|c| {
+                    let (from, to) = c.range();
+                    Selection::new(self.char_pos(from).into(), self.char_pos(to).into())
+                })
+                .collect(),
+        }
+    }
+}
 
 impl TextArea {
     /// The line number, right-aligned in the gutter
@@ -38,6 +77,7 @@ impl TextArea {
     /// selection, then find matches, then syntax colors or the text color
     fn text_cell(
         &self,
+        marks: &Marks,
         line_idx: usize,
         char_idx: usize,
         ch: char,
@@ -46,19 +86,11 @@ impl TextArea {
     ) -> Cell {
         let mut cell = Cell::new(ch);
 
-        // Check if this position is selected (from any cursor)
-        let is_selected = self.cursors.iter().any(|c| {
-            c.selection()
-                .map(|s| s.contains(line_idx, char_idx))
-                .unwrap_or(false)
-        });
-
-        // Check if this is any cursor position
-        let is_cursor = self.focused
-            && self
-                .cursors
-                .iter()
-                .any(|c| c.pos.line == line_idx && c.pos.col == char_idx);
+        let is_selected = marks
+            .selections
+            .iter()
+            .any(|s| s.contains(line_idx, char_idx));
+        let is_cursor = marks.cursors.contains(&CursorPos::new(line_idx, char_idx));
 
         // Check if this position is in a find match
         let (is_match, is_current_match) = if let Some(ref state) = self.find_replace {
@@ -150,7 +182,7 @@ impl View for TextArea {
         }
 
         // Show placeholder if empty
-        if self.lines.len() == 1 && self.lines[0].is_empty() {
+        if self.edit.is_empty() {
             if let Some(ref placeholder) = self.placeholder {
                 ctx.draw_text_clipped(text_start_x, 0, placeholder, PLACEHOLDER_FG, text_width);
             }
@@ -166,6 +198,7 @@ impl View for TextArea {
         self.scroll.set(top);
         self.scroll_row.set(top_row);
         let css_fg = ctx.css_color_if_set();
+        let marks = self.marks();
 
         // Render visible visual rows (a logical line may span multiple rows when wrapping).
         let rows = self.visual_rows(text_width, visible_lines);
@@ -181,31 +214,31 @@ impl View for TextArea {
             }
 
             // Draw text. Columns, not chars: a wide glyph takes two cells.
-            let line = &self.lines[line_idx];
+            let line = self.line_text(line_idx);
             let seg = &line[char_to_byte_index(line, seg_start)..char_to_byte_index(line, seg_end)];
 
             // Get syntax highlighting spans for this line
             let highlights = self.highlighter.as_ref().map(|h| h.highlight_line(line));
 
             ctx.put_edit_line(text_start_x, y, seg, scroll_x, text_width, |i, ch| {
-                self.text_cell(line_idx, seg_start + i, ch, &highlights, css_fg)
+                self.text_cell(&marks, line_idx, seg_start + i, ch, &highlights, css_fg)
             });
 
             // Cursors the text cells do not show: past the line's end (on
             // its last row, or the extra row of one ending in a hanging
             // space). The line's rows are wrapped once per line, not per
             // row and cursor.
-            if self.focused {
+            if !marks.cursors.is_empty() {
                 if placed_line != Some(line_idx) {
                     placed_line = Some(line_idx);
                     let rows = self.line_rows(line_idx, text_width);
-                    placed = self
+                    placed = marks
                         .cursors
                         .iter()
-                        .filter(|c| c.pos.line == line_idx)
+                        .filter(|c| c.line == line_idx)
                         .map(|c| {
-                            let (k, x) = place_in(&rows, line, c.pos.col, text_width, self.wrap);
-                            (c.pos.col, k, x)
+                            let (k, x) = place_in(&rows, line, c.col, text_width, self.wrap);
+                            (c.col, k, x)
                         })
                         .collect();
                 }

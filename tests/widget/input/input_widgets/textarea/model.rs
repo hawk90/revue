@@ -1,24 +1,19 @@
-//! TextArea against a text model with selection and undo (#1162)
-//!
-//! Keys and the selecting moves go to the editor and to a model that keeps
-//! the text as one char list (lines joined by `'\n'`), the cursor and the
-//! selection anchor as offsets in it, and the undo history as the texts
-//! before and after each edit. After every step the text, the cursor and the
-//! selected text must equal the model's. Copy, cut and paste are left out:
-//! with the `clipboard` feature they use the system clipboard.
+//! TextArea is a multi-line `EditState` (#1261): any keys, selecting moves
+//! and added cursors give the text, cursors, selection and undo state an
+//! `EditState::multi_line()` gets from the same steps, with columns turned
+//! into char indices. TextArea's own keys map to the model's edits: Tab
+//! types four spaces and Ctrl+Shift+K deletes the lines. The edit rules
+//! themselves are checked in `tests/utils/edit`. Paging is the view's and is
+//! left out, as are copy, cut and paste.
+
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use proptest::prelude::*;
 use revue::event::{Key, KeyEvent};
+use revue::utils::{EditCursor, EditMotion, EditState};
 use revue::widget::TextArea;
-
-/// Screen columns of a char, as the editor counts them
-fn width(c: char) -> usize {
-    if c == '한' {
-        2
-    } else {
-        1
-    }
-}
 
 #[derive(Clone, Copy, Debug)]
 enum Move {
@@ -32,24 +27,40 @@ enum Move {
     WordRight,
 }
 
+impl Move {
+    fn motion(self) -> EditMotion {
+        match self {
+            Move::Left => EditMotion::Left,
+            Move::Right => EditMotion::Right,
+            Move::Up => EditMotion::Up,
+            Move::Down => EditMotion::Down,
+            Move::Home => EditMotion::LineStart,
+            Move::End => EditMotion::LineEnd,
+            Move::WordLeft => EditMotion::WordLeft,
+            Move::WordRight => EditMotion::WordRight,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 enum Op {
     /// A key, with Ctrl and Shift
     Key(Key, bool, bool),
-    /// A move that extends the selection from where it was
+    /// `start_selection`, then a move method: it extends the selection
     Select(Move),
-    /// A word move that drops the selection
-    Word(bool),
+    /// A cursor added at a line and char column
+    AddCursor(usize, usize),
 }
 
 fn op() -> impl Strategy<Value = Op> {
     let plain = prop::sample::select(vec![
         Key::Char('a'),
         Key::Char(' '),
+        Key::Char('.'),
         Key::Char('한'),
+        Key::Char('\u{301}'),
         Key::Enter,
         Key::Tab,
-        Key::Backspace,
         Key::Backspace,
         Key::Delete,
         Key::Left,
@@ -60,12 +71,16 @@ fn op() -> impl Strategy<Value = Op> {
         Key::End,
     ]);
     let ctrl = prop::sample::select(vec![
-        (Key::Char('a'), false),
-        (Key::Char('z'), false),
-        (Key::Char('z'), false),
-        (Key::Char('y'), false),
-        (Key::Char('z'), true),
-        (Key::Char('k'), true),
+        Key::Char('a'),
+        Key::Char('z'),
+        Key::Char('y'),
+        Key::Char('k'),
+        Key::Backspace,
+        Key::Delete,
+        Key::Left,
+        Key::Right,
+        Key::Home,
+        Key::End,
     ]);
     let mv = prop::sample::select(vec![
         Move::Left,
@@ -78,217 +93,40 @@ fn op() -> impl Strategy<Value = Op> {
         Move::WordRight,
     ]);
     prop_oneof![
-        8 => plain.prop_map(|k| Op::Key(k, false, false)),
-        3 => ctrl.prop_map(|(k, shift)| Op::Key(k, true, shift)),
-        4 => mv.prop_map(Op::Select),
-        1 => any::<bool>().prop_map(Op::Word),
+        8 => (plain, prop::bool::weighted(0.3)).prop_map(|(k, shift)| Op::Key(k, false, shift)),
+        3 => (ctrl, any::<bool>()).prop_map(|(k, shift)| Op::Key(k, true, shift)),
+        2 => mv.prop_map(Op::Select),
+        1 => (0..4usize, 0..6usize).prop_map(|(l, c)| Op::AddCursor(l, c)),
     ]
 }
 
-#[derive(Debug, Default)]
-struct Model {
-    text: Vec<char>,
-    cursor: usize,
-    anchor: Option<usize>,
-    undo: Vec<Vec<char>>,
-    redo: Vec<Vec<char>>,
-}
-
-impl Model {
-    fn line_start(&self, at: usize) -> usize {
-        self.text[..at]
-            .iter()
-            .rposition(|&c| c == '\n')
-            .map_or(0, |i| i + 1)
-    }
-
-    fn line_end(&self, at: usize) -> usize {
-        self.text[at..]
-            .iter()
-            .position(|&c| c == '\n')
-            .map_or(self.text.len(), |i| at + i)
-    }
-
-    /// (line, col) of an offset
-    fn position(&self, at: usize) -> (usize, usize) {
-        let line = self.text[..at].iter().filter(|&&c| c == '\n').count();
-        (line, at - self.line_start(at))
-    }
-
-    /// The offset on the line above or below under the cursor's screen
-    /// column
-    fn vertical(&self, down: bool) -> usize {
-        let start = self.line_start(self.cursor);
-        let target = if down {
-            let end = self.line_end(self.cursor);
-            if end == self.text.len() {
-                return self.cursor;
-            }
-            end + 1
-        } else {
-            if start == 0 {
-                return self.cursor;
-            }
-            self.line_start(start - 1)
-        };
-        let col: usize = self.text[start..self.cursor]
-            .iter()
-            .map(|&c| width(c))
-            .sum();
-        let mut x = 0;
-        for i in target..self.line_end(target) {
-            x += width(self.text[i]);
-            if col < x {
-                return i;
+/// Run `op` on the model as TextArea should
+fn model_step(state: &mut EditState, op: &Op) {
+    match *op {
+        Op::Key(Key::Tab, false, _) => {
+            state.insert("    ");
+        }
+        Op::Key(Key::Char('k' | 'K'), true, true) => {
+            state.delete_lines();
+        }
+        Op::Key(key, ctrl, shift) => {
+            let mut e = KeyEvent::new(key);
+            e.ctrl = ctrl;
+            e.shift = shift;
+            state.edit_key(&e, 10);
+        }
+        Op::Select(mv) => {
+            state.move_cursors(mv.motion(), true);
+        }
+        Op::AddCursor(line, col) => {
+            if state.cursors().len() < 100 {
+                state.add_cursor(EditCursor::at(state.pos_at_char(line, col)));
             }
         }
-        self.line_end(target)
-    }
-
-    fn target(&self, mv: Move) -> usize {
-        let (cur, len) = (self.cursor, self.text.len());
-        let (start, end) = (self.line_start(cur), self.line_end(cur));
-        let ws = |i: usize| self.text[i].is_whitespace();
-        match mv {
-            Move::Left => cur.saturating_sub(1),
-            Move::Right => (cur + 1).min(len),
-            Move::Up => self.vertical(false),
-            Move::Down => self.vertical(true),
-            Move::Home => start,
-            Move::End => end,
-            // At the start of a line, to the end of the line above
-            Move::WordLeft if cur == start => cur.saturating_sub(1),
-            Move::WordLeft => {
-                let mut i = cur;
-                while i > start && ws(i - 1) {
-                    i -= 1;
-                }
-                while i > start && !ws(i - 1) {
-                    i -= 1;
-                }
-                i
-            }
-            Move::WordRight if cur == end => (cur + 1).min(len),
-            Move::WordRight => {
-                let mut i = cur;
-                while i < end && !ws(i) {
-                    i += 1;
-                }
-                while i < end && ws(i) {
-                    i += 1;
-                }
-                i
-            }
-        }
-    }
-
-    fn selection(&self) -> Option<(usize, usize)> {
-        self.anchor
-            .map(|a| (a.min(self.cursor), a.max(self.cursor)))
-    }
-
-    /// The selection, when it holds any text
-    fn selected(&self) -> Option<(usize, usize)> {
-        self.selection().filter(|(start, end)| start < end)
-    }
-
-    /// Replace `start..end` with `with` as one undo step
-    fn edit(&mut self, start: usize, end: usize, with: &str) {
-        self.undo.push(self.text.clone());
-        self.redo.clear();
-        self.text.splice(start..end, with.chars());
-        self.cursor = start + with.chars().count();
-        self.anchor = None;
-    }
-
-    fn type_text(&mut self, s: &str) {
-        let (start, end) = self.selected().unwrap_or((self.cursor, self.cursor));
-        self.edit(start, end, s);
-    }
-
-    /// Applies `op`; true when it was undo or redo, after which the cursor
-    /// is the editor's to keep (the model knows only the text)
-    fn apply(&mut self, op: &Op) -> bool {
-        let len = self.text.len();
-        match *op {
-            Op::Select(mv) => {
-                self.anchor.get_or_insert(self.cursor);
-                self.cursor = self.target(mv);
-            }
-            Op::Word(right) => {
-                self.anchor = None;
-                self.cursor = self.target(if right {
-                    Move::WordRight
-                } else {
-                    Move::WordLeft
-                });
-            }
-            Op::Key(Key::Char('a'), true, _) => {
-                self.anchor = Some(0);
-                self.cursor = len;
-            }
-            Op::Key(Key::Char('z'), true, false) => {
-                if let Some(before) = self.undo.pop() {
-                    self.redo.push(std::mem::replace(&mut self.text, before));
-                }
-                return true;
-            }
-            Op::Key(Key::Char('y' | 'z'), true, _) => {
-                if let Some(after) = self.redo.pop() {
-                    self.undo.push(std::mem::replace(&mut self.text, after));
-                }
-                return true;
-            }
-            // Ctrl+Shift+K: delete the cursor's line, with its line break
-            Op::Key(Key::Char('k'), true, true) => {
-                let (start, end) = (self.line_start(self.cursor), self.line_end(self.cursor));
-                if self.text.contains(&'\n') {
-                    let (from, to) = if end < len {
-                        (start, end + 1)
-                    } else {
-                        (start - 1, end)
-                    };
-                    self.edit(from, to, "");
-                    self.cursor = if end < len {
-                        start
-                    } else {
-                        self.line_start(from)
-                    };
-                }
-            }
-            Op::Key(Key::Char(c), false, _) => self.type_text(&c.to_string()),
-            Op::Key(Key::Enter, ..) => self.type_text("\n"),
-            Op::Key(Key::Tab, ..) => self.type_text("    "),
-            Op::Key(Key::Backspace | Key::Delete, ..) if self.selected().is_some() => {
-                let (start, end) = self.selected().unwrap();
-                self.edit(start, end, "");
-            }
-            Op::Key(Key::Backspace, ..) if self.cursor > 0 => {
-                self.edit(self.cursor - 1, self.cursor, "")
-            }
-            Op::Key(Key::Delete, ..) if self.cursor < len => {
-                self.edit(self.cursor, self.cursor + 1, "")
-            }
-            Op::Key(Key::Backspace | Key::Delete, ..) => self.anchor = None,
-            Op::Key(key, ..) => {
-                let mv = match key {
-                    Key::Left => Move::Left,
-                    Key::Right => Move::Right,
-                    Key::Up => Move::Up,
-                    Key::Down => Move::Down,
-                    Key::Home => Move::Home,
-                    Key::End => Move::End,
-                    _ => unreachable!("{key:?}"),
-                };
-                self.anchor = None;
-                self.cursor = self.target(mv);
-            }
-        }
-        false
     }
 }
 
-fn run(ta: &mut TextArea, op: &Op) {
+fn area_step(ta: &mut TextArea, op: &Op) {
     match *op {
         Op::Key(key, ctrl, shift) => {
             let mut e = KeyEvent::new(key);
@@ -297,9 +135,7 @@ fn run(ta: &mut TextArea, op: &Op) {
             ta.handle_key_event(&e);
         }
         Op::Select(mv) => {
-            if !ta.has_selection() {
-                ta.start_selection();
-            }
+            ta.start_selection();
             match mv {
                 Move::Left => ta.move_left(),
                 Move::Right => ta.move_right(),
@@ -311,15 +147,22 @@ fn run(ta: &mut TextArea, op: &Op) {
                 Move::WordRight => ta.move_word_right(),
             }
         }
-        Op::Word(right) => {
-            ta.clear_selection();
-            if right {
-                ta.move_word_right();
-            } else {
-                ta.move_word_left();
-            }
-        }
+        Op::AddCursor(line, col) => ta.add_cursor_at(line, col),
     }
+}
+
+/// A clock that moves on a second at each reading, so every edit is an undo
+/// step of its own
+fn stepping_clock() -> impl Fn() -> Instant + Send + Sync + 'static {
+    let start = Instant::now();
+    let ticks = Arc::new(AtomicU64::new(0));
+    move || start + Duration::from_secs(ticks.fetch_add(1, Ordering::Relaxed))
+}
+
+fn shift(key: Key) -> KeyEvent {
+    let mut e = KeyEvent::new(key);
+    e.shift = true;
+    e
 }
 
 fn ctrl(key: Key, shift: bool) -> KeyEvent {
@@ -343,10 +186,14 @@ fn typing_over_a_selection_is_one_undo_step() {
 }
 
 /// A selection started without moving holds no text; Backspace used to
-/// delete that empty selection and leave the char before the cursor
+/// delete that empty selection and leave the char before the cursor, and
+/// typing over it added an undo step
 #[test]
 fn backspace_with_an_empty_selection_deletes_a_char() {
-    let mut ta = TextArea::new().focused(true).content("ab");
+    let mut ta = TextArea::new()
+        .focused(true)
+        .clock(stepping_clock())
+        .content("ab");
     ta.set_cursor(0, 2);
     ta.start_selection();
     ta.handle_key(&Key::Backspace);
@@ -363,45 +210,140 @@ fn backspace_with_an_empty_selection_deletes_a_char() {
     );
 }
 
-/// Ctrl+Shift+K kept the anchor, which then selected other text
+/// Ctrl+Shift+K took only the cursor's line and kept the anchor, which then
+/// selected other text; it takes every line the selection touches
 #[test]
-fn deleting_a_line_drops_the_selection() {
-    let mut ta = TextArea::new().focused(true).content("a\nb");
-    ta.handle_key_event(&ctrl(Key::Char('a'), false));
+fn deleting_lines_takes_every_selected_line_and_drops_the_selection() {
+    let mut ta = TextArea::new().focused(true).content("a\nb\nc");
+    ta.set_cursor(0, 0);
+    ta.handle_key_event(&shift(Key::Down));
+    ta.handle_key_event(&shift(Key::Right));
     ta.handle_key_event(&ctrl(Key::Char('k'), true));
-    assert_eq!(ta.get_content(), "a");
+    assert_eq!(ta.get_content(), "c");
     assert_eq!(ta.get_selection(), None);
+}
+
+/// Line commands took only the primary cursor's line (#1253)
+#[test]
+fn deleting_lines_takes_every_cursors_line() {
+    let mut ta = TextArea::new().focused(true).content("a\nb\nc\nd");
+    ta.set_cursor(0, 0);
+    ta.add_cursor_at(2, 0);
+    ta.handle_key_event(&ctrl(Key::Char('k'), true));
+    assert_eq!(ta.get_content(), "b\nd");
+    assert_eq!(ta.cursor_positions(), [(0, 0), (1, 0)]);
+}
+
+/// Edits applied at the primary cursor only (#1006)
+#[test]
+fn typing_goes_in_at_every_cursor() {
+    let mut ta = TextArea::new().focused(true).content("ab\ncd");
+    ta.set_cursor(0, 1);
+    ta.add_cursor_at(1, 1);
+    ta.handle_key(&Key::Char('x'));
+    assert_eq!(ta.get_content(), "axb\ncxd");
+    ta.handle_key(&Key::Backspace);
+    assert_eq!(ta.get_content(), "ab\ncd");
+}
+
+/// Cursors added with Ctrl+Alt+Down added below the primary cursor, so a
+/// second press landed on the same line (#1006)
+#[test]
+fn adding_cursors_below_goes_a_line_further_each_time() {
+    let mut ta = TextArea::new().focused(true).content("aa\nbb\ncc");
+    ta.set_cursor(0, 1);
+    ta.add_cursor_below();
+    ta.add_cursor_below();
+    assert_eq!(ta.cursor_positions(), [(0, 1), (1, 1), (2, 1)]);
+    ta.add_cursor_above();
+    assert_eq!(ta.cursor_count(), 3, "no line above the topmost");
+    ta.handle_key(&Key::Char('#'));
+    assert_eq!(ta.get_content(), "a#a\nb#b\nc#c");
+    // Moves go at every cursor too
+    ta.handle_key(&Key::End);
+    assert_eq!(ta.cursor_positions(), [(0, 3), (1, 3), (2, 3)]);
+}
+
+/// Ctrl+D added the next occurrence without selecting the word under the
+/// cursor, and typing replaced neither (#1006)
+#[test]
+fn ctrl_d_selects_the_word_then_adds_its_next_occurrence() {
+    let mut ta = TextArea::new().focused(true).content("foo bar foo");
+    ta.handle_key_event(&ctrl(Key::Char('d'), false));
+    assert_eq!(ta.get_selection().as_deref(), Some("foo"));
+    ta.handle_key_event(&ctrl(Key::Char('d'), false));
+    assert_eq!(ta.cursor_count(), 2);
+    ta.handle_key(&Key::Char('X'));
+    assert_eq!(ta.get_content(), "X bar X");
+    assert_eq!(ta.cursor_positions(), [(0, 1), (0, 7)]);
+}
+
+/// Undo put the cursor where the operation said, not where it was (#1251)
+#[test]
+fn undo_puts_back_the_cursors_and_selection() {
+    let mut ta = TextArea::new().focused(true).content("one two");
+    ta.set_cursor(0, 4);
+    ta.handle_key_event(&shift(Key::End));
+    ta.handle_key(&Key::Delete);
+    assert_eq!(ta.get_content(), "one ");
+    ta.undo();
+    assert_eq!(ta.get_content(), "one two");
+    assert_eq!(ta.get_selection().as_deref(), Some("two"));
+    assert_eq!(ta.cursor_position(), (0, 7));
+}
+
+/// Shift with a move did not select (#1252)
+#[test]
+fn shift_with_a_move_selects() {
+    let mut ta = TextArea::new().focused(true).content("ab\ncd");
+    ta.handle_key_event(&shift(Key::Down));
+    ta.handle_key_event(&shift(Key::Right));
+    assert_eq!(ta.get_selection().as_deref(), Some("ab\nc"));
+    ta.handle_key(&Key::Left);
+    assert_eq!(ta.get_selection(), None);
+    assert_eq!(ta.cursor_position(), (0, 0));
 }
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(512))]
 
-    /// Any keys and selecting moves: the text, the cursor and the selected
-    /// text equal the model's; typing over a selection, deleting it and
-    /// each other edit are one undo step; undo gives the text before the
-    /// last edit and redo the text after it, with the cursor in the text.
+    /// Any keys, selecting moves and added cursors: the TextArea's text,
+    /// cursors, selection and undo state equal those of an EditState given
+    /// the same steps
     #[test]
-    fn textarea_follows_the_text_model(ops in prop::collection::vec(op(), 0..80)) {
-        let mut ta = TextArea::new().focused(true);
-        let mut m = Model::default();
+    fn textarea_follows_its_edit_state(ops in prop::collection::vec(op(), 0..80)) {
+        // One frozen clock for both, so their undo steps group alike
+        let now = Instant::now();
+        let mut ta = TextArea::new().focused(true).clock(move || now);
+        let mut state = EditState::multi_line().clock(move || now);
         for op in &ops {
-            run(&mut ta, op);
-            let history = m.apply(op);
-            let content: String = m.text.iter().collect();
-            prop_assert_eq!(ta.get_content(), content.clone(), "after {:?}", op);
-            if history {
-                let (line, col) = ta.cursor_position();
-                let lines: Vec<&str> = content.split('\n').collect();
-                prop_assert!(line < lines.len() && col <= lines[line].chars().count(),
-                    "cursor {:?} past the text after {:?}", (line, col), op);
-                m.cursor = lines[..line].iter().map(|l| l.chars().count() + 1).sum::<usize>() + col;
-                // Where the selection goes after undo is the editor's too
-                m.anchor = None;
-                ta.clear_selection();
-            }
-            prop_assert_eq!(ta.cursor_position(), m.position(m.cursor), "after {:?}", op);
-            let selected = m.selection().map(|(s, e)| m.text[s..e].iter().collect::<String>());
+            area_step(&mut ta, op);
+            model_step(&mut state, op);
+            prop_assert_eq!(ta.get_content(), state.text(), "after {:?}", op);
+            let cursors: Vec<(usize, usize)> = state
+                .cursors()
+                .iter()
+                .map(|c| (c.head().line, state.char_index(c.head())))
+                .collect();
+            prop_assert_eq!(ta.cursor_positions(), cursors, "after {:?}", op);
+            let primary = state.cursor();
+            prop_assert_eq!(ta.cursor_position(), (primary.line, state.char_index(primary)));
+            let selected = state.primary().has_selection().then(|| {
+                let (from, to) = state.primary().range();
+                state.text_in(from, to)
+            });
             prop_assert_eq!(ta.get_selection(), selected, "after {:?}", op);
+            prop_assert_eq!((ta.can_undo(), ta.can_redo()), (state.can_undo(), state.can_redo()));
         }
     }
+}
+
+/// A terminal may report Ctrl+Shift+K as a capital without the Shift flag
+#[test]
+fn ctrl_capital_k_deletes_the_line() {
+    let mut ta = TextArea::new().focused(true).content("a\nb");
+    assert!(ta.handle_key_event(&KeyEvent::ctrl(Key::Char('K'))));
+    assert_eq!(ta.get_content(), "b");
+    // Without Shift, Ctrl+K is left to the app
+    assert!(!ta.handle_key_event(&KeyEvent::ctrl(Key::Char('k'))));
 }

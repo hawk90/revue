@@ -1,256 +1,53 @@
-//! Text editing methods for TextArea
-
-use super::cursor::{CursorPos, CursorSet};
-use super::edit::EditOperation;
+//! Text editing methods for TextArea: each applies at every cursor, through
+//! the [`EditState`](crate::utils::EditState), as one undo step (typing and
+//! deletes in quick succession join one)
 
 impl TextArea {
-    /// Insert a character at cursor
+    /// Type a character at every cursor, replacing what each selects. `'\n'`
+    /// starts a new line (not past [`max_lines`](Self::max_lines)), and `'\t'`
+    /// types [`tab_width`](Self::tab_width) spaces.
     pub fn insert_char(&mut self, ch: char) {
-        if self.read_only {
-            return;
-        }
-
-        // Typing over a selection replaces it as one undo step
-        if self.selects_text() {
-            let s = match ch {
-                '\t' => " ".repeat(self.tab_width),
-                ch => ch.to_string(),
-            };
-            self.insert_str(&s);
-            return;
-        }
-        self.cursors.primary_mut().clear_selection();
-
-        if ch == '\n' {
-            self.insert_newline();
-            return;
-        }
-
-        if ch == '\t' {
-            // Insert spaces for tab
-            let spaces = " ".repeat(self.tab_width);
-            self.insert_str(&spaces);
-            return;
-        }
-
-        let cursor_pos = self.cursors.primary().pos;
-        if let Some(line) = self.lines.get_mut(cursor_pos.line) {
-            let col = cursor_pos.col.min(line.chars().count());
-            let byte_col = crate::utils::text::char_to_byte_index(line, col);
-            line.insert(byte_col, ch);
-            self.push_undo(EditOperation::Insert {
-                line: cursor_pos.line,
-                col,
-                text: ch.to_string(),
-            });
-            self.set_primary_cursor(cursor_pos.line, col + 1);
-        }
-    }
-
-    /// Insert a string at cursor, replacing the selection if any; one
-    /// undo step. Line breaks past [`max_lines`](Self::max_lines) are
-    /// dropped, as Enter is refused there, and the text goes in.
-    pub fn insert_str(&mut self, s: &str) {
-        if self.read_only {
-            return;
-        }
-
-        let cursor = self.cursors.primary();
-        let (start, end) = match cursor.selection() {
-            Some(sel) => {
-                let sel = sel.normalized();
-                (
-                    CursorPos::new(sel.start.0, sel.start.1),
-                    CursorPos::new(sel.end.0, sel.end.1),
-                )
-            }
-            None => (cursor.pos, cursor.pos),
+        self.selecting = false;
+        match ch {
+            '\t' => self.edit.insert(&" ".repeat(self.tab_width)),
+            ch => self.edit.insert(ch.encode_utf8(&mut [0; 4])),
         };
-
-        if start == end && !s.contains('\n') {
-            // Plain insert on one line
-            if let Some(line) = self.lines.get_mut(start.line) {
-                let col = start.col.min(line.chars().count());
-                let byte_col = crate::utils::text::char_to_byte_index(line, col);
-                line.insert_str(byte_col, s);
-                self.push_undo(EditOperation::Insert {
-                    line: start.line,
-                    col,
-                    text: s.to_string(),
-                });
-                self.set_primary_cursor(start.line, col + s.chars().count());
-            }
-            return;
-        }
-
-        let s = self.fit_line_breaks(s, end.line - start.line);
-        let after = self.replace_with_undo(start, end, &s);
-        self.cursors = CursorSet::new(after);
     }
 
-    /// `s` with the line breaks that would take the text past `max_lines`
-    /// dropped, when inserting it over `removed_breaks` line breaks
-    fn fit_line_breaks(&self, s: &str, removed_breaks: usize) -> String {
-        if self.max_lines == 0 {
-            return s.to_string();
-        }
-        let kept_lines = self.lines.len() - removed_breaks;
-        let mut room = self.max_lines.saturating_sub(kept_lines);
-        s.chars()
-            .filter(|&c| {
-                if c != '\n' {
-                    return true;
-                }
-                let fits = room > 0;
-                room = room.saturating_sub(1);
-                fits
-            })
-            .collect()
+    /// Insert a string at every cursor, replacing what each selects, as one
+    /// undo step. When its line breaks would take the text past
+    /// [`max_lines`](Self::max_lines), it goes in without them.
+    pub fn insert_str(&mut self, s: &str) {
+        self.selecting = false;
+        self.edit.paste(s);
     }
 
-    /// Insert a newline at cursor
-    fn insert_newline(&mut self) {
-        if self.read_only {
-            return;
-        }
-
-        if self.max_lines > 0 && self.lines.len() >= self.max_lines {
-            return;
-        }
-
-        let cursor_pos = self.cursors.primary().pos;
-        let (line, col) = (cursor_pos.line, cursor_pos.col);
-        if let Some(current) = self.lines.get_mut(line) {
-            let byte_col =
-                crate::utils::text::char_to_byte_index(current, col.min(current.chars().count()));
-            let rest: String = current.drain(byte_col..).collect();
-            self.lines.insert(line + 1, rest);
-            self.push_undo(EditOperation::SplitLine { line, col });
-            self.set_primary_cursor(line + 1, 0);
-        }
-    }
-
-    /// Delete character before cursor (backspace)
+    /// Backspace at every cursor: the selection, or the last code point of
+    /// the character before the cursor (a whole emoji), or the line break
+    /// before the line
     pub fn delete_char_before(&mut self) {
-        if self.read_only {
-            return;
-        }
-
-        if self.selects_text() {
-            self.delete_selection();
-            return;
-        }
-        // An empty selection is no selection: the key deletes a char
-        self.cursors.primary_mut().clear_selection();
-
-        let cursor_pos = self.cursors.primary().pos;
-        let (line, col) = (cursor_pos.line, cursor_pos.col);
-        if col > 0 {
-            // Delete character in current line
-            if let Some(l) = self.lines.get_mut(line) {
-                if col <= l.chars().count() {
-                    let byte_col = crate::utils::text::char_to_byte_index(l, col - 1);
-                    let deleted = l.remove(byte_col);
-                    self.push_undo(EditOperation::Delete {
-                        line,
-                        col: col - 1,
-                        text: deleted.to_string(),
-                    });
-                    self.set_primary_cursor(line, col - 1);
-                }
-            }
-        } else if line > 0 {
-            // Merge with previous line
-            let current = self.lines.remove(line);
-            if let Some(prev_line) = self.lines.get_mut(line - 1) {
-                let prev_len = prev_line.chars().count();
-                prev_line.push_str(&current);
-                self.push_undo(EditOperation::MergeLines {
-                    line: line - 1,
-                    col: prev_len,
-                });
-                self.set_primary_cursor(line - 1, prev_len);
-            }
-        }
+        self.selecting = false;
+        self.edit.backspace();
     }
 
-    /// Delete character at cursor (delete key)
+    /// Delete at every cursor: the selection, or the character after the
+    /// cursor, or the line break after the line
     pub fn delete_char_at(&mut self) {
-        if self.read_only {
-            return;
-        }
-
-        if self.selects_text() {
-            self.delete_selection();
-            return;
-        }
-        // An empty selection is no selection: the key deletes a char
-        self.cursors.primary_mut().clear_selection();
-
-        let cursor_pos = self.cursors.primary().pos;
-        let (line, col) = (cursor_pos.line, cursor_pos.col);
-
-        // Check if we can delete within the current line
-        let can_delete_in_line = self
-            .lines
-            .get(line)
-            .map(|l| col < l.chars().count())
-            .unwrap_or(false);
-
-        if can_delete_in_line {
-            if let Some(l) = self.lines.get_mut(line) {
-                let byte_col = crate::utils::text::char_to_byte_index(l, col);
-                let deleted = l.remove(byte_col);
-                self.push_undo(EditOperation::Delete {
-                    line,
-                    col,
-                    text: deleted.to_string(),
-                });
-            }
-        } else if line + 1 < self.lines.len() {
-            // Merge with next line
-            let next = self.lines.remove(line + 1);
-            if let Some(current_line) = self.lines.get_mut(line) {
-                current_line.push_str(&next);
-                self.push_undo(EditOperation::MergeLines { line, col });
-            }
-        }
-        self.clamp_cursors();
+        self.selecting = false;
+        self.edit.delete();
     }
 
-    /// Delete the current line
+    /// Delete every line a cursor or its selection touches
     pub fn delete_line(&mut self) {
-        if self.read_only || self.lines.len() <= 1 {
-            return;
-        }
-
-        let cursor_pos = self.cursors.primary().pos;
-        let line = cursor_pos.line;
-        let content = self.lines.remove(line);
-        self.push_undo(EditOperation::DeleteLine { line, content });
-
-        let new_line = line.min(self.lines.len().saturating_sub(1));
-        self.set_primary_cursor(new_line, 0);
-        // The anchor would now select text the user never selected
-        self.cursors.primary_mut().clear_selection();
+        self.selecting = false;
+        self.edit.delete_lines();
     }
 
-    /// Duplicate the current line
+    /// Copy every line a cursor or its selection touches below it; the
+    /// cursors move to the copy
     pub fn duplicate_line(&mut self) {
-        if self.read_only {
-            return;
-        }
-
-        let cursor_pos = self.cursors.primary().pos;
-        let line = cursor_pos.line;
-        if let Some(content) = self.lines.get(line).cloned() {
-            self.lines.insert(line + 1, content.clone());
-            self.push_undo(EditOperation::InsertLine {
-                line: line + 1,
-                content,
-            });
-            self.set_primary_cursor(line + 1, cursor_pos.col);
-        }
+        self.selecting = false;
+        self.edit.duplicate_lines();
     }
 }
 
