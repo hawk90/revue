@@ -1,0 +1,155 @@
+[package]
+name = "revue-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+description = "Coverage-guided fuzzing of revue's parsers (cargo fuzz, nightly)"
+
+[package.metadata]
+cargo-fuzz = true
+
+# A crate of its own, not in revue's workspace (the root excludes it)
+[workspace]
+
+[features]
+default = ["markdown", "syntax-highlighting"]
+# The targets that need these are behind the same cfg names as in
+# tests/fault, whose targets file this crate includes
+markdown = ["revue/markdown"]
+syntax-highlighting = ["revue/syntax-highlighting"]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+revue = { path = "..", default-features = false }
+
+[[bin]]
+name = "seed"
+path = "src/bin/seed.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "css"
+path = "fuzz_targets/css.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "selector"
+path = "fuzz_targets/selector.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "declaration"
+path = "fuzz_targets/declaration.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "color"
+path = "fuzz_targets/color.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "transition"
+path = "fuzz_targets/transition.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "richtext"
+path = "fuzz_targets/richtext.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "keymap"
+path = "fuzz_targets/keymap.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "mermaid"
+path = "fuzz_targets/mermaid.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "logviewer"
+path = "fuzz_targets/logviewer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "query"
+path = "fuzz_targets/query.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "terminal"
+path = "fuzz_targets/terminal.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ansi"
+path = "fuzz_targets/ansi.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "json"
+path = "fuzz_targets/json.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "timetravel"
+path = "fuzz_targets/timetravel.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "csv"
+path = "fuzz_targets/csv.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "syntax"
+path = "fuzz_targets/syntax.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "markdown"
+path = "fuzz_targets/markdown.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tree_sitter"
+path = "fuzz_targets/tree_sitter.rs"
+test = false
+doc = false
+bench = false

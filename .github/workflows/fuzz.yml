@@ -1,0 +1,110 @@
+name: Fuzz
+
+# Coverage-guided fuzzing of the parsers (#1158): each target in fuzz/ runs
+# for a few minutes every night, seeded from the fault layer's corpus and
+# tokens. A crash opens an issue with the input attached as an artifact; the
+# input then becomes a regression test in tests/fault.
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Seconds per target
+        default: "180"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  targets:
+    name: List targets
+    runs-on: ubuntu-24.04
+    outputs:
+      targets: ${{ steps.list.outputs.targets }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Every file in fuzz/fuzz_targets is a target, so the list cannot fall
+      # behind the crate
+      - id: list
+        run: |
+          targets=$(find fuzz/fuzz_targets -name '*.rs' -exec basename {} .rs \; | sort | jq -R . | jq -cs .)
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+
+  fuzz:
+    name: Fuzz ${{ matrix.target }}
+    needs: targets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.targets.outputs.targets) }}
+    env:
+      SECONDS_PER_TARGET: ${{ github.event.inputs.seconds || '180' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # libFuzzer's instrumentation needs nightly
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          toolchain: nightly
+          cache: false
+          build-warnings: allow
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: fuzz
+      - run: cargo install cargo-fuzz --locked --version 0.13.1
+      - name: Seed the corpus and the dictionary
+        working-directory: fuzz
+        run: cargo +nightly run --release --bin seed -- corpus dicts
+      - name: Build
+        working-directory: fuzz
+        run: cargo +nightly fuzz build -O "${{ matrix.target }}"
+      - name: Fuzz
+        id: fuzz
+        working-directory: fuzz
+        # -max_len matches the largest seed (seed.rs MAX_SEED); -timeout is
+        # per input, the fault layer's own limit is 3 s in a debug build
+        run: |
+          name=$(echo "${{ matrix.target }}" | tr _ -)
+          cargo +nightly fuzz run -O "${{ matrix.target }}" "corpus/$name" -- \
+            -max_total_time="$SECONDS_PER_TARGET" \
+            -max_len=65536 \
+            -timeout=10 \
+            -rss_limit_mb=2048 \
+            -dict="dicts/$name.dict"
+      # Only a failing fuzz step is a find; a build that breaks fails the run
+      # without an issue
+      - name: Keep the crash input
+        if: failure() && steps.fuzz.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fuzz-${{ matrix.target }}-${{ github.run_id }}
+          path: fuzz/artifacts/${{ matrix.target }}
+          retention-days: 90
+      - name: Open an issue
+        if: failure() && steps.fuzz.outcome == 'failure' && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="fuzz: ${{ matrix.target }} crashed"
+          existing=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Crashed again: $RUN_URL"
+          else
+            gh issue create --title "$title" --body "The nightly fuzz run found an input that makes the \`${{ matrix.target }}\` target fail: $RUN_URL
+
+          The input is in the run's \`fuzz-${{ matrix.target }}-${{ github.run_id }}\` artifact. Reproduce with \`cargo +nightly fuzz run ${{ matrix.target }} <input>\` in \`fuzz/\`, and add the input to \`tests/fault/parsers/targets.rs\` (\`corpus\`) with the fix."
+          fi

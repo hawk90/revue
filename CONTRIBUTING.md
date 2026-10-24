@@ -346,6 +346,26 @@ mod property_tests {
 }
 ```
 
+### Fuzzing
+
+A parser entry point (CSS, markup, ANSI, markdown, mermaid, JSON, CSV, key
+bindings, queries, syntax highlighting) goes in
+`tests/fault/parsers/targets.rs`: the fault layer runs it on every
+`cargo nextest run`, and the `fuzz/` crate runs the same function under
+libFuzzer every night (`.github/workflows/fuzz.yml`). A new target there
+also needs a file in `fuzz/fuzz_targets/` and a `[[bin]]` in
+`fuzz/Cargo.toml`. To run one locally (nightly and `cargo install
+cargo-fuzz`):
+
+```bash
+cd fuzz
+cargo +nightly run --release --bin seed -- corpus dicts
+cargo +nightly fuzz run css corpus/css -- -dict=dicts/css.dict -max_total_time=60
+```
+
+An input that crashes a target goes into `corpus()` in that file, with
+the fix.
+
 ---
 
 ## Documentation Guidelines
