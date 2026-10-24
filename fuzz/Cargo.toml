@@ -160,3 +160,10 @@ path = "fuzz_targets/editing.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "trees"
+path = "fuzz_targets/trees.rs"
+test = false
+doc = false
+bench = false

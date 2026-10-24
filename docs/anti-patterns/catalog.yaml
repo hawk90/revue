@@ -3047,6 +3047,7 @@ entries:
     observed:
       - "parser 16개에 unicode, token soup, corpus 입력을 넣어 5개 원인의 8 case가 실패했다: `var()` 지수 확장(멈춤), terminal widget tab loop(멈춤), `SyntaxHighlighter` byte slice panic(markdown으로도), mermaid `A][` slice panic, `parse_duration` NaN panic. 모두 고쳐 `KNOWN`이 비었다 (docs/refactor/findings-fault-injection.md 4c). 고정 seed proptest이고 coverage 기반 cargo-fuzz는 없다."
       - "2026-10-24: coverage 기반 cargo-fuzz를 더했다 (#1158). `fuzz/`의 target 18개는 fault layer의 parser 입구(`tests/fault/parsers/targets.rs`)를 그대로 include해 같은 코드를 돌리고, 그 corpus와 token을 seed와 dictionary로 쓴다. `.github/workflows/fuzz.yml`이 밤마다 target마다 3분 돌리고 crash가 나면 입력을 artifact로 남기고 issue를 연다. 구조를 아는 target(event 순서, widget tree, CSS AST)은 아직 없다."
+      - "2026-10-24: 구조를 아는 target 두 개를 더했다 (#1158). `editing`은 바이트를 키·붙여넣기·크기 바꾸기·그리기 순서로 읽어 편집 위젯 여덟 개에 똑같이 주고 커서가 글 안에 있는지 본다. `trees`는 바이트를 widget tree와 그 위의 stylesheet(선택자와 속성 값)로 읽어 실제 pipeline으로 그리고, 다른 tree를 먼저 그린 뒤 그린 화면이 새 앱에 바로 그린 화면과 칸마다 같은지 본다(reconcile 차등 검사). 둘 다 `arbitrary` 없이 바이트를 직접 읽어 fault layer가 고정 seed로도 돌린다."
   - id: REV-TEST-006
     title: "Testing Public Examples Manually"
     category: testing
