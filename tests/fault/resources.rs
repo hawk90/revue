@@ -962,8 +962,7 @@ fn cases() -> Vec<Case> {
     #[cfg(feature = "config")]
     file_cases(config_loader, &mut cases);
     picker_cases(&mut cases);
-    #[cfg(feature = "hot-reload")]
-    watch_cases(&mut cases);
+    // The file-watcher cases run in `file_watch_faults`, quarantined
     clipboard_cases(&mut cases);
     http_cases(&mut cases);
     cases
@@ -986,5 +985,19 @@ fn resource_faults() {
     }
 
     let (ran, failures) = run_bounded(cases());
+    ratchet(LAYER, &ran, failures);
+}
+
+/// The file-watcher cases, quarantined (#1265): on macOS they sometimes
+/// hang waiting for a file-system notification that does not come, with no
+/// change to the code. Until #1265 is fixed the pre-push hook skips this
+/// test (`lefthook.yml`) and CI retries it, reporting a pass on a retry as
+/// FLAKY (`.config/nextest.toml`); everywhere else it runs as before.
+#[cfg(feature = "hot-reload")]
+#[test]
+fn file_watch_faults() {
+    let mut cases = Vec::new();
+    watch_cases(&mut cases);
+    let (ran, failures) = run_bounded(cases);
     ratchet(LAYER, &ran, failures);
 }
