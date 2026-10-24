@@ -8,9 +8,15 @@ impl Select {
         self.open
     }
 
-    /// Toggle dropdown open/close
+    /// Toggle dropdown open/close; closing clears the search query, as
+    /// Enter and Escape do
     pub fn toggle(&mut self) {
-        self.open = !self.open;
+        if self.open {
+            self.close();
+            self.clear_query();
+        } else {
+            self.open();
+        }
     }
 
     /// Open the dropdown
@@ -78,18 +84,20 @@ impl Select {
 
     /// Get current search query
     pub fn query(&self) -> &str {
-        &self.query
+        self.query.line(0).unwrap_or("")
     }
 
-    /// Set search query and update filter
+    /// Set search query and update filter, the cursor at its end
     pub fn set_query(&mut self, query: impl Into<String>) {
-        self.query = query.into();
+        self.query.set_text(query.into());
+        let end = self.query.end();
+        self.query.set_cursor(end);
         self.update_filter();
     }
 
     /// Clear search query
     pub fn clear_query(&mut self) {
-        self.query.clear();
+        self.query.set_text("");
         self.reset_filter();
     }
 
@@ -122,7 +130,8 @@ impl Select {
         self.options.is_empty()
     }
 
-    /// Handle key input, returns true if selection changed
+    /// Handle key input: returns true when the selection changed, and while
+    /// searching when the query changed or its cursor moved
     pub fn handle_key(&mut self, key: &crate::event::Key) -> bool {
         if !self.focused {
             return false;
@@ -176,15 +185,9 @@ impl Select {
                 self.clear_query();
                 false
             }
-            Key::Backspace if self.open && self.searchable => {
-                self.query.pop();
-                self.update_filter();
-                true
-            }
-            Key::Char(c) if self.open && self.searchable => {
-                self.query.push(*c);
-                self.update_filter();
-                true
+            // The other keys edit the query
+            _ if self.open && self.searchable => {
+                self.edit_query(&crate::event::KeyEvent::new(*key))
             }
             Key::Home if self.open => {
                 let old = self.selection.index;

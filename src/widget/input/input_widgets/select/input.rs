@@ -55,27 +55,20 @@ impl Interactive for Select {
                 self.clear_query();
                 true
             }
-            Key::Backspace if self.open && self.searchable => {
-                self.query.pop();
-                self.update_filter();
+            Key::Tab if self.open => {
+                self.close();
+                self.clear_query();
                 true
             }
-            Key::Char(c) if self.open && self.searchable => {
-                self.query.push(c);
-                self.update_filter();
-                true
-            }
+            // The other keys edit the query, modifiers included; an
+            // unbound Ctrl or Alt letter is left to the app
+            _ if self.open && self.searchable => self.edit_query(event),
             Key::Home if self.open => {
                 self.select_first();
                 true
             }
             Key::End if self.open => {
                 self.select_last();
-                true
-            }
-            Key::Tab if self.open => {
-                self.close();
-                self.clear_query();
                 true
             }
             _ => false,

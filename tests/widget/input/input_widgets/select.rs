@@ -1270,3 +1270,109 @@ fn select_builder_order_keeps_the_selection() {
     let s = Select::new().selected(2).options(vec!["A", "B", "C"]);
     assert_eq!(s.value(), Some("C")); // "A" before
 }
+
+// ==================== Search field (#985) ====================
+
+fn searching() -> Select {
+    let mut s = Select::new()
+        .options(vec!["apple", "banana", "cherry"])
+        .searchable(true)
+        .focused(true);
+    s.handle_key(&Key::Enter);
+    s
+}
+
+fn send(s: &mut Select, event: revue::event::KeyEvent) -> bool {
+    use revue::widget::traits::{EventResult, Interactive};
+    Interactive::handle_key(s, &event) != EventResult::Ignored
+}
+
+/// The query only grew at its end and shrank from it: it is now edited as
+/// every single-line field is
+#[test]
+fn test_select_search_query_is_edited_like_a_field() {
+    use revue::event::KeyEvent;
+    let mut s = searching();
+    for c in "ae".chars() {
+        send(&mut s, KeyEvent::new(Key::Char(c)));
+    }
+    send(&mut s, KeyEvent::new(Key::Left));
+    send(&mut s, KeyEvent::new(Key::Char('p')));
+    assert_eq!(s.query(), "ape");
+    // Home and End move in the query, not to the first or last option
+    send(&mut s, KeyEvent::new(Key::Home));
+    send(&mut s, KeyEvent::new(Key::Delete));
+    assert_eq!(s.query(), "pe");
+    send(&mut s, KeyEvent::ctrl(Key::Backspace));
+    assert_eq!(
+        s.query(),
+        "pe",
+        "Ctrl+Backspace at the start deletes nothing"
+    );
+    send(&mut s, KeyEvent::new(Key::End));
+    send(&mut s, KeyEvent::ctrl(Key::Backspace));
+    assert_eq!(s.query(), "");
+    // Ctrl and an unbound letter is the app's, not typed
+    assert!(!send(&mut s, KeyEvent::ctrl(Key::Char('q'))));
+    assert_eq!(s.query(), "");
+    // The same through the plain-key entry point
+    s.handle_key(&Key::Char('c'));
+    s.handle_key(&Key::Char('h'));
+    s.handle_key(&Key::Left);
+    s.handle_key(&Key::Backspace);
+    assert_eq!(s.query(), "h");
+    assert!(s.is_open());
+}
+
+/// A select that is not searchable keeps Home and End for the options
+#[test]
+fn test_select_home_end_pick_options_when_not_searchable() {
+    let mut s = Select::new().options(vec!["a", "b", "c"]).focused(true);
+    s.handle_key(&Key::Enter);
+    s.handle_key(&Key::End);
+    assert_eq!(s.selected_index(), 2);
+    s.handle_key(&Key::Home);
+    assert_eq!(s.selected_index(), 0);
+}
+
+/// The header showed the query without a cursor, cut at the right edge:
+/// it is drawn as a field, scrolled to the cursor
+#[test]
+fn test_select_search_header_draws_the_query_with_its_cursor() {
+    let cells = |buffer: &Buffer, from: u16, to: u16| -> String {
+        (from..to)
+            .map(|x| buffer.get(x, 0).unwrap().symbol)
+            .collect()
+    };
+    let mut s = searching();
+    let buffer = draw(&s, 20, 6);
+    // Empty query: the value stands in, the cursor on its first letter
+    assert_eq!(cells(&buffer, 2, 7), "apple");
+    assert_eq!(buffer.get(2, 0).unwrap().bg, Some(Color::WHITE));
+    for c in "an".chars() {
+        s.handle_key(&Key::Char(c));
+    }
+    let buffer = draw(&s, 20, 6);
+    assert_eq!(cells(&buffer, 2, 4), "an");
+    assert_eq!(buffer.get(4, 0).unwrap().bg, Some(Color::WHITE));
+
+    // A query wider than the header scrolls so the cursor stays in view
+    let mut s = searching();
+    s.set_query("abcdefghijklmnop");
+    let buffer = draw(&s, 10, 6);
+    let header = cells(&buffer, 0, 10);
+    assert!(header.contains('p'), "{header:?}");
+    assert!(!header.contains("abc"), "{header:?}");
+}
+
+/// Closing with a click (toggle) kept the query for the next open
+#[test]
+fn test_select_toggle_closed_clears_the_query() {
+    let mut s = searching();
+    s.handle_key(&Key::Char('b'));
+    assert_eq!(s.query(), "b");
+    s.toggle();
+    assert!(!s.is_open());
+    assert_eq!(s.query(), "");
+    assert_eq!(s.visible_count(), 3);
+}

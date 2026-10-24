@@ -13,6 +13,10 @@ use crate::widget::theme::{
 use crate::widget::traits::{OverlayEntry, RenderContext, View};
 
 use super::{MultiSelect, MultiSelectOption};
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
+
+/// The columns the tags leave for the search query while it is typed
+const QUERY_ROOM: u16 = 8;
 
 /// A `ch` cell in `fg` on `bg`
 fn colored_cell(ch: char, fg: Color, bg: Color) -> Cell {
@@ -58,12 +62,29 @@ impl MultiSelect {
             // Draw placeholder
             ctx.draw_text(0, 0, &self.placeholder, PLACEHOLDER_FG);
         } else {
-            let x = self.draw_tags(ctx, max_x);
+            // While searching, the tags leave room for the query: up to
+            // QUERY_ROOM columns, half the row at most
+            let searching = self.open && self.searchable;
+            let room = if searching {
+                QUERY_ROOM.min(max_x / 2)
+            } else {
+                0
+            };
+            let x = self.draw_tags(ctx, max_x - room);
 
-            // Draw search query if open
-            if self.open && self.searchable && !self.query.is_empty() {
-                let query_display = format!(" {}", self.query);
-                ctx.draw_text(x.min(max_x), 0, &query_display, Color::CYAN);
+            // While searching, the query after the tags is a field with its
+            // cursor, scrolled to it in the room before the arrow
+            if searching {
+                let from = (x + 1).min(max_x);
+                let field = EditField::of(&self.query, "", self.state.focused);
+                let w = max_x - from;
+                let scroll = field.scroll(self.query_scroll.get(), w);
+                self.query_scroll.set(scroll);
+                ctx.put_edit_field(from, 0, w, &field, scroll, |kind, ch| match kind {
+                    FieldCell::Cursor => colored_cell(ch, Color::BLACK, Color::WHITE),
+                    FieldCell::Selected => colored_cell(ch, Color::WHITE, Color::BLUE),
+                    FieldCell::Text | FieldCell::Placeholder => colored_cell(ch, Color::CYAN, bg),
+                });
             }
         }
     }
@@ -83,7 +104,9 @@ impl MultiSelect {
         }
         let scroll = &self.tag_scroll;
         scroll.set_content(total);
-        scroll.set_viewport(max_x as usize);
+        // With more than one tag, the one in view may need " ..." after it
+        let marker = if self.selected.len() > 1 { 4 } else { 0 };
+        scroll.set_viewport(max_x.saturating_sub(marker) as usize);
         if let Some(c) = self.tag_cursor.filter(|&c| c < starts.len()) {
             let end = starts.get(c + 1).copied().unwrap_or(total);
             // Without the space after the tag
@@ -97,19 +120,21 @@ impl MultiSelect {
             .unwrap_or(starts.len());
 
         let mut x: u16 = 0;
+        let last = self.selected.len().saturating_sub(1);
         for (i, &opt_idx) in self.selected.iter().enumerate().skip(first) {
-            if x >= max_x {
-                break;
-            }
-
             if let Some(opt) = self.options.get(opt_idx) {
                 let label = &opt.label;
-                // "[label]"; the space after it is not needed to fit
+                // "[label]"; the space after it is not needed to fit. A tag
+                // that more tags follow also needs room for " ..." after it,
+                // so the hidden ones are always marked
                 let tag_len = (crate::utils::display_width(label) + 2) as u16;
+                let marker = if i < last { 4 } else { 0 };
 
-                if x + tag_len > max_x {
-                    // Draw overflow indicator
+                if x + tag_len + marker > max_x {
+                    // Draw overflow indicator; the column after it is
+                    // where the query goes
                     ctx.draw_text(x, 0, "...", LIGHT_GRAY);
+                    x += 3;
                     break;
                 }
 
