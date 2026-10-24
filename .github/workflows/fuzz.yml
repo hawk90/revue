@@ -64,7 +64,11 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: fuzz
-      - run: cargo install cargo-fuzz --locked --version 0.13.1
+      # Built with stable: its locked dependencies (an old rustix) do not
+      # build on a current nightly; only the fuzzing needs nightly
+      - run: |
+          rustup toolchain install stable --profile minimal
+          cargo +stable install cargo-fuzz --locked --version 0.13.1
       - name: Seed the corpus and the dictionary
         working-directory: fuzz
         run: cargo +nightly run --release --bin seed -- corpus dicts
