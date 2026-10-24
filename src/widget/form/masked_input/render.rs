@@ -46,9 +46,6 @@ impl MaskedInput {
                 continue;
             }
             let next = col + w;
-            if next > end {
-                break;
-            }
             let kind = if field.cursor == Some(i) {
                 FieldCell::Cursor
             } else if shows_placeholder {
@@ -58,10 +55,15 @@ impl MaskedInput {
             } else {
                 FieldCell::Text
             };
-            if col >= scroll {
+            if col >= scroll && next <= end {
                 cells.push((ch, kind));
             } else if next > scroll {
-                cells.extend(std::iter::repeat_n((' ', kind), next - scroll));
+                // Cut by an edge: the part in view, as blanks
+                let from = col.max(scroll);
+                cells.extend(std::iter::repeat_n((' ', kind), next.min(end) - from));
+            }
+            if next >= end {
+                break;
             }
             col = next;
         }

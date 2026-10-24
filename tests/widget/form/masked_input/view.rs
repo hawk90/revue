@@ -124,6 +124,31 @@ fn test_masked_input_wide_glyphs_fill_two_columns_of_the_field() {
     assert_eq!(buffer.get(5, 0).unwrap().symbol, ' ');
 }
 
+/// A wide glyph cut by the field's right edge was dropped with the cursor
+/// on it: it is drawn as a blank in its style
+#[test]
+fn test_masked_input_wide_glyph_cut_by_the_edge_keeps_its_cursor() {
+    let mut input = MaskedInput::new()
+        .mask_style(MaskStyle::ShowLast(1))
+        .width(1)
+        .focused(true)
+        .value("한");
+    input.set_cursor(0);
+    let buffer = screen(&input, 40, 1);
+    assert_eq!(row(&buffer, 0).trim_end(), "[ ]");
+    assert_eq!(cursor_cells(&buffer, 0), vec![1]);
+
+    // Not focused: a plain blank
+    let input = MaskedInput::new()
+        .mask_style(MaskStyle::ShowLast(1))
+        .width(3)
+        .value("a한한");
+    let buffer = screen(&input, 40, 1);
+    // "●●한": the last glyph does not fit
+    assert_eq!(row(&buffer, 0).trim_end(), "[●● ]");
+    assert!(cursor_cells(&buffer, 0).is_empty());
+}
+
 #[test]
 fn test_masked_input_cursor_drawn_on_its_char_only_when_focused() {
     let mut input = MaskedInput::new().value("abcd").width(8);
