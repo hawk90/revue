@@ -962,8 +962,7 @@ fn cases() -> Vec<Case> {
     #[cfg(feature = "config")]
     file_cases(config_loader, &mut cases);
     picker_cases(&mut cases);
-    #[cfg(feature = "hot-reload")]
-    watch_cases(&mut cases);
+    // The file-watcher cases run in `file_watch_faults`, one at a time
     clipboard_cases(&mut cases);
     http_cases(&mut cases);
     cases
@@ -986,5 +985,25 @@ fn resource_faults() {
     }
 
     let (ran, failures) = run_bounded(cases());
+    ratchet(LAYER, &ran, failures);
+}
+
+/// The file-watcher cases, one at a time, as an app runs one watcher (#1265).
+/// Run together, four watchers starting and stopping at once in one process
+/// made notify 8.2's macOS backend wait on `fseventsd` (each stop purges the
+/// stream's events) for over the cases' limit: 8 of 20 runs failed beside
+/// `resource_faults`, none one at a time.
+#[cfg(feature = "hot-reload")]
+#[test]
+fn file_watch_faults() {
+    let mut cases = Vec::new();
+    watch_cases(&mut cases);
+    let mut ran = std::collections::BTreeSet::new();
+    let mut failures = Vec::new();
+    for case in cases {
+        let (r, mut f) = run_bounded(vec![case]);
+        ran.extend(r);
+        failures.append(&mut f);
+    }
     ratchet(LAYER, &ran, failures);
 }
