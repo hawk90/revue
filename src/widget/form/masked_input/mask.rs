@@ -1,66 +1,67 @@
 //! Masking the value for display: the mask styles and the peek
+//!
+//! The value is masked per character as the user sees it (grapheme
+//! cluster), the unit the cursor moves by, so the mask and the cursor
+//! moves never disagree: a mask char per char would let the cursor show
+//! where a letter with its accent or an emoji sequence is (#1298). GTK's
+//! password entry keeps the two in step the same way, in its unit
+//! (`gtk_entry_move_logically`, "Prevent any leak of information").
+
+use unicode_segmentation::UnicodeSegmentation;
 
 use super::{MaskStyle, MaskedInput};
 
 impl MaskedInput {
-    /// Get masked display string
-    ///
-    /// This method is optimized to minimize string allocations by:
-    /// - Pre-allocating strings with known capacity
-    /// - Avoiding repeated `.to_string().repeat()` calls
-    /// - Using `extend` with char iterators instead of format!
+    /// The value as shown: each character (grapheme cluster) the style
+    /// hides becomes one mask char
     pub fn masked_display(&self) -> String {
         let value = self.get_value();
-        if self.revealing {
-            return value.to_string();
-        }
-
-        let len = self.char_count();
-        if len == 0 {
+        if matches!(self.mask_style, MaskStyle::Hidden) && !self.revealing {
             return String::new();
         }
-
-        match self.mask_style {
-            MaskStyle::Full => {
-                // Pre-allocate with exact capacity
-                std::iter::repeat_n(self.mask_char, len).collect()
+        let len = self.len();
+        let mut out = String::with_capacity(value.len());
+        for (i, cluster) in value.graphemes(true).enumerate() {
+            if self.shows(i, len) {
+                out.push_str(cluster);
+            } else {
+                out.push(self.mask_char);
             }
-            MaskStyle::ShowLast(n) => {
-                if len <= n {
-                    value.to_string()
-                } else {
-                    let mask_count = len - n;
-                    let mut result = String::with_capacity(len);
-                    result.extend(std::iter::repeat_n(self.mask_char, mask_count));
-                    result.push_str(&value[self.byte_at(len - n)..]);
-                    result
-                }
-            }
-            MaskStyle::ShowFirst(n) => {
-                if len <= n {
-                    value.to_string()
-                } else {
-                    let mut result = String::with_capacity(len);
-                    result.push_str(&value[..self.byte_at(n)]);
-                    result.extend(std::iter::repeat_n(self.mask_char, len - n));
-                    result
-                }
-            }
-            MaskStyle::Peek => {
-                let cursor = self.get_cursor();
-                if self.peek_countdown > 0 && cursor > 0 && cursor <= len {
-                    // Show the last typed character
-                    let last_char = value.chars().nth(cursor - 1).unwrap_or(' ');
-                    let mut result = String::with_capacity(len);
-                    result.extend(std::iter::repeat_n(self.mask_char, cursor - 1));
-                    result.push(last_char);
-                    result.extend(std::iter::repeat_n(self.mask_char, len - cursor));
-                    result
-                } else {
-                    std::iter::repeat_n(self.mask_char, len).collect()
-                }
-            }
-            MaskStyle::Hidden => String::new(),
         }
+        out
+    }
+
+    /// Whether character `i` of `len` (grapheme clusters) is shown as it
+    /// is rather than masked
+    pub(super) fn shows(&self, i: usize, len: usize) -> bool {
+        if self.revealing {
+            return true;
+        }
+        match self.mask_style {
+            MaskStyle::Full | MaskStyle::Hidden => false,
+            MaskStyle::ShowLast(n) => i + n >= len,
+            MaskStyle::ShowFirst(n) => i < n,
+            // The character just typed, before the cursor, while it lasts
+            MaskStyle::Peek => self.peek_countdown > 0 && i + 1 == self.state.cursor().col,
+        }
+    }
+
+    /// The char index in [`masked_display`](Self::masked_display) of the
+    /// position before character `col` (a grapheme cluster column): a
+    /// masked character takes one char there, a shown one its own
+    pub(super) fn masked_index(&self, col: usize) -> usize {
+        let len = self.len();
+        self.get_value()
+            .graphemes(true)
+            .take(col)
+            .enumerate()
+            .map(|(i, cluster)| {
+                if self.shows(i, len) {
+                    cluster.chars().count()
+                } else {
+                    1
+                }
+            })
+            .sum()
     }
 }

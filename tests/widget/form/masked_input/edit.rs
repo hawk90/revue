@@ -224,3 +224,54 @@ fn typing_over_a_selection_is_allowed_at_max_length() {
     assert!(input.handle_key(&Key::Char('5')));
     assert_eq!(input.get_value(), "1235");
 }
+
+// ─── Characters as seen (#1298) ─────────────────────────────────────────────
+
+/// One mask char per char let the cursor moves show where a letter with its
+/// accent or an emoji sequence was (two bullets in one move); the mask now
+/// has one per character as seen, the unit the cursor moves by
+#[test]
+fn the_mask_has_one_char_per_character_the_cursor_moves_over() {
+    let input = MaskedInput::new()
+        .mask_style(MaskStyle::Full)
+        .value("e\u{301}x👩\u{200D}💻");
+    assert_eq!(input.masked_display(), "●●●");
+
+    let input = MaskedInput::new()
+        .mask_style(MaskStyle::ShowLast(1))
+        .value("ab👩\u{200D}💻");
+    assert_eq!(input.masked_display(), "●●👩\u{200D}💻");
+    let input = MaskedInput::new()
+        .mask_style(MaskStyle::ShowFirst(1))
+        .value("e\u{301}xy");
+    assert_eq!(input.masked_display(), "e\u{301}●●");
+}
+
+/// Masked, Backspace takes the whole character: taking only the accent
+/// would change nothing the mask shows. Revealed, it takes the accent first,
+/// as in any field.
+#[test]
+fn masked_backspace_takes_a_whole_character() {
+    let mut input = MaskedInput::new().allow_reveal(true).value("ae\u{301}");
+    input.handle_key(&Key::Backspace);
+    assert_eq!(input.get_value(), "a");
+    assert_eq!(input.masked_display(), "●");
+
+    let mut input = MaskedInput::new().allow_reveal(true).value("ae\u{301}");
+    input.toggle_reveal();
+    input.handle_key(&Key::Backspace);
+    assert_eq!(input.get_value(), "ae");
+}
+
+/// max_length and min_length count characters as seen
+#[test]
+fn lengths_count_characters_as_seen() {
+    let mut input = MaskedInput::new().max_length(2).value("e\u{301}");
+    input.handle_key(&Key::Char('x'));
+    assert_eq!(input.get_value(), "e\u{301}x");
+    input.handle_key(&Key::Char('y'));
+    assert_eq!(input.get_value(), "e\u{301}x", "full at two characters");
+
+    let input = MaskedInput::new().max_length(1).value("👩\u{200D}💻z");
+    assert_eq!(input.get_value(), "👩\u{200D}💻");
+}

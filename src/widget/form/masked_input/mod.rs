@@ -32,10 +32,16 @@
 //!
 //! [`MaskedInput::handle_key_event`] takes the standard editing keys every
 //! single-line field shares ([`EditState::edit_key`](crate::utils::EditState::edit_key)),
-//! with two differences for a secret: typing stops at `max_length`, and the
-//! word keys (`Ctrl+Left`/`Right`, `Ctrl+Backspace`/`Delete`) go to the start
-//! or end of the value instead of a word's, so they cannot show where the
-//! spaces in it are (as Swing's and JavaFX's password fields).
+//! with differences for a secret: typing stops at `max_length`; the word keys
+//! (`Ctrl+Left`/`Right`, `Ctrl+Backspace`/`Delete`) go to the start or end of
+//! the value instead of a word's, so they cannot show where the spaces in it
+//! are (as Swing's and JavaFX's password fields); and while the value is
+//! masked, Backspace takes a whole character.
+//!
+//! The value is masked per character as the user sees it (a letter with its
+//! accent, an emoji sequence: a grapheme cluster), the unit the cursor moves
+//! by; `max_length`, `min_length`, `ShowLast`/`ShowFirst` and the strength
+//! count the same characters. The cursor position in the API is in chars.
 
 mod editing;
 mod mask;
@@ -110,7 +116,10 @@ impl std::fmt::Debug for MaskedInput {
     /// a panic message or `dbg!` must not print the secret
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MaskedInput")
-            .field("value", &format_args!("<{} chars>", self.char_count()))
+            .field(
+                "value",
+                &format_args!("<{} chars>", self.get_value().chars().count()),
+            )
             .field("mask_char", &self.mask_char)
             .field("mask_style", &self.mask_style)
             .field("placeholder", &self.placeholder)
@@ -209,9 +218,10 @@ impl MaskedInput {
         self
     }
 
-    /// Set maximum length in chars (0 = unlimited)
+    /// Set maximum length in characters as seen (grapheme clusters; 0 =
+    /// unlimited)
     ///
-    /// A value already longer than `len` is cut to `len` chars.
+    /// A value already longer than `len` is cut to `len` characters.
     pub fn max_length(mut self, len: usize) -> Self {
         self.max_length = len;
         self.clamp_to_max_length();
@@ -266,7 +276,7 @@ impl MaskedInput {
         self
     }
 
-    /// Set initial value (cut to `max_length` chars when that is set)
+    /// Set initial value (cut to `max_length` characters when that is set)
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.end_peek();
         self.state.set_text(value.into());
@@ -384,7 +394,8 @@ impl MaskedInput {
         &self.validation
     }
 
-    /// Set value programmatically (cut to `max_length` chars when that is set)
+    /// Set value programmatically (cut to `max_length` characters when that
+    /// is set)
     pub fn set_value(&mut self, value: impl Into<String>) {
         self.end_peek();
         let cursor = self.get_cursor();
@@ -394,16 +405,15 @@ impl MaskedInput {
         self.state.set_cursor(pos);
     }
 
-    /// Cut the value to `max_length` chars (0 = unlimited), as typing does
+    /// Cut the value to `max_length` characters (0 = unlimited), as typing
+    /// does
     fn clamp_to_max_length(&mut self) {
-        if self.max_length > 0 && self.char_count() > self.max_length {
-            let cursor = self.get_cursor().min(self.max_length);
-            let value = self.get_value();
-            let cut = value[..self.byte_at(self.max_length)].to_string();
+        if self.max_length > 0 && self.len() > self.max_length {
+            let col = self.state.cursor().col.min(self.max_length);
+            let end = self.state.char_index(EditPos::new(0, self.max_length));
+            let cut: String = self.get_value().chars().take(end).collect();
             self.state.set_text(cut);
-            self.state.set_cursor(EditPos::new(0, 0));
-            let pos = self.state.pos_at_char(0, cursor);
-            self.state.set_cursor(pos);
+            self.state.set_cursor(EditPos::new(0, col));
         }
     }
 
@@ -420,15 +430,11 @@ impl MaskedInput {
         }
     }
 
-    /// Length of the value in chars: the cursor, `max_length` and
-    /// `min_length` all count chars, not bytes.
-    fn char_count(&self) -> usize {
-        self.get_value().chars().count()
-    }
-
-    /// Byte offset of char index `idx` in the value.
-    fn byte_at(&self, idx: usize) -> usize {
-        crate::utils::text::char_to_byte_index(self.get_value(), idx)
+    /// Length of the value in characters as seen (grapheme clusters):
+    /// what the mask shows, `max_length`, `min_length` and the strength
+    /// count
+    pub(super) fn len(&self) -> usize {
+        self.state.line_len(0)
     }
 }
 

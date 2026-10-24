@@ -19,12 +19,17 @@ impl MaskedInput {
         let masked = self.masked_display();
         let placeholder = self.placeholder.as_deref().unwrap_or("");
         let editing = self.focused && !self.disabled;
-        // The cursor and selection are char indices into the value, and so
-        // into the masked text, which has a char for each. Hidden masks to
+        // The cursor and selection, turned into char indices of the masked
+        // text, where a masked character is one char. Hidden masks to
         // nothing, so its cursor is drawn at the start whatever its index,
         // and does not give the length away.
         let mut field = EditField::of(&self.state, placeholder, editing);
         field.text = &masked;
+        field.cursor = editing.then(|| self.masked_index(self.state.cursor().col));
+        field.selection = field.selection.map(|_| {
+            let (from, to) = self.state.primary().range();
+            (self.masked_index(from.col), self.masked_index(to.col))
+        });
         // A zero-width char takes no cell: the cursor on one is drawn on
         // the next glyph
         field.cursor = field.cursor.map(|c| visible_from(&masked, c));
