@@ -64,7 +64,11 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: fuzz
-      - run: cargo install cargo-fuzz --locked --version 0.13.1
+      # Built with stable: its locked dependencies (an old rustix) do not
+      # build on a current nightly; only the fuzzing needs nightly
+      - run: |
+          rustup toolchain install stable --profile minimal
+          cargo +stable install cargo-fuzz --locked --version 0.13.1
       - name: Seed the corpus and the dictionary
         working-directory: fuzz
         run: cargo +nightly run --release --bin seed -- corpus dicts
@@ -76,14 +80,20 @@ jobs:
         working-directory: fuzz
         # -max_len matches the largest seed (seed.rs MAX_SEED); -timeout is
         # per input, the fault layer's own limit is 3 s in a debug build
+        # A target without a dictionary (the editing sessions) runs without
+        # -dict: libFuzzer refuses a missing or empty one
         run: |
           name=$(echo "${{ matrix.target }}" | tr _ -)
+          dict=()
+          if [ -s "dicts/$name.dict" ]; then
+            dict=(-dict="dicts/$name.dict")
+          fi
           cargo +nightly fuzz run -O "${{ matrix.target }}" "corpus/$name" -- \
             -max_total_time="$SECONDS_PER_TARGET" \
             -max_len=65536 \
             -timeout=10 \
             -rss_limit_mb=2048 \
-            -dict="dicts/$name.dict"
+            "${dict[@]}"
       # Only a failing fuzz step is a find; a build that breaks fails the run
       # without an issue
       - name: Keep the crash input

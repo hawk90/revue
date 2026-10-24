@@ -12,6 +12,7 @@ pub mod known_failures;
 pub mod output;
 pub mod parsers;
 pub mod resources;
+pub mod sessions;
 
 use std::cell::{Cell as StdCell, RefCell};
 use std::collections::BTreeSet;
