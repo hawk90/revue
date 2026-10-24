@@ -9,3 +9,10 @@
 [[profile.default.overrides]]
 filter = 'binary(fault) & not test(/^stress::/)'
 threads-required = 'num-test-threads'
+
+# Quarantined (#1265): the file-watcher fault cases sometimes hang on macOS
+# waiting for a file-system notification. A pass on a retry is reported as
+# FLAKY, so the run still shows it. Remove this once #1265 is fixed.
+[[profile.default.overrides]]
+filter = 'binary(fault) & test(=fault::resources::file_watch_faults)'
+retries = 2
