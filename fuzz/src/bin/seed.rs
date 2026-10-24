@@ -1,7 +1,8 @@
 //! Write each target's seed corpus and libFuzzer dictionary:
 //! `seed <corpus dir> <dict dir>` makes `<corpus dir>/<target>/` with every
 //! fault-layer corpus entry up to 64 KiB and each of the target's tokens,
-//! and `<dict dir>/<target>.dict` with the tokens.
+//! and `<dict dir>/<target>.dict` with the tokens; for the editing sessions,
+//! a few random byte streams and an empty dictionary.
 
 use std::fs;
 use std::path::PathBuf;
@@ -31,7 +32,28 @@ fn main() -> std::io::Result<()> {
         }
         fs::write(dict_dir.join(format!("{name}.dict")), dict)?;
     }
+    // The editing sessions read bytes as steps: a few random sessions as
+    // seeds, and an empty dictionary
+    let dir = corpus_dir.join("editing");
+    fs::create_dir_all(&dir)?;
+    for seed in 0..8u64 {
+        fs::write(dir.join(format!("random-{seed}")), xorshift(seed, 512))?;
+    }
+    fs::write(dict_dir.join("editing.dict"), "")?;
     Ok(())
+}
+
+/// `len` bytes from a xorshift stream started at `seed`
+fn xorshift(seed: u64, len: usize) -> Vec<u8> {
+    let mut x = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+    (0..len)
+        .map(|_| {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x as u8
+        })
+        .collect()
 }
 
 /// A token as a libFuzzer dictionary string: `\` and `"` escaped, bytes

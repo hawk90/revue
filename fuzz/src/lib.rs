@@ -1,9 +1,15 @@
 //! The fuzz targets: the parser entry points of the fault layer
 //! (`tests/fault/parsers/targets.rs`, included here so both run the same
-//! code), each fed libFuzzer's bytes as text.
+//! code), each fed libFuzzer's bytes as text, and the editing sessions
+//! (`tests/fault/sessions/targets.rs`), which read the bytes as steps.
 
 #[path = "../../tests/fault/parsers/targets.rs"]
 mod targets;
+
+#[path = "../../tests/fault/sessions/targets.rs"]
+mod sessions;
+
+pub use sessions::editing;
 
 pub use targets::{corpus, targets, Target};
 
