@@ -2,7 +2,7 @@
 //! states, the dropdown keys while it is open and the tag keys while it is
 //! closed
 
-use crate::event::Key;
+use crate::event::{Key, KeyEvent};
 use crate::widget::traits::{EventResult, Interactive};
 
 use super::MultiSelect;
@@ -14,13 +14,7 @@ impl Interactive for MultiSelect {
             return EventResult::Ignored;
         }
 
-        // A letter with Ctrl or Alt is the app's shortcut, not a letter to
-        // type or a list key (with both it is AltGr: a typed character)
-        if matches!(event.key, Key::Char(_)) && event.ctrl != event.alt {
-            return EventResult::Ignored;
-        }
-
-        let changed = self.handle_key(&event.key);
+        let changed = self.handle_key_event(event);
         if changed {
             EventResult::ConsumedAndRender
         } else {
@@ -39,9 +33,25 @@ impl Interactive for MultiSelect {
 }
 
 impl MultiSelect {
-    /// Handle key input, returns true if needs redraw
+    /// Handle a key without modifiers, as
+    /// [`handle_key_event`](Self::handle_key_event) does
     pub fn handle_key(&mut self, key: &Key) -> bool {
+        self.handle_key_event(&KeyEvent::new(*key))
+    }
+
+    /// Handle a key with its modifiers; returns true if it needs a redraw.
+    /// While the dropdown is open and searchable, the keys other than
+    /// Enter, Escape, Up, Down and Tab edit the query as every single-line
+    /// field does. Otherwise a letter with Ctrl or Alt is the app's
+    /// shortcut, not a letter or a list key (with both it is AltGr: a
+    /// typed character).
+    pub fn handle_key_event(&mut self, event: &KeyEvent) -> bool {
         if self.state.disabled {
+            return false;
+        }
+        let key = &event.key;
+        let editing = self.open && self.searchable;
+        if !editing && matches!(key, Key::Char(_)) && event.ctrl != event.alt {
             return false;
         }
 
@@ -70,14 +80,14 @@ impl MultiSelect {
                 }
             }
 
-            _ if self.open => self.handle_dropdown_key(key),
+            _ if self.open => self.handle_dropdown_key(event),
             _ => self.handle_tag_key(key),
         }
     }
 
     /// A key other than Enter and Escape while the dropdown is open
-    fn handle_dropdown_key(&mut self, key: &Key) -> bool {
-        match key {
+    fn handle_dropdown_key(&mut self, event: &KeyEvent) -> bool {
+        match &event.key {
             Key::Char(' ') if !self.searchable => {
                 if let Some(idx) = self.current_option() {
                     self.toggle_option(idx);
@@ -104,24 +114,14 @@ impl MultiSelect {
                 true
             }
 
-            Key::Backspace if self.searchable => {
-                self.query.pop();
-                self.update_filter();
-                true
-            }
-
-            // Search typing
-            Key::Char(c) if self.searchable => {
-                self.query.push(*c);
-                self.update_filter();
-                true
-            }
-
             // Close dropdown on Tab when open
             Key::Tab => {
                 self.close();
                 true
             }
+
+            // The other keys edit the query
+            _ if self.searchable => self.edit_query(event),
 
             _ => false,
         }

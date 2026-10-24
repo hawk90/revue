@@ -18,6 +18,7 @@ mod tests;
 mod view;
 
 use crate::style::Color;
+use crate::utils::EditState;
 use crate::utils::ScrollState;
 use crate::widget::traits::{WidgetProps, WidgetState};
 
@@ -61,8 +62,7 @@ pub use helpers::{multi_select, multi_select_from};
 /// | `Space` | Toggle selection of highlighted option (when open, non-searchable mode) |
 /// | `Down` / `j` | Move highlight down in dropdown (when open) |
 /// | `Up` / `k` | Move highlight up in dropdown (when open) |
-/// | `Char` | Append character to search query (when open, searchable mode) |
-/// | `Backspace` | Delete last character from search query (when open, searchable mode) |
+/// | the editing keys | Edit the search query (when open, searchable mode): the standard keys every single-line field shares (see [`EditState::edit_key`](crate::utils::EditState::edit_key)) |
 ///
 /// ## Tag management (when dropdown is closed)
 ///
@@ -94,8 +94,11 @@ pub struct MultiSelect {
     tag_cursor: Option<usize>,
     /// Where the tag row is scrolled to, in columns
     tag_scroll: ScrollState,
-    /// Search query for filtering
-    query: String,
+    /// Search query for filtering, edited as every single-line field is
+    /// (#985)
+    query: EditState,
+    /// Horizontal scroll of the query in the header, in columns
+    query_scroll: std::cell::Cell<usize>,
     /// Filtered option indices
     filtered: Vec<usize>,
     /// Placeholder text
@@ -135,7 +138,8 @@ impl MultiSelect {
             dropdown_scroll: ScrollState::new(),
             tag_scroll: ScrollState::new(),
             tag_cursor: None,
-            query: String::new(),
+            query: EditState::single_line(),
+            query_scroll: std::cell::Cell::new(0),
             filtered: Vec::new(),
             placeholder: "Select...".to_string(),
             max_selections: None,

@@ -13,6 +13,7 @@ use crate::widget::theme::{
 use crate::widget::traits::{OverlayEntry, RenderContext, View};
 
 use super::{MultiSelect, MultiSelectOption};
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 
 /// A `ch` cell in `fg` on `bg`
 fn colored_cell(ch: char, fg: Color, bg: Color) -> Cell {
@@ -60,10 +61,19 @@ impl MultiSelect {
         } else {
             let x = self.draw_tags(ctx, max_x);
 
-            // Draw search query if open
-            if self.open && self.searchable && !self.query.is_empty() {
-                let query_display = format!(" {}", self.query);
-                ctx.draw_text(x.min(max_x), 0, &query_display, Color::CYAN);
+            // While searching, the query after the tags is a field with its
+            // cursor, scrolled to it in the room before the arrow
+            if self.open && self.searchable {
+                let from = (x + 1).min(max_x);
+                let field = EditField::of(&self.query, "", self.state.focused);
+                let w = max_x - from;
+                let scroll = field.scroll(self.query_scroll.get(), w);
+                self.query_scroll.set(scroll);
+                ctx.put_edit_field(from, 0, w, &field, scroll, |kind, ch| match kind {
+                    FieldCell::Cursor => colored_cell(ch, Color::BLACK, Color::WHITE),
+                    FieldCell::Selected => colored_cell(ch, Color::WHITE, Color::BLUE),
+                    FieldCell::Text | FieldCell::Placeholder => colored_cell(ch, Color::CYAN, bg),
+                });
             }
         }
     }
