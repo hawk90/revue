@@ -6,7 +6,7 @@ use crate::style::Color;
 impl MaskedInput {
     /// Calculate password strength (0-4)
     pub fn password_strength(&self) -> usize {
-        let len = self.char_count();
+        let len = self.len();
         let has_lower = self.get_value().chars().any(|c| c.is_lowercase());
         let has_upper = self.get_value().chars().any(|c| c.is_uppercase());
         let has_digit = self.get_value().chars().any(|c| c.is_ascii_digit());
@@ -57,7 +57,7 @@ impl MaskedInput {
 
     /// Validate the input
     pub fn validate(&mut self) -> bool {
-        if self.min_length > 0 && self.char_count() < self.min_length {
+        if self.min_length > 0 && self.len() < self.min_length {
             self.validation = ValidationState::Invalid(format!(
                 "Minimum {} characters required",
                 self.min_length

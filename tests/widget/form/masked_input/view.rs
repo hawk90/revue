@@ -517,3 +517,17 @@ fn test_masked_input_selection_is_drawn() {
     }
     assert_ne!(buffer.get(5, 0).unwrap().bg, Some(Color::BLUE));
 }
+
+/// The cursor is drawn on the mask char of its character: after a letter
+/// with an accent it is on the second bullet, not the third
+#[test]
+fn test_masked_input_cursor_on_the_mask_of_its_character() {
+    let mut input = MaskedInput::new()
+        .mask_style(MaskStyle::Full)
+        .focused(true)
+        .value("e\u{301}x");
+    input.handle_key(&revue::event::Key::Left);
+    let buffer = screen(&input, 40, 1);
+    assert!(row(&buffer, 0).starts_with("[●● "));
+    assert_eq!(cursor_cells(&buffer, 0), vec![2]);
+}
