@@ -8,9 +8,15 @@ impl Select {
         self.open
     }
 
-    /// Toggle dropdown open/close
+    /// Toggle dropdown open/close; closing clears the search query, as
+    /// Enter and Escape do
     pub fn toggle(&mut self) {
-        self.open = !self.open;
+        if self.open {
+            self.close();
+            self.clear_query();
+        } else {
+            self.open();
+        }
     }
 
     /// Open the dropdown
@@ -124,7 +130,8 @@ impl Select {
         self.options.is_empty()
     }
 
-    /// Handle key input, returns true if selection changed
+    /// Handle key input: returns true when the selection changed, and while
+    /// searching when the query changed or its cursor moved
     pub fn handle_key(&mut self, key: &crate::event::Key) -> bool {
         if !self.focused {
             return false;

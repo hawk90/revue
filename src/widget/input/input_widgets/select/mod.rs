@@ -25,7 +25,7 @@ use crate::{impl_props_builders, impl_styled_view};
 /// | `Down` | Move to next option (when open, searchable mode) |
 /// | `Home` | Jump to first option (when open, non-searchable mode) |
 /// | `End` | Jump to last option (when open, non-searchable mode) |
-/// | `Escape` | Close dropdown and clear search query (when open) |
+/// | `Escape`, `Tab` | Close dropdown and clear search query (when open) |
 /// | the editing keys | Edit the search query (when open, searchable mode): the standard keys every single-line field shares (see [`EditState::edit_key`](crate::utils::EditState::edit_key)) |
 #[derive(Clone, Debug)]
 pub struct Select {

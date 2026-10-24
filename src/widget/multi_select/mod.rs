@@ -60,8 +60,9 @@ pub use helpers::{multi_select, multi_select_from};
 /// | `Enter` | Toggle selection of highlighted option (when open) / Open dropdown (when closed) |
 /// | `Escape` | Close dropdown (when open) / Deselect tag cursor (when closed) |
 /// | `Space` | Toggle selection of highlighted option (when open, non-searchable mode) |
-/// | `Down` / `j` | Move highlight down in dropdown (when open) |
-/// | `Up` / `k` | Move highlight up in dropdown (when open) |
+/// | `Down` / `j` | Move highlight down in dropdown (when open; `j` only in non-searchable mode, where it is not search text) |
+/// | `Up` / `k` | Move highlight up in dropdown (when open; `k` only in non-searchable mode) |
+/// | `Tab` | Close dropdown (when open) |
 /// | the editing keys | Edit the search query (when open, searchable mode): the standard keys every single-line field shares (see [`EditState::edit_key`](crate::utils::EditState::edit_key)) |
 ///
 /// ## Tag management (when dropdown is closed)

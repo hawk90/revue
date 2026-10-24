@@ -553,3 +553,64 @@ fn the_search_query_is_an_edit_field() {
         Some(revue::style::Color::WHITE)
     );
 }
+
+/// Tags that filled the row left the query no room, so it was not drawn,
+/// and the query was drawn over the tags' `...` marker
+#[test]
+fn the_search_query_keeps_room_after_tags() {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    let header = |v: &MultiSelect, w: u16| -> String {
+        let mut buffer = Buffer::new(w, 6);
+        v.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, w, 6)));
+        (0..w).map(|x| buffer.get(x, 0).unwrap().symbol).collect()
+    };
+    let mut v = multi_select()
+        .options(vec!["abcdefg", "hijklmn", "opq"])
+        .searchable(true)
+        .width(12)
+        .focused(true);
+    v.select_option(0);
+    v.open();
+    v.handle_key(&Key::Char('o'));
+    let row = header(&v, 12);
+    assert!(row.contains('o'), "{row:?}");
+
+    let mut v = multi_select()
+        .options(vec!["aa", "bb", "cc", "dd", "ee"])
+        .searchable(true)
+        .width(20)
+        .focused(true);
+    v.select_all();
+    v.open();
+    v.handle_key(&Key::Char('d'));
+    let row = header(&v, 20);
+    assert!(row.contains("... d"), "{row:?}");
+}
+
+/// Tags that exactly filled the row hid the rest without a `...` marker,
+/// and the tag cursor stays in view with the marker after it
+#[test]
+fn hidden_tags_are_always_marked() {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::{RenderContext, View};
+    let header = |v: &MultiSelect| -> String {
+        let mut buffer = Buffer::new(12, 1);
+        v.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 12, 1)));
+        (0..12).map(|x| buffer.get(x, 0).unwrap().symbol).collect()
+    };
+    // Room for 10 columns: "[aa] [bb] " fills it, "[cc]" is hidden
+    let mut v = multi_select().options(vec!["aa", "bb", "cc"]).width(12);
+    v.select_all();
+    let row = header(&v);
+    assert!(row.contains("..."), "{row:?}");
+    // The tag cursor on the first tag: in view, with the marker after it
+    for _ in 0..3 {
+        v.handle_key(&Key::Left);
+    }
+    assert_eq!(v.get_tag_cursor(), Some(0));
+    let row = header(&v);
+    assert!(row.starts_with("[aa]") && row.contains("..."), "{row:?}");
+}

@@ -1364,3 +1364,15 @@ fn test_select_search_header_draws_the_query_with_its_cursor() {
     assert!(header.contains('p'), "{header:?}");
     assert!(!header.contains("abc"), "{header:?}");
 }
+
+/// Closing with a click (toggle) kept the query for the next open
+#[test]
+fn test_select_toggle_closed_clears_the_query() {
+    let mut s = searching();
+    s.handle_key(&Key::Char('b'));
+    assert_eq!(s.query(), "b");
+    s.toggle();
+    assert!(!s.is_open());
+    assert_eq!(s.query(), "");
+    assert_eq!(s.visible_count(), 3);
+}
