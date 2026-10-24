@@ -262,9 +262,11 @@ fn test_delete_line_first() {
 fn test_delete_line_last() {
     let mut editor = CodeEditor::new().content("line1\nline2");
     editor.set_cursor(1, 0);
+    // The last line goes with the line break before it; the cursor ends
+    // where that break was
     editor.delete_line();
     assert_eq!(editor.line_count(), 1);
-    assert_eq!(editor.cursor_position(), (0, 0));
+    assert_eq!(editor.cursor_position(), (0, 5));
 }
 
 #[test]
@@ -307,7 +309,7 @@ fn test_duplicate_line_read_only() {
 
 #[test]
 fn test_undo_insert() {
-    let mut editor = CodeEditor::new();
+    let mut editor = CodeEditor::new().clock(super::stepping_clock());
     editor.insert_char('a');
     editor.insert_char('b');
     editor.undo();
@@ -325,7 +327,7 @@ fn test_undo_insert() {
 
 #[test]
 fn test_undo_multiple() {
-    let mut editor = CodeEditor::new();
+    let mut editor = CodeEditor::new().clock(super::stepping_clock());
     editor.insert_char('a');
     editor.insert_char('b');
     editor.insert_char('c');
@@ -405,7 +407,7 @@ fn test_redo_empty_stack() {
 
 #[test]
 fn test_redo_after_new_action() {
-    let mut editor = CodeEditor::new();
+    let mut editor = CodeEditor::new().clock(super::stepping_clock());
     editor.insert_char('a');
     editor.insert_char('b');
     editor.undo();
@@ -496,7 +498,9 @@ fn test_redo() {
 
 #[test]
 fn test_multiple_undo() {
-    let mut editor = CodeEditor::new().content("a");
+    let mut editor = CodeEditor::new()
+        .clock(super::stepping_clock())
+        .content("a");
     editor.set_cursor(0, 1);
     editor.insert_char('b');
     editor.insert_char('c');

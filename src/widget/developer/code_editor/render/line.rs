@@ -22,8 +22,8 @@ impl CodeEditor {
         let line_num_width = columns.x;
         let text_width = columns.width;
         let scroll_x = columns.scroll_x;
-        let line = &self.lines[line_idx];
-        let is_current_line = line_idx == self.cursor.0;
+        let line = self.line_text(line_idx);
+        let is_current_line = line_idx == self.edit.cursor().line;
 
         // Current line highlight
         if self.config.highlight_current_line && is_current_line && self.focused {
@@ -51,6 +51,7 @@ impl CodeEditor {
             text_width,
             |char_idx, ch| {
                 self.text_cell(
+                    columns,
                     (line_idx, char_idx),
                     ch,
                     is_current_line,
@@ -61,7 +62,10 @@ impl CodeEditor {
         );
 
         // Draw cursor at end of line if needed
-        if self.focused && line_idx == self.cursor.0 && self.cursor.1 >= line.chars().count() {
+        if columns
+            .cursor
+            .is_some_and(|(l, c)| l == line_idx && c >= line.chars().count())
+        {
             if let Some(x) = col_of(line, usize::MAX).checked_sub(scroll_x) {
                 if x < text_width as usize {
                     let mut cell = Cell::new(' ');
@@ -104,6 +108,7 @@ impl CodeEditor {
     /// bracket match and find match win over syntax colors, in that order
     fn text_cell(
         &self,
+        columns: &TextColumns,
         (line_idx, char_idx): (usize, usize),
         ch: char,
         is_current_line: bool,
@@ -119,10 +124,10 @@ impl CodeEditor {
         let mut cell = Cell::new(marker.unwrap_or(ch));
 
         // Check cursor position
-        let is_cursor = self.focused && line_idx == self.cursor.0 && char_idx == self.cursor.1;
+        let is_cursor = columns.cursor == Some((line_idx, char_idx));
 
         // Check selection
-        let is_selected = self.is_selected(line_idx, char_idx);
+        let is_selected = super::selected(columns.selection, line_idx, char_idx);
 
         // Check bracket match
         let is_bracket_match = bracket_match

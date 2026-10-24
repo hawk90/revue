@@ -6,7 +6,6 @@
 mod bracket;
 mod builders;
 mod editing;
-mod history;
 mod key_handling;
 mod modes;
 mod navigation;
@@ -18,6 +17,7 @@ mod types;
 mod tests;
 
 use crate::style::Color;
+use crate::utils::EditState;
 use crate::widget::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -32,12 +32,12 @@ const DEFAULT_PAGE_HEIGHT: usize = 20;
 /// Code editor widget
 #[derive(Clone)]
 pub struct CodeEditor {
-    /// Lines of code
-    lines: Vec<String>,
-    /// Cursor position (line, column)
-    cursor: (usize, usize),
-    /// Selection anchor (if selecting)
-    anchor: Option<(usize, usize)>,
+    /// The text, its cursor with the selection, and undo (#1261)
+    edit: EditState,
+    /// Selection mode, from [`start_selection`](Self::start_selection) or
+    /// [`select_all`](Self::select_all) until the selection is cleared or
+    /// the text is edited: every move extends the selection
+    selecting: bool,
     /// First visible line, kept between renders so the view only moves
     /// when the cursor would leave it
     scroll: std::cell::Cell<usize>,
@@ -47,10 +47,6 @@ pub struct CodeEditor {
     /// Rows showing lines at the last render, the step for PageUp and
     /// PageDown ([`DEFAULT_PAGE_HEIGHT`] before the first render)
     page_height: std::cell::Cell<usize>,
-    /// Undo stack
-    undo_stack: Vec<EditOp>,
-    /// Redo stack
-    redo_stack: Vec<EditOp>,
     /// Language for syntax highlighting
     language: Language,
     /// Syntax highlighter
@@ -61,8 +57,6 @@ pub struct CodeEditor {
     config: EditorConfig,
     /// Show line numbers
     show_line_numbers: bool,
-    /// Read-only mode
-    read_only: bool,
     /// Focused state
     focused: bool,
     /// Go-to-line mode active
@@ -108,20 +102,16 @@ impl CodeEditor {
     /// Create a new code editor
     pub fn new() -> Self {
         Self {
-            lines: vec![String::new()],
-            cursor: (0, 0),
-            anchor: None,
+            edit: EditState::multi_line(),
+            selecting: false,
             scroll: std::cell::Cell::new(0),
             scroll_x: std::cell::Cell::new(0),
             page_height: std::cell::Cell::new(DEFAULT_PAGE_HEIGHT),
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
             language: Language::None,
             highlighter: None,
             theme: SyntaxTheme::dark(),
             config: EditorConfig::default(),
             show_line_numbers: true,
-            read_only: false,
             focused: true,
             goto_line_mode: false,
             goto_line_input: String::new(),
@@ -147,15 +137,13 @@ impl CodeEditor {
     /// Set content (mutable)
     pub fn set_content(&mut self, text: &str) {
         self.reset_text(text);
-        self.undo_stack.clear();
-        self.redo_stack.clear();
         // Matches of the find query are positions in the old text
         self.refresh_find_matches();
     }
 
     /// Get content
     pub fn get_content(&self) -> String {
-        self.lines.join("\n")
+        self.edit.text()
     }
 
     /// Set language (mutable)
@@ -171,18 +159,16 @@ impl CodeEditor {
     /// Get line at index
     #[doc(hidden)]
     pub fn get_line(&self, index: usize) -> Option<String> {
-        self.lines.get(index).cloned()
+        self.edit.line(index).map(String::from)
     }
 
-    /// Replace the text, with the cursor and the view at its start
+    /// Replace the text, with the cursor and the view at its start and no
+    /// undo history. A final line break is kept, as an empty last line, so
+    /// [`get_content`](Self::get_content) gives the text back.
     fn reset_text(&mut self, text: &str) {
-        self.lines = text.lines().map(String::from).collect();
-        if self.lines.is_empty() {
-            self.lines.push(String::new());
-        }
-        self.cursor = (0, 0);
         // A selection in the old text means nothing in the new one (#975)
-        self.anchor = None;
+        self.edit.set_text(text);
+        self.selecting = false;
         self.scroll.set(0);
         self.scroll_x.set(0);
     }

@@ -27,12 +27,8 @@ impl super::CodeEditor {
 
     /// Go to specific line
     pub fn goto_line(&mut self, line: usize) {
-        let target = line
-            .saturating_sub(1)
-            .min(self.lines.len().saturating_sub(1));
-        self.cursor = (target, 0);
         self.clear_selection();
-        self.ensure_cursor_visible();
+        self.set_cursor(line.saturating_sub(1), 0);
         self.close_goto_line();
     }
 
@@ -104,15 +100,22 @@ impl super::CodeEditor {
         // byte offset from `str::find` is not a column, and restarting one
         // byte after a match slices into a multibyte char.
         let query: Vec<char> = self.find_query.chars().collect();
-        for (line_idx, line) in self.lines.iter().enumerate() {
+        let mut matches = Vec::new();
+        for (line_idx, line) in self.edit.lines().iter().enumerate() {
             let chars: Vec<char> = line.chars().collect();
             let mut start = 0;
             while let Some(match_start) = find_chars(&chars, &query, start, false) {
                 let match_end = match_start + query.len();
-                self.find_matches.push((line_idx, match_start, match_end));
+                matches.push((line_idx, match_start, match_end));
                 start = match_start + 1;
             }
         }
+        // A match must start and end between characters the user sees as
+        // one: the cursor cannot go inside one
+        let on_boundary =
+            |line: usize, col: usize| self.edit.char_index(self.edit.pos_at_char(line, col)) == col;
+        matches.retain(|&(line, start, end)| on_boundary(line, start) && on_boundary(line, end));
+        self.find_matches = matches;
 
         if !self.find_matches.is_empty() && self.find_index >= self.find_matches.len() {
             self.find_index = 0;
@@ -146,8 +149,7 @@ impl super::CodeEditor {
     /// Jump to current match
     pub(super) fn jump_to_current_match(&mut self) {
         if let Some(&(line, col, _)) = self.find_matches.get(self.find_index) {
-            self.cursor = (line, col);
-            self.ensure_cursor_visible();
+            self.set_cursor(line, col);
         }
     }
 

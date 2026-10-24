@@ -1,8 +1,5 @@
 //! Code editor types and configuration
 
-/// Maximum undo history size
-pub const MAX_UNDO_HISTORY: usize = 100;
-
 /// Bracket pair for matching
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BracketPair {
@@ -75,7 +72,8 @@ impl Default for EditorConfig {
     }
 }
 
-/// Edit operation for undo/redo
+/// Edit operation for undo/redo. The editor no longer records these: its
+/// undo history is the [`EditState`](crate::utils::EditState)'s
 #[derive(Clone, Debug)]
 pub enum EditOp {
     /// Insert text at position

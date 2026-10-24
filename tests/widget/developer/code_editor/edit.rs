@@ -17,11 +17,13 @@ fn width(ch: char) -> usize {
 
 /// The text as lines of chars and the cursor as (line, char index): what
 /// the editor's keys should do, written plainly. No auto-indent and no
-/// auto-closed brackets.
+/// auto-closed brackets. Up and Down aim for the screen column they
+/// started from (`goal`), kept across short lines.
 #[derive(Debug, Clone)]
 struct Model {
     lines: Vec<Vec<char>>,
     cursor: (usize, usize),
+    goal: Option<usize>,
 }
 
 impl Model {
@@ -33,6 +35,7 @@ impl Model {
         Self {
             lines,
             cursor: (0, 0),
+            goal: None,
         }
     }
 
@@ -44,11 +47,9 @@ impl Model {
             .join("\n")
     }
 
-    /// Up and Down keep the screen column: the char covering it on the
-    /// other line, or the end
-    fn move_to_line(&mut self, line: usize) {
-        let (l, c) = self.cursor;
-        let col: usize = self.lines[l][..c].iter().map(|&ch| width(ch)).sum();
+    /// Up and Down keep the screen column: the char covering the goal
+    /// column on the other line, or the end
+    fn move_to_line(&mut self, line: usize, col: usize) {
         let mut start = 0;
         let mut idx = self.lines[line].len();
         for (i, &ch) in self.lines[line].iter().enumerate() {
@@ -64,6 +65,34 @@ impl Model {
     fn press(&mut self, key: &Key) {
         let (l, c) = self.cursor;
         let len = self.lines[l].len();
+        if matches!(key, Key::Up | Key::Down) {
+            let col = self.lines[l][..c].iter().map(|&ch| width(ch)).sum();
+            let goal = *self.goal.get_or_insert(col);
+            match key {
+                // On the first line Up goes to the start, on the last line
+                // Down to the end
+                Key::Up if l == 0 => self.cursor.1 = 0,
+                Key::Up => self.move_to_line(l - 1, goal),
+                _ if l + 1 == self.lines.len() => self.cursor.1 = len,
+                _ => self.move_to_line(l + 1, goal),
+            }
+            return;
+        }
+        // A move drops the goal column; so does an edit, unless it had
+        // nothing to do (Backspace at the start), which leaves the cursor
+        // as it was
+        let before = self.lines.clone();
+        let edit = matches!(
+            key,
+            Key::Char(_) | Key::Enter | Key::Backspace | Key::Delete
+        );
+        self.edit_or_move(key, (l, c), len);
+        if !edit || self.lines != before {
+            self.goal = None;
+        }
+    }
+
+    fn edit_or_move(&mut self, key: &Key, (l, c): (usize, usize), len: usize) {
         match key {
             Key::Char(ch) => {
                 self.lines[l].insert(c, *ch);
@@ -95,8 +124,6 @@ impl Model {
             Key::Left if l > 0 => self.cursor = (l - 1, self.lines[l - 1].len()),
             Key::Right if c < len => self.cursor.1 += 1,
             Key::Right if l + 1 < self.lines.len() => self.cursor = (l + 1, 0),
-            Key::Up if l > 0 => self.move_to_line(l - 1),
-            Key::Down if l + 1 < self.lines.len() => self.move_to_line(l + 1),
             Key::Home => {
                 // First non-blank, then column 0, then back
                 let first = self.lines[l]
@@ -207,7 +234,9 @@ fn test_code_editor_indent_size_is_at_least_one() {
 
 #[test]
 fn test_code_editor_undo_keeps_the_last_100_edits() {
-    let mut editor = CodeEditor::new().bracket_matching(false);
+    let mut editor = CodeEditor::new()
+        .bracket_matching(false)
+        .clock(super::stepping_clock());
     for _ in 0..105 {
         editor.insert_char('a');
     }
@@ -264,11 +293,35 @@ proptest! {
     }
 
     /// Undoing every edit restores the start text, and redoing them all
-    /// gives the end text back. Without auto-indent and auto-closed brackets,
-    /// which record too little to undo (#892).
+    /// gives the end text back.
     #[test]
     fn prop_code_editor_undo_all_then_redo_all(text in start(), keys in prop::collection::vec(key(), 0..60)) {
         let mut editor = plain(text);
+        for k in &keys {
+            editor.handle_key(k);
+        }
+        let end = editor.get_content();
+        for _ in 0..keys.len() {
+            editor.undo();
+        }
+        prop_assert_eq!(editor.get_content(), text);
+        for _ in 0..keys.len() {
+            editor.redo();
+        }
+        prop_assert_eq!(editor.get_content(), end);
+    }
+
+    /// The same with auto-indent and auto-closed brackets on, and keys that
+    /// use them: what each adds undoes with the edit (#892)
+    #[test]
+    fn prop_code_editor_undo_all_then_redo_all_with_auto_edits(
+        text in start(),
+        keys in prop::collection::vec(prop_oneof![
+            key(),
+            prop::sample::select(vec![Key::Char('('), Key::Char('{'), Key::Char(':'), Key::Char('"'), Key::Tab]),
+        ], 0..60),
+    ) {
+        let mut editor = CodeEditor::new().content(text);
         for k in &keys {
             editor.handle_key(k);
         }
@@ -331,4 +384,158 @@ proptest! {
             prop_assert_eq!(editor.cursor_position(), (l, s));
         }
     }
+}
+
+/// Enter with auto-indent recorded only the split, so undo joined the
+/// indented line back with its indent (#892)
+#[test]
+fn test_code_editor_undo_takes_the_auto_indent_with_the_new_line() {
+    let mut editor = CodeEditor::new().content("  ab");
+    editor.set_cursor(0, 3);
+    editor.handle_key(&Key::Enter);
+    assert_eq!(editor.get_content(), "  a\n  b");
+    editor.undo();
+    assert_eq!(editor.get_content(), "  ab");
+    assert_eq!(editor.cursor_position(), (0, 3));
+}
+
+/// The auto-closed bracket was not recorded, so undo left it (#892)
+#[test]
+fn test_code_editor_undo_takes_the_closed_bracket() {
+    let mut editor = CodeEditor::new();
+    editor.handle_key(&Key::Char('('));
+    assert_eq!(editor.get_content(), "()");
+    assert_eq!(editor.cursor_position(), (0, 1));
+    editor.undo();
+    assert_eq!(editor.get_content(), "");
+    editor.redo();
+    assert_eq!(editor.get_content(), "()");
+    assert_eq!(editor.cursor_position(), (0, 1));
+}
+
+/// insert_str, the line commands and a multi-line delete_selection pushed
+/// no undo step (#892)
+#[test]
+fn test_code_editor_undoes_pastes_line_commands_and_deleted_selections() {
+    let mut editor = CodeEditor::new()
+        .clock(super::stepping_clock())
+        .content("one\ntwo\nthree");
+    editor.insert_str("x\ny");
+    editor.duplicate_line();
+    editor.delete_line();
+    editor.set_cursor(0, 1);
+    editor.start_selection();
+    editor.set_cursor(2, 2);
+    editor.delete_selection();
+    for _ in 0..4 {
+        editor.undo();
+    }
+    assert_eq!(editor.get_content(), "one\ntwo\nthree");
+}
+
+/// delete_selection edited a read-only editor (#1080)
+#[test]
+fn test_code_editor_read_only_delete_selection_keeps_text() {
+    let mut editor = CodeEditor::new().content("keep me").read_only(true);
+    editor.select_all();
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "keep me");
+    assert!(!editor.can_undo());
+}
+
+/// `config` let indent_size be 0, and Tab then typed nothing (#1080)
+#[test]
+fn test_code_editor_config_indent_size_zero_still_indents() {
+    let config = revue::widget::code_editor::EditorConfig {
+        indent_size: 0,
+        ..Default::default()
+    };
+    let mut editor = CodeEditor::new().config(config);
+    editor.handle_key(&Key::Tab);
+    assert_eq!(editor.get_content(), " ");
+}
+
+/// Keys with modifiers: Shift selects, Ctrl+Z undoes, Ctrl and an unbound
+/// letter is left to the app
+#[test]
+fn test_code_editor_takes_the_modified_editing_keys() {
+    use revue::event::KeyEvent;
+    let shift = |key| {
+        let mut e = KeyEvent::new(key);
+        e.shift = true;
+        e
+    };
+    let mut editor = CodeEditor::new().content("foo.bar baz");
+    assert!(editor.handle_key_event(&shift(Key::End)));
+    assert_eq!(editor.get_selection().as_deref(), Some("foo.bar baz"));
+    assert!(editor.handle_key_event(&KeyEvent::new(Key::Left)));
+    assert_eq!(editor.cursor_position(), (0, 0));
+    assert!(editor.handle_key_event(&KeyEvent::ctrl(Key::Right)));
+    assert_eq!(editor.cursor_position(), (0, 3));
+    assert!(editor.handle_key_event(&KeyEvent::ctrl(Key::Backspace)));
+    assert_eq!(editor.get_content(), ".bar baz");
+    assert!(editor.handle_key_event(&KeyEvent::ctrl(Key::Char('z'))));
+    assert_eq!(editor.get_content(), "foo.bar baz");
+    assert!(!editor.handle_key_event(&KeyEvent::ctrl(Key::Char('q'))));
+    assert_eq!(editor.get_content(), "foo.bar baz");
+}
+
+/// Typing a bracket over the same closed pair left the cursor after it
+#[test]
+fn test_code_editor_bracket_over_the_same_pair_lands_between() {
+    let mut editor = CodeEditor::new().content("()");
+    editor.select_all();
+    editor.handle_key(&Key::Char('('));
+    assert_eq!(editor.get_content(), "()");
+    assert_eq!(editor.cursor_position(), (0, 1));
+}
+
+/// Home compared the cursor with the first non-blank char's index, which
+/// for a combining mark on a blank is inside a character, so it never went
+/// to the line's start
+#[test]
+fn test_code_editor_home_reaches_the_start_past_a_combining_mark() {
+    let mut editor = CodeEditor::new().content(" \u{301}x");
+    editor.set_cursor(0, 3);
+    editor.handle_key(&Key::Home);
+    assert_eq!(editor.cursor_position(), (0, 2));
+    editor.handle_key(&Key::Home);
+    assert_eq!(editor.cursor_position(), (0, 0));
+}
+
+/// Enter's indent came from the selection's moving end, not from where the
+/// new line goes in, and Enter inside the indent doubled it
+#[test]
+fn test_code_editor_enter_indents_from_where_the_line_breaks() {
+    use revue::event::KeyEvent;
+    let mut shift_end = KeyEvent::new(Key::End);
+    shift_end.shift = true;
+
+    let mut editor = CodeEditor::new().content("if x {abc");
+    editor.set_cursor(0, 6);
+    editor.handle_key_event(&shift_end);
+    editor.handle_key(&Key::Enter);
+    assert_eq!(editor.get_content(), "if x {\n    ");
+
+    let mut editor = CodeEditor::new().content("    a\nb");
+    editor.set_cursor(1, 1);
+    editor.start_selection();
+    editor.set_cursor(0, 5);
+    editor.handle_key(&Key::Enter);
+    assert_eq!(editor.get_content(), "    a\n    ");
+
+    let mut editor = CodeEditor::new().content("    foo");
+    editor.set_cursor(0, 2);
+    editor.handle_key(&Key::Enter);
+    assert_eq!(editor.get_content(), "  \n    foo");
+}
+
+/// An edit that changed nothing (a read-only editor) ended selection mode
+#[test]
+fn test_code_editor_selection_mode_survives_an_edit_that_changes_nothing() {
+    let mut editor = CodeEditor::new().content("ab").read_only(true);
+    editor.start_selection();
+    editor.insert_char('x');
+    assert!(editor.has_selection());
+    assert_eq!(editor.get_content(), "ab");
 }

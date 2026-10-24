@@ -5,15 +5,25 @@ mod line;
 mod minimap;
 
 use crate::widget::code_editor::CodeEditor;
-use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
+use crate::widget::traits::render_context::edit_line::{
+    col_of, cursor_width, scroll_to_cursor, visible_from,
+};
 use crate::widget::traits::{RenderContext, View};
 
 /// The columns the text takes: from `x`, `width` wide, scrolled `scroll_x`
-/// terminal columns
+/// terminal columns; and where the cursor is drawn and what is selected, in
+/// chars, worked out once per render
 struct TextColumns {
     x: u16,
     width: u16,
     scroll_x: usize,
+    cursor: Option<(usize, usize)>,
+    selection: Option<((usize, usize), (usize, usize))>,
+}
+
+/// Whether `(line, col)` is inside `selection` (start inclusive, end not)
+fn selected(selection: Option<((usize, usize), (usize, usize))>, line: usize, col: usize) -> bool {
+    selection.is_some_and(|(start, end)| (start..end).contains(&(line, col)))
 }
 
 impl CodeEditor {
@@ -25,7 +35,7 @@ impl CodeEditor {
     #[doc(hidden)]
     pub fn line_number_width(&self) -> u16 {
         if self.show_line_numbers {
-            let digits = format!("{}", self.lines.len()).len();
+            let digits = format!("{}", self.edit.line_count()).len();
             (digits + 2) as u16
         } else {
             0
@@ -44,29 +54,7 @@ impl CodeEditor {
     /// Check if position is in selection
     #[doc(hidden)]
     pub fn is_selected(&self, line: usize, col: usize) -> bool {
-        let anchor = match self.anchor {
-            Some(a) => a,
-            None => return false,
-        };
-
-        let (start, end) = if anchor < self.cursor {
-            (anchor, self.cursor)
-        } else {
-            (self.cursor, anchor)
-        };
-
-        if line < start.0 || line > end.0 {
-            return false;
-        }
-        if line == start.0 && line == end.0 {
-            col >= start.1 && col < end.1
-        } else if line == start.0 {
-            col >= start.1
-        } else if line == end.0 {
-            col < end.1
-        } else {
-            true
-        }
+        selected(self.selection_chars(), line, col)
     }
 
     /// Check if position is in a find match
@@ -83,11 +71,12 @@ impl CodeEditor {
     /// Horizontal scroll, in columns, that keeps the cursor (and the whole
     /// glyph under it) in a view `text_width` columns wide
     fn scroll_x_for_cursor(&self, text_width: u16) -> usize {
-        let line = self.lines.get(self.cursor.0).map_or("", String::as_str);
+        let (line, col) = self.cursor_position();
+        let line = self.line_text(line);
         scroll_to_cursor(
             self.scroll_x.get(),
-            col_of(line, self.cursor.1),
-            cursor_width(line, self.cursor.1),
+            col_of(line, col),
+            cursor_width(line, col),
             col_of(line, usize::MAX) + 1,
             text_width as usize,
         )
@@ -138,11 +127,18 @@ impl View for CodeEditor {
 
         // Render visible lines
         let start_line = scroll;
-        let end_line = (start_line + visible_lines).min(self.lines.len());
+        let end_line = (start_line + visible_lines).min(self.edit.line_count());
         let columns = TextColumns {
             x: line_num_width,
             width: text_width,
             scroll_x,
+            cursor: self.focused.then(|| {
+                // A zero-width char takes no cell: the cursor on one is
+                // drawn on the next glyph that has one
+                let (line, col) = self.cursor_position();
+                (line, visible_from(self.line_text(line), col))
+            }),
+            selection: self.selection_chars(),
         };
 
         for (view_row, line_idx) in (start_line..end_line).enumerate() {
