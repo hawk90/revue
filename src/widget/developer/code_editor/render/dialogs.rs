@@ -2,19 +2,31 @@
 
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::EditState;
 use crate::widget::code_editor::CodeEditor;
-use crate::widget::traits::render_context::edit_line::{col_of, scroll_to_cursor};
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::RenderContext;
 
-/// Draw a dialog's typed text on row 0 in `width` columns, scrolled so its
-/// end (where typing happens) stays in view.
-fn put_query(ctx: &mut RenderContext, x: u16, width: u16, text: &str) {
-    let text_w = col_of(text, usize::MAX);
-    let scroll = scroll_to_cursor(0, text_w, 0, text_w, width as usize);
-    ctx.put_edit_line(x, 0, text, scroll, width, |_, ch| {
+/// Draw a dialog's text field on row 0 in `width` columns, with its cursor
+/// and selection, scrolled to the cursor
+fn put_query(
+    ctx: &mut RenderContext,
+    x: u16,
+    width: u16,
+    state: &EditState,
+    scroll: &std::cell::Cell<usize>,
+) {
+    let field = EditField::of(state, "", true);
+    let at = field.scroll(scroll.get(), width);
+    scroll.set(at);
+    let bg = Color::rgb(49, 50, 68);
+    ctx.put_edit_field(x, 0, width, &field, at, |kind, ch| {
         let mut cell = Cell::new(ch);
-        cell.fg = Some(Color::rgb(166, 227, 161));
-        cell.bg = Some(Color::rgb(49, 50, 68));
+        (cell.fg, cell.bg) = match kind {
+            FieldCell::Cursor => (Some(Color::BLACK), Some(Color::rgb(166, 227, 161))),
+            FieldCell::Selected => (Some(Color::WHITE), Some(Color::rgb(69, 71, 90))),
+            FieldCell::Text | FieldCell::Placeholder => (Some(Color::rgb(166, 227, 161)), Some(bg)),
+        };
         cell
     });
 }
@@ -51,7 +63,13 @@ impl CodeEditor {
         // Input
         let input_x = dialog_x + label.len() as u16;
         let input_w = dialog_width.saturating_sub(label.len() as u16);
-        put_query(ctx, input_x, input_w, &self.goto_line_input);
+        put_query(
+            ctx,
+            input_x,
+            input_w,
+            &self.goto_line_input,
+            &self.goto_scroll,
+        );
     }
 
     /// Draw the find box with the query and the match count
@@ -63,7 +81,7 @@ impl CodeEditor {
         // Query, leaving 8 columns for the match count
         let query_x = dialog_x + label.len() as u16;
         let query_w = dialog_width.saturating_sub(label.len() as u16 + 8);
-        put_query(ctx, query_x, query_w, &self.find_query);
+        put_query(ctx, query_x, query_w, &self.find_query, &self.find_scroll);
 
         // Match count
         let count = format!(" {}/{}", self.current_find_index(), self.find_match_count());

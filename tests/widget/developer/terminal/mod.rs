@@ -1000,9 +1000,15 @@ fn test_terminal_home_key() {
     term.handle_key(KeyEvent::new(Key::Char('s')));
     term.handle_key(KeyEvent::new(Key::Char('t')));
 
+    // Home goes to the start of the line, as in readline; typing goes in
+    // there
     term.handle_key(KeyEvent::new(Key::Home));
-
-    assert_eq!(term.get_input(), "");
+    term.handle_key(KeyEvent::new(Key::Char('>')));
+    assert_eq!(term.get_input(), ">test");
+    // End goes to its end
+    term.handle_key(KeyEvent::new(Key::End));
+    term.handle_key(KeyEvent::new(Key::Char('!')));
+    assert_eq!(term.get_input(), ">test!");
 }
 
 #[test]
@@ -1014,7 +1020,8 @@ fn test_terminal_end_key() {
     }
 
     term.scroll_up(5);
-    term.handle_key(KeyEvent::new(Key::End));
+    // Ctrl+End scrolls to the bottom (End moves in the command line)
+    term.handle_key(KeyEvent::ctrl(Key::End));
 
     let buffer = screen(&term, 80, 10);
 
@@ -1198,4 +1205,13 @@ fn test_terminal_line_wrapping_rendering() {
     assert_eq!(buffer.get(9, 0).unwrap().symbol, '9');
     // Second line should start with 'A'
     assert_eq!(buffer.get(0, 1).unwrap().symbol, 'A');
+}
+
+/// Ctrl or Alt with a letter typed the letter into the command line
+#[test]
+fn test_terminal_ctrl_letter_is_not_typed() {
+    let mut term = Terminal::new(20, 3);
+    term.handle_key(KeyEvent::new(Key::Char('a')));
+    assert_eq!(term.handle_key(KeyEvent::ctrl(Key::Char('c'))), None);
+    assert_eq!(term.get_input(), "a");
 }

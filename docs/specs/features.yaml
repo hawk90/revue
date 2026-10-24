@@ -1974,6 +1974,7 @@ items:
     notes: Every editing widget uses it - Input, SearchBar, Combobox, Autocomplete, MaskedInput, NumberInput and DataGrid
       cells, drawn with one shared field (#985), and TextArea and CodeEditor (#1261), each keeping its char-column API.
       CodeEditor's auto-indent and closed brackets are edits through it (`insert_pair`), so they undo with the typing.
-      Select and MultiSelect search queries use it too. Still append-only (#985) - Tree search, CodeEditor find/goto,
-      ColorPicker hex, FilePicker name, Terminal input; CommandPalette's query is a public String field, so it waits
-      for 4.0.
+      Select and MultiSelect search queries, CodeEditor's find and go-to-line boxes and Terminal's command line use it
+      too. Not editors by design - Tree's type-to-find (the query is not shown) and ColorPicker's six-slot hex entry.
+      FilePicker has no key handling for its file name yet (#985); CommandPalette's query is a public String field, so
+      it waits for 4.0 (#1310).

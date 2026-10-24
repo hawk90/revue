@@ -149,8 +149,14 @@ fn test_terminal_input_line_over_the_bottom_row() {
     term.focus();
     let buffer = screen(&term, 12, 3);
     assert_eq!(row(&buffer, 2), "> ls        ");
+    // The command line's cursor after the text, in the text color
     for x in 0..12 {
-        assert_eq!(buffer.get(x, 2).unwrap().bg, Some(DARK_BG), "{x}");
+        let want = if x == 4 {
+            Some(Color::YELLOW)
+        } else {
+            Some(DARK_BG)
+        };
+        assert_eq!(buffer.get(x, 2).unwrap().bg, want, "{x}");
     }
     assert_eq!(buffer.get(0, 2).unwrap().fg, Some(Color::CYAN));
     assert_eq!(buffer.get(1, 2).unwrap().fg, Some(Color::CYAN));
@@ -164,13 +170,14 @@ fn test_terminal_input_line_clipped_at_the_area() {
     let mut term = Terminal::new(10, 2);
     term.focus();
     typed(&mut term, "abcdefghij");
-    assert_eq!(row(&screen(&term, 6, 2), 1), "> abcd");
-    // A wide character that would cross the edge is left out
+    // A line wider than the room scrolls to the cursor, after its end
+    assert_eq!(row(&screen(&term, 6, 2), 1), "> hij ");
+    // A wide character before the cursor is shown whole, scrolled to
     let mut term = Terminal::new(10, 2);
     term.focus();
     typed(&mut term, "abc한");
     let buffer = screen(&term, 6, 2);
-    assert_eq!(row(&buffer, 1), "> abc ");
+    assert_eq!(row(&buffer, 1), "> c한\0 ");
     // In a wider area it takes two columns
     let buffer = screen(&term, 9, 2);
     assert_eq!(buffer.get(5, 1).unwrap().symbol, '한');

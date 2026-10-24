@@ -423,9 +423,10 @@ fn key() -> impl Strategy<Value = Key> {
 
 proptest! {
     /// Any keys leave the input and the action a plain model of a line
-    /// editor with history gives: typing appends, Backspace pops, Enter
-    /// submits and keeps a non-empty line, Up/Down walk the history (past
-    /// the newest is an empty line), Home clears.
+    /// editor with history gives: typing goes in at the cursor, Backspace
+    /// takes the char before it, Left and Home move it, Enter submits and
+    /// keeps a non-empty line, Up/Down walk the history (past the newest
+    /// is an empty line), the cursor at the end.
     #[test]
     fn keys_follow_the_command_line_model(
         history in prop::collection::vec("[ab]{1,3}", 0..4),
@@ -438,22 +439,32 @@ proptest! {
             }
             term.handle_key(KeyEvent::new(Key::Enter));
         }
-        let mut input = String::new();
+        let mut input: Vec<char> = Vec::new();
+        let mut at = 0;
         let mut kept = history.clone();
         let mut pos = kept.len();
         for k in keys {
             let action = term.handle_key(KeyEvent::new(k));
             let want = match k {
                 Key::Char(c) => {
-                    input.push(c);
+                    input.insert(at, c);
+                    at += 1;
                     None
                 }
                 Key::Backspace => {
-                    input.pop();
+                    if at > 0 {
+                        at -= 1;
+                        input.remove(at);
+                    }
+                    None
+                }
+                Key::Left => {
+                    at = at.saturating_sub(1);
                     None
                 }
                 Key::Enter => {
-                    let line = std::mem::take(&mut input);
+                    let line: String = std::mem::take(&mut input).into_iter().collect();
+                    at = 0;
                     if !line.is_empty() {
                         kept.push(line.clone());
                         pos = kept.len();
@@ -463,27 +474,29 @@ proptest! {
                 Key::Up => {
                     if pos > 0 {
                         pos -= 1;
-                        input = kept[pos].clone();
+                        input = kept[pos].chars().collect();
+                        at = input.len();
                     }
                     None
                 }
                 Key::Down => {
                     if pos < kept.len() {
                         pos += 1;
-                        input = kept.get(pos).cloned().unwrap_or_default();
+                        input = kept.get(pos).map_or(Vec::new(), |l| l.chars().collect());
+                        at = input.len();
                     }
                     None
                 }
                 Key::Home => {
-                    input.clear();
+                    at = 0;
                     None
                 }
                 Key::Escape => Some(TerminalAction::Cancel),
-                Key::Tab => Some(TerminalAction::TabComplete(input.clone())),
+                Key::Tab => Some(TerminalAction::TabComplete(input.iter().collect())),
                 _ => None,
             };
             prop_assert_eq!(action, want, "{:?}", k);
-            prop_assert_eq!(term.get_input(), input.as_str(), "{:?}", k);
+            prop_assert_eq!(term.get_input(), input.iter().collect::<String>(), "{:?}", k);
         }
     }
 }
@@ -565,7 +578,7 @@ proptest! {
                     offset = offset.saturating_sub(height / 2);
                 }
                 Scroll::End => {
-                    term.handle_key(KeyEvent::new(Key::End));
+                    term.handle_key(KeyEvent::ctrl(Key::End));
                     offset = 0;
                 }
             }

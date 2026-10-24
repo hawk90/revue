@@ -14,7 +14,7 @@ mod types;
 mod view;
 
 use crate::style::Color;
-use crate::utils::ScrollState;
+use crate::utils::{EditState, ScrollState};
 use crate::widget::theme::{EDITOR_BG, MUTED_TEXT, SECONDARY_TEXT};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
@@ -52,8 +52,10 @@ pub struct Terminal {
     cursor_style: CursorStyle,
     /// Title
     title: Option<String>,
-    /// Input buffer for command mode
-    input_buffer: String,
+    /// The command line, edited as every single-line field is (#985)
+    input_buffer: EditState,
+    /// Horizontal scroll of the command line, in columns
+    input_scroll: std::cell::Cell<usize>,
     /// Command history
     history: Vec<String>,
     /// History position
@@ -94,7 +96,8 @@ impl Terminal {
             show_cursor: true,
             cursor_style: CursorStyle::Block,
             title: None,
-            input_buffer: String::new(),
+            input_buffer: EditState::single_line(),
+            input_scroll: std::cell::Cell::new(0),
             history: Vec::new(),
             history_pos: 0,
             focused: false,

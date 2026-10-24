@@ -64,11 +64,15 @@ pub struct CodeEditor {
     /// Go-to-line mode active
     goto_line_mode: bool,
     /// Go-to-line input buffer
-    goto_line_input: String,
+    goto_line_input: EditState,
+    /// Horizontal scroll of the go-to-line box's text, in columns
+    goto_scroll: std::cell::Cell<usize>,
     /// Find mode active
     find_mode: bool,
     /// Find query
-    find_query: String,
+    find_query: EditState,
+    /// Horizontal scroll of the find box's text, in columns
+    find_scroll: std::cell::Cell<usize>,
     /// Find matches
     find_matches: Vec<(usize, usize, usize)>, // (line, start, end)
     /// Current find match index
@@ -116,9 +120,11 @@ impl CodeEditor {
             show_line_numbers: true,
             focused: true,
             goto_line_mode: false,
-            goto_line_input: String::new(),
+            goto_line_input: EditState::single_line(),
+            goto_scroll: std::cell::Cell::new(0),
             find_mode: false,
-            find_query: String::new(),
+            find_query: EditState::single_line(),
+            find_scroll: std::cell::Cell::new(0),
             find_matches: Vec::new(),
             find_index: 0,
             bg: Some(Color::rgb(30, 30, 46)),

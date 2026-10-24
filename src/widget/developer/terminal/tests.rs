@@ -216,7 +216,7 @@ fn test_write_char_private() {
     // Test private write_char method
     let mut terminal = Terminal::new(80, 24);
     terminal.write_char('a');
-    assert_eq!(terminal.input_buffer, "");
+    assert_eq!(terminal.get_input(), "");
     assert_eq!(terminal.lines[0].cells.len(), 1);
 }
 
