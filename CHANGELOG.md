@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **widget:** wrap a Toast's message over its rows, and keep Toast and ToastQueue content inside narrow boxes ([#1274](https://github.com/hawk90/revue/issues/1274)) ([9879c15](https://github.com/hawk90/revue/commit/9879c15b6002a3458a3d038e347bb06e04d36fc0))
 * **widget:** wrap Tooltip and Popover text with the shared word wrap, to the area's width ([#1272](https://github.com/hawk90/revue/issues/1272)) ([4120b82](https://github.com/hawk90/revue/commit/4120b82a8dbc83ac8e0c2903f8bd7b2a84271af8))
 
+### Deprecations
+
+* **widget:** `textarea::Cursor`, `textarea::CursorSet` and `code_editor::EditOp` are deprecated; TextArea and CodeEditor now edit with `utils::EditState`. They are removed in 4.0 ([#1313](https://github.com/hawk90/revue/issues/1313))
+
 ## [3.11.1](https://github.com/hawk90/revue/compare/v3.11.0...v3.11.1) (2026-10-22)
 
 
