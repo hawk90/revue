@@ -87,7 +87,7 @@ jobs:
         with:
           components: clippy
           cache: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       # `--all-targets` adds the tests, the examples and the benches. Those
       # carried ~200 lints that no CI configuration looked at until the backlog
       # was cleared; checking them here is what stops it coming back.
@@ -115,7 +115,7 @@ jobs:
         with:
           components: clippy
           cache: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: clippy (no default features)
         run: cargo clippy --no-default-features -- -D warnings
       - name: test (no default features)
@@ -141,8 +141,8 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
           cache: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-      - uses: taiki-e/install-action@326c45d0033393b3d52f606386d8e3d237e902f3 # cargo-nextest
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - uses: taiki-e/install-action@31bc3c614629c629e983adbbe0ac85c251535667 # cargo-nextest
       # Report every failing test, not just the first: a platform-specific
       # break (Windows above all) usually fails several tests at once.
       - run: cargo nextest run --all-features --tests --no-fail-fast
@@ -165,7 +165,7 @@ jobs:
         with:
           components: rustfmt, clippy
           cache: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: revue-cli
       # revue-cli has its own [workspace] table and Cargo.lock; nothing in the
@@ -230,8 +230,8 @@ jobs:
         with:
           components: llvm-tools-preview
           cache: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-      - uses: taiki-e/install-action@671164c891d3e20f5b8ece04798d0154d1262d65 # cargo-llvm-cov
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - uses: taiki-e/install-action@c3076e6fa5aeb9a93daf1bd8eff73345250a8a9c # cargo-llvm-cov
       # Codecov's own format carries llvm-cov's region counts, so a line where
       # only some regions ran (one side of an `if`, a short-circuited `&&`)
       # shows as partial. lcov from a stable toolchain has line counts only.
@@ -261,7 +261,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.95
         with:
           components: clippy
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       # The MSRV covers every feature combination, so a dependency that raises
       # its own floor above it fails here, not in a consumer's build.
       # See CONTRIBUTING.md.
