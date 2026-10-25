@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.0](https://github.com/hawk90/revue/compare/v3.11.1...v3.12.0) (2026-10-24)
+
+
+### Features
+
+* **utils:** add EditState, one edit model for single-line and multi-line text fields ([#1283](https://github.com/hawk90/revue/issues/1283)) ([7cc0edf](https://github.com/hawk90/revue/commit/7cc0edfc1a2613c8d5c55ff948a11b4aa218b657))
+* **widget:** edit CodeEditor with the shared EditState ([#1305](https://github.com/hawk90/revue/issues/1305)) ([4829984](https://github.com/hawk90/revue/commit/48299849b82f064b7b5d1a4583ec9162ba0c1bf2))
+* **widget:** edit Input with the shared EditState ([#1284](https://github.com/hawk90/revue/issues/1284)) ([9df3a90](https://github.com/hawk90/revue/commit/9df3a9068645563330f9e597d28dcfb607d712b9))
+* **widget:** edit TextArea with the shared EditState ([#1303](https://github.com/hawk90/revue/issues/1303)) ([baddd5f](https://github.com/hawk90/revue/commit/baddd5fe35bd5e5aff8460791fc822f0e9848e42))
+
+
+### Bug Fixes
+
+* **ansi:** read escape sequences with one scanner, so none leaks into text, and keep default colors apart from white and black ([#1279](https://github.com/hawk90/revue/issues/1279)) ([7ee240f](https://github.com/hawk90/revue/commit/7ee240f487c3dff83c6888bc3afbf9f6a27eb69e))
+* **app:** stop HotReload's watcher off the dropping thread, and run the watch fault cases one at a time ([#1324](https://github.com/hawk90/revue/issues/1324)) ([a83423d](https://github.com/hawk90/revue/commit/a83423dad1af40d60247a488ea9848d539b5d05e))
+* **devtools:** draw the inspector's rows by display width, found by checking the terminal output with an emulator ([#1286](https://github.com/hawk90/revue/issues/1286)) ([8627183](https://github.com/hawk90/revue/commit/86271836737dcc0990b485c7bc4793670f151aef))
+* read SGR underline colors and drop stray controls in ANSI text, and keep RichText markup linear ([#1293](https://github.com/hawk90/revue/issues/1293)) ([8d64c5f](https://github.com/hawk90/revue/commit/8d64c5f4d1e543b474c3025094edd8b2774be0a8))
+* **style:** resolve each CSS variable once per substitution, and stop a cycle at once ([#1321](https://github.com/hawk90/revue/issues/1321)) ([946316a](https://github.com/hawk90/revue/commit/946316a31ac14b55a11b63949ca49b4cea40825c))
+* **testing:** read wide glyphs as one character and report found text by column, through one screen-text helper ([#1282](https://github.com/hawk90/revue/issues/1282)) ([813afca](https://github.com/hawk90/revue/commit/813afcabf215cf7a118f530a5fc16db1923fba1a))
+* **testing:** write a wide glyph once in a visual golden file's text layer ([#1287](https://github.com/hawk90/revue/issues/1287)) ([22f3bf4](https://github.com/hawk90/revue/commit/22f3bf4f63c5bea1511413b1589c9d278a601f99))
+* **text:** check widths and graphemes against the Unicode 17.0 data files, and give the three outliers terminal widths ([#1270](https://github.com/hawk90/revue/issues/1270)) ([7892be2](https://github.com/hawk90/revue/commit/7892be2d427a152fb99485f36fbf6ae52d3d15db))
+* **text:** keep text after an indent that fills the width, and indent first only once in char wrap ([#1271](https://github.com/hawk90/revue/issues/1271)) ([2020cb7](https://github.com/hawk90/revue/commit/2020cb7571402e5cfb785f17fbb86a54b66fafd1))
+* **utils:** count validator lengths in characters, and never say '0 months ago' ([#1267](https://github.com/hawk90/revue/issues/1267)) ([be0570f](https://github.com/hawk90/revue/commit/be0570f168e388cf7ec31efe81de81e178769594))
+* **utils:** keep EditState Send and Sync, and make its line commands take whole line blocks ([#1292](https://github.com/hawk90/revue/issues/1292)) ([c06f14c](https://github.com/hawk90/revue/commit/c06f14ce15426e7326390d7107d2c48d9884277a))
+* what the 3.12 anti-pattern sweep found in the text code ([#1295](https://github.com/hawk90/revue/issues/1295)) ([1a22c3b](https://github.com/hawk90/revue/commit/1a22c3b50f2d70e4bc818a00a61e21d3dd7178a0))
+* **widget:** always draw TextArea's cursor in a wrapped line ([#1290](https://github.com/hawk90/revue/issues/1290)) ([041d3aa](https://github.com/hawk90/revue/commit/041d3aa2ae5ad4c1d03b59bb9f4782159b4c7f93))
+* **widget:** close RichText markup tags by name, show brackets that are not a tag, and read background and hex colors ([#1278](https://github.com/hawk90/revue/issues/1278)) ([6fb7319](https://github.com/hawk90/revue/commit/6fb73195955792fb326426090146ac93099d46d1))
+* **widget:** draw Combobox's cursor on its text only while it is focused ([#1306](https://github.com/hawk90/revue/issues/1306)) ([5583e96](https://github.com/hawk90/revue/commit/5583e960a2c733fa1e4a9bf01ba429fc9999993b))
+* **widget:** edit CodeEditor's find and go-to-line boxes and Terminal's command line with EditState ([#1315](https://github.com/hawk90/revue/issues/1315)) ([21b173a](https://github.com/hawk90/revue/commit/21b173aeb7453cf0b3f03110ebc379b115ffad62))
+* **widget:** edit every single-line field with EditState, drawn by one shared field ([#1294](https://github.com/hawk90/revue/issues/1294)) ([c107e05](https://github.com/hawk90/revue/commit/c107e053438fc34e3d406d5ef41fa81f8828d056))
+* **widget:** edit SearchBar with EditState, and keep its error mark and placeholder clear of the cursor ([#1291](https://github.com/hawk90/revue/issues/1291)) ([20dbf6a](https://github.com/hawk90/revue/commit/20dbf6a18db1b03de6f1397af170fb13b2567e11))
+* **widget:** edit the Select and MultiSelect search queries with EditState ([#1309](https://github.com/hawk90/revue/issues/1309)) ([a46a5ae](https://github.com/hawk90/revue/commit/a46a5ae5c2c2c67f7ad72fc16c5dc899fa887d82))
+* **widget:** keep MaskedInput's cursor on a wide glyph cut by the field's right edge ([#1304](https://github.com/hawk90/revue/issues/1304)) ([2679c08](https://github.com/hawk90/revue/commit/2679c085bd1af32bb1909727b8b765f2fe00f9a1))
+* **widget:** keep the outer color after a nested tree-sitter capture, and give highlight spans in characters within CRLF lines ([#1280](https://github.com/hawk90/revue/issues/1280)) ([b59605b](https://github.com/hawk90/revue/commit/b59605b82691cea249784b672752f276a9cbfff7))
+* **widget:** let j and k be typed into a searchable MultiSelect and the command palette ([#1288](https://github.com/hawk90/revue/issues/1288)) ([03f2bbe](https://github.com/hawk90/revue/commit/03f2bbe2ff809b07e3d3b1c572a375d696266ae5))
+* **widget:** mask MaskedInput per character as seen, the unit its cursor moves by ([#1314](https://github.com/hawk90/revue/issues/1314)) ([a9acff5](https://github.com/hawk90/revue/commit/a9acff5b9a1bd8a0c24db59cc6674f5d2672aeba))
+* **widget:** wrap a Toast's message over its rows, and keep Toast and ToastQueue content inside narrow boxes ([#1274](https://github.com/hawk90/revue/issues/1274)) ([9879c15](https://github.com/hawk90/revue/commit/9879c15b6002a3458a3d038e347bb06e04d36fc0))
+* **widget:** wrap Tooltip and Popover text with the shared word wrap, to the area's width ([#1272](https://github.com/hawk90/revue/issues/1272)) ([4120b82](https://github.com/hawk90/revue/commit/4120b82a8dbc83ac8e0c2903f8bd7b2a84271af8))
+
+### Deprecations
+
+* **widget:** `textarea::Cursor`, `textarea::CursorSet` and `code_editor::EditOp` are deprecated; TextArea and CodeEditor now edit with `utils::EditState`. They are removed in 4.0 ([#1313](https://github.com/hawk90/revue/issues/1313))
+
 ## [3.11.1](https://github.com/hawk90/revue/compare/v3.11.0...v3.11.1) (2026-10-22)
 
 
