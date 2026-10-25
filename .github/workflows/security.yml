@@ -30,12 +30,12 @@ jobs:
         with:
           cache: false
           build-warnings: allow
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           shared-key: "security"
       # `rustsec/audit-check` runs on Node 20, which GitHub is retiring, and
       # the action has no Node 24 release. Install the binary and run it.
-      - uses: taiki-e/install-action@3e95b5d2ea53a19022dddec602c648200467d281 # cargo-audit
+      - uses: taiki-e/install-action@375b74606b681357a78b6488a4828b3b84bdd155 # cargo-audit
       - run: cargo audit
 
   deny:

@@ -56,7 +56,7 @@ jobs:
         with:
           cache: false
           build-warnings: allow
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Install cargo-semver-checks
         run: cargo install cargo-semver-checks --locked
       - name: Check API stability
@@ -100,7 +100,7 @@ jobs:
         with:
           cache: false
           build-warnings: allow
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Build and measure
         run: |
           cargo build --release --all-features
@@ -136,7 +136,7 @@ jobs:
         with:
           cache: false
           build-warnings: allow
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Run benchmarks
         run: |
           echo "## ⚡ Benchmarks" >> $GITHUB_STEP_SUMMARY
