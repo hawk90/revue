@@ -74,7 +74,7 @@ textwrap = "0.16.4"
 # ═══════════════════════════════════════════
 # Markdown & Syntax (optional)
 # ═══════════════════════════════════════════
-pulldown-cmark = { version = "0.13.4", optional = true }
+pulldown-cmark = { version = "0.13.5", optional = true }
 
 # Tree-sitter for syntax highlighting
 tree-sitter-highlight = { version = "0.27.1", optional = true }
@@ -140,7 +140,7 @@ anyhow = "1.0.104"
 # ═══════════════════════════════════════════
 [target.'cfg(unix)'.dependencies]
 signal-hook = { version = "0.4.5", default-features = false }
-libc = "0.2.190"
+libc = "0.2.191"
 
 [dev-dependencies]
 insta = "1.49.0"
@@ -277,7 +277,7 @@ name = "qrcode_showcase"
 required-features = ["qrcode"]
 
 [dependencies.tokio]
-version = "1.53.3"
+version = "1.54.1"
 features = ["rt-multi-thread", "macros", "time", "sync"]
 optional = true
 

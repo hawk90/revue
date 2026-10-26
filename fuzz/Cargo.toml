@@ -19,7 +19,7 @@ markdown = ["revue/markdown"]
 syntax-highlighting = ["revue/syntax-highlighting"]
 
 [dependencies]
-libfuzzer-sys = "0.4"
+libfuzzer-sys = "0.4.13"
 revue = { path = "..", default-features = false }
 
 [[bin]]
