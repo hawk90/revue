@@ -12,9 +12,14 @@ use revue::style::Color;
 
 /// Feed `bytes` to an emulator of `w` x `h`
 pub fn emulate(bytes: &[u8], w: u16, h: u16) -> vt100::Parser {
-    let mut parser = vt100::Parser::new(h, w, 0);
+    let mut parser = vt100::Parser::new(nz(h), nz(w), 0);
     parser.process(bytes);
     parser
+}
+
+/// A size the emulator takes: it cannot be 0
+pub fn nz(n: u16) -> std::num::NonZeroU16 {
+    std::num::NonZeroU16::new(n).expect("an emulator size is at least 1")
 }
 
 fn color(c: Option<Color>) -> vt100::Color {
