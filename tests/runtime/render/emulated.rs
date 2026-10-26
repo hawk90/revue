@@ -9,7 +9,7 @@ use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::widget::{Border, Input, RichText, Text};
 
-use crate::emulator::{difference, emulate};
+use crate::emulator::{difference, emulate, nz};
 
 // ---------------------------------------------------------------------------
 // Random buffers
@@ -115,7 +115,7 @@ proptest! {
     ) {
         let ((w, h), (w2, h2)) = sizes;
         let mut terminal = Terminal::with_size(Vec::new(), w, h);
-        let mut parser = vt100::Parser::new(h, w, 0);
+        let mut parser = vt100::Parser::new(nz(h), nz(w), 0);
         let mut seen = 0;
         let mut feed = |terminal: &Terminal<Vec<u8>>, parser: &mut vt100::Parser| {
             let out = terminal.writer();
@@ -126,7 +126,7 @@ proptest! {
         feed(&terminal, &mut parser);
         // The terminal changes size; the app redraws at the new size
         terminal.resize(w2, h2);
-        parser.screen_mut().set_size(h2, w2);
+        parser.screen_mut().set_size(nz(h2), nz(w2));
         let buffer = frame(w2, h2, &frames[1]);
         terminal.force_redraw(&buffer).unwrap();
         feed(&terminal, &mut parser);

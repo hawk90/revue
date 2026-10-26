@@ -154,7 +154,7 @@ yaml-rust2 = { version = "0.13.0", default-features = false }
 trybuild = "1.0.122"
 # A terminal emulator: tests feed it the bytes revue writes and compare its
 # screen with the buffer (#1164)
-vt100 = "0.16.2"
+vt100 = "0.18.1"
 
 # The Windows key-release test (tests/runtime/event/windows_key_release.rs) writes key
 # records into the console input buffer.
