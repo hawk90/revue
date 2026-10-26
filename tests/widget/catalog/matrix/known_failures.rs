@@ -43,7 +43,7 @@ const fn clipped(
     }
 }
 
-const ZERO_WIDTH: &str = "a zero-width char lands in the next cell (#TBD)";
+const ZERO_WIDTH: &str = "a zero-width char lands in the next cell (#1330)";
 const NEWLINES: &str = "a text with newlines measures as one row (#1068)";
 
 pub const KNOWN: &[Known] = &[
