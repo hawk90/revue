@@ -20,6 +20,8 @@ fn placements() -> Vec<Placement> {
         Placement::sized("1x2", 1, 2),
         Placement::sized("3x3", 3, 3),
         Placement::sized("80x24", 80, 24),
+        Placement::sized("10x0", 10, 0),
+        Placement::sized("0x5", 0, 5),
         Placement::far_x(),
     ]
 }
@@ -37,7 +39,7 @@ const FOCUS: [bool; 2] = [false, true];
 const PATHS: [Path; 2] = [Path::Direct, Path::App];
 
 /// Index of the far-offset placement, which the app path cannot use.
-const FAR: usize = 6;
+const FAR: usize = 8;
 
 /// Greedy all-pairs over factor sizes `dims`; returns index tuples.
 /// `allowed` rejects impossible combinations.

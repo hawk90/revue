@@ -9,6 +9,8 @@ use super::{run_layer, Case, Content, Path, Placement};
 pub fn placements() -> Vec<Placement> {
     vec![
         Placement::sized("0x0", 0, 0),
+        Placement::sized("10x0", 10, 0),
+        Placement::sized("0x5", 0, 5),
         Placement::sized("1x1", 1, 1),
         Placement::sized("2x1", 2, 1),
         Placement::sized("1x2", 1, 2),

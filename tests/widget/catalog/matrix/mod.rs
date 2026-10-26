@@ -1,12 +1,17 @@
 //! The widget matrix: every public widget rendered across boundary sizes,
 //! edge contents, focus states and render paths, checked for two invariants -
-//! no panic, and nothing written outside the widget's area.
+//! no panic, and nothing written outside the widget's area - and measured
+//! against what it paints.
 //!
-//! Three layers, one file each, so a failure names its layer:
+//! Four layers, one file each, so a failure names its layer:
 //!
 //! - `matrix/sizes.rs` - boundary areas, one ordinary content;
 //! - `matrix/contents.rs` - edge contents, one ordinary area;
-//! - `matrix/pairwise.rs` - all pairs of {size, content, focus, path}.
+//! - `matrix/pairwise.rs` - all pairs of {size, content, focus, path};
+//! - `matrix/measure.rs` - `measure` against `render`.
+//!
+//! `matrix/completeness.rs` checks that every `View` in `src/` is in the
+//! catalog.
 //!
 //! Known failures live in `matrix/known_failures.rs`; the list may only shrink.
 //! See <https://github.com/hawk90/revue/blob/8f9dcb2e850e85e04f252a388e52ed037fe57179/docs/refactor/findings-widget-matrix.md>.
@@ -32,8 +37,10 @@
 //! the boundary sizes instead.
 
 pub mod catalog;
+pub mod completeness;
 pub mod contents;
 pub mod known_failures;
+pub mod measure;
 pub mod pairwise;
 pub mod sentinel;
 pub mod sizes;
@@ -170,6 +177,10 @@ impl Case<'_> {
 pub enum Kind {
     Panic,
     OutOfArea,
+    /// `measure` answered `None` for a widget not listed as filling.
+    NoMeasure,
+    /// Rendering at the measured size loses what rendering at the offer paints.
+    Clipped,
 }
 
 impl fmt::Display for Kind {
@@ -177,6 +188,8 @@ impl fmt::Display for Kind {
         f.write_str(match self {
             Kind::Panic => "panic",
             Kind::OutOfArea => "out-of-area",
+            Kind::NoMeasure => "no-measure",
+            Kind::Clipped => "clipped",
         })
     }
 }
