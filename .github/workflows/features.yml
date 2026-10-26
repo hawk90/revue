@@ -40,10 +40,10 @@ jobs:
         with:
           components: clippy
           cache: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           shared-key: "features"
-      - uses: taiki-e/install-action@cac6346340546319497bf24d4d54239150229f11 # cargo-hack
+      - uses: taiki-e/install-action@781e5634d799061414a34d10dd585bd3ebdb10f5 # cargo-hack
       # `--no-default-features --features X` for every X, plus the default
       # set, no features and all features. `--keep-going` reports every
       # failing feature, not just the first.
@@ -63,10 +63,10 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
           cache: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           shared-key: "features"
-      - uses: taiki-e/install-action@cac6346340546319497bf24d4d54239150229f11 # cargo-hack
+      - uses: taiki-e/install-action@781e5634d799061414a34d10dd585bd3ebdb10f5 # cargo-hack
       # Presets (`full`, `std`, `gui`, `all-gui`, `default`) are unions of the
       # leaf features, so pairs of leaves cover them.
       - name: check (every pair of features)
