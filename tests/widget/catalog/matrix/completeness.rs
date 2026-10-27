@@ -2,8 +2,9 @@
 //! widget cannot skip the matrix.
 //!
 //! The source is scanned for `impl ... View for <Type>` lines; a type counts
-//! as covered when a catalog entry carries its name. The test needs every
-//! feature that gates a catalog entry (CI runs with `--all-features`).
+//! as covered when a catalog entry carries its name. The module is built only
+//! with every feature that gates a catalog entry (CI runs with
+//! `--all-features`; see `mod.rs`).
 
 use std::path::Path;
 
@@ -63,13 +64,6 @@ fn scan(dir: &Path, found: &mut Vec<(String, String)>) {
 }
 
 #[test]
-#[cfg(all(
-    feature = "diff",
-    feature = "image",
-    feature = "markdown",
-    feature = "qrcode",
-    feature = "sysinfo"
-))]
 fn every_view_in_src_is_in_the_catalog() {
     let mut found = Vec::new();
     scan(

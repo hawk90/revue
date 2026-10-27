@@ -37,6 +37,13 @@
 //! the boundary sizes instead.
 
 pub mod catalog;
+#[cfg(all(
+    feature = "diff",
+    feature = "image",
+    feature = "markdown",
+    feature = "qrcode",
+    feature = "sysinfo"
+))]
 pub mod completeness;
 pub mod contents;
 pub mod known_failures;
