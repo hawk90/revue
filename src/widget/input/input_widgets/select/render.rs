@@ -28,6 +28,10 @@ const HEADER_TEXT_COL: u16 = 2;
 const HEADER_RESERVE: u16 = 2;
 
 impl View for Select {
+    /// One row: the open list is an overlay and takes no space here.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.display_width(max_width), 1.min(max_height)))
+    }
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < MIN_DROPDOWN_WIDTH || area.height < 1 {

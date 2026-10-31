@@ -196,6 +196,23 @@ impl QrCodeWidget {
 }
 
 impl View for QrCodeWidget {
+    /// The matrix in this style's cells per module, or the error text.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let Some(matrix) = self.get_matrix() else {
+            return Some((8.min(max_width), 1.min(max_height)));
+        };
+        let n = matrix.len();
+        let (w, h) = match self.style {
+            QrStyle::HalfBlock => (n, n.div_ceil(2)),
+            QrStyle::FullBlock | QrStyle::Ascii => (n * 2, n),
+            QrStyle::Braille => (n.div_ceil(2), n.div_ceil(4)),
+        };
+        Some((
+            u16::try_from(w).unwrap_or(u16::MAX).min(max_width),
+            u16::try_from(h).unwrap_or(u16::MAX).min(max_height),
+        ))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let Some(matrix) = self.get_matrix() else {
             // Render error message if QR generation fails

@@ -532,6 +532,10 @@ impl<F> View for Resizable<F>
 where
     F: FnMut(u16, u16),
 {
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.width.min(max_width), self.height.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         self.draw_handles(ctx);
     }

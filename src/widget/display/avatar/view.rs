@@ -130,6 +130,16 @@ impl Avatar {
 }
 
 impl View for Avatar {
+    /// The shape's cells, and a column for the status dot when there is one.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let (w, h) = match self.size {
+            AvatarSize::Small => (1, 1),
+            AvatarSize::Medium => (4, 1),
+            AvatarSize::Large => (5, 3),
+        };
+        let w = w + u16::from(self.status.is_some());
+        Some((w.min(max_width), h.min(max_height)))
+    }
     crate::impl_view_meta!("Avatar");
 
     fn render(&self, ctx: &mut RenderContext) {

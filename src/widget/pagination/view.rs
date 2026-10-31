@@ -50,6 +50,50 @@ impl Pagination {
         }
     }
 
+    /// The columns the current style draws. Follows the `render_*` methods.
+    fn natural_width(&self) -> u16 {
+        let digits = |n: u16| n.to_string().len() as u16;
+        match self.style {
+            PaginationStyle::Full => {
+                let (start, end) = self.visible_range();
+                let mut x = 0u16;
+                // The button after the pages: its own column, no space after.
+                if self.show_edges {
+                    x += 2 + 1;
+                }
+                if self.show_arrows {
+                    x += 2 + 2;
+                }
+                if start > 1 {
+                    x += 2 + if start > 2 { 2 } else { 0 };
+                }
+                for page in start..=end {
+                    x = x.saturating_add(digits(page) + 1);
+                    if page == self.current {
+                        x += 2;
+                    }
+                }
+                if end < self.total {
+                    if end < self.total - 1 {
+                        x += 2;
+                    }
+                    x = x.saturating_add(digits(self.total) + 1);
+                }
+                // Without a last button, the space after the final page or
+                // arrow is not drawn.
+                if self.show_edges {
+                    x
+                } else {
+                    x.saturating_sub(1)
+                }
+            }
+            // `← ` the text ` →`
+            PaginationStyle::Simple => 8 + 4 + digits(self.current) + digits(self.total) + 1,
+            PaginationStyle::Compact => digits(self.current) + digits(self.total) + 1,
+            PaginationStyle::Dots => (self.total.saturating_mul(2)).saturating_sub(1),
+        }
+    }
+
     /// Full: `« ‹ 1 2 [3] 4 5 › »`
     fn render_full(&self, ctx: &mut RenderContext, inactive_color: Color, focus_mark: Modifier) {
         let mut x: u16 = 0;
@@ -213,6 +257,10 @@ impl Pagination {
 }
 
 impl View for Pagination {
+    /// One row as wide as the current style draws it.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.natural_width().min(max_width), 1.min(max_height)))
+    }
     crate::impl_view_meta!("Pagination");
 
     fn render(&self, ctx: &mut RenderContext) {

@@ -10,6 +10,28 @@ use crate::widget::traits::{RenderContext, View};
 use super::Collapsible;
 
 impl View for Collapsible {
+    /// The header, and while expanded the content with its bottom border; the
+    /// header and border stretch across the offered width.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let body = if self.expanded {
+            let lines = u16::try_from(self.content.len()).unwrap_or(u16::MAX);
+            lines.saturating_add(u16::from(self.show_border))
+        } else {
+            0
+        };
+        let area = crate::widget::layout::constraints::constrain(
+            crate::layout::Rect::new(0, 0, max_width, body.saturating_add(1)),
+            self.min_width,
+            self.min_height,
+            self.max_width,
+            self.max_height,
+        );
+        Some((area.width.min(max_width), area.height.min(max_height)))
+    }
+
+    fn fills(&self) -> crate::widget::Fill {
+        crate::widget::Fill::WIDTH
+    }
     crate::impl_view_meta!("Collapsible");
 
     fn render(&self, ctx: &mut RenderContext) {

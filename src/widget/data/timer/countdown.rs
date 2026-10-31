@@ -282,13 +282,13 @@ impl Timer {
     }
 }
 
-impl View for Timer {
-    fn render(&self, ctx: &mut RenderContext) {
+impl Timer {
+    /// What the timer draws, in `color`; `render` and `measure` share it.
+    fn content(&self, color: Color) -> crate::widget::stack::Stack {
         use crate::widget::stack::{hstack, vstack};
         use crate::widget::Progress;
         use crate::widget::Text;
 
-        let color = self.current_color(ctx);
         let mut content = vstack();
 
         // Title
@@ -325,9 +325,23 @@ impl View for Timer {
             TimerState::Paused => "Paused",
             TimerState::Completed => "Completed!",
         };
-        content = content.child(Text::new(state_text).fg(PLACEHOLDER_FG));
+        content.child(Text::new(state_text).fg(PLACEHOLDER_FG))
+    }
+}
 
-        content.render(ctx);
+impl View for Timer {
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        self.content(Color::WHITE).measure(max_width, max_height)
+    }
+
+    /// The progress bar stretches, unless it has a width of its own.
+    fn fills(&self) -> crate::widget::Fill {
+        self.content(Color::WHITE).fills()
+    }
+
+    fn render(&self, ctx: &mut RenderContext) {
+        let color = self.current_color(ctx);
+        self.content(color).render(ctx);
     }
 
     crate::impl_view_meta!("Timer");

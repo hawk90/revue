@@ -11,6 +11,21 @@ use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for NumberInput {
+    /// One row of its set width, or of the offered width without one.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((
+            self.width.map_or(max_width, |w| w.min(max_width)),
+            1.min(max_height),
+        ))
+    }
+
+    fn fills(&self) -> crate::widget::Fill {
+        if self.width.is_none() {
+            crate::widget::Fill::WIDTH
+        } else {
+            crate::widget::Fill::NONE
+        }
+    }
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {

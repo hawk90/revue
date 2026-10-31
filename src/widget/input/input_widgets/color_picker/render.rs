@@ -9,6 +9,47 @@ use crate::widget::theme::{LIGHT_GRAY, SEPARATOR_COLOR};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for ColorPicker {
+    /// The current mode's rows, the preview block below them and the builder's
+    /// border. Sliders stretch across the offered width.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        use super::types::ColorPickerMode;
+
+        let preview_w = 6 + if self.show_hex { 8 } else { 0 };
+        let (w, rows) = match self.mode {
+            ColorPickerMode::Palette => {
+                let (cols, _) = self.palette.grid_size();
+                let rows = self.palette.colors().len().div_ceil(cols.max(1));
+                // The grid stops two rows short of the bottom even without
+                // the preview that normally sits there.
+                let reserved = if self.show_preview { 0 } else { 2 };
+                (cols * 2, rows + reserved)
+            }
+            ColorPickerMode::Rgb | ColorPickerMode::Hsl => (usize::from(max_width), 3),
+            // "Current: #RRGGBB", two rows below the input
+            ColorPickerMode::Hex => (16, 3),
+        };
+        let (preview_w, preview_h) = if self.show_preview {
+            (preview_w, 2)
+        } else {
+            (0, 0)
+        };
+        let border = if self.border_color.is_some() { 2 } else { 0 };
+        let clamp = |n: usize, max: u16| u16::try_from(n).unwrap_or(u16::MAX).min(max);
+        // Below 10x4 it draws nothing.
+        Some((
+            clamp((w.max(preview_w) + border).max(10), max_width),
+            clamp((rows + preview_h + border).max(4), max_height),
+        ))
+    }
+
+    fn fills(&self) -> crate::widget::Fill {
+        use super::types::ColorPickerMode;
+
+        match self.mode {
+            ColorPickerMode::Rgb | ColorPickerMode::Hsl => crate::widget::Fill::WIDTH,
+            ColorPickerMode::Palette | ColorPickerMode::Hex => crate::widget::Fill::NONE,
+        }
+    }
     crate::impl_view_meta!("ColorPicker", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {

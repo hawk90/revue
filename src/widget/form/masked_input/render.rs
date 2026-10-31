@@ -90,14 +90,14 @@ impl MaskedInput {
 
     /// The field between the brackets: its text with the cursor when
     /// focused, and the reveal indicator when revealing is allowed
-    fn field(&self, ctx: &RenderContext) -> Stack {
+    fn field(&self, css_color: Option<Color>) -> Stack {
         let text_fg = if self.disabled {
             Some(DISABLED_FG)
         } else {
             // The typed value takes `color`. The placeholder, the disabled
             // grey and the strength scale keep theirs - the scale in
             // particular runs red to green, and one `color` cannot say that.
-            self.fg.or_else(|| ctx.css_color_if_set())
+            self.fg.or(css_color)
         };
         let style = |kind: FieldCell| match kind {
             FieldCell::Cursor => (Some(Color::BLACK), Some(Color::WHITE)),
@@ -181,7 +181,19 @@ impl MaskedInput {
 impl View for MaskedInput {
     crate::impl_view_meta!("MaskedInput");
 
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        self.content(None).measure(max_width, max_height)
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
+        self.content(ctx.css_color_if_set()).render(ctx);
+    }
+}
+
+impl MaskedInput {
+    /// What the field draws, the typed value in `css_color` unless the
+    /// builder named one; `render` and `measure` share it.
+    fn content(&self, css_color: Option<Color>) -> Stack {
         let mut content = vstack();
 
         // Label
@@ -194,7 +206,7 @@ impl View for MaskedInput {
 
         let bordered = hstack()
             .child(Text::new("[").fg(border_color))
-            .child(self.field(ctx))
+            .child(self.field(css_color))
             .child(Text::new("]").fg(border_color));
 
         content = content.child(bordered);
@@ -209,6 +221,6 @@ impl View for MaskedInput {
             content = content.child(Text::new(msg).fg(Color::RED));
         }
 
-        content.render(ctx);
+        content
     }
 }

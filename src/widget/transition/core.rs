@@ -148,6 +148,20 @@ impl Default for Transition {
 }
 
 impl View for Transition {
+    /// One row as wide as the content, also while it is being revealed, so
+    /// the widgets around it stay put; nothing while it is hidden.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let hidden = self.phase == TransitionPhase::Hidden
+            || (!self.visible && self.phase == TransitionPhase::Visible);
+        if hidden {
+            return Some((0, 0));
+        }
+        let w = crate::utils::display_width(&self.child_content);
+        Some((
+            u16::try_from(w).unwrap_or(u16::MAX).min(max_width),
+            1.min(max_height),
+        ))
+    }
     crate::impl_view_meta!("Transition");
 
     fn render(&self, ctx: &mut RenderContext) {

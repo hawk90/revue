@@ -44,6 +44,47 @@ impl Stepper {
 }
 
 impl View for Stepper {
+    /// Horizontal: the offered width, with the indicators, titles and
+    /// descriptions on a row each. Vertical: a row per title, description and
+    /// connector, as wide as the longest text past the indicator.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        if self.steps.is_empty() {
+            return Some((0, 0));
+        }
+        let has_desc = |step: &Step| self.show_descriptions && step.description.is_some();
+        let (w, h) = match self.orientation {
+            StepperOrientation::Horizontal => (
+                usize::from(max_width),
+                2 + usize::from(self.steps.iter().any(has_desc)),
+            ),
+            StepperOrientation::Vertical => {
+                let width = |text: &str| crate::utils::display_width(text);
+                let w = self.steps.iter().map(|step| {
+                    let desc = step.description.as_deref().filter(|_| has_desc(step));
+                    width(&step.title).max(desc.map_or(0, width))
+                });
+                let connectors = if matches!(self.style, StepperStyle::Connected) {
+                    self.steps.len() - 1
+                } else {
+                    0
+                };
+                let descs = self.steps.iter().filter(|s| has_desc(s)).count();
+                (
+                    w.max().unwrap_or(0) + 3,
+                    self.steps.len() + descs + connectors,
+                )
+            }
+        };
+        let clamp = |n: usize, max: u16| u16::try_from(n).unwrap_or(u16::MAX).min(max);
+        Some((clamp(w, max_width), clamp(h, max_height)))
+    }
+
+    fn fills(&self) -> crate::widget::Fill {
+        match self.orientation {
+            StepperOrientation::Horizontal => crate::widget::Fill::WIDTH,
+            StepperOrientation::Vertical => crate::widget::Fill::NONE,
+        }
+    }
     crate::impl_view_meta!("Stepper", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {

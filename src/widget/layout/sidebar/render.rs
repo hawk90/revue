@@ -107,6 +107,11 @@ impl Sidebar {
         }
     }
 
+    /// The columns the bar takes in an area `area_width` wide.
+    pub(super) fn bar_width(&self, area_width: u16) -> u16 {
+        self.bar(area_width).width
+    }
+
     /// Whether the bar is collapsed in an area `area_width` wide, and the
     /// width it takes there
     fn bar(&self, area_width: u16) -> Bar {

@@ -9,6 +9,26 @@ use crate::widget::traits::{RenderContext, View};
 const MIN_WIDTH: u16 = 10;
 
 impl View for ThemePicker {
+    /// The header (35 columns at most unless a width is set; compact: the
+    /// swatch), and the open list, which is drawn in place.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let known = self
+            .themes
+            .iter()
+            .filter(|id| get_theme(id).is_some())
+            .count();
+        let known = u16::try_from(known).unwrap_or(u16::MAX);
+        let open = self.open && !self.themes.is_empty();
+        let (w, list) = if self.compact {
+            (MIN_WIDTH, if open { known } else { 0 })
+        } else {
+            (
+                self.width.unwrap_or(max_width.min(35)).max(MIN_WIDTH),
+                if open { known.saturating_add(2) } else { 0 },
+            )
+        };
+        Some((w.min(max_width), list.saturating_add(1).min(max_height)))
+    }
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < MIN_WIDTH || area.height < 1 {

@@ -244,6 +244,17 @@ impl Default for Calendar {
 }
 
 impl View for Calendar {
+    /// The header, the day names and six weeks, whichever month is shown, so
+    /// moving between months does not move the widgets around it. The arrows
+    /// take the column past the seven days, week numbers four more.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let border = if self.border_color.is_some() { 2 } else { 0 };
+        let weeks = if self.show_week_numbers { 4 } else { 0 };
+        Some((
+            (22 + weeks + border).min(max_width),
+            (9 + border).min(max_height),
+        ))
+    }
     crate::impl_view_meta!("Calendar");
 
     fn render(&self, ctx: &mut RenderContext) {

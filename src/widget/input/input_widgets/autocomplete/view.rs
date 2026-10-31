@@ -121,6 +121,20 @@ impl Autocomplete {
 }
 
 impl View for Autocomplete {
+    /// The input row, and a row per suggestion while the list is open; every
+    /// row stretches across the offered width.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let list = if self.dropdown_visible {
+            u16::try_from(self.filtered.len()).unwrap_or(u16::MAX)
+        } else {
+            0
+        };
+        Some((max_width, list.saturating_add(1).min(max_height)))
+    }
+
+    fn fills(&self) -> crate::widget::Fill {
+        crate::widget::Fill::WIDTH
+    }
     crate::impl_view_meta!("Autocomplete", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {

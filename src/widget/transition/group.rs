@@ -114,6 +114,21 @@ impl Default for TransitionGroup {
 }
 
 impl View for TransitionGroup {
+    /// A row per item, as wide as the longest.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let w = self
+            .items
+            .iter()
+            .map(|item| crate::utils::display_width(item))
+            .max()
+            .unwrap_or(0);
+        Some((
+            u16::try_from(w).unwrap_or(u16::MAX).min(max_width),
+            u16::try_from(self.items.len())
+                .unwrap_or(u16::MAX)
+                .min(max_height),
+        ))
+    }
     crate::impl_view_meta!("TransitionGroup");
 
     fn render(&self, ctx: &mut RenderContext) {

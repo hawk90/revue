@@ -112,6 +112,27 @@ impl FormFieldWidget {
 }
 
 impl View for FormFieldWidget {
+    /// The label row, the value row and the helper row when there is helper
+    /// text, as wide as the longest of them.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let width = crate::utils::display_width;
+        let label = if self.show_label {
+            width(&self.name)
+        } else {
+            0
+        };
+        let value = if self.placeholder.is_empty() {
+            width(&self.name)
+        } else {
+            width(&self.placeholder)
+        };
+        let w = label.max(value).max(width(&self.helper_text));
+        let rows = if self.helper_text.is_empty() { 2 } else { 3 };
+        Some((
+            u16::try_from(w).unwrap_or(u16::MAX).min(max_width),
+            u16::min(rows, max_height),
+        ))
+    }
     crate::impl_view_meta!("FormField");
 
     fn render(&self, ctx: &mut RenderContext) {

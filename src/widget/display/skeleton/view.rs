@@ -121,6 +121,25 @@ fn put(ctx: &mut RenderContext, x: u16, y: u16, ch: char, color: Color) {
 }
 
 impl View for Skeleton {
+    /// The configured size; a rectangle or paragraph with no width takes the
+    /// offered one.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let (w, h) = match self.shape {
+            SkeletonShape::Rectangle => (self.fill_width(max_width), self.height),
+            SkeletonShape::Circle => (self.height.max(1), self.height.max(1)),
+            SkeletonShape::Paragraph => (self.fill_width(max_width), self.lines),
+        };
+        Some((w.min(max_width), h.min(max_height)))
+    }
+
+    /// With no width of its own, a rectangle or paragraph stretches.
+    fn fills(&self) -> crate::widget::Fill {
+        if self.width == 0 && self.shape != SkeletonShape::Circle {
+            crate::widget::Fill::WIDTH
+        } else {
+            crate::widget::Fill::NONE
+        }
+    }
     crate::impl_view_meta!("Skeleton");
 
     fn render(&self, ctx: &mut RenderContext) {
