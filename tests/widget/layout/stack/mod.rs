@@ -2,6 +2,7 @@
 
 mod boundary;
 mod content_sized;
+mod geometry_properties;
 mod props;
 mod wrapper_minimums;
 

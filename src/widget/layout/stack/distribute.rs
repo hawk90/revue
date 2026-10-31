@@ -123,7 +123,9 @@ impl Stack {
                 let size = if fi == flex_indices.len() - 1 {
                     flex_space.saturating_sub(distributed)
                 } else {
-                    ((flex_space as f32) * grow / total_grow).round() as u16
+                    // Rounding up may not take more than is left.
+                    let share = ((flex_space as f32) * grow / total_grow).round() as u16;
+                    share.min(flex_space.saturating_sub(distributed))
                 };
                 result[i] = size;
                 distributed = distributed.saturating_add(size);
