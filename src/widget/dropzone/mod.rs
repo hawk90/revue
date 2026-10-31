@@ -25,7 +25,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::event::drag::{DragData, DragId};
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{WidgetProps, WidgetState};
 
 // Re-exports
@@ -55,7 +54,7 @@ where
     /// Can accept current drag
     can_accept_current: bool,
     /// Normal border color
-    border_color: Color,
+    border_color: Option<Color>,
     /// Border color while a drag it would accept hovers over it
     hover_color: Color,
     /// Reject indicator color
@@ -81,7 +80,7 @@ impl DropZone<fn(DragData) -> bool> {
             on_drop: None,
             hovered: false,
             can_accept_current: false,
-            border_color: DISABLED_FG,
+            border_color: None,
             hover_color: Color::rgb(100, 200, 100),
             reject_color: Color::rgb(200, 100, 100),
             state: WidgetState::new(),

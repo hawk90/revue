@@ -463,6 +463,7 @@ items:
         widgets answer the rows they draw, and an open dropdown drawn as an overlay takes no space
       - under css_layout, a measured child's main-axis CSS box (height/width, min/max, margins) is folded into its
         slot; display none takes no space or gap
+      - a filling child can ask for a minimum (DropZone::min_height), and its share does not go below it
       - a nested stack is measured with the CSS inside it (its gap, its children's boxes, at any depth); another
         measuring widget whose subtree adds CSS spacing fills instead of clipping
       - a flex-wrap row in a content-sized parent shows every line, each as tall as its tallest item
@@ -479,6 +480,7 @@ items:
       - tests/widget/traits/view/content_sized.rs::avatar_leaves_the_rest_of_a_row_to_its_neighbour
       - tests/widget/traits/view/content_sized.rs::open_lists_in_an_overlay_take_no_space
       - tests/widget/catalog/matrix/measure.rs::every_widget_measures_what_it_paints
+      - tests/widget/dropzone/view.rs::a_stack_gives_min_height_as_a_lower_bound
       - src/widget/traits/view.rs::fills
       - tests/widget/layout/stack/content_sized/mod.rs::a_progress_bar_takes_the_row_the_brackets_leave
       - tests/widget/layout/stack/content_sized/mod.rs::two_fillers_in_a_row_split_the_leftover

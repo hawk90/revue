@@ -45,10 +45,10 @@ where
             } else {
                 self.reject_color
             }
-        } else if self.border_color != DISABLED_FG {
-            self.border_color
         } else {
-            ctx.css_border_or_text_color().unwrap_or(DISABLED_FG)
+            self.border_color
+                .or_else(|| ctx.css_border_or_text_color())
+                .unwrap_or(DISABLED_FG)
         }
     }
 
@@ -65,6 +65,15 @@ where
     fn draw_frame(&self, ctx: &mut RenderContext, height: u16, color: Color) {
         let width = ctx.area.width;
         let (tl, tr, bl, br, h, v) = self.border_chars();
+
+        // One row cannot hold a top and a bottom: the sides, around the text.
+        if height == 1 {
+            put(ctx, 0, 0, v, color);
+            if width > 1 {
+                put(ctx, width - 1, 0, v, color);
+            }
+            return;
+        }
 
         // Top border
         put(ctx, 0, 0, tl, color);
@@ -124,6 +133,12 @@ where
 
     /// The placeholder at rest, or the drag's verdict while one hovers.
     fn draw_placeholder(&self, ctx: &mut RenderContext, height: u16, color: Color, resting: Color) {
+        // Inside a frame the text keeps off its two border rows; two rows are
+        // nothing but border.
+        let framed = matches!(self.style, DropZoneStyle::Solid | DropZoneStyle::Dashed);
+        if framed && height == 2 {
+            return;
+        }
         let text_y = height / 2;
         let text_x: u16 = 2;
         let max_len = ctx.area.width.saturating_sub(4);
@@ -176,8 +191,15 @@ impl<F> View for DropZone<F>
 where
     F: FnMut(DragData) -> bool,
 {
+    /// At least `min_height` rows, however little the others leave.
+    fn min_size(&self) -> (u16, u16) {
+        (0, self.min_height)
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
-        let height = ctx.area.height.max(self.min_height);
+        // Draws into the area it is given; `min_height` asks the layout for
+        // rows through `min_size`.
+        let height = ctx.area.height;
         let disabled = self.state.disabled;
         // Disabled, the zone is greyed out at rest; a drag over it still gets
         // the reject color, which says why nothing happens.

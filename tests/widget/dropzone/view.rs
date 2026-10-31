@@ -2,12 +2,13 @@
 //! the drag verdict, colors, focus and the disabled state
 
 use revue::event::drag::DragData;
+use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};
 use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::widget::theme::{DISABLED_FG, LIGHT_GRAY};
-use revue::widget::traits::Draggable;
-use revue::widget::{DropZone, DropZoneStyle};
+use revue::widget::traits::{Draggable, RenderContext, View};
+use revue::widget::{hstack, vstack, DropZone, DropZoneStyle, Stack, Text};
 
 use super::{fg, render, row, symbol};
 use crate::traits::placement::{assert_same_when_offset, assert_zero_areas_draw_nothing};
@@ -400,4 +401,162 @@ fn the_builders_and_a_drag_win_over_the_stylesheet() {
     zone.set_hovered(true, true);
     let hovered = styled(css, &zone);
     assert_eq!(fg(hovered.buffer(), 0, 0), Some(Color::rgb(100, 200, 100)));
+}
+
+// =========================================================================
+// #1107: small areas, min_height as a lower bound, an explicit grey border
+// =========================================================================
+
+fn rows_of(view: &dyn View, width: u16, height: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+    view.render(&mut ctx);
+    (0..height)
+        .map(|y| {
+            (0..width)
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect()
+        })
+        .collect()
+}
+
+#[test]
+fn the_frame_stays_closed_whatever_the_min_height() {
+    for min in [0, 3, 5, 10, u16::MAX] {
+        assert_eq!(
+            rows_of(&DropZone::new("Drop").min_height(min), 8, 3),
+            ["┌──────┐", "│ Drop │", "└──────┘"],
+            "min_height {min}"
+        );
+        // Two rows are nothing but border; the text is not drawn over it.
+        assert_eq!(
+            rows_of(&DropZone::new("Drop").min_height(min), 8, 2),
+            ["┌──────┐", "└──────┘"],
+            "min_height {min}"
+        );
+        // One row: the sides and the text.
+        assert_eq!(
+            rows_of(&DropZone::new("Drop").min_height(min), 8, 1),
+            ["│ Drop │"],
+            "min_height {min}"
+        );
+    }
+    // Taller than three rows: the text on the middle row.
+    assert_eq!(
+        rows_of(&DropZone::new("Drop"), 8, 5),
+        ["┌──────┐", "│      │", "│ Drop │", "│      │", "└──────┘"]
+    );
+    // The narrowest areas stay in bounds.
+    assert_eq!(rows_of(&DropZone::new("Drop"), 1, 1), ["│"]);
+    assert_eq!(rows_of(&DropZone::new("Drop"), 2, 1), ["││"]);
+    assert_eq!(rows_of(&DropZone::new("Drop"), 1, 2), ["┌", "└"]);
+}
+
+#[test]
+fn the_other_styles_draw_into_small_areas_too() {
+    let dashed = DropZone::new("Drop").style(DropZoneStyle::Dashed);
+    assert_eq!(rows_of(&dashed, 8, 2), ["┌╌╌╌╌╌╌┐", "└╌╌╌╌╌╌┘"]);
+    // No border to keep off: the text takes its row at any height.
+    let minimal = DropZone::new("Drop").style(DropZoneStyle::Minimal);
+    assert_eq!(rows_of(&minimal, 8, 2), ["│       ", "│ Drop  "]);
+    assert_eq!(rows_of(&minimal, 8, 1), ["│ Drop  "]);
+    let tall = DropZone::new("Drop")
+        .style(DropZoneStyle::Minimal)
+        .min_height(9);
+    assert_eq!(rows_of(&tall, 8, 2), ["│       ", "│ Drop  "]);
+}
+
+#[test]
+fn a_stack_gives_min_height_as_a_lower_bound() {
+    fn column(zone: impl View + 'static) -> Stack {
+        vstack()
+            .child(Text::new("top"))
+            .child(zone)
+            .child(Text::new("end"))
+    }
+    let plain = || DropZone::new("Drop");
+    // With room it fills, past its minimum.
+    assert_eq!(
+        rows_of(&column(plain().min_height(3)), 6, 7),
+        [
+            "top   ",
+            "┌────┐",
+            "│    │",
+            "│ Dr │",
+            "│    │",
+            "└────┘",
+            "end   "
+        ]
+    );
+    // With exactly its minimum, it gets it.
+    assert_eq!(
+        rows_of(&column(plain().min_height(3)), 6, 5),
+        ["top   ", "┌────┐", "│ Dr │", "└────┘", "end   "]
+    );
+    // Short of room it keeps the minimum; what no longer fits is cut, as a
+    // CSS `min-height` overflows.
+    assert_eq!(
+        rows_of(&column(plain().min_height(3)), 6, 4),
+        ["top   ", "┌────┐", "│ Dr │", "└────┘"]
+    );
+    // Without a minimum it takes what the others leave, as before.
+    assert_eq!(
+        rows_of(&column(plain().min_height(0)), 6, 4),
+        ["top   ", "┌────┐", "└────┘", "end   "]
+    );
+    // Two fillers: the larger minimum is kept, the other takes the rest.
+    let two = vstack()
+        .child(plain().min_height(4))
+        .child(plain().min_height(0));
+    assert_eq!(
+        rows_of(&two, 6, 6),
+        ["┌────┐", "│    │", "│ Dr │", "└────┘", "┌────┐", "└────┘"]
+    );
+    // Through nested stacks: along a column it adds up, across a row it is
+    // the largest.
+    let nested = vstack()
+        .child(vstack().child(plain().min_height(3)))
+        .child(Text::new("end"));
+    assert_eq!(rows_of(&nested, 6, 3), ["┌────┐", "│ Dr │", "└────┘"]);
+    let across = vstack()
+        .child(
+            hstack()
+                .child(plain().min_height(3))
+                .child(plain().min_height(2)),
+        )
+        .child(Text::new("end"));
+    assert_eq!(
+        rows_of(&across, 12, 3),
+        ["┌────┐┌────┐", "│ Dr ││ Dr │", "└────┘└────┘"]
+    );
+    // In a row it asks nothing of the width.
+    let row = hstack().child(plain()).child(plain());
+    assert_eq!(rows_of(&row, 8, 1), ["│  ││  │"]);
+}
+
+#[test]
+fn an_explicit_grey_border_beats_the_stylesheet() {
+    let zone = DropZone::new("Drop")
+        .element_id("w")
+        .border_color(DISABLED_FG);
+    let mut h = PipelineHarness::with_css("#w { color: #112233; }", 12, 3).dom_from_render(true);
+    h.draw(&zone);
+    assert_eq!(h.buffer().get(0, 0).unwrap().fg, Some(DISABLED_FG));
+    // Not named by the builder: the stylesheet, then the default grey.
+    let zone = DropZone::new("Drop").element_id("w");
+    let mut h = PipelineHarness::with_css("#w { color: #112233; }", 12, 3).dom_from_render(true);
+    h.draw(&zone);
+    assert_eq!(
+        h.buffer().get(0, 0).unwrap().fg,
+        Some(Color::rgb(17, 34, 51))
+    );
+    assert_eq!(
+        {
+            let mut buffer = Buffer::new(8, 3);
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 8, 3));
+            DropZone::new("Drop").render(&mut ctx);
+            buffer.get(0, 0).unwrap().fg
+        },
+        Some(DISABLED_FG)
+    );
 }
