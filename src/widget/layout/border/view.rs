@@ -6,7 +6,7 @@ use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::{BorderStyle, Color};
 use crate::utils::unicode::{char_width, truncate_to_width};
-use crate::widget::layout::constraints::constrain;
+use crate::widget::layout::constraints::{constrain, floor_around};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Border {
@@ -38,6 +38,14 @@ impl View for Border {
             h
         };
         Some((w.min(max_width), h.min(max_height)))
+    }
+
+    /// The child's minimum inside the frame, within the border's own bounds.
+    fn min_size(&self) -> (u16, u16) {
+        let least = self.child.as_ref().map_or((0, 0), |child| child.min_size());
+        let (w, h) = floor_around(least, (2, 2));
+        let area = self.apply_constraints(Rect::new(0, 0, w, h));
+        (area.width, area.height)
     }
 
     fn render(&self, ctx: &mut RenderContext) {

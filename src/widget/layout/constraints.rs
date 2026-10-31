@@ -25,6 +25,17 @@ pub(crate) fn constrain(area: Rect, min_w: u16, min_h: u16, max_w: u16, max_h: u
     )
 }
 
+/// What a wrapper asks for on behalf of its child: the child's minimum with
+/// the wrapper's own `chrome` around it, per axis. An axis on which the child
+/// asks for nothing stays 0: a frame is no reason to shrink a sibling.
+pub(crate) fn floor_around(least: (u16, u16), chrome: (u16, u16)) -> (u16, u16) {
+    let grow = |least: u16, chrome: u16| match least {
+        0 => 0,
+        least => least.saturating_add(chrome),
+    };
+    (grow(least.0, chrome.0), grow(least.1, chrome.1))
+}
+
 /// Run `draw` with `ctx.area` set to `area`, then put the area back.
 ///
 /// Unlike [`RenderContext::sub_ctx`] this keeps the render pass, so children

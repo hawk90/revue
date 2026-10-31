@@ -184,6 +184,16 @@ impl View for ErrorBoundary {
         shown.map_or(crate::widget::Fill::NONE, |v| v.fills())
     }
 
+    /// What whatever it is showing asks for, as with [`measure`](View::measure).
+    fn min_size(&self) -> (u16, u16) {
+        let shown = if self.has_error.get() {
+            self.fallback.as_ref()
+        } else {
+            self.child.as_ref()
+        };
+        shown.map_or((0, 0), |v| v.min_size())
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         // If already in error state, show fallback
         if self.has_error.get() {
