@@ -359,3 +359,106 @@ proptest! {
         prop_assert_eq!(bg, bg2);
     }
 }
+
+// =========================================================================
+// #1057: the fallback, the stylesheet background, the initials and the icon
+// =========================================================================
+
+fn symbols(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap())
+        .filter(|cell| !cell.is_continuation())
+        .map(|cell| cell.symbol)
+        .collect()
+}
+
+#[test]
+fn a_large_avatar_below_three_rows_draws_the_medium_form() {
+    for rows in [1, 2] {
+        let buffer = draw(&avatar("John Doe").large().online(), 10, rows);
+        assert_eq!(symbols(&buffer, 0), "◖JD◗●     ", "{rows} rows");
+        assert!(buffer.get(1, 0).unwrap().modifier.contains(Modifier::BOLD));
+    }
+    // The shape carries over, and it measures what it draws.
+    let square = avatar("John Doe").large().square();
+    assert_eq!(symbols(&draw(&square, 6, 2), 0), "[JD]  ");
+    assert_eq!(avatar("John Doe").large().measure(10, 2), Some((4, 1)));
+    assert_eq!(
+        avatar("John Doe").large().online().measure(10, 2),
+        Some((5, 1))
+    );
+    assert_eq!(avatar("John Doe").large().measure(10, 3), Some((5, 3)));
+    // Three rows is the box.
+    let boxed = draw(&avatar("John Doe").large(), 5, 3);
+    assert_eq!(symbols(&boxed, 0), "╭───╮");
+}
+
+#[test]
+fn the_background_is_the_builder_then_the_stylesheet_then_the_name() {
+    let css = "#a { background: #ff0000; }";
+    let initial_bg = |view: Avatar| {
+        let mut h = PipelineHarness::with_css(css, 10, 1).dom_from_render(true);
+        h.draw(&view.element_id("a"));
+        h.buffer().get(1, 0).unwrap().bg
+    };
+    assert_eq!(initial_bg(avatar("John Doe")), Some(Color::rgb(255, 0, 0)));
+    assert_eq!(
+        initial_bg(avatar("John Doe").bg(Color::BLUE)),
+        Some(Color::BLUE)
+    );
+    // No rule: the name's color.
+    let plain = draw(&avatar("John Doe"), 4, 1);
+    assert_eq!(plain.get(1, 0).unwrap().bg, Some(Color::rgb(163, 40, 59)));
+}
+
+#[test]
+fn initials_take_one_place_each() {
+    let initials = |name: &str| symbols(&draw(&avatar(name), 4, 1), 0);
+    assert_eq!(initials("john doe"), "◖JD◗");
+    // Upper-cased to two letters, it would push the second initial out.
+    assert_eq!(initials("ßeta Fox"), "◖ßF◗");
+    assert_eq!(initials("ﬁnn fox"), "◖ﬁF◗");
+    // A word is one initial even if its first letter has an accent after it.
+    assert_eq!(initials("e\u{301}cole fox"), "◖EF◗");
+    // A leading zero-width char is not an initial.
+    assert_eq!(initials("\u{200b}ann bo"), "◖AB◗");
+    // Only the first two words.
+    assert_eq!(initials("a b c"), "◖AB◗");
+    assert_eq!(initials("solo"), "◖S ◗");
+    assert_eq!(initials(""), "◖  ◗");
+    // Custom initials are kept as written, marks left out.
+    let custom = Avatar::from_initials("a\u{301}b");
+    assert_eq!(symbols(&draw(&custom, 4, 1), 0), "◖ab◗");
+}
+
+#[test]
+fn the_icon_replaces_initials_however_they_were_given() {
+    let drawn = |a: Avatar| symbols(&draw(&a, 4, 1), 0);
+    assert_eq!(drawn(Avatar::from_initials("AB").icon('X')), "◖X ◗");
+    assert_eq!(drawn(avatar("John Doe").icon('X')), "◖X ◗");
+    assert_eq!(drawn(Avatar::from_initials("AB")), "◖AB◗");
+}
+
+#[test]
+fn wide_initials_keep_their_second_column() {
+    // Medium: one wide initial fills the two columns; the second is left out.
+    let medium = draw(&avatar("김 이"), 4, 1);
+    assert_eq!(medium.get(1, 0).unwrap().symbol, '김');
+    assert!(medium.get(2, 0).unwrap().is_continuation());
+    assert_eq!(medium.get(3, 0).unwrap().symbol, '◗');
+
+    // Small: the status dot goes past it, and it measures both columns.
+    let small = avatar("김").small().online();
+    assert_eq!(small.measure(10, 1), Some((3, 1)));
+    let buffer = draw(&small, 3, 1);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '김');
+    assert!(buffer.get(1, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(1, 0).unwrap().bg, buffer.get(0, 0).unwrap().bg);
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '●');
+
+    // One column left: not half a glyph, and nothing past the area.
+    assert_eq!(
+        draw(&avatar("김").small(), 1, 1).get(0, 0).unwrap().symbol,
+        ' '
+    );
+}
