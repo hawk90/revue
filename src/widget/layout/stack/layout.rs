@@ -73,7 +73,8 @@ impl Stack {
     /// left) when:
     ///
     /// - it does not measure itself and has no explicit size - its margins and
-    ///   bounds then apply to its share, as in an equal-share stack
+    ///   bounds then apply to its share, as in an equal-share stack, and the
+    ///   share keeps room for its minimum, see [`share_of`](Self::share_of)
     /// - it fills this stack's axis ([`View::fills`]) and has no explicit
     ///   size - an explicit `height` (column) / `width` (row) still wins
     /// - any main-axis size is a percentage. A percentage needs a basis and the
@@ -103,7 +104,7 @@ impl Stack {
             Some(size) => size,
             // No explicit size: a child that fills the axis shares what is
             // left, its margins and bounds applying to its share.
-            None if self.fills_main_axis(child) => return self.share_of(child),
+            None if self.fills_main_axis(child) => return self.share_of(child, &along),
             None => {
                 // The cross extent is what the box model will leave the child;
                 // a narrower box can wrap to more rows.
@@ -118,7 +119,7 @@ impl Stack {
                 let (w, h) = self.oriented(main.saturating_sub(along.margins), cross);
                 match measure_child(child, subtree, w, h) {
                     Some((w, h)) => self.oriented(w, h).0,
-                    None => return self.share_of(child),
+                    None => return self.share_of(child, &along),
                 }
             }
         };
@@ -135,11 +136,21 @@ impl Stack {
 
     /// The share a filling child takes: an equal one, with its minimum if it
     /// asks for one.
-    pub(super) fn share_of(&self, child: &dyn View) -> ChildSize {
+    ///
+    /// What the view asks for ([`View::min_size`]) goes through the CSS box
+    /// like a measured size, so `max-*` caps it and `min-*` raises it, and the
+    /// margins are added, as they sit in the share too. Only `max-*` and the
+    /// margins of a view that asks for nothing stay inside an ordinary share.
+    ///
+    /// With a CSS minimum the box model puts the size back whatever the share
+    /// is, so it may not give way; a minimum the view asks for may.
+    pub(super) fn share_of(&self, child: &dyn View, along: &AxisBox) -> ChildSize {
         let (width, height) = child.min_size();
-        match self.oriented(width, height).0 {
-            0 => ChildSize::Auto,
-            least => ChildSize::AutoMin(least),
+        let least = self.oriented(width, height).0;
+        match (along.clamp(least), along.min) {
+            (0, _) => ChildSize::Auto,
+            (size, Some(_)) => ChildSize::AutoAtLeast(along.slot(size)),
+            (size, None) => ChildSize::AutoMin(along.slot(size)),
         }
     }
 

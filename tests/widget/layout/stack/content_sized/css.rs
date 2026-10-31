@@ -374,3 +374,143 @@ fn a_pinned_height_keeps_its_rows_when_the_column_overflows() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// A CSS minimum on a child that fills (#1338)
+// ---------------------------------------------------------------------------
+
+/// Fills what it is given with `#`.
+struct Fills;
+
+impl View for Fills {
+    fn render(&self, ctx: &mut RenderContext) {
+        for y in 0..ctx.area.height {
+            for x in 0..ctx.area.width {
+                ctx.draw_char(x, y, '#', Color::WHITE);
+            }
+        }
+    }
+
+    fn widget_type(&self) -> &'static str {
+        "Fills"
+    }
+
+    fn id(&self) -> Option<&str> {
+        Some("w")
+    }
+}
+
+/// `view` drawn in `w`×`h`, row by row.
+fn screen(css: &str, view: &impl View, w: u16, h: u16) -> Vec<String> {
+    let mut harness = PipelineHarness::with_css(css, w, h)
+        .dom_from_render(true)
+        .css_layout(true);
+    harness.draw(view);
+    harness
+        .screen_text()
+        .lines()
+        .map(|line| format!("{line:<width$}", width = w as usize))
+        .collect()
+}
+
+fn fills_then_end() -> Stack {
+    vstack().child(Fills).child(Text::new("end"))
+}
+
+#[test]
+fn a_minimum_on_a_filling_child_is_given_a_slot() {
+    assert_eq!(
+        screen("#w { min-height: 3; }", &fills_then_end(), 4, 6),
+        ["####", "####", "####", "####", "####", "end "]
+    );
+}
+
+#[test]
+fn with_too_little_room_a_filling_child_keeps_its_minimum_and_the_rest_is_cut() {
+    assert_eq!(
+        screen("#w { min-height: 5; }", &fills_then_end(), 4, 4),
+        ["####", "####", "####", "####"]
+    );
+    assert_eq!(
+        screen("#w { min-height: 3; }", &fills_then_end(), 4, 4),
+        ["####", "####", "####", "end "]
+    );
+}
+
+#[test]
+fn a_filling_child_with_a_minimum_keeps_it_above_a_measured_sibling() {
+    let view = vstack().child(Text::new("1\n2\n3")).child(Fills);
+    assert_eq!(
+        screen("#w { min-height: 3; }", &view, 2, 4),
+        ["1 ", "##", "##", "##"]
+    );
+}
+
+#[test]
+fn a_margin_is_part_of_the_slot_a_minimum_takes() {
+    assert_eq!(
+        screen(
+            "#w { min-height: 2; margin-top: 1; margin-bottom: 1; }",
+            &fills_then_end(),
+            4,
+            5
+        ),
+        ["    ", "####", "####", "    ", "end "]
+    );
+}
+
+#[test]
+fn a_minimum_above_the_maximum_wins_on_either_axis_of_either_stack() {
+    assert_eq!(
+        screen(
+            "#w { min-height: 3; max-height: 1; }",
+            &fills_then_end(),
+            4,
+            4
+        ),
+        ["####", "####", "####", "end "]
+    );
+}
+
+#[test]
+fn a_minimum_above_the_maximum_does_not_panic_across_the_stack_either() {
+    for css in [
+        "#w { min-width: 3; max-width: 1; }",
+        "#w { min-height: 3; max-height: 1; }",
+    ] {
+        let row = hstack().child(Fills).child(Text::new("e"));
+        assert_eq!(screen(css, &row, 4, 3).len(), 3, "{css}");
+        assert_eq!(screen(css, &fills_then_end(), 4, 4).len(), 4, "{css}");
+    }
+}
+
+#[test]
+fn a_minimum_works_along_a_row_too() {
+    let view = hstack().child(Fills).child(Text::new("end"));
+    assert_eq!(screen("#w { min-width: 4; }", &view, 6, 1), ["####en"]);
+}
+
+#[test]
+fn a_maximum_caps_what_a_view_asks_for() {
+    struct Asks;
+    impl View for Asks {
+        fn render(&self, ctx: &mut RenderContext) {
+            Fills.render(ctx);
+        }
+        fn min_size(&self) -> (u16, u16) {
+            (0, 5)
+        }
+        fn widget_type(&self) -> &'static str {
+            "Asks"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("w")
+        }
+    }
+    let view = vstack().child(Text::new("1\n2\n3")).child(Asks);
+    // Two rows are all it can use, so the text gives up only one for it.
+    assert_eq!(
+        screen("#w { max-height: 2; }", &view, 2, 4),
+        ["1 ", "2 ", "##", "##"]
+    );
+}

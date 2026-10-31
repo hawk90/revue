@@ -58,7 +58,10 @@ impl Stack {
                 }
                 // `child_sizes` holds what the builder recorded; `Content` is
                 // only ever produced while laying out.
-                ChildSize::Auto | ChildSize::AutoMin(_) | ChildSize::Content(_) => {
+                ChildSize::Auto
+                | ChildSize::AutoMin(_)
+                | ChildSize::AutoAtLeast(_)
+                | ChildSize::Content(_) => {
                     let inner_main =
                         along.clamp(along.size.unwrap_or(max_main.saturating_sub(along.margins)));
                     let (w, h) = self.oriented(inner_main, inner_cross);

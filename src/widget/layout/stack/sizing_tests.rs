@@ -187,13 +187,15 @@ fn test_stack_calculate_sizes_minimum_shrinks_content() {
 /// of available space: cases picked by hand missed two regressions here.
 #[test]
 fn test_stack_calculate_sizes_rules_hold_for_every_combination() {
-    use ChildSize::{Auto, AutoMin, Content, Fixed, Flex};
+    use ChildSize::{Auto, AutoAtLeast, AutoMin, Content, Fixed, Flex};
     let kinds = [
         Auto,
         AutoMin(1),
         AutoMin(3),
         AutoMin(9),
         AutoMin(u16::MAX),
+        AutoAtLeast(3),
+        AutoAtLeast(9),
         Fixed(0),
         Fixed(2),
         Fixed(7),
@@ -226,10 +228,13 @@ fn test_stack_calculate_sizes_rules_hold_for_every_combination() {
             let context = || format!("{combo:?} in {available} -> {sizes:?}");
             let avail = u32::from(available);
             let total = |pick: fn(&ChildSize) -> u32| combo.iter().map(pick).sum::<u32>();
-            let fixed = total(|c| if let Fixed(s) = c { u32::from(*s) } else { 0 });
+            let fixed = total(|c| match c {
+                Fixed(s) | AutoAtLeast(s) => u32::from(*s),
+                _ => 0,
+            });
             let floors = total(|c| if let AutoMin(s) = c { u32::from(*s) } else { 0 });
             let content = total(|c| if let Content(s) = c { u32::from(*s) } else { 0 });
-            let shares = total(|c| u32::from(matches!(c, Auto | AutoMin(_))));
+            let shares = total(|c| u32::from(matches!(c, Auto | AutoMin(_) | AutoAtLeast(_))));
             let measured = total(|c| u32::from(matches!(c, Content(s) if *s > 0)));
             let flex = combo.iter().any(|c| matches!(c, Flex(_)));
             let sum: u32 = sizes.iter().map(|s| u32::from(*s)).sum();
@@ -237,6 +242,9 @@ fn test_stack_calculate_sizes_rules_hold_for_every_combination() {
             for (child, &size) in combo.iter().zip(&sizes) {
                 match *child {
                     Fixed(s) => assert_eq!(size, s, "a fixed child keeps its size: {}", context()),
+                    AutoAtLeast(least) => {
+                        assert!(size >= least, "it does not give way: {}", context());
+                    }
                     Content(s) => {
                         assert!(size <= s, "no more than it measured: {}", context());
                         if s > 0 && avail >= fixed + measured {
@@ -307,4 +315,33 @@ fn test_stack_needs_render_skip() {
     let mut ctx = RenderContext::new(&mut buf, area);
     s.render(&mut ctx);
     assert_eq!(buf.get(0, 0).unwrap().symbol, 'V');
+}
+
+#[test]
+fn test_stack_a_minimum_that_may_not_give_way_is_kept_and_still_shares() {
+    use ChildSize::{Auto, AutoAtLeast, AutoMin, Content, Fixed, Flex};
+    let sizes = |c: &[ChildSize], a| Stack::calculate_sizes(c, a, c.len());
+    // Room: a share like any other, above the minimum.
+    assert_eq!(sizes(&[AutoAtLeast(3), Auto], 10), vec![5, 5]);
+    assert_eq!(sizes(&[AutoAtLeast(6), Auto], 10), vec![6, 4]);
+    // Too little: kept, and the rest goes past the end to be cut.
+    assert_eq!(sizes(&[AutoAtLeast(5), Content(1)], 4), vec![5, 0]);
+    assert_eq!(sizes(&[AutoAtLeast(5), Fixed(2)], 4), vec![5, 2]);
+    assert_eq!(sizes(&[AutoAtLeast(5), Auto], 4), vec![5, 1]);
+    assert_eq!(sizes(&[AutoAtLeast(5), AutoAtLeast(5)], 4), vec![5, 5]);
+    // Measured children shrink for it, unlike `AutoMin`, down to nothing.
+    assert_eq!(sizes(&[AutoAtLeast(4), Content(4)], 5), vec![4, 1]);
+    assert_eq!(sizes(&[AutoMin(4), Content(4)], 4), vec![3, 1]);
+    assert_eq!(sizes(&[AutoAtLeast(4), Content(4)], 4), vec![4, 0]);
+    // A minimum that may give way does, whichever comes first.
+    assert_eq!(sizes(&[AutoMin(3), AutoAtLeast(3)], 3), vec![1, 3]);
+    assert_eq!(sizes(&[AutoAtLeast(3), AutoMin(3)], 3), vec![3, 1]);
+    assert_eq!(sizes(&[AutoMin(9), AutoAtLeast(3)], 6), vec![3, 3]);
+    assert_eq!(
+        sizes(&[AutoMin(3), AutoAtLeast(3), Flex(1.0)], 3),
+        vec![1, 3, 0]
+    );
+    // Beside flex.
+    assert_eq!(sizes(&[AutoAtLeast(3), Flex(1.0)], 10), vec![3, 7]);
+    assert_eq!(sizes(&[AutoAtLeast(30), Flex(1.0)], 10), vec![30, 0]);
 }
