@@ -514,3 +514,18 @@ fn a_maximum_caps_what_a_view_asks_for() {
         ["1 ", "2 ", "##", "##"]
     );
 }
+
+#[test]
+fn the_issue_example_keeps_the_zone_and_cuts_the_text() {
+    let view = vstack()
+        .child(
+            revue::widget::DropZone::new("Drop")
+                .element_id("w")
+                .min_height(0),
+        )
+        .child(Text::new("end"));
+    assert_eq!(
+        screen("#w { min-height: 5; }", &view, 6, 4),
+        ["┌────┐", "│    │", "│ Dr │", "│    │"]
+    );
+}
