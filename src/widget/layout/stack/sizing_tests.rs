@@ -145,6 +145,123 @@ fn test_stack_calculate_sizes_minimum_shrinks_content() {
     assert_eq!(sizes(&[Content(2), AutoMin(3)], 2), vec![1, 1]);
     // No minimum: as before.
     assert_eq!(sizes(&[Content(4), Content(1)], 3), vec![2, 1]);
+    // A child that measured nothing takes no cell from one that did.
+    assert_eq!(
+        sizes(&[Content(0), Content(1), Content(1)], 1),
+        vec![0, 1, 0]
+    );
+    assert_eq!(
+        sizes(&[Content(0), Content(1), Content(4)], 3),
+        vec![0, 1, 2]
+    );
+    assert_eq!(
+        sizes(&[Content(0), AutoMin(3), Content(1)], 2),
+        vec![0, 1, 1]
+    );
+    // Nor does it count when a minimum reserves its room.
+    assert_eq!(
+        sizes(&[Content(0), AutoMin(3), Content(5)], 3),
+        vec![0, 2, 1]
+    );
+    // One child much larger: everyone still keeps a cell.
+    assert_eq!(
+        sizes(
+            &[Content(100), Content(1), Content(1), Content(1), Content(1)],
+            5
+        ),
+        vec![1, 1, 1, 1, 1]
+    );
+    // Fewer cells than children: the earliest.
+    assert_eq!(
+        sizes(&[Content(5), Content(1), Content(1)], 2),
+        vec![1, 1, 0]
+    );
+    // With flex, a minimum is served before a plain share too.
+    assert_eq!(
+        sizes(&[ChildSize::Auto, AutoMin(3), ChildSize::Flex(1.0)], 4),
+        vec![1, 3, 0]
+    );
+}
+
+/// The distribution's rules, over every mix of up to four children and a range
+/// of available space: cases picked by hand missed two regressions here.
+#[test]
+fn test_stack_calculate_sizes_rules_hold_for_every_combination() {
+    use ChildSize::{Auto, AutoMin, Content, Fixed, Flex};
+    let kinds = [
+        Auto,
+        AutoMin(1),
+        AutoMin(3),
+        AutoMin(9),
+        AutoMin(u16::MAX),
+        Fixed(0),
+        Fixed(2),
+        Fixed(7),
+        Fixed(u16::MAX),
+        Content(0),
+        Content(1),
+        Content(4),
+        Content(12),
+        Content(u16::MAX),
+        Flex(1.0),
+        Flex(2.5),
+    ];
+    let mut combos: Vec<Vec<ChildSize>> = vec![Vec::new()];
+    let mut last = combos.clone();
+    for _ in 0..4 {
+        let mut next = Vec::new();
+        for combo in &last {
+            for kind in kinds {
+                let mut longer = combo.clone();
+                longer.push(kind);
+                next.push(longer);
+            }
+        }
+        combos.extend(next.iter().cloned());
+        last = next;
+    }
+    for combo in &combos {
+        for available in [0u16, 1, 2, 3, 5, 6, 10, 13, 40, 200, u16::MAX] {
+            let sizes = Stack::calculate_sizes(combo, available, combo.len());
+            let context = || format!("{combo:?} in {available} -> {sizes:?}");
+            let avail = u32::from(available);
+            let total = |pick: fn(&ChildSize) -> u32| combo.iter().map(pick).sum::<u32>();
+            let fixed = total(|c| if let Fixed(s) = c { u32::from(*s) } else { 0 });
+            let floors = total(|c| if let AutoMin(s) = c { u32::from(*s) } else { 0 });
+            let content = total(|c| if let Content(s) = c { u32::from(*s) } else { 0 });
+            let shares = total(|c| u32::from(matches!(c, Auto | AutoMin(_))));
+            let measured = total(|c| u32::from(matches!(c, Content(s) if *s > 0)));
+            let flex = combo.iter().any(|c| matches!(c, Flex(_)));
+            let sum: u32 = sizes.iter().map(|s| u32::from(*s)).sum();
+
+            for (child, &size) in combo.iter().zip(&sizes) {
+                match *child {
+                    Fixed(s) => assert_eq!(size, s, "a fixed child keeps its size: {}", context()),
+                    Content(s) => {
+                        assert!(size <= s, "no more than it measured: {}", context());
+                        if s > 0 && avail >= fixed + measured {
+                            assert!(size > 0, "room for a cell each: {}", context());
+                        }
+                        if fixed + content + floors <= avail {
+                            assert_eq!(size, s, "everything fits: {}", context());
+                        }
+                    }
+                    AutoMin(least) if fixed + content + floors + shares <= avail => {
+                        assert!(size >= least, "everything fits: {}", context());
+                    }
+                    _ => {}
+                }
+            }
+            // Only fixed sizes and a share's one cell may overflow. Flex rounding
+            // can too: #1344.
+            if !flex {
+                assert!(sum <= avail.max(fixed) + shares, "overflow: {}", context());
+                if shares > 0 {
+                    assert!(sum >= avail, "space left unused: {}", context());
+                }
+            }
+        }
+    }
 }
 
 #[test]

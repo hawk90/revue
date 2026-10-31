@@ -48,9 +48,10 @@ impl Stack {
         }
 
         // Measured sizes, shrunk to fit if they overflow.
+        // A child that measured nothing has no cell to keep.
         let content_count = child_sizes
             .iter()
-            .filter(|cs| matches!(cs, ChildSize::Content(_)))
+            .filter(|cs| matches!(cs, ChildSize::Content(size) if *size > 0))
             .count() as u32;
         let floors = child_sizes.iter().fold(0u32, |sum, cs| match cs {
             ChildSize::AutoMin(least) => sum + u32::from(*least),
@@ -77,16 +78,20 @@ impl Stack {
             // Space for flex children: remaining minus space for auto children
             // Each auto child's size while flex takes the rest: a cell, or its
             // minimum as far as there is room.
+            // Minimums first, as without flex.
             let mut room = remaining;
             let mut auto_sizes = vec![0u16; n];
             for (i, cs) in child_sizes.iter().enumerate() {
-                let size = match cs {
-                    ChildSize::Auto => 1,
-                    ChildSize::AutoMin(least) => (*least).min(room).max(1),
-                    _ => continue,
-                };
-                auto_sizes[i] = size;
-                room = room.saturating_sub(size);
+                if let ChildSize::AutoMin(least) = cs {
+                    auto_sizes[i] = (*least).min(room).max(1);
+                    room = room.saturating_sub(auto_sizes[i]);
+                }
+            }
+            for (i, cs) in child_sizes.iter().enumerate() {
+                if matches!(cs, ChildSize::Auto) {
+                    auto_sizes[i] = 1;
+                    room = room.saturating_sub(1);
+                }
             }
             let auto_min: u16 = remaining.saturating_sub(room);
             let flex_space = remaining.saturating_sub(auto_min);
@@ -204,16 +209,33 @@ impl Stack {
             result[i] = share as u16;
             used += share;
         }
-        // Integer division leaves at most one cell per child undistributed:
-        // first to a child left with none, so a footer is not rounded away
-        // beside a tall body, then to the earliest.
-        for (i, _) in content() {
+        // Integer division leaves at most one cell per child undistributed.
+        // It goes first to a child left with none, so a footer is not rounded
+        // away beside a tall body, then to the earliest.
+        for (i, size) in content() {
             if used >= space {
                 break;
             }
-            if result[i] == 0 {
+            if size > 0 && result[i] == 0 {
                 result[i] = 1;
                 used += 1;
+            }
+        }
+        // Still some with none, and room for one each: the largest shares give
+        // up a cell, so proportions change only as far as that takes.
+        for (i, size) in content() {
+            if size == 0 || result[i] > 0 {
+                continue;
+            }
+            let largest = (0..result.len())
+                .filter(|&j| matches!(child_sizes[j], ChildSize::Content(_)))
+                .max_by_key(|&j| (result[j], std::cmp::Reverse(j)));
+            match largest {
+                Some(j) if result[j] > 1 => {
+                    result[j] -= 1;
+                    result[i] = 1;
+                }
+                _ => break,
             }
         }
         for (i, size) in content() {
