@@ -1144,8 +1144,9 @@ fn test_masked_input_render_long_value() {
 
     let input = MaskedInput::new().value("this_is_a_very_long_password");
     View::render(&input, &mut ctx);
-    // 28 chars in a 20-column field cut by the 20-column area: no bracket fits
-    assert_eq!(view::row(&buffer, 0), "[●●●●●●●●●●●●●●●●●●●");
+    // Too narrow for the whole field: it gives up a column, and the closing
+    // bracket keeps its own
+    assert_eq!(view::row(&buffer, 0), "[●●●●●●●●●●●●●●●●●●]");
     let buffer = view::screen(&input, 30, 1);
     assert_eq!(view::row(&buffer, 0), "[●●●●●●●●●●●●●●●●●●●●]");
 }

@@ -43,9 +43,10 @@ where
         self
     }
 
-    /// The fewest rows to ask the layout for: a content-sized stack does not
-    /// give the zone less, and the zone still fills any more there is. Like CSS
-    /// `min-height`. In an area with fewer rows, it draws into those.
+    /// The fewest rows to ask the layout for, and the zone still fills any more
+    /// there is, like CSS `min-height`. A content-sized stack makes room by
+    /// shrinking its measured children down to a row each, but does not push a
+    /// sibling off: with too few rows the zone draws into what is left.
     pub fn min_height(mut self, height: u16) -> Self {
         self.min_height = height;
         self

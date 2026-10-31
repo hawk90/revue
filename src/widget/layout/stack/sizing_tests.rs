@@ -104,14 +104,47 @@ fn test_stack_calculate_sizes_auto_minimum() {
     assert_eq!(sizes(&[Auto, AutoMin(6), Auto], 11), vec![3, 6, 2]);
     // Pinning one can push the next one's minimum above its new share.
     assert_eq!(sizes(&[AutoMin(6), AutoMin(3), Auto], 10), vec![6, 3, 1]);
-    // Minimums that do not fit overflow; the others still get a cell.
-    assert_eq!(sizes(&[AutoMin(6), AutoMin(6)], 10), vec![6, 6]);
+    // Minimums that do not fit do not overflow: the earlier ones are served
+    // first. A child with nothing left still gets the one cell any share does.
+    assert_eq!(sizes(&[AutoMin(6), AutoMin(6)], 10), vec![6, 4]);
     assert_eq!(sizes(&[AutoMin(10), Auto], 10), vec![10, 1]);
-    assert_eq!(sizes(&[AutoMin(4), Auto], 0), vec![4, 1]);
-    // After the fixed children
+    assert_eq!(sizes(&[AutoMin(4), Auto], 0), vec![1, 1]);
+    // A fixed child is never pushed off: the minimum gets what it leaves.
     assert_eq!(sizes(&[Fixed(4), AutoMin(5), Auto], 10), vec![4, 5, 1]);
+    assert_eq!(sizes(&[Fixed(3), AutoMin(3), Fixed(1)], 5), vec![3, 1, 1]);
+    assert_eq!(sizes(&[AutoMin(3), Fixed(5)], 5), vec![1, 5]);
     // With flex, an auto child takes its minimum and flex the rest.
     assert_eq!(sizes(&[ChildSize::Flex(1.0), AutoMin(3)], 10), vec![7, 3]);
+    assert_eq!(sizes(&[ChildSize::Flex(1.0), AutoMin(30)], 10), vec![0, 10]);
+}
+
+/// Measured children shrink for a minimum, down to a cell each.
+#[test]
+fn test_stack_calculate_sizes_minimum_shrinks_content() {
+    use ChildSize::{AutoMin, Content};
+    let sizes = |c: &[ChildSize], n| Stack::calculate_sizes(c, n, c.len());
+    // Room for all: nothing changes.
+    assert_eq!(
+        sizes(&[Content(4), AutoMin(3), Content(1)], 8),
+        vec![4, 3, 1]
+    );
+    assert_eq!(
+        sizes(&[Content(4), AutoMin(3), Content(1)], 12),
+        vec![4, 7, 1]
+    );
+    // Short of two: the body gives them up, and the footer keeps its row.
+    assert_eq!(
+        sizes(&[Content(4), AutoMin(3), Content(1)], 6),
+        vec![2, 3, 1]
+    );
+    // Every measured child keeps a cell before the minimum gets the rest.
+    assert_eq!(
+        sizes(&[Content(4), AutoMin(3), Content(1)], 3),
+        vec![1, 1, 1]
+    );
+    assert_eq!(sizes(&[Content(2), AutoMin(3)], 2), vec![1, 1]);
+    // No minimum: as before.
+    assert_eq!(sizes(&[Content(4), Content(1)], 3), vec![2, 1]);
 }
 
 #[test]

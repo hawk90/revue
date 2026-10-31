@@ -493,12 +493,32 @@ fn a_stack_gives_min_height_as_a_lower_bound() {
         rows_of(&column(plain().min_height(3)), 6, 5),
         ["top   ", "┌────┐", "│ Dr │", "└────┘", "end   "]
     );
-    // Short of room it keeps the minimum; what no longer fits is cut, as a
-    // CSS `min-height` overflows.
+    // Short of room the siblings stay; it gets what they need not (#1340).
     assert_eq!(
         rows_of(&column(plain().min_height(3)), 6, 4),
-        ["top   ", "┌────┐", "│ Dr │", "└────┘"]
+        ["top   ", "┌────┐", "└────┘", "end   "]
     );
+    // A tall body makes room for it, and the footer keeps its row.
+    let body = vstack()
+        .child(Text::new("b1\nb2\nb3\nb4"))
+        .child(plain())
+        .child(Text::new("foot"));
+    assert_eq!(
+        rows_of(&body, 6, 6),
+        ["b1    ", "b2    ", "┌────┐", "│ Dr │", "└────┘", "foot  "]
+    );
+    // A fixed footer is never pushed off.
+    let fixed = vstack()
+        .child_sized(Text::new("fix"), 3)
+        .child(plain())
+        .child_sized(Text::new("foot"), 1);
+    assert_eq!(
+        rows_of(&fixed, 6, 5),
+        ["fix   ", "      ", "      ", "│ Dr │", "foot  "]
+    );
+    // Too few rows for everything: each measured child keeps one.
+    let tight = vstack().child(Text::new("x\ny")).child(plain());
+    assert_eq!(rows_of(&tight, 6, 2), ["x     ", "│ Dr │"]);
     // Without a minimum it takes what the others leave, as before.
     assert_eq!(
         rows_of(&column(plain().min_height(0)), 6, 4),
@@ -517,7 +537,10 @@ fn a_stack_gives_min_height_as_a_lower_bound() {
     let nested = vstack()
         .child(vstack().child(plain().min_height(3)))
         .child(Text::new("end"));
-    assert_eq!(rows_of(&nested, 6, 3), ["┌────┐", "│ Dr │", "└────┘"]);
+    assert_eq!(
+        rows_of(&nested, 6, 4),
+        ["┌────┐", "│ Dr │", "└────┘", "end   "]
+    );
     let across = vstack()
         .child(
             hstack()
@@ -526,8 +549,13 @@ fn a_stack_gives_min_height_as_a_lower_bound() {
         )
         .child(Text::new("end"));
     assert_eq!(
-        rows_of(&across, 12, 3),
-        ["┌────┐┌────┐", "│ Dr ││ Dr │", "└────┘└────┘"]
+        rows_of(&across, 12, 4),
+        [
+            "┌────┐┌────┐",
+            "│ Dr ││ Dr │",
+            "└────┘└────┘",
+            "end         "
+        ]
     );
     // In a row it asks nothing of the width.
     let row = hstack().child(plain()).child(plain());

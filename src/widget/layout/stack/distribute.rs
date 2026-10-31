@@ -15,6 +15,9 @@ impl Stack {
     /// - Flex children share remaining space proportionally by grow factor
     /// - Auto children share remaining space equally (after flex allocation);
     ///   one with a minimum keeps it, and the others share what is left
+    /// - Minimums make room by shrinking the measured children, down to a cell
+    ///   each, and never push a fixed child off: past that they get what is
+    ///   left, like any other share
     pub(super) fn calculate_sizes(child_sizes: &[ChildSize], available: u16, n: usize) -> Vec<u16> {
         if n == 0 {
             return Vec::new();
@@ -45,7 +48,17 @@ impl Stack {
         }
 
         // Measured sizes, shrunk to fit if they overflow.
-        let content_space = u32::from(available.saturating_sub(fixed_total));
+        let content_count = child_sizes
+            .iter()
+            .filter(|cs| matches!(cs, ChildSize::Content(_)))
+            .count() as u32;
+        let floors = child_sizes.iter().fold(0u32, |sum, cs| match cs {
+            ChildSize::AutoMin(least) => sum + u32::from(*least),
+            _ => sum,
+        });
+        let after_fixed = u32::from(available.saturating_sub(fixed_total));
+        let reserved = floors.min(after_fixed.saturating_sub(content_count));
+        let content_space = after_fixed - reserved;
         let content_used =
             Self::fit_content(child_sizes, content_total, content_space, &mut result);
         let remaining = available
@@ -62,11 +75,20 @@ impl Stack {
                 .collect();
 
             // Space for flex children: remaining minus space for auto children
-            let auto_min = child_sizes.iter().fold(0u16, |sum, cs| match cs {
-                ChildSize::Auto => sum.saturating_add(1),
-                ChildSize::AutoMin(least) => sum.saturating_add((*least).max(1)),
-                _ => sum,
-            });
+            // Each auto child's size while flex takes the rest: a cell, or its
+            // minimum as far as there is room.
+            let mut room = remaining;
+            let mut auto_sizes = vec![0u16; n];
+            for (i, cs) in child_sizes.iter().enumerate() {
+                let size = match cs {
+                    ChildSize::Auto => 1,
+                    ChildSize::AutoMin(least) => (*least).min(room).max(1),
+                    _ => continue,
+                };
+                auto_sizes[i] = size;
+                room = room.saturating_sub(size);
+            }
+            let auto_min: u16 = remaining.saturating_sub(room);
             let flex_space = remaining.saturating_sub(auto_min);
             let mut distributed: u16 = 0;
 
@@ -85,11 +107,9 @@ impl Stack {
             }
 
             // Auto children get 1 pixel each when flex is active
-            for (i, cs) in child_sizes.iter().enumerate() {
-                match cs {
-                    ChildSize::Auto => result[i] = 1,
-                    ChildSize::AutoMin(least) => result[i] = (*least).max(1),
-                    _ => {}
+            for (i, size) in auto_sizes.into_iter().enumerate() {
+                if size > 0 {
+                    result[i] = size;
                 }
             }
         } else if auto_count > 0 {
@@ -100,9 +120,9 @@ impl Stack {
     }
 
     /// No flex: the auto children share `remaining` equally, rounding leftovers
-    /// to the earliest. A child whose minimum is above its share keeps the
-    /// minimum and leaves the others less, as CSS resolves `min-height` on a
-    /// flex item; minimums that do not fit overflow.
+    /// to the earliest. A child whose minimum is above its share keeps as much
+    /// of it as is left, and leaves the others less; the total never overflows
+    /// because of a minimum.
     fn share_remaining(
         child_sizes: &[ChildSize],
         remaining: u16,
@@ -117,10 +137,11 @@ impl Stack {
             let mut changed = false;
             for (i, cs) in child_sizes.iter().enumerate() {
                 if let ChildSize::AutoMin(least) = cs {
-                    if !pinned[i] && *least > share {
+                    if !pinned[i] && *least > share && left > 0 {
+                        let size = (*least).min(left);
                         pinned[i] = true;
-                        result[i] = *least;
-                        left = left.saturating_sub(*least);
+                        result[i] = size;
+                        left -= size;
                         sharing -= 1;
                         changed = true;
                     }
@@ -183,7 +204,18 @@ impl Stack {
             result[i] = share as u16;
             used += share;
         }
-        // Integer division leaves at most one cell per child undistributed.
+        // Integer division leaves at most one cell per child undistributed:
+        // first to a child left with none, so a footer is not rounded away
+        // beside a tall body, then to the earliest.
+        for (i, _) in content() {
+            if used >= space {
+                break;
+            }
+            if result[i] == 0 {
+                result[i] = 1;
+                used += 1;
+            }
+        }
         for (i, size) in content() {
             if used >= space {
                 break;
