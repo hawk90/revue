@@ -19,10 +19,7 @@ impl View for ColorPicker {
             ColorPickerMode::Palette => {
                 let (cols, _) = self.palette.grid_size();
                 let rows = self.palette.colors().len().div_ceil(cols.max(1));
-                // The grid stops two rows short of the bottom even without
-                // the preview that normally sits there.
-                let reserved = if self.show_preview { 0 } else { 2 };
-                (cols * 2, rows + reserved)
+                (cols * 2, rows)
             }
             ColorPickerMode::Rgb | ColorPickerMode::Hsl => (usize::from(max_width), 3),
             // "Current: #RRGGBB", two rows below the input
@@ -92,6 +89,12 @@ impl ColorPicker {
     fn render_palette(&self, ctx: &mut RenderContext, area: Rect) {
         let colors = self.palette.colors();
         let (cols, _rows) = self.palette.grid_size();
+        // The preview takes the last two rows, when it is shown.
+        let grid_rows = if self.show_preview {
+            area.height.saturating_sub(2)
+        } else {
+            area.height
+        };
 
         let ox = area.x;
         let oy = area.y;
@@ -103,7 +106,7 @@ impl ColorPicker {
                 x = 0;
                 y += 1;
             }
-            if y >= area.height.saturating_sub(2) {
+            if y >= grid_rows {
                 break;
             }
 
