@@ -178,9 +178,11 @@ pub trait View {
     }
 
     /// The least space this view asks for while it fills: a `min-height` in
-    /// the CSS sense. A content-sized stack does not give a filling child a
-    /// share below this on its main axis, and the child still takes more when
-    /// there is more. `(0, 0)`, the default, asks for nothing.
+    /// the CSS sense. A content-sized stack shrinks its measured children to
+    /// give a filling child this much on its main axis, and the child still
+    /// takes more when there is more. It never pushes a sibling off for it, so
+    /// with too little room the child gets less. `(0, 0)`, the default, asks
+    /// for nothing.
     ///
     /// A crate-internal hook, like [`measure_styled`](Self::measure_styled):
     /// the 4.0 layout engine replaces it.
