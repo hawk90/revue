@@ -125,3 +125,81 @@ fn a_rebuilt_indicator_takes_its_frame_from_the_app() {
 fn the_frame_does_nothing_unless_pulsing() {
     assert_eq!(rendered_dot(&StatusIndicator::online().frame(6)), '●');
 }
+
+// =========================================================================
+// #1204: the Large dot's pulse, the label and the badge's size
+// =========================================================================
+
+mod sizes {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::style::Color;
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::{StatusIndicator, StatusSize, StatusStyle};
+
+    fn draw(view: &StatusIndicator, width: u16) -> Buffer {
+        let mut buffer = Buffer::new(width, 1);
+        view.render(&mut RenderContext::new(
+            &mut buffer,
+            Rect::new(0, 0, width, 1),
+        ));
+        buffer
+    }
+
+    /// The pulse shows the dot at frame 0 and hides it at frame 6.
+    fn at_frame(view: StatusIndicator, frame: usize) -> StatusIndicator {
+        view.pulsing(true).frame(frame)
+    }
+
+    #[test]
+    fn the_whole_large_dot_blinks() {
+        let large = || {
+            StatusIndicator::online()
+                .size(StatusSize::Large)
+                .indicator_style(StatusStyle::Dot)
+        };
+        let on = draw(&at_frame(large(), 0), 4);
+        assert_ne!(on.get(0, 0).unwrap().symbol, ' ');
+        assert!(on.get(1, 0).unwrap().bg.is_some());
+        let off = draw(&at_frame(large(), 6), 4);
+        assert_eq!(off.get(0, 0).unwrap().symbol, ' ');
+        assert_eq!(off.get(1, 0).unwrap().bg, None, "column 1 blinks too");
+        // Without a pulse it never goes off.
+        let still = draw(&large(), 4);
+        assert!(still.get(1, 0).unwrap().bg.is_some());
+    }
+
+    #[test]
+    fn the_label_form_draws_the_same_dot() {
+        let large = || {
+            StatusIndicator::online()
+                .size(StatusSize::Large)
+                .indicator_style(StatusStyle::DotWithLabel)
+        };
+        let on = draw(&large(), 12);
+        assert!(on.get(1, 0).unwrap().bg.is_some());
+        let off = draw(&at_frame(large(), 6), 12);
+        assert_eq!(off.get(0, 0).unwrap().symbol, ' ');
+        assert_eq!(off.get(1, 0).unwrap().bg, None);
+        // Smaller sizes have no second column.
+        let medium = StatusIndicator::online().indicator_style(StatusStyle::DotWithLabel);
+        assert_eq!(draw(&medium, 12).get(1, 0).unwrap().bg, None);
+        // A narrow area keeps it in bounds.
+        assert_eq!(
+            draw(&large(), 1).get(0, 0).unwrap().symbol,
+            StatusSize::Large.dot()
+        );
+    }
+
+    #[test]
+    fn the_badge_draws_the_dot_of_its_size() {
+        for size in [StatusSize::Small, StatusSize::Medium, StatusSize::Large] {
+            let badge = StatusIndicator::online()
+                .size(size)
+                .indicator_style(StatusStyle::Badge);
+            let buffer = draw(&badge, 14);
+            assert_eq!(buffer.get(1, 0).unwrap().symbol, size.dot(), "{size:?}");
+            assert_ne!(buffer.get(1, 0).unwrap().fg, Some(Color::BLACK));
+        }
+    }
+}

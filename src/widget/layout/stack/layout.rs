@@ -103,7 +103,7 @@ impl Stack {
             Some(size) => size,
             // No explicit size: a child that fills the axis shares what is
             // left, its margins and bounds applying to its share.
-            None if self.fills_main_axis(child) => return ChildSize::Auto,
+            None if self.fills_main_axis(child) => return self.share_of(child),
             None => {
                 // The cross extent is what the box model will leave the child;
                 // a narrower box can wrap to more rows.
@@ -118,7 +118,7 @@ impl Stack {
                 let (w, h) = self.oriented(main.saturating_sub(along.margins), cross);
                 match measure_child(child, subtree, w, h) {
                     Some((w, h)) => self.oriented(w, h).0,
-                    None => return ChildSize::Auto,
+                    None => return self.share_of(child),
                 }
             }
         };
@@ -130,6 +130,16 @@ impl Stack {
             ChildSize::Fixed(slot)
         } else {
             ChildSize::Content(slot)
+        }
+    }
+
+    /// The share a filling child takes: an equal one, with its minimum if it
+    /// asks for one.
+    pub(super) fn share_of(&self, child: &dyn View) -> ChildSize {
+        let (width, height) = child.min_size();
+        match self.oriented(width, height).0 {
+            0 => ChildSize::Auto,
+            least => ChildSize::AutoMin(least),
         }
     }
 

@@ -29,7 +29,7 @@ where
 
     /// Set border color
     pub fn border_color(mut self, color: Color) -> Self {
-        self.border_color = color;
+        self.border_color = Some(color);
         self
     }
 
@@ -43,7 +43,9 @@ where
         self
     }
 
-    /// Set minimum height
+    /// The fewest rows to ask the layout for: a content-sized stack does not
+    /// give the zone less, and the zone still fills any more there is. Like CSS
+    /// `min-height`. In an area with fewer rows, it draws into those.
     pub fn min_height(mut self, height: u16) -> Self {
         self.min_height = height;
         self

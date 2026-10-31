@@ -91,6 +91,29 @@ fn test_stack_calculate_sizes_content_shrinks() {
     assert_eq!(Stack::calculate_sizes(&sizes, 11, 4), vec![2, 6, 1, 2]);
 }
 
+/// A share does not go below a child's minimum; the others share the rest.
+#[test]
+fn test_stack_calculate_sizes_auto_minimum() {
+    use ChildSize::{Auto, AutoMin, Fixed};
+    let sizes = |c: &[ChildSize], n| Stack::calculate_sizes(c, n, c.len());
+    // Below its share a minimum changes nothing.
+    assert_eq!(sizes(&[AutoMin(3), Auto], 10), vec![5, 5]);
+    assert_eq!(sizes(&[AutoMin(5), Auto], 10), vec![5, 5]);
+    // Above its share it is kept, and rounding goes to the earliest of the rest.
+    assert_eq!(sizes(&[AutoMin(6), Auto], 10), vec![6, 4]);
+    assert_eq!(sizes(&[Auto, AutoMin(6), Auto], 11), vec![3, 6, 2]);
+    // Pinning one can push the next one's minimum above its new share.
+    assert_eq!(sizes(&[AutoMin(6), AutoMin(3), Auto], 10), vec![6, 3, 1]);
+    // Minimums that do not fit overflow; the others still get a cell.
+    assert_eq!(sizes(&[AutoMin(6), AutoMin(6)], 10), vec![6, 6]);
+    assert_eq!(sizes(&[AutoMin(10), Auto], 10), vec![10, 1]);
+    assert_eq!(sizes(&[AutoMin(4), Auto], 0), vec![4, 1]);
+    // After the fixed children
+    assert_eq!(sizes(&[Fixed(4), AutoMin(5), Auto], 10), vec![4, 5, 1]);
+    // With flex, an auto child takes its minimum and flex the rest.
+    assert_eq!(sizes(&[ChildSize::Flex(1.0), AutoMin(3)], 10), vec![7, 3]);
+}
+
 #[test]
 fn test_stack_calculate_sizes_empty() {
     let s = Stack::new();

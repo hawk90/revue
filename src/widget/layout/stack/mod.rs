@@ -19,6 +19,9 @@ enum ChildSize {
     /// child measures without filling the axis, else an equal share of the
     /// remaining space
     Auto,
+    /// Like `Auto`, for a child that asks for at least this much
+    /// ([`View::min_size`]): its share does not go below it
+    AutoMin(u16),
     /// Fixed pixel size
     Fixed(u16),
     /// The size a content-sized child measured (its CSS box folded in).

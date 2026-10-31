@@ -177,6 +177,18 @@ pub trait View {
         }
     }
 
+    /// The least space this view asks for while it fills: a `min-height` in
+    /// the CSS sense. A content-sized stack does not give a filling child a
+    /// share below this on its main axis, and the child still takes more when
+    /// there is more. `(0, 0)`, the default, asks for nothing.
+    ///
+    /// A crate-internal hook, like [`measure_styled`](Self::measure_styled):
+    /// the 4.0 layout engine replaces it.
+    #[doc(hidden)]
+    fn min_size(&self) -> (u16, u16) {
+        (0, 0)
+    }
+
     /// The axes along which this view takes whatever space it is offered;
     /// [`measure`](Self::measure) still gives its natural size on the other
     /// axis.
@@ -384,6 +396,10 @@ impl View for Box<dyn View> {
         (**self).fills()
     }
 
+    fn min_size(&self) -> (u16, u16) {
+        (**self).min_size()
+    }
+
     fn widget_type(&self) -> &'static str {
         (**self).widget_type()
     }
@@ -439,6 +455,10 @@ impl<V: View + ?Sized> View for &V {
 
     fn fills(&self) -> Fill {
         (**self).fills()
+    }
+
+    fn min_size(&self) -> (u16, u16) {
+        (**self).min_size()
     }
 
     fn widget_type(&self) -> &'static str {

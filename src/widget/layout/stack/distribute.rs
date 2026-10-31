@@ -13,7 +13,8 @@ impl Stack {
     ///   one row too tall loses that row instead of pushing the footer off
     ///   the screen
     /// - Flex children share remaining space proportionally by grow factor
-    /// - Auto children share remaining space equally (after flex allocation)
+    /// - Auto children share remaining space equally (after flex allocation);
+    ///   one with a minimum keeps it, and the others share what is left
     pub(super) fn calculate_sizes(child_sizes: &[ChildSize], available: u16, n: usize) -> Vec<u16> {
         if n == 0 {
             return Vec::new();
@@ -30,7 +31,7 @@ impl Stack {
                 ChildSize::Fixed(size) => fixed_total = fixed_total.saturating_add(*size),
                 ChildSize::Content(size) => content_total += u32::from(*size),
                 ChildSize::Flex(grow) => total_grow += grow,
-                ChildSize::Auto => auto_count += 1,
+                ChildSize::Auto | ChildSize::AutoMin(_) => auto_count += 1,
             }
         }
 
@@ -61,7 +62,11 @@ impl Stack {
                 .collect();
 
             // Space for flex children: remaining minus space for auto children
-            let auto_min = auto_count as u16;
+            let auto_min = child_sizes.iter().fold(0u16, |sum, cs| match cs {
+                ChildSize::Auto => sum.saturating_add(1),
+                ChildSize::AutoMin(least) => sum.saturating_add((*least).max(1)),
+                _ => sum,
+            });
             let flex_space = remaining.saturating_sub(auto_min);
             let mut distributed: u16 = 0;
 
@@ -81,35 +86,70 @@ impl Stack {
 
             // Auto children get 1 pixel each when flex is active
             for (i, cs) in child_sizes.iter().enumerate() {
-                if matches!(cs, ChildSize::Auto) {
-                    result[i] = 1;
+                match cs {
+                    ChildSize::Auto => result[i] = 1,
+                    ChildSize::AutoMin(least) => result[i] = (*least).max(1),
+                    _ => {}
                 }
             }
         } else if auto_count > 0 {
-            // No flex: distribute remaining space equally to auto children
-            let (per_auto, extra) = if remaining > 0 {
-                (
-                    remaining / (auto_count as u16),
-                    remaining % (auto_count as u16),
-                )
-            } else {
-                (1, 0)
-            };
-
-            let mut extra_given = 0u16;
-            for (i, cs) in child_sizes.iter().enumerate() {
-                if matches!(cs, ChildSize::Auto) {
-                    let mut size = per_auto;
-                    if extra_given < extra {
-                        size += 1;
-                        extra_given += 1;
-                    }
-                    result[i] = size;
-                }
-            }
+            Self::share_remaining(child_sizes, remaining, auto_count, &mut result);
         }
 
         result
+    }
+
+    /// No flex: the auto children share `remaining` equally, rounding leftovers
+    /// to the earliest. A child whose minimum is above its share keeps the
+    /// minimum and leaves the others less, as CSS resolves `min-height` on a
+    /// flex item; minimums that do not fit overflow.
+    fn share_remaining(
+        child_sizes: &[ChildSize],
+        remaining: u16,
+        auto_count: usize,
+        result: &mut [u16],
+    ) {
+        let mut pinned = vec![false; child_sizes.len()];
+        let mut left = remaining;
+        let mut sharing = auto_count as u16;
+        loop {
+            let share = left.checked_div(sharing).unwrap_or(0);
+            let mut changed = false;
+            for (i, cs) in child_sizes.iter().enumerate() {
+                if let ChildSize::AutoMin(least) = cs {
+                    if !pinned[i] && *least > share {
+                        pinned[i] = true;
+                        result[i] = *least;
+                        left = left.saturating_sub(*least);
+                        sharing -= 1;
+                        changed = true;
+                    }
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        if sharing == 0 {
+            return;
+        }
+        // Nothing left still gives each child a cell.
+        let (per_auto, extra) = if left > 0 {
+            (left / sharing, left % sharing)
+        } else {
+            (1, 0)
+        };
+        let mut extra_given = 0u16;
+        for (i, cs) in child_sizes.iter().enumerate() {
+            if matches!(cs, ChildSize::Auto | ChildSize::AutoMin(_)) && !pinned[i] {
+                let mut size = per_auto;
+                if extra_given < extra {
+                    size += 1;
+                    extra_given += 1;
+                }
+                result[i] = size;
+            }
+        }
     }
 
     /// Give each `Content` child its measured size, or - when they total more

@@ -61,8 +61,8 @@ impl StatusIndicator {
         cell.fg = Some(color);
         ctx.set(0, 0, cell);
 
-        // For large size, add extra visual
-        if self.size == StatusSize::Large && area.width > 1 {
+        // For large size, add extra visual; the whole dot blinks
+        if self.size == StatusSize::Large && area.width > 1 && visible {
             let mut cell2 = Cell::new(' ');
             cell2.bg = Some(color);
             ctx.set(1, 0, cell2);
@@ -73,10 +73,7 @@ impl StatusIndicator {
         let area = ctx.area;
 
         // Render dot
-        let dot = if visible { self.size.dot() } else { ' ' };
-        let mut dot_cell = Cell::new(dot);
-        dot_cell.fg = Some(color);
-        ctx.set(0, 0, dot_cell);
+        self.render_dot(ctx, color, visible);
 
         // Render label
         let label = self.get_label();
@@ -140,7 +137,7 @@ impl StatusIndicator {
         }
 
         // Dot
-        let dot = if visible { '●' } else { ' ' };
+        let dot = if visible { self.size.dot() } else { ' ' };
         let mut dot_cell = Cell::new(dot);
         dot_cell.fg = Some(color);
         dot_cell.bg = Some(bg_color);
