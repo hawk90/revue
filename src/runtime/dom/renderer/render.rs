@@ -91,10 +91,9 @@ impl DomRenderer {
             });
             ctx = ctx.with_overlay_queue(&mut overlay_queue);
             root.render(&mut ctx);
-            ctx.box_background()
+            ctx.painted_background()
         };
-        let background = own_background
-            .or_else(|| render_context::css_background(painted.first().and_then(|n| n.style)));
+        let background = own_background.resolve(painted.first().and_then(|n| n.style));
         if let Some(bg) = background {
             render_context::fill_background_under(buffer, area, bg);
         }
