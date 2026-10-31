@@ -117,6 +117,11 @@ impl Default for Sidebar {
 }
 
 impl crate::widget::traits::View for Sidebar {
+    /// Its own bounds, which `render` puts back.
+    fn held_size(&self) -> (u16, u16) {
+        (self.min_width, self.min_height)
+    }
+
     /// Its own width, collapsed or expanded, and all the height it is offered.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         let area = crate::widget::layout::constraints::constrain(

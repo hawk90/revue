@@ -171,6 +171,11 @@ impl<V: View> View for DebugOverlay<V> {
         self.inner.min_size()
     }
 
+    /// What the wrapped view holds: it keeps the whole area, shown or not.
+    fn held_size(&self) -> (u16, u16) {
+        self.inner.held_size()
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         // Render inner view
         self.inner.render(ctx);

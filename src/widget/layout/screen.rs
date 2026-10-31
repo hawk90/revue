@@ -346,6 +346,11 @@ impl Default for ScreenStack {
 }
 
 impl View for ScreenStack {
+    /// Its own bounds, which `render` puts back.
+    fn held_size(&self) -> (u16, u16) {
+        (self.min_width, self.min_height)
+    }
+
     crate::impl_view_meta!("ScreenStack");
 
     fn render(&self, ctx: &mut RenderContext) {

@@ -194,6 +194,16 @@ impl View for ErrorBoundary {
         shown.map_or((0, 0), |v| v.min_size())
     }
 
+    /// What whatever it is showing holds, as with [`measure`](View::measure).
+    fn held_size(&self) -> (u16, u16) {
+        let shown = if self.has_error.get() {
+            self.fallback.as_ref()
+        } else {
+            self.child.as_ref()
+        };
+        shown.map_or((0, 0), |v| v.held_size())
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         // If already in error state, show fallback
         if self.has_error.get() {

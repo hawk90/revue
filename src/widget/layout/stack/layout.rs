@@ -123,11 +123,13 @@ impl Stack {
                 }
             }
         };
-        let slot = along.slot(size);
+        let held = self.oriented_first(child.held_size());
+        let slot = along.slot(size).max(held.saturating_add(along.margins));
         // An explicit size or minimum is put back by the box model whatever
-        // slot the child gets, so shrinking that slot would only make the
-        // next sibling start inside it. Only a measured size may shrink.
-        if along.pinned() {
+        // slot the child gets, and a view's own by its `render`, so shrinking
+        // that slot would only make the next sibling start inside it. Only a
+        // measured size may shrink.
+        if along.pinned() || held > 0 {
             ChildSize::Fixed(slot)
         } else {
             ChildSize::Content(slot)
@@ -143,15 +145,49 @@ impl Stack {
     /// margins of a view that asks for nothing stay inside an ordinary share.
     ///
     /// With a CSS minimum the box model puts the size back whatever the share
-    /// is, so it may not give way; a minimum the view asks for may.
+    /// is, and with a view's own minimum ([`View::held_size`]) its `render` does,
+    /// so those may not give way; a minimum the view asks for may.
     pub(super) fn share_of(&self, child: &dyn View, along: &AxisBox) -> ChildSize {
-        let (width, height) = child.min_size();
-        let least = self.oriented(width, height).0;
-        match (along.clamp(least), along.min) {
+        let held = self.oriented_first(child.held_size());
+        let least = self.oriented_first(child.min_size()).max(held);
+        let slot = along.slot(least).max(held.saturating_add(along.margins));
+        match (
+            along.clamp(least).max(held),
+            along.min.is_some() || held > 0,
+        ) {
             (0, _) => ChildSize::Auto,
-            (_, Some(_)) => ChildSize::AutoAtLeast(along.slot(least)),
-            (_, None) => ChildSize::AutoMin(along.slot(least)),
+            (_, true) => ChildSize::AutoAtLeast(slot),
+            (_, false) => ChildSize::AutoMin(slot),
         }
+    }
+
+    /// The main-axis part of a `(width, height)`.
+    fn oriented_first(&self, (width, height): (u16, u16)) -> u16 {
+        self.oriented(width, height).0
+    }
+
+    /// A minimum of each child added up: their sum along the axis with the gaps
+    /// between them, the largest across it, so it survives a nested stack.
+    /// Children with a builder size do not count: the builder decides theirs.
+    pub(super) fn along_children(&self, of: impl Fn(&dyn View) -> (u16, u16)) -> (u16, u16) {
+        let (mut along, mut across) = (0u16, 0u16);
+        for (child, _) in self
+            .children
+            .iter()
+            .zip(&self.child_sizes)
+            .filter(|(_, size)| matches!(size, ChildSize::Auto))
+        {
+            let (w, h) = of(child.as_ref());
+            let (main, cross) = self.oriented(w, h);
+            along = along.saturating_add(main);
+            across = across.max(cross);
+        }
+        if along > 0 {
+            let cells = self.children.iter().filter(|c| c.needs_render()).count();
+            let gaps = u16::try_from(cells.saturating_sub(1)).unwrap_or(u16::MAX);
+            along = along.saturating_add(gaps.saturating_mul(self.gap));
+        }
+        self.oriented(along, across)
     }
 
     /// Whether `child` takes whatever it is offered along this stack's axis

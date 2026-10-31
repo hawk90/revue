@@ -7,6 +7,11 @@ use crate::widget::traits::{RenderContext, View};
 use super::{Accordion, AccordionSection};
 
 impl View for Accordion {
+    /// Its own bounds, which `render` puts back.
+    fn held_size(&self) -> (u16, u16) {
+        (self.min_width, self.min_height)
+    }
+
     /// Every row of its sections, inside the builder's border; the headers
     /// and dividers stretch across the offered width.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {

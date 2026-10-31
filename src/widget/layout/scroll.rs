@@ -354,6 +354,11 @@ impl Default for ScrollView {
 }
 
 impl View for ScrollView {
+    /// Its own bounds, which `render` puts back.
+    fn held_size(&self) -> (u16, u16) {
+        (self.min_width, self.min_height)
+    }
+
     crate::impl_view_meta!("ScrollView");
 
     fn render(&self, ctx: &mut RenderContext) {

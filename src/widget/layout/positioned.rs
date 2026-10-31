@@ -282,6 +282,11 @@ impl Positioned {
 }
 
 impl View for Positioned {
+    /// Its own bounds, which `render` puts back.
+    fn held_size(&self) -> (u16, u16) {
+        (self.min_width, self.min_height)
+    }
+
     crate::impl_view_meta!("Positioned");
 
     fn render(&self, ctx: &mut RenderContext) {

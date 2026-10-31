@@ -7,6 +7,11 @@ use crate::style::Color;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Tabs {
+    /// Its own bounds, which `render` puts back.
+    fn held_size(&self) -> (u16, u16) {
+        (self.min_width, self.min_height)
+    }
+
     /// One row as wide as the bar: every label with its padding and dividers.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         let spans = label_spans(self.tabs.iter().map(|t| t.label.as_str()));
