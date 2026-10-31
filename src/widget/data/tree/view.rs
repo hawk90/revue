@@ -72,20 +72,19 @@ impl Tree {
         for parent_is_last in ancestors_last(rows, index) {
             let ch = if parent_is_last { ' ' } else { '│' };
             ctx.set(x, y, cell(ch, fg, bg));
-            x += 1;
-            for _ in 1..effective_indent {
-                ctx.set(x, y, cell(' ', None, bg));
-                x += 1;
+            // Past the edge there is nothing to draw, however large the indent.
+            for i in 1..effective_indent.min(ctx.area.width) {
+                ctx.set(x.saturating_add(i), y, cell(' ', None, bg));
             }
+            x = x.saturating_add(effective_indent);
         }
 
         let row = &rows[index];
         if row.depth > 0 {
             let connector = if row.is_last { '└' } else { '├' };
             ctx.set(x, y, cell(connector, fg, bg));
-            x += 1;
-            ctx.set(x, y, cell('─', fg, bg));
-            x += 1;
+            ctx.set(x.saturating_add(1), y, cell('─', fg, bg));
+            x = x.saturating_add(2);
         }
         x
     }
@@ -112,7 +111,7 @@ impl Tree {
         let mut x = x;
         for (idx, ch) in truncated.chars().enumerate() {
             let cw = crate::utils::char_width(ch) as u16;
-            if x + cw > area_width {
+            if x.saturating_add(cw) > area_width {
                 break;
             }
             let ch_fg = if match_indices.contains(&idx) {
@@ -141,11 +140,11 @@ fn draw_marker(
         (false, _) => ' ',
     };
     ctx.set(x, y, cell(indicator, fg, bg));
-    let mut x = x + 1;
+    let mut x = x.saturating_add(1);
     if let Some(icon_ch) = node.icon {
         // A wide icon (📁) takes two columns
         ctx.set(x, y, cell(icon_ch, fg, bg));
-        x += (crate::utils::char_width(icon_ch) as u16).max(1);
+        x = x.saturating_add((crate::utils::char_width(icon_ch) as u16).max(1));
     }
     x
 }

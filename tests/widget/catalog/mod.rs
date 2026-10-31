@@ -3,6 +3,7 @@
 //! random keys and mouse events. Both check that nothing panics and nothing
 //! is written outside the widget's area.
 
+mod caller_sized;
 mod emulated;
 mod matrix;
 mod sequences;

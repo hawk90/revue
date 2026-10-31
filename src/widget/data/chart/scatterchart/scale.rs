@@ -57,11 +57,13 @@ impl ScatterChart {
         let x_range = (x_max - x_min).max(1.0);
         let y_range = (y_max - y_min).max(1.0);
 
-        let screen_x =
-            chart_area.x + ((x - x_min) / x_range * (chart_area.width as f64 - 1.0)) as u16;
+        // A point outside fixed bounds goes on the edge of the chart.
+        let x_ratio = ((x - x_min) / x_range).clamp(0.0, 1.0);
+        let y_ratio = ((y - y_min) / y_range).clamp(0.0, 1.0);
+        let screen_x = chart_area.x + (x_ratio * (chart_area.width as f64 - 1.0)) as u16;
         let screen_y = chart_area.y + chart_area.height
             - 1
-            - ((y - y_min) / y_range * (chart_area.height as f64 - 1.0)) as u16;
+            - (y_ratio * (chart_area.height as f64 - 1.0)) as u16;
 
         (
             screen_x.clamp(chart_area.x, chart_area.x + chart_area.width - 1),

@@ -20,17 +20,19 @@ impl BarChart {
         let value_height = if self.show_values { 1 } else { 0 };
         let bar_area_height = area.height.saturating_sub(label_height + value_height);
 
-        let total_bar_width = self.bar_width + self.gap;
+        let total_bar_width = self.bar_width.saturating_add(self.gap);
         let mut x = 0u16;
 
         for bar in &self.bars {
-            if x + self.bar_width > area.width {
+            if x.saturating_add(self.bar_width) > area.width {
                 break;
             }
 
             // Calculate bar height (use absolute value, as horizontal bars do)
             let bar_height = if max_value > 0.0 {
-                ((bar.value.abs() / max_value) * bar_area_height as f64) as u16
+                // A `max` below the data still draws inside the chart.
+                ((bar.value.abs() / max_value) * bar_area_height as f64)
+                    .min(f64::from(bar_area_height)) as u16
             } else {
                 0
             };
@@ -41,7 +43,7 @@ impl BarChart {
             // Draw bar (from bottom up), below the reserved value row
             for row in 0..bar_height {
                 let y = value_height + bar_area_height - 1 - row;
-                for col in 0..self.bar_width {
+                for col in 0..self.bar_width.min(area.width.saturating_sub(x)) {
                     if x + col < area.width {
                         let mut cell = Cell::new('█');
                         cell.fg = Some(color);
