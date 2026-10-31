@@ -189,6 +189,23 @@ impl Default for ZenMode {
     }
 }
 
+impl ZenMode {
+    /// `least` for the content with the padding around it while on.
+    fn around_content(&self, least: (u16, u16)) -> (u16, u16) {
+        if self.enabled {
+            crate::widget::layout::constraints::floor_around(
+                least,
+                (
+                    self.padding_x.saturating_mul(2),
+                    self.padding_y.saturating_mul(2),
+                ),
+            )
+        } else {
+            least
+        }
+    }
+}
+
 impl View for ZenMode {
     /// Off, it is just its content and measures as that. On, it paints its
     /// background over the whole area, so it fills.
@@ -211,18 +228,12 @@ impl View for ZenMode {
 
     /// What its content asks for, with the padding around it while on.
     fn min_size(&self) -> (u16, u16) {
-        let least = self.content.min_size();
-        if self.enabled {
-            crate::widget::layout::constraints::floor_around(
-                least,
-                (
-                    self.padding_x.saturating_mul(2),
-                    self.padding_y.saturating_mul(2),
-                ),
-            )
-        } else {
-            least
-        }
+        self.around_content(self.content.min_size())
+    }
+
+    /// What its content holds, with the padding around it while on.
+    fn held_size(&self) -> (u16, u16) {
+        self.around_content(self.content.held_size())
     }
 
     fn render(&self, ctx: &mut RenderContext) {

@@ -51,6 +51,22 @@ impl Card {
         (frame, u16::from(self.variant == CardVariant::Elevated))
     }
 
+    /// `least` for the body with the rest of the card around it
+    fn around_body(&self, least: (u16, u16)) -> (u16, u16) {
+        let footer = if self.shown() {
+            self.footer_height()
+        } else {
+            0
+        };
+        crate::widget::layout::constraints::floor_around(
+            least,
+            (
+                self.columns_beside_body(),
+                self.rows_without_body_and_footer().saturating_add(footer),
+            ),
+        )
+    }
+
     /// The columns beside the body: the frame, the padding and the shadow
     fn columns_beside_body(&self) -> u16 {
         let (frame, shadow) = self.frame_and_shadow();
@@ -116,22 +132,26 @@ impl View for Card {
         crate::widget::Fill::WIDTH
     }
 
-    /// The shown body's minimum with the rest of the card around it, within
-    /// the card's own bounds.
+    /// The shown body's minimum with the rest of the card around it, up to the
+    /// card's maximum.
     fn min_size(&self) -> (u16, u16) {
         let body = self.body.as_ref().filter(|_| self.shown());
-        let (w, h) = crate::widget::layout::constraints::floor_around(
-            body.map_or((0, 0), |body| body.min_size()),
-            (
-                self.columns_beside_body(),
-                self.rows_without_body_and_footer()
-                    .saturating_add(if self.shown() {
-                        self.footer_height()
-                    } else {
-                        0
-                    }),
-            ),
+        let (w, h) = self.around_body(body.map_or((0, 0), |body| body.min_size()));
+        let area = crate::widget::layout::constraints::constrain(
+            Rect::new(0, 0, w, h),
+            0,
+            0,
+            self.max_width,
+            self.max_height,
         );
+        (area.width, area.height)
+    }
+
+    /// What the shown body holds with the rest of the card around it, within
+    /// the card's own bounds.
+    fn held_size(&self) -> (u16, u16) {
+        let body = self.body.as_ref().filter(|_| self.shown());
+        let (w, h) = self.around_body(body.map_or((0, 0), |body| body.held_size()));
         let area = crate::widget::layout::constraints::constrain(
             Rect::new(0, 0, w, h),
             self.min_width,

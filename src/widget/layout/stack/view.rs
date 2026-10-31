@@ -100,34 +100,17 @@ impl View for Stack {
             .fold(Fill::NONE, |acc, (child, _)| acc.or(child.fills()))
     }
 
-    /// What its children ask for while filling: their sum along the axis with
-    /// the gaps between them, the largest across it, so a minimum survives a
-    /// nested stack. Children with a builder size do not count: the builder
-    /// decides theirs.
+    /// What its children ask for while filling, see
+    /// [`along_children`](Self::along_children).
     fn min_size(&self) -> (u16, u16) {
-        let column = self.direction == Direction::Column;
-        let (mut along, mut across) = (0u16, 0u16);
-        for (child, _) in self
-            .children
-            .iter()
-            .zip(&self.child_sizes)
-            .filter(|(_, size)| matches!(size, ChildSize::Auto))
-        {
-            let (w, h) = child.min_size();
-            let (main, cross) = if column { (h, w) } else { (w, h) };
-            along = along.saturating_add(main);
-            across = across.max(cross);
-        }
-        if along > 0 {
-            let cells = self.children.iter().filter(|c| c.needs_render()).count();
-            let gaps = u16::try_from(cells.saturating_sub(1)).unwrap_or(u16::MAX);
-            along = along.saturating_add(gaps.saturating_mul(self.gap));
-        }
-        if column {
-            (across, along)
-        } else {
-            (along, across)
-        }
+        self.along_children(|child| child.min_size())
+    }
+
+    /// What its children hold, see [`along_children`](Self::along_children),
+    /// and at least its own bounds, which `render` puts back.
+    fn held_size(&self) -> (u16, u16) {
+        let (w, h) = self.along_children(|child| child.held_size());
+        (w.max(self.min_width), h.max(self.min_height))
     }
 
     fn children(&self) -> &[Box<dyn View>] {

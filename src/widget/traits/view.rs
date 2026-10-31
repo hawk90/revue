@@ -191,6 +191,19 @@ pub trait View {
         (0, 0)
     }
 
+    /// The least space this view draws itself in, whatever it is given: its own
+    /// `min_width` / `min_height`, which `render` puts back. Unlike
+    /// [`min_size`](Self::min_size) this does not give way when there is too
+    /// little room, or the next sibling would start inside the view: a
+    /// content-sized stack holds it like a fixed size. `(0, 0)`, the default,
+    /// holds nothing.
+    ///
+    /// A crate-internal hook, like `min_size`: the 4.0 layout engine replaces it.
+    #[doc(hidden)]
+    fn held_size(&self) -> (u16, u16) {
+        (0, 0)
+    }
+
     /// The axes along which this view takes whatever space it is offered;
     /// [`measure`](Self::measure) still gives its natural size on the other
     /// axis.
@@ -402,6 +415,10 @@ impl View for Box<dyn View> {
         (**self).min_size()
     }
 
+    fn held_size(&self) -> (u16, u16) {
+        (**self).held_size()
+    }
+
     fn widget_type(&self) -> &'static str {
         (**self).widget_type()
     }
@@ -461,6 +478,10 @@ impl<V: View + ?Sized> View for &V {
 
     fn min_size(&self) -> (u16, u16) {
         (**self).min_size()
+    }
+
+    fn held_size(&self) -> (u16, u16) {
+        (**self).held_size()
     }
 
     fn widget_type(&self) -> &'static str {

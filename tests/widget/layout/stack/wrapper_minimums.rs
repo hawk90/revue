@@ -1,11 +1,15 @@
 //! A filling child's minimum reaches a content-sized stack through every
 //! wrapper, with the wrapper's own rows and columns around it (#1341).
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
-    hstack, vstack, Border, Card, CardVariant, DebugOverlay, ErrorBoundary, Text, ZenMode,
+    hstack, vstack, Accordion, Border, Card, CardVariant, Collapsible, DebugOverlay, ErrorBoundary,
+    Grid, Layers, List, Positioned, ScreenStack, ScrollView, Sidebar, Tabs, Text, ZenMode,
 };
 
 /// Fills what it is given with `#` and asks for `(w, h)`.
@@ -232,19 +236,16 @@ fn a_wrapper_asking_for_nothing_does_not_shrink_its_sibling_for_its_frame() {
 }
 
 #[test]
-fn a_border_or_card_keeps_its_own_bounds_in_what_it_asks_for() {
+fn a_border_or_card_caps_what_its_child_asks_for_at_its_maximum() {
     let border = |b: Border| View::min_size(&b.child(Least(1, 3)));
     assert_eq!(border(Border::single()), (3, 5));
-    assert_eq!(border(Border::single().min_height(9)), (3, 9));
-    assert_eq!(border(Border::single().min_width(9)), (9, 5));
+    assert_eq!(border(Border::single().min_height(9)), (3, 5));
     assert_eq!(border(Border::single().max_height(4)), (3, 4));
     assert_eq!(border(Border::single().max_width(2)), (2, 5));
-    assert_eq!(View::min_size(&Border::single().min_height(4)), (0, 4));
 
     let card = |c: Card| View::min_size(&c.body(Least(1, 3)));
     assert_eq!(card(Card::new()), (5, 5));
-    assert_eq!(card(Card::new().min_height(9)), (5, 9));
-    assert_eq!(card(Card::new().min_width(9)), (9, 5));
+    assert_eq!(card(Card::new().min_height(9)), (5, 5));
     assert_eq!(card(Card::new().max_height(4)), (5, 4));
     assert_eq!(card(Card::new().max_width(2)), (2, 5));
 }
@@ -344,4 +345,116 @@ fn the_minimum_holds_when_the_runtime_styles_the_tree() {
             "foot    ",
         ]
     );
+}
+
+// ---------------------------------------------------------------------------
+// A widget's own minimum, which its `render` puts back (#1347)
+// ---------------------------------------------------------------------------
+
+/// Records where it was drawn.
+#[derive(Clone)]
+struct Probe(Rc<RefCell<Option<Rect>>>);
+
+impl View for Probe {
+    fn render(&self, ctx: &mut RenderContext) {
+        *self.0.borrow_mut() = Some(ctx.area);
+    }
+}
+
+type Own = (&'static str, Box<dyn View>);
+
+/// Every widget with `min_height`, set to 4.
+fn own_minimums() -> Vec<Own> {
+    fn entry(name: &'static str, view: impl View + 'static) -> Own {
+        (name, Box::new(view))
+    }
+    vec![
+        entry(
+            "Border, filling",
+            Border::single().min_height(4).child(List::new(vec!["a"])),
+        ),
+        entry(
+            "Border, measured",
+            Border::single().min_height(4).child(Text::new("x")),
+        ),
+        entry(
+            "Card, filling",
+            Card::new().min_height(4).body(List::new(vec!["a"])),
+        ),
+        entry(
+            "Card, measured",
+            Card::new().min_height(4).body(Text::new("x")),
+        ),
+        entry(
+            "Stack, filling",
+            vstack().min_height(4).child(List::new(vec!["a"])),
+        ),
+        entry(
+            "Stack, measured",
+            vstack().min_height(4).child(Text::new("x")),
+        ),
+        entry("Grid", Grid::new().min_height(4)),
+        entry("ScrollView", ScrollView::new().min_height(4)),
+        entry("Tabs", Tabs::new().min_height(4)),
+        entry("Accordion", Accordion::new().min_height(4)),
+        entry("Collapsible", Collapsible::new("t").min_height(4)),
+        entry("Sidebar", Sidebar::new().min_height(4)),
+        entry("ScreenStack", ScreenStack::new().min_height(4)),
+        entry("Layers", Layers::new().min_height(4)),
+        entry("Positioned", Positioned::new(Text::new("x")).min_height(4)),
+    ]
+}
+
+#[test]
+fn the_next_sibling_starts_past_a_widgets_own_minimum() {
+    for height in [1, 3, 4, 5, 6] {
+        for (name, view) in own_minimums() {
+            let probe = Probe(Rc::new(RefCell::new(None)));
+            let stack = vstack()
+                .child(view)
+                .child(Text::new("1\n2\n3"))
+                .child(probe.clone());
+            rows(&stack, 16, height);
+            let drawn = *probe.0.borrow();
+            if let Some(rect) = drawn {
+                assert!(rect.y >= 4, "{name} in {height}: {rect:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn a_measured_sibling_gives_way_before_a_widgets_own_minimum() {
+    for (name, view) in own_minimums() {
+        let probe = Probe(Rc::new(RefCell::new(None)));
+        let stack = vstack()
+            .child(Text::new("1\n2\n3"))
+            .child(view)
+            .child(probe.clone());
+        rows(&stack, 16, 6);
+        let drawn = *probe.0.borrow();
+        let rect = drawn.expect(name);
+        assert!(rect.y >= 5, "{name}: {rect:?}");
+    }
+}
+
+#[test]
+fn a_widgets_own_minimum_is_held_through_a_wrapper() {
+    let inner = || vstack().min_height(4);
+    assert_eq!(View::held_size(&Border::single().child(inner())), (0, 6));
+    assert_eq!(
+        View::held_size(&Card::new().title("T").body(inner())),
+        (0, 8)
+    );
+    assert_eq!(
+        View::held_size(&ErrorBoundary::new().child(inner())),
+        (0, 4)
+    );
+    assert_eq!(View::held_size(&DebugOverlay::wrap(inner())), (0, 4));
+    assert_eq!(View::held_size(&ZenMode::new(inner())), (0, 4));
+    assert_eq!(
+        View::held_size(&vstack().gap(1).child(inner()).child(inner())),
+        (0, 9)
+    );
+    assert_eq!(View::held_size(&vstack().child(Text::new("x"))), (0, 0));
 }

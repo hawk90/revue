@@ -180,6 +180,11 @@ impl Default for Layers {
 }
 
 impl View for Layers {
+    /// Its own bounds, which `render` puts back.
+    fn held_size(&self) -> (u16, u16) {
+        (self.min_width, self.min_height)
+    }
+
     crate::impl_view_meta!("Layers");
 
     fn render(&self, ctx: &mut RenderContext) {

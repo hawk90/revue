@@ -10,6 +10,11 @@ use crate::widget::traits::{RenderContext, View};
 use super::Collapsible;
 
 impl View for Collapsible {
+    /// Its own bounds, which `render` puts back.
+    fn held_size(&self) -> (u16, u16) {
+        (self.min_width, self.min_height)
+    }
+
     /// The header, and while expanded the content with its bottom border; the
     /// header and border stretch across the offered width.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {

@@ -40,10 +40,21 @@ impl View for Border {
         Some((w.min(max_width), h.min(max_height)))
     }
 
-    /// The child's minimum inside the frame, within the border's own bounds.
+    /// The child's minimum inside the frame, up to the border's maximum.
     fn min_size(&self) -> (u16, u16) {
         let least = self.child.as_ref().map_or((0, 0), |child| child.min_size());
         let (w, h) = floor_around(least, (2, 2));
+        let area = constrain(Rect::new(0, 0, w, h), 0, 0, self.max_width, self.max_height);
+        (area.width, area.height)
+    }
+
+    /// What the child holds inside the frame, within the border's own bounds.
+    fn held_size(&self) -> (u16, u16) {
+        let held = self
+            .child
+            .as_ref()
+            .map_or((0, 0), |child| child.held_size());
+        let (w, h) = floor_around(held, (2, 2));
         let area = self.apply_constraints(Rect::new(0, 0, w, h));
         (area.width, area.height)
     }

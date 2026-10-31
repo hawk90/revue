@@ -6,6 +6,11 @@ use crate::layout::Rect;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Grid {
+    /// Its own bounds, which `render` puts back.
+    fn held_size(&self) -> (u16, u16) {
+        (self.min_width, self.min_height)
+    }
+
     crate::impl_view_meta!("Grid");
 
     fn render(&self, ctx: &mut RenderContext) {
