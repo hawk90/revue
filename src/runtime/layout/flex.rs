@@ -154,8 +154,7 @@ pub fn compute_flex(
     // Calculate total used space and free space
     let total_used: u16 = child_main_sizes
         .iter()
-        .sum::<u16>()
-        .saturating_add(total_gaps);
+        .fold(total_gaps, |sum, size| sum.saturating_add(*size));
     let free_space = main_size.saturating_sub(total_used);
 
     // Calculate positions based on justify-content
@@ -242,7 +241,8 @@ fn apply_main_constraints(
     let min_val = resolve_constraint(min_size, available, 0);
     let max_val = resolve_constraint(max_size, available, u16::MAX);
 
-    size.clamp(min_val, max_val)
+    // Not `clamp`: a minimum above the maximum is valid CSS, and it wins.
+    size.min(max_val).max(min_val)
 }
 
 /// Apply min/max constraints on cross axis
@@ -260,7 +260,8 @@ fn apply_cross_constraints(
     let min_val = resolve_constraint(min_size, available, 0);
     let max_val = resolve_constraint(max_size, available, u16::MAX);
 
-    size.clamp(min_val, max_val)
+    // Not `clamp`: a minimum above the maximum is valid CSS, and it wins.
+    size.min(max_val).max(min_val)
 }
 
 /// Resolve a size constraint to a concrete value

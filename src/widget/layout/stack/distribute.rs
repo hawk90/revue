@@ -21,6 +21,8 @@ impl Stack {
     /// - Minimums make room by shrinking the measured children, down to a cell
     ///   each, and never push a fixed child off: past that they get what is
     ///   left, like any other share
+    /// - A minimum that may not give way (`AutoAtLeast`) is kept like a fixed
+    ///   size and overflows like one; above it the child still shares
     pub(super) fn calculate_sizes(child_sizes: &[ChildSize], available: u16, n: usize) -> Vec<u16> {
         if n == 0 {
             return Vec::new();
@@ -31,6 +33,7 @@ impl Stack {
         let mut total_grow: f32 = 0.0;
         let mut fixed_total = 0u16;
         let mut content_total = 0u32;
+        let mut held_total = 0u16;
 
         for cs in child_sizes {
             match cs {
@@ -38,6 +41,10 @@ impl Stack {
                 ChildSize::Content(size) => content_total += u32::from(*size),
                 ChildSize::Flex(grow) => total_grow += grow,
                 ChildSize::Auto | ChildSize::AutoMin(_) => auto_count += 1,
+                ChildSize::AutoAtLeast(size) => {
+                    held_total = held_total.saturating_add(*size);
+                    auto_count += 1;
+                }
             }
         }
 
@@ -60,7 +67,8 @@ impl Stack {
             ChildSize::AutoMin(least) => sum + u32::from(*least),
             _ => sum,
         });
-        let after_fixed = u32::from(available.saturating_sub(fixed_total));
+        let after_fixed =
+            u32::from(available.saturating_sub(fixed_total.saturating_add(held_total)));
         let reserved = floors.min(after_fixed.saturating_sub(content_count));
         let content_space = after_fixed - reserved;
         let content_used =
@@ -84,6 +92,13 @@ impl Stack {
             // Minimums first, as without flex.
             let mut room = remaining;
             let mut auto_sizes = vec![0u16; n];
+            // Those that may not give way before those that may.
+            for (i, cs) in child_sizes.iter().enumerate() {
+                if let ChildSize::AutoAtLeast(least) = cs {
+                    auto_sizes[i] = (*least).min(room).max(1);
+                    room = room.saturating_sub(auto_sizes[i]);
+                }
+            }
             for (i, cs) in child_sizes.iter().enumerate() {
                 if let ChildSize::AutoMin(least) = cs {
                     auto_sizes[i] = (*least).min(room).max(1);
@@ -124,6 +139,11 @@ impl Stack {
             Self::share_remaining(child_sizes, remaining, auto_count, &mut result);
         }
 
+        for (size, cs) in result.iter_mut().zip(child_sizes) {
+            if let ChildSize::AutoAtLeast(least) = cs {
+                *size = (*size).max(*least);
+            }
+        }
         result
     }
 
@@ -140,13 +160,36 @@ impl Stack {
         let mut pinned = vec![false; child_sizes.len()];
         let mut left = remaining;
         let mut sharing = auto_count as u16;
+        let mut held = child_sizes.iter().fold(0u16, |sum, cs| match cs {
+            ChildSize::AutoAtLeast(least) => sum.saturating_add(*least),
+            _ => sum,
+        });
         loop {
             let share = left.checked_div(sharing).unwrap_or(0);
             let mut changed = false;
+            // Those that may not give way first: the others share what they
+            // leave.
+            for (i, cs) in child_sizes.iter().enumerate() {
+                if let ChildSize::AutoAtLeast(least) = cs {
+                    if !pinned[i] && *least > share {
+                        let size = (*least).min(left);
+                        held = held.saturating_sub(*least);
+                        pinned[i] = true;
+                        result[i] = size;
+                        left -= size;
+                        sharing -= 1;
+                        changed = true;
+                    }
+                }
+            }
+            if changed {
+                continue;
+            }
             for (i, cs) in child_sizes.iter().enumerate() {
                 if let ChildSize::AutoMin(least) = cs {
                     if !pinned[i] && *least > share && left > 0 {
-                        let size = (*least).min(left);
+                        // Not from what those still sharing may not give up.
+                        let size = (*least).min(left.saturating_sub(held));
                         pinned[i] = true;
                         result[i] = size;
                         left -= size;
@@ -170,7 +213,11 @@ impl Stack {
         };
         let mut extra_given = 0u16;
         for (i, cs) in child_sizes.iter().enumerate() {
-            if matches!(cs, ChildSize::Auto | ChildSize::AutoMin(_)) && !pinned[i] {
+            if matches!(
+                cs,
+                ChildSize::Auto | ChildSize::AutoMin(_) | ChildSize::AutoAtLeast(_)
+            ) && !pinned[i]
+            {
                 let mut size = per_auto;
                 if extra_given < extra {
                     size += 1;

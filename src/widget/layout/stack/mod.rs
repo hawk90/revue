@@ -22,6 +22,11 @@ enum ChildSize {
     /// Like `Auto`, for a child that asks for at least this much
     /// ([`View::min_size`]): its share does not go below it
     AutoMin(u16),
+    /// Like `AutoMin`, for a minimum the box model puts back whatever slot the
+    /// child gets (a CSS `min-height`): like a fixed size, it does not give way
+    /// when there is too little room, or the next sibling would start inside
+    /// the child
+    AutoAtLeast(u16),
     /// Fixed pixel size
     Fixed(u16),
     /// The size a content-sized child measured (its CSS box folded in).
