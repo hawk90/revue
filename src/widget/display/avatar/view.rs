@@ -149,6 +149,9 @@ impl View for Avatar {
     crate::impl_view_meta!("Avatar");
 
     fn render(&self, ctx: &mut RenderContext) {
+        // The edges are drawn in the background color, so the stylesheet's
+        // goes into the shape and not around it, as with the builder's.
+        ctx.paint_background_to_shape();
         let initials = self.get_initials();
         // Builder, then the stylesheet, then the name's own color.
         let bg = self

@@ -7,7 +7,7 @@ use revue::render::{Buffer, Cell, Modifier};
 use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::widget::traits::{RenderContext, View};
-use revue::widget::{avatar, Avatar, AvatarShape, AvatarSize};
+use revue::widget::{avatar, hstack, Avatar, AvatarShape, AvatarSize};
 
 use crate::traits::placement::{assert_same_when_offset, assert_zero_areas_draw_nothing};
 
@@ -409,6 +409,88 @@ fn the_background_is_the_builder_then_the_stylesheet_then_the_name() {
     // No rule: the name's color.
     let plain = draw(&avatar("John Doe"), 4, 1);
     assert_eq!(plain.get(1, 0).unwrap().bg, Some(Color::rgb(163, 40, 59)));
+}
+
+/// Every cell's symbol, colors and modifier.
+fn cells(buffer: &Buffer, w: u16, h: u16) -> Vec<Cell> {
+    (0..h)
+        .flat_map(|y| (0..w).map(move |x| *buffer.get(x, y).unwrap()))
+        .collect()
+}
+
+#[test]
+fn a_stylesheet_background_draws_the_same_shape_as_the_builder() {
+    let red = Color::rgb(255, 0, 0);
+    for size in SIZES {
+        for shape in SHAPES {
+            let build = || avatar("John Doe").size(size).shape(shape);
+            let mut styled = PipelineHarness::with_css("#a { background: #ff0000; }", 10, 3)
+                .dom_from_render(true);
+            styled.draw(&build().element_id("a"));
+            let mut built = PipelineHarness::with_css("", 10, 3).dom_from_render(true);
+            built.draw(&build().bg(red));
+            assert_eq!(
+                cells(styled.buffer(), 10, 3),
+                cells(built.buffer(), 10, 3),
+                "{size:?} {shape:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn the_shape_shows_and_the_background_stops_at_it_as_a_child_too() {
+    let view = hstack().child(avatar("John Doe").element_id("a"));
+    let mut h =
+        PipelineHarness::with_css("#a { background: #ff0000; }", 6, 1).dom_from_render(true);
+    h.draw(&view);
+    let b = h.buffer();
+    let red = Some(Color::rgb(255, 0, 0));
+    assert_eq!(symbols(b, 0).trim_end(), "◖JD◗");
+    assert_eq!(
+        (b.get(0, 0).unwrap().fg, b.get(0, 0).unwrap().bg),
+        (red, None)
+    );
+    assert_eq!(b.get(1, 0).unwrap().bg, red);
+    assert_eq!(b.get(2, 0).unwrap().bg, red);
+    assert_eq!(
+        (b.get(3, 0).unwrap().fg, b.get(3, 0).unwrap().bg),
+        (red, None)
+    );
+    assert_eq!(b.get(4, 0).unwrap().bg, None, "past the shape");
+}
+
+#[test]
+fn the_parents_background_shows_around_the_shape() {
+    let view = hstack()
+        .element_id("p")
+        .child(avatar("John Doe").element_id("a"));
+    let css = "#p { background: #0000ff; } #a { background: #ff0000; }";
+    let mut h = PipelineHarness::with_css(css, 6, 1).dom_from_render(true);
+    h.draw(&view);
+    let b = h.buffer();
+    let (red, blue) = (Some(Color::rgb(255, 0, 0)), Some(Color::rgb(0, 0, 255)));
+    assert_eq!(
+        (b.get(0, 0).unwrap().fg, b.get(0, 0).unwrap().bg),
+        (red, blue)
+    );
+    assert_eq!(b.get(1, 0).unwrap().bg, red);
+    assert_eq!(b.get(5, 0).unwrap().bg, blue);
+}
+
+#[test]
+fn another_widget_still_gets_the_whole_box_filled() {
+    let view = hstack()
+        .child(avatar("John Doe"))
+        .child(revue::widget::Text::new("x").element_id("t"));
+    let mut h =
+        PipelineHarness::with_css("#t { background: #00ff00; }", 8, 1).dom_from_render(true);
+    h.draw(&view);
+    assert_eq!(h.buffer().get(7, 0).unwrap().bg, None);
+    assert_eq!(
+        h.buffer().get(4, 0).unwrap().bg,
+        Some(Color::rgb(0, 255, 0))
+    );
 }
 
 #[test]

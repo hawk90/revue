@@ -158,6 +158,9 @@ pub struct RenderContext<'a> {
     /// The background this widget gave its whole box, if it did - see
     /// [`fill_box_background`](Self::fill_box_background).
     box_background: Option<crate::style::Color>,
+    /// The widget paints the stylesheet's `background` into its own shape,
+    /// see [`paint_background_to_shape`](Self::paint_background_to_shape).
+    background_to_shape: bool,
 }
 
 impl<'a> RenderContext<'a> {
@@ -173,6 +176,7 @@ impl<'a> RenderContext<'a> {
             clip: None,
             pass: None,
             box_background: None,
+            background_to_shape: false,
         }
     }
 
@@ -188,6 +192,7 @@ impl<'a> RenderContext<'a> {
             clip: None,
             pass: None,
             box_background: None,
+            background_to_shape: false,
         }
     }
 
@@ -208,6 +213,7 @@ impl<'a> RenderContext<'a> {
             clip: None,
             pass: None,
             box_background: None,
+            background_to_shape: false,
         }
     }
 
@@ -337,11 +343,10 @@ impl<'a> RenderContext<'a> {
                         hits,
                     });
                     child.render(&mut ctx);
-                    ctx.box_background
+                    ctx.painted_background()
                 };
 
-                let background =
-                    own_background.or_else(|| css_background(node.and_then(|n| n.style)));
+                let background = own_background.resolve(node.and_then(|n| n.style));
                 if let (Some(bg), Some(visible)) = (background, visible) {
                     fill_background_under(buffer, visible, bg);
                 }
@@ -433,6 +438,26 @@ impl<'a> RenderContext<'a> {
     /// The background claimed by [`fill_box_background`](Self::fill_box_background).
     pub(crate) fn box_background(&self) -> Option<crate::style::Color> {
         self.box_background
+    }
+
+    /// Paint the stylesheet's `background` into the widget's own shape: the
+    /// cells it leaves without a background stay without one, as the corners
+    /// of a CSS box with `border-radius` do.
+    ///
+    /// For a widget that draws a shape smaller than its box out of glyphs. Its
+    /// outline is drawn in the background color, which cannot be seen on a cell
+    /// of that same color.
+    pub(crate) fn paint_background_to_shape(&mut self) {
+        self.background_to_shape = true;
+    }
+
+    /// What the widget did about its box's background, for whoever fills under
+    /// it once it is done.
+    pub(crate) fn painted_background(&self) -> PaintedBackground {
+        PaintedBackground {
+            box_background: self.box_background,
+            to_shape: self.background_to_shape,
+        }
     }
 
     /// A context over the same buffer for a sub-area of this widget's own box.
@@ -607,6 +632,27 @@ impl<'a> RenderContext<'a> {
 pub(crate) fn css_background(style: Option<&Style>) -> Option<crate::style::Color> {
     let bg = style?.visual.background;
     (bg != crate::style::Color::default()).then_some(bg)
+}
+
+/// See [`RenderContext::painted_background`].
+pub(crate) struct PaintedBackground {
+    box_background: Option<crate::style::Color>,
+    to_shape: bool,
+}
+
+impl PaintedBackground {
+    /// The color to fill under the widget's cells, given its computed style:
+    /// the one it filled its box with, else the stylesheet's, unless it painted
+    /// that into its own shape.
+    pub(crate) fn resolve(
+        &self,
+        style: Option<&crate::style::Style>,
+    ) -> Option<crate::style::Color> {
+        if self.to_shape {
+            return None;
+        }
+        self.box_background.or_else(|| css_background(style))
+    }
 }
 
 /// Give every cell in `area` that has no background yet the color `bg`.
