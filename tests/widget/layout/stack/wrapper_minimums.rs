@@ -316,3 +316,32 @@ fn a_view_that_is_not_rendered_opens_no_gap() {
     let stack = vstack().gap(1).child(Least(0, 3)).child(Absent);
     assert_eq!(View::min_size(&stack), (0, 3));
 }
+
+#[test]
+fn the_minimum_holds_when_the_runtime_styles_the_tree() {
+    use revue::testing::PipelineHarness;
+    use revue::widget::DropZone;
+
+    let stack = vstack()
+        .child(Text::new("t1\nt2"))
+        .child(Border::single().child(DropZone::new("Drop").min_height(3)))
+        .child(Text::new("foot"));
+    let mut harness = PipelineHarness::with_css("", 8, 7).dom_from_render(true);
+    harness.draw(&stack);
+    let symbol = |x, y| harness.buffer().get(x, y).unwrap().symbol;
+    let drawn: Vec<String> = (0..7)
+        .map(|y| (0..8).map(|x| symbol(x, y)).collect())
+        .collect();
+    assert_eq!(
+        drawn,
+        [
+            "t1      ",
+            "┌──────┐",
+            "│┌────┐│",
+            "││ Dr ││",
+            "│└────┘│",
+            "└──────┘",
+            "foot    ",
+        ]
+    );
+}
