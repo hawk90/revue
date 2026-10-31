@@ -573,3 +573,12 @@ fn the_issue_example_keeps_the_zone_and_cuts_the_text() {
         ["┌────┐", "│    │", "│ Dr │", "│    │"]
     );
 }
+
+#[test]
+fn the_largest_minimum_beside_a_sibling_does_not_panic() {
+    let row = hstack().child(Fills).child(Text::new("e"));
+    let column = fills_then_end();
+    let css = "#w { min-width: 65535; min-height: 65535; }";
+    assert_eq!(screen(css, &row, 4, 2)[0], "####");
+    assert_eq!(screen(css, &column, 4, 2), ["####", "####"]);
+}

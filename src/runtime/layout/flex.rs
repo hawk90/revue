@@ -154,8 +154,7 @@ pub fn compute_flex(
     // Calculate total used space and free space
     let total_used: u16 = child_main_sizes
         .iter()
-        .sum::<u16>()
-        .saturating_add(total_gaps);
+        .fold(total_gaps, |sum, size| sum.saturating_add(*size));
     let free_space = main_size.saturating_sub(total_used);
 
     // Calculate positions based on justify-content
