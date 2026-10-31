@@ -171,10 +171,10 @@ fn stepper_measures_both_orientations() {
 fn color_picker_measures_every_mode() {
     assert_measures_anchored(ColorPicker::new(), (16, 4));
     assert_measures_anchored(ColorPicker::new().preview(false), (16, 4));
-    // A tall palette: the grid keeps its last two rows free with or without
-    // the preview, and none of its rows is cut.
+    // A tall palette: the preview's two rows only when it is shown (#1333).
     let tall = || ColorPicker::new().palette(ColorPalette::Extended);
-    assert_measures_anchored(tall().preview(false), (32, 18));
+    assert_measures_anchored(tall().preview(false), (32, 16));
+    assert_measures_anchored(tall(), (32, 18));
     assert_measures_anchored(ColorPicker::new().border(Color::WHITE), (18, 6));
     let rgb = ColorPicker::new().mode(ColorPickerMode::Rgb);
     assert_eq!(rgb.fills(), Fill::WIDTH);
@@ -350,4 +350,32 @@ fn qr_code_takes_cells_per_module_by_style() {
     assert_eq!(side(QrStyle::Ascii), (42, 21));
     assert_eq!(side(QrStyle::Braille), (11, 6));
     assert_measures(QrCodeWidget::new("hi").quiet_zone(0), (21, 11));
+}
+
+#[test]
+fn the_palette_uses_the_preview_rows_when_the_preview_is_off() {
+    // 16 rows of 16 colors in exactly 16 rows: the last row has its colors.
+    let picker = ColorPicker::new()
+        .palette(ColorPalette::Extended)
+        .preview(false);
+    let drawn = cells(&picker, 32, 16);
+    for y in [13, 14, 15] {
+        let row = drawn.iter().filter(|&&(_, cy, _)| cy == y).count();
+        assert_eq!(row, 32, "row {y}: {drawn:?}");
+    }
+    // With the preview, its block takes the last two rows.
+    let shown = ColorPicker::new().palette(ColorPalette::Extended);
+    let drawn = cells(&shown, 32, 16);
+    assert_eq!(drawn.iter().filter(|&&(_, y, _)| y == 13).count(), 32);
+    assert!(drawn
+        .iter()
+        .filter(|&&(_, y, _)| y == 14)
+        .all(|&(x, _, _)| x < 14));
+    // Too short for the whole grid: it stops at the area, and stays in bounds.
+    let short = ColorPicker::new()
+        .palette(ColorPalette::Extended)
+        .preview(false);
+    let drawn = cells(&short, 32, 4);
+    assert!(drawn.iter().all(|&(_, y, _)| y < 4));
+    assert_eq!(drawn.iter().filter(|&&(_, y, _)| y == 3).count(), 32);
 }
