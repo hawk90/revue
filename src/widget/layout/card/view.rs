@@ -40,6 +40,36 @@ impl Card {
     fn has_header(&self) -> bool {
         self.title.is_some() || self.subtitle.is_some() || self.header.is_some()
     }
+
+    /// The columns and rows of the frame and of the `Elevated` shadow
+    fn frame_and_shadow(&self) -> (u16, u16) {
+        let frame = if self.border != BorderType::None {
+            2
+        } else {
+            0
+        };
+        (frame, u16::from(self.variant == CardVariant::Elevated))
+    }
+
+    /// The columns beside the body: the frame, the padding and the shadow
+    fn columns_beside_body(&self) -> u16 {
+        let (frame, shadow) = self.frame_and_shadow();
+        frame + self.padding.saturating_mul(2) + shadow
+    }
+
+    /// The rows of everything but the body and the footer: the frame, the
+    /// shadow, the title, the subtitle, and while shown the header and the
+    /// separator between it and the body.
+    fn rows_without_body_and_footer(&self) -> u16 {
+        let (frame, shadow) = self.frame_and_shadow();
+        let mut rows = frame + shadow;
+        rows += u16::from(self.title.is_some()) + u16::from(self.subtitle.is_some());
+        if self.shown() {
+            rows += u16::from(self.header.is_some());
+            rows += u16::from(self.body.is_some() && self.has_header());
+        }
+        rows
+    }
 }
 
 impl View for Card {
@@ -54,24 +84,11 @@ impl View for Card {
     /// The frame counted is the builder's: a stylesheet `border-style`
     /// is applied at paint time, which `measure` cannot see.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
-        let shown = self.shown();
-        let frame: u16 = if self.border != BorderType::None {
-            2
-        } else {
-            0
-        };
-        let shadow = u16::from(self.variant == CardVariant::Elevated);
-
-        let mut rows = frame + shadow;
-        rows += u16::from(self.title.is_some()) + u16::from(self.subtitle.is_some());
-        let has_header = self.has_header();
-        if shown {
-            rows += u16::from(self.header.is_some());
+        let mut rows = self.rows_without_body_and_footer();
+        if self.shown() {
             if let Some(body) = &self.body {
-                rows += u16::from(has_header); // separator under the header
-                let side = frame + self.padding.saturating_mul(2) + shadow;
                 let (_, h) = body.measure(
-                    max_width.saturating_sub(side),
+                    max_width.saturating_sub(self.columns_beside_body()),
                     max_height.saturating_sub(rows),
                 )?;
                 rows = rows.saturating_add(h);
@@ -97,6 +114,32 @@ impl View for Card {
     /// It stretches across the width it is offered.
     fn fills(&self) -> crate::widget::Fill {
         crate::widget::Fill::WIDTH
+    }
+
+    /// The shown body's minimum with the rest of the card around it, within
+    /// the card's own bounds.
+    fn min_size(&self) -> (u16, u16) {
+        let body = self.body.as_ref().filter(|_| self.shown());
+        let (w, h) = crate::widget::layout::constraints::floor_around(
+            body.map_or((0, 0), |body| body.min_size()),
+            (
+                self.columns_beside_body(),
+                self.rows_without_body_and_footer()
+                    .saturating_add(if self.shown() {
+                        self.footer_height()
+                    } else {
+                        0
+                    }),
+            ),
+        );
+        let area = crate::widget::layout::constraints::constrain(
+            Rect::new(0, 0, w, h),
+            self.min_width,
+            self.min_height,
+            self.max_width,
+            self.max_height,
+        );
+        (area.width, area.height)
     }
 
     fn render(&self, ctx: &mut RenderContext) {

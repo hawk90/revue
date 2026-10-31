@@ -166,6 +166,11 @@ impl<V: View> View for DebugOverlay<V> {
         }
     }
 
+    /// What the wrapped view asks for: it keeps the whole area, shown or not.
+    fn min_size(&self) -> (u16, u16) {
+        self.inner.min_size()
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         // Render inner view
         self.inner.render(ctx);

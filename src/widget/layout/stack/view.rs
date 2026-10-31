@@ -100,9 +100,10 @@ impl View for Stack {
             .fold(Fill::NONE, |acc, (child, _)| acc.or(child.fills()))
     }
 
-    /// What its children ask for while filling: their sum along the axis, the
-    /// largest across it, so a minimum survives a nested stack. Children with
-    /// a builder size do not count: the builder decides theirs.
+    /// What its children ask for while filling: their sum along the axis with
+    /// the gaps between them, the largest across it, so a minimum survives a
+    /// nested stack. Children with a builder size do not count: the builder
+    /// decides theirs.
     fn min_size(&self) -> (u16, u16) {
         let column = self.direction == Direction::Column;
         let (mut along, mut across) = (0u16, 0u16);
@@ -116,6 +117,11 @@ impl View for Stack {
             let (main, cross) = if column { (h, w) } else { (w, h) };
             along = along.saturating_add(main);
             across = across.max(cross);
+        }
+        if along > 0 {
+            let cells = self.children.iter().filter(|c| c.needs_render()).count();
+            let gaps = u16::try_from(cells.saturating_sub(1)).unwrap_or(u16::MAX);
+            along = along.saturating_add(gaps.saturating_mul(self.gap));
         }
         if column {
             (across, along)

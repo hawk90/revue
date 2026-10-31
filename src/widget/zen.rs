@@ -209,6 +209,22 @@ impl View for ZenMode {
         }
     }
 
+    /// What its content asks for, with the padding around it while on.
+    fn min_size(&self) -> (u16, u16) {
+        let least = self.content.min_size();
+        if self.enabled {
+            crate::widget::layout::constraints::floor_around(
+                least,
+                (
+                    self.padding_x.saturating_mul(2),
+                    self.padding_y.saturating_mul(2),
+                ),
+            )
+        } else {
+            least
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
 
