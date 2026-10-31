@@ -478,6 +478,34 @@ fn the_parents_background_shows_around_the_shape() {
     assert_eq!(b.get(5, 0).unwrap().bg, blue);
 }
 
+/// These draw their content with their own context, so their style is the
+/// avatar's: the color goes into the shape, as if set on the avatar itself.
+#[test]
+fn a_wrapper_that_is_just_its_content_has_the_avatars_box() {
+    let css = "#b { background: #00ff00; }";
+    let green = Some(Color::rgb(0, 255, 0));
+    let check = |view: &dyn View| {
+        let mut h = PipelineHarness::with_css(css, 6, 1).dom_from_render(true);
+        h.draw(&view);
+        let b = h.buffer();
+        assert_eq!(
+            (b.get(0, 0).unwrap().fg, b.get(0, 0).unwrap().bg),
+            (green, None)
+        );
+        assert_eq!(b.get(1, 0).unwrap().bg, green);
+        assert_eq!(b.get(4, 0).unwrap().bg, None);
+    };
+    check(&revue::widget::ZenMode::new(avatar("John Doe")).element_id("b"));
+    check(&hstack().child(revue::widget::ZenMode::new(avatar("John Doe")).element_id("b")));
+    check(
+        &hstack().child(
+            revue::widget::ErrorBoundary::new()
+                .element_id("b")
+                .child(avatar("John Doe")),
+        ),
+    );
+}
+
 #[test]
 fn another_widget_still_gets_the_whole_box_filled() {
     let view = hstack()
