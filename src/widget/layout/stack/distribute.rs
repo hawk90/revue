@@ -1,6 +1,9 @@
 //! Sharing the main axis among the children: fixed, flex, content and
 //! equal shares, and shrinking content that overflows
 
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
+
 use super::{ChildSize, Stack};
 impl Stack {
     /// Calculate sizes for children based on available space
@@ -223,19 +226,22 @@ impl Stack {
         }
         // Still some with none, and room for one each: the largest shares give
         // up a cell, so proportions change only as far as that takes.
+        // A heap: with thousands of children this runs on every frame.
+        let mut donors: BinaryHeap<(u16, Reverse<usize>)> = content()
+            .filter(|&(i, _)| result[i] > 1)
+            .map(|(i, _)| (result[i], Reverse(i)))
+            .collect();
         for (i, size) in content() {
             if size == 0 || result[i] > 0 {
                 continue;
             }
-            let largest = (0..result.len())
-                .filter(|&j| matches!(child_sizes[j], ChildSize::Content(_)))
-                .max_by_key(|&j| (result[j], std::cmp::Reverse(j)));
-            match largest {
-                Some(j) if result[j] > 1 => {
-                    result[j] -= 1;
-                    result[i] = 1;
-                }
-                _ => break,
+            let Some((_, Reverse(donor))) = donors.pop() else {
+                break;
+            };
+            result[donor] -= 1;
+            result[i] = 1;
+            if result[donor] > 1 {
+                donors.push((result[donor], Reverse(donor)));
             }
         }
         for (i, size) in content() {
