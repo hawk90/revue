@@ -149,8 +149,8 @@ impl Stack {
         let least = self.oriented(width, height).0;
         match (along.clamp(least), along.min) {
             (0, _) => ChildSize::Auto,
-            (size, Some(_)) => ChildSize::AutoAtLeast(along.slot(size)),
-            (size, None) => ChildSize::AutoMin(along.slot(size)),
+            (_, Some(_)) => ChildSize::AutoAtLeast(along.slot(least)),
+            (_, None) => ChildSize::AutoMin(along.slot(least)),
         }
     }
 

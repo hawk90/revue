@@ -11,6 +11,7 @@
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
+use revue::widget::Fill;
 
 /// A column of `Text` rows, each with its text as its id.
 struct Column {
@@ -456,6 +457,49 @@ fn a_margin_is_part_of_the_slot_a_minimum_takes() {
             5
         ),
         ["    ", "####", "####", "    ", "end "]
+    );
+}
+
+#[test]
+fn with_too_little_room_the_margins_are_kept_with_the_minimum() {
+    assert_eq!(
+        screen(
+            "#w { min-height: 2; margin-top: 1; margin-bottom: 1; }",
+            &fills_then_end(),
+            4,
+            3
+        ),
+        ["    ", "####", "####"]
+    );
+}
+
+/// Measures, but fills the stack's axis, so it takes a share.
+struct FillsHeight;
+
+impl View for FillsHeight {
+    fn render(&self, ctx: &mut RenderContext) {
+        Fills.render(ctx);
+    }
+    fn measure(&self, max_width: u16, _max_height: u16) -> Option<(u16, u16)> {
+        Some((max_width, 1))
+    }
+    fn fills(&self) -> Fill {
+        Fill::HEIGHT
+    }
+    fn widget_type(&self) -> &'static str {
+        "FillsHeight"
+    }
+    fn id(&self) -> Option<&str> {
+        Some("w")
+    }
+}
+
+#[test]
+fn a_child_that_measures_and_fills_the_axis_keeps_its_minimum_too() {
+    let view = vstack().child(FillsHeight).child(Text::new("end"));
+    assert_eq!(
+        screen("#w { min-height: 5; }", &view, 4, 4),
+        ["####", "####", "####", "####"]
     );
 }
 
