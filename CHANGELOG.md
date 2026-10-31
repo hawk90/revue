@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.1](https://github.com/hawk90/revue/compare/v3.12.0...v3.12.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **deps:** update non-major dependencies ([#1325](https://github.com/hawk90/revue/issues/1325)) ([a855b58](https://github.com/hawk90/revue/commit/a855b589720a8e2bd28ca8a8fc004b9cf09d2db3))
+* **widget:** draw DropZone into its area with min_height as a lower bound, and finish StatusIndicator's sizes ([#1339](https://github.com/hawk90/revue/issues/1339)) ([716542c](https://github.com/hawk90/revue/commit/716542cea7be899c8fd0d26243529a1b0fde8145))
+* **widget:** finish Avatar's fallback, background, initials and icon ([#1335](https://github.com/hawk90/revue/issues/1335)) ([8639eae](https://github.com/hawk90/revue/commit/8639eae9bee991e4f5f457bf0b0e5b444cd31783))
+* **widget:** keep a cell for each measured child in a shrinking stack, and none for one that measured nothing ([#1345](https://github.com/hawk90/revue/issues/1345)) ([4517763](https://github.com/hawk90/revue/commit/4517763b964c1c583c55c0c603ddb8e4309ee5e9))
+* **widget:** let ColorPicker's palette use the preview's rows when the preview is off ([#1346](https://github.com/hawk90/revue/issues/1346)) ([0cd3411](https://github.com/hawk90/revue/commit/0cd3411649e93b08c78ba3ae7300d7b72ddc14e1))
+* **widget:** measure and align Text line by line, and give zero-width chars no cell ([#1334](https://github.com/hawk90/revue/issues/1334)) ([a395e91](https://github.com/hawk90/revue/commit/a395e91c0aeafd06a4178fb85aa204c8f521014b))
+* **widget:** measure the content-sized widgets that answered None ([#1332](https://github.com/hawk90/revue/issues/1332)) ([d9c17d6](https://github.com/hawk90/revue/commit/d9c17d664581b7834357b78bfc4585e093497560))
+
 ## [3.12.0](https://github.com/hawk90/revue/compare/v3.11.1...v3.12.0) (2026-10-24)
 
 
