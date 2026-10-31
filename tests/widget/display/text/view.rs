@@ -5,7 +5,7 @@ use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};
 use revue::style::{Color, FontWeight, Style as Css, TextDecoration};
 use revue::widget::traits::{RenderContext, View};
-use revue::widget::{Alignment, Text};
+use revue::widget::{vstack, Alignment, RichText, Text};
 
 use crate::traits::placement::{assert_same_when_offset, assert_zero_areas_draw_nothing};
 
@@ -131,8 +131,6 @@ fn test_text_justify_takes_the_stylesheet_attributes() {
         buffer.get(8, 0).unwrap().modifier,
         Modifier::BOLD | Modifier::UNDERLINE | Modifier::CROSSED_OUT
     );
-    // The stylesheet `color` and `background` are not checked here: the
-    // justified path paints only the builder's colors (#1068).
 }
 
 #[test]
@@ -232,4 +230,139 @@ proptest! {
         let text = Text::new(content);
         prop_assert_eq!(text.measure(max_w, max_h), Some((width.min(max_w), 1.min(max_h))));
     }
+}
+
+// =========================================================================
+// Text with several lines (#1068), and zero-width chars (#1330)
+// =========================================================================
+
+/// The rows of a `w`x`h` render, blanks kept, continuations left out.
+fn rows(view: &dyn View, w: u16, h: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(w, h);
+    view.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, w, h)));
+    (0..h)
+        .map(|y| {
+            (0..w)
+                .map(|x| buffer.get(x, y).unwrap())
+                .filter(|cell| !cell.is_continuation())
+                .map(|cell| cell.symbol)
+                .collect()
+        })
+        .collect()
+}
+
+#[test]
+fn test_text_measures_each_line() {
+    assert_eq!(Text::new("ab\ncd").measure(10, 10), Some((2, 2)));
+    assert_eq!(Text::new("a\nlonger\nb").measure(10, 10), Some((6, 3)));
+    // Columns, not chars; a trailing newline is an empty last row.
+    assert_eq!(Text::new("한글\nab").measure(10, 10), Some((4, 2)));
+    assert_eq!(Text::new("ab\n").measure(10, 10), Some((2, 2)));
+    assert_eq!(Text::new("\n\n").measure(10, 10), Some((0, 3)));
+    // Capped by the offer on both axes.
+    assert_eq!(Text::new("abcd\ncd\nef").measure(3, 2), Some((3, 2)));
+    assert_eq!(Text::new("ab\ncd").measure(0, 0), Some((0, 0)));
+    // A control char takes no column.
+    assert_eq!(Text::new("a\tb\u{1}\nc").measure(10, 10), Some((2, 2)));
+}
+
+#[test]
+fn test_text_lines_each_get_a_row_in_a_stack() {
+    let stack = vstack().child(Text::new("ab\ncd")).child(Text::new("ef"));
+    assert_eq!(rows(&stack, 3, 3), ["ab ", "cd ", "ef "]);
+}
+
+#[test]
+fn test_text_aligns_each_line_on_its_own() {
+    let text = |align| Text::new("ab\ncdef\n").align(align);
+    assert_eq!(
+        rows(&text(Alignment::Center), 8, 3),
+        ["   ab   ", "  cdef  ", "        "]
+    );
+    assert_eq!(
+        rows(&text(Alignment::Right), 8, 3),
+        ["      ab", "    cdef", "        "]
+    );
+    assert_eq!(
+        rows(&text(Alignment::Left), 8, 3),
+        ["ab      ", "cdef    ", "        "]
+    );
+    // A line wider than the area starts at its left edge, without pushing
+    // the next one; rows past the area are cut.
+    assert_eq!(
+        rows(&Text::new("abcdef\nxy").align(Alignment::Right), 4, 2),
+        ["abcd", "  xy"]
+    );
+    assert_eq!(
+        rows(&Text::new("ab\ncd\nef").align(Alignment::Center), 4, 2),
+        [" ab ", " cd "]
+    );
+}
+
+#[test]
+fn test_text_justifies_each_line_on_its_own() {
+    let text = Text::new("a b\nc d e\nword").align(Alignment::Justify);
+    assert_eq!(rows(&text, 7, 3), ["a     b", "c  d  e", "word   "]);
+}
+
+#[test]
+fn test_text_justify_takes_the_stylesheet_colors() {
+    let mut css = Css::default();
+    css.visual.color = Color::MAGENTA;
+    css.visual.background = Color::rgb(1, 2, 3);
+    let text = Text::new("ab cd").align(Alignment::Justify);
+    let buffer = draw(&text, 9, Some(&css));
+    // The words and the gap between them, up to the last column
+    for x in 0..9 {
+        let cell = buffer.get(x, 0).unwrap();
+        assert_eq!(cell.bg, Some(Color::rgb(1, 2, 3)), "bg at {x}");
+    }
+    for x in [0, 1, 7, 8] {
+        assert_eq!(
+            buffer.get(x, 0).unwrap().fg,
+            Some(Color::MAGENTA),
+            "fg at {x}"
+        );
+    }
+    // The builder still outranks the stylesheet.
+    let built = Text::new("ab cd")
+        .fg(Color::RED)
+        .bg(Color::BLUE)
+        .align(Alignment::Justify);
+    let cell = *draw(&built, 9, Some(&css)).get(0, 0).unwrap();
+    assert_eq!((cell.fg, cell.bg), (Some(Color::RED), Some(Color::BLUE)));
+}
+
+#[test]
+fn test_text_justify_lays_out_in_columns() {
+    let text = Text::new("한 a").align(Alignment::Justify);
+    let buffer = draw(&text, 6, None);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '한');
+    assert!(buffer.get(1, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(5, 0).unwrap().symbol, 'a');
+    // A control or zero-width char inside a word takes no cell.
+    let buffer = draw(
+        &Text::new("a\u{1}b\u{200b}c d").align(Alignment::Justify),
+        6,
+        None,
+    );
+    assert_eq!(row(&buffer), "abc  d");
+}
+
+#[test]
+fn test_zero_width_chars_take_no_cell() {
+    // At the end of the text it used to land past the measured width, in the
+    // middle in the next char's cell.
+    let end = Text::new("e\u{301}");
+    assert_eq!(end.measure(10, 1), Some((1, 1)));
+    assert_eq!(rows(&end, 3, 1), ["e  "]);
+    assert_eq!(rows(&Text::new("a\u{200b}b"), 3, 1), ["ab "]);
+    assert_eq!(rows(&Text::new("\u{301}a"), 2, 1), ["a "]);
+    assert_eq!(rows(&Text::new("\u{200b}"), 2, 1), ["  "]);
+
+    let rich = RichText::new().text("e\u{301}").text("\u{200b}x");
+    assert_eq!(rich.measure(10, 1), Some((2, 1)));
+    assert_eq!(rows(&rich, 3, 1), ["ex "]);
+    // Beside a wide glyph, at the right edge of the area
+    assert_eq!(rows(&Text::new("한\u{301}a"), 3, 1), ["한a"]);
 }

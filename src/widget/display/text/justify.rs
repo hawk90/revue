@@ -2,8 +2,8 @@
 
 use super::Text;
 use crate::render::Cell;
-use crate::utils::unicode::{char_width, display_width};
-use crate::widget::traits::{RenderContext, View};
+use crate::utils::unicode::display_width;
+use crate::widget::traits::RenderContext;
 
 /// The words of `content`, each with the spaces that follow it, spread
 /// across `width` columns.
@@ -51,43 +51,50 @@ pub(super) fn justify_words(content: &str, width: u16) -> Option<Vec<(&str, usiz
 }
 
 impl Text {
-    /// Render text with justify alignment (distribute space between words)
-    pub(super) fn render_justified(&self, ctx: &mut RenderContext) {
+    /// Draw one line on row `y`, its words spread across the area. Returns
+    /// false, drawing nothing, when the line falls back to the left.
+    pub(super) fn render_justified_line(
+        &self,
+        ctx: &mut RenderContext,
+        y: u16,
+        line: &str,
+    ) -> bool {
         let area = ctx.area;
-        let Some(words) = justify_words(&self.content, area.width) else {
-            let rich_text = self.to_rich_text_with_ctx(ctx);
-            rich_text.render(ctx);
-            return;
+        let Some(words) = justify_words(line, area.width) else {
+            return false;
         };
 
         // Same CSS reading as `to_rich_text_with_ctx` - this path assembles
         // its own cells, so a rule that reaches justified text has to be
         // honored twice.
         let modifier = self.attributes_with_ctx(ctx).to_modifier();
+        let fg = self.fg.or_else(|| ctx.css_color_if_set());
+        let bg = self.bg.or_else(|| ctx.css_background_if_set());
 
         let hyperlink_id = self
             .hyperlink
             .as_ref()
             .map(|url| ctx.buffer.register_hyperlink(url));
 
-        // Render words with distributed spacing
+        let styled = |ch: char| {
+            let mut cell = Cell::new(ch);
+            cell.fg = fg;
+            cell.bg = bg;
+            cell.modifier = modifier;
+            cell.hyperlink_id = hyperlink_id;
+            cell
+        };
+
+        // The gaps are spaces of the text, in its style, as they are when it
+        // is aligned any other way.
         let mut x: u16 = 0;
         for (word, spaces) in words {
-            // Render word
-            for ch in word.chars() {
-                if x >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = self.fg;
-                cell.bg = self.bg;
-                cell.modifier = modifier;
-                cell.hyperlink_id = hyperlink_id;
-                ctx.set(x, 0, cell);
-                x += char_width(ch) as u16;
+            x = x.saturating_add(ctx.put_str_with(x, y, word, area.width, styled));
+            for _ in 0..spaces {
+                ctx.set(x, y, styled(' '));
+                x = x.saturating_add(1);
             }
-
-            x += spaces as u16;
         }
+        true
     }
 }

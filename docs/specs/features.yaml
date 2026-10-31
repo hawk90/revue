@@ -596,6 +596,7 @@ items:
     status: done
     acceptance:
       - text("…") renders a string
+      - a \n starts a new row; measure and alignment work line by line
       - class() for styling
     evidence:
       - src/widget/mod.rs::text

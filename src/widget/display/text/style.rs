@@ -36,8 +36,8 @@ impl Text {
         style
     }
 
-    /// Convert to RichText for rendering with CSS support
-    pub(super) fn to_rich_text_with_ctx(&self, ctx: &RenderContext) -> RichText {
+    /// One line of the text as RichText, for rendering with CSS support
+    pub(super) fn to_rich_text_with_ctx(&self, ctx: &RenderContext, line: &str) -> RichText {
         let mut style = self.attributes_with_ctx(ctx);
 
         // Get foreground color: inline > CSS > none
@@ -52,7 +52,7 @@ impl Text {
             style = style.bg(bg);
         }
 
-        let mut span = Span::styled(self.content.clone(), style);
+        let mut span = Span::styled(line.to_string(), style);
         if let Some(url) = &self.hyperlink {
             span = span.href(url.clone());
         }

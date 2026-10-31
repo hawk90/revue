@@ -99,6 +99,13 @@ impl View for RichText {
                 }
 
                 let char_width = crate::utils::unicode::char_width(ch) as u16;
+                // A zero-width char has no cell of its own, and a cell holds
+                // one char, so it cannot join its base char until grapheme
+                // cells land (#1148). Written at `x` it would land in the
+                // next char's cell, or past the text at its end (#1330).
+                if char_width == 0 {
+                    continue;
+                }
 
                 let mut cell = Cell::new(ch);
                 cell.fg = span.style.fg.or(base_fg);
