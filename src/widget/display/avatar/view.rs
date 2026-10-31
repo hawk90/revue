@@ -4,6 +4,7 @@
 use super::{Avatar, AvatarShape, AvatarSize};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::unicode::char_width;
 use crate::widget::traits::{RenderContext, View};
 
 /// A bold initial on the avatar's background.
@@ -15,9 +16,17 @@ fn initial_cell(ch: char, fg: Color, bg: Color) -> Cell {
     cell
 }
 
+/// The char a small avatar shows: its first that takes a column.
+fn first_initial(initials: &str) -> char {
+    initials
+        .chars()
+        .find(|ch| char_width(*ch) > 0)
+        .unwrap_or('?')
+}
+
 /// The first two initials from column `x` of row `y`, each as wide as it
 /// is drawn, within `cols` columns; one that would cross the last column is
-/// left out.
+/// left out, and a zero-width char is not an initial.
 fn draw_initials(
     ctx: &mut RenderContext,
     x: u16,
@@ -28,8 +37,8 @@ fn draw_initials(
     bg: Color,
 ) {
     let mut dx = 0;
-    for ch in initials.chars().take(2) {
-        let w = crate::utils::unicode::char_width(ch) as u16;
+    for ch in initials.chars().filter(|ch| char_width(*ch) > 0).take(2) {
+        let w = char_width(ch) as u16;
         if dx + w > cols {
             break;
         }
@@ -58,10 +67,10 @@ impl Avatar {
     /// One bold initial, then the status dot.
     fn draw_small(&self, ctx: &mut RenderContext, initials: &str, fg: Color, bg: Color) {
         // Single character
-        let ch = initials.chars().next().unwrap_or('?');
+        let ch = first_initial(initials);
         ctx.set(0, 0, initial_cell(ch, fg, bg));
 
-        self.draw_status(ctx, 1, 0);
+        self.draw_status(ctx, char_width(ch) as u16, 0);
     }
 
     /// Two initials between the shape's edges, `◖XY◗`, `[XY]` or `(XY)`,
@@ -84,15 +93,11 @@ impl Avatar {
     }
 
     /// A 5x3 box with the initials in its middle row and the status dot past
-    /// its bottom-right corner; in fewer than three rows, one plain initial.
+    /// its bottom-right corner; in fewer than three rows, the medium form.
     fn draw_large(&self, ctx: &mut RenderContext, initials: &str, fg: Color, bg: Color) {
         // 3 lines tall, 5+ chars wide
         if ctx.area.height < 3 {
-            // Fall back to medium
-            let mut cell = Cell::new(initials.chars().next().unwrap_or('?'));
-            cell.fg = Some(fg);
-            cell.bg = Some(bg);
-            ctx.set(0, 0, cell);
+            self.draw_medium(ctx, initials, fg, bg);
             return;
         }
 
@@ -133,9 +138,10 @@ impl View for Avatar {
     /// The shape's cells, and a column for the status dot when there is one.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         let (w, h) = match self.size {
-            AvatarSize::Small => (1, 1),
-            AvatarSize::Medium => (4, 1),
-            AvatarSize::Large => (5, 3),
+            AvatarSize::Small => (char_width(first_initial(&self.get_initials())) as u16, 1),
+            AvatarSize::Large if max_height >= 3 => (5, 3),
+            // Below three rows a large avatar draws the medium form.
+            AvatarSize::Medium | AvatarSize::Large => (4, 1),
         };
         let w = w + u16::from(self.status.is_some());
         Some((w.min(max_width), h.min(max_height)))
@@ -144,7 +150,11 @@ impl View for Avatar {
 
     fn render(&self, ctx: &mut RenderContext) {
         let initials = self.get_initials();
-        let bg = self.get_bg_color();
+        // Builder, then the stylesheet, then the name's own color.
+        let bg = self
+            .bg_color
+            .or_else(|| ctx.css_background_if_set())
+            .unwrap_or_else(|| self.name_color());
         // Builder, then the stylesheet, then the widget's own default.
         let fg = self.fg_color.unwrap_or_else(|| ctx.css_color(Color::WHITE));
 

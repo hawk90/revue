@@ -8,7 +8,7 @@ use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::widget::theme::SEPARATOR_COLOR;
 use revue::widget::traits::{RenderContext, View};
-use revue::widget::{Skeleton, SkeletonShape};
+use revue::widget::{hstack, vstack, Skeleton, SkeletonShape, Text};
 
 use crate::traits::placement::{assert_same_when_offset, assert_zero_areas_draw_nothing};
 
@@ -255,4 +255,51 @@ proptest! {
         wide.extend(vec![vec![None; usize::from(aw) + 3]; 2]);
         assert_matches_model(&buffer, &wide, fg, &what);
     }
+}
+
+// =========================================================================
+// #1065
+// =========================================================================
+
+#[test]
+fn a_circle_in_a_zero_height_area_draws_nothing() {
+    for height in [0, 1, 2, 3] {
+        let mut buffer = Buffer::new(10, 10);
+        Skeleton::new()
+            .circle()
+            .height(height)
+            .render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 10, 0)));
+        assert!(
+            (0..10).all(|y| (0..10).all(|x| buffer.get(x, y).unwrap().symbol == ' ')),
+            "height {height}"
+        );
+    }
+}
+
+#[test]
+fn stacks_size_a_skeleton_by_its_width_and_height() {
+    let row = |buffer: &Buffer, y: u16| -> String {
+        (0..buffer.width())
+            .map(|x| buffer.get(x, y).unwrap().symbol)
+            .collect()
+    };
+    let draw = |view: &dyn View, w: u16, h: u16| {
+        let mut buffer = Buffer::new(w, h);
+        view.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, w, h)));
+        buffer
+    };
+
+    let column = vstack()
+        .child(Skeleton::new().height(1).no_animate())
+        .child(Skeleton::new().height(1).no_animate())
+        .child(Text::new("loaded"));
+    let buffer = draw(&column, 10, 6);
+    assert_eq!(row(&buffer, 0), "░░░░░░░░░░");
+    assert_eq!(row(&buffer, 1), "░░░░░░░░░░");
+    assert_eq!(row(&buffer, 2), "loaded    ");
+
+    let line = hstack()
+        .child(Skeleton::new().width(3).no_animate())
+        .child(Text::new("name"));
+    assert_eq!(row(&draw(&line, 12, 1), 0), "░░░name     ");
 }

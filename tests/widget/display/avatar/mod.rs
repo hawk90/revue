@@ -604,11 +604,11 @@ fn test_avatar_render_large_insufficient_height() {
     let a = avatar("John Doe").large();
     a.render(&mut ctx);
 
-    // Should fall back to medium style (single char)
+    // Falls back to the medium form
     let text: String = (0..10)
         .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
         .collect();
-    assert!(text.contains('J') || text.contains('D'));
+    assert_eq!(text, "◖JD◗      ");
 }
 
 #[test]

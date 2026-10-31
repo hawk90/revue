@@ -5,11 +5,7 @@ use crate::style::Color;
 
 impl Avatar {
     /// Get background color (auto-generate from name if not set)
-    pub(super) fn get_bg_color(&self) -> Color {
-        if let Some(color) = self.bg_color {
-            return color;
-        }
-
+    pub(super) fn name_color(&self) -> Color {
         // Generate color from name hash
         let hash: u32 = self
             .name
