@@ -86,6 +86,13 @@ impl Link {
 }
 
 impl View for Link {
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let w = crate::utils::display_width(&self.label);
+        Some((
+            u16::try_from(w).unwrap_or(u16::MAX).min(max_width),
+            1.min(max_height),
+        ))
+    }
     crate::impl_view_meta!("Link");
 
     fn render(&self, ctx: &mut RenderContext) {

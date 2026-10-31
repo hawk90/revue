@@ -1,5 +1,6 @@
 //! Tests for the View, Interactive and Draggable trait defaults
 
+mod content_sized;
 mod measure;
 mod overlap;
 mod size_agreement;

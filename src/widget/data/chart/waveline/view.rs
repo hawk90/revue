@@ -6,6 +6,15 @@ use crate::style::Color;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Waveline {
+    /// With a set height, that height across the offered width. Without one
+    /// the wave scales to the area it is given, so it fills.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        self.height.map(|h| (max_width, h.min(max_height)))
+    }
+
+    fn fills(&self) -> crate::widget::Fill {
+        crate::widget::Fill::WIDTH
+    }
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let height = self.height.unwrap_or(area.height);

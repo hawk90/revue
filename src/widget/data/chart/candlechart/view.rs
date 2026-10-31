@@ -95,7 +95,19 @@ impl CandleChart {
 impl View for CandleChart {
     crate::impl_view_meta!("CandleChart");
 
+    /// Its size comes from its own `height` and `width`, not from the area.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        self.content().measure(max_width, max_height)
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
+        self.content().render(ctx);
+    }
+}
+
+impl CandleChart {
+    /// What the chart draws; `render` and `measure` share it.
+    fn content(&self) -> Stack {
         let mut content = vstack();
 
         // Title and current price
@@ -106,9 +118,7 @@ impl View for CandleChart {
         let candles = self.drawn_candles();
 
         if candles.is_empty() {
-            content = content.child(Text::new("No data").fg(PLACEHOLDER_FG));
-            content.render(ctx);
-            return;
+            return content.child(Text::new("No data").fg(PLACEHOLDER_FG));
         }
 
         let (min_price, max_price) = self.get_price_range(&candles);
@@ -132,6 +142,6 @@ impl View for CandleChart {
             content = content.child(info);
         }
 
-        content.render(ctx);
+        content
     }
 }

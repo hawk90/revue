@@ -16,7 +16,7 @@
 
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::{RenderContext, View};
+use revue::widget::{OverlayQueue, RenderContext, View};
 
 use super::catalog::{catalog, Entry};
 use super::sentinel::catch;
@@ -54,6 +54,7 @@ pub const FILLS: &[(&str, &str)] = &[
     ("ScatterChart", PLOTS),
     ("Streamline", PLOTS),
     ("TimeSeries", PLOTS),
+    ("Waveline", PLOTS),
     ("Canvas", PLOTS),
     ("BrailleCanvas", PLOTS),
     ("Diagram", PLOTS),
@@ -122,7 +123,11 @@ fn is_content(symbol: char) -> bool {
 fn painted(view: &dyn View, w: u16, h: u16) -> Result<Vec<char>, String> {
     let mut buffer = Buffer::new(w, h);
     catch(|| {
-        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+        // As the runtime does: an open dropdown goes to the overlay queue and
+        // takes no space in the widget's own area.
+        let mut overlays = OverlayQueue::new();
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h))
+            .with_overlay_queue(&mut overlays);
         view.render(&mut ctx);
     })?;
     let mut symbols = Vec::new();

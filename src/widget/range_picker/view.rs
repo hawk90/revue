@@ -11,6 +11,18 @@ use crate::widget::traits::{RenderContext, View};
 use crate::{impl_styled_view, impl_widget_builders};
 
 impl View for RangePicker {
+    /// Two calendars (the help line is wider) and the presets column, then
+    /// the summary and help rows.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let w = if self.show_presets { 64 } else { 57 };
+        let presets = if self.show_presets {
+            u16::try_from(self.presets.len()).unwrap_or(u16::MAX)
+        } else {
+            0
+        };
+        let rows = presets.saturating_add(1).max(11);
+        Some((u16::min(w, max_width), rows.min(max_height)))
+    }
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < 50 || area.height < 10 {

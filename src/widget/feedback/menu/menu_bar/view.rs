@@ -9,6 +9,24 @@ use crate::utils::unicode::display_width;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for MenuBar {
+    /// The bar, stretching across the offered width, and the open menu, which
+    /// is drawn in place below it.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let list = self
+            .menus
+            .get(self.selected_menu)
+            .filter(|menu| self.open && !menu.items.is_empty())
+            .map_or(0, |menu| {
+                u16::try_from(menu.items.len())
+                    .unwrap_or(u16::MAX)
+                    .saturating_add(2)
+            });
+        Some((max_width, list.saturating_add(1).min(max_height)))
+    }
+
+    fn fills(&self) -> crate::widget::Fill {
+        crate::widget::Fill::WIDTH
+    }
     crate::impl_view_meta!("MenuBar");
 
     fn render(&self, ctx: &mut RenderContext) {

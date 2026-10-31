@@ -87,7 +87,18 @@ impl HeatMap {
 impl View for HeatMap {
     crate::impl_view_meta!("HeatMap");
 
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        self.content().measure(max_width, max_height)
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
+        self.content().render(ctx);
+    }
+}
+
+impl HeatMap {
+    /// What the map draws; `render` and `measure` share it.
+    fn content(&self) -> Stack {
         // Every line is one row tall and every piece of a line exactly as
         // wide as its text, so the column header, row labels and cells line
         // up instead of being spread over equal shares of the area.
@@ -115,6 +126,6 @@ impl View for HeatMap {
             content = content.child_sized(self.legend_line(), 1);
         }
 
-        content.render(ctx);
+        content
     }
 }

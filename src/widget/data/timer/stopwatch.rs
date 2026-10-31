@@ -185,14 +185,13 @@ impl Default for Stopwatch {
     }
 }
 
-impl View for Stopwatch {
-    fn render(&self, ctx: &mut RenderContext) {
+impl Stopwatch {
+    /// What the stopwatch draws, the time in `color`; `render` and `measure`
+    /// share it.
+    fn content(&self, color: Color) -> crate::widget::stack::Stack {
         use crate::widget::stack::vstack;
         use crate::widget::Text;
 
-        // The elapsed time takes `color`, a builder color outranking it; the
-        // state and lap lines keep theirs, as `Timer`'s do.
-        let color = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
         let mut content = vstack();
 
         // Title
@@ -232,7 +231,20 @@ impl View for Stopwatch {
             }
         }
 
-        content.render(ctx);
+        content
+    }
+}
+
+impl View for Stopwatch {
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        self.content(Color::WHITE).measure(max_width, max_height)
+    }
+
+    fn render(&self, ctx: &mut RenderContext) {
+        // The elapsed time takes `color`, a builder color outranking it; the
+        // state and lap lines keep theirs, as `Timer`'s do.
+        let color = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
+        self.content(color).render(ctx);
     }
 
     crate::impl_view_meta!("Stopwatch");

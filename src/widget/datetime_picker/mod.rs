@@ -347,6 +347,17 @@ impl Default for DateTimePicker {
 }
 
 impl View for DateTimePicker {
+    /// The month grid (six weeks, whichever month is shown), the time fields,
+    /// or both, with a column either side. Below 5 rows it draws nothing, and
+    /// the time goes under the grid only with 13.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let rows = match self.format {
+            DateTimeFormat::DateOnly => 8,
+            DateTimeFormat::TimeOnly | DateTimeFormat::TimeWithSeconds => 5,
+            _ => 13,
+        };
+        Some((22.min(max_width), u16::min(rows, max_height)))
+    }
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < 20 || area.height < 5 {

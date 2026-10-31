@@ -7,6 +7,24 @@ use crate::widget::traits::{RenderContext, View};
 use super::{Accordion, AccordionSection};
 
 impl View for Accordion {
+    /// Every row of its sections, inside the builder's border; the headers
+    /// and dividers stretch across the offered width.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let border = if self.border_color.is_some() { 2 } else { 0 };
+        let rows = u16::try_from(self.rows().len()).unwrap_or(u16::MAX);
+        let area = crate::widget::layout::constraints::constrain(
+            crate::layout::Rect::new(0, 0, max_width, rows.saturating_add(border)),
+            self.min_width,
+            self.min_height,
+            self.max_width,
+            self.max_height,
+        );
+        Some((area.width.min(max_width), area.height.min(max_height)))
+    }
+
+    fn fills(&self) -> crate::widget::Fill {
+        crate::widget::Fill::WIDTH
+    }
     crate::impl_view_meta!("Accordion");
 
     fn render(&self, ctx: &mut RenderContext) {

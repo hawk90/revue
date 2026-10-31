@@ -459,8 +459,8 @@ items:
       - a view can say which axes it fills (View::fills); in a content-sized stack a child that fills the main axis
         shares the leftover like one that does not measure, unless an explicit CSS main-axis size is set
       - the common fixed-size widgets measure what they paint (buttons, badges, tags, checkboxes, switches, radios,
-        spinners, ...), stretchy one-row widgets answer one row of the offered width, and multi-row widgets answer
-        from their height() helpers
+        spinners, avatars, tabs, pagination, ...), stretchy widgets answer their rows at the offered width, multi-row
+        widgets answer the rows they draw, and an open dropdown drawn as an overlay takes no space
       - under css_layout, a measured child's main-axis CSS box (height/width, min/max, margins) is folded into its
         slot; display none takes no space or gap
       - a nested stack is measured with the CSS inside it (its gap, its children's boxes, at any depth); another
@@ -476,6 +476,9 @@ items:
       - tests/widget/layout/stack/content_sized/mod.rs::a_child_that_fills_gets_what_the_measured_ones_leave
       - tests/widget/layout/stack/content_sized/mod.rs::a_switch_and_its_label_sit_side_by_side
       - tests/widget/traits/view/measure.rs::assert_measures_paint
+      - tests/widget/traits/view/content_sized.rs::avatar_leaves_the_rest_of_a_row_to_its_neighbour
+      - tests/widget/traits/view/content_sized.rs::open_lists_in_an_overlay_take_no_space
+      - tests/widget/catalog/matrix/measure.rs::every_widget_measures_what_it_paints
       - src/widget/traits/view.rs::fills
       - tests/widget/layout/stack/content_sized/mod.rs::a_progress_bar_takes_the_row_the_brackets_leave
       - tests/widget/layout/stack/content_sized/mod.rs::two_fillers_in_a_row_split_the_leftover

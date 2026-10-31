@@ -264,6 +264,11 @@ impl Default for Combobox {
 }
 
 impl crate::widget::traits::View for Combobox {
+    /// One row: the open list is an overlay and takes no space here.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.display_width(max_width), 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut crate::widget::traits::RenderContext) {
         // Delegate to the render module
         render::render_combobox(self, ctx);

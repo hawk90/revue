@@ -241,6 +241,9 @@ pub fn gradient_box(width: u16, height: u16) -> GradientBox {
 }
 
 impl View for GradientBox {
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.width.min(max_width), self.height.min(max_height)))
+    }
     crate::impl_view_meta!("GradientBox");
 
     fn render(&self, ctx: &mut RenderContext) {

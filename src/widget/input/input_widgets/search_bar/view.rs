@@ -8,6 +8,11 @@ use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for SearchBar {
+    /// Its width, one row, and a row for the hint while one shows.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let rows = 1 + u16::from(self.hint().is_some());
+        Some((self.width.min(max_width), rows.min(max_height)))
+    }
     fn render(&self, ctx: &mut RenderContext) {
         // The query text takes `color`; the placeholder and border keep theirs.
         let text_color = self
@@ -98,19 +103,25 @@ impl SearchBar {
         }
     }
 
+    /// The hint to show below the field: only while focused, and only when
+    /// there is something to say.
+    fn hint(&self) -> Option<&'static str> {
+        if !self.show_hints || !self.focused {
+            None
+        } else if self.parse_error.is_some() {
+            Some("Invalid query syntax")
+        } else if self.get_input().is_empty() {
+            Some("Try: field:value, text~contains, age:>18")
+        } else {
+            None
+        }
+    }
+
     /// The hint on row 1, while focused
     fn draw_hints(&self, ctx: &mut RenderContext, width: u16, height: u16) {
         // Draw hints (on second line if available)
-        if self.show_hints && height > 1 && self.focused {
-            let hint = if self.parse_error.is_some() {
-                "Invalid query syntax"
-            } else if self.get_input().is_empty() {
-                "Try: field:value, text~contains, age:>18"
-            } else {
-                ""
-            };
-
-            if !hint.is_empty() {
+        if height > 1 {
+            if let Some(hint) = self.hint() {
                 for (i, ch) in hint.chars().enumerate() {
                     if i as u16 >= width {
                         break;
