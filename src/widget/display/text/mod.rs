@@ -27,6 +27,8 @@ pub enum Alignment {
 }
 
 /// A text display widget
+///
+/// A `\n` starts a new row, and each row is aligned on its own.
 #[derive(Clone, Debug)]
 pub struct Text {
     content: String,
