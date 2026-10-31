@@ -205,6 +205,7 @@ fn test_stack_calculate_sizes_rules_hold_for_every_combination() {
         Content(4),
         Content(12),
         Content(u16::MAX),
+        Flex(0.5),
         Flex(1.0),
         Flex(2.5),
     ];
@@ -260,16 +261,21 @@ fn test_stack_calculate_sizes_rules_hold_for_every_combination() {
                     _ => {}
                 }
             }
-            // Only fixed sizes and a share's one cell may overflow. Flex rounding
-            // can too: #1344.
-            if !flex {
-                assert!(sum <= avail.max(fixed) + shares, "overflow: {}", context());
-                if shares > 0 {
-                    assert!(sum >= avail, "space left unused: {}", context());
-                }
+            // Only fixed sizes and a share's one cell may overflow.
+            assert!(sum <= avail.max(fixed) + shares, "overflow: {}", context());
+            if !flex && shares > 0 {
+                assert!(sum >= avail, "space left unused: {}", context());
             }
         }
     }
+}
+
+#[test]
+fn test_stack_rounded_flex_shares_do_not_overflow() {
+    use ChildSize::Flex;
+    // Half a cell each rounds up to one, three times over.
+    let combo = [Flex(1.0), Flex(1.0), Flex(1.0), Flex(1.0)];
+    assert_eq!(Stack::calculate_sizes(&combo, 2, 4), vec![1, 1, 0, 0]);
 }
 
 #[test]

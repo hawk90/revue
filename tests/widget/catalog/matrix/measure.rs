@@ -222,6 +222,39 @@ fn every_widget_measures_what_it_paints() {
     ratchet("measure", count, failures);
 }
 
+/// `measure` stays within the offer at every boundary size, and does not panic.
+#[test]
+fn every_widget_measures_within_any_offer() {
+    const SIZES: [u16; 6] = [0, 1, 2, 5, 80, u16::MAX];
+    let content = Content::ordinary();
+    let mut failures = Vec::new();
+    let mut count = 0;
+    for entry in &catalog() {
+        let Ok(view) = catch(|| (entry.build)(&content, false)) else {
+            continue;
+        };
+        for w in SIZES {
+            for h in SIZES {
+                count += 1;
+                let (kind, detail) = match catch(|| view.measure(w, h)) {
+                    Err(msg) => (Kind::Panic, format!("while measuring: {msg}")),
+                    Ok(Some((mw, mh))) if mw > w || mh > h => {
+                        (Kind::Clipped, format!("measured {mw}x{mh}"))
+                    }
+                    Ok(_) => continue,
+                };
+                failures.push(Failure {
+                    widget: entry.name,
+                    case: format!("{w}x{h} offered"),
+                    kind,
+                    detail,
+                });
+            }
+        }
+    }
+    ratchet("measure offers", count, failures);
+}
+
 #[test]
 fn every_fills_entry_is_in_the_catalog() {
     let names: Vec<&str> = catalog().iter().map(|e| e.name).collect();
