@@ -490,12 +490,12 @@ fn test_tree_searchable_keys() {
     t.handle_key(&Key::Backspace);
     assert_eq!(t.query(), "a");
 
-    // n for next match
-    t.handle_key(&Key::Char('n'));
+    // Down for next match
+    t.handle_key(&Key::Down);
     assert_eq!(t.current_match_index(), 2);
 
-    // N for prev match
-    t.handle_key(&Key::Char('N'));
+    // Up for prev match
+    t.handle_key(&Key::Up);
     assert_eq!(t.current_match_index(), 1);
 
     // Escape clears query
@@ -624,4 +624,52 @@ mod snapshots {
 
         pilot.snapshot("tree_basic");
     }
+}
+
+#[test]
+fn test_tree_n_is_typed_into_a_search_that_has_begun() {
+    use revue::event::Key;
+    let mut t = Tree::new()
+        .searchable(true)
+        .node(TreeNode::new("apple"))
+        .node(TreeNode::new("banana"))
+        .node(TreeNode::new("bandana"));
+    for c in "bann".chars() {
+        assert!(t.handle_key(&Key::Char(c)));
+    }
+    assert_eq!(t.query(), "bann");
+    for c in "N".chars() {
+        assert!(t.handle_key(&Key::Char(c)));
+    }
+    assert_eq!(t.query(), "bannN");
+}
+
+#[test]
+fn test_tree_down_and_up_only_move_among_matches_while_searching() {
+    use revue::event::Key;
+    let tree = || {
+        Tree::new()
+            .searchable(true)
+            .node(TreeNode::new("apple"))
+            .node(TreeNode::new("banana"))
+            .node(TreeNode::new("cherry"))
+            .node(TreeNode::new("bandana"))
+    };
+    let mut t = tree();
+    t.handle_key(&Key::Char('b'));
+    t.handle_key(&Key::Char('a'));
+    assert_eq!(t.selected_index(), 1);
+    assert!(t.handle_key(&Key::Down));
+    assert_eq!(t.selected_index(), 3, "skips the node that does not match");
+    assert!(t.handle_key(&Key::Up));
+    assert_eq!(t.selected_index(), 1);
+
+    // Without a query, they walk the rows as ever.
+    let mut t = tree();
+    assert!(t.handle_key(&Key::Down));
+    assert_eq!(t.selected_index(), 1);
+    assert!(t.handle_key(&Key::Down));
+    assert_eq!(t.selected_index(), 2);
+    assert!(t.handle_key(&Key::Up));
+    assert_eq!(t.selected_index(), 1);
 }
