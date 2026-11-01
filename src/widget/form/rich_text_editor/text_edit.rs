@@ -51,6 +51,7 @@ impl RichTextEditor {
                 block: self.cursor.0,
                 col: self.cursor.1 - 1,
                 ch: deleted,
+                forward: false,
             });
             self.redo_stack.clear();
 
@@ -76,6 +77,7 @@ impl RichTextEditor {
                 block: self.cursor.0,
                 col: self.cursor.1,
                 ch: deleted,
+                forward: true,
             });
             self.redo_stack.clear();
 

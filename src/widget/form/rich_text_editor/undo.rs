@@ -9,7 +9,8 @@ use super::{Block, EditOp, TextFormat};
 pub const MAX_UNDO_HISTORY: usize = 100;
 
 impl RichTextEditor {
-    /// Undo last operation
+    /// Undo last operation, putting back the cursor and any selection it
+    /// started with
     pub fn undo(&mut self) {
         if let Some(op) = self.undo_stack.pop() {
             if !self.undo_fits(&op) {
@@ -23,10 +24,20 @@ impl RichTextEditor {
                     self.cursor = (block, col);
                     self.redo_stack.push(EditOp::InsertChar { block, col, ch });
                 }
-                EditOp::DeleteChar { block, col, ch } => {
+                EditOp::DeleteChar {
+                    block,
+                    col,
+                    ch,
+                    forward,
+                } => {
                     self.blocks[block].insert_char_at(col, ch);
-                    self.cursor = (block, col + 1);
-                    self.redo_stack.push(EditOp::DeleteChar { block, col, ch });
+                    self.cursor = (block, if forward { col } else { col + 1 });
+                    self.redo_stack.push(EditOp::DeleteChar {
+                        block,
+                        col,
+                        ch,
+                        forward,
+                    });
                 }
                 EditOp::SplitBlock { block, col } => {
                     // Merge blocks back
@@ -69,16 +80,19 @@ impl RichTextEditor {
                     old,
                     new,
                     cursor_before,
+                    anchor_before,
                     cursor_after,
                 } => {
                     self.blocks
                         .splice(index..index + new.len(), old.iter().cloned());
                     self.cursor = cursor_before;
+                    self.anchor = anchor_before;
                     self.redo_stack.push(EditOp::ReplaceBlocks {
                         index,
                         old,
                         new,
                         cursor_before,
+                        anchor_before,
                         cursor_after,
                     });
                 }
@@ -108,10 +122,20 @@ impl RichTextEditor {
                     self.cursor = (block, col + 1);
                     self.undo_stack.push(EditOp::InsertChar { block, col, ch });
                 }
-                EditOp::DeleteChar { block, col, ch } => {
+                EditOp::DeleteChar {
+                    block,
+                    col,
+                    ch,
+                    forward,
+                } => {
                     self.blocks[block].remove_char_at(col);
                     self.cursor = (block, col);
-                    self.undo_stack.push(EditOp::DeleteChar { block, col, ch });
+                    self.undo_stack.push(EditOp::DeleteChar {
+                        block,
+                        col,
+                        ch,
+                        forward,
+                    });
                 }
                 EditOp::SplitBlock { block, col } => {
                     let (first_text, second_text) = self.blocks[block].split_text_at(col);
@@ -155,6 +179,7 @@ impl RichTextEditor {
                     old,
                     new,
                     cursor_before,
+                    anchor_before,
                     cursor_after,
                 } => {
                     self.blocks
@@ -165,6 +190,7 @@ impl RichTextEditor {
                         old,
                         new,
                         cursor_before,
+                        anchor_before,
                         cursor_after,
                     });
                 }
@@ -229,6 +255,7 @@ impl RichTextEditor {
         let len_before = self.blocks.len();
         let old = self.blocks[index..index + count].to_vec();
         let cursor_before = self.cursor;
+        let anchor_before = self.anchor;
         edit(self);
         let new_count = (count + self.blocks.len()).saturating_sub(len_before);
         let new = self.blocks[index..index + new_count].to_vec();
@@ -237,6 +264,7 @@ impl RichTextEditor {
             old,
             new,
             cursor_before,
+            anchor_before,
             cursor_after: self.cursor,
         });
         if self.undo_stack.len() > MAX_UNDO_HISTORY {

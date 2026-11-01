@@ -50,6 +50,8 @@ pub(super) enum EditOp {
         block: usize,
         col: usize,
         ch: char,
+        /// Deleted with the cursor before it (Delete), not after it (Backspace)
+        forward: bool,
     },
     InsertBlock {
         index: usize,
@@ -67,6 +69,8 @@ pub(super) enum EditOp {
         old: Vec<Block>,
         new: Vec<Block>,
         cursor_before: (usize, usize),
+        /// The selection's other end when the edit began
+        anchor_before: Option<(usize, usize)>,
         cursor_after: (usize, usize),
     },
     SplitBlock {
