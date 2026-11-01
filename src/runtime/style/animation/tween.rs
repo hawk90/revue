@@ -73,7 +73,7 @@ impl Tween {
 
     /// Start the animation
     pub fn start(&mut self) {
-        self.start_time = Some(Instant::now());
+        self.start_time = Some(crate::utils::clock::now());
         self.state = AnimationState::Running;
         self.repeat_count = 0;
         self.current_direction = false;
@@ -82,7 +82,7 @@ impl Tween {
     /// Pause the animation
     pub fn pause(&mut self) {
         if self.state == AnimationState::Running {
-            self.pause_time = Some(Instant::now());
+            self.pause_time = Some(crate::utils::clock::now());
             self.state = AnimationState::Paused;
         }
     }
@@ -94,7 +94,7 @@ impl Tween {
                 // Calculate how long the animation ran before pause
                 let elapsed_before_pause = pause.duration_since(start);
                 // Set new start time so elapsed time matches what it was at pause
-                self.start_time = Some(Instant::now() - elapsed_before_pause);
+                self.start_time = Some(crate::utils::clock::now() - elapsed_before_pause);
             }
             self.pause_time = None;
             self.state = AnimationState::Running;
@@ -145,7 +145,7 @@ impl Tween {
             return self.from;
         };
 
-        let elapsed = start.elapsed();
+        let elapsed = crate::utils::clock::since(start);
 
         // Handle delay
         if elapsed < self.delay {
@@ -159,7 +159,7 @@ impl Tween {
             // Check for repeat
             if self.repeat > 0 && self.repeat_count < self.repeat {
                 self.repeat_count += 1;
-                self.start_time = Some(Instant::now());
+                self.start_time = Some(crate::utils::clock::now());
 
                 if self.reverse {
                     self.current_direction = !self.current_direction;
@@ -195,7 +195,7 @@ impl Tween {
             return 0.0;
         };
 
-        let elapsed = start.elapsed();
+        let elapsed = crate::utils::clock::since(start);
         if elapsed < self.delay {
             return 0.0;
         }

@@ -13,6 +13,8 @@ mod ansi;
 mod browser;
 #[path = "utils/clipboard/mod.rs"]
 mod clipboard;
+#[path = "utils/clock.rs"]
+mod clock;
 #[path = "utils/debounce.rs"]
 mod debounce;
 #[path = "utils/diff/mod.rs"]

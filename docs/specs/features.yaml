@@ -1987,3 +1987,20 @@ items:
       too. Not editors by design - Tree's type-to-find (the query is not shown) and ColorPicker's six-slot hex entry.
       FilePicker's file name is one too. CommandPalette's query is a public String field, so
       it waits for 4.0 (#1310).
+  - id: UTIL-009
+    title: A replaceable clock for animations, timers and ticks
+    area: util
+    priority: P1
+    status: done
+    phase: 3.14.0
+    acceptance:
+      - animations, timers, toasts, debouncing, gestures, chords and undo grouping read utils::clock
+      - MockTime::install makes a counter the clock of one thread until its guard is dropped
+      - time never moves backward on install; tests side by side and worker threads are not affected
+      - a source file reading Instant::now is listed with the reason it needs real time
+    evidence:
+      - src/utils/clock.rs::now
+      - src/testing/mock/time.rs::install
+      - tests/utils/clock.rs::a_tween_runs_on_the_mock
+      - tests/utils/clock.rs::another_thread_keeps_real_time
+      - tests/utils/clock.rs::only_the_listed_files_read_real_time

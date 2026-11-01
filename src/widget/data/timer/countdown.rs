@@ -147,11 +147,11 @@ impl Timer {
     pub fn start(&mut self) {
         if self.state == TimerState::Paused {
             // Resume from pause
-            self.started_at = Some(Instant::now());
+            self.started_at = Some(crate::utils::clock::now());
             self.remaining_ms = self.paused_remaining.unwrap_or(self.remaining_ms);
             self.paused_remaining = None;
         } else if self.state != TimerState::Running {
-            self.started_at = Some(Instant::now());
+            self.started_at = Some(crate::utils::clock::now());
             self.remaining_ms = self.total_ms;
         }
         self.state = TimerState::Running;
@@ -178,7 +178,7 @@ impl Timer {
     pub fn reset(&mut self) {
         self.remaining_ms = self.total_ms;
         if self.state == TimerState::Running {
-            self.started_at = Some(Instant::now());
+            self.started_at = Some(crate::utils::clock::now());
         }
     }
 
@@ -197,7 +197,7 @@ impl Timer {
         }
 
         if let Some(started) = self.started_at {
-            let elapsed = started.elapsed().as_millis() as u64;
+            let elapsed = crate::utils::clock::since(started).as_millis() as u64;
             let base = self.paused_remaining.unwrap_or(self.total_ms);
 
             if elapsed >= base {
@@ -206,7 +206,7 @@ impl Timer {
 
                 if self.auto_restart {
                     self.remaining_ms = self.total_ms;
-                    self.started_at = Some(Instant::now());
+                    self.started_at = Some(crate::utils::clock::now());
                     self.state = TimerState::Running;
                 }
             } else {

@@ -1,7 +1,7 @@
 //! The typing animation: how far each tick reveals the content
 
 use super::{AiStream, StreamStatus, TypingStyle};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 impl AiStream {
     /// Update animation state (call this each frame)
@@ -46,7 +46,7 @@ impl AiStream {
     /// Whether `typing_speed` has passed since the last step; if so, the
     /// step starts now
     fn typing_step_due(&mut self) -> bool {
-        let now = Instant::now();
+        let now = crate::utils::clock::now();
         let elapsed = self
             .last_update
             .map(|t| now.duration_since(t))

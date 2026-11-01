@@ -165,7 +165,7 @@ impl KeymapConfig {
     /// [`chord_timeout`](Self::chord_timeout) is forgotten: the key then
     /// starts a new chord instead of continuing the old one.
     pub fn lookup(&mut self, key: KeyBinding) -> LookupResult {
-        self.lookup_at(key, Instant::now())
+        self.lookup_at(key, crate::utils::clock::now())
     }
 
     /// [`lookup`](Self::lookup), with `now` as the time the key arrived

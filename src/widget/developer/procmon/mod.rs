@@ -91,7 +91,7 @@ impl ProcessMonitor {
             colors: ProcColors::default(),
             show_cmd: false,
             update_interval: 1000,
-            last_update: std::time::Instant::now(),
+            last_update: crate::utils::clock::now(),
             props: WidgetProps::new(),
         }
     }

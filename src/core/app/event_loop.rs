@@ -8,7 +8,6 @@ use crate::event::{Event, Key, KeyEvent, MouseButton, MouseEventKind};
 use crate::render::Terminal;
 use crate::widget::View;
 use std::io::stdout;
-use std::time::Instant;
 
 impl App {
     /// Run the application with a root view and event handler
@@ -86,7 +85,7 @@ impl App {
         }
 
         self.running = true;
-        self.last_tick = Instant::now();
+        self.last_tick = crate::utils::clock::now();
 
         self.dom.build(&view);
         self.draw(&view, &mut terminal, true)?;
@@ -207,7 +206,7 @@ impl App {
                 }
             }
             Event::Tick => {
-                let now = Instant::now();
+                let now = crate::utils::clock::now();
                 let delta = now.duration_since(self.last_tick);
                 self.last_tick = now;
                 // Update both legacy and node-aware transitions

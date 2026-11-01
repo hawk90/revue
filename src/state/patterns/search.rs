@@ -125,7 +125,7 @@ impl SearchState {
         self.query = query.into();
         // Cache lowercase version for case-insensitive search
         self.query_lowercased = self.query.to_lowercase();
-        self.last_update = Some(Instant::now());
+        self.last_update = Some(crate::utils::clock::now());
     }
 
     /// Clear search query
@@ -142,7 +142,7 @@ impl SearchState {
         for c in ch.to_lowercase() {
             self.query_lowercased.push(c);
         }
-        self.last_update = Some(Instant::now());
+        self.last_update = Some(crate::utils::clock::now());
     }
 
     /// Pop a character from the query
@@ -150,14 +150,14 @@ impl SearchState {
         let ch = self.query.pop();
         // Rebuild cached lowercase version (simpler than tracking multi-char UTF-8)
         self.query_lowercased = self.query.to_lowercase();
-        self.last_update = Some(Instant::now());
+        self.last_update = Some(crate::utils::clock::now());
         ch
     }
 
     /// Check if debounce period has elapsed
     pub fn is_ready(&self) -> bool {
         match self.last_update {
-            Some(t) => t.elapsed() >= self.debounce,
+            Some(t) => crate::utils::clock::since(t) >= self.debounce,
             None => true,
         }
     }

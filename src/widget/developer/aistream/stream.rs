@@ -1,7 +1,6 @@
 //! Streaming state: appending, completing, pausing, the getters and scrolling
 
 use super::{AiStream, StreamStatus};
-use std::time::Instant;
 
 impl AiStream {
     /// Append text (for streaming)
@@ -9,7 +8,7 @@ impl AiStream {
         self.content.push_str(text);
         if self.status == StreamStatus::Idle {
             self.status = StreamStatus::Streaming;
-            self.last_update = Some(Instant::now());
+            self.last_update = Some(crate::utils::clock::now());
         }
     }
 
@@ -54,7 +53,7 @@ impl AiStream {
     pub fn resume(&mut self) {
         if self.status == StreamStatus::Paused {
             self.status = StreamStatus::Streaming;
-            self.last_update = Some(Instant::now());
+            self.last_update = Some(crate::utils::clock::now());
         }
     }
 

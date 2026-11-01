@@ -63,7 +63,7 @@ impl ToastEntry {
             level,
             priority: ToastPriority::Normal,
             duration: None,
-            created_at: Instant::now(),
+            created_at: crate::utils::clock::now(),
             shown_at: None,
             dismissible: true,
         }

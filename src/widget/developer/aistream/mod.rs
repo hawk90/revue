@@ -155,7 +155,7 @@ impl AiStream {
         self.content = text.into();
         self.visible_chars = 0;
         self.status = StreamStatus::Streaming;
-        self.last_update = Some(Instant::now());
+        self.last_update = Some(crate::utils::clock::now());
         self
     }
 }

@@ -2354,6 +2354,7 @@ entries:
     observed:
       - "`showcase`(시계), `animations`, `theme_switcher` 예제는 같은 mode에서도 실행마다 출력이 달라 PTY 비교에서 뺐다 (docs/refactor/findings-default-flip.md)."
       - "2026-10-20: `MockTime`(src/testing/mock/time.rs)은 아무도 읽지 않는 독립 counter다. timeseries 축 라벨과 범위가 wall clock을 읽고, transition과 Stopwatch가 `Instant::now()`를 쓴다."
+      - "2026-11-01: `MockTime::install`이 스레드 시계가 되어 UI 쪽 `utils::clock`을 움직인다 (#1171). 진짜 시간을 읽는 파일은 `tests/utils/clock.rs`의 목록으로 제한한다. wall clock(`SystemTime`)은 #1210에 남아 있다."
   - id: REV-HOT-001
     title: "File Watch Event Equals Reload"
     category: hot-reload
