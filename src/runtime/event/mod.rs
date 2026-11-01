@@ -141,6 +141,7 @@ mod handler;
 pub mod ime;
 mod keymap;
 mod reader;
+mod source;
 
 pub use click::{ClickDetector, ClickType};
 pub use custom::{
@@ -164,6 +165,8 @@ pub use ime::{
 };
 pub use keymap::{Key, KeyBinding, KeyMap};
 pub use reader::EventReader;
+pub(crate) use source::TickSchedule;
+pub use source::{EventSource, Polled};
 
 /// Mouse button types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

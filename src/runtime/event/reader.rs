@@ -5,22 +5,44 @@ use crossterm::event::{
     KeyModifiers, MouseButton as CrosstermMouseButton, MouseEvent as CrosstermMouseEvent,
     MouseEventKind as CrosstermMouseEventKind,
 };
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use super::source::{EventSource, Polled, TickSchedule};
 use super::{Event, Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use crate::constants::{MAX_PASTE_SIZE, POLL_IMMEDIATE, TICK_RATE_DEFAULT};
 use crate::Result;
 
+/// The process terminal as an event source
+struct TerminalEvents;
+
+impl EventSource for TerminalEvents {
+    fn poll_event(&mut self, timeout: Duration) -> Result<Polled> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            let left = deadline.saturating_duration_since(Instant::now());
+            if !poll(left)? {
+                return Ok(Polled::Timeout);
+            }
+            if let Some(event) = convert_event(event::read()?) {
+                return Ok(Polled::Event(event));
+            }
+        }
+    }
+}
+
 /// Event reader for terminal input
 pub struct EventReader {
-    /// Tick rate for polling
-    tick_rate: Duration,
+    /// When the next `Tick` is due
+    schedule: Mutex<TickSchedule>,
 }
 
 impl EventReader {
     /// Create a new event reader
     pub fn new(tick_rate: Duration) -> Self {
-        Self { tick_rate }
+        Self {
+            schedule: Mutex::new(TickSchedule::new(tick_rate)),
+        }
     }
 
     /// Create with default tick rate (50ms)
@@ -30,8 +52,8 @@ impl EventReader {
 
     /// Read next event, blocking
     ///
-    /// Polls for events up to `tick_rate` duration. If an event is available,
-    /// it is returned. If the timeout expires with no event, returns `Event::Tick`.
+    /// Returns `Event::Tick` once every `tick_rate`, whatever the input, and
+    /// the next input event in between.
     /// Key releases are skipped (see [`Event::Key`]).
     ///
     /// # Errors
@@ -40,16 +62,13 @@ impl EventReader {
     /// - Terminal event polling fails
     /// - Event reading fails (e.g., terminal disconnected)
     pub fn read(&self) -> Result<Event> {
-        let deadline = Instant::now() + self.tick_rate;
-        loop {
-            let left = deadline.saturating_duration_since(Instant::now());
-            if !poll(left)? {
-                return Ok(Event::Tick);
-            }
-            if let Some(event) = convert_event(event::read()?) {
-                return Ok(event);
-            }
-        }
+        let mut schedule = self
+            .schedule
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut terminal = TerminalEvents;
+        // The terminal never closes itself: a read failure is an error instead
+        Ok(schedule.next_event(&mut terminal)?.unwrap_or(Event::Tick))
     }
 
     /// Try to read event without blocking
@@ -198,13 +217,19 @@ mod tests {
     #[test]
     fn test_event_reader_creation() {
         let reader = EventReader::new(Duration::from_millis(100));
-        assert_eq!(reader.tick_rate, Duration::from_millis(100));
+        assert_eq!(
+            reader.schedule.lock().unwrap().rate(),
+            Duration::from_millis(100)
+        );
     }
 
     #[test]
     fn test_event_reader_default() {
         let reader = EventReader::default();
-        assert_eq!(reader.tick_rate, Duration::from_millis(50));
+        assert_eq!(
+            reader.schedule.lock().unwrap().rate(),
+            Duration::from_millis(50)
+        );
     }
 
     /// A real Shift+Tab press: crossterm sends BackTab with SHIFT set. It must

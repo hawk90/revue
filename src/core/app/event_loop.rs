@@ -4,10 +4,10 @@
 use super::HotReloadEvent;
 use super::{is_quit_key, is_tab_key, signals, App};
 use crate::constants::FRAME_DURATION_60FPS;
-use crate::event::{Event, Key, KeyEvent, MouseButton, MouseEventKind};
+use crate::event::{Event, EventSource, Key, KeyEvent, MouseButton, MouseEventKind, TickSchedule};
 use crate::render::Terminal;
 use crate::widget::View;
-use std::io::stdout;
+use std::io::{stdout, Write};
 
 impl App {
     /// Run the application with a root view and event handler
@@ -84,39 +84,124 @@ impl App {
             crate::log_warn!("Plugin mount failed: {}", e);
         }
 
+        let reader = EventReader::new(FRAME_DURATION_60FPS);
+        self.run_loop(&mut view, &mut terminal, &mut handler, || {
+            if signals.requested() {
+                return Ok(None);
+            }
+            reader.read().map(Some)
+        })?;
+
+        terminal.restore()?;
+        Ok(())
+    }
+
+    /// Run the application on a terminal and an event source the caller owns,
+    /// such as one session of a program that serves many over SSH
+    ///
+    /// Nothing process-wide is touched: no raw mode, no panic hook, no signal
+    /// handlers, and the terminal is not restored at the end. `terminal` keeps
+    /// its size until an [`Event::Resize`] from `events` changes it, and the
+    /// bytes drawn go to its writer, which the caller drains or bounds.
+    ///
+    /// The loop ends when the app quits or `events` closes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if drawing or reading an event fails.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use revue::core::app::App;
+    /// use revue::event::Event;
+    /// use revue::render::Terminal;
+    /// use revue::widget::Text;
+    ///
+    /// let (input, events) = std::sync::mpsc::channel::<Event>();
+    /// drop(input); // the session is over: the loop ends
+    ///
+    /// let mut terminal = Terminal::with_size(Vec::new(), 20, 3);
+    /// App::builder()
+    ///     .build()
+    ///     .run_on(Text::new("hello"), &mut terminal, events, |_, _, _| false)
+    ///     .unwrap();
+    /// assert!(!terminal.writer().is_empty());
+    /// ```
+    pub fn run_on<V, H, W, S>(
+        &mut self,
+        mut view: V,
+        terminal: &mut Terminal<W>,
+        mut events: S,
+        mut handler: H,
+    ) -> crate::Result<()>
+    where
+        V: View,
+        H: FnMut(&Event, &mut V, &mut Self) -> bool,
+        W: Write,
+        S: EventSource,
+    {
+        let (width, height) = terminal.size();
+        self.buffers[0].resize(width, height);
+        self.buffers[1].resize(width, height);
+        self.plugins.update_terminal_size(width, height);
+
+        if let Err(e) = self.plugins.mount() {
+            crate::log_warn!("Plugin mount failed: {}", e);
+        }
+
+        let mut schedule = TickSchedule::new(FRAME_DURATION_60FPS);
+        self.run_loop(&mut view, terminal, &mut handler, || {
+            schedule.next_event(&mut events)
+        })
+    }
+
+    /// Draw, then handle events and draw again until the app quits or
+    /// `next_event` has no more. Unmounts plugins at the end.
+    fn run_loop<V, H, W>(
+        &mut self,
+        view: &mut V,
+        terminal: &mut Terminal<W>,
+        handler: &mut H,
+        mut next_event: impl FnMut() -> crate::Result<Option<Event>>,
+    ) -> crate::Result<()>
+    where
+        V: View,
+        H: FnMut(&Event, &mut V, &mut Self) -> bool,
+        W: Write,
+    {
         self.running = true;
         self.last_tick = crate::utils::clock::now();
 
-        self.dom.build(&view);
-        self.draw(&view, &mut terminal, true)?;
-
-        let reader = EventReader::new(FRAME_DURATION_60FPS);
+        self.dom.build(&*view);
+        self.draw(&*view, terminal, true)?;
 
         while self.running {
-            if signals.requested() {
-                self.quit();
-                break;
-            }
-
             // Check for hot reload events
             #[cfg(feature = "hot-reload")]
             {
                 if let Some(should_reload) = self.check_hot_reload() {
                     if should_reload {
                         self.needs_force_redraw = true;
-                        self.draw(&view, &mut terminal, true)?;
+                        self.draw(&*view, terminal, true)?;
                     }
                 }
             }
 
-            let event = reader.read()?;
+            let Some(event) = next_event()? else {
+                self.quit();
+                break;
+            };
+            if let Event::Resize(width, height) = event {
+                terminal.resize(width, height);
+            }
             // Changes background threads made to signals reach the effects
             // and computed values tracked here (#873)
             crate::reactive::cross_thread::drain();
-            let should_draw = self.handle_event(event, &mut view, &mut handler);
+            let should_draw = self.handle_event(event, view, handler);
 
             if should_draw {
-                self.draw(&view, &mut terminal, false)?;
+                self.draw(&*view, terminal, false)?;
             }
         }
 
@@ -124,8 +209,6 @@ impl App {
         if let Err(e) = self.plugins.unmount() {
             crate::log_warn!("Plugin unmount failed: {}", e);
         }
-
-        terminal.restore()?;
         Ok(())
     }
 
