@@ -685,3 +685,56 @@ fn the_tag_under_the_cursor_is_drawn() {
     let b = render_in(&v, 30, 1);
     assert!(row(&b, 0).contains("[Item 12]"), "{:?}", row(&b, 0));
 }
+
+// #1311: tags scrolled off to the left are marked
+
+/// Three selected tags, with the tag cursor `lefts` presses in from the right.
+fn three_tags(width: u16, lefts: usize) -> String {
+    use revue::event::Key;
+    let mut v = MultiSelect::new()
+        .options(vec!["aa", "bb", "cc"])
+        .width(width);
+    v.select_all();
+    for _ in 0..lefts {
+        v.handle_key(&Key::Left);
+    }
+    row(&render_in(&v, width, 1), 0)
+}
+
+#[test]
+fn tags_scrolled_off_to_the_left_are_marked() {
+    // Width 14 leaves 12 columns before the arrow: a marker, a tag and a marker.
+    assert_eq!(three_tags(14, 1), "... [cc]     ▼");
+    assert_eq!(three_tags(14, 2), "... [bb] ... ▼");
+}
+
+#[test]
+fn nothing_is_marked_when_the_row_starts_at_the_first_tag() {
+    assert_eq!(three_tags(14, 3), "[aa] ...     ▼");
+    assert_eq!(
+        three_tags(40, 2).trim_end_matches(['▼', ' ']),
+        "[aa] [bb] [cc]"
+    );
+}
+
+#[test]
+fn with_no_room_for_the_marker_the_tag_under_the_cursor_is_kept() {
+    // Width 6 leaves 4 columns: the last tag alone.
+    assert_eq!(three_tags(6, 1), "[cc]▼ ".replace("▼ ", " ▼"));
+    // Width 10 leaves 8: a marker and the last tag, which has nothing after it.
+    assert_eq!(three_tags(10, 1), "... [cc] ▼");
+    // Tag bb has one after it, so 8 columns hold no marker before it.
+    assert_eq!(three_tags(10, 2), "[bb] ... ▼");
+}
+
+#[test]
+fn the_tag_under_the_cursor_stays_in_view_after_the_marker() {
+    use revue::event::Key;
+    let mut v = MultiSelect::new()
+        .options(vec!["a", "b", "c", "d"])
+        .width(14);
+    v.select_all();
+    v.handle_key(&Key::Left); // d
+    v.handle_key(&Key::Left); // c
+    assert_eq!(row(&render_in(&v, 14, 1), 0), "... [c] [d]  ▼");
+}
