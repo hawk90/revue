@@ -89,10 +89,11 @@ impl MultiSelect {
         }
     }
 
-    /// The selected options as `[label]` tags from column 0, and `...` in
-    /// place of the first tag that does not fit before `max_x`. The row
-    /// scrolls (in columns) to keep the tag cursor in view, and starts at a
-    /// whole tag (#882). Returns the column after the tags.
+    /// The selected options as `[label]` tags, and `...` in place of the first
+    /// tag that does not fit before `max_x`. The row scrolls (in columns) to
+    /// keep the tag cursor in view, starts at a whole tag (#882), and starts
+    /// with `... ` if tags are scrolled off to the left. Returns the column
+    /// after the tags.
     fn draw_tags(&self, ctx: &mut RenderContext, max_x: u16) -> u16 {
         // Each tag's first column on the whole row: "[label] "
         let mut starts = Vec::with_capacity(self.selected.len());
@@ -105,8 +106,10 @@ impl MultiSelect {
         let scroll = &self.tag_scroll;
         scroll.set_content(total);
         // With more than one tag, the one in view may need " ..." after it
-        let marker = if self.selected.len() > 1 { 4 } else { 0 };
-        scroll.set_viewport(max_x.saturating_sub(marker) as usize);
+        // and "... " before it
+        let markers = if self.selected.len() > 1 { 8 } else { 0 };
+        // A viewport of none would stop the row from scrolling at all.
+        scroll.set_viewport(max_x.saturating_sub(markers).max(1) as usize);
         if let Some(c) = self.tag_cursor.filter(|&c| c < starts.len()) {
             let end = starts.get(c + 1).copied().unwrap_or(total);
             // Without the space after the tag
@@ -121,6 +124,16 @@ impl MultiSelect {
 
         let mut x: u16 = 0;
         let last = self.selected.len().saturating_sub(1);
+        // Only if the first tag still fits after it: the tag under the cursor
+        // comes before the marker.
+        if first > 0 && first <= last {
+            let tag = starts.get(first + 1).copied().unwrap_or(total) - starts[first] - 1;
+            let after = if first < last { 4 } else { 0 };
+            if 4 + tag + after <= max_x as usize {
+                ctx.draw_text(0, 0, "...", LIGHT_GRAY);
+                x = 4;
+            }
+        }
         for (i, &opt_idx) in self.selected.iter().enumerate().skip(first) {
             if let Some(opt) = self.options.get(opt_idx) {
                 let label = &opt.label;
