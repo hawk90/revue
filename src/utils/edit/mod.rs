@@ -197,7 +197,7 @@ impl EditState {
             history_bytes: DEFAULT_HISTORY_BYTES,
             group_delay: DEFAULT_GROUP_DELAY,
             joinable: false,
-            clock: Arc::new(Instant::now),
+            clock: Arc::new(crate::utils::clock::now),
         }
     }
 

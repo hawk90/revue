@@ -265,7 +265,7 @@ impl App {
             current_buffer: 0,
             running: false,
             transitions: TransitionManager::new(),
-            last_tick: Instant::now(),
+            last_tick: crate::utils::clock::now(),
             mouse_capture,
             needs_force_redraw: true, // Initial render should be a full draw
             needs_layout_rebuild: true, // Initial render needs full layout build
@@ -302,7 +302,7 @@ impl App {
             current_buffer: 0,
             running: false,
             transitions: TransitionManager::new(),
-            last_tick: Instant::now(),
+            last_tick: crate::utils::clock::now(),
             mouse_capture,
             needs_force_redraw: true,
             needs_layout_rebuild: true,

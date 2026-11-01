@@ -2,14 +2,14 @@
 
 use super::{ToastEntry, ToastQueue};
 use crate::widget::feedback::toast::ToastLevel;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 impl ToastEntry {
     /// Check if this toast has expired
     fn is_expired(&self, default_duration: Duration) -> bool {
         if let Some(shown) = self.shown_at {
             let duration = self.duration.unwrap_or(default_duration);
-            shown.elapsed() >= duration
+            crate::utils::clock::since(shown) >= duration
         } else {
             false
         }
@@ -124,7 +124,7 @@ impl ToastQueue {
         // Move toasts from queue to visible
         while self.visible.len() < self.max_visible && !self.queue.is_empty() {
             let mut entry = self.queue.remove(0);
-            entry.shown_at = Some(Instant::now());
+            entry.shown_at = Some(crate::utils::clock::now());
             self.visible.push(entry);
         }
     }

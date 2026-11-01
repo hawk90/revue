@@ -65,7 +65,7 @@ impl AnimationGroup {
 
     /// Start all animations
     pub fn start(&mut self) {
-        self.start_time = Some(Instant::now());
+        self.start_time = Some(crate::utils::clock::now());
         self.state = AnimationState::Running;
 
         match self.mode {

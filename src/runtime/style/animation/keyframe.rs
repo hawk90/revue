@@ -195,7 +195,7 @@ impl KeyframeAnimation {
             return;
         }
 
-        self.start_time = Some(Instant::now());
+        self.start_time = Some(crate::utils::clock::now());
         self.state = AnimationState::Running;
         self.current_iteration = 0;
     }
@@ -246,7 +246,7 @@ impl KeyframeAnimation {
             return if self.is_completed() { 1.0 } else { 0.0 };
         }
 
-        let elapsed = start.elapsed();
+        let elapsed = crate::utils::clock::since(start);
         if elapsed < self.delay {
             return 0.0;
         }
@@ -344,7 +344,7 @@ impl KeyframeAnimation {
             return;
         };
 
-        let elapsed = start.elapsed();
+        let elapsed = crate::utils::clock::since(start);
         if elapsed < self.delay {
             return;
         }
@@ -359,7 +359,7 @@ impl KeyframeAnimation {
                 self.state = AnimationState::Completed;
             } else {
                 // Start next iteration
-                self.start_time = Some(Instant::now());
+                self.start_time = Some(crate::utils::clock::now());
             }
         }
     }

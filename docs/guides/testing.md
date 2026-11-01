@@ -347,6 +347,26 @@ time.reset();
 assert_eq!(time.elapsed_ms(), 0);
 ```
 
+`install` makes it the clock of the current thread until the guard is dropped.
+Animations, timers, toasts, debouncing and undo grouping then move only when it
+advances, so a test does not sleep. Tests running side by side do not share it,
+and a worker thread keeps the real time. A custom widget reads the same clock
+through `revue::utils::clock::now` and `since`.
+
+```rust
+use revue::testing::mock_time;
+use revue::widget::Stopwatch;
+
+let time = mock_time();
+let _clock = time.install();
+
+let mut stopwatch = Stopwatch::new();
+stopwatch.start();
+time.advance_ms(1234);
+stopwatch.update();
+assert_eq!(stopwatch.elapsed_millis(), 1234);
+```
+
 ### MockState
 
 Track state changes:
@@ -609,7 +629,8 @@ fn test_b() {
 #[test]
 fn test_animation() {
     let time = mock_time();
-    let mut app = TestApp::new(AnimatedWidget::new(&time));
+    let _clock = time.install();
+    let mut app = TestApp::new(AnimatedWidget::new());
     let mut pilot = Pilot::new(&mut app);
 
     pilot.assert_contains("Frame 1");

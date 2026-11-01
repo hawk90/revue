@@ -103,6 +103,7 @@ pub mod ansi;
 pub mod border;
 pub mod browser;
 pub mod clipboard;
+pub mod clock;
 pub mod color;
 pub mod debounce;
 pub mod diff;

@@ -54,7 +54,7 @@ impl<T> Timeout<T> {
     /// Set a value and start the timeout timer.
     pub fn set(&mut self, value: T) {
         self.value = Some(value);
-        self.set_time = Some(Instant::now());
+        self.set_time = Some(crate::utils::clock::now());
     }
 
     /// Clear the value and timer.
@@ -66,7 +66,7 @@ impl<T> Timeout<T> {
     /// Check if the timeout has expired.
     pub fn is_expired(&self) -> bool {
         self.set_time
-            .map(|t| t.elapsed() > self.duration)
+            .map(|t| crate::utils::clock::since(t) > self.duration)
             .unwrap_or(false)
     }
 
@@ -94,7 +94,7 @@ impl<T> Timeout<T> {
     /// Get remaining time before expiration.
     pub fn remaining(&self) -> Option<Duration> {
         self.set_time.map(|t| {
-            let elapsed = t.elapsed();
+            let elapsed = crate::utils::clock::since(t);
             if elapsed < self.duration {
                 self.duration - elapsed
             } else {
@@ -111,7 +111,7 @@ impl<T> Timeout<T> {
     /// Reset the timer without changing the value.
     pub fn reset_timer(&mut self) {
         if self.value.is_some() {
-            self.set_time = Some(Instant::now());
+            self.set_time = Some(crate::utils::clock::now());
         }
     }
 

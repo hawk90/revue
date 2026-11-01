@@ -144,7 +144,7 @@ impl ClickDetector {
     /// - `Some(ClickType::Triple)` - Triple click detected (3rd click)
     /// - `None` - Waiting for more clicks or click sequence reset
     pub fn handle_click(&mut self, x: u16, y: u16) -> Option<ClickType> {
-        let now = Instant::now();
+        let now = crate::utils::clock::now();
 
         if let Some((last_time, last_x, last_y)) = self.last_click {
             // Check if within time threshold
@@ -201,7 +201,7 @@ impl ClickDetector {
     pub fn check_timeout(&mut self) -> Option<ClickType> {
         if self.click_count == 1 {
             if let Some((last_time, _, _)) = self.last_click {
-                if last_time.elapsed() > self.double_click_threshold {
+                if crate::utils::clock::since(last_time) > self.double_click_threshold {
                     // Timeout expired, emit single click
                     let result = Some(ClickType::Single);
                     self.reset();
@@ -218,7 +218,7 @@ impl ClickDetector {
     pub fn time_until_timeout(&self) -> Option<Duration> {
         if self.click_count == 1 {
             if let Some((last_time, _, _)) = self.last_click {
-                let elapsed = last_time.elapsed();
+                let elapsed = crate::utils::clock::since(last_time);
                 if elapsed < self.double_click_threshold {
                     return Some(self.double_click_threshold - elapsed);
                 }
