@@ -19,14 +19,25 @@ impl ToastEntry {
 impl ToastQueue {
     /// Pause toast timers (call when mouse enters toast area)
     pub fn pause(&mut self) {
-        if self.pause_on_hover {
+        if self.pause_on_hover && !self.paused {
             self.paused = true;
+            self.paused_at = Some(crate::utils::clock::now());
         }
     }
 
     /// Resume toast timers (call when mouse leaves toast area)
     pub fn resume(&mut self) {
         self.paused = false;
+        // The paused time does not count: each toast keeps the time it had
+        if let Some(paused_at) = self.paused_at.take() {
+            let now = crate::utils::clock::now();
+            let held = now.saturating_duration_since(paused_at);
+            for toast in &mut self.visible {
+                if let Some(shown) = toast.shown_at {
+                    toast.shown_at = Some((shown + held).min(now));
+                }
+            }
+        }
     }
 
     /// Check if paused

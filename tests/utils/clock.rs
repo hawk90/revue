@@ -436,3 +436,333 @@ fn only_the_listed_files_read_real_time() {
         "these no longer read real time: {stale:?}"
     );
 }
+
+// Pausing: the paused time does not count (#865, #876, #862, #1374)
+
+#[test]
+fn a_paused_tween_holds_its_value_and_resumes_from_it() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut tween = Tween::new(0.0, 100.0, MS(1000));
+    tween.start();
+    time.advance_ms(250);
+    tween.pause();
+    time.advance_ms(5000);
+    assert_eq!(tween.value(), 25.0, "held, not jumped to the end");
+    assert_eq!(tween.progress(), 0.25);
+    assert!(!tween.is_completed());
+    tween.resume();
+    assert_eq!(tween.value(), 25.0, "the paused time does not count");
+    time.advance_ms(750);
+    assert_eq!(tween.value(), 100.0);
+    assert!(tween.is_completed());
+}
+
+#[test]
+fn a_tween_paused_in_its_delay_stays_at_the_start() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut tween = Tween::new(10.0, 20.0, MS(100)).delay(MS(100));
+    tween.start();
+    time.advance_ms(50);
+    tween.pause();
+    time.advance_ms(1000);
+    assert_eq!(tween.value(), 10.0);
+    assert_eq!(tween.progress(), 0.0);
+    tween.resume();
+    time.advance_ms(100);
+    assert_eq!(tween.value(), 15.0, "50 ms of delay were left");
+}
+
+#[test]
+fn a_tween_paused_past_its_end_finishes_only_after_resuming() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut tween = Tween::new(0.0, 100.0, MS(100));
+    tween.start();
+    time.advance_ms(200);
+    tween.pause();
+    assert_eq!(tween.value(), 100.0);
+    assert!(!tween.is_completed());
+    tween.resume();
+    tween.value();
+    assert!(tween.is_completed());
+}
+
+#[test]
+fn restarting_a_paused_tween_forgets_the_pause() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut tween = Tween::new(0.0, 100.0, MS(1000));
+    tween.start();
+    time.advance_ms(500);
+    tween.pause();
+    time.advance_ms(100);
+    tween.start();
+    time.advance_ms(100);
+    assert_eq!(tween.value(), 10.0);
+    assert_eq!(tween.progress(), 0.1);
+}
+
+fn fade() -> KeyframeAnimation {
+    KeyframeAnimation::new("fade")
+        .keyframe(0, |k| k.set("opacity", 0.0))
+        .keyframe(100, |k| k.set("opacity", 1.0))
+        .duration(MS(1000))
+}
+
+#[test]
+fn a_paused_keyframe_animation_holds_and_resumes() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut anim = fade();
+    anim.start();
+    time.advance_ms(500);
+    anim.pause();
+    time.advance_ms(2000);
+    assert_eq!(anim.progress(), 0.5, "held, not back at 0");
+    assert_eq!(anim.get("opacity"), 0.5);
+    anim.resume();
+    assert_eq!(anim.get("opacity"), 0.5, "the paused time does not count");
+    assert!(!anim.is_completed());
+    time.advance_ms(500);
+    anim.get("opacity");
+    assert!(anim.is_completed());
+}
+
+#[test]
+fn restarting_a_paused_keyframe_animation_forgets_the_pause() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut anim = fade();
+    anim.start();
+    time.advance_ms(500);
+    anim.pause();
+    time.advance_ms(100);
+    anim.start();
+    time.advance_ms(100);
+    assert_eq!(anim.progress(), 0.1);
+    anim.reset();
+    assert_eq!(anim.progress(), 0.0);
+}
+
+#[test]
+fn a_countdown_resumes_with_the_time_it_had() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut t = Timer::countdown(10);
+    t.start();
+    time.advance_ms(3000);
+    t.pause();
+    assert_eq!(t.remaining_seconds(), 7);
+    time.advance_ms(60_000);
+    t.start();
+    t.update();
+    assert_eq!(t.remaining_seconds(), 7, "not back at 10");
+    time.advance_ms(2000);
+    t.pause();
+    assert_eq!(
+        t.remaining_seconds(),
+        5,
+        "a second pause counts from the first"
+    );
+    t.start();
+    time.advance_ms(5000);
+    t.update();
+    assert!(t.is_completed());
+}
+
+#[test]
+fn resetting_a_paused_countdown_starts_over() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut t = Timer::countdown(10);
+    t.start();
+    time.advance_ms(3000);
+    t.pause();
+    t.reset();
+    t.start();
+    t.update();
+    assert_eq!(t.remaining_seconds(), 10);
+    time.advance_ms(1000);
+    t.update();
+    assert_eq!(t.remaining_seconds(), 9);
+}
+
+#[test]
+fn a_countdown_run_again_after_a_pause_gets_the_full_time() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut t = Timer::countdown(10).auto_restart(true);
+    t.start();
+    time.advance_ms(3000);
+    t.pause();
+    t.start();
+    time.advance_ms(7000);
+    t.update();
+    assert_eq!(t.remaining_seconds(), 10, "restarted in full");
+    time.advance_ms(8000);
+    t.update();
+    assert_eq!(t.remaining_seconds(), 2);
+
+    let mut t = Timer::countdown(10);
+    t.start();
+    time.advance_ms(3000);
+    t.pause();
+    t.start();
+    time.advance_ms(7000);
+    t.update();
+    assert!(t.is_completed());
+    t.start();
+    time.advance_ms(1000);
+    t.update();
+    assert_eq!(t.remaining_seconds(), 9);
+}
+
+#[test]
+fn a_leading_debouncer_fires_again_after_a_quiet_delay() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut d = Debouncer::leading(MS(100));
+    assert!(d.call());
+    time.advance_ms(99);
+    assert!(!d.call(), "still in the burst");
+    time.advance_ms(99);
+    assert!(!d.call(), "each call extends the burst");
+    time.advance_ms(100);
+    assert!(d.call(), "quiet for the whole delay");
+    assert!(!d.call());
+}
+
+#[test]
+fn a_paused_task_timer_keeps_its_time() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut timers = TaskTimer::new();
+    timers.set("once", MS(100));
+    time.advance_ms(40);
+    timers.pause("once");
+    assert!(!timers.is_active("once"));
+    time.advance_ms(1000);
+    assert_eq!(timers.poll_expired(), None, "not fired while paused");
+    assert_eq!(timers.remaining("once"), Some(MS(60)));
+    timers.pause("once");
+    assert_eq!(
+        timers.remaining("once"),
+        Some(MS(60)),
+        "a second pause changes nothing"
+    );
+    timers.resume("once");
+    time.advance_ms(59);
+    assert_eq!(timers.poll_expired(), None);
+    time.advance_ms(1);
+    assert_eq!(timers.poll_expired(), Some("once"));
+    assert_eq!(timers.count(), 0);
+}
+
+#[test]
+fn a_task_timer_set_again_forgets_its_pause() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut timers = TaskTimer::new();
+    timers.set("a", MS(100));
+    timers.pause("a");
+    timers.set("a", MS(500));
+    assert_eq!(timers.remaining("a"), Some(MS(500)));
+    timers.resume("a");
+    assert_eq!(timers.remaining("a"), Some(MS(500)));
+
+    timers.pause("a");
+    timers.cancel("a");
+    assert_eq!(timers.remaining("a"), None, "a cancelled timer has no time");
+    timers.set("a", MS(7));
+    assert_eq!(timers.remaining("a"), Some(MS(7)));
+}
+
+#[test]
+fn a_paused_repeating_timer_resumes_with_the_time_it_had() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut timers = TaskTimer::new();
+    timers.set_repeating("tick", MS(100));
+    time.advance_ms(30);
+    timers.pause("tick");
+    time.advance_ms(1000);
+    assert_eq!(timers.poll_expired(), None);
+    timers.resume("tick");
+    time.advance_ms(70);
+    assert_eq!(timers.poll_expired(), Some("tick"));
+    time.advance_ms(100);
+    assert_eq!(timers.poll_expired(), Some("tick"));
+}
+
+#[test]
+fn a_paused_toast_keeps_the_time_it_had() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut queue = ToastQueue::new()
+        .default_duration(MS(100))
+        .pause_on_hover(true);
+    queue.info("hello");
+    queue.tick();
+    time.advance_ms(60);
+    queue.pause();
+    time.advance_ms(5000);
+    queue.tick();
+    assert_eq!(queue.visible_count(), 1, "kept while paused");
+    queue.resume();
+    queue.tick();
+    assert_eq!(queue.visible_count(), 1, "the paused time does not count");
+    time.advance_ms(39);
+    queue.tick();
+    assert_eq!(queue.visible_count(), 1);
+    time.advance_ms(1);
+    queue.tick();
+    assert_eq!(queue.visible_count(), 0);
+}
+
+#[test]
+fn a_toast_shown_during_a_pause_starts_counting_at_the_resume() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut queue = ToastQueue::new()
+        .default_duration(MS(100))
+        .pause_on_hover(true);
+    queue.pause();
+    time.advance_ms(50);
+    queue.info("late");
+    queue.tick();
+    time.advance_ms(5000);
+    queue.resume();
+    time.advance_ms(99);
+    queue.tick();
+    assert_eq!(queue.visible_count(), 1);
+    time.advance_ms(1);
+    queue.tick();
+    assert_eq!(queue.visible_count(), 0);
+}
+
+#[test]
+fn pausing_a_toast_twice_or_resuming_unpaused_changes_nothing() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let mut queue = ToastQueue::new()
+        .default_duration(MS(100))
+        .pause_on_hover(true);
+    queue.info("hello");
+    queue.tick();
+    queue.resume();
+    time.advance_ms(50);
+    queue.resume();
+    queue.pause();
+    time.advance_ms(10);
+    queue.pause();
+    time.advance_ms(10);
+    queue.resume();
+    time.advance_ms(49);
+    queue.tick();
+    assert_eq!(queue.visible_count(), 1);
+    time.advance_ms(1);
+    queue.tick();
+    assert_eq!(queue.visible_count(), 0);
+}

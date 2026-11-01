@@ -57,6 +57,8 @@ pub struct ToastQueue {
     pause_on_hover: bool,
     /// Whether toast timers are currently paused
     paused: bool,
+    /// When the timers were paused, while they are
+    paused_at: Option<std::time::Instant>,
     /// Widget properties
     props: WidgetProps,
 }
@@ -76,6 +78,7 @@ impl ToastQueue {
             deduplicate: true,
             pause_on_hover: false,
             paused: false,
+            paused_at: None,
             props: WidgetProps::new(),
         }
     }

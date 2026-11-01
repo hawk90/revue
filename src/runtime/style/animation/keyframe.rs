@@ -100,6 +100,8 @@ pub struct KeyframeAnimation {
     easing: EasingFn,
     /// Start time
     start_time: Option<Instant>,
+    /// When it was paused, while it is
+    pause_time: Option<Instant>,
     /// Current state
     state: AnimationState,
     /// Number of iterations (0 = infinite)
@@ -122,6 +124,7 @@ impl KeyframeAnimation {
             delay: Duration::ZERO,
             easing: easing::linear,
             start_time: None,
+            pause_time: None,
             state: AnimationState::Pending,
             iterations: 1,
             current_iteration: 0,
@@ -203,6 +206,7 @@ impl KeyframeAnimation {
     /// Pause the animation
     pub fn pause(&mut self) {
         if self.state == AnimationState::Running {
+            self.pause_time = Some(crate::utils::clock::now());
             self.state = AnimationState::Paused;
         }
     }
@@ -210,6 +214,11 @@ impl KeyframeAnimation {
     /// Resume the animation
     pub fn resume(&mut self) {
         if self.state == AnimationState::Paused {
+            // The paused time does not count as run
+            if let (Some(start), Some(pause)) = (self.start_time, self.pause_time.take()) {
+                let run = pause.saturating_duration_since(start);
+                self.start_time = Some(crate::utils::clock::now() - run);
+            }
             self.state = AnimationState::Running;
         }
     }
@@ -217,6 +226,7 @@ impl KeyframeAnimation {
     /// Reset the animation
     pub fn reset(&mut self) {
         self.start_time = None;
+        self.pause_time = None;
         self.state = AnimationState::Pending;
         self.current_iteration = 0;
     }
@@ -242,11 +252,12 @@ impl KeyframeAnimation {
             return 0.0;
         };
 
-        if self.state != AnimationState::Running {
-            return if self.is_completed() { 1.0 } else { 0.0 };
-        }
-
-        let elapsed = crate::utils::clock::since(start);
+        let elapsed = match (self.state, self.pause_time) {
+            (AnimationState::Running, _) => crate::utils::clock::since(start),
+            // A paused animation holds where it stopped
+            (AnimationState::Paused, Some(pause)) => pause.saturating_duration_since(start),
+            _ => return if self.is_completed() { 1.0 } else { 0.0 },
+        };
         if elapsed < self.delay {
             return 0.0;
         }

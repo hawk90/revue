@@ -148,11 +148,12 @@ impl Timer {
         if self.state == TimerState::Paused {
             // Resume from pause
             self.started_at = Some(crate::utils::clock::now());
+            // `paused_remaining` stays: `update` counts down from it
             self.remaining_ms = self.paused_remaining.unwrap_or(self.remaining_ms);
-            self.paused_remaining = None;
         } else if self.state != TimerState::Running {
             self.started_at = Some(crate::utils::clock::now());
             self.remaining_ms = self.total_ms;
+            self.paused_remaining = None;
         }
         self.state = TimerState::Running;
     }
@@ -177,6 +178,7 @@ impl Timer {
     /// Reset the timer
     pub fn reset(&mut self) {
         self.remaining_ms = self.total_ms;
+        self.paused_remaining = None;
         if self.state == TimerState::Running {
             self.started_at = Some(crate::utils::clock::now());
         }
@@ -206,6 +208,7 @@ impl Timer {
 
                 if self.auto_restart {
                     self.remaining_ms = self.total_ms;
+                    self.paused_remaining = None;
                     self.started_at = Some(crate::utils::clock::now());
                     self.state = TimerState::Running;
                 }
