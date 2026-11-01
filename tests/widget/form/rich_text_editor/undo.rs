@@ -317,3 +317,90 @@ fn test_undo_merge_brings_the_second_block_back_whole() {
     editor.set_cursor(1, 0);
     assert_eq!(editor.current_block_type(), BlockType::Heading1);
 }
+
+// #1251: undo puts the cursor and selection back as they were before the edit
+
+#[test]
+fn undoing_delete_leaves_the_cursor_before_the_text_and_backspace_after_it() {
+    use revue::event::Key;
+    let edited = |key: Key| {
+        let mut editor = RichTextEditor::new();
+        editor.insert_str("abc");
+        editor.handle_key(&Key::Left);
+        editor.handle_key(&key);
+        editor
+    };
+    let mut delete = edited(Key::Delete);
+    assert_eq!(delete.get_content(), "ab");
+    assert_eq!(delete.cursor_position(), (0, 2));
+    delete.undo();
+    assert_eq!(delete.get_content(), "abc");
+    assert_eq!(delete.cursor_position(), (0, 2), "before the restored c");
+    delete.redo();
+    assert_eq!(delete.get_content(), "ab");
+    assert_eq!(delete.cursor_position(), (0, 2));
+    delete.undo();
+    assert_eq!(
+        delete.cursor_position(),
+        (0, 2),
+        "a redo keeps which key it was"
+    );
+
+    let mut backspace = edited(Key::Backspace);
+    assert_eq!(backspace.get_content(), "ac");
+    assert_eq!(backspace.cursor_position(), (0, 1));
+    backspace.undo();
+    assert_eq!(backspace.get_content(), "abc");
+    assert_eq!(backspace.cursor_position(), (0, 2), "after the restored b");
+}
+
+#[test]
+fn undoing_a_deleted_selection_selects_it_again() {
+    let mut editor = RichTextEditor::new();
+    editor.insert_str("hello");
+    editor.set_cursor(0, 1);
+    editor.start_selection();
+    editor.set_cursor(0, 4);
+    assert_eq!(editor.get_selection().as_deref(), Some("ell"));
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "ho");
+    assert!(!editor.has_selection());
+
+    editor.undo();
+    assert_eq!(editor.get_content(), "hello");
+    assert_eq!(editor.get_selection().as_deref(), Some("ell"));
+    assert_eq!(editor.cursor_position(), (0, 4));
+
+    editor.redo();
+    assert_eq!(editor.get_content(), "ho");
+    assert!(!editor.has_selection());
+    assert_eq!(editor.cursor_position(), (0, 1));
+}
+
+#[test]
+fn undoing_a_selection_deleted_backwards_keeps_its_direction() {
+    let mut editor = RichTextEditor::new();
+    editor.insert_str("hello");
+    editor.set_cursor(0, 4);
+    editor.start_selection();
+    editor.set_cursor(0, 1);
+    editor.delete_selection();
+    editor.undo();
+    assert_eq!(editor.get_selection().as_deref(), Some("ell"));
+    assert_eq!(editor.cursor_position(), (0, 1));
+}
+
+#[test]
+fn undoing_a_selection_across_blocks_selects_it_again() {
+    let mut editor = RichTextEditor::new();
+    editor.insert_str("ab\ncd");
+    editor.set_cursor(0, 1);
+    editor.start_selection();
+    editor.set_cursor(1, 1);
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "ad");
+    editor.undo();
+    assert_eq!(editor.get_content(), "ab\ncd");
+    assert_eq!(editor.get_selection().as_deref(), Some("b\nc"));
+    assert_eq!(editor.cursor_position(), (1, 1));
+}
