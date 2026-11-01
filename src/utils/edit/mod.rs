@@ -75,6 +75,10 @@ use crate::utils::undo::UndoHistory;
 /// Steps of undo kept by default
 const DEFAULT_HISTORY: usize = 100;
 
+/// Bytes of undo kept by default: a paste of a large file costs its size twice
+/// (removed and inserted), so a step count alone does not bound the memory.
+const DEFAULT_HISTORY_BYTES: usize = 64 * 1024 * 1024;
+
 /// Typing within this of the last edit joins its undo step, by default
 const DEFAULT_GROUP_DELAY: Duration = Duration::from_millis(500);
 
@@ -149,6 +153,8 @@ pub struct EditState {
     max_lines: usize,
     read_only: bool,
     history: UndoHistory<Step>,
+    /// See [`history_bytes`](Self::history_bytes)
+    history_bytes: usize,
     group_delay: Duration,
     /// Whether the next typing or delete may join the last undo step: true
     /// right after one, false after a move or any other edit
@@ -186,6 +192,7 @@ impl EditState {
             max_lines: 0,
             read_only: false,
             history: UndoHistory::with_max_size(DEFAULT_HISTORY),
+            history_bytes: DEFAULT_HISTORY_BYTES,
             group_delay: DEFAULT_GROUP_DELAY,
             joinable: false,
             clock: Arc::new(Instant::now),
@@ -240,6 +247,13 @@ impl EditState {
     /// The undo steps kept (100 by default); the oldest go first
     pub fn history_limit(mut self, steps: usize) -> Self {
         self.history.set_max_size(steps);
+        self
+    }
+
+    /// How many bytes of text undo may hold, 64 MiB by default. The oldest steps
+    /// go first, and the last edit can always be undone, however large.
+    pub fn history_bytes(mut self, bytes: usize) -> Self {
+        self.history_bytes = bytes;
         self
     }
 
