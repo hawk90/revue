@@ -23,6 +23,7 @@
 
 mod builders;
 mod highlight;
+mod keys;
 mod listing;
 mod navigation;
 mod render;
@@ -34,6 +35,7 @@ pub use types::{FileFilter, PickerEntry, PickerMode, PickerResult};
 pub use validation::FilePickerError;
 
 use crate::style::Color;
+use crate::utils::EditState;
 use crate::utils::ScrollState;
 use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::WidgetProps;
@@ -69,7 +71,9 @@ pub struct FilePicker {
     /// Default filename (for save mode)
     default_name: Option<String>,
     /// Input filename (for save mode)
-    input_name: String,
+    input_name: EditState,
+    /// What the last key decided, until [`take_result`](Self::take_result)
+    result: Option<PickerResult>,
     /// Is inputting filename (for future save mode UI)
     _input_mode: bool,
     /// Confirm selection needed (for future save mode UI)
@@ -110,7 +114,8 @@ impl FilePicker {
             dirs_first: true,
             title: None,
             default_name: None,
-            input_name: String::new(),
+            input_name: EditState::single_line(),
+            result: None,
             _input_mode: false,
             _confirm_overwrite: true,
             width: 60,

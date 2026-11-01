@@ -12,6 +12,10 @@ use super::catalog::catalog;
 
 /// `View` implementors that are not public widgets, with the reason.
 const NOT_WIDGETS: &[(&str, &str)] = &[
+    (
+        "NameField",
+        "the file name row inside `FilePicker`, drawn with it",
+    ),
     ("Box", "the blanket impl for `Box<dyn View>`"),
     ("&V", "the blanket impl for a borrowed view"),
     ("HelloView", "a test view in `src/testing/test_app.rs`"),

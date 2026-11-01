@@ -42,7 +42,7 @@ fn test_filepicker_render_save_mode_shows_filename() {
     let text = render_text(&picker, 80, 20);
 
     assert!(text.contains("Save File"), "{text}");
-    assert!(text.contains("Filename: a_"), "{text}");
+    assert!(text.contains("Filename: a"), "{text}");
 }
 
 #[test]

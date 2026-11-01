@@ -4,6 +4,7 @@
 //! lists does not depend on the working directory.
 
 pub mod basic;
+mod keys;
 mod model;
 pub mod render;
 pub mod selection;

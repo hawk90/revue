@@ -46,6 +46,24 @@ impl FilePicker {
         }
     }
 
+    /// Select every file listed (for multi-select)
+    pub fn select_all(&mut self) {
+        for entry in self.entries.iter_mut().filter(|e| !e.is_dir) {
+            entry.selected = true;
+            if !self.selected.contains(&entry.path) {
+                self.selected.push(entry.path.clone());
+            }
+        }
+    }
+
+    /// Clear the selection, in this directory and any other (for multi-select)
+    pub fn select_none(&mut self) {
+        self.selected.clear();
+        for entry in &mut self.entries {
+            entry.selected = false;
+        }
+    }
+
     /// Confirm selection
     ///
     /// Returns a canonicalized absolute path for the selected file(s).
@@ -76,10 +94,11 @@ impl FilePicker {
                 }
             }
             PickerMode::Save => {
-                if validate_file_name(&self.input_name).is_err() {
+                let name = self.input_name.text();
+                if validate_file_name(&name).is_err() {
                     return PickerResult::None;
                 }
-                let path = self.current_dir.join(&self.input_name);
+                let path = self.current_dir.join(&name);
                 let is_symlink =
                     fs::symlink_metadata(&path).is_ok_and(|meta| meta.file_type().is_symlink());
                 match path.canonicalize() {
@@ -127,14 +146,14 @@ impl FilePicker {
     /// Input character (for save mode)
     pub fn input_char(&mut self, c: char) {
         if self.mode == PickerMode::Save {
-            self.input_name.push(c);
+            self.input_name.insert(c.encode_utf8(&mut [0; 4]));
         }
     }
 
     /// Delete input character
     pub fn input_backspace(&mut self) {
         if self.mode == PickerMode::Save {
-            self.input_name.pop();
+            self.input_name.backspace();
         }
     }
 }
