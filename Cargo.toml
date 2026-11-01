@@ -66,7 +66,7 @@ crossterm = "0.29"
 # ═══════════════════════════════════════════
 # Text & Unicode
 # ═══════════════════════════════════════════
-unicode-width = "0.2.2"
+unicode-width = "0.2.3"
 unicode-segmentation = "1.13.3"
 unicode-properties = { version = "0.1.4", default-features = false, features = ["emoji"] }
 textwrap = "0.16.4"
