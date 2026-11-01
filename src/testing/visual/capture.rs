@@ -12,7 +12,7 @@ impl VisualCapture {
     pub fn from_buffer(buffer: &Buffer, include_styles: bool, include_colors: bool) -> Self {
         let width = buffer.width();
         let height = buffer.height();
-        let mut cells = Vec::with_capacity((width * height) as usize);
+        let mut cells = Vec::with_capacity(width as usize * height as usize);
 
         for y in 0..height {
             for x in 0..width {
@@ -46,7 +46,7 @@ impl VisualCapture {
     /// Get cell at position
     pub fn get(&self, x: u16, y: u16) -> Option<&CapturedCell> {
         if x < self.width && y < self.height {
-            let idx = (y * self.width + x) as usize;
+            let idx = y as usize * self.width as usize + x as usize;
             self.cells.get(idx)
         } else {
             None
@@ -219,7 +219,8 @@ impl VisualCapture {
         let mut color_data: HashMap<(u16, u16, String), (u8, u8, u8)> = HashMap::new();
         let mut style_data: HashMap<(u16, u16), (bool, bool, bool, bool)> = HashMap::new();
 
-        for line in content.lines() {
+        let mut lines = content.lines();
+        while let Some(line) = lines.next() {
             let line = line.trim_end();
 
             // Parse header
@@ -244,6 +245,14 @@ impl VisualCapture {
             }
 
             // Section markers
+            if line == "## Text" && height > 0 {
+                // Every row is on screen as it is: a blank one, or one that
+                // reads like a heading, still takes its place
+                for _ in 0..height {
+                    text_lines.push(lines.next().unwrap_or("").trim_end().to_string());
+                }
+                continue;
+            }
             if line == "## Text" {
                 in_text = true;
                 in_colors = false;

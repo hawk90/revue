@@ -2,7 +2,9 @@
 //!
 //! Allows capturing and comparing widget output against golden files.
 
+use crate::core::app::snapshot::flag_is_on;
 use crate::render::Buffer;
+use crate::testing::screen_text::comparable_screen;
 use std::fs;
 use std::path::PathBuf;
 
@@ -21,9 +23,7 @@ impl SnapshotManager {
     /// Set `REVUE_UPDATE_SNAPSHOTS=1` environment variable to update snapshots.
     pub fn new() -> Self {
         let snapshot_dir = PathBuf::from("tests/snapshots");
-        let update_mode = std::env::var("REVUE_UPDATE_SNAPSHOTS")
-            .map(|v| v == "1" || v.to_lowercase() == "true")
-            .unwrap_or(false);
+        let update_mode = std::env::var("REVUE_UPDATE_SNAPSHOTS").is_ok_and(|v| flag_is_on(&v));
 
         Self {
             snapshot_dir,
@@ -33,9 +33,7 @@ impl SnapshotManager {
 
     /// Create with custom snapshot directory
     pub fn with_dir(dir: impl Into<PathBuf>) -> Self {
-        let update_mode = std::env::var("REVUE_UPDATE_SNAPSHOTS")
-            .map(|v| v == "1" || v.to_lowercase() == "true")
-            .unwrap_or(false);
+        let update_mode = std::env::var("REVUE_UPDATE_SNAPSHOTS").is_ok_and(|v| flag_is_on(&v));
 
         Self {
             snapshot_dir: dir.into(),
@@ -77,12 +75,8 @@ impl SnapshotManager {
                 let expected = fs::read_to_string(&path)
                     .unwrap_or_else(|e| panic!("Failed to read snapshot '{}': {}", name, e));
 
-                // Normalize line endings for cross-platform compatibility
-                let expected_normalized = expected.replace("\r\n", "\n");
-                let actual_normalized = content.replace("\r\n", "\n");
-
-                let expected_trimmed = expected_normalized.trim();
-                let actual_trimmed = actual_normalized.trim();
+                let expected_trimmed = comparable_screen(&expected);
+                let actual_trimmed = comparable_screen(content);
 
                 if expected_trimmed != actual_trimmed {
                     panic!(
