@@ -385,8 +385,9 @@ struct Fills;
 
 impl View for Fills {
     fn render(&self, ctx: &mut RenderContext) {
-        for y in 0..ctx.area.height {
-            for x in 0..ctx.area.width {
+        // Up to the screen: the area may be as large as a `u16` goes.
+        for y in 0..ctx.area.height.min(64) {
+            for x in 0..ctx.area.width.min(64) {
                 ctx.draw_char(x, y, '#', Color::WHITE);
             }
         }
