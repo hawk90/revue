@@ -84,7 +84,7 @@ impl CodeEditor {
 }
 
 impl View for CodeEditor {
-    crate::impl_view_meta!("CodeEditor");
+    crate::impl_view_meta!("CodeEditor", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;

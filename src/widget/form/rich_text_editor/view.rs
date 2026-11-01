@@ -16,7 +16,7 @@ pub(super) fn fill(ctx: &mut RenderContext, x: u16, y: u16, width: u16, height: 
 }
 
 impl View for RichTextEditor {
-    crate::impl_view_meta!("RichTextEditor");
+    crate::impl_view_meta!("RichTextEditor", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;

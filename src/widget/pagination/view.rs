@@ -261,7 +261,7 @@ impl View for Pagination {
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         Some((self.natural_width().min(max_width), 1.min(max_height)))
     }
-    crate::impl_view_meta!("Pagination");
+    crate::impl_view_meta!("Pagination", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         // Inactive page numbers take `color`; the active one keeps its highlight.

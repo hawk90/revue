@@ -49,3 +49,38 @@ fn a_focusable_widget_shows_its_focus() {
     assert!(count >= 16, "only {count} focusable widgets");
     assert!(hidden.is_empty(), "focus does not show: {hidden:?}");
 }
+
+/// A widget that reacts to focus can get it: Tab does not skip what shows focus.
+///
+/// Some widgets draw the time or the machine's load, and can change between any
+/// two renders or instances, so a difference proves nothing about those: a widget
+/// counts only if it draws the same at rest every time, built again too, and
+/// differs with focus every time.
+#[test]
+fn a_widget_that_shows_focus_is_focusable() {
+    const TRIES: usize = 5;
+    let content = Content::ordinary();
+    let mut unreachable = Vec::new();
+    for entry in &catalog() {
+        let plain = (entry.build)(&content, false);
+        if plain.meta().focusable {
+            continue;
+        }
+        let flagged = (entry.build)(&content, true);
+        let reacts = |focused: &dyn Fn() -> Vec<Cell>| {
+            (0..TRIES).all(|_| {
+                let before = cells(&*plain, false);
+                let drawn = focused();
+                let twin = cells(&*(entry.build)(&content, false), false);
+                before == cells(&*plain, false) && before == twin && drawn != before
+            })
+        };
+        if reacts(&|| cells(&*plain, true)) || reacts(&|| cells(&*flagged, false)) {
+            unreachable.push(entry.name);
+        }
+    }
+    assert!(
+        unreachable.is_empty(),
+        "shows focus but Tab skips it: {unreachable:?}"
+    );
+}

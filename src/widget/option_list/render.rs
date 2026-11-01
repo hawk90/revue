@@ -8,7 +8,7 @@ use crate::widget::traits::DISABLED_FG;
 use crate::widget::{RenderContext, View};
 
 impl View for OptionList {
-    crate::impl_view_meta!("OptionList");
+    crate::impl_view_meta!("OptionList", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         use crate::widget::stack::vstack;

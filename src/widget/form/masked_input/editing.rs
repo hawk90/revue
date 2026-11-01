@@ -3,6 +3,7 @@
 use super::{MaskStyle, MaskedInput};
 use crate::event::{Key, KeyEvent};
 use crate::utils::{EditMotion, EditOutcome};
+use crate::widget::traits::{EventResult, Interactive};
 
 impl MaskedInput {
     /// Handle a key without modifiers, as
@@ -153,5 +154,29 @@ impl MaskedInput {
         if self.peek_countdown > 0 {
             self.peek_countdown -= 1;
         }
+    }
+}
+
+/// The runtime does not route keys to widgets: an app forwards them, and this
+/// is the same call every interactive widget answers.
+impl Interactive for MaskedInput {
+    fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
+        if self.handle_key_event(event) {
+            EventResult::ConsumedAndRender
+        } else {
+            EventResult::Ignored
+        }
+    }
+
+    fn focusable(&self) -> bool {
+        !self.disabled
+    }
+
+    fn on_focus(&mut self) {
+        self.focused = true;
+    }
+
+    fn on_blur(&mut self) {
+        self.focused = false;
     }
 }

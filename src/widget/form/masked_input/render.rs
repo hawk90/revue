@@ -179,7 +179,7 @@ impl MaskedInput {
 }
 
 impl View for MaskedInput {
-    crate::impl_view_meta!("MaskedInput");
+    crate::impl_view_meta!("MaskedInput", focusable, disabled: direct);
 
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         self.content(None).measure(max_width, max_height)
