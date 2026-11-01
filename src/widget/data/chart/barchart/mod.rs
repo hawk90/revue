@@ -36,7 +36,7 @@ pub struct BarChart {
     bar_width: u16,
     gap: u16,
     show_values: bool,
-    fg: Color,
+    fg: Option<Color>,
     label_width: Option<u16>,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
@@ -52,7 +52,7 @@ impl BarChart {
             bar_width: 1,
             gap: 1,
             show_values: true,
-            fg: Color::CYAN,
+            fg: None,
             label_width: None,
             props: WidgetProps::new(),
         }
@@ -126,7 +126,7 @@ impl BarChart {
 
     /// Set default foreground color
     pub fn fg(mut self, color: Color) -> Self {
-        self.fg = color;
+        self.fg = Some(color);
         self
     }
 

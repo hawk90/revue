@@ -141,7 +141,9 @@ impl Tabs {
         // Draw divider (unless last tab)
         if i < self.tabs.len() - 1 && x < area.width {
             let mut cell = Cell::new(self.divider);
-            cell.fg = self.fg;
+            let (fg, bg) = self.tab_colors(ctx, false);
+            cell.fg = fg;
+            cell.bg = bg;
             ctx.set(x, 0, cell);
             x += 1;
         }

@@ -37,6 +37,7 @@
 //! would come back under a new key on every run. The sizes layer enumerates
 //! the boundary sizes instead.
 
+mod builder_wins;
 pub mod catalog;
 #[cfg(all(
     feature = "diff",
