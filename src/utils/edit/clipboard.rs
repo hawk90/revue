@@ -39,18 +39,18 @@ pub(crate) fn clipboard_text() -> Option<String> {
 }
 
 impl EditState {
-    /// Copy the primary selection; returns whether there was one.
+    /// Copy what every cursor selects, in text order, one per line; returns
+    /// whether anything was selected.
     pub fn copy_selection(&self) -> bool {
-        if !self.primary().has_selection() {
+        if !self.has_selection() {
             return false;
         }
-        let (from, to) = self.primary().range();
-        set_clipboard_text(&self.text_in(from, to));
+        set_clipboard_text(&self.selected_text());
         true
     }
 
-    /// Copy the primary selection and delete what is selected; returns whether
-    /// the text changed.
+    /// Copy what every cursor selects and delete it; returns whether the text
+    /// changed.
     pub fn cut_selection(&mut self) -> bool {
         self.copy_selection() && self.delete_selection()
     }

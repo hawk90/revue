@@ -125,6 +125,12 @@ impl VimState {
             if gg {
                 return self.finish_gg();
             }
+            // `dgw` is no motion: it cancels, like any other key would.
+            if self.operator.is_some() && key.key != Key::Escape {
+                self.operator = None;
+                self.count = None;
+                return VimAction::None;
+            }
         }
 
         let action = match self.mode {

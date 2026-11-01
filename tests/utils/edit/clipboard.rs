@@ -68,6 +68,41 @@ fn ctrl_x_cuts_as_one_undo_step() {
 #[cfg(not(feature = "clipboard"))]
 mod with_no_system_clipboard {
     use super::*;
+    use revue::utils::EditCursor;
+
+    fn pasted() -> String {
+        let mut s = EditState::multi_line();
+        s.paste_clipboard();
+        s.text()
+    }
+
+    fn two_cursors(second: EditCursor) -> EditState {
+        let mut s = EditState::multi_line().with_text("ab cd");
+        s.set_cursors(vec![EditCursor::selecting(
+            EditPos::new(0, 0),
+            EditPos::new(0, 2),
+        )]);
+        s.add_cursor(second);
+        s
+    }
+
+    #[test]
+    fn cutting_at_many_cursors_loses_no_text() {
+        let mut s = two_cursors(EditCursor::selecting(
+            EditPos::new(0, 3),
+            EditPos::new(0, 5),
+        ));
+        assert_eq!(s.edit_key(&ctrl('x'), 1), EditOutcome::Edited);
+        assert_eq!(s.text(), " ");
+        assert_eq!(pasted(), "ab\ncd");
+    }
+
+    #[test]
+    fn a_selection_at_another_cursor_is_copied() {
+        let mut s = two_cursors(EditCursor::at(EditPos::new(0, 5)));
+        assert_eq!(s.edit_key(&ctrl('c'), 1), EditOutcome::Moved);
+        assert_eq!(pasted(), "ab");
+    }
     use revue::widget::{Autocomplete, Combobox, MaskedInput, NumberInput, SearchBar};
 
     fn copied(text: &str) {
