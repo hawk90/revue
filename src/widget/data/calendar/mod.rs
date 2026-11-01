@@ -255,7 +255,7 @@ impl View for Calendar {
             (9 + border).min(max_height),
         ))
     }
-    crate::impl_view_meta!("Calendar");
+    crate::impl_view_meta!("Calendar", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         let render_state = render::CalendarRender {

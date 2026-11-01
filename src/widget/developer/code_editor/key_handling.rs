@@ -2,6 +2,7 @@
 
 use crate::event::{Key, KeyEvent};
 use crate::utils::EditOutcome;
+use crate::widget::traits::{EventResult, Interactive};
 
 impl super::CodeEditor {
     // =========================================================================
@@ -95,5 +96,29 @@ impl super::CodeEditor {
             self.ensure_cursor_visible();
         }
         outcome != EditOutcome::Unhandled
+    }
+}
+
+/// The runtime does not route keys to widgets: an app forwards them, and this
+/// is the same call every interactive widget answers.
+impl Interactive for super::CodeEditor {
+    fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
+        if self.handle_key_event(event) {
+            EventResult::ConsumedAndRender
+        } else {
+            EventResult::Ignored
+        }
+    }
+
+    fn focusable(&self) -> bool {
+        true
+    }
+
+    fn on_focus(&mut self) {
+        self.focused = true;
+    }
+
+    fn on_blur(&mut self) {
+        self.focused = false;
     }
 }

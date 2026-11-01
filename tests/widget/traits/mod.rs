@@ -1,6 +1,7 @@
 //! Tests for `revue::widget::traits`
 
 mod css;
+mod editors_interactive;
 mod element;
 mod event;
 mod focus_handlers;

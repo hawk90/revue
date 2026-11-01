@@ -230,7 +230,7 @@ impl Link {
 }
 
 impl View for Link {
-    crate::impl_view_meta!("Link");
+    crate::impl_view_meta!("Link", focusable, disabled: direct);
 
     /// One row, as wide as the text it shows - it renders as a `Text`.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {

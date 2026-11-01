@@ -4,7 +4,8 @@
 
 use super::types::ToolbarAction;
 use super::{BlockType, RichTextEditor};
-use crate::event::Key;
+use crate::event::{Key, KeyEvent};
+use crate::widget::traits::{EventResult, Interactive};
 
 impl RichTextEditor {
     // =========================================================================
@@ -131,5 +132,33 @@ impl RichTextEditor {
             _ => return false,
         }
         true
+    }
+}
+
+/// The runtime does not route keys to widgets: an app forwards them, and this
+/// is the same call every interactive widget answers.
+impl Interactive for RichTextEditor {
+    fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
+        // A Ctrl or Alt letter is the app's, not a letter to type.
+        if matches!(event.key, Key::Char(_)) && (event.ctrl || event.alt) {
+            return EventResult::Ignored;
+        }
+        if self.handle_key(&event.key) {
+            EventResult::ConsumedAndRender
+        } else {
+            EventResult::Ignored
+        }
+    }
+
+    fn focusable(&self) -> bool {
+        true
+    }
+
+    fn on_focus(&mut self) {
+        self.focused = true;
+    }
+
+    fn on_blur(&mut self) {
+        self.focused = false;
     }
 }

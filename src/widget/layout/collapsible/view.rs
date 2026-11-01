@@ -37,7 +37,7 @@ impl View for Collapsible {
     fn fills(&self) -> crate::widget::Fill {
         crate::widget::Fill::WIDTH
     }
-    crate::impl_view_meta!("Collapsible");
+    crate::impl_view_meta!("Collapsible", focusable, disabled: state);
 
     fn render(&self, ctx: &mut RenderContext) {
         // The header takes `color`; the content and border keep their own.
