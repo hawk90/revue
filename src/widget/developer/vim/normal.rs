@@ -50,22 +50,32 @@ impl VimState {
         false
     }
 
-    /// With an operator pending, a motion key completes it
+    /// With an operator pending, a motion key completes it, `g` waits for a
+    /// second `g`, and any other key cancels it, as in vim: it does not carry
+    /// over to a later motion. Escape goes on to its own handling, and `:`, `/`
+    /// and `?` to the command line and search, as vim's do.
     fn complete_operator(&mut self, key: &KeyEvent) -> Option<VimAction> {
         let op = self.operator?;
-        if let Key::Char(ch) = key.key {
-            let motion = self.char_to_motion(ch);
-            if motion.is_some() {
-                self.operator = None;
-                return Some(match op {
-                    'd' => VimAction::Delete(motion),
-                    'y' => VimAction::Yank(motion),
-                    'c' => VimAction::Change(motion),
-                    _ => VimAction::None,
-                });
+        let motion = match key.key {
+            Key::Escape | Key::Char(':' | '/' | '?') => return None,
+            Key::Char('g') => {
+                self.key_buffer.push('g');
+                return Some(VimAction::None);
             }
+            Key::Char(ch) => self.char_to_motion(ch),
+            ref other => basic_motion(other),
+        };
+        self.operator = None;
+        if motion.is_none() {
+            self.count = None;
+            return Some(VimAction::None);
         }
-        None
+        Some(match op {
+            'd' => VimAction::Delete(motion),
+            'y' => VimAction::Yank(motion),
+            'c' => VimAction::Change(motion),
+            _ => VimAction::None,
+        })
     }
 
     /// Keys that switch to insert, visual, command or search mode
@@ -98,7 +108,11 @@ impl VimState {
             }
             _ => return None,
         };
+        // `3o`: the mode change drops the count being typed, and the action
+        // keeps it.
+        let count = self.count;
         self.set_mode(mode);
+        self.action_count = count;
         Some(action)
     }
 

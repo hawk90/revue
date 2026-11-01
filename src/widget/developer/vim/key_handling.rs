@@ -116,15 +116,15 @@ impl VimState {
 
     /// Handle a key event
     pub fn handle_key(&mut self, key: &KeyEvent) -> VimAction {
+        self.action_count = None;
+
         // Check for 'gg' sequence
         if !self.key_buffer.is_empty() {
-            if let Key::Char(ch) = key.key {
-                if self.key_buffer == ['g'] && ch == 'g' {
-                    self.key_buffer.clear();
-                    return VimAction::Move(VimMotion::GoToLine(Some(1)));
-                }
-            }
+            let gg = self.key_buffer == ['g'] && key.key == Key::Char('g');
             self.key_buffer.clear();
+            if gg {
+                return self.finish_gg();
+            }
         }
 
         let action = match self.mode {
@@ -138,11 +138,28 @@ impl VimState {
 
         self.remember_for_repeat(&action);
 
-        // Reset count after action
+        // The count goes with the action: it reads through `count` until the
+        // next key
         if action != VimAction::None {
-            self.count = None;
+            if let Some(count) = self.count.take() {
+                self.action_count = Some(count);
+            }
         }
 
+        action
+    }
+
+    /// `gg`: a motion to the line the count names, the first by default, for a
+    /// pending operator if there is one. The count is the line, not a repeat.
+    fn finish_gg(&mut self) -> VimAction {
+        let motion = VimMotion::GoToLine(Some(self.count.take().unwrap_or(1)));
+        let action = match self.operator.take() {
+            Some('d') => VimAction::Delete(Some(motion)),
+            Some('y') => VimAction::Yank(Some(motion)),
+            Some('c') => VimAction::Change(Some(motion)),
+            _ => VimAction::Move(motion),
+        };
+        self.remember_for_repeat(&action);
         action
     }
 
@@ -183,13 +200,9 @@ mod tests {
         vim.handle_key(&KeyEvent::new(Key::Char('3')));
         vim.handle_key(&KeyEvent::new(Key::Char('d')));
         assert_eq!((vim.operator, vim.count), (Some('d'), Some(3)));
-        // Insert mode keeps them; going back to Normal drops both
         vim.set_mode(VimMode::Insert);
-        assert_eq!((vim.operator, vim.count), (Some('d'), Some(3)));
-        vim.set_mode(VimMode::Normal);
         assert_eq!((vim.operator, vim.count), (None, None));
         // `d` typed in insert mode is text, not an operator
-        vim.set_mode(VimMode::Insert);
         vim.handle_key(&KeyEvent::new(Key::Char('d')));
         assert_eq!(vim.operator, None);
     }
