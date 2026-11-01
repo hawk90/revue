@@ -55,7 +55,6 @@ fn shift(input: &mut Input, key: Key) {
 }
 
 const CURSOR_BG: Option<Color> = Some(Color::WHITE);
-const SELECTION_BG: Option<Color> = Some(Color::rgb(70, 130, 180));
 
 // ─── Input: drawing ─────────────────────────────────────────────────────────
 
@@ -106,6 +105,7 @@ fn input_cursor_after_hangul_is_at_its_column() {
 
 #[test]
 fn input_selection_covers_both_cells_of_wide_chars() {
+    let selection_bg = Some(revue::style::use_theme().get().colors.selection);
     // Select from the start so the cursor (which paints over the selection)
     // ends up on 'b', clear of the selected cells.
     let mut input = Input::new().value("a한b");
@@ -114,10 +114,10 @@ fn input_selection_covers_both_cells_of_wide_chars() {
     shift(&mut input, Key::Right); // selects "a한", cursor on 'b'
     let buf = render(&input, 10, 1);
 
-    assert_eq!(bg(&buf, 0, 0), SELECTION_BG);
-    assert_eq!(bg(&buf, 1, 0), SELECTION_BG);
+    assert_eq!(bg(&buf, 0, 0), selection_bg);
+    assert_eq!(bg(&buf, 1, 0), selection_bg);
     assert!(is_cont(&buf, 2, 0));
-    assert_eq!(bg(&buf, 2, 0), SELECTION_BG, "second half of '한'");
+    assert_eq!(bg(&buf, 2, 0), selection_bg, "second half of '한'");
     assert_eq!(bg(&buf, 3, 0), CURSOR_BG);
 }
 

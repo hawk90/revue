@@ -20,11 +20,12 @@ fn put_query(
     let at = field.scroll(scroll.get(), width);
     scroll.set(at);
     let bg = Color::rgb(49, 50, 68);
+    let selected = crate::widget::traits::render_context::edit_line::selection_colors();
     ctx.put_edit_field(x, 0, width, &field, at, |kind, ch| {
         let mut cell = Cell::new(ch);
         (cell.fg, cell.bg) = match kind {
             FieldCell::Cursor => (Some(Color::BLACK), Some(Color::rgb(166, 227, 161))),
-            FieldCell::Selected => (Some(Color::WHITE), Some(Color::rgb(69, 71, 90))),
+            FieldCell::Selected => (Some(selected.0), Some(selected.1)),
             FieldCell::Text | FieldCell::Placeholder => (Some(Color::rgb(166, 227, 161)), Some(bg)),
         };
         cell

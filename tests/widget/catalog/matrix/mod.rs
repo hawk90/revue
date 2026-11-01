@@ -52,6 +52,7 @@ mod focus;
 pub mod known_failures;
 pub mod measure;
 pub mod pairwise;
+mod selection;
 pub mod sentinel;
 pub mod sizes;
 

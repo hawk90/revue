@@ -650,6 +650,8 @@ items:
       - placeholder, value; the placeholder shows while the input is empty, focused or not
       - selection, undo/redo, copy/cut/paste
       - wide characters (CJK, emoji) laid out in columns; scrolls to keep the cursor in view
+      - Ctrl+C, Ctrl+X and Ctrl+V in every field that edits with EditState; a masked field refuses copy and cut
+      - selected text in the theme's selection colors in every field
       - edits with the shared EditState (UTIL-008): grapheme cursor, word moves, undo that restores the selection
     evidence:
       - src/widget/input/input_widgets/input/mod.rs::input

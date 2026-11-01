@@ -32,7 +32,11 @@ impl EditState {
     /// | Ctrl+A | select all |
     /// | Ctrl+Z | undo |
     /// | Ctrl+Y, Ctrl+Shift+Z | redo |
+    /// | Ctrl+C, Ctrl+X, Ctrl+V | copy a selection, cut it, paste (Ctrl+C with no selection is left to the app) |
     pub fn edit_key(&mut self, key: &KeyEvent, page_rows: usize) -> EditOutcome {
+        if let Some(outcome) = self.clipboard_key(key) {
+            return outcome;
+        }
         let multi = !self.single_line;
         let word = key.ctrl && !key.alt;
         let edited = |changed: bool| {

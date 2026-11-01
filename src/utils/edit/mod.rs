@@ -54,6 +54,7 @@
 //! assert_eq!(field.text(), "hello");
 //! ```
 
+mod clipboard;
 mod engine;
 mod keys;
 mod motion;
@@ -66,6 +67,7 @@ use std::time::{Duration, Instant};
 use engine::{Kind, Step};
 use text::{backspace_len, byte_of, category, cluster_at, cluster_count, col_of, Category};
 
+pub(crate) use clipboard::{clipboard_text, set_clipboard_text};
 pub use keys::EditOutcome;
 pub use motion::EditMotion;
 pub use pos::EditPos;

@@ -82,11 +82,12 @@ impl SearchBar {
         let field = EditField::of(&self.state, &self.placeholder, self.focused);
         let scroll = field.scroll(self.scroll_x.get(), input_width);
         self.scroll_x.set(scroll);
+        let selected = crate::widget::traits::render_context::edit_line::selection_colors();
         ctx.put_edit_field(input_x, 0, input_width, &field, scroll, |kind, ch| {
             let mut cell = Cell::new(ch);
             (cell.fg, cell.bg) = match kind {
                 FieldCell::Cursor => (Some(self.bg_color), Some(text_color)),
-                FieldCell::Selected => (Some(self.bg_color), Some(self.placeholder_color)),
+                FieldCell::Selected => (Some(selected.0), Some(selected.1)),
                 FieldCell::Placeholder => (Some(self.placeholder_color), Some(self.bg_color)),
                 FieldCell::Text => (Some(input_fg), Some(self.bg_color)),
             };

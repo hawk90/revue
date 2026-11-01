@@ -110,6 +110,27 @@ impl NumberInput {
                 true
             }
 
+            // Paste what could be typed, and nothing else
+            Key::Char('v') if event.ctrl && !event.alt => {
+                let Some(text) = crate::utils::edit::clipboard_text() else {
+                    return false;
+                };
+                let usable = |c: char| c.is_ascii_digit() || c == '.' || c == '-';
+                if !text.chars().any(usable) {
+                    return false;
+                }
+                if !self.editing {
+                    self.start_editing();
+                    self.edit.set_text("");
+                }
+                for c in text.chars().filter(|c| usable(*c)) {
+                    if self.accepts(c) {
+                        self.edit.insert(c.encode_utf8(&mut [0; 4]));
+                    }
+                }
+                true
+            }
+
             // Other characters are not typed
             Key::Char(_) if plain || (event.ctrl && event.alt) => false,
 

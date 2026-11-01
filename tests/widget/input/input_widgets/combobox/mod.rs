@@ -995,6 +995,9 @@ fn test_combobox_selection_is_drawn() {
     let buffer = render_focused(&cb, 10, 1);
     // "cd" selected, the cursor on "c": "d" in the selection colors
     assert_eq!(cursor_cells(&buffer), vec![3]);
-    assert_eq!(buffer.get(4, 0).unwrap().bg, Some(Color::BLUE));
+    assert_eq!(
+        buffer.get(4, 0).unwrap().bg,
+        Some(revue::style::use_theme().get().colors.selection)
+    );
     assert_ne!(buffer.get(2, 0).unwrap().bg, Some(Color::BLUE));
 }

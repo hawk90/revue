@@ -105,6 +105,9 @@ vstack()
 under whatever the widget paints; a widget's own builder background (`.bg(...)`)
 wins over the stylesheet.
 
+Selected text in every edit field takes the theme's `selection` and
+`selection_text` colors. `Input::selection_bg(...)` sets its own background.
+
 ### Text Styling
 
 Read by `Text`:

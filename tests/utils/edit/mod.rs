@@ -8,6 +8,7 @@ use proptest::prelude::*;
 use revue::event::{Key, KeyEvent};
 use revue::utils::{EditCursor, EditMotion, EditOutcome, EditPos, EditState};
 
+mod clipboard;
 mod model;
 
 fn p(line: usize, col: usize) -> EditPos {

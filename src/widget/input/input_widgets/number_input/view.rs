@@ -67,11 +67,12 @@ impl View for NumberInput {
         let w = (text_w.min(u16::MAX as usize) as u16).min(field_width.saturating_sub(x));
         let scroll = field.scroll(self.scroll_x.get(), w);
         self.scroll_x.set(scroll);
+        let selected = crate::widget::traits::render_context::edit_line::selection_colors();
         ctx.put_edit_field(x, 0, w, &field, scroll, |kind, ch| {
             let mut cell = Cell::new(ch);
             (cell.fg, cell.bg) = match kind {
                 FieldCell::Cursor => (Some(Color::BLACK), Some(Color::WHITE)),
-                FieldCell::Selected => (Some(Color::WHITE), Some(Color::BLUE)),
+                FieldCell::Selected => (Some(selected.0), Some(selected.1)),
                 FieldCell::Text | FieldCell::Placeholder => (Some(fg), Some(bg)),
             };
             cell

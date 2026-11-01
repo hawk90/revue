@@ -104,6 +104,13 @@ pub(crate) struct EditField<'a> {
     pub selection: Option<(usize, usize)>,
 }
 
+/// The foreground and background of selected text, from the theme: every field
+/// draws a selection alike.
+pub(crate) fn selection_colors() -> (crate::style::Color, crate::style::Color) {
+    let theme = crate::style::use_theme().get();
+    (theme.colors.selection_text, theme.colors.selection)
+}
+
 impl<'a> EditField<'a> {
     /// The field for the first line of `state`, its primary cursor drawn
     /// when `focused`

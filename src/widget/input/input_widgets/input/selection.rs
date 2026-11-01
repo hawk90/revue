@@ -45,12 +45,8 @@ impl Input {
     /// Copy selection to clipboard
     pub fn copy(&mut self) {
         if let Some(text) = self.selected_text().map(|s| s.to_string()) {
-            self.clipboard = Some(text.clone());
-            // Try to copy to system clipboard
-            #[cfg(feature = "clipboard")]
-            if let Ok(mut ctx) = arboard::Clipboard::new() {
-                let _ = ctx.set_text(&text);
-            }
+            crate::utils::edit::set_clipboard_text(&text);
+            self.clipboard = Some(text);
         }
     }
 
@@ -63,17 +59,7 @@ impl Input {
     /// Paste from the clipboard, replacing the selection, as one undo step.
     /// Newlines and tabs become spaces.
     pub fn paste(&mut self) -> bool {
-        // Try system clipboard first
-        #[cfg(feature = "clipboard")]
-        if let Ok(mut ctx) = arboard::Clipboard::new() {
-            if let Ok(text) = ctx.get_text() {
-                if !text.is_empty() {
-                    return self.paste_text(&text);
-                }
-            }
-        }
-        // Fall back to internal clipboard
-        match self.clipboard.clone() {
+        match crate::utils::edit::clipboard_text().or_else(|| self.clipboard.clone()) {
             Some(text) => self.paste_text(&text),
             None => false,
         }

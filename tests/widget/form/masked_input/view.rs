@@ -513,9 +513,16 @@ fn test_masked_input_selection_is_drawn() {
     // The cursor on the first char, the other three selected
     assert_eq!(cursor_cells(&buffer, 0), vec![1]);
     for x in 2..5 {
-        assert_eq!(buffer.get(x, 0).unwrap().bg, Some(Color::BLUE), "{x}");
+        assert_eq!(
+            buffer.get(x, 0).unwrap().bg,
+            Some(revue::style::use_theme().get().colors.selection),
+            "{x}"
+        );
     }
-    assert_ne!(buffer.get(5, 0).unwrap().bg, Some(Color::BLUE));
+    assert_ne!(
+        buffer.get(5, 0).unwrap().bg,
+        Some(revue::style::use_theme().get().colors.selection)
+    );
 }
 
 /// The cursor is drawn on the mask char of its character: after a letter

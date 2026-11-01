@@ -33,9 +33,10 @@ impl Autocomplete {
         let field = EditField::of(&self.state, &self.placeholder, self.focused);
         let scroll = field.scroll(self.scroll_x.get(), input_width);
         self.scroll_x.set(scroll);
+        let selected = crate::widget::traits::render_context::edit_line::selection_colors();
         ctx.put_edit_field(0, 0, input_width, &field, scroll, |kind, ch| match kind {
             FieldCell::Cursor => Cell::new(ch).fg(self.input_bg).bg(input_fg),
-            FieldCell::Selected => Cell::new(ch).fg(self.selected_fg).bg(self.selected_bg),
+            FieldCell::Selected => Cell::new(ch).fg(selected.0).bg(selected.1),
             FieldCell::Placeholder => Cell::new(ch).fg(self.placeholder_fg).bg(self.input_bg),
             FieldCell::Text => Cell::new(ch).fg(input_fg).bg(self.input_bg),
         });

@@ -68,6 +68,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     let field_width = width - ARROW_RIGHT_OFFSET - INPUT_TEXT_COL;
     let scroll = field.scroll(combobox.scroll_x.get(), field_width);
     combobox.scroll_x.set(scroll);
+    let selected = crate::widget::traits::render_context::edit_line::selection_colors();
     ctx.put_edit_field(
         INPUT_TEXT_COL,
         0,
@@ -81,7 +82,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
                     Some(crate::style::Color::BLACK),
                     Some(crate::style::Color::WHITE),
                 ),
-                FieldCell::Selected => (combobox.selected_fg, combobox.selected_bg),
+                FieldCell::Selected => (Some(selected.0), Some(selected.1)),
                 FieldCell::Placeholder => (combobox.disabled_fg, input_bg),
                 FieldCell::Text => (input_fg, input_bg),
             };

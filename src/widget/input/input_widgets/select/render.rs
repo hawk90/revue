@@ -83,11 +83,12 @@ impl View for Select {
             let w = text_width as u16;
             let scroll = field.scroll(self.query_scroll.get(), w);
             self.query_scroll.set(scroll);
+            let selected = crate::widget::traits::render_context::edit_line::selection_colors();
             ctx.put_edit_field(HEADER_TEXT_COL, 0, w, &field, scroll, |kind, ch| {
                 let mut cell = Cell::new(ch);
                 (cell.fg, cell.bg) = match kind {
                     FieldCell::Cursor => (Some(Color::BLACK), Some(Color::WHITE)),
-                    FieldCell::Selected => (self.selected_fg, self.selected_bg),
+                    FieldCell::Selected => (Some(selected.0), Some(selected.1)),
                     FieldCell::Placeholder => (Some(PLACEHOLDER_FG), bg),
                     FieldCell::Text => (fg, bg),
                 };
