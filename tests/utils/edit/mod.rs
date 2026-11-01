@@ -4,6 +4,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use proptest::prelude::*;
 use revue::event::{Key, KeyEvent};
 use revue::utils::{EditCursor, EditMotion, EditOutcome, EditPos, EditState};
 
@@ -630,4 +631,129 @@ fn insert_pair_whose_close_joins_the_open_puts_the_cursor_after_it() {
     let mut s = at("", p(0, 0));
     assert!(s.insert_pair("e", "\u{301}"));
     assert_eq!(s.cursor(), p(0, 1));
+}
+
+// #1301: what undo holds, and many cursors
+
+#[test]
+fn undo_drops_its_oldest_steps_past_its_byte_limit() {
+    let mut s = EditState::single_line().history_bytes(2500);
+    for ch in ["a", "b", "c", "d", "e"] {
+        s.select_all();
+        assert!(s.insert(&ch.repeat(1000)));
+    }
+    // A step replacing the text holds it twice, and the first one once.
+    let mut undone = 0;
+    while s.undo() {
+        undone += 1;
+    }
+    assert_eq!(undone, 1, "2000 bytes each, so only the last fits");
+
+    let mut s = EditState::single_line().history_bytes(2500);
+    for ch in ["a", "b", "c"] {
+        s.insert(&ch.repeat(1000));
+        s.set_cursor(s.end());
+    }
+    let mut undone = 0;
+    while s.undo() {
+        undone += 1;
+    }
+    assert_eq!(undone, 2, "1000 bytes each: two fit");
+}
+
+#[test]
+fn the_last_edit_can_be_undone_however_large() {
+    let mut s = EditState::single_line().history_bytes(10);
+    s.insert(&"x".repeat(1000));
+    assert!(s.undo());
+    assert_eq!(s.text(), "");
+    assert!(s.redo());
+    assert_eq!(s.text().len(), 1000);
+}
+
+proptest! {
+    /// Any cursors and selections, on lines with wide and multi-byte clusters,
+    /// replaced with any text: against a plain model over the whole text.
+    #[test]
+    fn many_cursors_replace_like_one_at_a_time(
+        text in "[a한\\n]{0,40}",
+        ranges in prop::collection::vec((0usize..41, 0usize..6), 1..12),
+        insert in "[x한\\n]{0,3}",
+    ) {
+        let chars: Vec<char> = text.chars().collect();
+        let len = chars.len();
+        let pos_of = |at: usize| {
+            let before = &chars[..at];
+            let line = before.iter().filter(|c| **c == '\n').count();
+            let start = before.iter().rposition(|c| *c == '\n').map_or(0, |i| i + 1);
+            p(line, at - start)
+        };
+        let mut s = EditState::multi_line().with_text(&text);
+        let mut wanted: Vec<(usize, usize)> = Vec::new();
+        for (i, &(at, width)) in ranges.iter().enumerate() {
+            let (from, to) = (at.min(len), (at + width).min(len));
+            wanted.push((from, to));
+            let cursor = EditCursor::selecting(pos_of(from), pos_of(to));
+            if i == 0 {
+                s.set_cursors(vec![cursor]);
+            } else {
+                s.add_cursor(cursor);
+            }
+        }
+        // Merged as the state merges them: a selection when it starts inside
+        // the one before, a caret when it is at or inside it.
+        wanted.sort_unstable();
+        let mut merged: Vec<(usize, usize)> = Vec::new();
+        for (from, to) in wanted {
+            match merged.last_mut() {
+                Some(last) if from < last.1 || (from == to && from == last.1) => {
+                    last.1 = last.1.max(to);
+                }
+                _ => merged.push((from, to)),
+            }
+        }
+        let added = insert.chars().count();
+        let mut out = String::new();
+        let mut rest = 0;
+        let mut ends = Vec::new();
+        let mut shift = 0usize;
+        for &(from, to) in &merged {
+            out.extend(&chars[rest..from]);
+            out.push_str(&insert);
+            shift = shift + (from - rest) + added;
+            ends.push(shift);
+            rest = to;
+        }
+        out.extend(&chars[rest..]);
+
+        let before = s.text();
+        s.insert(&insert);
+        prop_assert_eq!(s.text(), out.clone());
+        let flat: Vec<char> = out.chars().collect();
+        let at_of = |c: EditPos| {
+            let mut line = 0;
+            let mut col = 0;
+            for (i, ch) in flat.iter().enumerate() {
+                if line == c.line && col == c.col {
+                    return i;
+                }
+                if *ch == '\n' {
+                    line += 1;
+                    col = 0;
+                } else {
+                    col += 1;
+                }
+            }
+            flat.len()
+        };
+        let mut heads: Vec<usize> = s.cursors().iter().map(|c| at_of(c.head())).collect();
+        heads.sort_unstable();
+        ends.dedup();
+        prop_assert_eq!(heads, ends);
+
+        // And undo takes it back.
+        if s.undo() {
+            prop_assert_eq!(s.text(), before);
+        }
+    }
 }

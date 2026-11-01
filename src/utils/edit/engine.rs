@@ -6,10 +6,13 @@
 //! again at the end. Each replacement is recorded with the text it removed,
 //! so undo puts it back in reverse order.
 
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+use unicode_segmentation::UnicodeSegmentation;
+
 use super::pos::EditPos;
-use super::text::{byte_of, col_of};
+use super::text::byte_of;
 use super::EditCursor;
 use super::EditState;
 use crate::utils::undo::Mergeable;
@@ -50,6 +53,8 @@ pub(super) struct Step {
     after: Vec<EditCursor>,
     after_primary: usize,
     kind: Kind,
+    /// The text the step holds
+    bytes: usize,
     /// When the last edit in the step was made
     time: Instant,
     /// Whether this step may join the one before it: typing or a delete,
@@ -68,6 +73,7 @@ impl Mergeable for Step {
     }
 
     fn merge(mut self, next: Self) -> Self {
+        self.bytes += next.bytes;
         self.changes.extend(next.changes);
         self.after = next.after;
         self.after_primary = next.after_primary;
@@ -90,26 +96,105 @@ fn end_of(at: Mark, text: &str) -> Mark {
     }
 }
 
-/// Where mark `m` goes when `from..to` is replaced by text ending at `end`:
-/// before it stays, after it moves with the text, inside it goes to the end
-fn shift(m: Mark, from: Mark, to: Mark, end: Mark) -> Mark {
-    if m >= to {
-        if m.line == to.line {
-            Mark {
-                line: end.line,
-                byte: end.byte + (m.byte - to.byte),
-            }
+/// Where each cursor's marks go when the replacements `edits`, in order and not
+/// overlapping, are made: before a replacement a mark stays, after it the mark
+/// moves with the text, and inside it, or if the cursor made it, the mark goes
+/// to the end of the new text.
+///
+/// One pass over the marks and the edits in order, so a thousand cursors do not
+/// cost a thousand times a thousand steps.
+fn moved_marks(
+    marks: Vec<(Mark, Mark)>,
+    edits: &[(Vec<usize>, Mark, Mark, String)],
+) -> Vec<(Mark, Mark)> {
+    // What the replacements so far did: lines moved, and the columns moved on
+    // the line the last one ended on.
+    let mut lines = 0isize;
+    let mut last: Option<(usize, isize)> = None;
+    let moved = |m: Mark, lines: isize, last: Option<(usize, isize)>| Mark {
+        line: m.line.saturating_add_signed(lines),
+        byte: match last {
+            Some((line, bytes)) if line == m.line => m.byte.saturating_add_signed(bytes),
+            _ => m.byte,
+        },
+    };
+
+    let mut flat: Vec<(Mark, usize, bool)> = Vec::with_capacity(marks.len() * 2);
+    for (i, &(anchor, head)) in marks.iter().enumerate() {
+        flat.push((anchor, i, false));
+        flat.push((head, i, true));
+    }
+    flat.sort_unstable_by_key(|m| m.0);
+
+    let mut out = marks;
+    let set = |at: (usize, bool), to: Mark, out: &mut Vec<(Mark, Mark)>| {
+        if at.1 {
+            out[at.0].1 = to;
         } else {
-            // A later line moves by the lines the replacement added or took
-            Mark {
-                line: m.line + end.line - to.line,
-                byte: m.byte,
-            }
+            out[at.0].0 = to;
         }
-    } else if m <= from {
-        m
-    } else {
-        end
+    };
+    let mut owned: Vec<(usize, Mark)> = Vec::new();
+    let mut flat = flat.into_iter().peekable();
+    for (owners, from, to, text) in edits {
+        let end = end_of(moved(*from, lines, last), text);
+        while let Some(&(m, i, head)) = flat.peek().filter(|f| f.0 < *to) {
+            let goes = if m <= *from {
+                moved(m, lines, last)
+            } else {
+                end
+            };
+            set((i, head), goes, &mut out);
+            flat.next();
+        }
+        lines = end.line as isize - to.line as isize;
+        last = Some((to.line, end.byte as isize - to.byte as isize));
+        owned.extend(owners.iter().map(|&i| (i, end)));
+    }
+    for (m, i, head) in flat {
+        set((i, head), moved(m, lines, last), &mut out);
+    }
+    for (i, end) in owned {
+        out[i] = (end, end);
+    }
+    out
+}
+
+/// Each line's cluster starts, so that many cursors on a long line do not each
+/// walk it again
+#[derive(Default)]
+struct ClusterStarts {
+    by_line: HashMap<usize, Vec<usize>>,
+}
+
+impl ClusterStarts {
+    fn of(&mut self, lines: &[String], line: usize) -> &[usize] {
+        self.by_line
+            .entry(line)
+            .or_insert_with(|| lines[line].grapheme_indices(true).map(|(i, _)| i).collect())
+    }
+
+    /// The mark of a position: where its cluster starts
+    fn mark(&mut self, lines: &[String], pos: EditPos) -> Mark {
+        let len = lines[pos.line].len();
+        Mark {
+            line: pos.line,
+            byte: self
+                .of(lines, pos.line)
+                .get(pos.col)
+                .copied()
+                .unwrap_or(len),
+        }
+    }
+
+    /// The column of a mark: the clusters that start before its byte
+    fn pos(&mut self, lines: &[String], mark: Mark) -> EditPos {
+        EditPos {
+            line: mark.line,
+            col: self
+                .of(lines, mark.line)
+                .partition_point(|&i| i < mark.byte),
+        }
     }
 }
 
@@ -118,13 +203,6 @@ impl EditState {
         Mark {
             line: pos.line,
             byte: byte_of(&self.lines[pos.line], pos.col),
-        }
-    }
-
-    pub(super) fn pos(&self, mark: Mark) -> EditPos {
-        EditPos {
-            line: mark.line,
-            col: col_of(&self.lines[mark.line], mark.byte),
         }
     }
 
@@ -172,10 +250,11 @@ impl EditState {
         if self.read_only {
             return false;
         }
+        let mut starts = ClusterStarts::default();
         let mut edits: Vec<(usize, Mark, Mark, String)> = Vec::new();
         for (i, cursor) in self.cursors.iter().enumerate() {
             if let Some((from, to, text)) = plan(self, cursor) {
-                let (from, to) = (self.mark(from), self.mark(to));
+                let (from, to) = (starts.mark(&self.lines, from), starts.mark(&self.lines, to));
                 if from != to || !text.is_empty() {
                     edits.push((i, from, to, self.fit_text(&text)));
                 }
@@ -202,32 +281,35 @@ impl EditState {
 
         let before = self.cursors.clone();
         let before_primary = self.primary;
-        let mut marks: Vec<(Mark, Mark)> = self
+        let marks: Vec<(Mark, Mark)> = self
             .cursors
             .iter()
-            .map(|c| (self.mark(c.anchor), self.mark(c.head)))
+            .map(|c| {
+                (
+                    starts.mark(&self.lines, c.anchor),
+                    starts.mark(&self.lines, c.head),
+                )
+            })
             .collect();
-        let mut changes = Vec::new();
-        for (owners, from, to, text) in merged.into_iter().rev() {
-            let (removed, end) = self.splice(from, to, &text);
-            for (i, (anchor, head)) in marks.iter_mut().enumerate() {
-                if owners.contains(&i) {
-                    *anchor = end;
-                    *head = end;
-                } else {
-                    *anchor = shift(*anchor, from, to, end);
-                    *head = shift(*head, from, to, end);
-                }
-            }
+        let marks = moved_marks(marks, &merged);
+        let mut changes = Vec::with_capacity(merged.len());
+        for (_, from, to, text) in merged.into_iter().rev() {
+            let (removed, _) = self.splice(from, to, &text);
             changes.push(Change {
                 at: from,
                 removed,
                 inserted: text,
             });
         }
+        let mut starts = ClusterStarts::default();
         self.cursors = marks
             .into_iter()
-            .map(|(anchor, head)| EditCursor::selecting(self.pos(anchor), self.pos(head)))
+            .map(|(anchor, head)| {
+                EditCursor::selecting(
+                    starts.pos(&self.lines, anchor),
+                    starts.pos(&self.lines, head),
+                )
+            })
             .collect();
         self.normalize();
         // Text typed over the same text: the cursors moved, nothing to undo
@@ -236,6 +318,10 @@ impl EditState {
             return false;
         }
 
+        let bytes = changes
+            .iter()
+            .map(|c| c.removed.len() + c.inserted.len())
+            .sum();
         let step = Step {
             changes,
             before,
@@ -243,13 +329,25 @@ impl EditState {
             after: self.cursors.clone(),
             after_primary: self.primary,
             kind,
+            bytes,
             time: (self.clock)(),
             joins: self.joinable,
             delay: self.group_delay,
         };
         self.history.push_merge(step);
+        self.trim_history();
         self.joinable = kind != Kind::Other;
         true
+    }
+
+    /// Drop the oldest steps past [`history_bytes`](Self::history_bytes), keeping
+    /// the last.
+    fn trim_history(&mut self) {
+        let stack = &mut self.history.undo_stack;
+        let mut bytes: usize = stack.iter().map(|step| step.bytes).sum();
+        while bytes > self.history_bytes && stack.len() > 1 {
+            bytes -= stack.pop_front().map_or(0, |step| step.bytes);
+        }
     }
 
     /// Make the cursors as they are now the ones the last step ends with,

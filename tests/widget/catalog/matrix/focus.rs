@@ -66,16 +66,18 @@ fn a_widget_that_shows_focus_is_focusable() {
         if plain.meta().focusable {
             continue;
         }
-        let flagged = (entry.build)(&content, true);
         let reacts = |focused: &dyn Fn() -> Vec<Cell>| {
             (0..TRIES).all(|_| {
-                let before = cells(&*plain, false);
+                let before = cells(&*(entry.build)(&content, false), false);
                 let drawn = focused();
                 let twin = cells(&*(entry.build)(&content, false), false);
                 before == cells(&*plain, false) && before == twin && drawn != before
             })
         };
-        if reacts(&|| cells(&*plain, true)) || reacts(&|| cells(&*flagged, false)) {
+        // Built fresh each time, as the one it is compared with is: an instance
+        // that draws the time differs from one made earlier.
+        let flagged = || cells(&*(entry.build)(&content, true), false);
+        if reacts(&|| cells(&*plain, true)) || reacts(&flagged) {
             unreachable.push(entry.name);
         }
     }
