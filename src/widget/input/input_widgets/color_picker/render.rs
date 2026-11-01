@@ -82,6 +82,7 @@ impl View for ColorPicker {
         if self.show_preview {
             self.render_preview(ctx, content_area);
         }
+        ctx.bold_when_focused();
     }
 }
 

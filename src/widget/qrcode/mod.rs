@@ -49,7 +49,7 @@ pub struct QrCodeWidget {
     /// The color the builder named, if it named one - see #656.
     fg: Option<Color>,
     /// Background color (light modules)
-    bg: Color,
+    bg: Option<Color>,
     /// Error correction level
     ec_level: ErrorCorrection,
     /// Quiet zone (border) size
@@ -67,7 +67,7 @@ impl QrCodeWidget {
             data: data.into(),
             style: QrStyle::default(),
             fg: None,
-            bg: Color::WHITE,
+            bg: None,
             ec_level: ErrorCorrection::default(),
             quiet_zone: 1,
             inverted: false,
@@ -89,7 +89,7 @@ impl QrCodeWidget {
 
     /// Set background color (light modules)
     pub fn bg(mut self, color: Color) -> Self {
-        self.bg = color;
+        self.bg = Some(color);
         self
     }
 
@@ -137,7 +137,7 @@ impl QrCodeWidget {
 
     #[doc(hidden)]
     pub fn get_bg(&self) -> Color {
-        self.bg
+        self.bg.unwrap_or(Color::WHITE)
     }
 
     #[doc(hidden)]

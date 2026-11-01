@@ -3,6 +3,7 @@
 use super::Histogram;
 use crate::layout::Rect;
 use crate::render::Cell;
+use crate::style::Color;
 use crate::widget::traits::RenderContext;
 
 impl Histogram {
@@ -50,7 +51,10 @@ impl Histogram {
                         if self.bar_border.is_some() && (dx == 0 || dx == bar_width - 1) {
                             cell.fg = self.bar_border;
                         } else {
-                            cell.fg = Some(ctx.css_color(self.fill_color));
+                            cell.fg = Some(
+                                self.fill_color
+                                    .unwrap_or_else(|| ctx.css_color(Color::rgb(97, 175, 239))),
+                            );
                         }
                         ctx.set(x, y, cell);
                     }
@@ -106,7 +110,10 @@ impl Histogram {
                         if is_border {
                             cell.fg = self.bar_border;
                         } else {
-                            cell.fg = Some(ctx.css_color(self.fill_color));
+                            cell.fg = Some(
+                                self.fill_color
+                                    .unwrap_or_else(|| ctx.css_color(Color::rgb(97, 175, 239))),
+                            );
                         }
                         ctx.set(x, y, cell);
                     }

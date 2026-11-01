@@ -2,6 +2,7 @@
 
 use super::BarChart;
 use crate::render::Cell;
+use crate::style::Color;
 use crate::utils::char_width;
 use crate::widget::traits::RenderContext;
 
@@ -45,7 +46,10 @@ impl BarChart {
             };
 
             // A bar's own color wins; otherwise the stylesheet, then the chart's.
-            let color = bar.color.unwrap_or_else(|| ctx.css_color(self.fg));
+            let color = bar
+                .color
+                .or(self.fg)
+                .unwrap_or_else(|| ctx.css_color(Color::CYAN));
 
             // Render for each row of bar_width
             for row in 0..self.bar_width {

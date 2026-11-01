@@ -97,6 +97,7 @@ impl View for Stepper {
             StepperOrientation::Horizontal => self.render_horizontal(ctx),
             StepperOrientation::Vertical => self.render_vertical(ctx),
         }
+        ctx.bold_when_focused();
     }
 }
 

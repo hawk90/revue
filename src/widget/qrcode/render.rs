@@ -16,7 +16,7 @@ impl QrCodeWidget {
         // scan, so a rule that changes these is the caller's to get right.
         // `inverted` is already applied to the matrix.
         let fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::BLACK));
-        let bg = ctx.css_background(self.bg);
+        let bg = self.bg.unwrap_or_else(|| ctx.css_background(Color::WHITE));
 
         // Two rows of QR = one terminal row
         for row in 0..height.div_ceil(2) {
@@ -63,7 +63,7 @@ impl QrCodeWidget {
 
         // `inverted` is already applied to the matrix.
         let fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::BLACK));
-        let bg = self.bg;
+        let bg = self.bg.unwrap_or_else(|| ctx.css_background(Color::WHITE));
 
         for row in 0..height {
             if row as u16 >= area.height {
@@ -111,7 +111,7 @@ impl QrCodeWidget {
 
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(module);
-                cell.bg = Some(self.bg);
+                cell.bg = Some(self.bg.unwrap_or_else(|| ctx.css_background(Color::WHITE)));
 
                 ctx.set(col as u16 * 2, row as u16, cell);
                 ctx.set(col as u16 * 2 + 1, row as u16, cell);
@@ -188,7 +188,7 @@ impl QrCodeWidget {
 
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(module);
-                cell.bg = Some(self.bg);
+                cell.bg = Some(self.bg.unwrap_or_else(|| ctx.css_background(Color::WHITE)));
                 ctx.set(col as u16, row as u16, cell);
             }
         }

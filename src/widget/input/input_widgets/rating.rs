@@ -401,6 +401,7 @@ impl View for Rating {
                 x += 1;
             }
         }
+        ctx.bold_when_focused();
     }
 }
 

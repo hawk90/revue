@@ -37,7 +37,7 @@ pub struct Histogram {
     /// Grid configuration
     grid: ChartGrid,
     /// Fill color
-    fill_color: Color,
+    fill_color: Option<Color>,
     /// Border color for bars
     bar_border: Option<Color>,
     /// Show cumulative distribution
@@ -72,7 +72,7 @@ impl Histogram {
             y_axis: Axis::default(),
             legend: Legend::none(),
             grid: ChartGrid::new().y(true),
-            fill_color: Color::rgb(97, 175, 239),
+            fill_color: None,
             bar_border: None,
             cumulative: false,
             density: false,
@@ -162,13 +162,13 @@ impl Histogram {
 
     /// Set fill color
     pub fn fill_color(mut self, color: Color) -> Self {
-        self.fill_color = color;
+        self.fill_color = Some(color);
         self
     }
 
     /// Alias for fill_color
     pub fn color(mut self, color: Color) -> Self {
-        self.fill_color = color;
+        self.fill_color = Some(color);
         self
     }
 
