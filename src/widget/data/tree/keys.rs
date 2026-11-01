@@ -35,8 +35,9 @@ impl Tree {
     fn handle_search_key(&mut self, key: &Key) -> bool {
         if !self.query.is_empty() {
             match key {
-                Key::Char('n') => return self.next_match(),
-                Key::Char('N') => return self.prev_match(),
+                // Off the letters, which all go into the query.
+                Key::Down => return self.next_match(),
+                Key::Up => return self.prev_match(),
                 Key::Escape => {
                     self.clear_query();
                     return true;

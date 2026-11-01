@@ -51,9 +51,11 @@ fn test_tree_empty_searchable_takes_a_query_and_finds_nothing() {
     assert!(tree.handle_key(&Key::Char('a')));
     assert_eq!(tree.query(), "a");
     assert_eq!(tree.match_count(), 0);
-    // With a query, `n` means "next match", not a letter; there is none
-    assert!(!tree.handle_key(&Key::Char('n')));
-    assert_eq!(tree.query(), "a");
+    // `n` is a letter too, once the query has begun (#1317); Down moves to the
+    // next match, and there is none
+    assert!(tree.handle_key(&Key::Char('n')));
+    assert_eq!(tree.query(), "an");
+    assert!(!tree.handle_key(&Key::Down));
 }
 
 // =========================================================================
