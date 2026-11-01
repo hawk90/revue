@@ -245,8 +245,8 @@ impl View for ZenMode {
             ctx.fill_box_background(bg);
 
             // Calculate padded area
-            let content_width = area.width.saturating_sub(self.padding_x * 2);
-            let content_height = area.height.saturating_sub(self.padding_y * 2);
+            let content_width = area.width.saturating_sub(self.padding_x.saturating_mul(2));
+            let content_height = area.height.saturating_sub(self.padding_y.saturating_mul(2));
 
             if content_width > 0 && content_height > 0 {
                 // Centered, the content gets the height it measures at, in the
@@ -262,7 +262,7 @@ impl View for ZenMode {
                 };
                 let content_area = ctx.sub_area(
                     self.padding_x,
-                    self.padding_y + offset_y,
+                    self.padding_y.saturating_add(offset_y),
                     content_width,
                     height,
                 );

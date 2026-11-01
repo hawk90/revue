@@ -70,7 +70,9 @@ impl Card {
     /// The columns beside the body: the frame, the padding and the shadow
     fn columns_beside_body(&self) -> u16 {
         let (frame, shadow) = self.frame_and_shadow();
-        frame + self.padding.saturating_mul(2) + shadow
+        self.padding
+            .saturating_mul(2)
+            .saturating_add(frame + shadow)
     }
 
     /// The rows of everything but the body and the footer: the frame, the
@@ -187,11 +189,12 @@ struct Inner {
 impl Inner {
     fn new(area: Rect, has_border: bool, border_color: Color, padding: u16) -> Self {
         // Content area (relative offsets within this widget)
-        let content_x = if has_border { 1 + padding } else { padding };
+        let content_x = padding.saturating_add(u16::from(has_border));
         let content_width = if has_border {
-            area.width.saturating_sub(2 + padding * 2)
+            area.width
+                .saturating_sub(padding.saturating_mul(2).saturating_add(2))
         } else {
-            area.width.saturating_sub(padding * 2)
+            area.width.saturating_sub(padding.saturating_mul(2))
         };
         Self {
             area,

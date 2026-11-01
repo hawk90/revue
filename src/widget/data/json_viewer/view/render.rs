@@ -77,8 +77,9 @@ impl JsonViewer {
             );
         }
 
-        let indent = (node.depth as u16) * self.indent_size;
-        let mut x = line_num_width + indent;
+        let depth = u16::try_from(node.depth).unwrap_or(u16::MAX);
+        let indent = depth.saturating_mul(self.indent_size);
+        let mut x = line_num_width.saturating_add(indent);
 
         if node.is_container() {
             let indicator = if self.collapsed.contains(&node.path) {
@@ -169,7 +170,7 @@ impl JsonViewer {
                 let display = format!("\"{}\"", value);
                 let truncated: String = display
                     .chars()
-                    .take((content_width.saturating_sub(indent + 2)) as usize)
+                    .take((content_width.saturating_sub(indent.saturating_add(2))) as usize)
                     .collect();
                 (truncated, self.string_fg)
             }),

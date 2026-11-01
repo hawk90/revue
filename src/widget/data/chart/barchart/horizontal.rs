@@ -27,7 +27,9 @@ impl BarChart {
 
         // Calculate available bar space
         let value_width = if self.show_values { 8 } else { 0 };
-        let bar_area_width = area.width.saturating_sub(label_width + 2 + value_width);
+        let bar_area_width = area
+            .width
+            .saturating_sub(label_width.saturating_add(2).saturating_add(value_width));
 
         let mut y = 0u16;
         for bar in &self.bars {
@@ -74,8 +76,8 @@ impl BarChart {
                 }
 
                 // Draw bar
-                let bar_start = label_width + 1;
-                for i in 0..bar_length {
+                let bar_start = label_width.saturating_add(1);
+                for i in 0..bar_length.min(area.width.saturating_sub(bar_start)) {
                     if bar_start + i < area.width {
                         let mut cell = Cell::new('█');
                         cell.fg = Some(color);
@@ -86,10 +88,10 @@ impl BarChart {
                 // Draw value (only on first row)
                 if row == 0 && self.show_values {
                     let value_str = format!(" {:.1}", bar.value);
-                    let value_x = bar_start + bar_length;
+                    let value_x = bar_start.saturating_add(bar_length);
                     let mut dx: u16 = 0;
                     for ch in value_str.chars() {
-                        if value_x + dx < area.width {
+                        if value_x.saturating_add(dx) < area.width {
                             ctx.set(value_x + dx, y, Cell::new(ch));
                         }
                         dx += char_width(ch) as u16;
@@ -97,7 +99,7 @@ impl BarChart {
                 }
             }
 
-            y += self.bar_width + self.gap;
+            y = y.saturating_add(self.bar_width).saturating_add(self.gap);
         }
     }
 }

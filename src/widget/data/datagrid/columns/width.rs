@@ -58,7 +58,7 @@ impl DataGrid {
             .map(|c| if c.width > 0 { c.width } else { c.min_width })
             .collect();
 
-        let total: u16 = widths.iter().sum();
+        let total = widths.iter().fold(0u16, |sum, w| sum.saturating_add(*w));
 
         if total < available {
             // Distribute extra space only to auto-width columns (width = 0)

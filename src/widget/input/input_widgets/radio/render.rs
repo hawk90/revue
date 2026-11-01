@@ -148,7 +148,7 @@ impl View for RadioGroup {
                         break;
                     }
                     self.render_option(ctx, i, start_x, y);
-                    y += 1 + self.gap;
+                    y = y.saturating_add(self.gap).saturating_add(1);
                 }
             }
             RadioLayout::Horizontal => {

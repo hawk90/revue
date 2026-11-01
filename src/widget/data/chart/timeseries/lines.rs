@@ -44,7 +44,8 @@ impl TimeSeries {
                         0.5
                     };
                     let y_ratio = if val_range > 0.0 {
-                        (p.value - val_min) / val_range
+                        // A value outside a fixed range goes on the edge of the plot.
+                        ((p.value - val_min) / val_range).clamp(0.0, 1.0)
                     } else {
                         0.5
                     };
