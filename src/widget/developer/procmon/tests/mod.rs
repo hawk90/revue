@@ -16,7 +16,7 @@ use sysinfo::System;
 /// A monitor that reads an empty system: quick to make, and its stats bar
 /// is the same on every machine
 fn bare() -> ProcessMonitor {
-    ProcessMonitor::with_system(System::new())
+    ProcessMonitor::with_system(System::new().ok())
 }
 
 /// A process with every field given
@@ -96,4 +96,19 @@ fn highlighted_rows(monitor: &ProcessMonitor, buffer: &Buffer) -> Vec<u16> {
     (2..buffer.height())
         .filter(|&y| buffer.get(6, y).unwrap().bg == Some(monitor.colors.selected_bg))
         .collect()
+}
+
+#[test]
+fn a_platform_with_no_system_lists_nothing_and_still_draws() {
+    let mut monitor = ProcessMonitor::with_system(None);
+    monitor.refresh();
+    monitor.tick();
+    assert_eq!(monitor.process_count(), 0);
+    assert_eq!(monitor.cpu_usage(), 0.0);
+    assert_eq!(monitor.memory_usage(), (0, 0));
+
+    let mut buffer = Buffer::new(80, 10);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 80, 10));
+    monitor.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).map(|cell| cell.symbol), Some('C'));
 }

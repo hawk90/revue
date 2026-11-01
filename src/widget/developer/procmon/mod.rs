@@ -37,7 +37,8 @@ use crate::{impl_props_builders, impl_styled_view};
 /// ```
 pub struct ProcessMonitor {
     /// System info handle
-    system: System,
+    /// `None` when the platform gave no system to read: nothing is listed
+    system: Option<System>,
     /// Cached process list
     processes: Vec<ProcessInfo>,
     /// Sort column
@@ -70,14 +71,15 @@ pub struct ProcessMonitor {
 impl ProcessMonitor {
     /// Create a new process monitor
     pub fn new() -> Self {
-        let mut sys = System::new_all();
-        sys.refresh_all();
-
-        Self::with_system(sys)
+        let system = System::new_all().ok().map(|mut system| {
+            system.refresh_all();
+            system
+        });
+        Self::with_system(system)
     }
 
-    /// A monitor reading `system`, with nothing listed yet
-    fn with_system(system: System) -> Self {
+    /// A monitor reading `system`, if there is one, with nothing listed yet
+    fn with_system(system: Option<System>) -> Self {
         Self {
             system,
             processes: Vec::new(),
