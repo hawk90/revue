@@ -35,6 +35,13 @@ impl Model {
             let after_g = std::mem::take(&mut self.g);
             let digit = matches!(ch, Some('3')) || (matches!(ch, Some('0')) && self.counting);
             match ch {
+                // A key after the waiting `g` ends the operator and is
+                // consumed, as in vim: `dg:` opens no command line.
+                _ if after_g && *key != Key::Escape => {
+                    self.pending = false;
+                    self.counting = false;
+                    return None;
+                }
                 _ if digit => {
                     self.counting = true;
                     return None;
@@ -151,6 +158,22 @@ fn start_mode() -> impl Strategy<Value = VimMode> {
         VimMode::Search,
         VimMode::Replace,
     ])
+}
+
+#[test]
+fn a_key_after_an_operators_waiting_g_opens_nothing() {
+    for key in [':', '/', '?'] {
+        let mut vim = VimState::new();
+        for ch in ['d', 'g', key] {
+            vim.handle_key(&KeyEvent::new(Key::Char(ch)));
+        }
+        assert_eq!(vim.mode(), VimMode::Normal, "d g {key}");
+        assert_eq!(
+            vim.handle_key(&KeyEvent::new(Key::Char('w'))),
+            VimAction::Move(VimMotion::Word),
+            "the operator is gone after d g {key}"
+        );
+    }
 }
 
 proptest! {
