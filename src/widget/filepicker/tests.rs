@@ -87,10 +87,10 @@ fn test_save_mode_input() {
     picker.input_char('e');
     picker.input_char('s');
     picker.input_char('t');
-    assert_eq!(picker.input_name, "test");
+    assert_eq!(picker.input_name.text(), "test");
 
     picker.input_backspace();
-    assert_eq!(picker.input_name, "tes");
+    assert_eq!(picker.input_name.text(), "tes");
 }
 
 #[test]

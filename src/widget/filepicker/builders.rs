@@ -35,7 +35,7 @@ impl FilePicker {
     /// Set default filename (for save mode)
     pub fn default_name(mut self, name: impl Into<String>) -> Self {
         let name = name.into();
-        self.input_name = name.clone();
+        self.input_name.set_text(&name);
         self.default_name = Some(name);
         self
     }

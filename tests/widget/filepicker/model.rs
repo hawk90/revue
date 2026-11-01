@@ -328,7 +328,7 @@ proptest! {
             }
             other => prop_assert!(false, "{:?}", other),
         }
-        let footer = format!("Filename: {name}_");
+        let footer = format!("Filename: {name}");
         prop_assert!(draw(&save, 120, 10).iter().any(|r| *r == footer.trim_end()));
         prop_assert!(matches!(open.confirm(), PickerResult::None));
         prop_assert!(!draw(&open, 120, 10).iter().any(|r| r.starts_with("Filename:")));

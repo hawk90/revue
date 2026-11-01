@@ -80,7 +80,7 @@ fn test_filepicker_rows_text() {
             entry("  ", false, "A.rs", "12 B"),
             entry("  ", false, "b.txt", "5 B"),
             "─".repeat(60),
-            "↑↓: Navigate | Enter: Select/Open | Backspace: Parent | h: Hidden | q: Cancel"
+            "↑↓: Navigate | Enter: Select/Open | Backspace: Parent | h: Hidden | q/Esc: Cancel"
                 .chars()
                 .take(70)
                 .collect::<String>(),
@@ -217,19 +217,19 @@ fn test_filepicker_help_line_per_mode() {
     let cases = [
         (
             file_picker(),
-            "↑↓: Navigate | Enter: Select/Open | Backspace: Parent | h: Hidden | q: Cancel",
+            "↑↓: Navigate | Enter: Select/Open | Backspace: Parent | h: Hidden | q/Esc: Cancel",
         ),
         (
             save_picker(),
-            "↑↓: Navigate | Enter: Save | Type: Filename | Backspace: Delete | q: Cancel",
+            "↑↓: Navigate | Enter: Save | Type: Filename | Backspace: Delete | Esc: Cancel",
         ),
         (
             dir_picker(),
-            "↑↓: Navigate | Enter: Open | Space: Select | Backspace: Parent | q: Cancel",
+            "↑↓: Navigate | Enter: Open | Space: Select | Backspace: Parent | q/Esc: Cancel",
         ),
         (
             FilePicker::multi_select(),
-            "↑↓: Navigate | Space: Toggle | Enter: Confirm | a: All | n: None | q: Cancel",
+            "↑↓: Navigate | Space: Toggle | Enter: Open/Confirm | a: All | n: None | q/Esc: Cancel",
         ),
     ];
     for (picker, help) in cases {
@@ -272,18 +272,18 @@ fn test_filepicker_save_footer_shows_the_typed_name() {
     let mut picker = save_picker().start_dir(dir.path());
     let buffer = draw(&picker, 90, 10);
     // title, path, separator, "..", separator, filename, help
-    assert_eq!(row(&buffer, 5), "Filename: _");
+    assert_eq!(row(&buffer, 5), "Filename:");
     assert_eq!(fg(&buffer, 0, 5), Some(Color::YELLOW));
 
     picker.input_char('한');
     picker.input_char('b');
     let buffer = draw(&picker, 90, 10);
-    assert_eq!(row(&buffer, 5), "Filename: 한b_");
+    assert_eq!(row(&buffer, 5), "Filename: 한b");
 
     let picker = save_picker()
         .start_dir(dir.path())
         .default_name("untitled.rs");
-    assert_eq!(row(&draw(&picker, 90, 10), 5), "Filename: untitled.rs_");
+    assert_eq!(row(&draw(&picker, 90, 10), 5), "Filename: untitled.rs");
 }
 
 #[test]
@@ -365,4 +365,24 @@ fn test_filepicker_refresh_keeps_the_chosen_and_highlighted_entries() {
     );
     picker.toggle_selection(); // a off again, not chosen twice
     assert!(matches!(picker.confirm(), PickerResult::None));
+}
+
+#[test]
+fn test_filepicker_name_field_draws_the_cursor_where_it_is() {
+    use revue::event::{Key, KeyEvent};
+    let dir = fixture();
+    let mut picker = save_picker().start_dir(dir.path());
+    for key in [Key::Char('a'), Key::Char('b'), Key::Left] {
+        picker.handle_key_event(&KeyEvent::new(key));
+    }
+    let buffer = draw(&picker, 90, 10);
+    let y = rows(&buffer)
+        .iter()
+        .position(|r| r.starts_with("Filename:"))
+        .unwrap() as u16;
+    assert_eq!(row(&buffer, y), "Filename: ab");
+    let cell = |x: u16| *buffer.get(x, y).unwrap();
+    assert_eq!(cell(10).bg, None, "before the cursor");
+    assert_eq!((cell(11).symbol, cell(11).bg), ('b', Some(Color::WHITE)));
+    assert_eq!(cell(12).bg, None, "after the cursor");
 }

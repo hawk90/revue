@@ -3,14 +3,17 @@
 use super::types::{PickerEntry, PickerMode};
 use super::validation::truncate_string_safe;
 use super::FilePicker;
+use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::EditState;
 use crate::widget::stack::Stack;
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, LIGHT_GRAY, PLACEHOLDER_FG};
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::{RenderContext, View};
 use crate::widget::Text;
 
 impl View for FilePicker {
-    crate::impl_view_meta!("FilePicker");
+    crate::impl_view_meta!("FilePicker", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         use crate::widget::stack::vstack;
@@ -20,6 +23,33 @@ impl View for FilePicker {
         content = self.rows(content, ctx);
         content = self.footer(content);
         content.render(ctx);
+        ctx.bold_when_focused();
+    }
+}
+
+/// `Filename: ` and the name being typed, with its cursor.
+struct NameField {
+    name: EditState,
+    width: u16,
+}
+
+impl View for NameField {
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.width.min(max_width), 1.min(max_height)))
+    }
+
+    fn render(&self, ctx: &mut RenderContext) {
+        const LABEL: &str = "Filename: ";
+        let from = LABEL.len() as u16;
+        let width = ctx.area.width.saturating_sub(from);
+        ctx.draw_text(0, 0, LABEL, Color::YELLOW);
+        let field = EditField::of(&self.name, "", true);
+        let scroll = field.scroll(0, width);
+        ctx.put_edit_field(from, 0, width, &field, scroll, |kind, ch| match kind {
+            FieldCell::Cursor => Cell::new(ch).fg(Color::BLACK).bg(Color::WHITE),
+            FieldCell::Selected => Cell::new(ch).fg(Color::WHITE).bg(Color::BLUE),
+            FieldCell::Text | FieldCell::Placeholder => Cell::new(ch).fg(Color::YELLOW),
+        });
     }
 }
 
@@ -164,8 +194,10 @@ impl FilePicker {
 
         // Filename input (for save mode)
         if self.mode == PickerMode::Save {
-            let input_display = format!("Filename: {}_", self.input_name);
-            content = content.child(Text::new(input_display).fg(Color::YELLOW));
+            content = content.child(NameField {
+                name: self.input_name.clone(),
+                width: self.width,
+            });
         }
 
         // Selection count (for multi-select)
@@ -182,16 +214,16 @@ impl FilePicker {
     fn help(&self) -> &'static str {
         match self.mode {
             PickerMode::Open => {
-                "↑↓: Navigate | Enter: Select/Open | Backspace: Parent | h: Hidden | q: Cancel"
+                "↑↓: Navigate | Enter: Select/Open | Backspace: Parent | h: Hidden | q/Esc: Cancel"
             }
             PickerMode::Save => {
-                "↑↓: Navigate | Enter: Save | Type: Filename | Backspace: Delete | q: Cancel"
+                "↑↓: Navigate | Enter: Save | Type: Filename | Backspace: Delete | Esc: Cancel"
             }
             PickerMode::Directory => {
-                "↑↓: Navigate | Enter: Open | Space: Select | Backspace: Parent | q: Cancel"
+                "↑↓: Navigate | Enter: Open | Space: Select | Backspace: Parent | q/Esc: Cancel"
             }
             PickerMode::MultiSelect => {
-                "↑↓: Navigate | Space: Toggle | Enter: Confirm | a: All | n: None | q: Cancel"
+                "↑↓: Navigate | Space: Toggle | Enter: Open/Confirm | a: All | n: None | q/Esc: Cancel"
             }
         }
     }
