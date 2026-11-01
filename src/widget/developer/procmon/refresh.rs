@@ -1,6 +1,7 @@
 //! Reading processes from the system, filtering and sorting them, and system totals
 
 use super::{ProcessInfo, ProcessMonitor, ProcessSort, ProcessView};
+use sysinfo::System;
 
 impl ProcessMonitor {
     /// Set filter string
@@ -25,7 +26,9 @@ impl ProcessMonitor {
 
     /// Refresh process list
     pub fn refresh(&mut self) {
-        self.system.refresh_all();
+        if let Some(system) = &mut self.system {
+            system.refresh_all();
+        }
         self.update_process_list();
         self.last_update = crate::utils::clock::now();
     }
@@ -44,10 +47,14 @@ impl ProcessMonitor {
 
     /// Update process list from system
     fn update_process_list(&mut self) {
-        let total_memory = self.system.total_memory() as f32;
+        let Some(system) = &self.system else {
+            self.current_user = None;
+            self.set_process_list(Vec::new());
+            return;
+        };
+        let total_memory = system.total_memory() as f32;
 
-        let all = self
-            .system
+        let all = system
             .processes()
             .iter()
             .map(|(pid, proc): (&sysinfo::Pid, &sysinfo::Process)| {
@@ -72,7 +79,7 @@ impl ProcessMonitor {
             .collect();
         self.current_user = sysinfo::get_current_pid()
             .ok()
-            .and_then(|pid| self.system.process(pid))
+            .and_then(|pid| system.process(pid))
             .and_then(|proc| proc.user_id())
             .map(|uid| uid.to_string());
         self.set_process_list(all);
@@ -125,12 +132,14 @@ impl ProcessMonitor {
 
     /// Get system CPU usage
     pub fn cpu_usage(&self) -> f32 {
-        self.system.global_cpu_usage()
+        self.system.as_ref().map_or(0.0, System::global_cpu_usage)
     }
 
     /// Get system memory usage
     pub fn memory_usage(&self) -> (u64, u64) {
-        (self.system.used_memory(), self.system.total_memory())
+        self.system.as_ref().map_or((0, 0), |system| {
+            (system.used_memory(), system.total_memory())
+        })
     }
 }
 
@@ -153,7 +162,7 @@ mod tests {
             assert!(monitor.processes.iter().all(|p| &p.user == user));
         }
         // MEM% is the share of the system's memory
-        let total = monitor.system.total_memory() as f32;
+        let total = monitor.system.as_ref().map_or(0, System::total_memory) as f32;
         assert_eq!(me.memory_percent, me.memory as f32 / total * 100.0);
     }
 }
