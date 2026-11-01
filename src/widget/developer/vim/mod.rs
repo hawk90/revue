@@ -32,6 +32,8 @@ pub struct VimState {
     mode: VimMode,
     /// Pending count (for repeat)
     count: Option<usize>,
+    /// The count that went with the action just returned, for [`count`](Self::count)
+    action_count: Option<usize>,
     /// Pending operator
     operator: Option<char>,
     /// Command buffer (for :commands)
@@ -58,6 +60,7 @@ impl VimState {
         Self {
             mode: VimMode::Normal,
             count: None,
+            action_count: None,
             operator: None,
             command_buffer: String::new(),
             search_pattern: String::new(),
@@ -78,15 +81,16 @@ impl VimState {
     /// Set mode
     pub fn set_mode(&mut self, mode: VimMode) {
         self.mode = mode;
-        if mode == VimMode::Normal {
-            self.operator = None;
-            self.count = None;
-        }
+        self.operator = None;
+        self.count = None;
+        self.action_count = None;
     }
 
-    /// Get count (default 1)
+    /// The count being typed, or the one typed before the action
+    /// [`handle_key`](Self::handle_key) just returned, until the next key
+    /// (default 1). `3j` returns `Move(Down)` and leaves this at 3.
     pub fn count(&self) -> usize {
-        self.count.unwrap_or(1)
+        self.count.or(self.action_count).unwrap_or(1)
     }
 
     /// Get command buffer

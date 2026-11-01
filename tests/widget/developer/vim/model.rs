@@ -6,13 +6,20 @@ use revue::event::{Key, KeyEvent};
 use revue::widget::{VimAction, VimMode, VimMotion, VimState};
 
 /// The mode and the typed command and search: what the keys should do,
-/// written plainly. Counts, operators and `gg` never change these.
+/// written plainly. Counts and `gg` never change these. A pending operator
+/// does: a key that is no motion cancels it instead of changing mode.
 #[derive(Debug)]
 struct Model {
     mode: VimMode,
     command: String,
     search: String,
     forward: bool,
+    /// An operator is pending
+    pending: bool,
+    /// A count is being typed (so `0` is a digit)
+    counting: bool,
+    /// A `g` is waiting for a second one
+    g: bool,
 }
 
 impl Model {
@@ -24,6 +31,36 @@ impl Model {
             Key::Char(c) => Some(*c),
             _ => None,
         };
+        if self.mode == Normal && self.pending {
+            let after_g = std::mem::take(&mut self.g);
+            let digit = matches!(ch, Some('3')) || (matches!(ch, Some('0')) && self.counting);
+            match ch {
+                _ if digit => {
+                    self.counting = true;
+                    return None;
+                }
+                Some('g') if !after_g => {
+                    self.g = true;
+                    return None;
+                }
+                Some(':' | '/' | '?') => self.pending = false,
+                _ if *key == Key::Escape => self.pending = false,
+                _ => {
+                    self.pending = false;
+                    self.counting = false;
+                    return None;
+                }
+            }
+            self.counting = false;
+        }
+        if self.mode == Normal {
+            match ch {
+                Some('d' | 'y' | 'c') => self.pending = true,
+                Some('3') => self.counting = true,
+                Some('0') if self.counting => {}
+                _ => self.counting = false,
+            }
+        }
         match (self.mode, key) {
             (Normal, _) => match ch {
                 Some('i' | 'I' | 'a' | 'A' | 'o' | 'O') => self.mode = Insert,
@@ -121,7 +158,7 @@ proptest! {
     fn prop_vim_modes_follow_the_model(start in start_mode(), keys in prop::collection::vec(key(), 0..60)) {
         let mut vim = VimState::new();
         vim.set_mode(start);
-        let mut model = Model { mode: start, command: String::new(), search: String::new(), forward: true };
+        let mut model = Model { mode: start, command: String::new(), search: String::new(), forward: true, pending: false, counting: false, g: false };
         for k in &keys {
             // Backspace on a one-char command line or pattern leaves the
             // mode instead of keeping the empty line open (#1081);

@@ -570,8 +570,10 @@ fn test_count_reset_after_action() {
     vim.handle_key(&KeyEvent::new(Key::Char('5')));
     assert_eq!(vim.count(), 5);
 
-    // 모션 수행 후 카운트가 리셋되는지 확인
+    // The motion carries the count, and the key after it does not (#892)
     vim.handle_key(&KeyEvent::new(Key::Char('j')));
+    assert_eq!(vim.count(), 5);
+    vim.handle_key(&KeyEvent::new(Key::Char('k')));
     assert_eq!(vim.count(), 1);
 }
 
@@ -588,7 +590,9 @@ fn test_count_with_motion() {
     let mut vim = VimState::new();
     vim.handle_key(&KeyEvent::new(Key::Char('3')));
     vim.handle_key(&KeyEvent::new(Key::Char('j')));
-    // 카운트가 적용된 후 리셋됨
+    // Applied to that motion, and gone with the next key (#892)
+    assert_eq!(vim.count(), 3);
+    vim.handle_key(&KeyEvent::new(Key::Char('k')));
     assert_eq!(vim.count(), 1);
 }
 
@@ -1067,7 +1071,9 @@ fn test_count_before_operator() {
     vim.handle_key(&KeyEvent::new(Key::Char('5')));
     vim.handle_key(&KeyEvent::new(Key::Char('d')));
     vim.handle_key(&KeyEvent::new(Key::Char('w')));
-    // 카운트가 적용된 후 리셋됨
+    // Applied to that delete, and gone with the next key (#892)
+    assert_eq!(vim.count(), 5);
+    vim.handle_key(&KeyEvent::new(Key::Char('k')));
     assert_eq!(vim.count(), 1);
 }
 
@@ -1293,4 +1299,161 @@ fn test_vim_long_count_saturates() {
         vim.handle_key(&KeyEvent::new(Key::Char('9')));
     }
     assert_eq!(vim.count(), usize::MAX);
+}
+
+// #892: the count goes with the action, and a pending operator does not linger
+
+fn keys(vim: &mut VimState, text: &str) -> Vec<VimAction> {
+    text.chars()
+        .map(|ch| vim.handle_key(&KeyEvent::new(Key::Char(ch))))
+        .collect()
+}
+
+#[test]
+fn the_count_reads_until_the_next_key() {
+    let mut vim = VimState::new();
+    assert_eq!(
+        keys(&mut vim, "3j").last(),
+        Some(&VimAction::Move(VimMotion::Down))
+    );
+    assert_eq!(vim.count(), 3);
+    keys(&mut vim, "k");
+    assert_eq!(vim.count(), 1, "that motion had no count");
+}
+
+#[test]
+fn the_count_reaches_an_operator_and_an_insert() {
+    let mut vim = VimState::new();
+    assert_eq!(
+        keys(&mut vim, "3dw").last(),
+        Some(&VimAction::Delete(Some(VimMotion::Word)))
+    );
+    assert_eq!(vim.count(), 3);
+
+    let mut vim = VimState::new();
+    assert_eq!(keys(&mut vim, "3o").last(), Some(&VimAction::OpenBelow));
+    assert_eq!(vim.mode(), VimMode::Insert);
+    assert_eq!(vim.count(), 3);
+    vim.handle_key(&KeyEvent::new(Key::Escape));
+    assert_eq!(vim.count(), 1);
+}
+
+#[test]
+fn a_count_before_gg_is_the_line() {
+    let mut vim = VimState::new();
+    assert_eq!(
+        keys(&mut vim, "5gg").last(),
+        Some(&VimAction::Move(VimMotion::GoToLine(Some(5))))
+    );
+    assert_eq!(vim.count(), 1, "the line, not a repeat");
+    assert_eq!(
+        keys(&mut vim, "j").last(),
+        Some(&VimAction::Move(VimMotion::Down))
+    );
+    assert_eq!(vim.count(), 1, "it does not carry to the next action");
+}
+
+#[test]
+fn an_operator_before_gg_takes_it_as_its_motion() {
+    for (text, expected) in [
+        ("dgg", VimAction::Delete(Some(VimMotion::GoToLine(Some(1))))),
+        ("ygg", VimAction::Yank(Some(VimMotion::GoToLine(Some(1))))),
+        ("cgg", VimAction::Change(Some(VimMotion::GoToLine(Some(1))))),
+        (
+            "d5gg",
+            VimAction::Delete(Some(VimMotion::GoToLine(Some(5)))),
+        ),
+    ] {
+        let mut vim = VimState::new();
+        assert_eq!(keys(&mut vim, text).last(), Some(&expected), "{text}");
+        assert_eq!(
+            keys(&mut vim, "w").last(),
+            Some(&VimAction::Move(VimMotion::Word)),
+            "{text}: nothing stays pending"
+        );
+    }
+}
+
+#[test]
+fn an_arrow_is_a_motion_for_an_operator_too() {
+    let mut vim = VimState::new();
+    keys(&mut vim, "d");
+    assert_eq!(
+        vim.handle_key(&KeyEvent::new(Key::Down)),
+        VimAction::Delete(Some(VimMotion::Down))
+    );
+}
+
+#[test]
+fn a_key_that_is_no_motion_cancels_a_pending_operator() {
+    let mut vim = VimState::new();
+    let actions = keys(&mut vim, "dpw");
+    assert_eq!(
+        actions,
+        [
+            VimAction::None,
+            VimAction::None,
+            VimAction::Move(VimMotion::Word)
+        ]
+    );
+
+    let mut vim = VimState::new();
+    keys(&mut vim, "3dq");
+    assert_eq!(vim.count(), 1, "the count goes with it");
+    assert_eq!(vim.mode(), VimMode::Normal);
+}
+
+#[test]
+fn escape_cancels_a_pending_operator_and_answers_escape() {
+    let mut vim = VimState::new();
+    keys(&mut vim, "3d");
+    assert_eq!(
+        vim.handle_key(&KeyEvent::new(Key::Escape)),
+        VimAction::Escape
+    );
+    assert_eq!(vim.count(), 1);
+    assert_eq!(
+        keys(&mut vim, "w").last(),
+        Some(&VimAction::Move(VimMotion::Word))
+    );
+}
+
+#[test]
+fn switching_mode_drops_a_pending_operator_and_count() {
+    for mode in [
+        VimMode::Insert,
+        VimMode::Visual,
+        VimMode::Command,
+        VimMode::Search,
+        VimMode::Normal,
+    ] {
+        let mut vim = VimState::new();
+        keys(&mut vim, "3d");
+        vim.set_mode(mode);
+        assert_eq!(vim.count(), 1, "{mode:?}");
+        vim.set_mode(VimMode::Normal);
+        assert_eq!(
+            keys(&mut vim, "w").last(),
+            Some(&VimAction::Move(VimMotion::Word)),
+            "{mode:?}"
+        );
+    }
+}
+
+#[test]
+fn an_operator_keeps_the_command_line_and_search_keys_their_mode() {
+    for (ch, mode) in [
+        (':', VimMode::Command),
+        ('/', VimMode::Search),
+        ('?', VimMode::Search),
+    ] {
+        let mut vim = VimState::new();
+        keys(&mut vim, "d");
+        vim.handle_key(&KeyEvent::new(Key::Char(ch)));
+        assert_eq!(vim.mode(), mode);
+    }
+    // The keys that enter insert or visual mode cancel it instead.
+    let mut vim = VimState::new();
+    keys(&mut vim, "di");
+    assert_eq!(vim.mode(), VimMode::Normal);
 }
