@@ -1,13 +1,14 @@
 //! Width and grapheme checks against the Unicode data files (#1167)
 //!
-//! The files in `unicode/17.0.0/` are copied unchanged from
-//! <https://www.unicode.org/Public/17.0.0/> (`ucd/EastAsianWidth.txt`,
-//! `ucd/extracted/DerivedGeneralCategory.txt`,
-//! `ucd/auxiliary/GraphemeBreakTest.txt`, `emoji/emoji-test.txt`). When
-//! unicode-width, unicode-segmentation or unicode-properties moves to a new
-//! Unicode version, `the_data_is_the_unicode_version_of_the_dependencies`
-//! fails: put the new version's files next to these, point [`DATA`] at them
-//! and delete the old ones.
+//! Each file is copied unchanged from <https://www.unicode.org/Public/> at the
+//! version of the library it checks: `unicode/18.0.0/` holds
+//! `ucd/EastAsianWidth.txt` and `ucd/extracted/DerivedGeneralCategory.txt` for
+//! unicode-width, and `unicode/17.0.0/` holds
+//! `ucd/auxiliary/GraphemeBreakTest.txt` for unicode-segmentation and
+//! `emoji/emoji-test.txt` for unicode-properties. The libraries move to a new Unicode version one at a time, and an app gets whichever
+//! versions cargo resolves, so they are not required to agree. When one moves,
+//! `the_data_is_the_unicode_version_of_the_dependencies` fails: put the new
+//! version's files in place, point the constant at them and delete the old ones.
 //!
 //! Each width check states the rule terminals measure with and lists every
 //! code point where `char_width` departs from it, so a dependency update that
@@ -18,10 +19,13 @@ use std::collections::HashMap;
 use revue::text::{reverse_graphemes, CharWidthTable};
 use revue::utils::char_width;
 
-const DATA: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/text/unicode/17.0.0");
+/// The data unicode-width is checked against
+const WIDTH_DATA: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/text/unicode/18.0.0");
+/// The data unicode-segmentation and unicode-properties are checked against
+const GRAPHEME_DATA: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/text/unicode/17.0.0");
 
 fn read(file: &str) -> String {
-    std::fs::read_to_string(format!("{DATA}/{file}")).unwrap()
+    std::fs::read_to_string(format!("{WIDTH_DATA}/{file}")).unwrap()
 }
 
 /// `code point -> value` from a `XXXX..YYYY ; value` property file
@@ -99,8 +103,9 @@ fn mismatches(
 
 #[test]
 fn the_data_is_the_unicode_version_of_the_dependencies() {
-    assert!(DATA.ends_with("/17.0.0"));
-    assert_eq!(unicode_width::UNICODE_VERSION, (17, 0, 0));
+    assert!(WIDTH_DATA.ends_with("/18.0.0"));
+    assert_eq!(unicode_width::UNICODE_VERSION, (18, 0, 0));
+    assert!(GRAPHEME_DATA.ends_with("/17.0.0"));
     assert_eq!(unicode_segmentation::UNICODE_VERSION, (17, 0, 0));
     assert_eq!(unicode_properties::UNICODE_VERSION, (17, 0, 0));
 }
@@ -149,7 +154,8 @@ fn conjoining_hangul_vowels_and_finals_take_no_column() {
 
 /// The code points of each fully-qualified emoji in `emoji-test.txt`
 fn fully_qualified_emoji() -> Vec<Vec<char>> {
-    read("emoji-test.txt")
+    std::fs::read_to_string(format!("{GRAPHEME_DATA}/emoji-test.txt"))
+        .unwrap()
         .lines()
         .filter_map(|line| {
             let (points, status) = line.split_once(';')?;
@@ -204,7 +210,10 @@ fn the_glue_inside_emoji_sequences_takes_no_column() {
 #[test]
 fn reverse_graphemes_keeps_every_cluster_of_the_break_test_whole() {
     let mut cases = 0;
-    for line in read("GraphemeBreakTest.txt").lines() {
+    for line in std::fs::read_to_string(format!("{GRAPHEME_DATA}/GraphemeBreakTest.txt"))
+        .unwrap()
+        .lines()
+    {
         let line = line.split('#').next().unwrap().trim();
         if line.is_empty() {
             continue;
