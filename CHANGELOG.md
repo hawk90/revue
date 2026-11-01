@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.13.0](https://github.com/hawk90/revue/compare/v3.12.0...v3.13.0) (2026-11-01)
+
+
+### Features
+
+* **widget:** give FilePicker the keys its help line lists ([#1360](https://github.com/hawk90/revue/issues/1360)) ([a4fad21](https://github.com/hawk90/revue/commit/a4fad214eab7d9ebc8bb4ca28da34c284e227900))
+
+
+### Bug Fixes
+
+* **deps:** update non-major dependencies ([#1325](https://github.com/hawk90/revue/issues/1325)) ([a855b58](https://github.com/hawk90/revue/commit/a855b589720a8e2bd28ca8a8fc004b9cf09d2db3))
+* **utils:** copy every cursor's selection, and clear vim's waiting g ([#1367](https://github.com/hawk90/revue/issues/1367)) ([7e628af](https://github.com/hawk90/revue/commit/7e628afe7adaf55a376a6ee1fbb0430870ca688e))
+* **utils:** make multi-cursor edits near linear, and bound undo by bytes ([#1365](https://github.com/hawk90/revue/issues/1365)) ([07d69a2](https://github.com/hawk90/revue/commit/07d69a2b7375cf42e2601f41ba03cee4ede91a2c))
+* **widget:** build tree-sitter grammars on first use, and skip pathological nesting ([#1362](https://github.com/hawk90/revue/issues/1362)) ([5958d03](https://github.com/hawk90/revue/commit/5958d0387f30bd80d816337c3bdde0487424871d))
+* **widget:** carry vim's count with its action, and cancel a stray operator ([#1364](https://github.com/hawk90/revue/issues/1364)) ([6df7240](https://github.com/hawk90/revue/commit/6df72401ef69b906913d6e206906e6d60ddf22ec))
+* **widget:** draw DropZone into its area with min_height as a lower bound, and finish StatusIndicator's sizes ([#1339](https://github.com/hawk90/revue/issues/1339)) ([716542c](https://github.com/hawk90/revue/commit/716542cea7be899c8fd0d26243529a1b0fde8145))
+* **widget:** finish Avatar's fallback, background, initials and icon ([#1335](https://github.com/hawk90/revue/issues/1335)) ([8639eae](https://github.com/hawk90/revue/commit/8639eae9bee991e4f5f457bf0b0e5b444cd31783))
+* **widget:** give a filling child's CSS minimum a slot in a content-sized stack ([#1350](https://github.com/hawk90/revue/issues/1350)) ([b7b78fc](https://github.com/hawk90/revue/commit/b7b78fce616c2e5a7aed4fa56957aee4761cfda0))
+* **widget:** hold a widget's own minimum in a content-sized stack ([#1352](https://github.com/hawk90/revue/issues/1352)) ([fe92544](https://github.com/hawk90/revue/commit/fe92544fece31cd54a899e8aba06f7afcfec7625))
+* **widget:** keep a cell for each measured child in a shrinking stack, and none for one that measured nothing ([#1345](https://github.com/hawk90/revue/issues/1345)) ([4517763](https://github.com/hawk90/revue/commit/4517763b964c1c583c55c0c603ddb8e4309ee5e9))
+* **widget:** keep caller-sized geometry from overflowing ([#1354](https://github.com/hawk90/revue/issues/1354)) ([0b9638d](https://github.com/hawk90/revue/commit/0b9638dcef5499af8d1138cafc23263af209c7a4))
+* **widget:** let ColorPicker's palette use the preview's rows when the preview is off ([#1346](https://github.com/hawk90/revue/issues/1346)) ([0cd3411](https://github.com/hawk90/revue/commit/0cd3411649e93b08c78ba3ae7300d7b72ddc14e1))
+* **widget:** let n and N be typed into a Tree search ([#1358](https://github.com/hawk90/revue/issues/1358)) ([75cb76c](https://github.com/hawk90/revue/commit/75cb76cd65d68d0487fbb4a4ae34764bdb984f1d))
+* **widget:** make the editors and other widgets that show focus focusable ([#1357](https://github.com/hawk90/revue/issues/1357)) ([9c19549](https://github.com/hawk90/revue/commit/9c19549000aa7c8e796c836398df47493ff31e9c))
+* **widget:** mark MultiSelect tags scrolled off to the left ([#1359](https://github.com/hawk90/revue/issues/1359)) ([c495e3c](https://github.com/hawk90/revue/commit/c495e3c9308f15161e1ba911d4a1819096aa1e45))
+* **widget:** measure and align Text line by line, and give zero-width chars no cell ([#1334](https://github.com/hawk90/revue/issues/1334)) ([a395e91](https://github.com/hawk90/revue/commit/a395e91c0aeafd06a4178fb85aa204c8f521014b))
+* **widget:** measure the content-sized widgets that answered None ([#1332](https://github.com/hawk90/revue/issues/1332)) ([d9c17d6](https://github.com/hawk90/revue/commit/d9c17d664581b7834357b78bfc4585e093497560))
+* **widget:** one selection style and the clipboard keys in every field ([#1366](https://github.com/hawk90/revue/issues/1366)) ([c1bb290](https://github.com/hawk90/revue/commit/c1bb290bcda5d938d33799ac6d04e174decb9bdc))
+* **widget:** paint a stylesheet background into Avatar's shape, not around it ([#1351](https://github.com/hawk90/revue/issues/1351)) ([40ad50a](https://github.com/hawk90/revue/commit/40ad50adc963d8d6e112631be4118d12e61c2b9b))
+* **widget:** pass a filling child's minimum through Border, Card and the other wrappers ([#1348](https://github.com/hawk90/revue/issues/1348)) ([7615124](https://github.com/hawk90/revue/commit/7615124f577e044773a8c73b4187f627b57e1f3d))
+* **widget:** put back RichTextEditor's cursor and selection on undo ([#1361](https://github.com/hawk90/revue/issues/1361)) ([1d5aff0](https://github.com/hawk90/revue/commit/1d5aff05c7c4be901cf71041767b744ced6cde5c))
+
 ## [3.12.0](https://github.com/hawk90/revue/compare/v3.11.1...v3.12.0) (2026-10-24)
 
 
