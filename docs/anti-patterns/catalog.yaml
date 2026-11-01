@@ -1824,6 +1824,18 @@ entries:
     fix:
       - "느린 일은 worker pool로 보내고 결과를 UI queue로 받는다 (#1143, REV-ASYNC-005)."
       - "devtools는 frame budget(약 16ms)보다 느린 handler를 경고한다 (REV-PERF-005)."
+  - id: REV-EVENT-014
+    title: "Tick Derived From Input Idle"
+    category: event
+    review_tag: EVENT
+    status: observed
+    assumes: [animation]
+    decisions: ["#1195"]
+    summary: "input이 없을 때의 timeout으로 Tick을 만들면, 끊임없는 input(마우스 이동)이 Tick을 막아 transition과 plugin tick이 멈춘다."
+    fix:
+      - "다음 Tick 시각은 input이 아니라 지난 Tick에서 센다 (`TickSchedule`)."
+    observed:
+      - "2026-11-02: `EventReader::read`가 호출마다 마감 시각을 새로 잡아, tick 주기보다 잦은 input 동안 Tick이 나오지 않았다 (#1195). `tests/core/app/run_on.rs`가 지킨다."
   - id: REV-WIDGET-001
     title: "God Widget Trait"
     category: widget

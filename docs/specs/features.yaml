@@ -2004,3 +2004,19 @@ items:
       - tests/utils/clock.rs::a_tween_runs_on_the_mock
       - tests/utils/clock.rs::another_thread_keeps_real_time
       - tests/utils/clock.rs::only_the_listed_files_read_real_time
+  - id: UTIL-010
+    title: Run on a terminal and events the caller owns
+    area: util
+    priority: P2
+    status: done
+    phase: 3.14.0
+    acceptance:
+      - App::run_on draws on a Terminal the caller sized and reads any EventSource, including a channel
+      - nothing process-wide is touched, a resize follows the source, and the loop ends when the source closes
+      - Tick arrives whatever the input, in run and run_on
+    evidence:
+      - src/core/app/event_loop.rs::run_on
+      - src/runtime/event/source.rs::EventSource
+      - tests/core/app/run_on.rs::it_takes_the_terminals_size_and_follows_a_resize
+      - tests/core/app/run_on.rs::a_channel_ends_when_every_sender_is_gone
+      - tests/core/app/run_on.rs::ticks_keep_coming_under_input_that_never_stops

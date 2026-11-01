@@ -355,6 +355,20 @@ Simplified version for keyboard-only apps. The handler receives only key events 
 app.run_with_handler(MyView, |key, view| view.handle_key(&key.key));
 ```
 
+### run_on<V, H, W, S>(view, terminal, events, handler)
+
+Runs on a terminal and an event source the caller owns, such as one session of a program that serves many over SSH. It touches nothing process-wide: no raw mode, no panic hook, no signal handlers, and it does not restore the terminal at the end.
+
+`events` is anything that implements `EventSource`; a channel `Receiver<Event>` does. The size comes from `terminal`, and an `Event::Resize` from `events` changes it. The bytes go to the terminal's writer, which you drain or bound. The loop ends when the app quits or `events` closes.
+
+```rust
+let (input, events) = std::sync::mpsc::channel();
+let mut terminal = Terminal::with_size(session_writer, 80, 24);
+app.run_on(MyView, &mut terminal, events, |event, view, app| view.handle(event));
+```
+
+`Event::Tick` arrives about once per frame in every run method, whatever the input.
+
 ## Common Patterns
 
 ### Minimal App
