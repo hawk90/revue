@@ -255,3 +255,73 @@ fn columns_are_characters() {
     let s = lines[1].iter().find(|s| s.fg.r == 4).unwrap();
     assert_eq!((s.start, s.end), (5, 8));
 }
+
+// #1319: brackets nested too deep to parse in reasonable time
+
+#[test]
+fn brackets_nested_past_the_limit_are_not_highlighted() {
+    let highlighted = |depth: usize| {
+        let code = format!("{}\"s\"", "[".repeat(depth));
+        let mut h = TreeSitterHighlighter::new(Language::Json);
+        !h.highlight_code(&code)[0].is_empty()
+    };
+    assert!(highlighted(1000));
+    assert!(!highlighted(1001));
+    assert!(!highlighted(100_000));
+}
+
+#[test]
+fn brackets_that_close_do_not_count_toward_the_limit() {
+    // 3000 opening brackets, never more than one deep.
+    let code = format!("{}\"s\"", "[],".repeat(3000));
+    let mut h = TreeSitterHighlighter::new(Language::Json);
+    assert!(!h.highlight_code(&code)[0].is_empty());
+    // Every kind counts.
+    for open in ["(", "[", "{"] {
+        let code = format!("{}\n\"s\"", open.repeat(1001));
+        let mut h = TreeSitterHighlighter::new(Language::Rust);
+        assert_eq!(h.highlight_code(&code).len(), 2, "one row of spans a line");
+        assert!(h.highlight_line(&open.repeat(1001)).is_empty());
+    }
+}
+
+#[test]
+fn past_the_limit_a_line_still_gets_its_row_of_no_spans() {
+    let mut h = TreeSitterHighlighter::new(Language::Json);
+    let code = format!("{}\nb\nc", "[".repeat(1001));
+    let rows = h.highlight_code(&code);
+    assert_eq!(rows.len(), 3);
+    assert!(rows.iter().all(Vec::is_empty));
+}
+
+// #1302: each language's configuration is built on first use
+
+#[test]
+fn every_language_reads_as_supported_and_highlights_with_its_own_grammar() {
+    use Language::*;
+    for (language, code) in [
+        (Rust, "fn main() {}"),
+        (Python, "def f(): pass"),
+        (JavaScript, "function f() {}"),
+        (Json, "{\"a\": 1}"),
+        (Toml, "a = 1"),
+        (Yaml, "a: 1"),
+        (Shell, "echo a"),
+        (Sql, "SELECT 1"),
+        (Html, "<a></a>"),
+        (Css, "a { color: red; }"),
+        (Go, "func f() {}"),
+    ] {
+        assert!(
+            TreeSitterHighlighter::is_supported(language),
+            "{language:?}"
+        );
+        let mut h = TreeSitterHighlighter::new(language);
+        assert!(!h.highlight_line(code).is_empty(), "{language:?}");
+    }
+    assert!(TreeSitterHighlighter::is_supported(Markdown));
+    assert!(!TreeSitterHighlighter::is_supported(None));
+    assert!(TreeSitterHighlighter::new(None)
+        .highlight_line("x")
+        .is_empty());
+}
