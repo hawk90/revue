@@ -80,9 +80,10 @@ impl MultiSelect {
                 let w = max_x - from;
                 let scroll = field.scroll(self.query_scroll.get(), w);
                 self.query_scroll.set(scroll);
+                let selected = crate::widget::traits::render_context::edit_line::selection_colors();
                 ctx.put_edit_field(from, 0, w, &field, scroll, |kind, ch| match kind {
                     FieldCell::Cursor => colored_cell(ch, Color::BLACK, Color::WHITE),
-                    FieldCell::Selected => colored_cell(ch, Color::WHITE, Color::BLUE),
+                    FieldCell::Selected => colored_cell(ch, selected.0, selected.1),
                     FieldCell::Text | FieldCell::Placeholder => colored_cell(ch, Color::CYAN, bg),
                 });
             }

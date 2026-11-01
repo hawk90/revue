@@ -33,6 +33,16 @@ impl MaskedInput {
             return true;
         }
         if event.ctrl && !event.alt {
+            // As a browser's password field: a masked value does not leave by
+            // the clipboard, and what comes in stops at `max_length`.
+            match event.key {
+                Key::Char('c' | 'x') if self.masks() => return false,
+                Key::Char('v') => {
+                    return crate::utils::edit::clipboard_text()
+                        .is_some_and(|text| self.paste_within_max_length(&text));
+                }
+                _ => {}
+            }
             let whole = match event.key {
                 Key::Left => Some(EditMotion::LineStart),
                 Key::Right => Some(EditMotion::LineEnd),
@@ -60,6 +70,20 @@ impl MaskedInput {
             _ => self.end_peek(),
         }
         true
+    }
+
+    /// Replace the selection with as much of `text` as `max_length` leaves room
+    /// for; returns whether the value changed.
+    fn paste_within_max_length(&mut self, text: &str) -> bool {
+        self.end_peek();
+        if self.max_length == 0 {
+            return self.state.paste(text);
+        }
+        let (from, to) = self.state.primary().range();
+        let kept = self.len() - (to.col - from.col);
+        let room = self.max_length.saturating_sub(kept);
+        let fitted: String = text.chars().take(room).collect();
+        self.state.paste(&fitted)
     }
 
     /// Insert character at cursor (up to `max_length`)

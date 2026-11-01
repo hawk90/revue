@@ -137,8 +137,14 @@ fn test_number_input_selection_is_drawn() {
     assert!(text.starts_with("12345"), "{text:?}");
     // The cursor on "4", "5" selected, "3" neither
     assert_eq!(buffer.get(3, 0).unwrap().bg, Some(Color::WHITE));
-    assert_eq!(buffer.get(4, 0).unwrap().bg, Some(Color::BLUE));
-    assert_ne!(buffer.get(2, 0).unwrap().bg, Some(Color::BLUE));
+    assert_eq!(
+        buffer.get(4, 0).unwrap().bg,
+        Some(revue::style::use_theme().get().colors.selection)
+    );
+    assert_ne!(
+        buffer.get(2, 0).unwrap().bg,
+        Some(revue::style::use_theme().get().colors.selection)
+    );
 }
 
 #[test]

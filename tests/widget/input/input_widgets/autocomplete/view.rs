@@ -280,7 +280,7 @@ fn test_autocomplete_selection_is_drawn() {
     for x in 1..4 {
         assert_eq!(
             buffer.get(x, 0).unwrap().bg,
-            Some(Color::rgb(60, 100, 180)),
+            Some(revue::style::use_theme().get().colors.selection),
             "{x}"
         );
     }

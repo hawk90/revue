@@ -15,7 +15,7 @@ impl Input {
             bg: None,
             cursor_fg: Some(Color::BLACK),
             cursor_bg: Some(Color::WHITE),
-            selection_bg: Some(Color::rgb(70, 130, 180)), // Steel blue
+            selection_bg: None, // Steel blue
             focused: true,
             clipboard: None,
             props: WidgetProps::new(),

@@ -6,7 +6,7 @@ use crate::style::Color;
 use crate::utils::{char_width, display_width, truncate_to_width};
 use crate::widget::data::datagrid::types::{Alignment, GridColumn, GridRow};
 use crate::widget::data::datagrid::DataGrid;
-use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::render_context::edit_line::FieldCell;
 use crate::widget::traits::RenderContext;
 
@@ -175,11 +175,12 @@ impl DataGrid {
         let (field, kept) = self.edit_field();
         let scroll = field.scroll(kept.get(), width);
         kept.set(scroll);
+        let selected = crate::widget::traits::render_context::edit_line::selection_colors();
         ctx.put_edit_field(x, y, width, &field, scroll, |kind, ch| {
             let mut cell = Cell::new(ch);
             (cell.fg, cell.bg) = match kind {
                 FieldCell::Cursor => (Some(Color::BLACK), Some(Color::WHITE)),
-                FieldCell::Selected => (Some(Color::BLACK), Some(LIGHT_GRAY)),
+                FieldCell::Selected => (Some(selected.0), Some(selected.1)),
                 FieldCell::Text | FieldCell::Placeholder => (Some(Color::WHITE), Some(bg)),
             };
             cell

@@ -45,9 +45,10 @@ impl View for NameField {
         ctx.draw_text(0, 0, LABEL, Color::YELLOW);
         let field = EditField::of(&self.name, "", true);
         let scroll = field.scroll(0, width);
+        let selected = crate::widget::traits::render_context::edit_line::selection_colors();
         ctx.put_edit_field(from, 0, width, &field, scroll, |kind, ch| match kind {
             FieldCell::Cursor => Cell::new(ch).fg(Color::BLACK).bg(Color::WHITE),
-            FieldCell::Selected => Cell::new(ch).fg(Color::WHITE).bg(Color::BLUE),
+            FieldCell::Selected => Cell::new(ch).fg(selected.0).bg(selected.1),
             FieldCell::Text | FieldCell::Placeholder => Cell::new(ch).fg(Color::YELLOW),
         });
     }

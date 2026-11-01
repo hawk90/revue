@@ -40,11 +40,12 @@ impl View for Input {
         self.scroll_x.set(scroll);
 
         let field = EditField::of(&self.state, &self.placeholder, self.focused);
+        let selected = crate::widget::traits::render_context::edit_line::selection_colors();
         ctx.put_edit_field(0, 0, area.width, &field, scroll, |kind, ch| {
             let mut cell = Cell::new(ch);
             (cell.fg, cell.bg) = match kind {
                 FieldCell::Cursor => (self.cursor_fg, self.cursor_bg),
-                FieldCell::Selected => (Some(Color::WHITE), self.selection_bg),
+                FieldCell::Selected => (Some(selected.0), self.selection_bg.or(Some(selected.1))),
                 FieldCell::Placeholder => (Some(PLACEHOLDER_FG), None),
                 FieldCell::Text => (css_fg, css_bg),
             };

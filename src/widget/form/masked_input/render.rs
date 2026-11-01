@@ -99,9 +99,10 @@ impl MaskedInput {
             // particular runs red to green, and one `color` cannot say that.
             self.fg.or(css_color)
         };
+        let selected = crate::widget::traits::render_context::edit_line::selection_colors();
         let style = |kind: FieldCell| match kind {
             FieldCell::Cursor => (Some(Color::BLACK), Some(Color::WHITE)),
-            FieldCell::Selected => (Some(Color::WHITE), Some(Color::BLUE)),
+            FieldCell::Selected => (Some(selected.0), Some(selected.1)),
             FieldCell::Placeholder => (Some(PLACEHOLDER_FG), self.bg),
             FieldCell::Text => (text_fg, self.bg),
         };

@@ -161,9 +161,10 @@ impl Terminal {
         let width = area.width.saturating_sub(px);
         let scroll = field.scroll(self.input_scroll.get(), width);
         self.input_scroll.set(scroll);
+        let selected = crate::widget::traits::render_context::edit_line::selection_colors();
         ctx.put_edit_field(px, input_y, width, &field, scroll, |kind, ch| match kind {
             FieldCell::Cursor => Cell::new(ch).fg(DARK_BG).bg(default_fg),
-            FieldCell::Selected => Cell::new(ch).fg(Color::WHITE).bg(Color::BLUE),
+            FieldCell::Selected => Cell::new(ch).fg(selected.0).bg(selected.1),
             FieldCell::Text | FieldCell::Placeholder => Cell::new(ch).fg(default_fg).bg(DARK_BG),
         });
     }
