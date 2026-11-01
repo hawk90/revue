@@ -64,7 +64,6 @@ fn a_builder_foreground_wins_over_the_stylesheet() {
         "Sidebar" => Sidebar::new().items(vec![SidebarItem::new("a", "one"), SidebarItem::new("b", "two")]),
         "BarChart" => BarChart::new().bar("a", 1.0),
         "Sparkline" => Sparkline::new(vec![1.0, 2.0]),
-        "QrCodeWidget" => QrCodeWidget::new("x"),
         "Tooltip" => Tooltip::new("text").visible(true),
         "StatusBar" => StatusBar::new().left(StatusSection::new("a")),
     ];
@@ -104,7 +103,6 @@ fn a_builder_background_wins_over_the_stylesheet() {
         "Sidebar" => Sidebar::new().items(vec![SidebarItem::new("a", "one"), SidebarItem::new("b", "two")]),
         "DropZone" => DropZone::new("text"),
         "Sparkline" => Sparkline::new(vec![1.0, 2.0]),
-        "QrCodeWidget" => QrCodeWidget::new("x"),
         "Tooltip" => Tooltip::new("text").visible(true),
         "StatusBar" => StatusBar::new().left(StatusSection::new("a")),
     ];
@@ -146,8 +144,19 @@ fn without_a_builder_color_the_stylesheet_still_reaches_them() {
     drawn(&histogram, |buffer| {
         assert!(cells(buffer).any(|c| c.fg == Some(CSS_FG)));
     });
-    let qr = QrCodeWidget::new("x").element_id("a");
-    drawn(&qr, |buffer| {
+}
+
+#[cfg(feature = "qrcode")]
+#[test]
+fn a_qr_code_takes_the_builders_colors_and_else_the_stylesheets() {
+    let built = QrCodeWidget::new("x").fg(FG).bg(BG).element_id("a");
+    drawn(&built, |buffer| {
+        assert!(cells(buffer).any(|c| c.fg == Some(FG) && c.bg == Some(BG)));
+        assert!(!cells(buffer).any(|c| c.fg == Some(CSS_FG)));
+        assert!(!cells(buffer).any(|c| c.bg == Some(CSS_BG) && c.symbol != ' '));
+    });
+    let plain = QrCodeWidget::new("x").element_id("a");
+    drawn(&plain, |buffer| {
         assert!(cells(buffer).any(|c| c.bg == Some(CSS_BG) && c.symbol != ' '));
     });
 }
