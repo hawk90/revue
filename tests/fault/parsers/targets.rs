@@ -195,22 +195,6 @@ fn tree_sitter(s: &str) {
     if s.len() > 100_000 {
         return;
     }
-    // Nor brackets nested thousands deep: tree-sitter takes time quadratic
-    // in the depth there (10 000 took Windows CI's debug build over 3 s),
-    // inside its own code, before any span reaches revue's (#1319)
-    let mut depth: usize = 0;
-    let mut deepest = 0;
-    for c in s.chars() {
-        match c {
-            '[' | '{' => depth += 1,
-            ']' | '}' => depth = depth.saturating_sub(1),
-            _ => {}
-        }
-        deepest = deepest.max(depth);
-    }
-    if deepest > 1000 {
-        return;
-    }
     let mut h = revue::widget::TreeSitterHighlighter::new(revue::widget::Language::Json);
     let _ = h.highlight_code(s);
 }

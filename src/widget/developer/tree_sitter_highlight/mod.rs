@@ -11,13 +11,38 @@ use tree_sitter_highlight::{HighlightEvent, Highlighter};
 
 use crate::widget::syntax::{HighlightSpan, Language, SyntaxTheme};
 use captures::CaptureStyle;
-use languages::get_configs;
+use languages::config;
 
 /// Tree-sitter based syntax highlighter
 pub struct TreeSitterHighlighter {
     highlighter: Highlighter,
     language: Language,
     theme: SyntaxTheme,
+}
+
+/// How deep brackets may nest and still go to tree-sitter. Its time grows with
+/// the square of the depth on unbalanced brackets: 10 000 deep takes about a
+/// second, on every call. Nothing written by hand nests this deep.
+const MAX_BRACKET_DEPTH: usize = 1000;
+
+/// Whether `source`'s brackets nest deeper than [`MAX_BRACKET_DEPTH`]. Counted
+/// in one pass over any kind of bracket, ignoring what is in strings: it only
+/// has to find input that is pathological.
+fn nests_too_deep(source: &str) -> bool {
+    let mut depth = 0usize;
+    for byte in source.bytes() {
+        match byte {
+            b'(' | b'[' | b'{' => {
+                depth += 1;
+                if depth > MAX_BRACKET_DEPTH {
+                    return true;
+                }
+            }
+            b')' | b']' | b'}' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+    }
+    false
 }
 
 impl TreeSitterHighlighter {
@@ -53,18 +78,18 @@ impl TreeSitterHighlighter {
 
     /// Check if tree-sitter highlighting is available for a language
     pub fn is_supported(language: Language) -> bool {
-        language != Language::None && get_configs().get(language).is_some()
+        config(language).is_some()
     }
 
     /// The captured byte ranges of `source`, each with its style, in the
     /// order tree-sitter reports them. `None` when there is nothing to
-    /// highlight with: no language, an unsupported one, or a failed parse.
+    /// highlight with: no language, an unsupported one, a failed parse, or
+    /// brackets nested too deep to parse in reasonable time.
     fn captures(&mut self, source: &str) -> Option<Vec<(usize, usize, CaptureStyle)>> {
-        if self.language == Language::None {
+        if nests_too_deep(source) {
             return None;
         }
-
-        let config = get_configs().get(self.language)?;
+        let config = config(self.language)?;
 
         let highlights =
             match self
