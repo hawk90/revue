@@ -1457,3 +1457,29 @@ fn an_operator_keeps_the_command_line_and_search_keys_their_mode() {
     keys(&mut vim, "di");
     assert_eq!(vim.mode(), VimMode::Normal);
 }
+
+#[test]
+fn a_waiting_g_does_not_outlive_a_mode_switch() {
+    let mut vim = VimState::new();
+    keys(&mut vim, "g");
+    vim.set_mode(VimMode::Insert);
+    assert_eq!(keys(&mut vim, "g"), [VimAction::None]);
+}
+
+#[test]
+fn g_and_a_key_that_finishes_nothing_cancel_a_pending_operator() {
+    let mut vim = VimState::new();
+    assert_eq!(keys(&mut vim, "dgw").last(), Some(&VimAction::None));
+    assert_eq!(
+        keys(&mut vim, "w").last(),
+        Some(&VimAction::Move(VimMotion::Word))
+    );
+
+    let mut vim = VimState::new();
+    keys(&mut vim, "3dg");
+    assert_eq!(
+        vim.handle_key(&KeyEvent::new(Key::Escape)),
+        VimAction::Escape
+    );
+    assert_eq!(vim.count(), 1);
+}

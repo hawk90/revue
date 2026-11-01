@@ -84,6 +84,7 @@ impl VimState {
         self.operator = None;
         self.count = None;
         self.action_count = None;
+        self.key_buffer.clear();
     }
 
     /// The count being typed, or the one typed before the action
