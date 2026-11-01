@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use crate::event::{Key, KeyEvent};
 use crate::render::Buffer;
+use crate::testing::screen_text::comparable_screen;
 use crate::testing::{Action, KeyAction, MouseAction, TestApp, TestConfig};
 
 /// Pilot controller for automated testing
@@ -138,7 +139,10 @@ impl<'a, V: crate::widget::View> Pilot<'a, V> {
 
     /// Scroll up at position
     pub fn scroll_up(&mut self, x: u16, y: u16, amount: u16) -> &mut Self {
-        self.app.send_scroll(x, y, -(amount as i16));
+        for _ in 0..amount {
+            self.app.scroll_up(x, y);
+        }
+        self.app.send_scroll(x, y, amount as i16);
         self.history
             .push(Action::Mouse(MouseAction::ScrollUp(x, y, amount)));
         self
@@ -146,7 +150,10 @@ impl<'a, V: crate::widget::View> Pilot<'a, V> {
 
     /// Scroll down at position
     pub fn scroll_down(&mut self, x: u16, y: u16, amount: u16) -> &mut Self {
-        self.app.send_scroll(x, y, amount as i16);
+        for _ in 0..amount {
+            self.app.scroll_down(x, y);
+        }
+        self.app.send_scroll(x, y, -(amount as i16));
         self.history
             .push(Action::Mouse(MouseAction::ScrollDown(x, y, amount)));
         self
@@ -264,8 +271,8 @@ impl<'a, V: crate::widget::View> Pilot<'a, V> {
     /// Assert screen matches expected string
     pub fn assert_screen(&self, expected: &str) {
         let actual = self.screen();
-        let expected_trimmed = expected.trim();
-        let actual_trimmed = actual.trim();
+        let expected_trimmed = comparable_screen(expected);
+        let actual_trimmed = comparable_screen(&actual);
 
         assert_eq!(
             actual_trimmed, expected_trimmed,

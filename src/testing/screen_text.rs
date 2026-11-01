@@ -50,3 +50,14 @@ fn row_with_columns(buffer: &Buffer, y: u16) -> (String, Vec<u16>) {
     }
     (text, columns)
 }
+
+/// A screen as text, for comparing. Line endings and trailing blanks go, since
+/// a screen cannot show them; leading rows and columns stay, because they say
+/// where the content is.
+pub(crate) fn comparable_screen(text: &str) -> String {
+    let mut lines: Vec<&str> = text.lines().map(str::trim_end).collect();
+    while lines.last().is_some_and(|line| line.is_empty()) {
+        lines.pop();
+    }
+    lines.join("\n")
+}

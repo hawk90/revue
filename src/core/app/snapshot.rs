@@ -24,7 +24,7 @@ pub enum SnapshotResult {
     },
     /// New snapshot created
     Created,
-    /// Snapshot file not found
+    /// Nothing was compared: the golden could not be read or written
     NotFound,
 }
 
@@ -38,6 +38,11 @@ impl SnapshotResult {
     pub fn is_mismatch(&self) -> bool {
         matches!(self, SnapshotResult::Mismatch { .. })
     }
+}
+
+/// Whether an update-snapshots environment value turns updating on
+pub(crate) fn flag_is_on(value: &str) -> bool {
+    value == "1" || value.eq_ignore_ascii_case("true")
 }
 
 /// Snapshot configuration
@@ -57,7 +62,7 @@ impl Default for SnapshotConfig {
     fn default() -> Self {
         Self {
             snapshot_dir: PathBuf::from("snapshots"),
-            update_snapshots: std::env::var("UPDATE_SNAPSHOTS").is_ok(),
+            update_snapshots: std::env::var("UPDATE_SNAPSHOTS").is_ok_and(|v| flag_is_on(&v)),
             include_colors: false,
             include_modifiers: false,
         }
@@ -207,24 +212,31 @@ impl Snapshot {
             let metadata_ok = fs::metadata(&path)
                 .map(|m| m.len() <= MAX_SNAPSHOT_FILE_SIZE)
                 .unwrap_or(false);
-
-            if metadata_ok {
-                fs::read_to_string(&path).ok()
-            } else {
-                None
+            let read = metadata_ok
+                .then(|| fs::read_to_string(&path).ok())
+                .flatten();
+            // A golden that cannot be read compared nothing, and stays as it is
+            if read.is_none() {
+                crate::log_warn!("Snapshot could not be read: {:?}", path);
+                return SnapshotResult::NotFound;
             }
+            read
         } else {
             None
         };
 
+        // Nothing written means nothing to compare with next time
+        let write = |path: &Path| match fs::write(path, actual) {
+            Ok(()) => SnapshotResult::Created,
+            Err(e) => {
+                crate::log_warn!("Snapshot write failed for {:?}: {}", path, e);
+                SnapshotResult::NotFound
+            }
+        };
+
         match expected {
             Some(expected) if expected == *actual => SnapshotResult::Match,
-            Some(_) if self.config.update_snapshots => {
-                if let Err(e) = fs::write(&path, actual) {
-                    crate::log_warn!("Snapshot write failed for {:?}: {}", path, e);
-                }
-                SnapshotResult::Created
-            }
+            Some(_) if self.config.update_snapshots => write(&path),
             Some(expected) => {
                 let diff = self.compute_diff(&expected, actual);
                 SnapshotResult::Mismatch {
@@ -233,12 +245,7 @@ impl Snapshot {
                     diff,
                 }
             }
-            None => {
-                if let Err(e) = fs::write(&path, actual) {
-                    crate::log_warn!("Snapshot write failed for {:?}: {}", path, e);
-                }
-                SnapshotResult::Created
-            }
+            None => write(&path),
         }
     }
 
@@ -326,6 +333,16 @@ macro_rules! assert_snapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_one_and_true_turn_updating_on() {
+        for on in ["1", "true", "TRUE"] {
+            assert!(flag_is_on(on), "{on}");
+        }
+        for off in ["0", "", "false", "no"] {
+            assert!(!flag_is_on(off), "{off:?}");
+        }
+    }
     use crate::widget::Text;
 
     #[test]
