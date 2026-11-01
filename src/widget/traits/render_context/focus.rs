@@ -1,7 +1,7 @@
 //! Focus indicator methods for RenderContext
 
 use super::super::event::FocusStyle;
-use crate::render::Cell;
+use crate::render::{Cell, Modifier};
 use crate::style::Color;
 
 impl RenderContext<'_> {
@@ -81,6 +81,27 @@ impl RenderContext<'_> {
                     let old_bg = cell.bg;
                     cell.fg = old_bg;
                     cell.bg = old_fg;
+                }
+            }
+        }
+    }
+
+    /// Make what the widget has drawn bold if its node has focus: the marker of
+    /// a widget with no other part to show focus on. Call it last in `render`.
+    pub(crate) fn bold_when_focused(&mut self) {
+        if !self.is_focused() {
+            return;
+        }
+        let area = self.area;
+        for y in area.y..area.bottom() {
+            for x in area.x..area.right() {
+                if self.is_clipped(x, y) {
+                    continue;
+                }
+                if let Some(cell) = self.buffer.get_mut(x, y) {
+                    if cell.symbol != ' ' {
+                        cell.modifier |= Modifier::BOLD;
+                    }
                 }
             }
         }

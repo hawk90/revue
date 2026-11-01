@@ -285,8 +285,12 @@ pub fn catalog() -> Vec<Entry> {
         e("Tabs", |c, _| Box::new(Tabs::new().tabs(c.items.clone()))),
         e("VSplit", |_, _| Box::new(VSplit::new(0.5))),
         // Input
-        e("Autocomplete", |c, _| {
-            Box::new(Autocomplete::new().suggestions(c.items.clone()).value(t(c)))
+        e("Autocomplete", |c, f| {
+            let mut a = Autocomplete::new().suggestions(c.items.clone()).value(t(c));
+            if f {
+                a.focus();
+            }
+            Box::new(a)
         }),
         e("Button", |c, f| Box::new(Button::new(t(c)).focused(f))),
         e("Checkbox", |c, f| {

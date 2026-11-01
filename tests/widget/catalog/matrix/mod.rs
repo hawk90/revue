@@ -8,7 +8,8 @@
 //! - `matrix/sizes.rs` - boundary areas, one ordinary content;
 //! - `matrix/contents.rs` - edge contents, one ordinary area;
 //! - `matrix/pairwise.rs` - all pairs of {size, content, focus, path};
-//! - `matrix/measure.rs` - `measure` against `render`.
+//! - `matrix/measure.rs` - `measure` against `render`;
+//! - `matrix/focus.rs` - a focusable widget shows its focus.
 //!
 //! `matrix/completeness.rs` checks that every `View` in `src/` is in the
 //! catalog.
@@ -46,6 +47,7 @@ pub mod catalog;
 ))]
 pub mod completeness;
 pub mod contents;
+mod focus;
 pub mod known_failures;
 pub mod measure;
 pub mod pairwise;
