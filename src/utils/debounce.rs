@@ -108,7 +108,11 @@ impl Debouncer {
                 false
             }
             Edge::Leading => {
-                if !self.leading_fired {
+                // A call after a quiet delay starts a new burst
+                let quiet = self
+                    .last_call
+                    .is_some_and(|last| now.saturating_duration_since(last) >= self.delay);
+                if !self.leading_fired || quiet {
                     self.leading_fired = true;
                     self.last_call = Some(now);
                     // Leading edge fires immediately, no pending

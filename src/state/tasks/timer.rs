@@ -51,6 +51,8 @@ pub struct TimerEntry {
 #[derive(Debug, Default)]
 pub struct Timer {
     timers: HashMap<TimerId, TimerEntry>,
+    /// The time left on each paused timer
+    paused: HashMap<TimerId, Duration>,
     expired: Vec<TimerId>,
 }
 
@@ -62,6 +64,7 @@ impl Timer {
 
     /// Set a one-shot timer
     pub fn set(&mut self, id: TimerId, duration: Duration) {
+        self.paused.remove(id);
         self.timers.insert(
             id,
             TimerEntry {
@@ -74,6 +77,7 @@ impl Timer {
 
     /// Set a repeating timer
     pub fn set_repeating(&mut self, id: TimerId, interval: Duration) {
+        self.paused.remove(id);
         self.timers.insert(
             id,
             TimerEntry {
@@ -87,18 +91,28 @@ impl Timer {
     /// Cancel a timer
     pub fn cancel(&mut self, id: TimerId) {
         self.timers.remove(id);
+        self.paused.remove(id);
     }
 
     /// Pause a timer (keeps remaining time)
     pub fn pause(&mut self, id: TimerId) {
         if let Some(entry) = self.timers.get_mut(id) {
-            entry.active = false;
+            if entry.active {
+                entry.active = false;
+                let left = entry
+                    .expires_at
+                    .saturating_duration_since(crate::utils::clock::now());
+                self.paused.insert(id, left);
+            }
         }
     }
 
     /// Resume a paused timer
     pub fn resume(&mut self, id: TimerId) {
         if let Some(entry) = self.timers.get_mut(id) {
+            if let Some(left) = self.paused.remove(id) {
+                entry.expires_at = crate::utils::clock::now() + left;
+            }
             entry.active = true;
         }
     }
@@ -110,6 +124,9 @@ impl Timer {
 
     /// Get remaining time for a timer
     pub fn remaining(&self, id: TimerId) -> Option<Duration> {
+        if let Some(left) = self.paused.get(id) {
+            return Some(*left);
+        }
         self.timers.get(id).and_then(|entry| {
             let now = crate::utils::clock::now();
             if entry.expires_at > now {
@@ -145,8 +162,9 @@ impl Timer {
             }
 
             // Remove one-shot timers that expired
-            self.timers
-                .retain(|_, entry| entry.repeat.is_some() || entry.expires_at > now);
+            self.timers.retain(|_, entry| {
+                !entry.active || entry.repeat.is_some() || entry.expires_at > now
+            });
         }
 
         // Return one expired timer at a time

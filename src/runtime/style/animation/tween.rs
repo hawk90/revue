@@ -74,6 +74,7 @@ impl Tween {
     /// Start the animation
     pub fn start(&mut self) {
         self.start_time = Some(crate::utils::clock::now());
+        self.pause_time = None;
         self.state = AnimationState::Running;
         self.repeat_count = 0;
         self.current_direction = false;
@@ -132,8 +133,8 @@ impl Tween {
             return self.from;
         }
 
-        // Paused or Completed returns value based on direction
-        if self.state != AnimationState::Running {
+        // Completed returns value based on direction
+        if self.state == AnimationState::Completed {
             return if self.current_direction {
                 self.from
             } else {
@@ -145,7 +146,7 @@ impl Tween {
             return self.from;
         };
 
-        let elapsed = crate::utils::clock::since(start);
+        let elapsed = self.elapsed_since(start);
 
         // Handle delay
         if elapsed < self.delay {
@@ -155,7 +156,14 @@ impl Tween {
         let elapsed_after_delay = elapsed - self.delay;
         let progress = elapsed_after_delay.as_secs_f32() / self.duration.as_secs_f32();
 
-        if progress >= 1.0 {
+        // A paused tween holds where it stopped, so it finishes nothing
+        let progress = if self.state == AnimationState::Paused {
+            progress.min(1.0)
+        } else {
+            progress
+        };
+
+        if progress >= 1.0 && self.state == AnimationState::Running {
             // Check for repeat
             if self.repeat > 0 && self.repeat_count < self.repeat {
                 self.repeat_count += 1;
@@ -189,13 +197,21 @@ impl Tween {
         }
     }
 
+    /// The time run since `start`, which stops while paused
+    fn elapsed_since(&self, start: Instant) -> Duration {
+        match self.pause_time {
+            Some(pause) => pause.saturating_duration_since(start),
+            None => crate::utils::clock::since(start),
+        }
+    }
+
     /// Get progress (0.0 - 1.0)
     pub fn progress(&self) -> f32 {
         let Some(start) = self.start_time else {
             return 0.0;
         };
 
-        let elapsed = crate::utils::clock::since(start);
+        let elapsed = self.elapsed_since(start);
         if elapsed < self.delay {
             return 0.0;
         }

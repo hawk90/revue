@@ -376,7 +376,12 @@ fn test_toast_queue_paused_toasts_do_not_expire() {
     queue.tick();
     assert_eq!(queue.visible_count(), 1);
 
+    // The paused time does not count, so it is not gone at once (#884)
     queue.resume();
+    queue.tick();
+    assert_eq!(queue.visible_count(), 1);
+
+    sleep(Duration::from_millis(30));
     queue.tick();
     assert_eq!(queue.visible_count(), 0);
 }
