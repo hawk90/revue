@@ -110,7 +110,7 @@ impl MessageState {
     /// ```
     pub fn set(&mut self, message: String) {
         self.message = Some(message);
-        self.message_time = Some(Instant::now());
+        self.message_time = Some(crate::utils::clock::now());
         self.message_duration = None;
     }
 
@@ -133,7 +133,7 @@ impl MessageState {
     /// ```
     pub fn set_with_duration(&mut self, message: String, duration: Duration) {
         self.message = Some(message);
-        self.message_time = Some(Instant::now());
+        self.message_time = Some(crate::utils::clock::now());
         self.message_duration = Some(duration);
     }
 
@@ -177,7 +177,7 @@ impl MessageState {
     /// ```
     pub fn check_timeout(&mut self) -> bool {
         if let Some(time) = self.message_time {
-            if time.elapsed() >= self.current_duration() {
+            if crate::utils::clock::since(time) >= self.current_duration() {
                 self.clear();
                 return true; // Needs redraw
             }
@@ -190,7 +190,7 @@ impl MessageState {
     /// Returns `None` if no message is active.
     pub fn remaining(&self) -> Option<Duration> {
         self.message_time.map(|time| {
-            let elapsed = time.elapsed();
+            let elapsed = crate::utils::clock::since(time);
             self.current_duration().saturating_sub(elapsed)
         })
     }

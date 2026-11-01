@@ -24,7 +24,7 @@ impl Ticker {
         Self {
             last_tick: None,
             frame_count: 0,
-            fps_update_time: Instant::now(),
+            fps_update_time: crate::utils::clock::now(),
             fps: 0.0,
             target_fps: None,
         }
@@ -40,7 +40,7 @@ impl Ticker {
 
     /// Tick and get delta time in seconds
     pub fn tick(&mut self) -> f64 {
-        let now = Instant::now();
+        let now = crate::utils::clock::now();
         let dt = match self.last_tick {
             Some(last) => (now - last).as_secs_f64(),
             None => 1.0 / 60.0, // Default to 60fps on first tick
@@ -76,7 +76,7 @@ impl Ticker {
     /// Get time since last tick
     pub fn elapsed_since_tick(&self) -> Duration {
         match self.last_tick {
-            Some(last) => Instant::now() - last,
+            Some(last) => crate::utils::clock::now() - last,
             None => Duration::ZERO,
         }
     }

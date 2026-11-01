@@ -126,7 +126,7 @@ impl PerformancePlugin {
         Self {
             frame_times: Vec::with_capacity(120),
             max_samples: 120,
-            last_report: Instant::now(),
+            last_report: crate::utils::clock::now(),
             report_interval: Duration::from_secs(5),
         }
     }
@@ -208,7 +208,7 @@ impl Plugin for PerformancePlugin {
     }
 
     fn on_mount(&mut self, _ctx: &mut PluginContext) -> crate::Result<()> {
-        self.last_report = Instant::now();
+        self.last_report = crate::utils::clock::now();
         Ok(())
     }
 
@@ -225,7 +225,7 @@ impl Plugin for PerformancePlugin {
         ctx.set_data("frame_time_ms", delta.as_secs_f64() * 1000.0);
 
         // Periodic report
-        if self.last_report.elapsed() >= self.report_interval {
+        if crate::utils::clock::since(self.last_report) >= self.report_interval {
             let (min, max, avg) = self.frame_time_stats();
             ctx.log(&format!(
                 "FPS: {:.1} | Frame time: {:.2}ms (min: {:.2}ms, max: {:.2}ms)",
@@ -234,7 +234,7 @@ impl Plugin for PerformancePlugin {
                 min.as_secs_f64() * 1000.0,
                 max.as_secs_f64() * 1000.0
             ));
-            self.last_report = Instant::now();
+            self.last_report = crate::utils::clock::now();
         }
 
         Ok(())

@@ -38,7 +38,7 @@ impl Timer {
 
     /// Start the timer
     pub fn start(&mut self) {
-        self.start = Some(Instant::now());
+        self.start = Some(crate::utils::clock::now());
         self.elapsed_on_pause = Duration::ZERO;
         self.paused = false;
     }
@@ -54,7 +54,7 @@ impl Timer {
     /// Resume the timer
     pub fn resume(&mut self) {
         if self.paused {
-            self.start = Some(Instant::now() - self.elapsed_on_pause);
+            self.start = Some(crate::utils::clock::now() - self.elapsed_on_pause);
             self.paused = false;
         }
     }
@@ -85,7 +85,7 @@ impl Timer {
     /// Get elapsed time
     pub fn elapsed(&self) -> Duration {
         match self.start {
-            Some(start) if !self.paused => Instant::now() - start,
+            Some(start) if !self.paused => crate::utils::clock::now() - start,
             _ => self.elapsed_on_pause,
         }
     }

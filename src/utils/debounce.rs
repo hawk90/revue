@@ -99,7 +99,7 @@ impl Debouncer {
     ///
     /// Returns `true` if the handler should be called now.
     pub fn call(&mut self) -> bool {
-        let now = Instant::now();
+        let now = crate::utils::clock::now();
 
         match self.edge {
             Edge::Trailing => {
@@ -143,7 +143,7 @@ impl Debouncer {
         }
 
         if let Some(last) = self.last_call {
-            if last.elapsed() >= self.delay {
+            if crate::utils::clock::since(last) >= self.delay {
                 self.pending = false;
                 self.leading_fired = false;
                 self.last_call = None;
@@ -179,7 +179,7 @@ impl Debouncer {
             return None;
         }
         self.last_call.map(|last| {
-            let elapsed = last.elapsed();
+            let elapsed = crate::utils::clock::since(last);
             if elapsed >= self.delay {
                 Duration::ZERO
             } else {
@@ -261,11 +261,11 @@ impl Throttle {
     ///
     /// Returns `true` if the handler should be called now.
     pub fn call(&mut self) -> bool {
-        let now = Instant::now();
+        let now = crate::utils::clock::now();
 
         let can_execute = match self.last_exec {
             None => true,
-            Some(last) => last.elapsed() >= self.interval,
+            Some(last) => crate::utils::clock::since(last) >= self.interval,
         };
 
         match self.edge {
@@ -303,11 +303,11 @@ impl Throttle {
 
         let can_execute = match self.last_exec {
             None => true,
-            Some(last) => last.elapsed() >= self.interval,
+            Some(last) => crate::utils::clock::since(last) >= self.interval,
         };
 
         if can_execute && matches!(self.edge, Edge::Trailing | Edge::Both) {
-            self.last_exec = Some(Instant::now());
+            self.last_exec = Some(crate::utils::clock::now());
             self.pending = false;
             true
         } else {
@@ -336,7 +336,7 @@ impl Throttle {
         match self.last_exec {
             None => Duration::ZERO,
             Some(last) => {
-                let elapsed = last.elapsed();
+                let elapsed = crate::utils::clock::since(last);
                 if elapsed >= self.interval {
                     Duration::ZERO
                 } else {

@@ -65,7 +65,7 @@ impl Timer {
         self.timers.insert(
             id,
             TimerEntry {
-                expires_at: Instant::now() + duration,
+                expires_at: crate::utils::clock::now() + duration,
                 repeat: None,
                 active: true,
             },
@@ -77,7 +77,7 @@ impl Timer {
         self.timers.insert(
             id,
             TimerEntry {
-                expires_at: Instant::now() + interval,
+                expires_at: crate::utils::clock::now() + interval,
                 repeat: Some(interval),
                 active: true,
             },
@@ -111,7 +111,7 @@ impl Timer {
     /// Get remaining time for a timer
     pub fn remaining(&self, id: TimerId) -> Option<Duration> {
         self.timers.get(id).and_then(|entry| {
-            let now = Instant::now();
+            let now = crate::utils::clock::now();
             if entry.expires_at > now {
                 Some(entry.expires_at - now)
             } else {
@@ -125,7 +125,7 @@ impl Timer {
     pub fn poll_expired(&mut self) -> Option<TimerId> {
         // First, collect expired timers
         if self.expired.is_empty() {
-            let now = Instant::now();
+            let now = crate::utils::clock::now();
             let mut to_reschedule = Vec::new();
 
             for (&id, entry) in self.timers.iter_mut() {

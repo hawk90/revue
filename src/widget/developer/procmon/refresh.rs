@@ -27,12 +27,12 @@ impl ProcessMonitor {
     pub fn refresh(&mut self) {
         self.system.refresh_all();
         self.update_process_list();
-        self.last_update = std::time::Instant::now();
+        self.last_update = crate::utils::clock::now();
     }
 
     /// Check if update is needed
     pub fn needs_update(&self) -> bool {
-        self.last_update.elapsed().as_millis() >= self.update_interval as u128
+        crate::utils::clock::since(self.last_update).as_millis() >= self.update_interval as u128
     }
 
     /// Tick (auto-refresh if needed)

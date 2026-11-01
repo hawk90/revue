@@ -95,7 +95,7 @@ impl Stopwatch {
     /// Start the stopwatch
     pub fn start(&mut self) {
         if self.state != TimerState::Running {
-            self.started_at = Some(Instant::now());
+            self.started_at = Some(crate::utils::clock::now());
             self.state = TimerState::Running;
         }
     }
@@ -124,7 +124,7 @@ impl Stopwatch {
         self.accumulated_ms = 0;
         self.laps.clear();
         if self.state == TimerState::Running {
-            self.started_at = Some(Instant::now());
+            self.started_at = Some(crate::utils::clock::now());
         }
     }
 
@@ -148,7 +148,8 @@ impl Stopwatch {
     pub fn update(&mut self) {
         if self.state == TimerState::Running {
             if let Some(started) = self.started_at {
-                self.elapsed_ms = self.accumulated_ms + started.elapsed().as_millis() as u64;
+                self.elapsed_ms =
+                    self.accumulated_ms + crate::utils::clock::since(started).as_millis() as u64;
             }
         }
     }

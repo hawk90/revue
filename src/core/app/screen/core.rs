@@ -34,7 +34,7 @@ struct TransitionState {
 impl TransitionState {
     /// Get transition progress (0.0 to 1.0)
     fn progress(&self) -> f32 {
-        let elapsed = self.start.elapsed().as_secs_f32();
+        let elapsed = crate::utils::clock::since(self.start).as_secs_f32();
         let total = self.duration.as_secs_f32();
         (elapsed / total).min(1.0)
     }
@@ -84,7 +84,7 @@ impl ScreenManager {
     pub fn register_screen(&mut self, screen: Box<dyn Screen>) {
         let entry = StackEntry {
             screen,
-            _entered_at: Instant::now(),
+            _entered_at: crate::utils::clock::now(),
             visible: false,
         };
         // For direct registration, we push it but keep it hidden
@@ -144,7 +144,7 @@ impl ScreenManager {
         if config.enter_transition != Transition::None {
             self.transition = Some(TransitionState {
                 _transition: config.enter_transition,
-                start: Instant::now(),
+                start: crate::utils::clock::now(),
                 duration: config.transition_duration,
                 _entering: true,
             });
@@ -152,7 +152,7 @@ impl ScreenManager {
 
         self.stack.push(StackEntry {
             screen,
-            _entered_at: Instant::now(),
+            _entered_at: crate::utils::clock::now(),
             visible: true,
         });
 

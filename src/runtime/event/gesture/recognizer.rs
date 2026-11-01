@@ -1,7 +1,7 @@
 use super::{data::*, types::*};
 use crate::event::{MouseButton, MouseEvent, MouseEventKind};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// Gesture recognizer for terminal mouse interactions
 ///
@@ -204,7 +204,7 @@ impl GestureRecognizer {
 
         if let (Some(button), Some(press_time)) = (self.state.button_down, self.state.press_time) {
             if !self.state.long_press_detected && !self.state.is_dragging {
-                let elapsed = press_time.elapsed();
+                let elapsed = crate::utils::clock::since(press_time);
                 if elapsed >= self.config.long_press_duration {
                     self.state.long_press_detected = true;
 
@@ -239,7 +239,7 @@ impl GestureRecognizer {
                     duration: self
                         .state
                         .press_time
-                        .map(|t| t.elapsed())
+                        .map(crate::utils::clock::since)
                         .unwrap_or_default(),
                     button,
                     state: GestureState::Cancelled,
@@ -268,7 +268,7 @@ impl GestureRecognizer {
         self.state.current_y = y;
         self.state.prev_x = x;
         self.state.prev_y = y;
-        self.state.press_time = Some(Instant::now());
+        self.state.press_time = Some(crate::utils::clock::now());
         self.state.total_distance = 0.0;
         self.state.long_press_detected = false;
         self.state.is_dragging = false;
@@ -283,7 +283,7 @@ impl GestureRecognizer {
         }
 
         let press_time = self.state.press_time?;
-        let elapsed = press_time.elapsed();
+        let elapsed = crate::utils::clock::since(press_time);
 
         // Update final position
         self.state.current_x = x;
@@ -397,7 +397,7 @@ impl GestureRecognizer {
                     duration: self
                         .state
                         .press_time
-                        .map(|t| t.elapsed())
+                        .map(crate::utils::clock::since)
                         .unwrap_or_default(),
                     button,
                     state: GestureState::Active,
@@ -419,7 +419,7 @@ impl GestureRecognizer {
                 duration: self
                     .state
                     .press_time
-                    .map(|t| t.elapsed())
+                    .map(crate::utils::clock::since)
                     .unwrap_or_default(),
                 button,
                 state: GestureState::Active,
@@ -499,7 +499,7 @@ impl GestureRecognizer {
     }
 
     fn emit_tap(&mut self, x: u16, y: u16, button: MouseButton) -> Option<Gesture> {
-        let now = Instant::now();
+        let now = crate::utils::clock::now();
 
         // Check for double tap
         if let Some(last_time) = self.state.last_tap_time {
