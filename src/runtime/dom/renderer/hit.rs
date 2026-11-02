@@ -44,9 +44,11 @@ impl DomRenderer {
     /// [`node_at`](Self::node_at) resolved to the nearest enclosing focusable
     /// node. `None` when the click landed on nothing focusable, which is the
     /// common case - clicking a label must not steal focus from a text field.
+    /// So is a click on a control behind an open modal.
     pub fn focus_target_at(&self, x: u16, y: u16) -> Option<DomId> {
         let hit = self.node_at(x, y)?;
-        self.tree.focus_target(hit)
+        let target = self.tree.focus_target(hit)?;
+        self.is_inside_open_focus_scope(target).then_some(target)
     }
 
     /// Where a node was painted this frame.

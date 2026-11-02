@@ -14,7 +14,7 @@
 
 use super::selector::{parse_selectors, Selector};
 use super::{DomId, DomNode};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
 /// Query result - found nodes
@@ -225,11 +225,14 @@ impl DomTree {
         // frame - a form disables its submit button while it validates. It also
         // has to reach `NodeState`, since that is what `:disabled` matches.
         let disabled_changed = node.meta.disabled != new_meta.disabled;
+        // Changes frame to frame too: it follows a modal opening and closing.
+        let focus_scope_changed = node.meta.focus_scope != new_meta.focus_scope;
         if !id_changed
             && !classes_changed
             && !key_changed
             && !focusable_changed
             && !disabled_changed
+            && !focus_scope_changed
         {
             return false;
         }
@@ -274,6 +277,7 @@ impl DomTree {
             node.meta.key = new_meta.key.clone();
             node.meta.focusable = new_meta.focusable;
             node.meta.disabled = new_meta.disabled;
+            node.meta.focus_scope = new_meta.focus_scope;
             if disabled_changed {
                 node.state.disabled = new_meta.disabled;
                 // `:disabled` may now match or stop matching.
@@ -531,20 +535,59 @@ impl DomTree {
     pub fn focusable_in_order(&self) -> Vec<DomId> {
         let mut out = Vec::new();
         if let Some(root) = self.root_id() {
-            self.collect_focusable(root, &mut out);
+            self.collect_focusable(root, &HashSet::new(), &mut out);
         }
         out
     }
 
-    fn collect_focusable(&self, id: DomId, out: &mut Vec<DomId>) {
+    /// The nodes at and below `id` that can take focus, in document order,
+    /// leaving out the subtrees rooted at `hidden`.
+    pub(crate) fn collect_focusable(
+        &self,
+        id: DomId,
+        hidden: &HashSet<DomId>,
+        out: &mut Vec<DomId>,
+    ) {
         let Some(node) = self.nodes.get(&id) else {
             return;
         };
+        if hidden.contains(&id) {
+            return;
+        }
         if node.meta.focusable && !node.state.disabled {
             out.push(id);
         }
         for &child in &node.children {
-            self.collect_focusable(child, out);
+            self.collect_focusable(child, hidden, out);
+        }
+    }
+
+    /// The focus scope that holds focus now, if one is open.
+    ///
+    /// The last one in document order wins. That is both the innermost of
+    /// nested scopes and the top one of sibling scopes, since later nodes paint
+    /// over earlier ones. A scope inside a `hidden` subtree is not open: nobody
+    /// could see it or leave it.
+    pub(crate) fn open_focus_scope(&self, hidden: &HashSet<DomId>) -> Option<DomId> {
+        let mut open = None;
+        if let Some(root) = self.root_id() {
+            self.find_open_scope(root, hidden, &mut open);
+        }
+        open
+    }
+
+    fn find_open_scope(&self, id: DomId, hidden: &HashSet<DomId>, open: &mut Option<DomId>) {
+        let Some(node) = self.nodes.get(&id) else {
+            return;
+        };
+        if hidden.contains(&id) {
+            return;
+        }
+        if node.meta.focus_scope {
+            *open = Some(id);
+        }
+        for &child in &node.children {
+            self.find_open_scope(child, hidden, open);
         }
     }
 

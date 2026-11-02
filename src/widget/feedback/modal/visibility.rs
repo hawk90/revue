@@ -5,6 +5,9 @@ use crate::event::{FocusManager, FocusTrap};
 
 impl Modal {
     /// Show the modal
+    ///
+    /// While it is open, Tab and clicks only give focus to controls in its body,
+    /// never to anything behind it.
     pub fn show(&mut self) {
         self.visible = true;
     }
