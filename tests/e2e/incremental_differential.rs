@@ -16,6 +16,8 @@ const CSS: &str = "
     .a { color: rgb(255, 0, 0); }
     .b { color: rgb(0, 255, 0); }
     Text:first-child { background: rgb(1, 1, 1); }
+    .a + .b { color: rgb(0, 0, 255); }
+    .b ~ .a { background: rgb(2, 2, 2); }
     Text:focus { color: rgb(9, 9, 9); }
     Text:hover { color: rgb(8, 8, 8); }
 ";
@@ -293,30 +295,77 @@ proptest! {
     }
 }
 
-/// Sibling combinators are left out of [`CSS`] until this holds.
-#[test]
-#[ignore = "#1408: a sibling rule keeps its old match when a neighbor is reordered"]
-fn a_sibling_rule_follows_a_reorder_of_the_siblings_before_it() {
-    let css = ".a { color: rgb(255, 0, 0); } .b { color: rgb(0, 255, 0); } \
-               .a + .b { color: rgb(0, 0, 255); }";
-    let leaf = |id, class| Node::Leaf { id, class, text: 0 };
-    let page = |nodes| Page { nodes, keyed: true };
-    let plain = Node::Group {
-        id: 9,
-        children: Vec::new(),
+const SIBLING_CSS: &str = ".a { color: rgb(255, 0, 0); } .b { color: rgb(0, 255, 0); } \
+    .a + .b { color: rgb(0, 0, 255); } .b ~ .a { background: rgb(2, 2, 2); }";
+
+/// Draws `before` then `after`, and compares with a new app that only saw `after`.
+fn assert_follows(before: Vec<Node>, after: Vec<Node>) {
+    let new_harness = || {
+        PipelineHarness::with_css(SIBLING_CSS, 30, 30)
+            .dom_from_render(true)
+            .incremental_dom(true)
     };
-
-    let mut live = PipelineHarness::with_css(css, 30, 30)
-        .dom_from_render(true)
-        .incremental_dom(true);
-    live.draw(&page(vec![plain.clone(), leaf(1, 0), leaf(2, 1)]));
-    let after = page(vec![leaf(1, 0), plain, leaf(2, 1)]);
-    live.draw(&after);
+    let page = |nodes| Page { nodes, keyed: true };
+    let mut live = new_harness();
+    live.draw(&page(before));
+    let after = page(after);
     live.draw(&after);
 
-    let mut fresh = PipelineHarness::with_css(css, 30, 30)
-        .dom_from_render(true)
-        .incremental_dom(true);
+    let mut fresh = new_harness();
     fresh.draw(&after);
     assert_eq!(live.dom_outline(), fresh.dom_outline());
+}
+
+fn leaf(id: u32, class: u8) -> Node {
+    Node::Leaf { id, class, text: 0 }
+}
+
+fn empty_group(id: u32) -> Node {
+    Node::Group {
+        id,
+        children: Vec::new(),
+    }
+}
+
+/// The last child keeps its index, so only its neighbors moved (#1408).
+#[test]
+fn a_sibling_rule_follows_a_reorder_of_the_siblings_before_it() {
+    assert_follows(
+        vec![empty_group(9), leaf(1, 0), leaf(2, 1)],
+        vec![leaf(1, 0), empty_group(9), leaf(2, 1)],
+    );
+}
+
+#[test]
+fn a_sibling_rule_starts_to_match_when_a_reorder_makes_it() {
+    assert_follows(
+        vec![leaf(1, 0), empty_group(9), leaf(2, 1)],
+        vec![empty_group(9), leaf(1, 0), leaf(2, 1)],
+    );
+}
+
+#[test]
+fn a_general_sibling_rule_follows_a_reorder() {
+    assert_follows(
+        vec![leaf(1, 0), leaf(2, 1), leaf(3, 0)],
+        vec![leaf(2, 1), leaf(1, 0), leaf(3, 0)],
+    );
+    assert_follows(
+        vec![leaf(2, 1), leaf(1, 0), leaf(3, 0)],
+        vec![leaf(1, 0), leaf(3, 0), leaf(2, 1)],
+    );
+}
+
+#[test]
+fn a_sibling_rule_follows_a_removed_neighbor() {
+    assert_follows(vec![leaf(1, 0), leaf(2, 1)], vec![leaf(2, 1)]);
+}
+
+#[test]
+fn a_sibling_rule_follows_an_inserted_neighbor() {
+    assert_follows(vec![leaf(2, 1)], vec![leaf(1, 0), leaf(2, 1)]);
+    assert_follows(
+        vec![leaf(1, 0), leaf(2, 1)],
+        vec![leaf(1, 0), empty_group(9), leaf(2, 1)],
+    );
 }
