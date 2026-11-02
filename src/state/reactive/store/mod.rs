@@ -116,7 +116,13 @@ pub trait Store: Any + Send + Sync {
 
 /// Store extension trait for common operations
 pub trait StoreExt: Store {
-    /// Subscribe to state changes (simplified)
+    /// Does nothing yet: the returned value is never told about a change.
+    ///
+    /// To react to a store, read its signals in an `effect`.
+    #[deprecated(
+        since = "3.14.0",
+        note = "a placeholder that is never notified; read the store's signals in an `effect`"
+    )]
     fn subscribe(&self) -> StoreSubscription;
 
     /// Check if store matches a given name
@@ -336,6 +342,7 @@ mod tests {
             name: "test".to_string(),
         });
 
+        #[allow(deprecated)]
         let sub = store.subscribe();
         assert_eq!(sub.store_id, store.id());
     }

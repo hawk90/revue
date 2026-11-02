@@ -22,6 +22,8 @@ struct ChannelInner<T> {
     /// Set by the first `Cancel` and never cleared: cancellation must not
     /// depend on room in the command queue, nor end once the command is read.
     cancelled: Arc<AtomicBool>,
+    /// How many `WorkerSender`s are alive
+    senders: Arc<AtomicUsize>,
 }
 
 impl<T: Clone> Clone for ChannelInner<T> {
@@ -33,6 +35,7 @@ impl<T: Clone> Clone for ChannelInner<T> {
             message_count: Arc::clone(&self.message_count),
             command_count: Arc::clone(&self.command_count),
             cancelled: Arc::clone(&self.cancelled),
+            senders: Arc::clone(&self.senders),
         }
     }
 }
@@ -99,12 +102,14 @@ impl<T: Clone> WorkerChannel<T> {
                 message_count: Arc::new(AtomicUsize::new(0)),
                 command_count: Arc::new(AtomicUsize::new(0)),
                 cancelled: Arc::new(AtomicBool::new(false)),
+                senders: Arc::new(AtomicUsize::new(0)),
             },
         }
     }
 
     /// Create a sender/receiver pair
     pub fn split(&self) -> (WorkerSender<T>, WorkerReceiver<T>) {
+        self.inner.senders.fetch_add(1, Ordering::Relaxed);
         (
             WorkerSender {
                 inner: self.inner.clone(),
@@ -263,9 +268,16 @@ impl<T: Clone> WorkerSender<T> {
 
 impl<T: Clone> Clone for WorkerSender<T> {
     fn clone(&self) -> Self {
+        self.inner.senders.fetch_add(1, Ordering::Relaxed);
         Self {
             inner: self.inner.clone(),
         }
+    }
+}
+
+impl<T> Drop for WorkerSender<T> {
+    fn drop(&mut self) {
+        self.inner.senders.fetch_sub(1, Ordering::Release);
     }
 }
 
@@ -329,6 +341,22 @@ impl<T: Clone> WorkerReceiver<T> {
     /// Get message count (lock-free)
     pub fn message_count(&self) -> usize {
         self.inner.message_count.load(Ordering::Acquire)
+    }
+
+    /// Check if every sender is gone, so no more messages can come (lock-free)
+    ///
+    /// Tells a worker that ended, even by a panic, without sending `Complete`
+    /// or `Error` from one that has nothing to say yet: `recv` returns `None`
+    /// for both.
+    ///
+    /// Messages it sent before that are still queued. Check this first and
+    /// `recv` after: the other way round, a last message can arrive in between
+    /// and be missed.
+    ///
+    /// A worker that sends through a clone of [`WorkerChannel`] instead of a
+    /// [`WorkerSender`] is not counted.
+    pub fn is_closed(&self) -> bool {
+        self.inner.senders.load(Ordering::Acquire) == 0
     }
 }
 
@@ -781,5 +809,56 @@ mod tests {
         let (worker, ui) = zero.split();
         ui.cancel();
         assert!(worker.is_cancelled());
+    }
+
+    #[test]
+    fn a_receiver_is_open_while_any_sender_lives() {
+        let channel: WorkerChannel<i32> = WorkerChannel::new();
+        let (sender, receiver) = channel.split();
+        assert!(!receiver.is_closed());
+
+        let clone = sender.clone();
+        drop(sender);
+        assert!(!receiver.is_closed(), "the clone is still there");
+
+        drop(clone);
+        assert!(receiver.is_closed());
+    }
+
+    #[test]
+    fn a_receiver_stays_open_when_a_second_split_is_alive() {
+        let channel: WorkerChannel<i32> = WorkerChannel::new();
+        let (first, receiver) = channel.split();
+        let (second, _) = channel.split();
+
+        drop(first);
+        assert!(!receiver.is_closed());
+        drop(second);
+        assert!(receiver.is_closed());
+    }
+
+    #[test]
+    fn messages_sent_before_the_sender_dropped_can_still_be_read() {
+        let channel: WorkerChannel<i32> = WorkerChannel::new();
+        let (sender, receiver) = channel.split();
+        assert!(sender.partial(7));
+        drop(sender);
+
+        assert!(receiver.is_closed());
+        assert!(matches!(receiver.recv(), Some(WorkerMessage::Partial(7))));
+        assert!(receiver.recv().is_none());
+        assert!(receiver.is_closed());
+    }
+
+    #[test]
+    fn a_worker_that_panics_closes_the_channel() {
+        let channel: WorkerChannel<i32> = WorkerChannel::new();
+        let (sender, receiver) = channel.split();
+        let worker = std::thread::spawn(move || {
+            let _sender = sender;
+            std::panic::resume_unwind(Box::new("worker failed"));
+        });
+        assert!(worker.join().is_err());
+        assert!(receiver.is_closed());
     }
 }

@@ -302,26 +302,30 @@ pub trait View {
 
     /// Check if this widget needs re-rendering
     ///
-    /// Returns `true` by default (always re-render). Widgets can override
-    /// this to skip rendering when their state hasn't changed, improving
-    /// performance for complex UIs.
+    /// Returns `true` by default. When it returns `false`, [`Stack`] does not
+    /// draw this child in that frame. Other containers do not read it.
     ///
-    /// Container widgets use this to skip rendering unchanged children.
+    /// [`Stack`]: crate::widget::Stack
+    ///
+    /// **A skipped child is not kept.** The frame buffer is cleared every frame,
+    /// so what the child drew last frame is gone and its area stays blank. Use
+    /// this to leave a widget out of a frame, not to cache its output: a widget
+    /// on screen has to return `true` even when nothing about it changed.
     ///
     /// # Example
     ///
     /// ```ignore
-    /// struct CachedWidget {
-    ///     dirty: bool,
+    /// struct Panel {
+    ///     shown: bool,
     ///     content: String,
     /// }
     ///
-    /// impl View for CachedWidget {
+    /// impl View for Panel {
     ///     fn needs_render(&self) -> bool {
-    ///         self.dirty
+    ///         self.shown
     ///     }
     ///     fn render(&self, ctx: &mut RenderContext) {
-    ///         // Only called when needs_render() returns true
+    ///         // Not called when needs_render() returns false, and the area is blank
     ///         ctx.draw_text(0, 0, &self.content, Color::WHITE);
     ///     }
     /// }
