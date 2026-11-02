@@ -1537,11 +1537,13 @@ items:
       - left click focuses nearest focusable ancestor
       - needs dom_from_render (on by default)
       - a handler calling app.prevent_default() keeps that Tab
+      - an open Modal keeps Tab, Shift+Tab and clicks inside itself
     evidence:
       - src/core/app/builder.rs::tab_navigation
       - tests/runtime/event/tab_navigation.rs::tab_moves_to_the_next_control_in_document_order
       - tests/runtime/event/tab_navigation.rs::a_handler_that_prevents_default_keeps_tab
       - tests/runtime/event/click.rs::clicking_a_control_focuses_it
+      - tests/runtime/event/modal_focus.rs::tab_walks_the_body_and_wraps_inside_it
     source:
       - FEATURES.md §5 Navigation / Focus Management
   - id: NAV-003

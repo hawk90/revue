@@ -3330,6 +3330,7 @@ entries:
       - "modal은 focus scope이고 dispatcher에서 조상으로 취급된다 (#1142)."
     checked:
       - "2026-10-20 코드 읽기로 의심: Tab은 `dom.focus_next()`로 가고 `focusable_in_order`는 scope나 trap 없이 DOM 전체를 돈다. Modal의 focus trap은 자기 `FocusManager`에 있어 DOM Tab ring과 이어지지 않는다 (docs/refactor/phase2-hit-test.md). 새는 것을 재현한 테스트는 없다."
+      - "2026-11-02: #1193으로 DOM Tab ring과 클릭 focus는 열린 Modal 안에 머문다 (`WidgetMeta.focus_scope`, tests/runtime/event/modal_focus.rs). shortcut 등 key 전달의 경계와 focus 주인 통합은 #1142로 남는다."
   - id: REV-UX-005
     title: "No Small-Terminal Strategy"
     category: ux
