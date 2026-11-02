@@ -18,7 +18,7 @@
 mod definition;
 mod manager;
 
-pub(crate) use definition::parse_duration;
+pub(crate) use definition::{cubic_bezier, parse_duration, split_outside_parens};
 pub use definition::{Easing, Transition, Transitions};
 pub use manager::{effective_duration, should_skip_animation, ActiveTransition, TransitionManager};
 

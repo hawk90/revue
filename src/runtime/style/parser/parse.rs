@@ -342,19 +342,36 @@ fn parse_declarations_str(
         pos += 1;
         pos = skip_whitespace_bytes(bytes, pos);
 
-        // Read value until ';' or '}'
-        let start = pos;
+        // Read value until ';' or '}'. A comment counts for a space, as in CSS,
+        // and nothing inside one ends the value.
+        let mut value = String::new();
+        let mut start = pos;
         let mut paren_depth: i32 = 0;
+        let mut quote = None;
         while pos < bytes.len() {
-            match bytes[pos] {
-                b'(' => paren_depth += 1,
-                b')' => paren_depth = paren_depth.saturating_sub(1),
-                b';' | b'}' if paren_depth == 0 => break,
+            match (quote, bytes[pos]) {
+                // A string ends at its quote, or at the line end if it is broken
+                (Some(open), c) if c == open || c == b'\n' => quote = None,
+                (Some(_), _) => {}
+                (None, c @ (b'"' | b'\'')) => quote = Some(c),
+                (None, b'/') if bytes.get(pos + 1) == Some(&b'*') => {
+                    value.push_str(&css[start..pos]);
+                    value.push(' ');
+                    pos = css[pos + 2..]
+                        .find("*/")
+                        .map_or(bytes.len(), |end| pos + 2 + end + 2);
+                    start = pos;
+                    continue;
+                }
+                (None, b'(') => paren_depth += 1,
+                (None, b')') => paren_depth = paren_depth.saturating_sub(1),
+                (None, b';' | b'}') if paren_depth == 0 => break,
                 _ => {}
             }
             pos += 1;
         }
-        let value = css[start..pos].trim().to_string();
+        value.push_str(&css[start..pos]);
+        let value = value.trim().to_string();
 
         if !property.is_empty() {
             declarations.push(Declaration { property, value });
@@ -438,11 +455,30 @@ fn parse_keyframes_block(
             ));
         }
 
-        // Parse keyframe selector (from, to, N%)
-        let (percent, new_pos) = parse_keyframe_selector(css, pos)?;
-        pos = new_pos;
-
-        pos = skip_whitespace_bytes(bytes, pos);
+        // Parse the keyframe selectors (from, to, N%), one or a list
+        let mut percents = Vec::new();
+        loop {
+            let (percent, new_pos) = parse_keyframe_selector(css, pos)?;
+            percents.push(percent);
+            pos = skip_whitespace_and_comments_bytes(bytes, new_pos);
+            if pos >= bytes.len() || bytes[pos] != b',' {
+                break;
+            }
+            pos = skip_whitespace_and_comments_bytes(bytes, pos + 1);
+        }
+        if keyframe_blocks.len() + percents.len() > MAX_KEYFRAME_BLOCKS {
+            return Err(make_error(
+                css,
+                pos,
+                &format!(
+                    "Too many keyframe blocks in @keyframes '{}': {} (max: {})",
+                    name,
+                    keyframe_blocks.len() + percents.len(),
+                    MAX_KEYFRAME_BLOCKS
+                ),
+                ErrorCode::InvalidValue,
+            ));
+        }
 
         // Expect '{'
         if pos >= bytes.len() || bytes[pos] != b'{' {
@@ -465,10 +501,12 @@ fn parse_keyframes_block(
         }
         pos += 1;
 
-        keyframe_blocks.push(crate::style::KeyframeBlock {
-            percent,
-            declarations,
-        });
+        for percent in percents {
+            keyframe_blocks.push(crate::style::KeyframeBlock {
+                percent,
+                declarations: declarations.clone(),
+            });
+        }
     }
 
     sheet.keyframes.insert(
