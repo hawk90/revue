@@ -300,6 +300,73 @@ jobs:
         with:
           config: .typos.toml
 
+  # Instruction counts against the base branch (#1168). Criterion times only
+  # compare within one session, so they cannot gate; Callgrind's counts are the
+  # same on every run. A benchmark that costs 5% more than on the base fails
+  # the PR. A change that has to cost more says so with the `perf-accepted`
+  # label (then re-run this job), and the counts are still reported.
+  instructions:
+    name: Instructions
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      # Base and PR builds share one target dir and one baseline home
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+      GUNGRAUN_HOME: ${{ github.workspace }}/gungraun
+    steps:
+      # Side by side, so neither checkout sits inside the other's workspace
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: pr
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+      - name: Install Valgrind and gungraun-runner
+        working-directory: pr
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q valgrind
+          version=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "gungraun") | .version')
+          echo "GUNGRAUN_VERSION=$version" >> "$GITHUB_ENV"
+          cargo install gungraun-runner --version "$version" --locked
+      - name: Base
+        working-directory: base
+        run: |
+          # Nothing to compare with before the base has the benchmarks, or
+          # when it uses another gungraun version than the runner
+          if [ ! -f benches/instructions.rs ]; then
+            echo "No baseline: the base has no instruction benchmarks."
+            exit 0
+          fi
+          base_version=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "gungraun") | .version')
+          if [ "$base_version" != "$GUNGRAUN_VERSION" ]; then
+            echo "No baseline: the base uses gungraun $base_version, the PR $GUNGRAUN_VERSION."
+            exit 0
+          fi
+          cargo bench --all-features --bench instructions -- --save-baseline=base
+      - name: PR
+        working-directory: pr
+        # pipefail: without it the exit of `tee`, not of the benchmarks, is
+        # the step's, and a regression passes
+        shell: bash
+        env:
+          ACCEPTED: ${{ contains(github.event.pull_request.labels.*.name, 'perf-accepted') }}
+        run: |
+          limits=(--callgrind-limits='ir=5%')
+          if [ "$ACCEPTED" = "true" ]; then
+            echo "perf-accepted: reporting the counts without failing on them."
+            limits=()
+          fi
+          cargo bench --all-features --bench instructions -- --baseline=base "${limits[@]}" | tee ../counts.txt
+          # A count of zero means Callgrind measured nothing (stripped symbols),
+          # and a gate on nothing passes everything
+          if grep -qE '^ +Instructions: +0\|' ../counts.txt; then
+            echo "::error::A benchmark counted no instructions; Callgrind did not find the benchmark code."
+            exit 1
+          fi
+
   # The public API against tests/public-api.txt (#1172). A PR that adds items
   # blesses the snapshot, so reviewers see each addition; a PR that removes or
   # changes a line must say it is breaking in its title (`feat!:`), which keeps
@@ -347,7 +414,7 @@ jobs:
   ci-gate:
     name: CI Gate
     if: always()
-    needs: [changes, fmt, clippy, features, test, standalone, coverage, msrv, docs, typos, public-api]
+    needs: [changes, fmt, clippy, features, test, standalone, coverage, msrv, docs, typos, public-api, instructions]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -364,9 +431,10 @@ jobs:
           DOCS: ${{ needs.docs.result }}
           TYPOS: ${{ needs.typos.result }}
           PUBLIC_API: ${{ needs.public-api.result }}
+          INSTRUCTIONS: ${{ needs.instructions.result }}
         run: |
           fail=0
-          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "features:$FEATURES" "test:$TEST" "standalone:$STANDALONE" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS" "public-api:$PUBLIC_API"; do
+          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "features:$FEATURES" "test:$TEST" "standalone:$STANDALONE" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS" "public-api:$PUBLIC_API" "instructions:$INSTRUCTIONS"; do
             job="${pair%%:*}"
             res="${pair#*:}"
             if [ "$res" = "success" ] || [ "$res" = "skipped" ]; then

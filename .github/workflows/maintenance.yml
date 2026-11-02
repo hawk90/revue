@@ -140,7 +140,8 @@ jobs:
       - name: Run benchmarks
         run: |
           echo "## ⚡ Benchmarks" >> $GITHUB_STEP_SUMMARY
-          cargo bench --all-features -- --noplot 2>&1 | grep -E "time:" | head -20 >> $GITHUB_STEP_SUMMARY || echo "No results" >> $GITHUB_STEP_SUMMARY
+          # The Criterion benches; `instructions` needs Valgrind and runs in CI
+          cargo bench --all-features --bench render --bench layout --bench css --bench dom --bench widget --bench patterns --bench utils --bench frame -- --noplot 2>&1 | grep -E "time:" | head -20 >> $GITHUB_STEP_SUMMARY || echo "No results" >> $GITHUB_STEP_SUMMARY
 
   notify-outdated:
     name: Create Outdated Issue
