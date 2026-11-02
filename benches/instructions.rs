@@ -126,27 +126,50 @@ library_benchmark_group!(
 // ---------------------------------------------------------------------------
 // DOM: build and reconcile
 
-fn rows_view(rows: usize) -> Rows {
-    Rows { n: rows, tick: 0 }
+/// The same rows as a widget tree the DOM builder walks: a custom view's
+/// `render` is not seen by `DomRenderer::build`, so `Rows` would build one node.
+fn rows_tree(rows: usize, tick: usize) -> Stack {
+    let mut stack = vstack().element_id("root");
+    for i in 0..rows {
+        stack = stack.child(
+            Text::new(format!("row {i} value {tick}"))
+                .element_id(format!("r{i}"))
+                .class(if i % 2 == 0 { "even" } else { "odd" }),
+        );
+    }
+    stack
 }
 
-fn built(rows: usize) -> (DomRenderer, Rows) {
+fn tree(rows: usize) -> Stack {
+    rows_tree(rows, 0)
+}
+
+fn built(rows: usize) -> (DomRenderer, Stack) {
     let mut renderer = DomRenderer::new();
-    renderer.build(&Rows { n: rows, tick: 0 });
-    (renderer, Rows { n: rows, tick: 1 })
+    renderer.build(&rows_tree(rows, 0));
+    (renderer, rows_tree(rows, 1))
+}
+
+/// Every row became a node: the build walked the tree (REV-PERF-007).
+fn has_all_rows(renderer: DomRenderer) {
+    assert!(
+        renderer.tree().len() > 50,
+        "{} nodes",
+        renderer.tree().len()
+    );
 }
 
 #[library_benchmark]
-#[bench::rows_50(args = (50), setup = rows_view)]
-fn dom_build(view: Rows) -> DomRenderer {
+#[bench::rows_50(args = (50), setup = tree, teardown = has_all_rows)]
+fn dom_build(view: Stack) -> DomRenderer {
     let mut renderer = DomRenderer::new();
     renderer.build(black_box(&view));
     renderer
 }
 
 #[library_benchmark]
-#[bench::rows_50(args = (50), setup = built)]
-fn dom_reconcile_text_change((mut renderer, view): (DomRenderer, Rows)) -> DomRenderer {
+#[bench::rows_50(args = (50), setup = built, teardown = has_all_rows)]
+fn dom_reconcile_text_change((mut renderer, view): (DomRenderer, Stack)) -> DomRenderer {
     renderer.build(black_box(&view));
     renderer
 }
