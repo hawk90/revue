@@ -3,15 +3,26 @@
 use super::{Plugin, PluginContext};
 use std::time::Duration;
 
-/// A registered plugin, and whether a panic has disabled it.
+/// A registered plugin and how far through its lifecycle it is.
+///
+/// Kept per plugin because the list re-sorts on every `register`: a count of
+/// "the first n are done" would point at other plugins afterwards (#877).
 struct Entry {
     plugin: Box<dyn Plugin>,
+    /// A panic has disabled it
     disabled: bool,
+    /// `on_init` succeeded
+    initialized: bool,
+    /// `on_mount` succeeded and `on_unmount` has not run since
+    mounted: bool,
 }
 
 /// Registry for managing plugins
 ///
 /// Handles plugin lifecycle, ordering by priority, and collecting styles.
+///
+/// A plugin is mounted only after its `on_init` succeeded, and only mounted
+/// plugins get `on_tick` and `on_unmount`.
 ///
 /// # Panicking plugins
 ///
@@ -29,16 +40,10 @@ pub struct PluginRegistry {
     plugins: Vec<Entry>,
     /// Shared context
     context: PluginContext,
-    /// Whether plugins have been initialized
+    /// [`init`](Self::init) has gone through every plugin
     initialized: bool,
-    /// How many plugins (in order) `on_init` has succeeded for: a retry after
-    /// a failure goes on from the one that failed
-    init_done: usize,
-    /// Whether plugins have been mounted
+    /// [`mount`](Self::mount) has gone through every plugin
     mounted: bool,
-    /// How many plugins (in order) are mounted: after a failed `mount` these
-    /// are still mounted, and `unmount` must unmount them
-    mount_done: usize,
 }
 
 /// How one plugin hook went.
@@ -55,34 +60,46 @@ impl PluginRegistry {
             plugins: Vec::new(),
             context: PluginContext::new(),
             initialized: false,
-            init_done: 0,
             mounted: false,
-            mount_done: 0,
         }
     }
 
     /// Register a plugin
     ///
     /// Plugins are sorted by priority (higher priority runs first).
+    ///
+    /// A plugin registered after [`init`](Self::init) or [`mount`](Self::mount)
+    /// has finished catches up here: it gets the hooks it missed, so it ticks
+    /// like the others. A hook that fails is logged to the context as usual and
+    /// the next `init` or `mount` tries it again; until then the plugin does
+    /// not tick. Its [`styles`](Plugin::styles) are not applied, since
+    /// the stylesheet was built with the app.
     pub fn register<P: Plugin + 'static>(&mut self, plugin: P) {
-        let priority = plugin.priority();
-        self.plugins.push(Entry {
+        let mut entry = Entry {
             plugin: Box::new(plugin),
             disabled: false,
-        });
+            initialized: false,
+            mounted: false,
+        };
+        crate::log_debug!(
+            "Registered plugin '{}' with priority {}",
+            entry.plugin.name(),
+            entry.plugin.priority()
+        );
+
+        // Errors and panics are already in the context's log, and there is no
+        // caller to return them to: `App::plugins_mut` hands out a plain
+        // registry to code that is not expecting a `Result` from this.
+        if self.mounted {
+            let _ = Self::mount_entry(&mut entry, &mut self.context);
+        } else if self.initialized {
+            let _ = Self::init_entry(&mut entry, &mut self.context);
+        }
+        self.plugins.push(entry);
 
         // Sort by priority (descending)
         self.plugins
             .sort_by_key(|e| std::cmp::Reverse(e.plugin.priority()));
-
-        crate::log_debug!(
-            "Registered plugin '{}' with priority {}",
-            self.plugins
-                .last()
-                .map(|e| e.plugin.name())
-                .unwrap_or("unknown"),
-            priority
-        );
     }
 
     /// Get number of registered plugins
@@ -174,6 +191,30 @@ impl PluginRegistry {
         hook
     }
 
+    /// Run `on_init` unless the plugin is done with it or disabled.
+    fn init_entry(entry: &mut Entry, context: &mut PluginContext) -> Hook {
+        if entry.initialized || entry.disabled {
+            return Hook::Ok;
+        }
+        let hook = Self::run_hook(entry, context, "Init", |p, ctx| p.on_init(ctx));
+        entry.initialized = matches!(hook, Hook::Ok);
+        hook
+    }
+
+    /// Take the plugin as far as mounted, `on_init` first if it is still owed.
+    fn mount_entry(entry: &mut Entry, context: &mut PluginContext) -> Hook {
+        let init = Self::init_entry(entry, context);
+        if !matches!(init, Hook::Ok) {
+            return init;
+        }
+        if entry.mounted || entry.disabled {
+            return Hook::Ok;
+        }
+        let hook = Self::run_hook(entry, context, "Mount", |p, ctx| p.on_mount(ctx));
+        entry.mounted = matches!(hook, Hook::Ok);
+        hook
+    }
+
     /// Initialize all plugins
     ///
     /// Called once when the app is being built.
@@ -183,22 +224,15 @@ impl PluginRegistry {
     /// twice. A plugin whose `on_init` panics is disabled instead, and the
     /// others are still initialized; the panic is returned as the error.
     pub fn init(&mut self) -> crate::Result<()> {
-        if self.initialized {
-            return Ok(());
-        }
-
         let mut panicked = None;
-        for entry in self.plugins.iter_mut().skip(self.init_done) {
-            if !entry.disabled {
-                match Self::run_hook(entry, &mut self.context, "Init", |p, ctx| p.on_init(ctx)) {
-                    Hook::Ok => {}
-                    Hook::Failed(e) => return Err(e),
-                    Hook::Panicked(e) => {
-                        panicked.get_or_insert(e);
-                    }
+        for entry in &mut self.plugins {
+            match Self::init_entry(entry, &mut self.context) {
+                Hook::Ok => {}
+                Hook::Failed(e) => return Err(e),
+                Hook::Panicked(e) => {
+                    panicked.get_or_insert(e);
                 }
             }
-            self.init_done += 1;
         }
 
         self.initialized = true;
@@ -209,44 +243,42 @@ impl PluginRegistry {
     ///
     /// Called when the app starts running.
     ///
-    /// Stops at the first plugin whose `on_mount` fails and returns its
-    /// error. The plugins mounted before it stay mounted: [`unmount`](Self::unmount)
-    /// unmounts them, and calling `mount` again goes on from the one that failed.
-    /// A plugin whose `on_mount` panics is disabled instead, and the others are
-    /// still mounted; the panic is returned as the error.
+    /// A plugin whose `on_init` has not succeeded gets it first, and is not
+    /// mounted unless it does.
+    ///
+    /// Stops at the first plugin that fails and returns its error. The plugins
+    /// mounted before it stay mounted: [`unmount`](Self::unmount) unmounts them,
+    /// and calling `mount` again goes on from the one that failed. Until then it
+    /// and the plugins after it do not tick. A plugin whose hook panics is
+    /// disabled instead, and the others are still mounted; the panic is returned
+    /// as the error.
     pub fn mount(&mut self) -> crate::Result<()> {
-        if self.mounted {
-            return Ok(());
-        }
-
         self.context.set_running(true);
 
         let mut panicked = None;
-        for entry in self.plugins.iter_mut().skip(self.mount_done) {
-            if !entry.disabled {
-                match Self::run_hook(entry, &mut self.context, "Mount", |p, ctx| p.on_mount(ctx)) {
-                    Hook::Ok => {}
-                    Hook::Failed(e) => return Err(e),
-                    Hook::Panicked(e) => {
-                        panicked.get_or_insert(e);
-                    }
+        for entry in &mut self.plugins {
+            match Self::mount_entry(entry, &mut self.context) {
+                Hook::Ok => {}
+                Hook::Failed(e) => return Err(e),
+                Hook::Panicked(e) => {
+                    panicked.get_or_insert(e);
                 }
             }
-            self.mount_done += 1;
         }
 
+        self.initialized = true;
         self.mounted = true;
         panicked.map_or(Ok(()), Err)
     }
 
     /// Tick all plugins
     ///
-    /// Called on each frame update. A failing tick does not stop the plugins
-    /// after it. A panicking one disables its plugin and is returned as the
-    /// error once every plugin has ticked.
+    /// Called on each frame update, for the mounted plugins only. A failing
+    /// tick does not stop the plugins after it. A panicking one disables its
+    /// plugin and is returned as the error once every plugin has ticked.
     pub fn tick(&mut self, delta: Duration) -> crate::Result<()> {
         let mut panicked = None;
-        for entry in self.plugins.iter_mut().filter(|e| !e.disabled) {
+        for entry in self.plugins.iter_mut().filter(|e| e.mounted && !e.disabled) {
             // Continue with other plugins even if one fails
             if let Hook::Panicked(e) = Self::run_hook(entry, &mut self.context, "Tick", |p, ctx| {
                 p.on_tick(ctx, delta)
@@ -267,20 +299,18 @@ impl PluginRegistry {
     /// been unmounted.
     pub fn unmount(&mut self) -> crate::Result<()> {
         // Not mounted - and no plugins left mounted by a mount that failed
-        if !self.mounted && self.mount_done == 0 {
+        if !self.mounted && !self.plugins.iter().any(|e| e.mounted) {
             return Ok(());
         }
 
         self.context.set_running(false);
 
         // Unmount in reverse order - only the plugins that were mounted
-        let mounted = self.mount_done.min(self.plugins.len());
         let mut panicked = None;
-        for entry in self.plugins[..mounted]
-            .iter_mut()
-            .rev()
-            .filter(|e| !e.disabled)
-        {
+        for entry in self.plugins.iter_mut().rev() {
+            if !std::mem::take(&mut entry.mounted) || entry.disabled {
+                continue;
+            }
             // Continue with other plugins even if one fails
             if let Hook::Panicked(e) =
                 Self::run_hook(entry, &mut self.context, "Unmount", |p, ctx| {
@@ -292,7 +322,6 @@ impl PluginRegistry {
         }
 
         self.mounted = false;
-        self.mount_done = 0;
         panicked.map_or(Ok(()), Err)
     }
 
@@ -793,5 +822,254 @@ mod tests {
         let log = log.lock().unwrap();
         assert_eq!(log.iter().filter(|e| *e == "first:init").count(), 1);
         assert_eq!(log.iter().filter(|e| *e == "second:init").count(), 2);
+    }
+
+    /// Records every hook, tick included; fails `fail_in` if it names one.
+    struct Ticker {
+        name: &'static str,
+        priority: i32,
+        fail_in: &'static str,
+        log: Log,
+    }
+
+    type Log = std::sync::Arc<std::sync::Mutex<Vec<String>>>;
+
+    impl Ticker {
+        fn hook(&self, hook: &str) -> crate::Result<()> {
+            self.log
+                .lock()
+                .unwrap()
+                .push(format!("{}:{hook}", self.name));
+            match hook == self.fail_in {
+                true => Err(crate::Error::Render(format!("{hook} failed"))),
+                false => Ok(()),
+            }
+        }
+    }
+
+    impl Plugin for Ticker {
+        fn name(&self) -> &str {
+            self.name
+        }
+        fn priority(&self) -> i32 {
+            self.priority
+        }
+        fn on_init(&mut self, _: &mut PluginContext) -> crate::Result<()> {
+            self.hook("init")
+        }
+        fn on_mount(&mut self, _: &mut PluginContext) -> crate::Result<()> {
+            self.hook("mount")
+        }
+        fn on_tick(&mut self, _: &mut PluginContext, _: Duration) -> crate::Result<()> {
+            self.hook("tick")
+        }
+        fn on_unmount(&mut self, _: &mut PluginContext) -> crate::Result<()> {
+            self.hook("unmount")
+        }
+    }
+
+    struct Rig {
+        registry: PluginRegistry,
+        log: Log,
+    }
+
+    impl Rig {
+        fn new() -> Self {
+            Self {
+                registry: PluginRegistry::new(),
+                log: Log::default(),
+            }
+        }
+
+        fn add(&mut self, name: &'static str, priority: i32, fail_in: &'static str) {
+            self.registry.register(Ticker {
+                name,
+                priority,
+                fail_in,
+                log: self.log.clone(),
+            });
+        }
+
+        fn tick(&mut self) {
+            self.registry.tick(Duration::from_millis(16)).unwrap();
+        }
+
+        /// Everything logged since the last call.
+        fn drain(&self) -> Vec<String> {
+            std::mem::take(&mut *self.log.lock().unwrap())
+        }
+    }
+
+    #[test]
+    fn nothing_ticks_before_mount_even_after_init() {
+        let mut rig = Rig::new();
+        rig.add("a", 0, "");
+        rig.tick();
+        assert_eq!(rig.drain(), Vec::<String>::new());
+
+        rig.registry.init().unwrap();
+        rig.drain();
+        rig.tick();
+        assert_eq!(rig.drain(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_failed_mount_ticks_only_the_plugins_before_it() {
+        let mut rig = Rig::new();
+        rig.add("first", 10, "");
+        rig.add("bad", 5, "mount");
+        rig.add("after", 0, "");
+        rig.registry.init().unwrap();
+        assert!(rig.registry.mount().is_err());
+        rig.drain();
+
+        rig.tick();
+        assert_eq!(rig.drain(), vec!["first:tick"]);
+    }
+
+    #[test]
+    fn a_retried_mount_goes_on_from_the_one_that_failed() {
+        let mut rig = Rig::new();
+        rig.add("first", 10, "");
+        rig.add("bad", 5, "mount");
+        rig.registry.init().unwrap();
+        assert!(rig.registry.mount().is_err());
+        rig.drain();
+
+        assert!(rig.registry.mount().is_err());
+        assert_eq!(rig.drain(), vec!["bad:mount"]);
+    }
+
+    #[test]
+    fn a_failed_init_is_not_mounted_and_does_not_tick() {
+        let mut rig = Rig::new();
+        rig.add("first", 10, "");
+        rig.add("bad", 0, "init");
+        assert!(rig.registry.init().is_err());
+        rig.drain();
+
+        assert!(rig.registry.mount().is_err());
+        assert_eq!(rig.drain(), vec!["first:mount", "bad:init"]);
+        rig.tick();
+        assert_eq!(rig.drain(), vec!["first:tick"]);
+    }
+
+    #[test]
+    fn mount_without_init_runs_on_init_first() {
+        let mut rig = Rig::new();
+        rig.add("a", 0, "");
+        rig.registry.mount().unwrap();
+        assert_eq!(rig.drain(), vec!["a:init", "a:mount"]);
+    }
+
+    #[test]
+    fn a_higher_priority_plugin_registered_after_mount_catches_up_and_keeps_the_others_state() {
+        let mut rig = Rig::new();
+        rig.add("old", 0, "");
+        rig.registry.init().unwrap();
+        rig.registry.mount().unwrap();
+        rig.drain();
+
+        rig.add("new", 10, "");
+        assert_eq!(rig.drain(), vec!["new:init", "new:mount"]);
+
+        rig.tick();
+        assert_eq!(rig.drain(), vec!["new:tick", "old:tick"]);
+
+        rig.registry.mount().unwrap();
+        assert_eq!(rig.drain(), Vec::<String>::new(), "nothing mounts twice");
+
+        rig.registry.unmount().unwrap();
+        assert_eq!(rig.drain(), vec!["old:unmount", "new:unmount"]);
+    }
+
+    #[test]
+    fn a_lower_priority_plugin_registered_after_mount_catches_up_too() {
+        let mut rig = Rig::new();
+        rig.add("old", 10, "");
+        rig.registry.mount().unwrap();
+        rig.drain();
+
+        rig.add("new", 0, "");
+        assert_eq!(rig.drain(), vec!["new:init", "new:mount"]);
+        rig.tick();
+        assert_eq!(rig.drain(), vec!["old:tick", "new:tick"]);
+    }
+
+    #[test]
+    fn a_plugin_registered_between_init_and_mount_is_initialized_and_waits() {
+        let mut rig = Rig::new();
+        rig.add("old", 0, "");
+        rig.registry.init().unwrap();
+        rig.drain();
+
+        rig.add("new", 10, "");
+        assert_eq!(rig.drain(), vec!["new:init"]);
+        rig.tick();
+        assert_eq!(rig.drain(), Vec::<String>::new());
+
+        rig.registry.mount().unwrap();
+        assert_eq!(rig.drain(), vec!["new:mount", "old:mount"]);
+    }
+
+    #[test]
+    fn a_plugin_registered_before_init_gets_nothing_yet() {
+        let mut rig = Rig::new();
+        rig.add("a", 0, "");
+        assert_eq!(rig.drain(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_late_plugin_that_fails_does_not_tick_and_is_retried() {
+        let mut rig = Rig::new();
+        rig.add("old", 10, "");
+        rig.registry.mount().unwrap();
+        rig.drain();
+
+        rig.add("bad", 0, "mount");
+        assert_eq!(rig.drain(), vec!["bad:init", "bad:mount"]);
+
+        rig.tick();
+        assert_eq!(rig.drain(), vec!["old:tick"]);
+
+        assert!(rig.registry.mount().is_err());
+        assert_eq!(rig.drain(), vec!["bad:mount"]);
+
+        rig.registry.unmount().unwrap();
+        assert_eq!(rig.drain(), vec!["old:unmount"]);
+    }
+
+    #[test]
+    fn unmounted_plugins_stop_ticking_and_mount_again_without_a_second_init() {
+        let mut rig = Rig::new();
+        rig.add("a", 0, "");
+        rig.registry.init().unwrap();
+        rig.registry.mount().unwrap();
+        rig.registry.unmount().unwrap();
+        rig.drain();
+
+        rig.tick();
+        assert_eq!(rig.drain(), Vec::<String>::new());
+
+        rig.registry.unmount().unwrap();
+        assert_eq!(rig.drain(), Vec::<String>::new(), "nothing unmounts twice");
+
+        rig.registry.mount().unwrap();
+        assert_eq!(rig.drain(), vec!["a:mount"]);
+    }
+
+    #[test]
+    fn a_plugin_registered_after_unmount_waits_for_the_next_mount() {
+        let mut rig = Rig::new();
+        rig.add("old", 0, "");
+        rig.registry.mount().unwrap();
+        rig.registry.unmount().unwrap();
+        rig.drain();
+
+        rig.add("new", 10, "");
+        assert_eq!(rig.drain(), vec!["new:init"]);
+
+        rig.registry.mount().unwrap();
+        assert_eq!(rig.drain(), vec!["new:mount", "old:mount"]);
     }
 }
