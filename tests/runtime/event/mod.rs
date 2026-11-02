@@ -8,6 +8,7 @@ mod gesture;
 mod handler;
 mod ime;
 mod keymap;
+mod modal_focus;
 mod reader;
 mod tab_navigation;
 mod windows_key_release;

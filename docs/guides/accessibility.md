@@ -150,7 +150,9 @@ if has_announcements() {
 
 ### Focus Traps
 
-Keep focus within a modal or dialog:
+An open `Modal` holds the app's Tab ring: Tab, Shift+Tab and clicks only give focus to controls in its body, and a modal with none takes focus off what is behind it. A custom overlay gets the same by returning `WidgetMeta` with `.focus_scope(true)` while it is open.
+
+For widgets that track focus with their own `FocusManager`, keep focus within a modal or dialog:
 
 ```rust
 use revue::event::{FocusTrap, FocusManager};
