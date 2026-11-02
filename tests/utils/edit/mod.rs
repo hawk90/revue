@@ -198,6 +198,31 @@ fn the_goal_column_is_a_screen_column() {
     assert_eq!(s.cursor(), p(2, 2));
 }
 
+/// A tab reaches the next stop, so the goal column counts its columns, as
+/// the editors draw it (#1378)
+#[test]
+fn the_goal_column_counts_tab_columns() {
+    // `x` after a tab is screen column 4 (the default stop)
+    let mut s = at("\tx\nabcdefgh\na\tb", p(0, 1));
+    s.move_cursors(EditMotion::Down, false);
+    assert_eq!(s.cursor(), p(1, 4));
+    // Screen column 4 on "a\tb" is `b`: the tab runs from 1 to 4
+    s.move_cursors(EditMotion::Down, false);
+    assert_eq!(s.cursor(), p(2, 2));
+    // From column 2, inside the tab: onto the tab
+    s.set_cursor(p(1, 2));
+    s.move_cursors(EditMotion::Down, false);
+    assert_eq!(s.cursor(), p(2, 1));
+    // Another stop moves the goal
+    let mut s = at("\tx\nabcdefgh", p(0, 1)).tab_width(2);
+    s.move_cursors(EditMotion::Down, false);
+    assert_eq!(s.cursor(), p(1, 2));
+    // Zero is one at least, never a tab of no column
+    let mut s = at("\tx\nabcdefgh", p(0, 1)).tab_width(0);
+    s.move_cursors(EditMotion::Down, false);
+    assert_eq!(s.cursor(), p(1, 1));
+}
+
 #[test]
 fn up_from_the_first_line_and_down_from_the_last_go_to_the_ends() {
     let mut s = at("abc\ndef", p(0, 2));
