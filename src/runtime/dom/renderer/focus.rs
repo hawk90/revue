@@ -192,4 +192,24 @@ impl DomRenderer {
             self.invalidate_node_style(sibling);
         }
     }
+
+    /// Invalidate the children of `parent` after their order changed.
+    ///
+    /// A child that stayed at its index gets no mark from
+    /// [`set_children`](crate::dom::DomTree::set_children), but a `+` or `~` rule
+    /// reads the siblings before it, and those may be different ones now.
+    pub(crate) fn invalidate_children_for_sibling_rules(&mut self, parent: DomId) {
+        self.ensure_selectors_cached();
+        if !self.has_sibling_combinators {
+            return;
+        }
+        let children = self
+            .tree
+            .get(parent)
+            .map(|node| node.children.clone())
+            .unwrap_or_default();
+        for child in children {
+            self.invalidate_node_style(child);
+        }
+    }
 }
