@@ -9,6 +9,7 @@ mod modes;
 mod navigation;
 mod render;
 mod selection;
+mod tabs;
 mod types;
 mod vertical_scroll;
 mod view;
