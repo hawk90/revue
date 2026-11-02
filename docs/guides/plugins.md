@@ -81,7 +81,7 @@ Plugins receive lifecycle callbacks in this order:
 
 | Hook | When Called | Use Case |
 |------|-------------|----------|
-| `on_init` | Plugin registered | Load config, set up resources |
+| `on_init` | App is built | Load config, set up resources |
 | `on_mount` | App starts running | Initialize runtime state |
 | `on_tick` | Each frame | Periodic tasks, metrics |
 | `on_unmount` | App shutting down | Cleanup, save state |
@@ -122,6 +122,10 @@ impl Plugin for MyPlugin {
 ### Errors and Panics
 
 A hook that returns an error is logged to the context (`"Init failed: ..."`).
+Only mounted plugins get `on_tick` and `on_unmount`, and a plugin is mounted only
+after its `on_init` succeeded. A plugin registered through `App::plugins_mut()`
+after the app started catches up on the hooks it missed when it is registered.
+
 An error from `on_init` or `on_mount` stops that pass at the failing plugin, and
 calling `init`/`mount` again resumes from it. An error from `on_tick` or
 `on_unmount` does not stop the plugins after it.
