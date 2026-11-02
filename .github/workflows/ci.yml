@@ -346,8 +346,17 @@ jobs:
             exit 0
           fi
           cargo bench --all-features --bench instructions -- --save-baseline=base
+      # TEMPORARY (removed before merge): the base has no benchmarks yet, so
+      # save this PR's own counts as the baseline the PR step compares with
+      - name: Seed baseline
+        working-directory: pr
+        run: |
+          cargo bench --all-features --bench instructions -- --save-baseline=base
       - name: PR
         working-directory: pr
+        # pipefail: without it the exit of `tee`, not of the benchmarks, is
+        # the step's, and a regression passes
+        shell: bash
         env:
           ACCEPTED: ${{ contains(github.event.pull_request.labels.*.name, 'perf-accepted') }}
         run: |
@@ -363,12 +372,14 @@ jobs:
             echo "::error::A benchmark counted no instructions; Callgrind did not find the benchmark code."
             exit 1
           fi
-      # TEMPORARY (removed before merge): the same code twice, to see how far
-      # the counts move between runs
-      - name: Noise check
+      # TEMPORARY (removed before merge): the PR step's pipeline at a limit
+      # run-to-run noise crosses, to see that the step fails
+      - name: Gate check
         working-directory: pr
+        shell: bash
+        continue-on-error: true
         run: |
-          cargo bench --all-features --bench instructions -- --save-baseline=again --baseline=base
+          cargo bench --all-features --bench instructions -- --baseline=base --callgrind-limits='ir=0.01%' | tee ../strict.txt
 
   # The public API against tests/public-api.txt (#1172). A PR that adds items
   # blesses the snapshot, so reviewers see each addition; a PR that removes or
