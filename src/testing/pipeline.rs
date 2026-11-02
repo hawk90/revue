@@ -179,6 +179,41 @@ impl PipelineHarness {
         self.terminal.writer()
     }
 
+    /// Forget the bytes written so far, so [`terminal_output`](Self::terminal_output)
+    /// starts again from the next frame.
+    ///
+    /// A test that draws many frames calls this to keep the output from
+    /// growing with the frame count.
+    pub fn clear_terminal_output(&mut self) -> &mut Self {
+        self.terminal.writer_mut().clear();
+        self
+    }
+
+    /// Resize the terminal as the event loop does on [`Event::Resize`](crate::event::Event::Resize):
+    /// the terminal first, then the app, which redraws the whole screen.
+    ///
+    /// Returns whether the app asked for a redraw, as [`send`](Self::send) does.
+    pub fn resize<V: View>(&mut self, width: u16, height: u16, view: &mut V) -> bool {
+        self.terminal.resize(width, height);
+        self.width = width;
+        self.height = height;
+        self.app
+            .dispatch_for_test(crate::event::Event::Resize(width, height), view)
+    }
+
+    /// Replace the stylesheet, as a hot reload does, and repaint the whole
+    /// screen on the next draw.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `css` fails to parse, like [`with_css`](Self::with_css).
+    pub fn set_css(&mut self, css: &str) -> &mut Self {
+        let stylesheet = parse_css(css).expect("PipelineHarness: stylesheet failed to parse");
+        self.app.dom_renderer().set_stylesheet(stylesheet);
+        self.app.request_redraw();
+        self
+    }
+
     /// Whether the rendered screen contains `needle`.
     pub fn contains(&self, needle: &str) -> bool {
         self.screen_text().contains(needle)

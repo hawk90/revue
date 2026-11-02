@@ -1,0 +1,65 @@
+name: Soak
+
+# The heap stays flat over many frames (#1170): tests/soak.rs draws frame after
+# frame under random changes and measures the live heap at checkpoints. PR CI
+# runs it short; this runs it long every night with a fresh seed. A failure
+# opens an issue with the seed, which reproduces it.
+
+on:
+  schedule:
+    - cron: "30 4 * * *"
+  workflow_dispatch:
+    inputs:
+      frames:
+        description: Frames to draw
+        default: "200000"
+      seed:
+        description: Seed (empty for a fresh one)
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  soak:
+    name: Soak
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    env:
+      SOAK_FRAMES: ${{ github.event.inputs.frames || '200000' }}
+      SOAK_SEED: ${{ github.event.inputs.seed || github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+          build-warnings: allow
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - name: Soak
+        id: soak
+        run: cargo test --release --all-features --test soak -- --nocapture
+      - name: Open an issue
+        if: failure() && steps.soak.outcome == 'failure' && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="soak: the heap grew over a long run"
+          existing=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Grew again (SOAK_SEED=$SOAK_SEED, SOAK_FRAMES=$SOAK_FRAMES): $RUN_URL"
+          else
+            gh issue create --title "$title" --body "The nightly soak run saw the live heap grow: $RUN_URL
+
+          Reproduce with \`SOAK_SEED=$SOAK_SEED SOAK_FRAMES=$SOAK_FRAMES cargo test --release --all-features --test soak -- --nocapture\`. The log lists the heap at each checkpoint."
+          fi

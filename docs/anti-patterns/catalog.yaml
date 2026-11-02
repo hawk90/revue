@@ -2933,6 +2933,7 @@ entries:
     summary: "cache에 상한이 없다."
     detect:
       - "상한을 확인할 cache: text layout, selector match, image, markdown parse, chart data, snapshot, theme, glyph"
+      - "tests/soak.rs가 무작위 변경 아래 여러 frame을 그리며 live heap이 평평한지 본다. PR CI는 짧게, nightly(.github/workflows/soak.yml)는 길게 새 seed로 돈다 (#1170)."
     fix:
       - "cache마다 LRU 상한이나 scope lifetime을 둔다."
     observed:
