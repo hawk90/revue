@@ -34,7 +34,8 @@ pub struct JsonNode {
     pub children: Vec<JsonNode>,
     /// Depth in tree
     pub depth: usize,
-    /// Index in flattened list (set during render)
+    /// Not used: visible nodes are borrowed from the tree, so no copy carries
+    /// its place in the flattened list. Stays 0.
     pub index: usize,
 }
 
