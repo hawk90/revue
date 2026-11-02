@@ -357,6 +357,12 @@ jobs:
             limits=()
           fi
           cargo bench --all-features --bench instructions -- --baseline=base "${limits[@]}"
+      # TEMPORARY (removed before merge): the same code twice, to see how far
+      # the counts move between runs
+      - name: Noise check
+        working-directory: pr
+        run: |
+          cargo bench --all-features --bench instructions -- --save-baseline=again --baseline=base
 
   # The public API against tests/public-api.txt (#1172). A PR that adds items
   # blesses the snapshot, so reviewers see each addition; a PR that removes or
