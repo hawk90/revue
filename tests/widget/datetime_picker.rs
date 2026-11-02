@@ -1142,3 +1142,33 @@ fn test_time_picker_starts_within_limits() {
         .selected_time(Time::new(20, 0, 0));
     assert_eq!(time_row(&late), "18:00");
 }
+
+/// A time-only format edits the time however it is set: `format(..)` puts
+/// the picker in time mode as `time_only()` does, the keys change the time
+/// and not the hidden date, and Tab does not switch to it (#890)
+#[test]
+fn test_time_only_formats_edit_the_time() {
+    for format in [DateTimeFormat::TimeOnly, DateTimeFormat::TimeWithSeconds] {
+        let mut picker = DateTimePicker::new()
+            .format(format)
+            .selected_date(Date::new(2026, 3, 15))
+            .selected_time(Time::new(10, 30, 0));
+        assert_eq!(picker.get_mode(), DateTimeMode::Time, "{format:?}");
+        let date = picker.get_date();
+        let time = picker.get_time();
+        picker.handle_key(&Key::Up);
+        assert_eq!(picker.get_date(), date, "{format:?}: the date stays");
+        assert_ne!(picker.get_time(), time, "{format:?}: the time moves");
+        assert!(!picker.handle_key(&Key::Tab), "{format:?}");
+        assert_eq!(picker.get_mode(), DateTimeMode::Time, "{format:?}");
+    }
+    // A date-only format edits the date, even after a time-only one
+    let picker = DateTimePicker::new()
+        .format(DateTimeFormat::TimeOnly)
+        .format(DateTimeFormat::DateOnly);
+    assert_eq!(picker.get_mode(), DateTimeMode::Date);
+    // With both, Tab switches
+    let mut picker = DateTimePicker::new().format(DateTimeFormat::DateTime24);
+    assert!(picker.handle_key(&Key::Tab));
+    assert_eq!(picker.get_mode(), DateTimeMode::Time);
+}
