@@ -233,13 +233,25 @@ fn test_time_hm() {
     assert_eq!(time.second, 0);
 }
 
+fn local_time() -> Time {
+    use chrono::Timelike;
+    let now = chrono::Local::now();
+    Time::new(now.hour() as u8, now.minute() as u8, now.second() as u8)
+}
+
 #[test]
-fn test_time_now() {
+fn test_time_now_is_the_local_time() {
+    // Read the clock on both sides; at midnight the time wraps to 00:00:00.
+    let before = local_time();
     let time = Time::now();
-    // Placeholder implementation returns 12:00:00
-    assert_eq!(time.hour, 12);
-    assert_eq!(time.minute, 0);
-    assert_eq!(time.second, 0);
+    let after = local_time();
+    let in_order = if before <= after {
+        before <= time && time <= after
+    } else {
+        time >= before || time <= after
+    };
+    assert!(in_order, "{time:?} not in {before:?}..{after:?}");
+    assert!(time.is_valid());
 }
 
 #[test]
