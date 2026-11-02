@@ -218,7 +218,8 @@ fn test_range_picker_apply_multiple_presets() {
 
 #[test]
 fn test_range_picker_manual_range_selection() {
-    let mut picker = date_range_picker();
+    // A known range, so the result does not depend on today's date
+    let mut picker = date_range_picker().range(Date::new(2025, 5, 1), Date::new(2025, 5, 2));
     // Set the end first, then a start before it
     picker.set_end(Date::new(2025, 6, 30));
     picker.set_start(Date::new(2025, 6, 1));

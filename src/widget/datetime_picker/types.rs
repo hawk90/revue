@@ -28,10 +28,12 @@ impl Time {
         Self::new(hour, minute, 0)
     }
 
-    /// Get current time (placeholder - returns 12:00:00)
+    /// The current time of day in the local time zone
     pub fn now() -> Self {
-        // In a real implementation, use std::time or chrono
-        Self::new(12, 0, 0)
+        use chrono::Timelike;
+        let now = chrono::Local::now();
+        // Each field is below 60, so it fits a u8.
+        Self::new(now.hour() as u8, now.minute() as u8, now.second() as u8)
     }
 
     /// Check if time is valid

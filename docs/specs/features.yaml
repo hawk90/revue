@@ -706,12 +706,15 @@ items:
       - min/max time, clamped; the arrow keys stop at a limit
       - 24-hour or 12-hour (AM/PM) display
       - 'keys: arrows/hjkl, [ ] month, { } year, Tab mode switch, Enter select'
+      - starts on the local date and time (Date::today, Time::now)
     evidence:
       - src/widget/datetime_picker/helpers.rs::datetime_picker
       - src/widget/datetime_picker/input.rs
       - tests/widget/datetime_picker.rs
       - tests/widget/datetime_picker.rs::test_time_picker_stops_at_max_time
       - tests/widget/datetime_picker.rs::test_time_picker_12h_shows_am_pm
+      - tests/widget/datetime_picker.rs::test_time_now_is_the_local_time
+      - tests/widget/data/calendar/date.rs::test_date_today_is_the_local_date
       - examples/datetime_picker.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / DateTimePicker
