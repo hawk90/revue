@@ -254,7 +254,7 @@ impl DomTree {
 
         if id_changed {
             if let Some(old) = old_element_id {
-                self.id_map.remove(&Arc::from(old.as_str()));
+                self.release_element_id(old.as_str(), id);
             }
             if let Some(ref new) = new_meta.id {
                 self.id_map.insert(Arc::from(new.as_str()), id);
@@ -371,7 +371,7 @@ impl DomTree {
 
         // Remove from ID map
         if let Some(element_id) = element_id {
-            self.id_map.remove(&element_id);
+            self.release_element_id(&element_id, id);
         }
 
         // Remove from type index
@@ -526,6 +526,16 @@ impl DomTree {
             current = node.parent;
         }
         None
+    }
+
+    /// Forget that `id` holds `element_id`, unless another node took it since.
+    ///
+    /// Keyed siblings can swap ids in one reconciliation: by the time the second
+    /// one lets go of its old id, the first one holds it.
+    fn release_element_id(&mut self, element_id: &str, id: DomId) {
+        if self.id_map.get(element_id) == Some(&id) {
+            self.id_map.remove(element_id);
+        }
     }
 
     /// Every node that can take focus, in document order.
@@ -1088,6 +1098,57 @@ mod tests {
             tree.query_one(&format!("#row-{i}"));
         }
         assert!(tree.query_one("Button").is_some());
+    }
+
+    fn two_named_children() -> (DomTree, DomId, DomId) {
+        let mut tree = DomTree::new();
+        let root = tree.create_root(WidgetMeta::new("App"));
+        let a = tree.add_child(root, WidgetMeta::new("Item").id("a"));
+        let b = tree.add_child(root, WidgetMeta::new("Item").id("b"));
+        (tree, a, b)
+    }
+
+    #[test]
+    fn siblings_can_swap_element_ids() {
+        let (mut tree, first, second) = two_named_children();
+
+        tree.apply_meta(first, &WidgetMeta::new("Item").id("b"));
+        tree.apply_meta(second, &WidgetMeta::new("Item").id("a"));
+
+        assert_eq!(tree.get_by_id("b").map(|n| n.id), Some(first));
+        assert_eq!(tree.get_by_id("a").map(|n| n.id), Some(second));
+    }
+
+    #[test]
+    fn dropping_an_id_another_node_took_keeps_that_node_findable() {
+        let (mut tree, first, second) = two_named_children();
+
+        tree.apply_meta(second, &WidgetMeta::new("Item").id("a"));
+        tree.apply_meta(first, &WidgetMeta::new("Item"));
+
+        assert_eq!(tree.get_by_id("a").map(|n| n.id), Some(second));
+    }
+
+    #[test]
+    fn removing_a_node_whose_id_another_node_took_keeps_that_node_findable() {
+        let (mut tree, first, second) = two_named_children();
+
+        tree.apply_meta(second, &WidgetMeta::new("Item").id("a"));
+        tree.remove(first);
+
+        assert_eq!(tree.get_by_id("a").map(|n| n.id), Some(second));
+        assert!(tree.get_by_id("b").is_none());
+    }
+
+    #[test]
+    fn a_changed_or_removed_id_is_gone_when_nobody_else_took_it() {
+        let (mut tree, first, second) = two_named_children();
+
+        tree.apply_meta(first, &WidgetMeta::new("Item").id("c"));
+        assert!(tree.get_by_id("a").is_none());
+
+        tree.remove(second);
+        assert!(tree.get_by_id("b").is_none());
     }
 
     #[test]
