@@ -199,9 +199,11 @@ impl TextArea {
         self
     }
 
-    /// Set tab width
+    /// Set the tab width: the spaces `Tab` types, and the columns between
+    /// the stops a tab in the text reaches (one at least)
     pub fn tab_width(mut self, width: usize) -> Self {
         self.tab_width = width;
+        self.edit.set_tab_width(width);
         self
     }
 

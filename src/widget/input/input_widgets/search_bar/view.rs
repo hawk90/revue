@@ -4,7 +4,7 @@
 use super::SearchBar;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell, NO_TABS};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for SearchBar {
@@ -57,7 +57,7 @@ impl SearchBar {
         ctx.set(width - 1, 0, right_border);
 
         // Draw search icon (an emoji by default: two columns)
-        ctx.put_edit_line(2, 0, &self.icon.to_string(), 0, 2, |_, ch| {
+        ctx.put_edit_line(2, 0, &self.icon.to_string(), 0, 2, NO_TABS, |_, ch| {
             let mut cell = Cell::new(ch);
             cell.bg = Some(self.bg_color);
             cell

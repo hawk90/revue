@@ -3,7 +3,9 @@
 
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
+use crate::widget::traits::render_context::edit_line::{
+    col_of, cursor_width, glyph_width, scroll_to_cursor,
+};
 
 use super::{CursorPos, TextArea};
 
@@ -16,13 +18,15 @@ use super::{CursorPos, TextArea};
 /// go to the next row. The caller wraps one column short of the view, so the hanging space
 /// sits in the last column, visible (#1008). Falls back to a hard break when a single word
 /// is longer than the width. Every row takes a cluster at least, so it terminates even for
-/// `width == 0`.
-fn wrap_segments(line: &str, width: u16) -> Vec<(usize, usize)> {
-    // Each cluster's first char index and width; a last entry for the end
-    let mut clusters: Vec<(usize, usize, bool)> = Vec::new();
+/// `width == 0`. A tab reaches the next multiple of `tab` from the start of its row.
+fn wrap_segments(line: &str, width: u16, tab: usize) -> Vec<(usize, usize)> {
+    // Each cluster's first char index and width (a tab's depends on its
+    // column, so it is worked out per row); a last entry for the end
+    let mut clusters: Vec<(usize, usize, bool, bool)> = Vec::new();
     let mut idx = 0;
     for g in line.graphemes(true) {
-        clusters.push((idx, g.chars().map(crate::utils::char_width).sum(), g == " "));
+        let w = g.chars().map(crate::utils::char_width).sum();
+        clusters.push((idx, w, g == " ", g == "\t"));
         idx += g.chars().count();
     }
     if clusters.is_empty() {
@@ -40,7 +44,12 @@ fn wrap_segments(line: &str, width: u16) -> Vec<(usize, usize)> {
     let mut i = 0usize;
 
     while i < clusters.len() {
-        let (_, cw, space) = clusters[i];
+        let (_, cw, space, is_tab) = clusters[i];
+        let cw = if is_tab {
+            glyph_width('\t', col, tab)
+        } else {
+            cw
+        };
 
         if col + cw > width && i > start {
             if space && !hung {
@@ -76,6 +85,13 @@ fn wrap_segments(line: &str, width: u16) -> Vec<(usize, usize)> {
 }
 
 impl TextArea {
+    /// Columns between tab stops: [`tab_width`](Self::tab_width), one at
+    /// least, so a tab in the text takes as many columns as typing Tab
+    /// inserts spaces
+    pub(super) fn tab_stop(&self) -> usize {
+        self.tab_width.max(1)
+    }
+
     /// Get line number width
     pub(super) fn line_number_width(&self) -> u16 {
         if self.show_line_numbers {
@@ -98,10 +114,11 @@ impl TextArea {
     pub(super) fn line_rows(&self, idx: usize, text_width: u16) -> Vec<(usize, usize)> {
         let line = self.line_text(idx);
         if self.wrap && text_width > 0 {
-            let mut rows = wrap_segments(line, text_width.saturating_sub(1).max(1));
+            let mut rows =
+                wrap_segments(line, text_width.saturating_sub(1).max(1), self.tab_stop());
             let &(start, end) = rows.last().expect("one row at least");
             let last: String = line.chars().skip(start).take(end - start).collect();
-            if end > start && col_of(&last, usize::MAX) >= text_width as usize {
+            if end > start && col_of(&last, usize::MAX, self.tab_stop()) >= text_width as usize {
                 rows.push((end, end));
             }
             rows
@@ -117,7 +134,7 @@ impl TextArea {
         let line = pos.line.min(self.edit.line_count() - 1);
         let rows = self.line_rows(line, text_width);
         let text = self.line_text(line);
-        place_in(&rows, text, pos.col, text_width, self.wrap)
+        place_in(&rows, text, pos.col, text_width, self.wrap, self.tab_stop())
     }
 
     /// The first visible line and row within it that keep the primary
@@ -194,9 +211,9 @@ impl TextArea {
             let line = self.line_text(pos.line);
             scroll_to_cursor(
                 self.scroll_x.get(),
-                col_of(line, pos.col),
-                cursor_width(line, pos.col),
-                col_of(line, usize::MAX) + 1,
+                col_of(line, pos.col, self.tab_stop()),
+                cursor_width(line, pos.col, self.tab_stop()),
+                col_of(line, usize::MAX, self.tab_stop()) + 1,
                 text_width as usize,
             )
         }
@@ -213,6 +230,7 @@ pub(super) fn place_in(
     col: usize,
     text_width: u16,
     wrap: bool,
+    tab: usize,
 ) -> (usize, usize) {
     let mut k = rows
         .iter()
@@ -221,7 +239,7 @@ pub(super) fn place_in(
     let x = |k: usize| {
         let (start, end) = rows[k];
         let seg: String = text.chars().skip(start).take(end - start).collect();
-        col_of(&seg, col.saturating_sub(start))
+        col_of(&seg, col.saturating_sub(start), tab)
     };
     if wrap && k + 1 < rows.len() && x(k) >= text_width as usize {
         k += 1;
@@ -316,7 +334,7 @@ mod wrap_segment_tests {
     /// Every segment must reconstruct the original line exactly, in order.
     fn assert_lossless(s: &str, width: u16) -> Vec<(usize, usize)> {
         let cs: Vec<char> = s.chars().collect();
-        let segs = wrap_segments(s, width);
+        let segs = wrap_segments(s, width, 4);
         // Contiguous, covering, in order.
         assert_eq!(
             segs.first().map(|s| s.0),
@@ -337,25 +355,28 @@ mod wrap_segment_tests {
 
     #[test]
     fn empty_line_yields_single_empty_segment() {
-        assert_eq!(wrap_segments("", 5), vec![(0, 0)]);
+        assert_eq!(wrap_segments("", 5, 4), vec![(0, 0)]);
     }
 
     #[test]
     fn short_line_is_not_split() {
-        assert_eq!(wrap_segments("hello", 10), vec![(0, 5)]);
+        assert_eq!(wrap_segments("hello", 10, 4), vec![(0, 5)]);
         // exact fit
-        assert_eq!(wrap_segments("hello", 5), vec![(0, 5)]);
+        assert_eq!(wrap_segments("hello", 5, 4), vec![(0, 5)]);
     }
 
     #[test]
     fn long_word_hard_wraps_at_width() {
-        assert_eq!(wrap_segments("abcdefgh", 3), vec![(0, 3), (3, 6), (6, 8)]);
+        assert_eq!(
+            wrap_segments("abcdefgh", 3, 4),
+            vec![(0, 3), (3, 6), (6, 8)]
+        );
     }
 
     #[test]
     fn wraps_at_word_boundary_and_keeps_trailing_space() {
         // "aa " stays together, "bb" moves to the next row.
-        assert_eq!(wrap_segments("aa bb", 3), vec![(0, 3), (3, 5)]);
+        assert_eq!(wrap_segments("aa bb", 3, 4), vec![(0, 3), (3, 5)]);
     }
 
     #[test]
@@ -374,12 +395,12 @@ mod wrap_segment_tests {
     #[test]
     fn breaks_only_between_clusters() {
         // "e" and its accent stay on one row: the accent takes no column
-        assert_eq!(wrap_segments("abe\u{301}c", 3), vec![(0, 4), (4, 5)]);
+        assert_eq!(wrap_segments("abe\u{301}c", 3, 4), vec![(0, 4), (4, 5)]);
         // An emoji sequence goes to the next row whole, not split at the
         // joiner
-        assert_eq!(wrap_segments("a👩\u{200D}💻", 3), vec![(0, 1), (1, 4)]);
+        assert_eq!(wrap_segments("a👩\u{200D}💻", 3, 4), vec![(0, 1), (1, 4)]);
         // A wide glyph wider than the row still takes a row of its own
-        assert_eq!(wrap_segments("한a", 1), vec![(0, 1), (1, 2)]);
+        assert_eq!(wrap_segments("한a", 1, 4), vec![(0, 1), (1, 2)]);
     }
 
     #[test]

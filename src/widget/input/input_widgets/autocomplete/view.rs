@@ -4,7 +4,7 @@
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::fuzzy_match;
-use crate::widget::traits::render_context::edit_line::{col_of, EditField, FieldCell};
+use crate::widget::traits::render_context::edit_line::{col_of, EditField, FieldCell, NO_TABS};
 use crate::widget::traits::{RenderContext, View};
 
 use super::Autocomplete;
@@ -98,7 +98,7 @@ impl Autocomplete {
                     .map(|fm| fm.indices)
                     .unwrap_or_default();
                 let room = input_width.saturating_sub(x);
-                ctx.put_edit_line(x, y, &suggestion.label, 0, room, |j, ch| {
+                ctx.put_edit_line(x, y, &suggestion.label, 0, room, NO_TABS, |j, ch| {
                     let char_fg = if matched.contains(&j) {
                         self.highlight_fg
                     } else {
@@ -106,13 +106,13 @@ impl Autocomplete {
                     };
                     Cell::new(ch).fg(char_fg).bg(bg)
                 });
-                x = x.saturating_add(col_of(&suggestion.label, usize::MAX) as u16);
+                x = x.saturating_add(col_of(&suggestion.label, usize::MAX, NO_TABS) as u16);
 
                 // Description (if fits)
                 if let Some(ref desc) = suggestion.description {
                     x = x.saturating_add(1);
                     let room = input_width.saturating_sub(x);
-                    ctx.put_edit_line(x, y, desc, 0, room, |_, ch| {
+                    ctx.put_edit_line(x, y, desc, 0, room, NO_TABS, |_, ch| {
                         Cell::new(ch).fg(self.description_fg).bg(bg)
                     });
                 }
