@@ -278,7 +278,11 @@ fn update_children_internal(
     // `set_children` refreshes each child's structural state, which
     // `:first-child` and friends read. Assigning `parent.children` directly
     // would leave that state describing the previous frame's order.
+    let reordered = new_child_ids != old_children;
     renderer.tree.set_children(parent_id, new_child_ids);
+    if reordered {
+        renderer.invalidate_children_for_sibling_rules(parent_id);
+    }
 }
 
 /// Standalone function to collect all descendant node IDs
@@ -351,6 +355,10 @@ pub(crate) fn reconcile_children_from_metas(
         renderer.structure_dirty = true;
     }
 
+    let reordered = new_child_ids != old_children;
     renderer.tree.set_children(parent_id, new_child_ids.clone());
+    if reordered {
+        renderer.invalidate_children_for_sibling_rules(parent_id);
+    }
     new_child_ids
 }
