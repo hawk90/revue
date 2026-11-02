@@ -6,6 +6,8 @@ use revue::style::{
 };
 use std::time::Duration;
 
+mod values;
+
 #[test]
 fn test_parse_empty() {
     let sheet = parse_css("").unwrap();

@@ -213,6 +213,9 @@ fn parse_named_color(value: &str) -> Option<Color> {
     }
 }
 
+/// How many tracks one `grid-template-*` value can define, however it spells them
+const MAX_GRID_TRACKS: usize = 10_000;
+
 /// Parse a grid template like "1fr 2fr 1fr", "repeat(3, 1fr)", or "minmax(100px, 1fr)"
 pub fn parse_grid_template(value: &str) -> GridTemplate {
     let value = value.trim();
@@ -232,7 +235,8 @@ pub fn parse_grid_template(value: &str) -> GridTemplate {
         // Check for repeat() function
         if value[pos..].starts_with("repeat(") {
             if let Some((repeat_tracks, new_pos)) = parse_repeat_function(&value[pos..]) {
-                tracks.extend(repeat_tracks);
+                let room = MAX_GRID_TRACKS.saturating_sub(tracks.len());
+                tracks.extend(repeat_tracks.into_iter().take(room));
                 pos += new_pos;
                 continue;
             }
@@ -241,7 +245,9 @@ pub fn parse_grid_template(value: &str) -> GridTemplate {
         // Check for minmax() function
         if value[pos..].starts_with("minmax(") {
             if let Some((track, new_pos)) = parse_minmax_function(&value[pos..]) {
-                tracks.push(track);
+                if tracks.len() < MAX_GRID_TRACKS {
+                    tracks.push(track);
+                }
                 pos += new_pos;
                 continue;
             }
@@ -257,7 +263,9 @@ pub fn parse_grid_template(value: &str) -> GridTemplate {
             // Direct slice - no allocation needed
             let token = &value[start..pos];
             if let Some(track) = parse_grid_track(token) {
-                tracks.push(track);
+                if tracks.len() < MAX_GRID_TRACKS {
+                    tracks.push(track);
+                }
             }
         }
     }
@@ -268,8 +276,6 @@ pub fn parse_grid_template(value: &str) -> GridTemplate {
 /// Parse repeat(count, track) function
 /// Returns (expanded tracks, bytes consumed)
 fn parse_repeat_function(value: &str) -> Option<(Vec<GridTrack>, usize)> {
-    const MAX_REPEAT_COUNT: usize = 10_000;
-
     let bytes = value.as_bytes();
     if !bytes.starts_with(b"repeat(") {
         return None;
@@ -307,7 +313,7 @@ fn parse_repeat_function(value: &str) -> Option<(Vec<GridTrack>, usize)> {
         .trim()
         .parse()
         .ok()
-        .filter(|&c| c > 0 && c <= MAX_REPEAT_COUNT)?;
+        .filter(|&c| c > 0 && c <= MAX_GRID_TRACKS)?;
     let track_def = parts[1].trim();
 
     // Parse the track definition (could be a single track or minmax)
