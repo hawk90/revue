@@ -4,6 +4,7 @@
 use proptest::prelude::*;
 use revue::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use revue::layout::Rect;
+use revue::style::Color;
 use revue::utils::unicode::display_width;
 use revue::widget::traits::Interactive;
 use revue::widget::{Switch, SwitchStyle, View};
@@ -131,4 +132,91 @@ proptest! {
             prop_assert_eq!(s.is_checked(), on);
         }
     }
+}
+
+/// Focus brackets go on either side of the switch, never over its first
+/// cell: in every style, with no label or a label on the right; and the
+/// measured width counts them (#1018)
+#[test]
+fn focus_keeps_the_switch_visible_in_every_style() {
+    for style in STYLES {
+        for label_right in [false, true] {
+            let mut plain = Switch::new().style(style);
+            if label_right {
+                plain = plain.label("L").label_right();
+            }
+            let focused = plain.clone().focused(true);
+            let unfocused = screen(&plain, 12, 1);
+            let shown = screen(&focused, 12, 1);
+            let w = plain.measure(40, 1).unwrap().0;
+            let track = if label_right { w - 2 } else { w };
+            // The switch, one column right, cell for cell
+            for x in 0..track {
+                let (a, b) = (unfocused.get(x, 0).unwrap(), shown.get(x + 1, 0).unwrap());
+                assert_eq!(a.symbol, b.symbol, "{style:?} {label_right} {x}");
+                assert_eq!(a.bg, b.bg, "{style:?} {label_right} {x}");
+            }
+            assert_eq!(shown.get(0, 0).unwrap().symbol, '[', "{style:?}");
+            assert_eq!(shown.get(track + 1, 0).unwrap().symbol, ']', "{style:?}");
+            // Measured: both brackets with no label; with a label on the
+            // right the right one sits in its space
+            let fw = focused.measure(40, 1).unwrap().0;
+            assert_eq!(fw, if label_right { w + 1 } else { w + 2 }, "{style:?}");
+        }
+    }
+}
+
+/// A disabled switch is drawn in gray, every part of it, as a disabled
+/// Checkbox is; no focus color (#1018)
+#[test]
+fn disabled_dims_the_switch_itself() {
+    for style in STYLES {
+        for on in [true, false] {
+            let s = Switch::new()
+                .style(style)
+                .on(on)
+                .on_color(Color::GREEN)
+                .off_color(Color::RED)
+                .track_color(Color::BLUE)
+                .focused(true)
+                .disabled(true);
+            let buffer = screen(&s, 12, 1);
+            let w = s.measure(40, 1).unwrap().0;
+            for x in 0..w {
+                let c = buffer.get(x, 0).unwrap();
+                for color in [c.fg, c.bg] {
+                    assert!(
+                        ![
+                            Some(Color::GREEN),
+                            Some(Color::RED),
+                            Some(Color::BLUE),
+                            Some(Color::CYAN)
+                        ]
+                        .contains(&color),
+                        "{style:?} on={on} x={x}: {color:?}"
+                    );
+                }
+            }
+            assert_eq!(
+                buffer.get(0, 0).unwrap().symbol == '[',
+                style == SwitchStyle::Default || style == SwitchStyle::Text,
+                "{style:?}: no focus bracket"
+            );
+        }
+    }
+}
+
+/// The emoji's right half is its continuation cell, not a space over it
+#[test]
+fn the_emoji_keeps_its_continuation_cell() {
+    let buffer = screen(
+        &Switch::new()
+            .style(SwitchStyle::Emoji)
+            .label("L")
+            .label_right(),
+        6,
+        1,
+    );
+    assert!(buffer.get(1, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(3, 0).unwrap().symbol, 'L');
 }
