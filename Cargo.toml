@@ -154,6 +154,9 @@ insta = "1.49.0"
 tokio-test = "0.4.6"
 pretty_assertions = "1.4.1"
 criterion = { version = "0.8.2", features = ["html_reports"] }
+# Instruction counts under Callgrind for the CI regression gate (#1168);
+# gungraun-runner in CI must be the same version
+gungraun = "0.20.0"
 proptest = "1.12.0"
 tempfile = "3.27.0"
 serial_test = "4.0"
@@ -203,6 +206,10 @@ harness = false
 
 [[bench]]
 name = "utils"
+harness = false
+
+[[bench]]
+name = "instructions"
 harness = false
 
 [features]

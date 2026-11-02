@@ -2700,6 +2700,7 @@ entries:
     fix:
       - "bench는 결과가 화면이나 buffer에 닿는지 assert한 뒤 잰다."
       - "비교하는 arm은 같은 일을 하게 하고, baseline은 저장소 밖에 남긴다."
+      - "PR을 막는 비교는 시간이 아니라 instruction count로 한다: benches/instructions.rs와 CI의 Instructions job이 base와 PR을 같은 job에서 잰다 (#1168)."
     observed:
       - "행 수와 관계없이 frame 비용이 14.6µs로 같았다. 내용을 그리지 않고 있었기 때문이다 (docs/refactor/findings-render-pipeline.md)."
       - "`dom_incremental`은 한쪽 arm만 `b.iter()` 안에서 view를 만들어 증분 이득이 34%가 아니라 6%로 나왔다 (docs/refactor/phase0-baseline.md). 2026-10-20: `benches/reactive_updates.rs`는 `[[bench]]` 항목이 없고 `BENCH_TARGETS`에도 없다."
