@@ -2,7 +2,7 @@
 
 use std::cell::RefCell;
 
-use crate::patterns::lazy::types::LoadState;
+use crate::patterns::lazy::types::{LoadState, OnPanic};
 
 /// A lazily loaded value (single-threaded)
 pub struct LazyData<T, F>
@@ -31,6 +31,9 @@ where
     }
 
     /// Get the value, loading if necessary
+    ///
+    /// A panic in the loader carries on to the caller and leaves the state at
+    /// [`LoadState::Failed`]. The loader is spent, so later calls return `None`.
     pub fn get(&self) -> Option<std::cell::Ref<'_, T>> {
         self.ensure_loaded();
         let borrow = self.value.borrow();
@@ -51,7 +54,11 @@ where
         *self.state.borrow()
     }
 
-    /// Force reload
+    /// Does nothing: the loader is `FnOnce` and is spent after the first load.
+    #[deprecated(
+        since = "3.14.0",
+        note = "does nothing; use `LazyReloadable`, whose loader can run again"
+    )]
     pub fn reload(&self)
     where
         F: Clone,
@@ -69,7 +76,9 @@ where
         *self.state.borrow_mut() = LoadState::Loading;
 
         if let Some(loader) = self.loader.borrow_mut().take() {
+            let failed = OnPanic(|| *self.state.borrow_mut() = LoadState::Failed);
             let value = loader();
+            std::mem::forget(failed);
             *self.value.borrow_mut() = Some(value);
             *self.state.borrow_mut() = LoadState::Loaded;
         }
@@ -152,6 +161,28 @@ mod tests {
         lazy.get();
         assert!(lazy.is_loaded());
         // reload() does nothing for FnOnce, but should compile
+        #[allow(deprecated)]
         lazy.reload();
+    }
+
+    #[test]
+    fn a_panicking_loader_fails_and_later_gets_return_none() {
+        let lazy = LazyData::new(|| -> i32 { std::panic::resume_unwind(Box::new("no")) });
+
+        let panicked =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| lazy.get().is_some()));
+
+        assert!(panicked.is_err(), "the panic reaches the caller");
+        assert_eq!(lazy.state(), LoadState::Failed);
+        assert!(lazy.state().is_failed());
+        assert!(!lazy.is_loaded());
+        assert!(lazy.get().is_none());
+    }
+
+    #[test]
+    fn a_loader_that_returns_is_not_failed() {
+        let lazy = LazyData::new(|| 1);
+        lazy.get();
+        assert!(!lazy.state().is_failed());
     }
 }

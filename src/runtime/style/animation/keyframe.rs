@@ -97,7 +97,7 @@ pub struct KeyframeAnimation {
     /// Delay before starting
     pub delay: Duration,
     /// Easing function
-    easing: EasingFn,
+    easing: Curve,
     /// Start time
     start_time: Option<Instant>,
     /// When it was paused, while it is
@@ -114,6 +114,14 @@ pub struct KeyframeAnimation {
     pub fill_mode: AnimationFillMode,
 }
 
+/// The easing of a [`KeyframeAnimation`]. A plain `fn` cannot carry the control
+/// points of a curve.
+#[derive(Clone, Copy)]
+enum Curve {
+    Function(EasingFn),
+    CubicBezier(f32, f32, f32, f32),
+}
+
 impl KeyframeAnimation {
     /// Create a new keyframe animation
     pub fn new(name: impl Into<String>) -> Self {
@@ -122,7 +130,7 @@ impl KeyframeAnimation {
             keyframes: Vec::new(),
             duration: Duration::from_millis(300),
             delay: Duration::ZERO,
-            easing: easing::linear,
+            easing: Curve::Function(easing::linear),
             start_time: None,
             pause_time: None,
             state: AnimationState::Pending,
@@ -155,7 +163,16 @@ impl KeyframeAnimation {
 
     /// Set easing function
     pub fn easing(mut self, easing: EasingFn) -> Self {
-        self.easing = easing;
+        self.easing = Curve::Function(easing);
+        self
+    }
+
+    /// Set a CSS `cubic-bezier` easing
+    ///
+    /// x1 and x2 are limited to 0..=1. y1 and y2 are not, which is how a curve
+    /// overshoots; values past either end stay at the first or last keyframe.
+    pub fn cubic_bezier(mut self, x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
+        self.easing = Curve::CubicBezier(x1, y1, x2, y2);
         self
     }
 
@@ -314,7 +331,12 @@ impl KeyframeAnimation {
         };
 
         // Apply easing and direction
-        let t = (self.easing)(progress);
+        let t = match self.easing {
+            Curve::Function(easing) => easing(progress),
+            Curve::CubicBezier(x1, y1, x2, y2) => {
+                crate::style::transition::cubic_bezier(x1, y1, x2, y2, progress)
+            }
+        };
         let percent = if is_reverse { 1.0 - t } else { t } * 100.0;
 
         // Find surrounding keyframes

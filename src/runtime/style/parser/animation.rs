@@ -1,5 +1,15 @@
 //! CSS animation declarations resolved against `@keyframes`
 
+/// `animation-iteration-count`
+///
+/// Its own type because `KeyframeAnimation` spells "infinite" as 0, and in CSS
+/// a count of 0 means the animation does not run at all.
+#[derive(Clone, Copy)]
+enum Iterations {
+    Count(u32),
+    Infinite,
+}
+
 /// CSS animation properties parsed from declarations
 #[derive(Default)]
 struct CssAnimationProperties {
@@ -7,7 +17,7 @@ struct CssAnimationProperties {
     duration: Option<std::time::Duration>,
     easing: Option<crate::style::Easing>,
     delay: Option<std::time::Duration>,
-    iteration_count: Option<u32>,
+    iterations: Option<Iterations>,
     direction: Option<crate::style::AnimationDirection>,
     fill_mode: Option<crate::style::AnimationFillMode>,
 }
@@ -17,7 +27,7 @@ fn parse_animation_shorthand(value: &str) -> CssAnimationProperties {
     let mut props = CssAnimationProperties::default();
     let mut found_duration = false;
 
-    for part in value.split_whitespace() {
+    for part in crate::style::transition::split_outside_parens(value, char::is_whitespace) {
         // Try parsing as duration
         if let Some(dur) = crate::style::transition::parse_duration(part) {
             if !found_duration {
@@ -37,11 +47,11 @@ fn parse_animation_shorthand(value: &str) -> CssAnimationProperties {
 
         // Try parsing as iteration count
         if part == "infinite" {
-            props.iteration_count = Some(0); // 0 = infinite in KeyframeAnimation
+            props.iterations = Some(Iterations::Infinite);
             continue;
         }
         if let Ok(n) = part.parse::<u32>() {
-            props.iteration_count = Some(n);
+            props.iterations = Some(Iterations::Count(n));
             continue;
         }
 
@@ -124,14 +134,12 @@ pub(super) fn resolve_animation(
 
     // Collect animation properties from selector's declarations
     let mut anim_props = CssAnimationProperties::default();
-    let mut found_shorthand = false;
 
     for rule in sheet.rules(selector) {
         for decl in &rule.declarations {
             match decl.property.as_str() {
                 "animation" => {
                     anim_props = parse_animation_shorthand(&decl.value);
-                    found_shorthand = true;
                 }
                 "animation-name" => anim_props.name = Some(decl.value.clone()),
                 "animation-duration" => {
@@ -144,11 +152,10 @@ pub(super) fn resolve_animation(
                     anim_props.delay = crate::style::transition::parse_duration(&decl.value);
                 }
                 "animation-iteration-count" => {
-                    if decl.value.trim() == "infinite" {
-                        anim_props.iteration_count = Some(0);
-                    } else {
-                        anim_props.iteration_count = decl.value.trim().parse::<u32>().ok();
-                    }
+                    anim_props.iterations = match decl.value.trim() {
+                        "infinite" => Some(Iterations::Infinite),
+                        count => count.parse().ok().map(Iterations::Count),
+                    };
                 }
                 "animation-direction" => {
                     anim_props.direction = match decl.value.trim() {
@@ -173,6 +180,11 @@ pub(super) fn resolve_animation(
                 _ => {}
             }
         }
+    }
+
+    // A count of 0 runs nothing, as in CSS
+    if matches!(anim_props.iterations, Some(Iterations::Count(0))) {
+        return None;
     }
 
     // Need at least an animation name
@@ -204,22 +216,18 @@ pub(super) fn resolve_animation(
         anim = anim.delay(delay);
     }
     if let Some(easing) = anim_props.easing {
-        let easing_fn = match easing {
-            crate::style::Easing::Linear => easing_fns::linear,
-            crate::style::Easing::EaseIn => easing_fns::ease_in,
-            crate::style::Easing::EaseOut => easing_fns::ease_out,
-            crate::style::Easing::EaseInOut => easing_fns::ease_in_out,
-            // CubicBezier falls back to ease_in_out for now
-            crate::style::Easing::CubicBezier(..) => easing_fns::ease_in_out,
+        anim = match easing {
+            crate::style::Easing::Linear => anim.easing(easing_fns::linear),
+            crate::style::Easing::EaseIn => anim.easing(easing_fns::ease_in),
+            crate::style::Easing::EaseOut => anim.easing(easing_fns::ease_out),
+            crate::style::Easing::EaseInOut => anim.easing(easing_fns::ease_in_out),
+            crate::style::Easing::CubicBezier(x1, y1, x2, y2) => anim.cubic_bezier(x1, y1, x2, y2),
         };
-        anim = anim.easing(easing_fn);
     }
-    if let Some(count) = anim_props.iteration_count {
-        if count == 0 {
-            anim = anim.infinite();
-        } else {
-            anim = anim.iterations(count);
-        }
+    match anim_props.iterations {
+        Some(Iterations::Infinite) => anim = anim.infinite(),
+        Some(Iterations::Count(count)) => anim = anim.iterations(count),
+        None => {}
     }
     if let Some(direction) = anim_props.direction {
         anim = anim.direction(direction);
@@ -227,9 +235,6 @@ pub(super) fn resolve_animation(
     if let Some(fill_mode) = anim_props.fill_mode {
         anim = anim.fill_mode(fill_mode);
     }
-
-    // Suppress unused warning for found_shorthand
-    let _ = found_shorthand;
 
     Some(anim)
 }
