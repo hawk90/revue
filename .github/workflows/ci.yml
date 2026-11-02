@@ -46,6 +46,7 @@ jobs:
               - 'tests/**'
               - 'benches/**'
               - 'examples/**'
+              - 'scripts/public-api.sh'
               - '.github/workflows/ci.yml'
             # Crates in this tree that are not workspace members, so none of the
             # root `cargo` jobs above ever build them.
@@ -299,6 +300,45 @@ jobs:
         with:
           config: .typos.toml
 
+  # The public API against tests/public-api.txt (#1172). A PR that adds items
+  # blesses the snapshot, so reviewers see each addition; a PR that removes or
+  # changes a line must say it is breaking in its title (`feat!:`), which keeps
+  # 3.x additive without cargo semver-checks.
+  public-api:
+    name: Public API
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+      - name: Install the pinned nightly and cargo-public-api
+        run: |
+          rustup toolchain install "$(sed -n 's/^NIGHTLY=//p' scripts/public-api.sh)" --profile minimal
+          cargo install cargo-public-api --locked --version "$(sed -n 's/^TOOL_VERSION=//p' scripts/public-api.sh)"
+      - name: The snapshot is the current API
+        run: scripts/public-api.sh
+      - name: No line removed unless the title says breaking
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BASE: origin/${{ github.base_ref }}
+        run: |
+          if removed=$(scripts/public-api.sh --removed "$BASE"); then
+            echo "No public item removed or changed."
+          elif printf '%s' "$TITLE" | grep -qE '^[a-z]+(\([^)]*\))?!:'; then
+            echo "Breaking change declared in the title; removed or changed:"
+            echo "$removed"
+          else
+            echo "$removed"
+            echo "::error::This PR removes or changes public items (listed above). 3.x stays additive: keep them (deprecate instead), or mark the title as breaking (feat!:) and re-run this job."
+            exit 1
+          fi
+
   # Aggregate gate: single required status check for branch protection.
   # Code jobs are path-filtered (skipped on docs-only PRs); rulesets treat a
   # skipped required check as *not satisfied*, which would block docs-only PRs
@@ -307,7 +347,7 @@ jobs:
   ci-gate:
     name: CI Gate
     if: always()
-    needs: [changes, fmt, clippy, features, test, standalone, coverage, msrv, docs, typos]
+    needs: [changes, fmt, clippy, features, test, standalone, coverage, msrv, docs, typos, public-api]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -323,9 +363,10 @@ jobs:
           MSRV: ${{ needs.msrv.result }}
           DOCS: ${{ needs.docs.result }}
           TYPOS: ${{ needs.typos.result }}
+          PUBLIC_API: ${{ needs.public-api.result }}
         run: |
           fail=0
-          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "features:$FEATURES" "test:$TEST" "standalone:$STANDALONE" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS"; do
+          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "features:$FEATURES" "test:$TEST" "standalone:$STANDALONE" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS" "public-api:$PUBLIC_API"; do
             job="${pair%%:*}"
             res="${pair#*:}"
             if [ "$res" = "success" ] || [ "$res" = "skipped" ]; then
