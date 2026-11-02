@@ -15,7 +15,7 @@
 //!
 //! ```
 //! use crossterm::event::KeyCode;
-//! use revue::patterns::keys::KeyHandler;
+//! use revue::patterns::KeyHandler;
 //! use revue::patterns::{ConfirmAction, ConfirmState};
 //!
 //! #[derive(PartialEq, Debug)]

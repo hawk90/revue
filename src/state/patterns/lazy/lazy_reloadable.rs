@@ -2,7 +2,7 @@
 
 use std::cell::RefCell;
 
-use crate::patterns::lazy::types::LoadState;
+use crate::patterns::lazy::types::{LoadState, OnPanic};
 
 /// A lazily loaded value with reload support (single-threaded)
 pub struct LazyReloadable<T, F>
@@ -51,11 +51,11 @@ where
     }
 
     /// Force reload
+    ///
+    /// A panic in the loader carries on to the caller and leaves the state at
+    /// [`LoadState::Failed`]. The next [`get`](Self::get) tries the loader again.
     pub fn reload(&self) {
-        *self.state.borrow_mut() = LoadState::Loading;
-        let value = (self.loader)();
-        *self.value.borrow_mut() = Some(value);
-        *self.state.borrow_mut() = LoadState::Loaded;
+        self.load();
     }
 
     /// Invalidate cached value (will reload on next access)
@@ -70,8 +70,14 @@ where
             return;
         }
 
+        self.load();
+    }
+
+    fn load(&self) {
         *self.state.borrow_mut() = LoadState::Loading;
+        let failed = OnPanic(|| *self.state.borrow_mut() = LoadState::Failed);
         let value = (self.loader)();
+        std::mem::forget(failed);
         *self.value.borrow_mut() = Some(value);
         *self.state.borrow_mut() = LoadState::Loaded;
     }
@@ -163,5 +169,42 @@ mod tests {
         let value1 = lazy.get();
         let value2 = lazy.get();
         assert_eq!(*value1, *value2);
+    }
+
+    #[test]
+    fn a_panicking_loader_fails_and_the_next_get_tries_again() {
+        let attempts = std::cell::Cell::new(0);
+        let lazy = LazyReloadable::new(|| {
+            attempts.set(attempts.get() + 1);
+            if attempts.get() == 1 {
+                std::panic::resume_unwind(Box::new("no"));
+            }
+            7
+        });
+
+        let panicked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| *lazy.get()));
+
+        assert!(panicked.is_err());
+        assert_eq!(lazy.state(), LoadState::Failed);
+        assert_eq!(*lazy.get(), 7);
+        assert_eq!(lazy.state(), LoadState::Loaded);
+    }
+
+    #[test]
+    fn a_reload_that_panics_fails() {
+        let attempts = std::cell::Cell::new(0);
+        let lazy = LazyReloadable::new(|| {
+            attempts.set(attempts.get() + 1);
+            if attempts.get() == 2 {
+                std::panic::resume_unwind(Box::new("no"));
+            }
+            attempts.get()
+        });
+        assert_eq!(*lazy.get(), 1);
+
+        let panicked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| lazy.reload()));
+
+        assert!(panicked.is_err());
+        assert_eq!(lazy.state(), LoadState::Failed);
     }
 }

@@ -191,16 +191,18 @@ store_registry().unregister(store.id());
 
 ## Subscriptions
 
-Subscribe to store changes using the `StoreExt` trait:
+`StoreExt::subscribe` is a deprecated placeholder: the value it returns is never told about a change. To react to a store, read its signals in an effect:
 
 ```rust
-use revue::reactive::store::StoreExt;
+use revue::reactive::effect;
 
 let counter = use_store::<CounterStore>();
-let subscription = counter.subscribe();
+let count = counter.count.clone();
 
-// Subscription is automatically cleaned up when dropped
-drop(subscription);
+// Runs now, and again whenever `count` changes
+let _effect = effect(move || {
+    println!("count: {}", count.get());
+});
 ```
 
 ## Real-World Example: Todo Store
