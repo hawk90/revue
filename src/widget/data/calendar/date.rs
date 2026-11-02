@@ -17,10 +17,11 @@ impl Date {
         Self { year, month, day }
     }
 
-    /// Get today's date (placeholder - returns 2025-01-01)
+    /// Today's date in the local time zone
     pub fn today() -> Self {
-        // In a real implementation, use chrono or time crate
-        Self::new(2025, 1, 1)
+        use chrono::Datelike;
+        let today = chrono::Local::now().date_naive();
+        Self::new(today.year(), today.month(), today.day())
     }
 
     /// Check if date is valid

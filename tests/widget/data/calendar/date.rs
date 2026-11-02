@@ -280,10 +280,23 @@ fn test_date_default() {
     assert_eq!(date.day, 1);
 }
 
+fn local_date() -> Date {
+    use chrono::Datelike;
+    let today = chrono::Local::now().date_naive();
+    Date::new(today.year(), today.month(), today.day())
+}
+
 #[test]
-fn test_date_today() {
+fn test_date_today_is_the_local_date() {
+    // Read the clock on both sides, so a run across midnight still passes.
+    let before = local_date();
     let date = Date::today();
-    assert_eq!(date, Date::new(2025, 1, 1));
+    let after = local_date();
+    assert!(
+        date == before || date == after,
+        "{date:?} not in {before:?}..{after:?}"
+    );
+    assert!(date.is_valid());
 }
 
 #[test]
