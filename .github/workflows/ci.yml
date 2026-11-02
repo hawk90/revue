@@ -356,7 +356,13 @@ jobs:
             echo "perf-accepted: reporting the counts without failing on them."
             limits=()
           fi
-          cargo bench --all-features --bench instructions -- --baseline=base "${limits[@]}"
+          cargo bench --all-features --bench instructions -- --baseline=base "${limits[@]}" | tee ../counts.txt
+          # A count of zero means Callgrind measured nothing (stripped symbols),
+          # and a gate on nothing passes everything
+          if grep -qE '^ +Instructions: +0\|' ../counts.txt; then
+            echo "::error::A benchmark counted no instructions; Callgrind did not find the benchmark code."
+            exit 1
+          fi
       # TEMPORARY (removed before merge): the same code twice, to see how far
       # the counts move between runs
       - name: Noise check

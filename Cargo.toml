@@ -303,6 +303,12 @@ codegen-units = 1         # Better optimization at cost of compile time
 opt-level = 3              # Optimize for speed (was "z" for size)
 panic = "abort"            # Reduce binary size
 
+# Benches keep their symbols: Callgrind finds the code it counts by function
+# name, and with the release profile's strip it counted nothing (#1168).
+[profile.bench]
+strip = false
+debug = "line-tables-only"
+
 # Profile for size optimization (use with: cargo build --profile release-min-size)
 [profile.release-min-size]
 inherits = "release"
