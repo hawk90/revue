@@ -121,6 +121,11 @@ impl<W: Write> Terminal<W> {
         &self.writer
     }
 
+    /// Mutable access to the writer, for a test harness that drains it
+    pub(crate) fn writer_mut(&mut self) -> &mut W {
+        &mut self.writer
+    }
+
     /// Get terminal size
     pub fn size(&self) -> (u16, u16) {
         (self.current.width(), self.current.height())
