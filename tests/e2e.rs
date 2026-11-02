@@ -6,6 +6,8 @@ mod alloc_cap;
 
 #[path = "e2e/config_matrix.rs"]
 mod config_matrix;
+#[path = "e2e/incremental_differential.rs"]
+mod incremental_differential;
 #[path = "e2e/invariants.rs"]
 mod invariants;
 #[path = "e2e/scenarios.rs"]

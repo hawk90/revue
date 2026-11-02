@@ -200,6 +200,52 @@ impl PipelineHarness {
         self.app.dom().get_by_id(element_id).map(|node| node.id)
     }
 
+    /// The DOM as text, one node per line in document order: its depth, type,
+    /// element id, classes, key, state flags and computed colors.
+    ///
+    /// [`DomId`]s are left out, so two builds of the same view compare equal.
+    pub fn dom_outline(&self) -> String {
+        let mut out = String::new();
+        if let Some(root) = self.app.dom().tree().root_id() {
+            self.outline_node(root, 0, &mut out);
+        }
+        out
+    }
+
+    fn outline_node(&self, id: DomId, depth: usize, out: &mut String) {
+        use std::fmt::Write as _;
+
+        let dom = self.app.dom();
+        let Some(node) = dom.tree().get(id) else {
+            return;
+        };
+        let mut classes: Vec<_> = node.meta.classes.iter().map(String::as_str).collect();
+        classes.sort_unstable();
+        let flags: String = [
+            (node.state.focused, 'f'),
+            (node.state.hovered, 'h'),
+            (node.state.disabled, 'd'),
+        ]
+        .iter()
+        .filter(|(on, _)| *on)
+        .map(|(_, flag)| *flag)
+        .collect();
+        let _ = writeln!(
+            out,
+            "{:depth$}{} #{} .{} key={:?} [{flags}] {:?}",
+            "",
+            node.meta.widget_type,
+            node.meta.id.as_deref().unwrap_or(""),
+            classes.join("."),
+            node.meta.key,
+            dom.computed_style(id)
+                .map(|style| (style.visual.color, style.visual.background)),
+        );
+        for &child in &node.children {
+            self.outline_node(child, depth + 1, out);
+        }
+    }
+
     /// Number of nodes in the DOM tree.
     pub fn node_count(&self) -> usize {
         self.app.dom().tree().len()
