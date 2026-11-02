@@ -241,6 +241,7 @@ impl JsonViewer {
         self.get_visible_nodes()
             .into_iter()
             .nth(self.selection.index()?)
+            .cloned()
     }
 
     /// Select the row at `index`
@@ -267,7 +268,7 @@ impl JsonViewer {
     }
 
     /// Get flattened list of visible nodes
-    fn get_visible_nodes(&self) -> Vec<JsonNode> {
+    fn get_visible_nodes(&self) -> Vec<&JsonNode> {
         if let Some(root) = &self.root {
             flatten_tree(root, &self.collapsed)
         } else {

@@ -17,6 +17,13 @@ use super::{DomId, DomNode};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
+/// How many selector strings [`DomTree`] keeps parsed.
+///
+/// The tree lives as long as the app, and a selector built from data (`#row-7`)
+/// is a new string each time. When it is full the cache starts over: an LRU
+/// would need the write lock on every hit, and one more parse is cheap.
+const SELECTOR_CACHE_LIMIT: usize = 1024;
+
 /// Query result - found nodes
 pub struct QueryResult<'a> {
     nodes: Vec<&'a DomNode>,
@@ -730,6 +737,9 @@ impl DomTree {
 
         // Upgrade to write lock to insert into cache
         if let Ok(mut cache) = self.selector_cache.write() {
+            if cache.len() >= SELECTOR_CACHE_LIMIT {
+                cache.clear();
+            }
             cache.insert(selector_str.to_string(), parsed.clone());
         }
 
@@ -741,10 +751,9 @@ impl DomTree {
         selectors.iter().any(|s| self.matches_selector(node, s))
     }
 
-    /// Clear the selector cache (useful for memory management)
+    /// Clear the selector cache
     ///
-    /// Call this periodically if the app uses many unique selectors
-    /// to prevent unbounded cache growth.
+    /// Not needed to bound it: the cache has a size limit of its own.
     pub fn clear_selector_cache(&self) {
         if let Ok(mut cache) = self.selector_cache.write() {
             cache.clear();
@@ -1038,6 +1047,47 @@ mod tests {
         // Should not match non-direct child
         let result = tree.query_one("App > Button");
         assert!(result.is_none());
+    }
+
+    fn cached_selectors(tree: &DomTree) -> usize {
+        tree.selector_cache.read().unwrap().len()
+    }
+
+    #[test]
+    fn the_selector_cache_stays_within_its_limit() {
+        let tree = create_test_tree();
+        for i in 0..SELECTOR_CACHE_LIMIT * 3 {
+            tree.query_one(&format!("#row-{i}"));
+            assert!(cached_selectors(&tree) <= SELECTOR_CACHE_LIMIT);
+        }
+    }
+
+    #[test]
+    fn the_selector_cache_fills_up_to_the_limit_and_then_starts_over() {
+        let tree = create_test_tree();
+        for i in 0..SELECTOR_CACHE_LIMIT {
+            tree.query_one(&format!("#row-{i}"));
+        }
+        assert_eq!(cached_selectors(&tree), SELECTOR_CACHE_LIMIT);
+
+        tree.query_one("#row-0");
+        assert_eq!(
+            cached_selectors(&tree),
+            SELECTOR_CACHE_LIMIT,
+            "a hit adds nothing"
+        );
+
+        tree.query_one("#one-more");
+        assert_eq!(cached_selectors(&tree), 1);
+    }
+
+    #[test]
+    fn a_query_still_finds_its_node_after_the_cache_started_over() {
+        let tree = create_test_tree();
+        for i in 0..SELECTOR_CACHE_LIMIT + 1 {
+            tree.query_one(&format!("#row-{i}"));
+        }
+        assert!(tree.query_one("Button").is_some());
     }
 
     #[test]
