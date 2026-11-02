@@ -2,7 +2,7 @@
 //! tick marks
 
 use super::{Slider, SliderStyle};
-use crate::render::{Cell, Modifier};
+use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG};
 use crate::widget::traits::RenderContext;
@@ -30,6 +30,7 @@ impl Slider {
             x += crate::utils::display_width(label) as u16 + 1;
         }
 
+        let track_x = x;
         let track_len = self.length.min(area.width.saturating_sub(x));
         let filled = (self.normalized() * track_len.saturating_sub(1) as f64).round() as u16;
 
@@ -45,35 +46,29 @@ impl Slider {
 
         // Value display
         if self.show_value {
-            let value_str = self.format_value();
-            x += 1;
-            for (i, ch) in value_str.chars().enumerate() {
-                if x + i as u16 >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(if self.focused {
-                    Color::CYAN
-                } else {
-                    Color::WHITE
-                });
-                if self.focused {
-                    cell.modifier |= Modifier::BOLD;
-                }
-                ctx.set(x + i as u16, y, cell);
-            }
+            x = x.saturating_add(1);
+            let value = self.format_value();
+            ctx.put_str_with(x, y, &value, area.width, |ch| self.value_cell(ch));
         }
 
-        // Tick marks
+        // Tick marks, under the track: from its first cell to its last
         if self.show_ticks && area.height > 1 {
             let tick_y = y + 1;
+            let last = track_len.saturating_sub(1) as f64;
             for i in 0..self.tick_count {
-                let tick_x = (self.label.as_ref().map(|l| l.len() + 1).unwrap_or(0) as u16)
-                    + (i as f64 / (self.tick_count - 1) as f64 * track_len.saturating_sub(1) as f64)
-                        as u16;
-                if tick_x < area.width {
+                let at = if self.tick_count > 1 {
+                    (i as f64 / (self.tick_count - 1) as f64 * last) as u16
+                } else {
+                    0
+                };
+                let tick_x = track_x + at;
+                if at < track_len && tick_x < area.width {
                     let mut cell = Cell::new('┴');
-                    cell.fg = Some(self.track_color);
+                    cell.fg = Some(if self.disabled {
+                        DARK_GRAY
+                    } else {
+                        self.track_color
+                    });
                     ctx.set(tick_x, tick_y, cell);
                 }
             }

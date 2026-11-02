@@ -96,9 +96,11 @@ impl EditState {
     ) -> (EditPos, Option<usize>) {
         let last = self.lines.len() - 1;
         let len = |line: usize| self.line_len(line);
-        let at =
-            |line: usize, goal: usize| EditPos::new(line, col_at_screen(&self.lines[line], goal));
-        let goal = goal.unwrap_or_else(|| screen_col(&self.lines[pos.line], pos.col));
+        let at = |line: usize, goal: usize| {
+            EditPos::new(line, col_at_screen(&self.lines[line], goal, self.tab_width))
+        };
+        let goal =
+            goal.unwrap_or_else(|| screen_col(&self.lines[pos.line], pos.col, self.tab_width));
         let pos = match motion {
             EditMotion::Left if pos.col > 0 => EditPos::new(pos.line, pos.col - 1),
             EditMotion::Left if pos.line > 0 => EditPos::new(pos.line - 1, len(pos.line - 1)),

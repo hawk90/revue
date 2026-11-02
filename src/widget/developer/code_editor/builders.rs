@@ -42,6 +42,7 @@ impl CodeEditor {
     /// Set editor configuration
     pub fn config(mut self, config: EditorConfig) -> Self {
         self.config = config;
+        self.edit.set_tab_width(self.tab_width());
         self
     }
 
@@ -73,6 +74,7 @@ impl CodeEditor {
     /// Set indent size
     pub fn indent_size(mut self, size: usize) -> Self {
         self.config.indent_size = size.max(1);
+        self.edit.set_tab_width(self.tab_width());
         self
     }
 

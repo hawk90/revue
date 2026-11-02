@@ -6,24 +6,31 @@
 //! helpers turn char positions into columns, keep a horizontally scrolled
 //! view around the cursor, and draw the visible part of the line with each
 //! wide glyph's continuation cell.
+//!
+//! A tab reaches the next tab stop: a multiple of the caller's tab width,
+//! counted from the start of the text drawn (a line, or a wrapped row of
+//! it). Text that holds no tabs, or whose tabs take no column, passes
+//! [`NO_TABS`].
 
 use crate::render::Cell;
-use crate::utils::unicode::char_width;
+pub(crate) use crate::utils::unicode::{glyph_width, NO_TABS};
 use crate::utils::EditState;
 
 /// Columns from the start of `text` to char index `idx` (the end of the text
-/// when `idx` is past it).
-pub(crate) fn col_of(text: &str, idx: usize) -> usize {
-    text.chars().take(idx).map(char_width).sum()
+/// when `idx` is past it), with tab stops every `tab` columns.
+pub(crate) fn col_of(text: &str, idx: usize, tab: usize) -> usize {
+    text.chars()
+        .take(idx)
+        .fold(0, |col, ch| col + glyph_width(ch, col, tab))
 }
 
 /// Char index of the glyph covering column `col` of `text` (the char count
 /// when `col` is past the end): the inverse of [`col_of`], landing on a wide
-/// glyph when `col` is its right half.
-pub(crate) fn char_at_col(text: &str, col: usize) -> usize {
+/// glyph or a tab when `col` is inside it.
+pub(crate) fn char_at_col(text: &str, col: usize, tab: usize) -> usize {
     let mut start = 0;
     for (idx, ch) in text.chars().enumerate() {
-        let end = start + char_width(ch);
+        let end = start + glyph_width(ch, start, tab);
         if col < end {
             return idx;
         }
@@ -32,10 +39,13 @@ pub(crate) fn char_at_col(text: &str, col: usize) -> usize {
     text.chars().count()
 }
 
-/// Columns the cursor at char index `idx` covers: the glyph under it, or one
-/// past the end of the text (also on a zero-width char, so it stays visible).
-pub(crate) fn cursor_width(text: &str, idx: usize) -> usize {
-    text.chars().nth(idx).map_or(1, |c| char_width(c).max(1))
+/// Columns the cursor at char index `idx` covers: the glyph or tab under it,
+/// or one past the end of the text (also on a zero-width char, so it stays
+/// visible).
+pub(crate) fn cursor_width(text: &str, idx: usize, tab: usize) -> usize {
+    text.chars()
+        .nth(idx)
+        .map_or(1, |c| glyph_width(c, col_of(text, idx, tab), tab).max(1))
 }
 
 /// The horizontal scroll (in columns) that keeps the cursor inside a view
@@ -67,12 +77,13 @@ pub(crate) fn scroll_to_cursor(
 }
 
 /// The first char at or after `idx` that takes a cell (the char count when
-/// none does): where a cursor at `idx` is drawn
-pub(crate) fn visible_from(text: &str, idx: usize) -> usize {
+/// none does): where a cursor at `idx` is drawn. A tab takes a cell unless
+/// `tab` is [`NO_TABS`].
+pub(crate) fn visible_from(text: &str, idx: usize, tab: usize) -> usize {
     text.chars()
         .enumerate()
         .skip(idx)
-        .find(|&(_, c)| char_width(c) > 0)
+        .find(|&(_, c)| glyph_width(c, 0, tab) > 0)
         .map_or(text.chars().count(), |(i, _)| i)
 }
 
@@ -135,9 +146,9 @@ impl<'a> EditField<'a> {
         match self.cursor {
             Some(cursor) if !self.text.is_empty() => scroll_to_cursor(
                 scroll,
-                col_of(self.text, cursor),
-                cursor_width(self.text, cursor),
-                col_of(self.text, usize::MAX) + 1,
+                col_of(self.text, cursor, NO_TABS),
+                cursor_width(self.text, cursor, NO_TABS),
+                col_of(self.text, usize::MAX, NO_TABS) + 1,
                 width as usize,
             ),
             _ => 0,
@@ -171,8 +182,8 @@ impl super::RenderContext<'_> {
         let selected = |i: usize| field.selection.is_some_and(|(a, b)| a <= i && i < b);
         // A zero-width char takes no cell, so a cursor on one is drawn on
         // the next glyph that has one
-        let cursor = field.cursor.map(|c| visible_from(text, c));
-        self.put_edit_line(x, y, text, scroll, width, |i, ch| {
+        let cursor = field.cursor.map(|c| visible_from(text, c, NO_TABS));
+        self.put_edit_line(x, y, text, scroll, width, NO_TABS, |i, ch| {
             let kind = if cursor == Some(i) {
                 FieldCell::Cursor
             } else if placeholder {
@@ -186,7 +197,7 @@ impl super::RenderContext<'_> {
         });
         let len = field.text.chars().count();
         if !placeholder && cursor.is_some_and(|c| c >= len) {
-            let col = col_of(field.text, usize::MAX).saturating_sub(scroll);
+            let col = col_of(field.text, usize::MAX, NO_TABS).saturating_sub(scroll);
             if col < width as usize {
                 self.set(
                     x.saturating_add(col as u16),
@@ -198,13 +209,18 @@ impl super::RenderContext<'_> {
     }
 
     /// Draw `text` at relative `(x, y)`, scrolled `scroll` columns to the
-    /// left and at most `width` columns wide.
+    /// left and at most `width` columns wide, with tab stops every `tab`
+    /// columns.
     ///
     /// `make_cell(char_idx, ch)` styles each glyph, so a caller can paint
     /// the cursor, a selection or a match by char index. A wide glyph gets a
     /// continuation cell with the same colors and modifiers; a zero-width
-    /// char is skipped. A wide glyph cut by either edge of the view is drawn
-    /// as blanks in its style, so the visible half never shows stale cells.
+    /// char is skipped. A tab is blank cells in its style up to the next
+    /// stop, the first showing the symbol `make_cell` gives it (a whitespace
+    /// marker; a blank when that is the tab itself). A wide glyph cut by
+    /// either edge of the view is drawn as blanks in its style, so the
+    /// visible half never shows stale cells.
+    #[allow(clippy::too_many_arguments)] // position, text, view, tabs, styler
     pub(crate) fn put_edit_line<F>(
         &mut self,
         x: u16,
@@ -212,6 +228,7 @@ impl super::RenderContext<'_> {
         text: &str,
         scroll: usize,
         width: u16,
+        tab: usize,
         mut make_cell: F,
     ) where
         F: FnMut(usize, char) -> Cell,
@@ -223,12 +240,24 @@ impl super::RenderContext<'_> {
             if col >= end {
                 break;
             }
-            let w = char_width(ch);
+            let w = glyph_width(ch, col, tab);
             if w == 0 {
                 continue;
             }
             let next = col + w;
-            if col >= scroll && next <= end {
+            if ch == '\t' {
+                if next > scroll {
+                    let mut first = make_cell(idx, ch);
+                    if first.symbol == '\t' {
+                        first.symbol = ' ';
+                    }
+                    let mut blank = first;
+                    blank.symbol = ' ';
+                    for c in col.max(scroll)..next.min(end) {
+                        self.set(screen_x(c), y, if c == col { first } else { blank });
+                    }
+                }
+            } else if col >= scroll && next <= end {
                 let cell = make_cell(idx, ch);
                 let sx = screen_x(col);
                 self.set(sx, y, cell);
@@ -257,15 +286,44 @@ mod tests {
 
     #[test]
     fn columns_count_wide_glyphs_twice() {
-        assert_eq!(col_of("a한b", 0), 0);
-        assert_eq!(col_of("a한b", 2), 3);
-        assert_eq!(col_of("a한b", 9), 4);
-        assert_eq!(cursor_width("a한b", 1), 2);
-        assert_eq!(cursor_width("a한b", 3), 1);
-        assert_eq!(char_at_col("a한b", 1), 1);
-        assert_eq!(char_at_col("a한b", 2), 1);
-        assert_eq!(char_at_col("a한b", 3), 2);
-        assert_eq!(char_at_col("a한b", 9), 3);
+        assert_eq!(col_of("a한b", 0, NO_TABS), 0);
+        assert_eq!(col_of("a한b", 2, NO_TABS), 3);
+        assert_eq!(col_of("a한b", 9, NO_TABS), 4);
+        assert_eq!(cursor_width("a한b", 1, NO_TABS), 2);
+        assert_eq!(cursor_width("a한b", 3, NO_TABS), 1);
+        assert_eq!(char_at_col("a한b", 1, NO_TABS), 1);
+        assert_eq!(char_at_col("a한b", 2, NO_TABS), 1);
+        assert_eq!(char_at_col("a한b", 3, NO_TABS), 2);
+        assert_eq!(char_at_col("a한b", 9, NO_TABS), 3);
+    }
+
+    #[test]
+    fn a_tab_reaches_the_next_stop() {
+        // From a stop, partway, and from the column before a stop
+        assert_eq!(glyph_width('\t', 0, 4), 4);
+        assert_eq!(glyph_width('\t', 2, 4), 2);
+        assert_eq!(glyph_width('\t', 3, 4), 1);
+        assert_eq!(glyph_width('\t', 4, 4), 4);
+        assert_eq!(glyph_width('\t', 5, 1), 1);
+        // NO_TABS: no column, as before
+        assert_eq!(glyph_width('\t', 2, NO_TABS), 0);
+        assert_eq!(glyph_width('한', 3, 4), 2);
+
+        let text = "a\t한\tb";
+        // a 0, tab 1..4, 한 4..6, tab 6..8, b 8
+        let cols: Vec<_> = (0..=5).map(|i| col_of(text, i, 4)).collect();
+        assert_eq!(cols, vec![0, 1, 4, 6, 8, 9]);
+        assert_eq!(col_of(text, 9, NO_TABS), 4);
+        // Every column inside a tab lands on it
+        let at: Vec<_> = (0..10).map(|c| char_at_col(text, c, 4)).collect();
+        assert_eq!(at, vec![0, 1, 1, 1, 2, 2, 3, 3, 4, 5]);
+        // The cursor on a tab covers the columns it takes
+        assert_eq!(cursor_width(text, 1, 4), 3);
+        assert_eq!(cursor_width(text, 3, 4), 2);
+        assert_eq!(cursor_width(text, 1, NO_TABS), 1);
+        // A tab takes a cell for the cursor unless NO_TABS
+        assert_eq!(visible_from("\u{200B}\tx", 0, 4), 1);
+        assert_eq!(visible_from("\u{200B}\tx", 0, NO_TABS), 2);
     }
 
     #[test]

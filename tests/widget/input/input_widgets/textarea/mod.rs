@@ -7,6 +7,7 @@ mod find_replace;
 mod input;
 mod model;
 mod selection;
+mod tabs;
 mod undo;
 mod unicode;
 mod vertical_scroll;

@@ -48,6 +48,23 @@ pub fn char_width(c: char) -> usize {
     }
 }
 
+/// The tab width of text in which a tab takes no column: labels and titles,
+/// and one-line fields, whose text never holds a tab (`EditState` turns it
+/// into a space)
+pub(crate) const NO_TABS: usize = 0;
+
+/// Columns `ch` takes when it starts at column `col`: a tab reaches the next
+/// multiple of `tab` (no column when `tab` is [`NO_TABS`]), any other char
+/// its [`char_width`]. The one tab rule the editors draw, measure and move
+/// by (#1378).
+pub(crate) fn glyph_width(ch: char, col: usize, tab: usize) -> usize {
+    match (ch, tab) {
+        ('\t', NO_TABS) => 0,
+        ('\t', tab) => tab - col % tab,
+        _ => char_width(ch),
+    }
+}
+
 /// Get the display width of a string
 ///
 /// Returns the total number of terminal columns needed to display the string.
