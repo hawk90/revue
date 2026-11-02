@@ -164,7 +164,11 @@ impl ScreenManager {
         if self.stack.len() <= 1 {
             return false; // Keep at least one screen
         }
+        self.pop_top()
+    }
 
+    /// Take the top screen off, even the last one.
+    fn pop_top(&mut self) -> bool {
         if let Some(mut entry) = self.stack.pop() {
             // Send events
             entry.screen.on_event(ScreenEvent::Blur);
@@ -196,16 +200,15 @@ impl ScreenManager {
         self.current_id().is_some_and(|top| top == id)
     }
 
-    /// Replace current screen
+    /// Replace current screen, the root too
     ///
     /// Returns `false` and changes nothing if `id` cannot be pushed afterwards.
     pub fn replace(&mut self, id: impl Into<ScreenId>) -> bool {
         let id = id.into();
-        let staying = self.stack.len().saturating_sub(1).max(1);
-        if !self.can_push_keeping(&id, staying) {
+        if !self.can_push_keeping(&id, self.stack.len().saturating_sub(1)) {
             return false;
         }
-        self.pop();
+        self.pop_top();
         self.push(id)
     }
 
@@ -603,8 +606,8 @@ mod tests {
 
         assert!(manager.replace("screen2"));
         assert_eq!(manager.current_id().unwrap(), "screen2".into());
-        // replace calls pop() (fails with 1 screen) + push(), so depth becomes 2
-        assert_eq!(manager.depth(), 2);
+        assert_eq!(manager.depth(), 1);
+        assert!(!manager.can_pop(), "nothing to go back to");
     }
 
     #[test]
@@ -1094,5 +1097,35 @@ mod tests {
         manager.register("d", || Box::new(MockScreen::new("d".into())));
         assert!(manager.goto("d"));
         assert_eq!(ids(&manager), id_list(&["a", "d"]));
+    }
+
+    #[test]
+    fn replace_on_an_empty_stack_pushes() {
+        let mut manager = ScreenManager::new();
+        manager.register("a", || Box::new(MockScreen::new("a".into())));
+        assert!(manager.replace("a"));
+        assert_eq!(ids(&manager), id_list(&["a"]));
+    }
+
+    #[test]
+    fn replacing_the_root_with_itself_makes_it_again() {
+        let mut manager = stacked(&["a"]);
+        assert!(manager.replace("a"));
+        assert_eq!(ids(&manager), id_list(&["a"]));
+    }
+
+    #[test]
+    fn a_root_with_no_factory_cannot_replace_itself() {
+        let mut manager = ScreenManager::new();
+        manager.register_screen(Box::new(MockScreen::new("direct".into())));
+        assert!(!manager.replace("direct"));
+        assert_eq!(ids(&manager), id_list(&["direct"]));
+    }
+
+    #[test]
+    fn replacing_the_root_with_an_unknown_id_keeps_it() {
+        let mut manager = stacked(&["a"]);
+        assert!(!manager.replace("nope"));
+        assert_eq!(ids(&manager), id_list(&["a"]));
     }
 }

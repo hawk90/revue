@@ -369,42 +369,27 @@ impl Router {
     }
 
     /// Go back in history
+    ///
+    /// Guards are asked about the entry it would land on, as for
+    /// [`push`](Self::push): a page a guard refuses now cannot be reached by
+    /// going back to it. A refused move changes nothing and returns `false`.
     pub fn back(&mut self) -> bool {
-        if self.position > 0 {
-            let from = self.current_path().to_string();
-            self.position -= 1;
-            let to = self.current_path().to_string();
-
-            let event = NavigationEvent::Back { from, to };
-            self.notify(&event);
-
-            true
-        } else {
-            false
-        }
+        self.go(-1)
     }
 
     /// Go forward in history
+    ///
+    /// Guards are asked, as for [`back`](Self::back).
     pub fn forward(&mut self) -> bool {
-        if self.position < self.history.len() - 1 {
-            let from = self.current_path().to_string();
-            self.position += 1;
-            let to = self.current_path().to_string();
-
-            let event = NavigationEvent::Forward { from, to };
-            self.notify(&event);
-
-            true
-        } else {
-            false
-        }
+        self.go(1)
     }
 
     /// Go to specific position in history
     ///
     /// Moves `delta` entries back (negative) or forward (positive). Like
-    /// [`back`](Self::back) and [`forward`](Self::forward), listeners get a
-    /// `Back` or `Forward` event; `go(0)` stays put and sends none.
+    /// [`back`](Self::back) and [`forward`](Self::forward), guards are asked and
+    /// listeners get a `Back` or `Forward` event; `go(0)` stays put and sends
+    /// none.
     pub fn go(&mut self, delta: isize) -> bool {
         let Some(new_pos) = self
             .position
@@ -415,6 +400,10 @@ impl Router {
         };
         if new_pos == self.position {
             return true;
+        }
+        let target = &self.history[new_pos];
+        if !self.check_guards(&target.path, &target.params) {
+            return false;
         }
 
         let from = self.current_path().to_string();
@@ -1175,5 +1164,92 @@ mod tests {
         let route = Route::new("/a/b/c", "abc");
         assert!(route.matches("/a/b/c").is_some());
         assert!(route.matches("/a/b").is_none());
+    }
+
+    fn guarded_history() -> (Router, std::sync::Arc<std::sync::atomic::AtomicBool>) {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let signed_in = std::sync::Arc::new(AtomicBool::new(true));
+        let allowed = signed_in.clone();
+        let mut router = Router::new()
+            .route("/", "home")
+            .route("/admin", "admin")
+            .route("/users/:id", "user")
+            .guard(move |path, _| path != "/admin" || allowed.load(Ordering::SeqCst));
+        assert!(router.push("/admin"));
+        assert!(router.push("/users/1"));
+        (router, signed_in)
+    }
+
+    fn sign_out(flag: &std::sync::atomic::AtomicBool) {
+        flag.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    #[test]
+    fn back_stops_at_an_entry_a_guard_refuses_now() {
+        let (mut router, signed_in) = guarded_history();
+        sign_out(&signed_in);
+
+        assert!(!router.back());
+        assert_eq!(router.current_path(), "/users/1");
+        assert_eq!(router.history_position(), 2);
+    }
+
+    #[test]
+    fn forward_stops_at_an_entry_a_guard_refuses_now() {
+        let (mut router, signed_in) = guarded_history();
+        assert!(router.back());
+        assert!(router.back());
+        assert_eq!(router.current_path(), "/");
+        sign_out(&signed_in);
+
+        assert!(!router.forward());
+        assert_eq!(router.current_path(), "/");
+    }
+
+    #[test]
+    fn go_asks_about_where_it_lands_not_what_it_passes() {
+        let (mut router, signed_in) = guarded_history();
+        sign_out(&signed_in);
+
+        assert!(!router.go(-1), "lands on /admin");
+        assert!(router.go(-2), "passes /admin and lands on /");
+        assert_eq!(router.current_path(), "/");
+    }
+
+    #[test]
+    fn a_refused_history_move_tells_no_listener() {
+        let (mut router, signed_in) = guarded_history();
+        let told = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let count = told.clone();
+        router.on_navigate(move |_| {
+            count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        });
+        sign_out(&signed_in);
+
+        router.back();
+        assert_eq!(told.load(std::sync::atomic::Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn a_history_guard_gets_the_params_of_the_entry() {
+        let mut router = Router::new()
+            .route("/", "home")
+            .route("/users/:id", "user")
+            .guard(|path, params| path == "/" || params.get("id").is_some_and(|id| id != "1"));
+        assert!(router.push("/users/2"));
+        assert!(router.push("/"));
+        assert!(router.back(), "/users/2 is allowed");
+        assert_eq!(router.param("id"), Some("2"));
+    }
+
+    #[test]
+    fn history_moves_with_no_guard_are_as_before() {
+        let (mut router, _signed_in) = guarded_history();
+        assert!(router.back());
+        assert_eq!(router.current_path(), "/admin");
+        assert!(router.forward());
+        assert_eq!(router.current_path(), "/users/1");
+        assert!(!router.forward(), "the end");
+        assert!(router.go(0));
     }
 }
