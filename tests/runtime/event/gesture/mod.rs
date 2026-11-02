@@ -5,6 +5,7 @@ use revue::event::{
     MouseButton, MouseEvent, MouseEventKind, PinchDirection, PinchGesture, SwipeDirection,
     SwipeGesture, TapGesture,
 };
+use revue::testing::MockTime;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -687,3 +688,152 @@ fn test_swipe_too_slow() {
 }
 
 // =============================================================================
+
+// =============================================================================
+// Swipes on a terminal that reports motion (#870)
+// =============================================================================
+
+fn press(x: u16) -> MouseEvent {
+    MouseEvent::new(x, 5, MouseEventKind::Down(MouseButton::Left))
+}
+
+fn drag_to(x: u16) -> MouseEvent {
+    MouseEvent::new(x, 5, MouseEventKind::Drag(MouseButton::Left))
+}
+
+fn release(x: u16) -> MouseEvent {
+    MouseEvent::new(x, 5, MouseEventKind::Up(MouseButton::Left))
+}
+
+/// A recognizer that counts what its handlers get. Default thresholds: a drag
+/// starts at 2 cells and a swipe needs 3, within 300ms.
+fn counting() -> (GestureRecognizer, Arc<AtomicUsize>, Arc<AtomicUsize>) {
+    let mut recognizer = GestureRecognizer::new();
+    let swipes = Arc::new(AtomicUsize::new(0));
+    let ended = Arc::new(AtomicUsize::new(0));
+    let on_swipe = Arc::clone(&swipes);
+    recognizer.on_swipe(move |_| {
+        on_swipe.fetch_add(1, Ordering::SeqCst);
+    });
+    let on_drag = Arc::clone(&ended);
+    recognizer.on_drag(move |drag| {
+        if drag.state == GestureState::Ended {
+            on_drag.fetch_add(1, Ordering::SeqCst);
+        }
+    });
+    (recognizer, swipes, ended)
+}
+
+/// Press at 0, report motion up to `to`, wait `hold`, release at `to`.
+fn stroke(
+    recognizer: &mut GestureRecognizer,
+    time: &MockTime,
+    to: u16,
+    hold: Duration,
+) -> Option<Gesture> {
+    recognizer.handle_mouse_event(&press(0));
+    for x in 1..=to {
+        recognizer.handle_mouse_event(&drag_to(x));
+    }
+    time.advance(hold);
+    recognizer.handle_mouse_event(&release(to))
+}
+
+#[test]
+fn a_fast_stroke_with_motion_events_is_a_swipe_and_ends_the_drag() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let (mut recognizer, swipes, ended) = counting();
+
+    let gesture = stroke(&mut recognizer, &time, 5, Duration::from_millis(50));
+
+    let Some(Gesture::Swipe(swipe)) = gesture else {
+        panic!("not a swipe: {gesture:?}");
+    };
+    assert_eq!(swipe.direction, SwipeDirection::Right);
+    assert_eq!((swipe.start_x, swipe.end_x), (0, 5));
+    assert_eq!(swipes.load(Ordering::SeqCst), 1);
+    assert_eq!(ended.load(Ordering::SeqCst), 1, "the drag was started");
+}
+
+#[test]
+fn a_stroke_at_the_swipe_threshold_is_a_swipe_and_one_short_is_a_drag() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let (mut recognizer, swipes, ended) = counting();
+
+    let at = stroke(&mut recognizer, &time, 3, Duration::from_millis(50));
+    assert!(matches!(at, Some(Gesture::Swipe(_))), "{at:?}");
+
+    let short = stroke(&mut recognizer, &time, 2, Duration::from_millis(50));
+    assert!(matches!(short, Some(Gesture::Drag(_))), "{short:?}");
+
+    assert_eq!(swipes.load(Ordering::SeqCst), 1);
+    assert_eq!(ended.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn a_stroke_at_the_time_limit_is_a_swipe_and_past_it_is_a_drag() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let (mut recognizer, swipes, _) = counting();
+
+    let at = stroke(&mut recognizer, &time, 5, Duration::from_millis(300));
+    assert!(matches!(at, Some(Gesture::Swipe(_))), "{at:?}");
+
+    let late = stroke(&mut recognizer, &time, 5, Duration::from_millis(301));
+    assert!(matches!(late, Some(Gesture::Drag(_))), "{late:?}");
+
+    assert_eq!(swipes.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn a_stroke_below_the_minimum_velocity_is_a_drag() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let (mut recognizer, swipes, ended) = counting();
+    recognizer.set_config(GestureConfig {
+        swipe_min_velocity: 1000.0,
+        ..GestureConfig::default()
+    });
+
+    let gesture = stroke(&mut recognizer, &time, 5, Duration::from_millis(50));
+
+    assert!(matches!(gesture, Some(Gesture::Drag(_))), "{gesture:?}");
+    assert_eq!(swipes.load(Ordering::SeqCst), 0);
+    assert_eq!(ended.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn a_stroke_that_comes_back_to_where_it_started_is_a_drag() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let (mut recognizer, swipes, _) = counting();
+
+    recognizer.handle_mouse_event(&press(0));
+    recognizer.handle_mouse_event(&drag_to(5));
+    recognizer.handle_mouse_event(&drag_to(0));
+    time.advance(Duration::from_millis(50));
+    let gesture = recognizer.handle_mouse_event(&release(0));
+
+    assert!(matches!(gesture, Some(Gesture::Drag(_))), "{gesture:?}");
+    assert_eq!(swipes.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn a_stroke_in_motion_ends_where_it_was_released_not_where_it_last_moved() {
+    let time = MockTime::new();
+    let _clock = time.install();
+    let (mut recognizer, swipes, _) = counting();
+
+    recognizer.handle_mouse_event(&press(0));
+    recognizer.handle_mouse_event(&drag_to(2));
+    time.advance(Duration::from_millis(50));
+    let gesture = recognizer.handle_mouse_event(&release(9));
+
+    let Some(Gesture::Swipe(swipe)) = gesture else {
+        panic!("not a swipe: {gesture:?}");
+    };
+    assert_eq!(swipe.end_x, 9);
+    assert_eq!(swipes.load(Ordering::SeqCst), 1);
+}
