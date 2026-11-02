@@ -99,6 +99,16 @@ impl LoadState {
     }
 }
 
+/// Runs its closure if dropped: `std::mem::forget` it once the loader returned,
+/// and the closure runs only when the loader panicked.
+pub(super) struct OnPanic<F: FnMut()>(pub(super) F);
+
+impl<F: FnMut()> Drop for OnPanic<F> {
+    fn drop(&mut self) {
+        (self.0)();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

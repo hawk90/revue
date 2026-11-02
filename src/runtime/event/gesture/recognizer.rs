@@ -290,7 +290,9 @@ impl GestureRecognizer {
         self.state.current_y = y;
 
         let gesture = if self.state.is_dragging {
-            // End drag
+            // End drag. Handlers saw it start, so they see it end, even when
+            // it turns out to have been a swipe: a terminal that reports motion
+            // passes every swipe through the drag threshold on its way.
             let drag = DragGesture {
                 start_x: self.state.start_x,
                 start_y: self.state.start_y,
@@ -304,51 +306,21 @@ impl GestureRecognizer {
                 state: GestureState::Ended,
             };
             self.emit_drag(&drag);
-            Some(Gesture::Drag(drag))
+            match self.swipe_to(x, y, elapsed, button) {
+                Some(swipe) => {
+                    self.emit_swipe(&swipe);
+                    Some(Gesture::Swipe(swipe))
+                }
+                None => Some(Gesture::Drag(drag)),
+            }
         } else if self.state.long_press_detected {
             // Long press already handled
             None
+        } else if let Some(swipe) = self.swipe_to(x, y, elapsed, button) {
+            self.emit_swipe(&swipe);
+            Some(Gesture::Swipe(swipe))
         } else {
-            // Check for swipe or tap
-            let dx = (x as i32 - self.state.start_x as i32).abs();
-            let dy = (y as i32 - self.state.start_y as i32).abs();
-            let distance = ((dx * dx + dy * dy) as f64).sqrt();
-
-            if distance >= self.config.swipe_threshold as f64
-                && elapsed <= self.config.swipe_max_duration
-            {
-                // Swipe detected
-                let velocity = distance / elapsed.as_secs_f64();
-
-                if velocity >= self.config.swipe_min_velocity {
-                    let direction = Self::calculate_swipe_direction(
-                        self.state.start_x,
-                        self.state.start_y,
-                        x,
-                        y,
-                    );
-
-                    let swipe = SwipeGesture {
-                        direction,
-                        start_x: self.state.start_x,
-                        start_y: self.state.start_y,
-                        end_x: x,
-                        end_y: y,
-                        distance,
-                        velocity,
-                        duration: elapsed,
-                        button,
-                    };
-
-                    self.emit_swipe(&swipe);
-                    Some(Gesture::Swipe(swipe))
-                } else {
-                    self.emit_tap(x, y, button)
-                }
-            } else {
-                // Tap
-                self.emit_tap(x, y, button)
-            }
+            self.emit_tap(x, y, button)
         };
 
         // Reset state
@@ -357,6 +329,41 @@ impl GestureRecognizer {
         self.state.is_dragging = false;
 
         gesture
+    }
+
+    /// The swipe from the press to `(x, y)`, if it was far and fast enough.
+    fn swipe_to(
+        &self,
+        x: u16,
+        y: u16,
+        elapsed: Duration,
+        button: MouseButton,
+    ) -> Option<SwipeGesture> {
+        let dx = (x as i32 - self.state.start_x as i32).abs();
+        let dy = (y as i32 - self.state.start_y as i32).abs();
+        let distance = ((dx * dx + dy * dy) as f64).sqrt();
+
+        if distance < self.config.swipe_threshold as f64 || elapsed > self.config.swipe_max_duration
+        {
+            return None;
+        }
+        let velocity = distance / elapsed.as_secs_f64();
+        if velocity < self.config.swipe_min_velocity {
+            return None;
+        }
+        let direction =
+            Self::calculate_swipe_direction(self.state.start_x, self.state.start_y, x, y);
+        Some(SwipeGesture {
+            direction,
+            start_x: self.state.start_x,
+            start_y: self.state.start_y,
+            end_x: x,
+            end_y: y,
+            distance,
+            velocity,
+            duration: elapsed,
+            button,
+        })
     }
 
     fn handle_drag(&mut self, x: u16, y: u16, button: MouseButton) -> Option<Gesture> {

@@ -2937,6 +2937,7 @@ entries:
       - "cache마다 LRU 상한이나 scope lifetime을 둔다."
     observed:
       - "2026-10-20: `DomTree`의 `selector_cache: RwLock<HashMap<String, Vec<Selector>>>`가 query 문자열마다 늘어난다. 문서는 \"주기적으로 `clear_selector_cache`를 부르라\"고 하지만 부르는 곳이 없다 (src/runtime/dom/query.rs). cascade resolver의 cache는 LRU로 제한된다."
+      - "2026-11-02: `selector_cache`는 1024개에서 비운다 (#1196)."
   - id: REV-MEM-004
     title: "Buffer Reallocate on Every Resize"
     category: memory

@@ -54,11 +54,11 @@ impl SearchState {
 
     /// Expand the ancestors of the current match in `collapsed` and select
     /// it among the rows that leaves visible
-    pub fn go_to_match(
+    pub fn go_to_match<'a>(
         &self,
         collapsed: &mut HashSet<String>,
         selected: &mut usize,
-        get_visible_nodes: impl Fn(&HashSet<String>) -> Vec<JsonNode>,
+        get_visible_nodes: impl Fn(&HashSet<String>) -> Vec<&'a JsonNode>,
     ) {
         if let Some(path) = self.search_matches.get(self.current_match) {
             // Expand all ancestors
