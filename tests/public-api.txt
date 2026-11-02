@@ -33693,6 +33693,7 @@ impl revue::testing::PipelineHarness
 pub fn revue::testing::PipelineHarness::app(&self) -> &revue::core::app::App
 pub fn revue::testing::PipelineHarness::buffer(&self) -> &revue::prelude::Buffer
 pub fn revue::testing::PipelineHarness::child_ids(&self, &str) -> alloc::vec::Vec<revue::prelude::DomId>
+pub fn revue::testing::PipelineHarness::clear_terminal_output(&mut self) -> &mut Self
 pub fn revue::testing::PipelineHarness::computed_color(&self, &str) -> core::option::Option<revue::runtime::style::Color>
 pub fn revue::testing::PipelineHarness::contains(&self, &str) -> bool
 pub fn revue::testing::PipelineHarness::css_layout(self, bool) -> Self
@@ -33724,9 +33725,11 @@ pub fn revue::testing::PipelineHarness::query_count(&self, &str) -> usize
 pub fn revue::testing::PipelineHarness::query_ids(&self, &str) -> alloc::vec::Vec<alloc::string::String>
 pub fn revue::testing::PipelineHarness::request_dom_rebuild(&mut self) -> &mut Self
 pub fn revue::testing::PipelineHarness::request_redraw(&mut self) -> &mut Self
+pub fn revue::testing::PipelineHarness::resize<V: revue::widget::View>(&mut self, u16, u16, &mut V) -> bool
 pub fn revue::testing::PipelineHarness::screen_text(&self) -> alloc::string::String
 pub fn revue::testing::PipelineHarness::send<V: revue::widget::View>(&mut self, revue::runtime::event::Event, &mut V) -> bool
 pub fn revue::testing::PipelineHarness::send_with<V, H>(&mut self, revue::runtime::event::Event, &mut V, H) -> bool where V: revue::widget::View, H: core::ops::function::FnMut(&revue::runtime::event::Event, &mut V, &mut revue::core::app::App) -> bool
+pub fn revue::testing::PipelineHarness::set_css(&mut self, &str) -> &mut Self
 pub fn revue::testing::PipelineHarness::size(&self) -> (u16, u16)
 pub fn revue::testing::PipelineHarness::structural_state(&self, &str) -> core::option::Option<(usize, usize, bool, bool)>
 pub fn revue::testing::PipelineHarness::tab_navigation(self, bool) -> Self
