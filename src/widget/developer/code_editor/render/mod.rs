@@ -75,9 +75,9 @@ impl CodeEditor {
         let line = self.line_text(line);
         scroll_to_cursor(
             self.scroll_x.get(),
-            col_of(line, col),
-            cursor_width(line, col),
-            col_of(line, usize::MAX) + 1,
+            col_of(line, col, self.tab_width()),
+            cursor_width(line, col, self.tab_width()),
+            col_of(line, usize::MAX, self.tab_width()) + 1,
             text_width as usize,
         )
     }
@@ -136,7 +136,10 @@ impl View for CodeEditor {
                 // A zero-width char takes no cell: the cursor on one is
                 // drawn on the next glyph that has one
                 let (line, col) = self.cursor_position();
-                (line, visible_from(self.line_text(line), col))
+                (
+                    line,
+                    visible_from(self.line_text(line), col, self.tab_width()),
+                )
             }),
             selection: self.selection_chars(),
         };

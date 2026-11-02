@@ -36010,8 +36010,10 @@ pub fn revue::utils::edit::EditState::selected_text(&self) -> alloc::string::Str
 pub fn revue::utils::edit::EditState::set_cursor(&mut self, revue::utils::EditPos)
 pub fn revue::utils::edit::EditState::set_cursors(&mut self, alloc::vec::Vec<revue::utils::edit::EditCursor>)
 pub fn revue::utils::edit::EditState::set_read_only(&mut self, bool)
+pub fn revue::utils::edit::EditState::set_tab_width(&mut self, usize)
 pub fn revue::utils::edit::EditState::set_text(&mut self, impl core::convert::AsRef<str>)
 pub fn revue::utils::edit::EditState::single_line() -> Self
+pub fn revue::utils::edit::EditState::tab_width(self, usize) -> Self
 pub fn revue::utils::edit::EditState::text(&self) -> alloc::string::String
 pub fn revue::utils::edit::EditState::text_in(&self, revue::utils::EditPos, revue::utils::EditPos) -> alloc::string::String
 pub fn revue::utils::edit::EditState::with_text(self, impl core::convert::AsRef<str>) -> Self
@@ -38995,8 +38997,10 @@ pub fn revue::utils::edit::EditState::selected_text(&self) -> alloc::string::Str
 pub fn revue::utils::edit::EditState::set_cursor(&mut self, revue::utils::EditPos)
 pub fn revue::utils::edit::EditState::set_cursors(&mut self, alloc::vec::Vec<revue::utils::edit::EditCursor>)
 pub fn revue::utils::edit::EditState::set_read_only(&mut self, bool)
+pub fn revue::utils::edit::EditState::set_tab_width(&mut self, usize)
 pub fn revue::utils::edit::EditState::set_text(&mut self, impl core::convert::AsRef<str>)
 pub fn revue::utils::edit::EditState::single_line() -> Self
+pub fn revue::utils::edit::EditState::tab_width(self, usize) -> Self
 pub fn revue::utils::edit::EditState::text(&self) -> alloc::string::String
 pub fn revue::utils::edit::EditState::text_in(&self, revue::utils::EditPos, revue::utils::EditPos) -> alloc::string::String
 pub fn revue::utils::edit::EditState::with_text(self, impl core::convert::AsRef<str>) -> Self

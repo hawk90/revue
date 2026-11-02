@@ -1,6 +1,9 @@
 //! The value label, measuring, and the View impl
 
 use super::{Slider, SliderOrientation};
+use crate::render::Cell;
+use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View};
 
 impl Slider {
@@ -19,6 +22,20 @@ impl Slider {
             format!("{:.0}", self.value)
         } else {
             format!("{:.1}", self.value)
+        }
+    }
+}
+
+impl Slider {
+    /// A cell of the value, in one style for both orientations: dimmed like
+    /// the label when disabled, cyan and bold when focused, white otherwise
+    pub(super) fn value_cell(&self, ch: char) -> Cell {
+        if self.disabled {
+            Cell::new(ch).fg(DISABLED_FG)
+        } else if self.focused {
+            Cell::new(ch).fg(Color::CYAN).bold()
+        } else {
+            Cell::new(ch).fg(Color::WHITE)
         }
     }
 }

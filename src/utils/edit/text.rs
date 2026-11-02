@@ -3,7 +3,7 @@
 
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::utils::unicode::display_width;
+use crate::utils::unicode::{display_width, glyph_width};
 
 /// The clusters in `line`
 pub(super) fn cluster_count(line: &str) -> usize {
@@ -31,17 +31,30 @@ pub(super) fn cluster_at(line: &str, col: usize) -> Option<&str> {
     line.graphemes(true).nth(col)
 }
 
-/// The screen column cluster `col` starts at
-pub(super) fn screen_col(line: &str, col: usize) -> usize {
-    line.graphemes(true).take(col).map(display_width).sum()
+/// Columns `cluster` takes when it starts at screen column `left`: a tab
+/// reaches the next multiple of `tab`
+fn cluster_width(cluster: &str, left: usize, tab: usize) -> usize {
+    if cluster == "\t" {
+        glyph_width('\t', left, tab)
+    } else {
+        display_width(cluster)
+    }
+}
+
+/// The screen column cluster `col` starts at, with tab stops every `tab`
+/// columns
+pub(super) fn screen_col(line: &str, col: usize, tab: usize) -> usize {
+    line.graphemes(true)
+        .take(col)
+        .fold(0, |left, cluster| left + cluster_width(cluster, left, tab))
 }
 
 /// The column whose cluster covers screen column `x`, or the line's end
-/// when the line is narrower
-pub(super) fn col_at_screen(line: &str, x: usize) -> usize {
+/// when the line is narrower; tab stops every `tab` columns
+pub(super) fn col_at_screen(line: &str, x: usize, tab: usize) -> usize {
     let mut left = 0;
     for (col, cluster) in line.graphemes(true).enumerate() {
-        let width = display_width(cluster);
+        let width = cluster_width(cluster, left, tab);
         if x < left + width.max(1) {
             return col;
         }

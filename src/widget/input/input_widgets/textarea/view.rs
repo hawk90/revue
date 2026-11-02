@@ -32,7 +32,7 @@ impl TextArea {
                     .map(|c| {
                         let pos = self.char_pos(c.head());
                         let line = self.line_text(pos.line);
-                        CursorPos::new(pos.line, visible_from(line, pos.col))
+                        CursorPos::new(pos.line, visible_from(line, pos.col, self.tab_stop()))
                     })
                     .collect()
             } else {
@@ -213,16 +213,23 @@ impl View for TextArea {
                 self.draw_line_number(ctx, y, line_idx, line_num_width);
             }
 
-            // Draw text. Columns, not chars: a wide glyph takes two cells.
+            // Draw text. Columns, not chars: a wide glyph takes two cells, a
+            // tab up to the next stop of its row.
             let line = self.line_text(line_idx);
             let seg = &line[char_to_byte_index(line, seg_start)..char_to_byte_index(line, seg_end)];
 
             // Get syntax highlighting spans for this line
             let highlights = self.highlighter.as_ref().map(|h| h.highlight_line(line));
 
-            ctx.put_edit_line(text_start_x, y, seg, scroll_x, text_width, |i, ch| {
-                self.text_cell(&marks, line_idx, seg_start + i, ch, &highlights, css_fg)
-            });
+            ctx.put_edit_line(
+                text_start_x,
+                y,
+                seg,
+                scroll_x,
+                text_width,
+                self.tab_stop(),
+                |i, ch| self.text_cell(&marks, line_idx, seg_start + i, ch, &highlights, css_fg),
+            );
 
             // Cursors the text cells do not show: past the line's end (on
             // its last row, or the extra row of one ending in a hanging
@@ -237,7 +244,14 @@ impl View for TextArea {
                         .iter()
                         .filter(|c| c.line == line_idx)
                         .map(|c| {
-                            let (k, x) = place_in(&rows, line, c.col, text_width, self.wrap);
+                            let (k, x) = place_in(
+                                &rows,
+                                line,
+                                c.col,
+                                text_width,
+                                self.wrap,
+                                self.tab_stop(),
+                            );
                             (c.col, k, x)
                         })
                         .collect();

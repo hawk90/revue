@@ -164,6 +164,91 @@ fn test_slider_ticks_follow_the_track() {
     assert_eq!(render_rows(&s, 12, 1).len(), 1);
 }
 
+/// The ticks start where the track does: after the label's columns, not its
+/// bytes (#1010)
+#[test]
+fn test_slider_ticks_follow_the_track_after_a_wide_label() {
+    let s = slider().label("음량").length(5).ticks(2).show_value(false);
+    let buffer = render(&s, 12, 2);
+    // "음량" takes x 0..4, a space, the track x 5..10
+    assert_eq!(buffer.get(5, 0).unwrap().symbol, '█');
+    let ticks: Vec<u16> = (0..12)
+        .filter(|&x| buffer.get(x, 1).unwrap().symbol == '┴')
+        .collect();
+    assert_eq!(ticks, vec![5, 9]);
+    // `ticks(1)` is two at least: the track's two ends
+    let one = render(&s.clone().ticks(1), 12, 2);
+    let ticks: Vec<u16> = (0..12)
+        .filter(|&x| one.get(x, 1).unwrap().symbol == '┴')
+        .collect();
+    assert_eq!(ticks, vec![5, 9]);
+    // A track cut by the area: ticks along what is drawn, none past it
+    let cut = render(&s, 8, 2);
+    let ticks: Vec<u16> = (0..8)
+        .filter(|&x| cut.get(x, 1).unwrap().symbol == '┴')
+        .collect();
+    assert_eq!(ticks, vec![5, 7]);
+}
+
+/// Disabled dims every part: the value like the label, the ticks like the
+/// track, and focus does not brighten it (#1010)
+#[test]
+fn test_slider_disabled_dims_the_value_and_the_ticks() {
+    let s = slider()
+        .length(3)
+        .value(50.0)
+        .label("L")
+        .ticks(2)
+        .track_color(TRACK)
+        .disabled(true);
+    for s in [s.clone(), s.focused(true)] {
+        let buffer = render(&s, 9, 2);
+        assert_eq!(render_rows(&s, 9, 2)[0], "L ██░ 50 ");
+        let label = buffer.get(0, 0).unwrap().fg;
+        let track = buffer.get(4, 0).unwrap().fg;
+        for x in 6..8 {
+            let cell = buffer.get(x, 0).unwrap();
+            assert_eq!(cell.fg, label, "{x}");
+            assert!(!cell.modifier.contains(Modifier::BOLD), "{x}");
+        }
+        for x in [2, 4] {
+            assert_eq!(buffer.get(x, 1).unwrap().symbol, '┴');
+            assert_eq!(buffer.get(x, 1).unwrap().fg, track, "{x}");
+        }
+    }
+    // Enabled ticks keep the track color
+    let buffer = render(&slider().length(3).ticks(2).track_color(TRACK), 9, 2);
+    assert_eq!(buffer.get(0, 1).unwrap().fg, Some(TRACK));
+}
+
+/// The vertical value is styled as the horizontal one (#1010)
+#[test]
+fn test_slider_vertical_value_focused_is_cyan_and_bold() {
+    let s = slider().vertical().length(3).value(40.0);
+    let buffer = render(&s.clone().focused(true), 5, 3);
+    for x in 2..4 {
+        let cell = buffer.get(x, 1).unwrap();
+        assert_eq!(cell.fg, Some(Color::CYAN), "{x}");
+        assert!(cell.modifier.contains(Modifier::BOLD), "{x}");
+    }
+    let buffer = render(&s.disabled(true), 5, 3);
+    assert!(!buffer.get(2, 1).unwrap().modifier.contains(Modifier::BOLD));
+    assert_ne!(buffer.get(2, 1).unwrap().fg, Some(Color::WHITE));
+}
+
+/// A value format with wide glyphs takes their columns
+#[test]
+fn test_slider_wide_value_format_takes_its_columns() {
+    let s = slider().length(3).value(50.0).value_format("{}점");
+    let buffer = render(&s, 12, 1);
+    // "50.0점": the 점 at x 8, its continuation at 9
+    assert_eq!(buffer.get(8, 0).unwrap().symbol, '점');
+    assert!(buffer.get(9, 0).unwrap().is_continuation());
+    // Cut by the edge: no half glyph
+    let buffer = render(&s, 9, 1);
+    assert_eq!(buffer.get(8, 0).unwrap().symbol, ' ');
+}
+
 #[test]
 fn test_slider_flat_range_draws_the_minimum() {
     let s = slider().range(5.0, 5.0).value(5.0).length(4);
