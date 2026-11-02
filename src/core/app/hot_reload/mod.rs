@@ -64,6 +64,15 @@ pub struct HotReload {
     recursive: bool,
 }
 
+// notify's watcher is a different type on each OS, so `HotReload` was unwind
+// safe on Linux and not on macOS (#1414). The macOS watcher misses the auto
+// traits because of handles: raw CoreFoundation pointers and its run-loop
+// thread's JoinHandle. The state it reads back is plain data, as in the Linux
+// watcher, so say it for every OS. Unwind safety is not memory safety: no
+// unsafe here.
+impl std::panic::UnwindSafe for HotReload {}
+impl std::panic::RefUnwindSafe for HotReload {}
+
 impl HotReload {
     /// Create a new hot reload watcher
     ///
