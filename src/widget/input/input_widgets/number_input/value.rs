@@ -40,28 +40,42 @@ impl NumberInput {
         self.set_value(self.value - self.step * 10.0);
     }
 
-    /// Set to minimum value (if defined)
+    /// Set to the lower bound (if defined)
     pub fn set_to_min(&mut self) {
-        if let Some(min) = self.min {
-            self.set_value(min);
+        if let (Some(low), _) = self.bounds() {
+            self.set_value(low);
         }
     }
 
-    /// Set to maximum value (if defined)
+    /// Set to the upper bound (if defined)
     pub fn set_to_max(&mut self) {
-        if let Some(max) = self.max {
-            self.set_value(max);
+        if let (_, Some(high)) = self.bounds() {
+            self.set_value(high);
         }
     }
 
-    /// Clamp value to min/max constraints
-    pub(super) fn clamp_value(&self, value: f64) -> f64 {
-        let mut v = value;
-        if let Some(min) = self.min {
-            v = v.max(min);
+    /// The bounds, low first: a range given high to low (`min > max`) is
+    /// swapped, as Slider's is
+    fn bounds(&self) -> (Option<f64>, Option<f64>) {
+        match (self.min, self.max) {
+            (Some(min), Some(max)) if min > max => (Some(max), Some(min)),
+            bounds => bounds,
         }
-        if let Some(max) = self.max {
-            v = v.min(max);
+    }
+
+    /// `value` within the bounds. NaN is no number to hold: the current
+    /// value is kept.
+    pub(super) fn clamp_value(&self, value: f64) -> f64 {
+        if value.is_nan() {
+            return self.value;
+        }
+        let mut v = value;
+        let (low, high) = self.bounds();
+        if let Some(low) = low {
+            v = v.max(low);
+        }
+        if let Some(high) = high {
+            v = v.min(high);
         }
         v
     }
