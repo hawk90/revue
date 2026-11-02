@@ -3,6 +3,8 @@
 use crate::dom::query::Query;
 use crate::dom::renderer::types::DomRenderer;
 use crate::dom::DomId;
+use crate::style::Display;
+use std::collections::HashSet;
 
 impl DomRenderer {
     /// Set focused node by element ID
@@ -50,10 +52,18 @@ impl DomRenderer {
     /// If the focused node has left the ring - it was removed, or it became
     /// disabled - the step restarts from the end it came from, since there is
     /// no "next" relative to a node that is not in the list.
+    ///
+    /// An open focus scope with nothing to focus takes focus away from whatever
+    /// behind it still had it: no control behind a modal may keep the keyboard.
     fn step_focus(&mut self, delta: isize) -> bool {
-        let ring = self.tree.focusable_in_order();
+        let hidden = self.nodes_hidden_by_css();
+        let scope = self.tree.open_focus_scope(&hidden);
+        let mut ring = Vec::new();
+        if let Some(start) = scope.or_else(|| self.tree.root_id()) {
+            self.tree.collect_focusable(start, &hidden, &mut ring);
+        }
         if ring.is_empty() {
-            return false;
+            return scope.is_some() && self.set_focus_node(None);
         }
         let next = match self
             .focused
@@ -67,6 +77,27 @@ impl DomRenderer {
             None => ring[ring.len() - 1],
         };
         self.set_focus_node(Some(next))
+    }
+
+    /// May a click give `id` focus, given the focus scope that is open?
+    pub(crate) fn is_inside_open_focus_scope(&self, id: DomId) -> bool {
+        self.tree
+            .open_focus_scope(&self.nodes_hidden_by_css())
+            .is_none_or(|scope| self.tree.ancestors_of(id).contains(&scope))
+    }
+
+    /// The nodes the paint pass skips, with everything below them, for
+    /// `display: none`. They stay in the tree, so whoever walks it for what the
+    /// user can reach has to leave them out.
+    fn nodes_hidden_by_css(&self) -> HashSet<DomId> {
+        if !self.css_layout {
+            return HashSet::new();
+        }
+        self.styles
+            .iter()
+            .filter(|(_, style)| style.layout.display == Display::None)
+            .map(|(&id, _)| id)
+            .collect()
     }
 
     /// Set hovered node by element ID

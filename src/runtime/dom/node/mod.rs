@@ -113,6 +113,13 @@ pub struct WidgetMeta {
     /// pseudo-class. So it travels with the widget's description of itself and
     /// is copied onto the node, rather than being written by an event.
     pub disabled: bool,
+    /// Does this widget hold keyboard focus inside itself right now?
+    ///
+    /// While it is `true`, Tab and clicks only give focus to nodes inside this
+    /// one, the way a browser treats everything behind an open `<dialog>` as
+    /// inert. It describes the moment, not the type: an open modal is a scope
+    /// and a closed one is not.
+    pub focus_scope: bool,
 }
 
 impl WidgetMeta {
@@ -125,6 +132,7 @@ impl WidgetMeta {
             key: None,
             focusable: false,
             disabled: false,
+            focus_scope: false,
         }
     }
 
@@ -137,6 +145,12 @@ impl WidgetMeta {
     /// Declare this widget disabled.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
+        self
+    }
+
+    /// Declare whether this widget keeps keyboard focus inside itself.
+    pub fn focus_scope(mut self, focus_scope: bool) -> Self {
+        self.focus_scope = focus_scope;
         self
     }
 

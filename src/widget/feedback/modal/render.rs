@@ -26,7 +26,13 @@ impl View for Modal {
         self.draw_buttons(ctx, x, y, modal_width, modal_height);
     }
 
-    crate::impl_view_meta!("Modal");
+    crate::impl_view_meta!(@common);
+
+    fn meta(&self) -> crate::dom::WidgetMeta {
+        self.props
+            .build_meta("Modal", false, false)
+            .focus_scope(self.visible)
+    }
 }
 
 impl Modal {
