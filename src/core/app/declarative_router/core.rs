@@ -10,16 +10,14 @@ use crate::{impl_props_builders, impl_styled_view};
 
 use super::types::{ReactiveRouteState, RouteContext, RouteRenderer};
 
-/// Route guard function
-type Guard = Box<dyn Fn(&str, &RouteParams) -> bool + Send + Sync>;
-
 /// A declarative router that wraps `Router` with renderers and reactive state
 pub struct DeclarativeRouter {
     router: Router,
-    renderers: HashMap<String, RouteRenderer>,
+    /// Pattern and renderer, in registration order: the order the router
+    /// matches routes in, so both agree on which route a path is
+    renderers: Vec<(String, RouteRenderer)>,
     fallback: Option<RouteRenderer>,
     current_route: Signal<ReactiveRouteState>,
-    guards: Vec<Guard>,
     props: WidgetProps,
 }
 
@@ -28,13 +26,12 @@ impl DeclarativeRouter {
     pub fn new() -> Self {
         Self {
             router: Router::new(),
-            renderers: HashMap::new(),
+            renderers: Vec::new(),
             fallback: None,
             current_route: Signal::new(ReactiveRouteState {
                 path: "/".to_string(),
                 ..Default::default()
             }),
-            guards: Vec::new(),
             props: WidgetProps::new(),
         }
     }
@@ -45,8 +42,11 @@ impl DeclarativeRouter {
         F: Fn(&RouteContext, &mut RenderContext) + 'static,
     {
         self.router = self.router.route(pattern, name);
-        self.renderers
-            .insert(pattern.to_string(), Box::new(renderer));
+        let renderer: RouteRenderer = Box::new(renderer);
+        match self.renderers.iter_mut().find(|(p, _)| p == pattern) {
+            Some((_, existing)) => *existing = renderer,
+            None => self.renderers.push((pattern.to_string(), renderer)),
+        }
         self
     }
 
@@ -60,22 +60,19 @@ impl DeclarativeRouter {
     }
 
     /// Add a navigation guard
+    ///
+    /// Checked by [`push`](Self::push) and [`replace`](Self::replace). The guard
+    /// gets the destination: its path without the query, and its route params.
     pub fn guard<F>(mut self, guard: F) -> Self
     where
         F: Fn(&str, &RouteParams) -> bool + Send + Sync + 'static,
     {
-        self.guards.push(Box::new(guard));
+        self.router = self.router.guard(guard);
         self
     }
 
     /// Navigate to a path
     pub fn push(&mut self, path: &str) -> bool {
-        // Check local guards
-        let params = self.router.params().clone();
-        if !self.guards.iter().all(|g| g(path, &params)) {
-            return false;
-        }
-
         let result = self.router.push(path);
         if result {
             self.sync_state();
@@ -185,7 +182,7 @@ impl DeclarativeRouter {
     /// Find the renderer for the current route
     fn find_renderer(&self) -> Option<&RouteRenderer> {
         let path = self.router.current_path();
-        // Try each registered pattern
+        // First match in registration order, as the router matches routes
         for (pattern, renderer) in &self.renderers {
             let route = crate::core::app::router::Route::new(pattern, "");
             if route.matches(path).is_some() {
@@ -352,5 +349,81 @@ mod tests {
     fn test_declarative_router_helper() {
         let router = declarative_router();
         assert_eq!(router.current_path(), "/");
+    }
+
+    fn guarded() -> DeclarativeRouter {
+        DeclarativeRouter::new()
+            .route("/", "home", |_, _| {})
+            .route("/admin", "admin", |_, _| {})
+            .route("/users/:id", "user", |_, _| {})
+            .guard(|path, _| path != "/admin")
+    }
+
+    #[test]
+    fn a_guard_stops_replace() {
+        let mut router = guarded();
+        assert!(!router.replace("/admin"));
+        assert_eq!(router.current_path(), "/");
+        assert!(router.replace("/users/1"));
+    }
+
+    #[test]
+    fn a_query_does_not_get_past_a_guard() {
+        let mut router = guarded();
+        assert!(!router.push("/admin?x=1"));
+        assert!(!router.replace("/admin?x=1"));
+        assert_eq!(router.current_path(), "/");
+    }
+
+    #[test]
+    fn a_guard_gets_the_params_of_the_destination() {
+        let mut router = DeclarativeRouter::new()
+            .route("/", "home", |_, _| {})
+            .route("/users/:id", "user", |_, _| {})
+            .guard(|path, params| path == "/" || params.get("id").is_some_and(|id| id != "0"));
+
+        assert!(router.push("/users/1"));
+        assert!(
+            !router.push("/users/0"),
+            "params of /users/1 would allow it"
+        );
+        assert!(!router.replace("/users/0"));
+        assert_eq!(router.param("id"), Some("1"));
+    }
+
+    fn drawn_by(router: &DeclarativeRouter) -> char {
+        let mut buffer = crate::render::Buffer::new(4, 1);
+        let area = crate::layout::Rect::new(0, 0, 4, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        router.render(&mut ctx);
+        buffer.get(0, 0).map_or(' ', |cell| cell.symbol)
+    }
+
+    fn mark(c: char) -> impl Fn(&RouteContext, &mut RenderContext) + 'static {
+        move |_, ctx| ctx.set(0, 0, Cell::new(c))
+    }
+
+    #[test]
+    fn the_first_registered_route_that_matches_renders_whatever_the_hash_order() {
+        // RandomState differs per map, so one lucky order cannot pass all of these.
+        for _ in 0..64 {
+            let mut router = DeclarativeRouter::new()
+                .route("/users/new", "new", mark('A'))
+                .route("/users/:id", "user", mark('B'))
+                .route("/users/*rest", "rest", mark('C'));
+            router.push("/users/new");
+            assert_eq!(drawn_by(&router), 'A');
+            router.push("/users/7");
+            assert_eq!(drawn_by(&router), 'B');
+        }
+    }
+
+    #[test]
+    fn registering_a_pattern_again_replaces_its_renderer() {
+        let mut router = DeclarativeRouter::new()
+            .route("/a", "first", mark('A'))
+            .route("/a", "second", mark('B'));
+        router.push("/a");
+        assert_eq!(drawn_by(&router), 'B');
     }
 }
