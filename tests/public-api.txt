@@ -1609,13 +1609,13 @@ pub fn revue::core::app::HotReload::watched_paths(&self) -> &[std::path::PathBuf
 pub fn revue::core::app::HotReload::with_config(revue::core::app::HotReloadConfig) -> core::result::Result<Self, notify::error::Error>
 impl core::ops::drop::Drop for revue::core::app::HotReload
 pub fn revue::core::app::HotReload::drop(&mut self)
+impl core::panic::unwind_safe::RefUnwindSafe for revue::core::app::HotReload
+impl core::panic::unwind_safe::UnwindSafe for revue::core::app::HotReload
 impl core::marker::Freeze for revue::core::app::HotReload
 impl core::marker::Send for revue::core::app::HotReload
 impl !core::marker::Sync for revue::core::app::HotReload
 impl core::marker::Unpin for revue::core::app::HotReload
 impl core::marker::UnsafeUnpin for revue::core::app::HotReload
-impl !core::panic::unwind_safe::RefUnwindSafe for revue::core::app::HotReload
-impl !core::panic::unwind_safe::UnwindSafe for revue::core::app::HotReload
 pub struct revue::core::app::HotReloadBuilder
 impl revue::core::app::HotReloadBuilder
 pub fn revue::core::app::HotReloadBuilder::build(self) -> core::result::Result<revue::core::app::HotReload, notify::error::Error>
