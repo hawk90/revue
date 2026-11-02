@@ -164,6 +164,46 @@ PRs must pass all CI checks:
 - `cargo test --all-features`
 - `cargo-deny` (license and security)
 - `typos` (spell check)
+- `scripts/public-api.sh` (public API snapshot, see below)
+
+### Public API Snapshot
+
+`tests/public-api.txt` lists every public item, as `cargo public-api` prints it.
+CI fails when it is not the current API:
+
+```bash
+# once: the pinned nightly and tool (versions at the top of the script)
+rustup toolchain install nightly-2026-10-07 --profile minimal
+cargo install cargo-public-api --version 0.52.0 --locked
+
+scripts/public-api.sh          # check
+scripts/public-api.sh --bless  # rewrite the snapshot; commit it with the change
+```
+
+Adding items is fine: bless and commit the snapshot in the same PR, so reviewers
+see each addition. Removing or changing a line breaks callers, so 3.x does not do
+it (deprecate instead); CI fails such a PR unless its title is marked breaking
+(`feat!:`).
+
+### Instruction Benchmarks
+
+`benches/instructions.rs` counts the instructions of the frame path, DOM
+build and reconcile, CSS, layout and the main widgets under Callgrind
+([gungraun](https://crates.io/crates/gungraun)). The Instructions job runs them
+on the base branch and on the PR, and fails when a benchmark costs more than 5%
+over the base. A change that has to cost more gets the `perf-accepted` label
+(then re-run the job); the counts are still reported.
+
+They need Linux, Valgrind and `gungraun-runner` of the same version as the
+`gungraun` dev-dependency:
+
+```bash
+cargo install gungraun-runner --version 0.20.0 --locked
+cargo bench --bench instructions
+```
+
+The Criterion benches (`cargo bench --bench frame` and the others) stay for
+wall-clock time on one machine.
 
 ### Code Guidelines
 

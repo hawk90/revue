@@ -191,3 +191,80 @@ fn harness_reports_layout_area() {
     );
     let _ = Rect::new(0, 0, 33, 7);
 }
+
+/// One line of text with an id, styled by the harness's stylesheet.
+struct Label(&'static str);
+
+impl View for Label {
+    fn render(&self, ctx: &mut RenderContext) {
+        revue::widget::Text::new(self.0)
+            .element_id("label")
+            .class("label")
+            .render(ctx);
+    }
+}
+
+#[test]
+fn resize_changes_the_buffer_and_repaints_the_screen() {
+    let mut label = Label("abcdefghij");
+    let mut h = PipelineHarness::new(20, 5);
+    h.draw(&label);
+    assert!(h.contains("abcdefghij"));
+
+    // Narrower than the text: the screen is cut at the new last column
+    assert!(h.resize(4, 2, &mut label), "a resize asks for a redraw");
+    h.draw(&label);
+    assert_eq!(h.size(), (4, 2));
+    assert_eq!((h.buffer().width(), h.buffer().height()), (4, 2));
+    assert_eq!(h.screen_text(), "abcd");
+
+    // Wider again: the whole text comes back, sent to the terminal anew
+    h.clear_terminal_output();
+    h.resize(30, 3, &mut label);
+    h.draw(&label);
+    assert_eq!((h.buffer().width(), h.buffer().height()), (30, 3));
+    assert_eq!(h.screen_text(), "abcdefghij");
+    let output = String::from_utf8_lossy(h.terminal_output()).into_owned();
+    assert!(output.contains("abcdefghij"), "{output:?}");
+}
+
+#[test]
+fn set_css_replaces_the_stylesheet() {
+    let label = revue::widget::Text::new("abc")
+        .element_id("label")
+        .class("label");
+    let mut h = PipelineHarness::with_css(".label { color: rgb(255, 0, 0); }", 20, 3);
+    h.draw(&label);
+    assert_eq!(h.computed_color("label"), Some(Color::rgb(255, 0, 0)));
+
+    h.set_css(".label { color: rgb(0, 0, 255); }");
+    h.draw(&label);
+    assert_eq!(h.computed_color("label"), Some(Color::rgb(0, 0, 255)));
+    assert_eq!(
+        h.buffer().get(0, 0).map(|c| c.fg),
+        Some(Some(Color::rgb(0, 0, 255)))
+    );
+
+    // A stylesheet without the rule takes the color away again
+    h.set_css("");
+    h.draw(&label);
+    assert_eq!(h.computed_color("label"), None);
+}
+
+#[test]
+fn clear_terminal_output_starts_the_output_over() {
+    let mut h = PipelineHarness::new(20, 3);
+    h.draw(&Label("abc"));
+    assert!(!h.terminal_output().is_empty());
+
+    h.clear_terminal_output();
+    assert!(h.terminal_output().is_empty());
+    h.draw(&Label("abc"));
+    assert!(
+        h.terminal_output().is_empty(),
+        "an unchanged frame writes nothing"
+    );
+
+    h.draw(&Label("abz"));
+    assert_eq!(h.terminal_output(), b"\x1b[1;3Hz");
+}
