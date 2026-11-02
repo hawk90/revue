@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.0](https://github.com/hawk90/revue/compare/v3.13.0...v3.14.0) (2026-11-02)
+
+
+### Features
+
+* **app:** run on a terminal and events the caller owns, with ticks under any input ([#1392](https://github.com/hawk90/revue/issues/1392)) ([2dfd437](https://github.com/hawk90/revue/commit/2dfd43728edbdeefcd1d957041ad46dcf0f044b5))
+* **utils:** a replaceable clock for animations, timers and ticks ([#1382](https://github.com/hawk90/revue/issues/1382)) ([ad6da04](https://github.com/hawk90/revue/commit/ad6da04bbcd84ddffefe2f457bbb999162f5a32d))
+
+
+### Bug Fixes
+
+* **app:** failed screen moves keep the stack, and router guards see the destination ([#1399](https://github.com/hawk90/revue/issues/1399)) ([6abfa54](https://github.com/hawk90/revue/commit/6abfa547d96a74fabf033ea718c35a9515a5c30e)), closes [#851](https://github.com/hawk90/revue/issues/851) [#852](https://github.com/hawk90/revue/issues/852) [#1369](https://github.com/hawk90/revue/issues/1369)
+* **app:** history moves ask the guards, and replace works on the root screen ([#1405](https://github.com/hawk90/revue/issues/1405)) ([2c417fc](https://github.com/hawk90/revue/commit/2c417fc55f237a8869ae6bbec33d474f09d8da05)), closes [#1397](https://github.com/hawk90/revue/issues/1397) [#1398](https://github.com/hawk90/revue/issues/1398)
+* **css:** animation and transition values keep their structure ([#1404](https://github.com/hawk90/revue/issues/1404)) ([16d7931](https://github.com/hawk90/revue/commit/16d79313045541fcfc95bc8c5662b7a187f0d0e0)), closes [#866](https://github.com/hawk90/revue/issues/866) [#1206](https://github.com/hawk90/revue/issues/1206)
+* **deps:** move to sysinfo 0.40 ([#1387](https://github.com/hawk90/revue/issues/1387)) ([cc7a0bf](https://github.com/hawk90/revue/commit/cc7a0bf90c36a53a69e988ce2a80f452d783c5df))
+* **deps:** move unicode-width to Unicode 18 ([#1389](https://github.com/hawk90/revue/issues/1389)) ([9a9a6e4](https://github.com/hawk90/revue/commit/9a9a6e425f79340789839953a7ee194b46cfa260))
+* **deps:** update non-major dependencies ([#1385](https://github.com/hawk90/revue/issues/1385)) ([312487a](https://github.com/hawk90/revue/commit/312487a162221cd49eb23581f7af1d303260ad00))
+* **dom:** an open modal keeps Tab and clicks inside itself ([#1394](https://github.com/hawk90/revue/issues/1394)) ([0326e5b](https://github.com/hawk90/revue/commit/0326e5bed5fb77b09a30ce3d565cf82cbf58b713)), closes [#1193](https://github.com/hawk90/revue/issues/1193)
+* **event:** swipes fire with motion events, and swapped element ids stay findable ([#1400](https://github.com/hawk90/revue/issues/1400)) ([f321bfc](https://github.com/hawk90/revue/commit/f321bfcec1386a1cb6007d4d1e8250a427ebc98d)), closes [#870](https://github.com/hawk90/revue/issues/870) [#872](https://github.com/hawk90/revue/issues/872)
+* **patterns:** lazy loaders report failure, LazySync waits, and KeyHandler is re-exported ([#1403](https://github.com/hawk90/revue/issues/1403)) ([e0fa54a](https://github.com/hawk90/revue/commit/e0fa54a86a9d6751e0181e9b803e34f24326d88d)), closes [#822](https://github.com/hawk90/revue/issues/822) [#823](https://github.com/hawk90/revue/issues/823) [#824](https://github.com/hawk90/revue/issues/824) [#828](https://github.com/hawk90/revue/issues/828)
+* **plugin:** track each plugin's lifecycle, and tick only mounted ones ([#1396](https://github.com/hawk90/revue/issues/1396)) ([91f58d8](https://github.com/hawk90/revue/commit/91f58d8d8865726269cd007f15182116983f4bd0)), closes [#1192](https://github.com/hawk90/revue/issues/1192) [#877](https://github.com/hawk90/revue/issues/877)
+* **runtime:** bound the selector cache, borrow json rows, and report closed worker channels ([#1401](https://github.com/hawk90/revue/issues/1401)) ([3d654a1](https://github.com/hawk90/revue/commit/3d654a156f572ef3fe5b578e61b648ae37cb2b9b)), closes [#1196](https://github.com/hawk90/revue/issues/1196) [#860](https://github.com/hawk90/revue/issues/860) [#1213](https://github.com/hawk90/revue/issues/1213)
+* **testing:** a check that passes must have compared the right thing ([#1391](https://github.com/hawk90/revue/issues/1391)) ([f352c48](https://github.com/hawk90/revue/commit/f352c48f4a9dc7aa19f5d5888c317279a85d364a))
+* **utils:** pausing keeps the time, for animations, timers and toasts ([#1390](https://github.com/hawk90/revue/issues/1390)) ([f5185b0](https://github.com/hawk90/revue/commit/f5185b03f1e921d6af1b831bd6eb5215cccd2987))
+
 ## [3.13.0](https://github.com/hawk90/revue/compare/v3.12.0...v3.13.0) (2026-11-01)
 
 
