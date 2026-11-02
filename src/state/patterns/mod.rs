@@ -173,6 +173,7 @@ pub use colors::*;
 pub use config::{AppConfig, ConfigError};
 pub use confirm::{ConfirmAction, ConfirmState};
 pub use form::{FieldType, FormField, FormState, ValidationError, Validators};
+pub use keys::KeyHandler;
 pub use lazy::{
     lazy, lazy_reloadable, lazy_sync, paged, progressive, LazyData, LazyList, LazyReloadable,
     LazySync, LoadState, PagedData, ProgressiveLoader,
