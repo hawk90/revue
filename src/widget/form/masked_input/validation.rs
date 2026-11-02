@@ -4,7 +4,10 @@ use super::{MaskedInput, ValidationState};
 use crate::style::Color;
 
 impl MaskedInput {
-    /// Calculate password strength (0-4)
+    /// Password strength, 0 to 4: a point each for 8 and 12 characters, mixed
+    /// case, a digit and a symbol. Below 8 characters it is 1 at most
+    /// (Weak), however many kinds it mixes: 8 is the least NIST SP 800-63B
+    /// accepts.
     pub fn password_strength(&self) -> usize {
         let len = self.len();
         let has_lower = self.get_value().chars().any(|c| c.is_lowercase());
@@ -30,7 +33,11 @@ impl MaskedInput {
             strength += 1;
         }
 
-        strength.min(4)
+        if len < 8 {
+            strength.min(1)
+        } else {
+            strength.min(4)
+        }
     }
 
     /// Get strength label
