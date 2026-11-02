@@ -1172,3 +1172,30 @@ fn test_time_only_formats_edit_the_time() {
     assert!(picker.handle_key(&Key::Tab));
     assert_eq!(picker.get_mode(), DateTimeMode::Time);
 }
+
+/// The help line names Tab only where it switches: not in a time-only
+/// picker (#890)
+#[test]
+fn test_time_only_help_does_not_offer_tab() {
+    let row = |picker: &DateTimePicker| {
+        let mut buffer = Buffer::new(40, 6);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 40, 6));
+        picker.render(&mut ctx);
+        (0..6)
+            .map(|y| {
+                (0..40)
+                    .map(|x| buffer.get(x, y).unwrap().symbol)
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    for picker in [
+        time_picker(),
+        DateTimePicker::new().format(DateTimeFormat::TimeWithSeconds),
+    ] {
+        let shown = row(&picker);
+        assert!(shown.contains("↑↓: change  ←→: field"), "{shown}");
+        assert!(!shown.contains("Tab"), "{shown}");
+    }
+}

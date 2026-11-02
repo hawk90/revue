@@ -530,6 +530,10 @@ impl render::Rendering for DateTimePicker {
         self.mode
     }
 
+    fn format(&self) -> DateTimeFormat {
+        self.format
+    }
+
     fn first_day(&self) -> FirstDayOfWeek {
         self.first_day
     }
