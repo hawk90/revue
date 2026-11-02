@@ -184,37 +184,57 @@ impl ScreenManager {
         }
     }
 
-    /// Pop to a specific screen
+    /// Pop down to the screen `id`, leaving it on top.
+    ///
+    /// Returns `false` and changes nothing if `id` is not in the stack.
     pub fn pop_to(&mut self, id: impl Into<ScreenId>) -> bool {
         let id = id.into();
-
-        while self.stack.len() > 1 {
-            if let Some(entry) = self.stack.last() {
-                if entry.screen.id() == id {
-                    return true;
-                }
-            }
-            if !self.pop() {
-                break;
-            }
+        if !self.has_screen(&id) {
+            return false;
         }
-
-        false
+        while self.current_id().is_some_and(|top| top != id) && self.pop() {}
+        self.current_id().is_some_and(|top| top == id)
     }
 
     /// Replace current screen
+    ///
+    /// Returns `false` and changes nothing if `id` cannot be pushed afterwards.
     pub fn replace(&mut self, id: impl Into<ScreenId>) -> bool {
+        let id = id.into();
+        let staying = self.stack.len().saturating_sub(1).max(1);
+        if !self.can_push_keeping(&id, staying) {
+            return false;
+        }
         self.pop();
         self.push(id)
     }
 
     /// Go to screen (clear stack except root)
+    ///
+    /// Returns `false` and changes nothing if `id` cannot be pushed afterwards.
     pub fn goto(&mut self, id: impl Into<ScreenId>) -> bool {
+        let id = id.into();
+        if !self.can_push_keeping(&id, 1) {
+            return false;
+        }
         // Pop all except root
         while self.stack.len() > 1 {
             self.pop();
         }
         self.push(id)
+    }
+
+    /// Could `id` be pushed once only the bottom `staying` screens are left?
+    ///
+    /// A screen that is about to be popped does not count: it will be gone, and
+    /// a screen registered directly has no factory to bring it back.
+    fn can_push_keeping(&self, id: &ScreenId, staying: usize) -> bool {
+        self.registry.contains_key(id)
+            || self
+                .stack
+                .iter()
+                .take(staying)
+                .any(|entry| entry.screen.id() == *id)
     }
 
     /// Get current screen
@@ -981,5 +1001,98 @@ mod tests {
         // MockScreen returns Pass, so no Pop result
         let result = manager.update();
         assert!(matches!(result, ScreenResult::Continue));
+    }
+
+    fn stacked(ids: &[&'static str]) -> ScreenManager {
+        let mut manager = ScreenManager::new();
+        for id in ids {
+            let id = *id;
+            manager.register(id, move || Box::new(MockScreen::new(id.into())));
+            assert!(manager.push(id));
+        }
+        manager
+    }
+
+    fn ids(manager: &ScreenManager) -> Vec<ScreenId> {
+        manager.stack.iter().map(|e| e.screen.id()).collect()
+    }
+
+    fn id_list(names: &[&str]) -> Vec<ScreenId> {
+        names.iter().map(|n| ScreenId::from(*n)).collect()
+    }
+
+    #[test]
+    fn pop_to_the_root_succeeds() {
+        let mut manager = stacked(&["a", "b", "c"]);
+        assert!(manager.pop_to("a"));
+        assert_eq!(ids(&manager), id_list(&["a"]));
+    }
+
+    #[test]
+    fn pop_to_the_middle_stops_there() {
+        let mut manager = stacked(&["a", "b", "c"]);
+        assert!(manager.pop_to("b"));
+        assert_eq!(ids(&manager), id_list(&["a", "b"]));
+    }
+
+    #[test]
+    fn pop_to_the_top_changes_nothing() {
+        let mut manager = stacked(&["a", "b"]);
+        assert!(manager.pop_to("b"));
+        assert_eq!(ids(&manager), id_list(&["a", "b"]));
+    }
+
+    #[test]
+    fn pop_to_an_unknown_or_only_registered_id_changes_nothing() {
+        let mut manager = stacked(&["a", "b", "c"]);
+        manager.register("idle", || Box::new(MockScreen::new("idle".into())));
+        assert!(!manager.pop_to("nope"));
+        assert!(!manager.pop_to("idle"));
+        assert_eq!(ids(&manager), id_list(&["a", "b", "c"]));
+    }
+
+    #[test]
+    fn replace_with_an_unknown_id_keeps_the_stack() {
+        let mut manager = stacked(&["a", "b"]);
+        assert!(!manager.replace("nope"));
+        assert_eq!(ids(&manager), id_list(&["a", "b"]));
+    }
+
+    #[test]
+    fn replace_with_a_screen_that_is_only_on_top_and_has_no_factory_keeps_it() {
+        let mut manager = stacked(&["a"]);
+        manager.register_screen(Box::new(MockScreen::new("direct".into())));
+        assert!(!manager.replace("direct"));
+        assert_eq!(ids(&manager), id_list(&["a", "direct"]));
+    }
+
+    #[test]
+    fn replace_with_a_screen_lower_in_the_stack_moves_it_up() {
+        let mut manager = stacked(&["a", "b", "c"]);
+        assert!(manager.replace("a"));
+        assert_eq!(ids(&manager), id_list(&["b", "a"]));
+    }
+
+    #[test]
+    fn goto_an_unknown_id_keeps_the_stack() {
+        let mut manager = stacked(&["a", "b", "c"]);
+        assert!(!manager.goto("nope"));
+        assert_eq!(ids(&manager), id_list(&["a", "b", "c"]));
+    }
+
+    #[test]
+    fn goto_a_screen_only_above_the_root_with_no_factory_keeps_the_stack() {
+        let mut manager = stacked(&["a"]);
+        manager.register_screen(Box::new(MockScreen::new("direct".into())));
+        assert!(!manager.goto("direct"));
+        assert_eq!(ids(&manager), id_list(&["a", "direct"]));
+    }
+
+    #[test]
+    fn goto_a_registered_id_keeps_only_the_root_below_it() {
+        let mut manager = stacked(&["a", "b", "c"]);
+        manager.register("d", || Box::new(MockScreen::new("d".into())));
+        assert!(manager.goto("d"));
+        assert_eq!(ids(&manager), id_list(&["a", "d"]));
     }
 }
