@@ -222,3 +222,40 @@ fn test_draggable_drop_bounds_default_is_the_area() {
     let area = Rect::new(10, 20, 30, 40);
     assert_eq!(TestDraggable.drop_bounds(area), area);
 }
+
+/// Draws "kept" while `shown`, and says it needs no render otherwise.
+struct Skippable {
+    shown: bool,
+}
+
+impl View for Skippable {
+    fn render(&self, ctx: &mut RenderContext) {
+        ctx.draw_text(0, 0, "kept", revue::style::Color::WHITE);
+    }
+    fn needs_render(&self) -> bool {
+        self.shown
+    }
+}
+
+struct InAStack {
+    shown: bool,
+}
+
+impl View for InAStack {
+    fn render(&self, ctx: &mut RenderContext) {
+        revue::widget::vstack()
+            .child(Skippable { shown: self.shown })
+            .render(ctx);
+    }
+}
+
+/// The doc of `needs_render` says a skipped child is not kept (#1376).
+#[test]
+fn a_child_that_needs_no_render_is_blank_rather_than_kept() {
+    let mut h = revue::testing::PipelineHarness::new(10, 2);
+    h.draw(&InAStack { shown: true });
+    assert!(h.contains("kept"));
+
+    h.draw(&InAStack { shown: false });
+    assert!(!h.contains("kept"));
+}

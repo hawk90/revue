@@ -144,7 +144,7 @@ let navigated = router.push("/admin");
 assert!(!navigated);
 ```
 
-Guards receive the target path and current route parameters. Multiple guards can be chained - all must return `true` for navigation to proceed.
+Guards receive the target path, without its query, and the target's route parameters. They are asked by `push`, `replace`, `back`, `forward` and `go`. Multiple guards can be chained - all must return `true` for navigation to proceed.
 
 ## Reactive State
 

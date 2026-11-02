@@ -1,8 +1,8 @@
 //! Thread-safe lazy data
 
-use crate::patterns::lazy::types::LoadState;
-use crate::utils::lock::{read_or_recover, write_or_recover};
-use std::sync::{Arc, RwLock};
+use crate::patterns::lazy::types::{LoadState, OnPanic};
+use crate::utils::lock::{lock_or_recover, read_or_recover, write_or_recover};
+use std::sync::{Arc, Mutex, RwLock};
 
 /// Thread-safe lazy data
 pub struct LazySync<T, F>
@@ -13,7 +13,7 @@ where
     /// The loaded value
     value: Arc<RwLock<Option<T>>>,
     /// The loader function
-    loader: Arc<RwLock<Option<F>>>,
+    loader: Arc<Mutex<Option<F>>>,
     /// Current state
     state: Arc<RwLock<LoadState>>,
 }
@@ -27,13 +27,22 @@ where
     pub fn new(loader: F) -> Self {
         Self {
             value: Arc::new(RwLock::new(None)),
-            loader: Arc::new(RwLock::new(Some(loader))),
+            loader: Arc::new(Mutex::new(Some(loader))),
             state: Arc::new(RwLock::new(LoadState::Idle)),
         }
     }
 
     /// Get the value, loading if necessary
     /// Returns a clone of the value
+    ///
+    /// While another thread runs the loader this waits for it, as
+    /// [`OnceLock::get_or_init`](std::sync::OnceLock::get_or_init) does, so a
+    /// loader must not call back into its own `LazySync`. A panic in the loader
+    /// carries on to the thread that ran it and leaves the state at
+    /// [`LoadState::Failed`]; every other call then returns `None`.
+    ///
+    /// To look without waiting, use [`state`](Self::state) or
+    /// [`try_read`](Self::try_read).
     pub fn get(&self) -> Option<T>
     where
         T: Clone,
@@ -44,9 +53,8 @@ where
 
     /// Get a read guard to the value without cloning (zero-copy access)
     ///
-    /// Loads the value first if it is not loaded yet. The guard holds `None`
-    /// while another thread is still running the loader (this does not wait
-    /// for it), or if the loader panicked.
+    /// Loads the value first if it is not loaded yet, waiting as
+    /// [`get`](Self::get) does. The guard holds `None` if the loader panicked.
     ///
     /// # Example
     /// ```
@@ -63,7 +71,8 @@ where
 
     /// Try to get a read guard without blocking
     ///
-    /// Returns `None` if the lock is currently held by a writer.
+    /// Returns `None` if the lock is currently held by a writer. Does not load,
+    /// and the guard holds `None` until the value is there.
     pub fn try_read(&self) -> Option<std::sync::RwLockReadGuard<'_, Option<T>>> {
         self.value.try_read().ok()
     }
@@ -78,28 +87,35 @@ where
         *read_or_recover(&self.state)
     }
 
-    /// Ensure the data is loaded
+    /// Ensure the data is loaded, or that loading it failed
+    ///
+    /// The loader's lock is held for the whole load, which is what makes a
+    /// second thread wait for the first.
     fn ensure_loaded(&self) {
-        {
-            let state = read_or_recover(&self.state);
-            if *state != LoadState::Idle {
-                return;
-            }
+        if self.is_settled() {
+            return;
         }
 
-        {
-            let mut state = write_or_recover(&self.state);
-            if *state != LoadState::Idle {
-                return; // Double-check after acquiring write lock
-            }
-            *state = LoadState::Loading;
+        let mut loader = lock_or_recover(&self.loader);
+        if self.is_settled() {
+            return;
         }
 
-        if let Some(loader) = write_or_recover(&self.loader).take() {
+        if let Some(loader) = loader.take() {
+            *write_or_recover(&self.state) = LoadState::Loading;
+            let failed = OnPanic(|| *write_or_recover(&self.state) = LoadState::Failed);
             let value = loader();
+            std::mem::forget(failed);
             *write_or_recover(&self.value) = Some(value);
             *write_or_recover(&self.state) = LoadState::Loaded;
         }
+    }
+
+    fn is_settled(&self) -> bool {
+        matches!(
+            *read_or_recover(&self.state),
+            LoadState::Loaded | LoadState::Failed
+        )
     }
 }
 
@@ -204,5 +220,110 @@ mod tests {
         let value = lazy.get();
         assert!(value.is_some());
         assert_eq!(value.unwrap(), "hello");
+    }
+
+    /// A `LazySync` whose loader waits for `release`, and a way to wait until
+    /// the first thread is inside it.
+    fn started_load(
+        outcome: impl FnOnce() -> i32 + Send + 'static,
+    ) -> (
+        LazySync<i32, impl FnOnce() -> i32 + Send>,
+        std::sync::mpsc::Sender<()>,
+        std::thread::JoinHandle<()>,
+    ) {
+        let (release, wait) = std::sync::mpsc::channel::<()>();
+        let lazy = LazySync::new(move || {
+            wait.recv().unwrap();
+            outcome()
+        });
+        let first = lazy.clone();
+        let loading = std::thread::spawn(move || {
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| first.get()));
+        });
+        while lazy.state() != LoadState::Loading {
+            std::thread::yield_now();
+        }
+        (lazy, release, loading)
+    }
+
+    /// Long enough for a thread that does not wait to have finished.
+    fn still_waiting<R>(thread: &std::thread::JoinHandle<R>) -> bool {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        !thread.is_finished()
+    }
+
+    #[test]
+    fn a_second_thread_waits_for_the_value() {
+        let (lazy, release, loading) = started_load(|| 42);
+
+        let second = lazy.clone();
+        let waiter = std::thread::spawn(move || second.get());
+        assert!(still_waiting(&waiter));
+
+        release.send(()).unwrap();
+        assert_eq!(waiter.join().unwrap(), Some(42));
+        loading.join().unwrap();
+    }
+
+    #[test]
+    fn read_waits_for_the_value_too() {
+        let (lazy, release, loading) = started_load(|| 42);
+
+        let second = lazy.clone();
+        let waiter = std::thread::spawn(move || *second.read());
+        assert!(still_waiting(&waiter));
+
+        release.send(()).unwrap();
+        assert_eq!(waiter.join().unwrap(), Some(42));
+        loading.join().unwrap();
+    }
+
+    #[test]
+    fn looking_without_waiting_does_not_block_during_a_load() {
+        let (lazy, release, loading) = started_load(|| 42);
+
+        assert_eq!(lazy.state(), LoadState::Loading);
+        assert!(!lazy.is_loaded());
+        assert!(lazy.try_read().unwrap().is_none());
+
+        release.send(()).unwrap();
+        loading.join().unwrap();
+        assert!(lazy.is_loaded());
+    }
+
+    #[test]
+    fn a_panicking_loader_fails_and_wakes_the_thread_waiting_for_it() {
+        let (lazy, release, loading) = started_load(|| std::panic::resume_unwind(Box::new("no")));
+
+        let second = lazy.clone();
+        let waiter = std::thread::spawn(move || second.get());
+        assert!(still_waiting(&waiter));
+
+        release.send(()).unwrap();
+        assert_eq!(waiter.join().unwrap(), None);
+        loading.join().unwrap();
+        assert_eq!(lazy.state(), LoadState::Failed);
+        assert_eq!(lazy.get(), None);
+    }
+
+    #[test]
+    fn the_loader_runs_once_however_many_threads_ask() {
+        let runs = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counted = Arc::clone(&runs);
+        let lazy = LazySync::new(move || {
+            counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            7
+        });
+
+        let threads: Vec<_> = (0..8)
+            .map(|_| {
+                let lazy = lazy.clone();
+                std::thread::spawn(move || lazy.get())
+            })
+            .collect();
+        for thread in threads {
+            assert_eq!(thread.join().unwrap(), Some(7));
+        }
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
     }
 }

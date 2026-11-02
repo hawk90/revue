@@ -34,18 +34,7 @@ impl Easing {
                     -1.0 + (4.0 - 2.0 * t) * t
                 }
             }
-            Easing::CubicBezier(_x1, y1, _x2, y2) => {
-                // Simplified cubic bezier - more accurate would need iteration
-                let t2 = t * t;
-                let t3 = t2 * t;
-                let mt = 1.0 - t;
-                let mt2 = mt * mt;
-
-                // B(t) = (1-t)^3*P0 + 3*(1-t)^2*t*P1 + 3*(1-t)*t^2*P2 + t^3*P3
-                // P0 = (0, 0), P3 = (1, 1)
-                let y = 3.0 * mt2 * t * (*y1) + 3.0 * mt * t2 * (*y2) + t3;
-                y.clamp(0.0, 1.0)
-            }
+            Easing::CubicBezier(x1, y1, x2, y2) => cubic_bezier(*x1, *y1, *x2, *y2, t),
         }
     }
 
@@ -63,7 +52,14 @@ impl Easing {
                     .split(',')
                     .filter_map(|p| p.trim().parse().ok())
                     .collect();
-                if parts.len() == 4 {
+                // As in CSS, x has to stay in 0..=1 so the curve is a function
+                // of time; y may leave it, which is how a curve overshoots.
+                if parts.len() == 4
+                    && (0.0..=1.0).contains(&parts[0])
+                    && (0.0..=1.0).contains(&parts[2])
+                    && parts[1].is_finite()
+                    && parts[3].is_finite()
+                {
                     Some(Easing::CubicBezier(parts[0], parts[1], parts[2], parts[3]))
                 } else {
                     None
@@ -72,6 +68,61 @@ impl Easing {
             _ => None,
         }
     }
+}
+
+/// The CSS `cubic-bezier` curve at time `t`
+///
+/// The input is the curve's x, not its parameter, so the parameter is found
+/// first. x only grows with the parameter while x1 and x2 are in 0..=1, so
+/// bisection always converges, and 24 steps go past `f32` precision. The result
+/// can leave 0..=1: that is the overshoot the curve asks for.
+pub(crate) fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32, t: f32) -> f32 {
+    if t <= 0.0 {
+        return 0.0;
+    }
+    if t >= 1.0 {
+        return 1.0;
+    }
+    let (x1, x2) = (x1.clamp(0.0, 1.0), x2.clamp(0.0, 1.0));
+    // B(s) = 3(1-s)^2 s P1 + 3(1-s) s^2 P2 + s^3, with P0 = (0, 0), P3 = (1, 1)
+    let bezier = |p1: f32, p2: f32, s: f32| {
+        let m = 1.0 - s;
+        3.0 * m * m * s * p1 + 3.0 * m * s * s * p2 + s * s * s
+    };
+    let (mut low, mut high) = (0.0_f32, 1.0_f32);
+    for _ in 0..24 {
+        let middle = (low + high) / 2.0;
+        if bezier(x1, x2, middle) < t {
+            low = middle;
+        } else {
+            high = middle;
+        }
+    }
+    bezier(y1, y2, (low + high) / 2.0)
+}
+
+/// Split `s` at the characters `is_separator` accepts, except inside parentheses
+///
+/// `cubic-bezier(0, 1, 0, 1)` has both commas and spaces in it and is one value.
+/// Empty pieces are left out.
+pub(crate) fn split_outside_parens(s: &str, is_separator: impl Fn(char) -> bool) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0_usize;
+    let mut start = 0;
+    for (i, c) in s.char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            c if depth == 0 && is_separator(c) => {
+                parts.push(&s[start..i]);
+                start = i + c.len_utf8();
+            }
+            _ => {}
+        }
+    }
+    parts.push(&s[start..]);
+    parts.retain(|part| !part.trim().is_empty());
+    parts
 }
 
 /// A single property transition definition
@@ -112,7 +163,7 @@ impl Transition {
 
     /// Parse from CSS string like "opacity 0.3s ease-in-out"
     pub fn parse(s: &str) -> Option<Self> {
-        let parts: Vec<&str> = s.split_whitespace().collect();
+        let parts = split_outside_parens(s, char::is_whitespace);
         if parts.is_empty() {
             return None;
         }
@@ -172,9 +223,13 @@ impl Transitions {
     }
 
     /// Get transition for a specific property
+    ///
+    /// The last one that applies wins, as in CSS: with `all 1s, opacity 0.2s`,
+    /// opacity takes 0.2s.
     pub fn get(&self, property: &str) -> Option<&Transition> {
         self.items
             .iter()
+            .rev()
             .find(|t| t.property == property || t.property == "all")
     }
 
@@ -185,8 +240,8 @@ impl Transitions {
 
     /// Parse from CSS string like "opacity 0.3s, transform 0.5s ease-out"
     pub fn parse(s: &str) -> Self {
-        let items = s
-            .split(',')
+        let items = split_outside_parens(s, |c| c == ',')
+            .into_iter()
             .filter_map(|part| Transition::parse(part.trim()))
             .collect();
         Self { items }
