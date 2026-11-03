@@ -171,7 +171,7 @@ impl super::RenderContext<'_> {
 
 /// The cells a glyph takes: `cell`, and a continuation with its colors,
 /// modifiers and link when it is wide - for
-/// [`set_caret`](RenderContext::set_caret)
+/// [`set_caret`](super::RenderContext::set_caret)
 pub(crate) fn caret_cells(cell: Cell) -> Vec<Cell> {
     let mut cells = vec![cell];
     if !cell.is_continuation() && char_width(cell.symbol) == 2 {
