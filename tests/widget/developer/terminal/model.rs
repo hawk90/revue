@@ -245,6 +245,8 @@ struct Grid {
     lines: Vec<Vec<(char, Pen)>>,
     row: usize,
     col: usize,
+    /// On the last column after filling it: the next char wraps (#1462)
+    pending: bool,
     width: usize,
     keep: usize,
     pen: Pen,
@@ -256,6 +258,7 @@ impl Grid {
             lines: vec![Vec::new(); height],
             row: 0,
             col: 0,
+            pending: false,
             width,
             keep: height + scrollback,
             pen: Pen::reset(),
@@ -271,6 +274,7 @@ impl Grid {
 
     fn next_row(&mut self) {
         self.col = 0;
+        self.pending = false;
         self.row += 1;
         while self.row >= self.lines.len() {
             self.lines.push(Vec::new());
@@ -279,6 +283,9 @@ impl Grid {
     }
 
     fn put(&mut self, ch: char) {
+        if self.pending {
+            self.next_row();
+        }
         while self.row >= self.lines.len() {
             self.lines.push(Vec::new());
         }
@@ -288,9 +295,10 @@ impl Grid {
             line.resize(self.col + 1, blank);
         }
         line[self.col] = (ch, self.pen);
-        self.col += 1;
-        if self.col >= self.width {
-            self.next_row();
+        if self.col + 1 >= self.width {
+            self.pending = true;
+        } else {
+            self.col += 1;
         }
     }
 
@@ -298,9 +306,13 @@ impl Grid {
         match piece {
             Piece::Text(s) => s.chars().for_each(|c| self.put(c)),
             Piece::Newline => self.next_row(),
-            Piece::Return => self.col = 0,
+            Piece::Return => {
+                self.col = 0;
+                self.pending = false;
+            }
+            // up to the next stop, never past the last column
             Piece::Tab => {
-                let stop = ((self.col / 8 + 1) * 8).min(self.width);
+                let stop = ((self.col / 8 + 1) * 8).min(self.width - 1);
                 for _ in self.col..stop.max(self.col) {
                     self.put(' ');
                 }

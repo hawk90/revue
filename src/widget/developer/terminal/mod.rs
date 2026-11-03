@@ -29,6 +29,11 @@ pub struct Terminal {
     cursor_row: usize,
     /// Current cursor column
     cursor_col: usize,
+    /// The cursor is on the last column after filling it: the next
+    /// printable character goes to the start of the next line, and a
+    /// newline, return, tab or backspace before it acts on this line, as in
+    /// xterm (#1462)
+    wrap_pending: bool,
     /// Where the lines are scrolled to, from the top: it follows the newest
     /// line until scrolled back, and a scrolled-back view stays on its lines
     scroll: ScrollState,
@@ -86,6 +91,7 @@ impl Terminal {
             lines,
             cursor_row: 0,
             cursor_col: 0,
+            wrap_pending: false,
             scroll,
             max_scrollback: 10000,
             width,

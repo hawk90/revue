@@ -22,16 +22,17 @@ impl Terminal {
         };
         match cell.ch {
             '\n' => self.newline(),
-            '\r' => self.cursor_col = 0,
+            '\r' => {
+                self.cursor_col = 0;
+                self.wrap_pending = false;
+            }
             '\t' => {
-                // Tab to the next 8-column boundary, or to the right edge,
-                // in spaces of the colors in effect. Count the spaces up
-                // front: the cursor wraps to column 0 when a space fills the
-                // last column.
+                // Tab to the next 8-column boundary in spaces of the colors
+                // in effect, stopping at the last column as in xterm: a tab
+                // never wraps
                 let next_tab = ((self.cursor_col / 8) + 1) * 8;
-                let spaces = next_tab
-                    .min(self.width as usize)
-                    .saturating_sub(self.cursor_col);
+                let last = (self.width as usize).saturating_sub(1);
+                let spaces = next_tab.min(last).saturating_sub(self.cursor_col);
                 for _ in 0..spaces {
                     self.put_cell(self.parser.cell(' '));
                 }
@@ -49,6 +50,10 @@ impl Terminal {
         if width == 0 {
             return;
         }
+        if self.wrap_pending {
+            self.wrap_pending = false;
+            self.wrap_line();
+        }
         if width == 2 && self.width >= 2 {
             if self.cursor_col + 1 >= self.width as usize {
                 self.wrap_line();
@@ -64,7 +69,8 @@ impl Terminal {
         }
     }
 
-    /// Put one column at the cursor and move it on, wrapping at the edge
+    /// Put one column at the cursor and move it on; on the last column it
+    /// stays there with the wrap pending
     fn put_one(&mut self, cell: TermCell) {
         // Ensure we have enough lines
         while self.cursor_row >= self.lines.len() {
@@ -83,11 +89,11 @@ impl Terminal {
         // Set cell
         line.cells[self.cursor_col] = cell;
 
-        // Advance cursor
-        self.cursor_col += 1;
-
-        if self.cursor_col >= self.width as usize {
-            self.wrap_line();
+        // Advance the cursor, or leave it on the last column
+        if self.cursor_col + 1 >= self.width as usize {
+            self.wrap_pending = true;
+        } else {
+            self.cursor_col += 1;
         }
     }
 
@@ -109,6 +115,7 @@ impl Terminal {
     /// Move to new line
     fn newline(&mut self) {
         self.cursor_col = 0;
+        self.wrap_pending = false;
         self.cursor_row += 1;
 
         while self.cursor_row >= self.lines.len() {
@@ -148,6 +155,7 @@ impl Terminal {
         }
         self.cursor_row = 0;
         self.cursor_col = 0;
+        self.wrap_pending = false;
         self.sync_scroll();
         self.scroll.scroll_to_end();
     }
@@ -158,12 +166,14 @@ impl Terminal {
             self.lines[self.cursor_row].cells.clear();
         }
         self.cursor_col = 0;
+        self.wrap_pending = false;
     }
 
     /// Resize terminal
     pub fn resize(&mut self, width: u16, height: u16) {
         self.width = width;
         self.height = height;
+        self.wrap_pending = false;
         // Add lines if needed
         while self.lines.len() < height as usize {
             self.lines.push(TermLine::with_capacity(width as usize));

@@ -4,6 +4,7 @@
 
 mod ansi;
 mod model;
+mod pending_wrap;
 mod types;
 mod view;
 
