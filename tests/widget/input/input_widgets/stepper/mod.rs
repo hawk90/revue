@@ -858,8 +858,12 @@ fn test_render_horizontal_too_narrow() {
     // Under 3 columns, nothing is drawn
     let s = Stepper::new().add_step("Step 1").add_step("Step 2");
     assert!(rows(&s, 2, 5).iter().all(|r| r.is_empty()));
-    // One column each: both icons, with no room between them (#1028)
-    assert_eq!(rows(&s, 3, 5)[0].matches('○').count(), 2);
+    // No room for both with a column between: the current step, and "…"
+    // for the one cut off (#1028)
+    // in the last column
+    assert_eq!(rows(&s, 3, 5)[0], "○ …");
+    // Four columns hold both, apart
+    assert_eq!(rows(&s, 4, 5)[0], "○ ○");
 }
 
 #[test]
@@ -1152,4 +1156,56 @@ fn test_stepper_is_completed() {
 fn test_step_status_error() {
     let step = revue::widget::Step::new("Step 1").status(StepStatus::Error);
     assert_eq!(step.status, StepStatus::Error);
+}
+
+// =========================================================================
+// #1028: steps that do not fit
+// =========================================================================
+
+fn twelve() -> Stepper {
+    (0..12).fold(Stepper::new().style(StepperStyle::Numbered), |s, i| {
+        s.add_step(format!("S{i}"))
+    })
+}
+
+/// Numbers never run together: each step keeps a blank column after its
+/// widest number, and the steps that do not fit are cut with "…"
+#[test]
+fn test_stepper_numbers_stay_apart_and_cut_steps_are_marked() {
+    let r = rows(&twelve(), 24, 2);
+    assert!(!r[0].contains("1011") && !r[0].contains("12"), "{r:?}");
+    // From the first: steps 1-7 at every third column, "…" at the end
+    assert_eq!(r[0], "1  2  3  4  5  6  7    …", "{r:?}");
+}
+
+/// The window holds the current step: "…" on each side it cuts
+#[test]
+fn test_stepper_window_follows_the_current_step() {
+    let r = rows(&twelve().current(6), 24, 2);
+    assert!(r[0].starts_with('…') && r[0].ends_with('…'), "{r:?}");
+    assert!(r[0].contains('7'), "{r:?}");
+    let numbers: Vec<&str> = r[0].trim_matches('…').split_whitespace().collect();
+    assert!(
+        numbers
+            .windows(2)
+            .all(|w| w[1].parse::<u32>().unwrap() == w[0].parse::<u32>().unwrap() + 1),
+        "{r:?}"
+    );
+    // The last step: cut on the left only, and it is drawn
+    let r = rows(&twelve().current(11), 24, 2);
+    assert!(
+        r[0].starts_with('…') && r[0].trim_end().ends_with("12"),
+        "{r:?}"
+    );
+}
+
+/// Steps that all fit are drawn as before: no marker
+#[test]
+fn test_stepper_steps_that_fit_have_no_marker() {
+    let r = rows(&twelve(), 40, 2);
+    assert!(!r[0].contains('…'), "{r:?}");
+    assert!(
+        r[0].contains("10 11 12") || r[0].contains("10") && r[0].contains("12"),
+        "{r:?}"
+    );
 }

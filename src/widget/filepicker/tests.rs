@@ -76,7 +76,7 @@ fn test_navigation() {
     assert_eq!(picker.highlighted, 0);
 
     // Moving the highlight never touches the history.
-    assert_eq!(picker.history, vec![dir.path().to_path_buf()]);
+    assert_eq!(picker.history, vec![dir.path().canonicalize().unwrap()]);
     assert_eq!(picker.history_idx, 0);
 }
 
@@ -160,8 +160,10 @@ fn test_allow_valid_paths() {
     let picker = FilePicker::new()
         .try_set_start_dir(dir.path())
         .expect("an existing absolute directory is accepted");
-    assert_eq!(picker.current_dir, dir.path());
-    assert_eq!(picker.history, vec![dir.path().to_path_buf()]);
+    // Kept canonical, as navigate_to keeps the directories it enters (#1110)
+    let canonical = dir.path().canonicalize().unwrap();
+    assert_eq!(picker.current_dir, canonical);
+    assert_eq!(picker.history, vec![canonical]);
 }
 
 #[test]

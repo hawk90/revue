@@ -1215,3 +1215,50 @@ fn test_color_picker_all_modes_with_key_input() {
         assert_eq!(shown_mode(&cp), modes[(i + 1) % 4]);
     }
 }
+
+// =========================================================================
+// #1020: the preview leaves the mode's rows; the drawn grid is the key grid
+// =========================================================================
+
+/// In the smallest area that draws (4 rows) the sliders and the hex line
+/// keep their rows: no preview over them. With 5 rows it fits below.
+#[test]
+fn test_color_picker_preview_leaves_the_mode_rows() {
+    let rgb = ColorPicker::new()
+        .mode(ColorPickerMode::Rgb)
+        .color(Color::rgb(10, 128, 250));
+    let r = rows(&rgb, 20, 4);
+    assert!(r[2].starts_with("B "), "{r:?}");
+    assert!(r[3].trim().is_empty(), "{r:?}");
+    let r = rows(&rgb, 20, 5);
+    assert!(r[2].starts_with("B "), "{r:?}");
+    assert!(r[3].starts_with("██████ #0A80FA"), "{r:?}");
+    let hex = ColorPicker::new().mode(ColorPickerMode::Hex);
+    assert!(rows(&hex, 20, 4)[2].starts_with("Current: #FFFFFF"));
+}
+
+/// Up and Down move by the palette's columns, and the swatches are drawn in
+/// those rows: in an area narrower than a row, Down still lands one row
+/// down, and the columns shown follow the selected swatch
+#[test]
+fn test_color_picker_palette_rows_match_the_keys() {
+    let selected = |p: &ColorPicker| {
+        let r = rows(p, 10, 8);
+        let y = r.iter().position(|row| row.contains('█')).unwrap();
+        (y, r[y].chars().position(|c| c == '█').unwrap())
+    };
+    let mut p = ColorPicker::new(); // Basic: 8 x 2
+    assert_eq!(selected(&p), (0, 0));
+    p.handle_key(&Key::Down);
+    assert_eq!(selected(&p), (1, 0));
+    // The last column, past the 5 shown: the view moves to keep it
+    for _ in 0..7 {
+        p.handle_key(&Key::Right);
+    }
+    assert_eq!(p.palette_index, 15);
+    let (y, x) = selected(&p);
+    assert_eq!((y, x), (1, 8), "{:?}", rows(&p, 10, 8));
+    // Every drawn row is one palette row: two rows, nothing below
+    let r = rows(&p, 10, 8);
+    assert!(r[2].trim().is_empty(), "{r:?}");
+}

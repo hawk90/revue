@@ -25,6 +25,9 @@ fn put_field(
     fg: Color,
     bg: Color,
 ) {
+    // The whole field in its background first, so an empty one still
+    // shows where typing goes (#1077)
+    fill(ctx, x, y, width, 1, bg);
     let text_w = col_of(text, usize::MAX, NO_TABS);
     let scroll = scroll_to_cursor(0, text_w, 0, text_w, width as usize);
     ctx.put_edit_line(x, y, text, scroll, width, NO_TABS, |_, ch| {
@@ -145,15 +148,20 @@ impl RichTextEditor {
             ..
         } = frame;
 
-        // Title
-        let title_x = dialog_x + (dialog_width.saturating_sub(display_width(title) as u16)) / 2;
-        let title_w = dialog_x + dialog_width - 1 - title_x;
+        // Everything stays between the borders: from the column after the
+        // left one up to the right one, however narrow the box (#1077)
+        let inner_x = dialog_x + 1;
+        let inner_end = dialog_x + dialog_width - 1;
+
+        // Title, centered inside the borders, cut at the right one
+        let inner_w = inner_end.saturating_sub(inner_x);
+        let title_x = inner_x + inner_w.saturating_sub(display_width(title) as u16) / 2;
         ctx.put_edit_line(
             title_x,
             dialog_y + 1,
             title,
             0,
-            title_w,
+            inner_end.saturating_sub(title_x),
             NO_TABS,
             |_, ch| Cell::new(ch).fg(fg).bg(bg),
         );
@@ -164,9 +172,16 @@ impl RichTextEditor {
         for (row, (label, value)) in fields.into_iter().enumerate() {
             let row_y = dialog_y + 3 + row as u16;
             let input_bg = if field == row { self.selection_bg } else { bg };
-            for (i, ch) in label.chars().enumerate() {
-                ctx.set(dialog_x + 2 + i as u16, row_y, Cell::new(ch).fg(fg).bg(bg));
-            }
+            let label_x = dialog_x + 2;
+            ctx.put_edit_line(
+                label_x,
+                row_y,
+                label,
+                0,
+                inner_end.saturating_sub(label_x),
+                NO_TABS,
+                |_, ch| Cell::new(ch).fg(fg).bg(bg),
+            );
             put_field(ctx, dialog_x + 8, row_y, field_w, value, fg, input_bg);
         }
     }
