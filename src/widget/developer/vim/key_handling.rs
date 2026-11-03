@@ -35,6 +35,10 @@ impl VimState {
                 self.set_mode(VimMode::Insert);
                 VimAction::Change(None)
             }
+            Key::Char('v') if key.ctrl => {
+                self.set_mode(VimMode::VisualBlock);
+                VimAction::EnterVisualBlock
+            }
             // Movement in visual mode
             ref other => basic_motion(other).map_or(VimAction::None, VimAction::Move),
         }
@@ -54,9 +58,9 @@ impl VimState {
                 self.command_buffer.clear();
                 VimAction::ExecuteCommand(cmd)
             }
+            // Leaves only on an empty line, as vim's does (#1081)
             Key::Backspace => {
-                self.command_buffer.pop();
-                if self.command_buffer.is_empty() {
+                if self.command_buffer.pop().is_none() {
                     self.set_mode(VimMode::Normal);
                 }
                 VimAction::None
@@ -86,8 +90,7 @@ impl VimState {
                 })
             }
             Key::Backspace => {
-                self.search_pattern.pop();
-                if self.search_pattern.is_empty() {
+                if self.search_pattern.pop().is_none() {
                     self.set_mode(VimMode::Normal);
                 }
                 VimAction::None
@@ -101,10 +104,15 @@ impl VimState {
     }
 
     /// Handle key event in replace mode: a char replaces the one under the
-    /// cursor
+    /// cursor; after `r` that is all, after `R` it goes on until Escape
     fn handle_replace(&mut self, key: &KeyEvent) -> VimAction {
         if let Key::Char(ch) = key.key {
-            self.set_mode(VimMode::Normal);
+            if self.replace_once {
+                // `3rx`: the count goes with the replace
+                let count = self.count;
+                self.set_mode(VimMode::Normal);
+                self.count = count;
+            }
             VimAction::ReplaceChar(ch)
         } else if key.key == Key::Escape {
             self.set_mode(VimMode::Normal);
@@ -118,6 +126,16 @@ impl VimState {
     pub fn handle_key(&mut self, key: &KeyEvent) -> VimAction {
         self.action_count = None;
 
+        // `f`, `F`, `t` or `T` waiting for its char: any char is the target
+        if let Some(find) = self.pending_find.take() {
+            let action = self.finish_find(find, key);
+            self.remember_for_repeat(&action);
+            if action != VimAction::None {
+                self.action_count = self.count.take();
+            }
+            return action;
+        }
+
         // Check for 'gg' sequence
         if !self.key_buffer.is_empty() {
             let gg = self.key_buffer == ['g'] && key.key == Key::Char('g');
@@ -128,6 +146,7 @@ impl VimState {
             // `dgw` is no motion: it cancels, like any other key would.
             if self.operator.is_some() && key.key != Key::Escape {
                 self.operator = None;
+                self.operator_count = None;
                 self.count = None;
                 return VimAction::None;
             }
@@ -155,16 +174,60 @@ impl VimState {
         action
     }
 
+    /// The motion `f`/`F`/`t`/`T` names with `key`'s char, for a pending
+    /// operator if there is one; any other key cancels both
+    fn finish_find(&mut self, find: char, key: &KeyEvent) -> VimAction {
+        let Key::Char(ch) = key.key else {
+            self.operator = None;
+            self.count = None;
+            return VimAction::None;
+        };
+        let motion = match find {
+            'f' => VimMotion::FindChar(ch),
+            'F' => VimMotion::FindCharBack(ch),
+            't' => VimMotion::TillChar(ch),
+            _ => VimMotion::TillCharBack(ch),
+        };
+        self.operator_action(Some(motion))
+    }
+
+    /// `motion` for the pending operator, or as a move without one. The
+    /// operator's count and the motion's multiply, and `c` enters insert
+    /// mode, as visual `c` does (#1081, #1363).
+    pub(super) fn operator_action(&mut self, motion: Option<VimMotion>) -> VimAction {
+        let Some(op) = self.operator.take() else {
+            return motion.map_or(VimAction::None, VimAction::Move);
+        };
+        let after = self.count.take();
+        self.count = match (self.operator_count.take(), after) {
+            (None, None) => None,
+            (before, after) => Some(before.unwrap_or(1).saturating_mul(after.unwrap_or(1))),
+        };
+        if motion.is_none() {
+            self.count = None;
+            return VimAction::None;
+        }
+        match op {
+            'd' => VimAction::Delete(motion),
+            'y' => VimAction::Yank(motion),
+            'c' => {
+                let count = self.count;
+                self.set_mode(VimMode::Insert);
+                self.count = count;
+                VimAction::Change(motion)
+            }
+            _ => VimAction::None,
+        }
+    }
+
     /// `gg`: a motion to the line the count names, the first by default, for a
     /// pending operator if there is one. The count is the line, not a repeat.
     fn finish_gg(&mut self) -> VimAction {
-        let motion = VimMotion::GoToLine(Some(self.count.take().unwrap_or(1)));
-        let action = match self.operator.take() {
-            Some('d') => VimAction::Delete(Some(motion)),
-            Some('y') => VimAction::Yank(Some(motion)),
-            Some('c') => VimAction::Change(Some(motion)),
-            _ => VimAction::Move(motion),
+        let line = match (self.operator_count.take(), self.count.take()) {
+            (None, None) => 1,
+            (before, after) => before.unwrap_or(1).saturating_mul(after.unwrap_or(1)),
         };
+        let action = self.operator_action(Some(VimMotion::GoToLine(Some(line))));
         self.remember_for_repeat(&action);
         action
     }
@@ -205,9 +268,13 @@ mod tests {
         let mut vim = VimState::new();
         vim.handle_key(&KeyEvent::new(Key::Char('3')));
         vim.handle_key(&KeyEvent::new(Key::Char('d')));
-        assert_eq!((vim.operator, vim.count), (Some('d'), Some(3)));
+        // The count typed before the operator waits with it (#1363)
+        assert_eq!((vim.operator, vim.operator_count), (Some('d'), Some(3)));
         vim.set_mode(VimMode::Insert);
-        assert_eq!((vim.operator, vim.count), (None, None));
+        assert_eq!(
+            (vim.operator, vim.operator_count, vim.count),
+            (None, None, None)
+        );
         // `d` typed in insert mode is text, not an operator
         vim.handle_key(&KeyEvent::new(Key::Char('d')));
         assert_eq!(vim.operator, None);
