@@ -49,8 +49,9 @@ jobs:
               - 'scripts/public-api.sh'
               - 'scripts/public-api-removed.py'
               - '.github/workflows/ci.yml'
-            # Crates in this tree that are not workspace members, so none of the
-            # root `cargo` jobs above ever build them.
+            # Crates the root `cargo` jobs above never build: revue-cli (a
+            # workspace member they skip; its lock is the root Cargo.lock) and
+            # the templates, which are not members.
             # The templates are built against this checkout, so a change to
             # the library can break them too.
             standalone:
@@ -59,6 +60,7 @@ jobs:
               - 'src/**'
               - 'revue-macros/**'
               - 'Cargo.toml'
+              - 'Cargo.lock'
               - '.github/workflows/ci.yml'
 
   fmt:
@@ -168,10 +170,9 @@ jobs:
           components: rustfmt, clippy
           cache: false
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
-        with:
-          workspaces: revue-cli
-      # revue-cli has its own [workspace] table and Cargo.lock; nothing in the
-      # root workspace jobs touches it, so it gets the same fmt/clippy/test gate here.
+      # revue-cli is a workspace member (it shares revue's version, #1212), but
+      # the root jobs build only the revue package, so it gets the same
+      # fmt/clippy/test gate here.
       # tools/theme-builder is deliberately not here: it does not compile against the
       # current framework API (7 compile errors on main as of 2026-10-07; port or remove it first).
       - name: revue-cli

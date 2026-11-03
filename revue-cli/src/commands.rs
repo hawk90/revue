@@ -269,7 +269,10 @@ pub fn list_themes(verbose: bool) -> Result<()> {
 }
 
 /// Install a theme
-pub fn install_theme(name: &str) -> Result<()> {
+///
+/// An existing `styles/<name>.css` is kept (it may have been edited) unless
+/// `force` is set.
+pub fn install_theme(name: &str, force: bool) -> Result<()> {
     println!("{} {}", "🎨 Installing theme:".cyan().bold(), name.bold());
     println!();
 
@@ -291,8 +294,15 @@ pub fn install_theme(name: &str) -> Result<()> {
     // Create styles directory if it doesn't exist
     fs::create_dir_all("styles")?;
 
-    // Write theme file
+    // Write theme file, keeping one already there
     let theme_path = format!("styles/{}.css", name);
+    if !force && Path::new(&theme_path).exists() {
+        return Err(format!(
+            "{} already exists; pass --force to overwrite it",
+            theme_path
+        )
+        .into());
+    }
     fs::write(&theme_path, theme_css)?;
 
     println!("{}", "✅ Theme installed!".green().bold());
@@ -309,34 +319,77 @@ pub fn install_theme(name: &str) -> Result<()> {
 }
 
 /// Generate documentation
-pub fn generate_docs(output: &str) -> Result<()> {
+///
+/// Runs `cargo doc` for the project in the current directory. The docs are
+/// left where cargo puts them (`<target dir>/doc`) or, with `output`, copied
+/// into that directory.
+pub fn generate_docs(output: Option<&str>) -> Result<()> {
     println!("{}", "📚 Generating documentation...".cyan().bold());
     println!();
 
     let status = Command::new("cargo")
         .args(["doc", "--no-deps", "--document-private-items"])
         .status()?;
-
-    if status.success() {
-        let doc_path = if output.is_empty() {
-            "target/doc"
-        } else {
-            output
-        };
-        if Path::new(doc_path).exists() {
-            println!("{}", "✅ Documentation generated!".green().bold());
-            println!();
-            println!("  {} {}", "Output:".dimmed(), doc_path);
-            println!(
-                "  {} {}",
-                "Open:".dimmed(),
-                format!("open {}/revue/index.html", doc_path).cyan()
-            );
-        }
-    } else {
-        println!("{}", "❌ Documentation generation failed".red().bold());
+    if !status.success() {
+        return Err("cargo doc failed".into());
     }
 
+    let built = target_dir()?.join("doc");
+    let doc_path = match output {
+        Some(dir) => {
+            copy_tree(&built, Path::new(dir))?;
+            Path::new(dir).to_path_buf()
+        }
+        None => built,
+    };
+
+    println!("{}", "✅ Documentation generated!".green().bold());
+    println!();
+    println!("  {} {}", "Output:".dimmed(), doc_path.display());
+    if let Some(name) = crate_name() {
+        println!(
+            "  {} {}",
+            "Open:".dimmed(),
+            format!("open {}/{}/index.html", doc_path.display(), name).cyan()
+        );
+    }
+
+    Ok(())
+}
+
+/// Where cargo builds the project in the current directory
+fn target_dir() -> Result<std::path::PathBuf> {
+    let out = Command::new("cargo")
+        .args(["metadata", "--no-deps", "--format-version", "1"])
+        .output()?;
+    if !out.status.success() {
+        return Err("cargo metadata failed".into());
+    }
+    let meta: serde_json::Value = serde_json::from_slice(&out.stdout)?;
+    let dir = meta["target_directory"]
+        .as_str()
+        .ok_or("cargo metadata gave no target directory")?;
+    Ok(dir.into())
+}
+
+/// The name rustdoc gives the docs of the package in the current directory
+fn crate_name() -> Option<String> {
+    let manifest: toml::Table = fs::read_to_string("Cargo.toml").ok()?.parse().ok()?;
+    let name = manifest.get("package")?.get("name")?.as_str()?;
+    Some(name.replace('-', "_"))
+}
+
+/// Copy every file under `from` into `to`, keeping the layout
+fn copy_tree(from: &Path, to: &Path) -> Result<()> {
+    for entry in walkdir::WalkDir::new(from) {
+        let entry = entry?;
+        let dest = to.join(entry.path().strip_prefix(from)?);
+        if entry.file_type().is_dir() {
+            fs::create_dir_all(&dest)?;
+        } else {
+            fs::copy(entry.path(), &dest)?;
+        }
+    }
     Ok(())
 }
 
