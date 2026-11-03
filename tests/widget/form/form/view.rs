@@ -113,18 +113,22 @@ fn test_form_field_same_when_offset() {
 
 #[test]
 fn test_form_frame_and_title() {
+    // No title unless one is set (#1211)
     let buffer = screen(&Form::new(sign_up()), 20, 10);
-    assert_eq!(row(&buffer, 0), "┌─Form─────────────┐");
+    assert_eq!(row(&buffer, 0), "┌──────────────────┐");
+    let buffer = screen(&Form::new(sign_up()).title("Sign up"), 20, 10);
+    assert_eq!(row(&buffer, 0), "┌─Sign up──────────┐");
     assert_eq!(row(&buffer, 9), "└──────────────────┘");
     for y in 1..9 {
         assert_eq!(buffer.get(0, y).unwrap().symbol, '│', "y={y}");
         assert_eq!(buffer.get(19, y).unwrap().symbol, '│', "y={y}");
     }
-    // A valid form has a gray frame; the title is white on black.
+    // A valid form has a gray frame; the title is white, on no background
+    // of its own (#1211: it was a fixed black)
     assert_eq!(buffer.get(0, 0).unwrap().fg, Some(DISABLED_FG));
-    for x in 2..6 {
+    for x in 2..9 {
         let cell = buffer.get(x, 0).unwrap();
-        assert_eq!((cell.fg, cell.bg), (Some(Color::WHITE), Some(Color::BLACK)));
+        assert_eq!((cell.fg, cell.bg), (Some(Color::WHITE), None), "x={x}");
     }
 
     // An invalid one has a red frame, touched or not.
@@ -137,10 +141,10 @@ fn test_form_frame_and_title() {
 #[test]
 fn test_form_title_cut_before_the_corner() {
     // Four columns leave one for the title, between the corners.
-    let buffer = screen(&Form::new(sign_up()), 4, 3);
+    let buffer = screen(&Form::new(sign_up()).title("Form"), 4, 3);
     assert_eq!(row(&buffer, 0), "┌─F┐");
     // Three columns leave none.
-    let buffer = screen(&Form::new(sign_up()), 3, 3);
+    let buffer = screen(&Form::new(sign_up()).title("Form"), 3, 3);
     assert_eq!(row(&buffer, 0), "┌─┐");
 }
 
@@ -303,7 +307,7 @@ fn test_form_empty_form_is_valid_frame_only() {
     assert_eq!(
         (0..4).map(|y| row(&buffer, y)).collect::<Vec<_>>(),
         [
-            "┌─Form─────┐",
+            "┌──────────┐",
             "│          │",
             "│ Valid    │",
             "└──────────┘"
@@ -319,7 +323,7 @@ fn test_form_status_needs_a_row_inside() {
         20,
         2,
     );
-    assert_eq!(row(&buffer, 0), "┌─Form─────────────┐");
+    assert_eq!(row(&buffer, 0), "┌──────────────────┐");
     assert_eq!(row(&buffer, 1), "└──────────────────┘");
 }
 
@@ -541,4 +545,69 @@ proptest! {
             prop_assert_eq!(inside(&buffer, y), expected[y as usize].clone(), "y={}", y);
         }
     }
+}
+
+/// The title takes the stylesheet's colors: `color` for its text,
+/// `background` behind it (#1211)
+#[test]
+fn test_form_title_takes_the_stylesheet_colors() {
+    use revue::style::{Style, VisualStyle};
+    let form = Form::new(sign_up()).title("T");
+    let mut buffer = Buffer::new(20, 6);
+    let style = Style {
+        visual: VisualStyle {
+            color: Color::YELLOW,
+            background: Color::BLUE,
+            ..VisualStyle::default()
+        },
+        ..Style::default()
+    };
+    let mut ctx = RenderContext::with_style(&mut buffer, Rect::new(0, 0, 20, 6), &style);
+    form.render(&mut ctx);
+    let cell = buffer.get(2, 0).unwrap();
+    assert_eq!(
+        (cell.symbol, cell.fg, cell.bg),
+        ('T', Some(Color::YELLOW), Some(Color::BLUE))
+    );
+    assert_eq!(form.get_title(), Some("T"));
+    assert_eq!(Form::new(sign_up()).get_title(), None);
+}
+
+/// The helper text shows in every error style, inline errors on or off:
+/// only the error is gated on them (#1072)
+#[test]
+fn test_form_helper_text_in_every_error_style() {
+    let state = || {
+        FormState::new()
+            .field("email", |f| {
+                f.label("Email").helper_text("We never share it")
+            })
+            .build()
+    };
+    for (style, show) in [
+        (ErrorDisplayStyle::Inline, true),
+        (ErrorDisplayStyle::Summary, true),
+        (ErrorDisplayStyle::Both, false),
+        (ErrorDisplayStyle::Inline, false),
+    ] {
+        let form = Form::new(state()).error_style(style).show_errors(show);
+        let buffer = screen(&form, 24, 6);
+        assert_eq!(inside(&buffer, 3), "We never share it", "{style:?} {show}");
+    }
+    // A touched invalid field: the error inline, the helper otherwise
+    let invalid = || {
+        let s = FormState::new()
+            .field("email", |f| f.label("Email").helper_text("hint").required())
+            .build();
+        s.get("email").unwrap().touch();
+        s
+    };
+    let buffer = screen(&Form::new(invalid()), 24, 6);
+    assert_ne!(inside(&buffer, 3), "hint");
+    let buffer = screen(
+        &Form::new(invalid()).error_style(ErrorDisplayStyle::Summary),
+        24,
+        6,
+    );
+    assert_eq!(inside(&buffer, 3), "hint");
 }

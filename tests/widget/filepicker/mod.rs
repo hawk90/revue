@@ -6,6 +6,7 @@
 pub mod basic;
 mod keys;
 mod model;
+mod paths;
 pub mod render;
 pub mod selection;
 mod view;
