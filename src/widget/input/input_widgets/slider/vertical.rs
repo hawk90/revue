@@ -61,20 +61,11 @@ impl Slider {
 
         // Value display
         if self.show_value && area.width > 2 {
-            let value_str = self.format_value();
-            let value_y = track_len / 2;
-            for (i, ch) in value_str.chars().enumerate() {
-                if x + 2 + i as u16 >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(if self.focused {
-                    Color::CYAN
-                } else {
-                    Color::WHITE
-                });
-                ctx.set(x + 2 + i as u16, value_y, cell);
-            }
+            let value = self.format_value();
+            let value_x = x + 2;
+            ctx.put_str_with(value_x, track_len / 2, &value, area.width, |ch| {
+                self.value_cell(ch)
+            });
         }
     }
 }

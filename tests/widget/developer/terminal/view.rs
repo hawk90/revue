@@ -205,18 +205,21 @@ fn test_terminal_scroll_indicator_colors_and_count() {
     term.scroll_up(4);
     let buffer = screen(&term, 20, 3);
     let top = row(&buffer, 0);
-    // (Where on the row it sits is not checked: it is placed by its byte
-    // length, #1087.)
-    let x = top.chars().position(|c| c == '↑').expect("indicator") as u16;
+    // "↑4" ends one column before the right edge: placed by its columns,
+    // not its bytes ("↑" is 3), #1087
+    let x = 17;
+    assert_eq!(buffer.get(x, 0).unwrap().symbol, '↑', "{top:?}");
     assert_eq!(buffer.get(x + 1, 0).unwrap().symbol, '4');
+    assert_eq!(buffer.get(x + 2, 0).unwrap().bg, Some(Color::BLACK));
     for dx in 0..2 {
         let c = buffer.get(x + dx, 0).unwrap();
         assert_eq!((c.fg, c.bg), (Some(Color::YELLOW), Some(SEPARATOR_COLOR)));
     }
     assert!(top.starts_with('6'), "{top:?}");
-    // Too narrow for it: left out
+    // Just room for it and the gap after it, then too narrow: left out
     let narrow = screen(&term, 4, 3);
-    assert!(!row(&narrow, 0).contains('↑'));
+    assert_eq!(row(&narrow, 0), "6↑4 ");
+    assert!(!row(&screen(&term, 3, 3), 0).contains('↑'));
 }
 
 #[test]
@@ -253,4 +256,55 @@ fn test_terminal_empty_input_keys() {
     );
     // and no input line is drawn
     assert_eq!(row(&screen(&term, 10, 3), 2).trim_end(), "");
+}
+
+/// Text written before any background code sits on the terminal's
+/// background, the default or the stylesheet's (#1087)
+#[test]
+fn text_is_drawn_on_the_terminal_background() {
+    let mut term = Terminal::new(10, 1);
+    term.write("ab");
+    let buffer = screen(&term, 10, 1);
+    assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::BLACK));
+    assert_eq!(buffer.get(0, 0).unwrap().bg, buffer.get(5, 0).unwrap().bg);
+    let mut term = Terminal::new(10, 1).default_bg(Color::BLUE);
+    term.write("ab");
+    assert_eq!(
+        screen(&term, 10, 1).get(1, 0).unwrap().bg,
+        Some(Color::BLUE)
+    );
+}
+
+/// The cursor cell keeps the background under it: the terminal's, or the
+/// one the text at the cursor was written on (#1087)
+#[test]
+fn the_cursor_keeps_the_background() {
+    let mut term = Terminal::new(10, 2).default_bg(Color::BLUE);
+    term.focus();
+    let buffer = screen(&term, 10, 2);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '█');
+    assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::BLUE));
+    // On a cell written with a red background: red
+    let mut term = Terminal::new(10, 2).default_bg(Color::BLUE);
+    // `\r` puts the cursor back on the first cell, written on red
+    term.write("\x1b[41ma\x1b[0mb\r");
+    term.focus();
+    let buffer = screen(&term, 10, 2);
+    assert_eq!(
+        buffer.get(0, 0).unwrap().symbol,
+        '█',
+        "{:?}",
+        row(&buffer, 0)
+    );
+    assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::RED));
+}
+
+/// Ctrl and Alt letters are not typed into the command line (#1087)
+#[test]
+fn ctrl_and_alt_letters_are_not_typed() {
+    let mut term = Terminal::new(20, 3);
+    term.handle_key(KeyEvent::new(Key::Char('l')));
+    term.handle_key(KeyEvent::ctrl(Key::Char('c')));
+    term.handle_key(KeyEvent::alt(Key::Char('x')));
+    assert_eq!(term.get_input(), "l");
 }

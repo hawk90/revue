@@ -129,9 +129,9 @@ fn test_switch_disabled_toggle() {
 
 #[test]
 fn test_switch_focused() {
-    // A focus bracket after the switch
+    // Focus brackets on either side of the switch, never over it (#1018)
     assert_eq!(row(&Switch::new(), 8), "[●━━━]  ");
-    assert_eq!(row(&Switch::new().focused(true), 8), "[●━━━]] ");
+    assert_eq!(row(&Switch::new().focused(true), 8), "[[●━━━]]");
 }
 
 #[test]
@@ -219,13 +219,15 @@ fn test_switch_builder_chain() {
         .track_color(Color::BLUE)
         .text("ON", "OFF");
     let buffer = screen(&s, 20, 1);
-    // An 8-wide IOS track, on: the knob at its right end on the on color;
-    // the focus bracket, then the label
-    let knob = buffer.get(6, 0).unwrap();
+    // The left focus bracket, an 8-wide IOS track, on: the knob at its
+    // right end on the on color; the right focus bracket, then the label
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '[');
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, '(');
+    let knob = buffer.get(7, 0).unwrap();
     assert_eq!((knob.symbol, knob.bg), ('●', Some(Color::GREEN)));
-    assert_eq!(buffer.get(7, 0).unwrap().symbol, ')');
-    assert_eq!(buffer.get(8, 0).unwrap().symbol, ']');
-    assert!(row_of(&buffer, 0).ends_with("]Toggle     "));
+    assert_eq!(buffer.get(8, 0).unwrap().symbol, ')');
+    assert_eq!(buffer.get(9, 0).unwrap().symbol, ']');
+    assert!(row_of(&buffer, 0).ends_with("]Toggle    "));
 }
 
 // ==================== Style Tests ====================
@@ -376,8 +378,9 @@ fn test_switch_render_with_label_right() {
 fn test_switch_render_focused() {
     let s = Switch::new().focused(true);
     let buffer = screen(&s, 20, 1);
-    // Both brackets turn cyan, and a focus bracket follows
-    for x in [0, 5, 6] {
+    // Focus brackets on either side, and the switch's own turn cyan
+    assert_eq!(row_of(&buffer, 0).trim_end(), "[[●━━━]]");
+    for x in [0, 1, 6, 7] {
         assert_eq!(fg(&buffer, x), Some(Color::CYAN), "{x}");
     }
     // With a label on the left the focus brackets go around the switch's

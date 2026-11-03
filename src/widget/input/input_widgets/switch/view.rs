@@ -24,22 +24,39 @@ impl Switch {
         }
     }
 
+    /// The column the switch starts at: after a label on the left and its
+    /// space, which then holds the left focus bracket; otherwise the first,
+    /// or the second while focus is drawn, the first holding that bracket.
+    fn switch_x(&self) -> u16 {
+        match &self.label {
+            Some(label) if self.label_left => {
+                (crate::utils::display_width(label) as u16).saturating_add(1)
+            }
+            _ => u16::from(self.shows_focus()),
+        }
+    }
+
     /// The columns `render` paints given room: the label and a space on
     /// whichever side it sits, the switch, and - while focused - the focus
-    /// bracket `render` puts in the column after the switch.
+    /// brackets on either side of it.
     fn natural_width(&self) -> u16 {
         let label = self.label.as_deref().map_or(0, |l| {
             (crate::utils::display_width(l) as u16).saturating_add(1)
         });
-        let width = self.track_width().saturating_add(label);
-        // The right bracket lands just after the switch: inside the gap
-        // before a label on the right, past the end otherwise.
-        let bracket_outside = self.label.is_none() || self.label_left;
-        if self.focused && !self.disabled && bracket_outside {
-            width.saturating_add(1)
-        } else {
-            width
+        let mut width = self.track_width().saturating_add(label);
+        if self.shows_focus() {
+            // The left bracket: in the space after a label on the left,
+            // its own column otherwise
+            if !(self.label_left && self.label.is_some()) {
+                width = width.saturating_add(1);
+            }
+            // The right bracket: in the space before a label on the right,
+            // its own column otherwise
+            if self.label.is_none() || self.label_left {
+                width = width.saturating_add(1);
+            }
         }
+        width
     }
 }
 
@@ -55,17 +72,16 @@ impl View for Switch {
             return;
         }
 
-        let mut x: u16 = 0;
         let y: u16 = 0;
 
         // Render label if on left
         if self.label_left {
             if let Some(ref label) = self.label {
                 let label_color = self.label_color(ctx);
-                ctx.draw_text_clipped(x, y, label, label_color, area.width.saturating_sub(x));
-                x += crate::utils::display_width(label) as u16 + 1;
+                ctx.draw_text_clipped(0, y, label, label_color, area.width);
             }
         }
+        let mut x = self.switch_x();
 
         // Render switch
         if x < area.width {
@@ -113,40 +129,18 @@ impl Switch {
         }
     }
 
-    /// The cyan brackets around the switch while focused
+    /// The cyan brackets around the switch while focused, in the columns
+    /// on either side of it (never over it)
     fn draw_focus_brackets(&self, ctx: &mut RenderContext, width: u16) {
-        let y: u16 = 0;
-        // Render focus indicator
-        if self.focused && !self.disabled {
-            // Find switch start position (relative)
-            let switch_x = if self.label_left {
-                self.label
-                    .as_ref()
-                    .map(|l| crate::utils::display_width(l) as u16 + 1)
-                    .unwrap_or(0)
-            } else {
-                0u16
-            };
-
-            // Draw focus bracket on left
-            if switch_x > 0 {
-                let mut left = Cell::new('[');
-                left.fg = Some(Color::CYAN);
-                ctx.set(switch_x.saturating_sub(1), y, left);
-            } else {
-                let mut left = Cell::new('[');
-                left.fg = Some(Color::CYAN);
-                ctx.set(0, y, left);
-            }
-
-            // Draw focus bracket on right
-            let switch_width = self.track_width();
-            let right_x = switch_x + switch_width;
-            if right_x < width {
-                let mut right = Cell::new(']');
-                right.fg = Some(Color::CYAN);
-                ctx.set(right_x, y, right);
-            }
+        if !self.shows_focus() {
+            return;
+        }
+        let switch_x = self.switch_x();
+        let left_x = switch_x - 1; // one at least while focus is drawn
+        ctx.set(left_x, 0, Cell::new('[').fg(Color::CYAN));
+        let right_x = switch_x.saturating_add(self.track_width());
+        if right_x < width {
+            ctx.set(right_x, 0, Cell::new(']').fg(Color::CYAN));
         }
     }
 }

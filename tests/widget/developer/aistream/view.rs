@@ -395,3 +395,42 @@ fn a_streaming_answer_taller_than_the_area_shows_its_newest_rows() {
     assert_eq!(stream.status(), StreamStatus::Streaming);
     assert_eq!(screen(&stream, 1, 2), ["4", "█"]);
 }
+
+/// While streaming, the cursor stays visible when the typed text ends
+/// exactly at the right edge: with wrap on it goes where the next glyph
+/// will, the start of the next row (#1102)
+#[test]
+fn the_cursor_shows_when_the_text_fills_the_row() {
+    let stream = typed("abcd", 4);
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+    // One column wider: right after the text
+    assert_eq!(screen(&stream, 5, 2), ["abcd█", "     "]);
+    // Exactly as wide: the next row's start
+    assert_eq!(screen(&stream, 4, 2), ["abcd", "█   "]);
+    // A wide glyph filling the row ends it the same way
+    // (four glyphs, so the fourth tick is a frame with the cursor on)
+    assert_eq!(screen(&typed("xab한", 4), 5, 2), ["xab한", "█    "]);
+}
+
+/// The cursor's row is in view: a full last row scrolls one up to show it,
+/// and only while the cursor is drawn (#1102)
+#[test]
+fn a_full_last_row_scrolls_to_the_cursor() {
+    let stream = typed("abcdefgh", 8);
+    assert_eq!(screen(&stream, 4, 2), ["efgh", "█   "]);
+    // No cursor: the text keeps the area
+    let mut stream = typed("abcdefgh", 8).cursor(StreamCursor::None);
+    assert_eq!(screen(&stream, 4, 2), ["abcd", "efgh"]);
+    // Done streaming: no cursor row either
+    stream = typed("abcdefgh", 8);
+    stream.tick();
+    assert_ne!(stream.status(), StreamStatus::Streaming);
+    assert_eq!(screen(&stream, 4, 2), ["abcd", "efgh"]);
+}
+
+/// Without wrap the cursor is clipped like the text
+#[test]
+fn without_wrap_the_cursor_past_the_edge_is_clipped() {
+    let stream = typed("abcd", 4).wrap(false);
+    assert_eq!(screen(&stream, 4, 2), ["abcd", "    "]);
+}
