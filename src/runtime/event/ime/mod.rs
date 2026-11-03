@@ -6,9 +6,14 @@
 //! # Features
 //!
 //! - Composition start/update/end events
-//! - Inline composition preview
 //! - Candidate selection support
-//! - Visual feedback (underline, highlight)
+//! - [`PreeditString`], the composing text split at the cursor
+//!
+//! revue draws no IME display. In a terminal the app never sees the
+//! composition: the terminal or OS input method draws the preedit text and
+//! the candidate window itself, at the terminal cursor (#1457), and only the
+//! committed text arrives as key events. So [`ImeConfig`] and
+//! [`CompositionStyle`], which described such a display, are deprecated.
 //!
 //! # State machine
 //!
@@ -76,4 +81,6 @@ mod types;
 
 pub use preedit::{PreeditSegment, PreeditString};
 pub use state::ImeState;
-pub use types::{Candidate, CompositionEvent, CompositionState, CompositionStyle, ImeConfig};
+pub use types::{Candidate, CompositionEvent, CompositionState};
+#[allow(deprecated)]
+pub use types::{CompositionStyle, ImeConfig};

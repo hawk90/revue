@@ -1,6 +1,6 @@
 //! IME (Input Method Editor) tests
 
-use revue::event::{Candidate, CompositionState, ImeConfig, ImeState, PreeditString};
+use revue::event::{Candidate, CompositionState, ImeState, PreeditString};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -218,9 +218,11 @@ fn test_preedit_string() {
     assert_eq!(preedit.text(), "hello");
 }
 
+/// The deprecated config still round-trips until 4.0 removes it (#846)
 #[test]
+#[allow(deprecated)]
 fn test_ime_config() {
-    use revue::event::CompositionStyle;
+    use revue::event::{CompositionStyle, ImeConfig};
 
     let config = ImeConfig {
         composition_style: CompositionStyle::Highlight,
