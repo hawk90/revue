@@ -155,15 +155,14 @@ impl TextArea {
 impl View for TextArea {
     crate::impl_view_meta!("TextArea", focusable);
 
-    fn render(&self, ctx: &mut RenderContext) {
-        let mut area = ctx.area;
+    /// `min_height` rows, asked of the layout; render draws in the rows it
+    /// is given, so it scrolls by the rows on screen (#1420)
+    fn min_size(&self) -> (u16, u16) {
+        (0, self.min_height)
+    }
 
-        // Enforce minimum height: expand the render area if the layout gave us
-        // less than min_height rows. This ensures TextArea is visible even when
-        // used as an auto-sized child in a vstack.
-        if self.min_height > 0 && area.height < self.min_height {
-            area.height = self.min_height;
-        }
+    fn render(&self, ctx: &mut RenderContext) {
+        let area = ctx.area;
 
         if area.width == 0 || area.height == 0 {
             return;
