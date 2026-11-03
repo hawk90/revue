@@ -209,6 +209,26 @@ fn a_cell_drawn_over_the_caret_takes_the_cursor_away() {
     assert_eq!(parser.screen().cell(0, 3).unwrap().contents(), "x");
 }
 
+#[test]
+fn a_caret_wider_than_its_field_shows_no_cursor_and_leaves_the_next_cell() {
+    // A field one column wide, its cursor on a wide glyph it cannot show:
+    // the glyph's cells would reach past the field
+    use revue::widget::RenderContext;
+    let mut buffer = Buffer::new(3, 1);
+    buffer.set(1, 0, Cell::new('z'));
+    let mut input = Input::new().value("한");
+    input.handle_key(&Key::Home);
+    input.render(&mut RenderContext::new(
+        &mut buffer,
+        revue::layout::Rect::new(0, 0, 1, 1),
+    ));
+    let mut terminal = revue::render::Terminal::with_size(Vec::new(), 3, 1);
+    terminal.force_redraw(&buffer).unwrap();
+    assert!(!contains(terminal.writer(), SHOW));
+    let parser = emulate(terminal.writer(), 3, 1);
+    assert_eq!(parser.screen().cell(0, 1).unwrap().contents(), "z");
+}
+
 // ---------------------------------------------------------------------------
 // Editors
 // ---------------------------------------------------------------------------
@@ -257,7 +277,11 @@ fn a_code_editor_shows_the_cursor_on_and_past_the_line() {
         .focused(true);
     let h = drawn(&editor, 10, 1);
     assert_eq!(h.cursor(), Some((0, 0)));
-    assert_ne!(h.screen_buffer().get(0, 0).unwrap().bg, Some(Color::WHITE));
+    // The glyph without the caret's background the buffer drew it with
+    let (caret, shown) = (h.buffer().get(0, 0).unwrap(), h.screen_buffer());
+    assert_eq!(shown.get(0, 0).unwrap().symbol, 'a');
+    assert_ne!(shown.get(0, 0).unwrap().bg, caret.bg);
+    assert_eq!(shown.get(1, 0), h.buffer().get(1, 0));
 
     let mut editor = CodeEditor::new()
         .content("ab")
@@ -273,7 +297,11 @@ fn a_rich_text_editor_shows_the_cursor_on_and_past_the_text() {
     let editor = RichTextEditor::new().content("ab").focused(true);
     let h = drawn(&editor, 20, 4);
     let (x, y) = h.cursor().expect("a cursor");
-    assert_eq!(h.screen_buffer().get(x, y).unwrap().symbol, 'a');
+    let (caret, shown) = (h.buffer().get(x, y).unwrap(), h.screen_buffer());
+    assert_eq!(shown.get(x, y).unwrap().symbol, 'a');
+    // The text's background, as the next glyph has it
+    assert_ne!(shown.get(x, y).unwrap().bg, caret.bg);
+    assert_eq!(shown.get(x, y).unwrap().bg, shown.get(x + 1, y).unwrap().bg);
 
     let mut editor = RichTextEditor::new().content("ab").focused(true);
     editor.handle_key(&Key::End);
