@@ -78,8 +78,14 @@ impl View for ColorPicker {
             super::types::ColorPickerMode::Hex => self.render_hex_mode(ctx, content_area),
         }
 
-        // Render preview and hex if enabled
-        if self.show_preview {
+        // The preview takes the last two rows, never over the mode's rows: the
+        // palette leaves them; the sliders and the hex line are three rows,
+        // so the preview needs two more below them (#1020)
+        let room = match self.mode {
+            super::types::ColorPickerMode::Palette => true,
+            _ => content_area.height >= 3 + 2,
+        };
+        if self.show_preview && room {
             self.render_preview(ctx, content_area);
         }
         ctx.bold_when_focused();
@@ -99,17 +105,23 @@ impl ColorPicker {
 
         let ox = area.x;
         let oy = area.y;
-        let mut x: u16 = 0;
-        let mut y: u16 = 0;
+        // One drawn row per palette row, as Up and Down move by `cols`
+        // (#1020). An area narrower than the row shows the columns around
+        // the selected swatch, so it is always in view.
+        let cols = cols.max(1);
+        let shown_cols = usize::from(area.width / 2).clamp(1, cols);
+        let first_col = (self.palette_index % cols).saturating_sub(shown_cols - 1);
 
         for (i, color) in colors.iter().enumerate() {
-            if x + 2 > area.width {
-                x = 0;
-                y += 1;
-            }
-            if y >= grid_rows {
+            let (row, col) = (i / cols, i % cols);
+            if row >= usize::from(grid_rows) {
                 break;
             }
+            if col < first_col || col >= first_col + shown_cols {
+                continue;
+            }
+            let x = ((col - first_col) * 2) as u16;
+            let y = row as u16;
 
             let is_selected = i == self.palette_index;
 
@@ -125,12 +137,6 @@ impl ColorPicker {
             let mut cell2 = Cell::new(if is_selected { '█' } else { '▄' });
             cell2.fg = Some(*color);
             ctx.set(ox + x + 1, oy + y, cell2);
-
-            x += 2;
-            if (i + 1) % cols == 0 {
-                x = 0;
-                y += 1;
-            }
         }
     }
 

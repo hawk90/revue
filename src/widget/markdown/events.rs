@@ -164,7 +164,8 @@ impl Markdown {
             }
             Tag::List(num) => {
                 ctx.list_depth += 1;
-                ctx.ordered_list_num = num;
+                let outer = std::mem::replace(&mut ctx.ordered_list_num, num);
+                ctx.list_numbers.push(outer);
             }
             Tag::Item => {
                 // A nested item must not continue its parent's line
@@ -279,6 +280,8 @@ impl Markdown {
             }
             TagEnd::List(_) => {
                 ctx.list_depth = ctx.list_depth.saturating_sub(1);
+                // The outer list goes on with its own numbers, or bullets
+                ctx.ordered_list_num = ctx.list_numbers.pop().flatten();
                 ctx.flush_line();
             }
             TagEnd::Item => {

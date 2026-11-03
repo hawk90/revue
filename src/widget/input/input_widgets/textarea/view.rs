@@ -264,8 +264,13 @@ impl View for TextArea {
                         continue;
                     };
                     if x < text_width as usize {
+                        // The glyph the cursor covers: the next row's
+                        // first, or the placeholder's first while the text
+                        // is empty, as Input keeps it (#1007)
                         let under = if col < seg_start {
                             seg.chars().next()
+                        } else if self.edit.is_empty() {
+                            self.placeholder.as_deref().and_then(|p| p.chars().next())
                         } else {
                             None
                         };

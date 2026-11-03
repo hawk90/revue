@@ -4,12 +4,31 @@ use super::CommandPalette;
 
 impl CommandPalette {
     /// Handle a key with its modifiers, as [`handle_key`](Self::handle_key)
-    /// does, except that a letter with Ctrl or Alt is left to the app as a
-    /// shortcut instead of typed into the query (with both it is AltGr: a
-    /// typed character). Returns whether the palette took the key.
+    /// does, except that Ctrl+J and Ctrl+K move the selection down and up,
+    /// as in fzf, and any other letter with Ctrl or Alt is left to the app
+    /// as a shortcut instead of typed into the query (with both it is
+    /// AltGr: a typed character). Returns whether the palette took the key.
     pub fn handle_key_event(&mut self, event: &crate::event::KeyEvent) -> bool {
-        if matches!(event.key, crate::event::Key::Char(_)) && event.ctrl != event.alt {
-            return false;
+        use crate::event::Key;
+
+        if let Key::Char(ch) = event.key {
+            let ctrl_only = event.ctrl && !event.alt;
+            if ctrl_only && self.visible {
+                match ch.to_ascii_lowercase() {
+                    'j' => {
+                        self.select_next();
+                        return true;
+                    }
+                    'k' => {
+                        self.select_prev();
+                        return true;
+                    }
+                    _ => {}
+                }
+            }
+            if event.ctrl != event.alt {
+                return false;
+            }
         }
         self.handle_key(&event.key)
     }

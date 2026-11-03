@@ -43,11 +43,9 @@ struct Doc {
     cursor: (usize, usize),
 }
 
-/// What a key did to the model
+/// What a key did to the model: whether the editor takes it
 enum Step {
     Handled(bool),
-    /// A case the editor gets wrong; the sequence stops there
-    Known,
 }
 
 const SHORTCUTS: [(&str, BlockType); 7] = [
@@ -106,9 +104,12 @@ impl Doc {
         let text: String = self.blocks[b].0.iter().collect();
         let trimmed = text.trim_start();
         let blanks = text.chars().count() - trimmed.chars().count();
-        if text.trim() == "---" || text.trim() == "***" {
-            // The horizontal rule shortcut never fires (#1075)
-            return Step::Known;
+        // The marker and the typed space, nothing else: a rule, emptied
+        // (#1075)
+        if text == "--- " || text == "*** " {
+            self.blocks[b] = (Vec::new(), BlockType::HorizontalRule);
+            self.cursor.1 = 0;
+            return Step::Handled(true);
         }
         if let Some((p, t)) = SHORTCUTS.iter().find(|(p, _)| trimmed.starts_with(p)) {
             self.blocks[b].0.drain(..blanks + p.len());
@@ -212,10 +213,8 @@ proptest! {
         let mut model = Doc::plain(text);
         for k in &keys {
             let handled = editor.handle_key(k);
-            match model.key(k) {
-                Step::Known => return Ok(()),
-                Step::Handled(h) => prop_assert_eq!(handled, h, "{:?}", k),
-            }
+            let Step::Handled(h) = model.key(k);
+            prop_assert_eq!(handled, h, "{:?}", k);
             prop_assert_eq!(editor.get_content(), model.content(), "after {:?}", k);
             prop_assert_eq!(editor.cursor_position(), model.cursor, "after {:?}", k);
             prop_assert_eq!(editor.block_count(), model.blocks.len());

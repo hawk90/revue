@@ -2,8 +2,9 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::{char_width, display_width};
+use crate::utils::char_width;
 use crate::widget::theme::DISABLED_FG;
+use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::RenderContext;
 
 use super::{CommandPalette, Layout};
@@ -49,43 +50,38 @@ impl CommandPalette {
         let search_icon = Cell::new('🔍');
         ctx.set(x + 2, current_y, search_icon);
 
-        // Query or placeholder
+        // The query, or the placeholder while it is empty, with the cursor
+        // at the end of the query: over the placeholder's first letter,
+        // which it keeps, as in Input (#1091)
         let input_x = x + 4;
-        let display_text = if self.query.is_empty() {
-            &self.placeholder
-        } else {
-            &self.query
+        let input_width = text_end.saturating_sub(input_x);
+        let field = EditField {
+            text: &self.query,
+            placeholder: &self.placeholder,
+            cursor: Some(self.query.chars().count()),
+            selection: None,
         };
-        // The typed query takes `color`; the empty-state grey keeps its own.
-        let text_color = if self.query.is_empty() {
-            DISABLED_FG
-        } else {
-            ctx.css_color(Color::WHITE)
-        };
-
-        let mut dx: u16 = 0;
-        for ch in display_text.chars() {
-            let cw = char_width(ch) as u16;
-            if input_x + dx + cw > text_end {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(text_color);
-            cell.bg = Some(self.bg_color);
-            ctx.set(input_x + dx, current_y, cell);
-            dx += cw;
-        }
-
-        // Cursor
-        if !self.query.is_empty() || display_text == &self.placeholder {
-            let cursor_x = input_x + display_width(&self.query) as u16;
-            if cursor_x < text_end {
-                let mut cursor = Cell::new('▏');
-                cursor.fg = Some(Color::WHITE);
-                cursor.bg = Some(self.bg_color);
-                ctx.set(cursor_x, current_y, cursor);
-            }
-        }
+        let scroll = field.scroll(0, input_width);
+        let text_color = ctx.css_color(Color::WHITE);
+        ctx.put_edit_field(
+            input_x,
+            current_y,
+            input_width,
+            &field,
+            scroll,
+            |kind, ch| {
+                let mut cell = Cell::new(ch);
+                (cell.fg, cell.bg) = match kind {
+                    FieldCell::Cursor => (Some(self.bg_color), Some(Color::WHITE)),
+                    // The empty-state grey keeps its own color
+                    FieldCell::Placeholder => (Some(DISABLED_FG), Some(self.bg_color)),
+                    FieldCell::Text | FieldCell::Selected => {
+                        (Some(text_color), Some(self.bg_color))
+                    }
+                };
+                cell
+            },
+        );
 
         self.draw_right(ctx, layout, current_y);
     }

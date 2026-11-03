@@ -142,14 +142,21 @@ fn test_render_dialog_insert_link_field_0_selected() {
     // Act
     editor.render(&mut ctx);
 
-    // Assert - Field 0 should have default background when empty
     let dialog_width = 40;
     let dialog_height = 7;
     let dialog_x = (80 - dialog_width) / 2;
     let dialog_y = (24 - dialog_height) / 2;
 
-    // Check text field (field 0) has dialog background at position 8 (when empty)
-    let cell = buffer.get(dialog_x + 8, dialog_y + 3).unwrap();
+    // The active field shows its background while empty, across its width,
+    // so it marks where typing goes (#1077); the other keeps the dialog's
+    for x in dialog_x + 8..dialog_x + 8 + 30 {
+        assert_eq!(
+            buffer.get(x, dialog_y + 3).unwrap().bg,
+            Some(Color::rgb(69, 71, 90)),
+            "x={x}"
+        );
+    }
+    let cell = buffer.get(dialog_x + 8, dialog_y + 4).unwrap();
     assert_eq!(cell.bg, Some(Color::rgb(49, 50, 68)));
 }
 
@@ -466,4 +473,57 @@ fn test_render_dialog_horizontal_border() {
             .symbol,
         '─'
     );
+}
+
+// =========================================================================
+// #1077: the dialog's text stays inside its border; an empty field shows
+// =========================================================================
+
+fn screen_1077(editor: &RichTextEditor, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    editor.render(&mut ctx);
+    buffer
+}
+
+#[test]
+fn dialog_labels_stay_in_the_box() {
+    let mut editor = RichTextEditor::new();
+    editor.open_link_dialog();
+    let buffer = screen_1077(&editor, 8, 9);
+    // The box is columns 2 to 5; nothing of it right of column 5
+    for y in 1..9 {
+        for x in [6u16, 7] {
+            assert_eq!(buffer.get(x, y).unwrap().symbol, ' ', "({x},{y})");
+        }
+    }
+}
+
+#[test]
+fn dialog_title_keeps_the_border() {
+    let mut editor = RichTextEditor::new();
+    editor.open_link_dialog();
+    let buffer = screen_1077(&editor, 10, 9);
+    assert_eq!(buffer.get(2, 2).unwrap().symbol, '│');
+}
+
+#[test]
+fn empty_active_field_is_shown() {
+    let mut editor = RichTextEditor::new();
+    editor.open_link_dialog();
+    let buffer = screen_1077(&editor, 60, 20);
+    assert_eq!(buffer.get(18, 9).unwrap().bg, Some(Color::rgb(69, 71, 90)));
+}
+
+/// The image dialog keeps its labels inside a narrow box too (#1077)
+#[test]
+fn image_dialog_labels_stay_in_the_box() {
+    let mut editor = RichTextEditor::new();
+    editor.open_image_dialog();
+    let buffer = screen_1077(&editor, 8, 9);
+    for y in 1..9 {
+        for x in [0u16, 1, 6, 7] {
+            assert_eq!(buffer.get(x, y).unwrap().symbol, ' ', "({x},{y})");
+        }
+    }
 }
