@@ -33,7 +33,8 @@ impl AiStream {
     /// Draw the visible text, wrapped at the area's edge when `wrap` is on,
     /// from the scrolled-to row: a stream follows its newest row (#973).
     /// Returns where the cursor goes, the column and row after the last
-    /// glyph, on screen.
+    /// glyph, on screen: with wrap on, the start of the next row when the
+    /// last glyph fills its row, as the next glyph would go (#1102).
     fn render_text(
         &self,
         ctx: &mut RenderContext,
@@ -65,8 +66,19 @@ impl AiStream {
             x = x.saturating_add(w);
         }
 
-        // The rows in view
-        self.scroll.set_content(y + 1);
+        // Where the next glyph goes: past a full row when wrapping, the
+        // next row's start
+        let past_full_row = self.wrap && x >= area.width;
+        if past_full_row {
+            x = 0;
+            y += 1;
+        }
+
+        // The rows in view: that next row counts only while the cursor is
+        // drawn on it
+        let empty_cursor_row = past_full_row && !self.shows_cursor();
+        self.scroll
+            .set_content(if empty_cursor_row { y } else { y + 1 });
         self.scroll.set_viewport(area.height as usize);
         let shown = self.scroll.visible();
 
@@ -87,12 +99,14 @@ impl AiStream {
         (x, row)
     }
 
+    /// Whether the stream cursor is drawn: while streaming, unless none
+    fn shows_cursor(&self) -> bool {
+        self.status == StreamStatus::Streaming && self.cursor != StreamCursor::None
+    }
+
     /// Draw the stream cursor at `(x, y)` while streaming, on even frames
     fn render_cursor(&self, ctx: &mut RenderContext, x: u16, y: u16) {
-        if self.status == StreamStatus::Streaming
-            && self.cursor != StreamCursor::None
-            && y < ctx.area.height
-        {
+        if self.shows_cursor() && y < ctx.area.height {
             let cursor_char = match self.cursor {
                 StreamCursor::Block => '█',
                 StreamCursor::Underline => '_',

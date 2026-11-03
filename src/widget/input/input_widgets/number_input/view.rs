@@ -43,7 +43,7 @@ impl View for NumberInput {
         // Draw prefix
         if let Some(ref prefix) = self.prefix {
             ctx.draw_text_clipped(x, 0, prefix, LIGHT_GRAY, field_width.saturating_sub(x));
-            x = x.saturating_add(prefix.chars().count() as u16);
+            x = x.saturating_add(display_width(prefix).min(u16::MAX as usize) as u16);
         }
 
         // Draw the value, or the text being typed with its cursor and
@@ -82,7 +82,7 @@ impl View for NumberInput {
         // Draw suffix
         if let Some(ref suffix) = self.suffix {
             ctx.draw_text_clipped(x, 0, suffix, LIGHT_GRAY, field_width.saturating_sub(x));
-            x = x.saturating_add(suffix.chars().count() as u16);
+            x = x.saturating_add(display_width(suffix).min(u16::MAX as usize) as u16);
         }
 
         // Draw buttons if enabled and space available
