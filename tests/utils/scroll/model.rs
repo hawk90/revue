@@ -280,7 +280,7 @@ proptest! {
         };
         let mut m = Model::new(tail);
         for op in &ops {
-            let (following, old_top, old_len) = (m.following, m.top, m.rows.len());
+            let (following, old_len) = (m.following, m.rows.len());
             let top_id = m.rows.get(m.top).copied();
             match *op {
                 Op::Viewport(v) => s.set_viewport(v),
@@ -328,10 +328,7 @@ proptest! {
 
             // The rows on screen stay put when rows come or go above them,
             // and rows inserted at the top row go above it
-            let above = match *op {
-                Op::Insert(..) | Op::Remove(..) => true,
-                _ => false,
-            };
+            let above = matches!(op, Op::Insert(..) | Op::Remove(..));
             if let (true, Some(id), false) = (above, top_id, following) {
                 if let Some(at) = m.rows.iter().position(|&r| r == id) {
                     if at <= m.max() {

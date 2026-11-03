@@ -1919,7 +1919,7 @@ items:
       - reveal/track scroll just enough to show a row range, in either direction (scrollIntoView nearest); reveal_aligned
         takes Start, Center or End
       - a view with a tail mode follows the end only while it is at the end
-      - rows inserted or removed above the view keep the rows on screen in place
+      - rows inserted or removed above the view, or inserted at its top row, keep the rows on screen in place
       - every list and content widget scrolls with it (#973)
     evidence:
       - src/utils/scroll.rs::reveal
@@ -1929,6 +1929,7 @@ items:
       - tests/utils/scroll/mod.rs::following_the_end_shows_a_full_last_page
       - tests/utils/scroll/mod.rs::reveal_scrolls_just_enough_in_either_direction
       - tests/utils/scroll/model.rs::scroll_state_follows_the_model
+      - tests/utils/scroll/mod.rs::rows_inserted_at_the_top_row_go_above_it
     source:
       - 'issue #973 (scroll model decision, 2026-10-22)'
     notes: datagrid, textarea, input and code_editor still keep their own Cell scroll state; moving them is #1257 (4.0).
