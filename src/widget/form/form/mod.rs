@@ -70,6 +70,8 @@ pub struct Form {
     show_errors: bool,
     /// Error display style
     error_style: ErrorDisplayStyle,
+    /// The title in the top border; none by default
+    title: Option<String>,
 }
 
 /// How to display validation errors
@@ -94,6 +96,7 @@ impl Form {
             submit_text: None,
             show_errors: true,
             error_style: ErrorDisplayStyle::default(),
+            title: None,
         }
     }
 
@@ -123,6 +126,18 @@ impl Form {
     pub fn error_style(mut self, style: ErrorDisplayStyle) -> Self {
         self.error_style = style;
         self
+    }
+
+    /// Set the title drawn in the top border. Without one (the default) the
+    /// border has no title.
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = Some(title.into());
+        self
+    }
+
+    /// The title drawn in the top border, if set
+    pub fn get_title(&self) -> Option<&str> {
+        self.title.as_deref()
     }
 
     /// Get the form state

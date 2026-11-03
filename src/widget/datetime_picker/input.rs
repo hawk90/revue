@@ -20,9 +20,7 @@ pub trait Input {
         match key {
             // Switch between date and time modes
             Key::Tab => {
-                if self.format() != DateTimeFormat::DateOnly
-                    && self.format() != DateTimeFormat::TimeOnly
-                {
+                if self.format().has_date() && self.format().has_time() {
                     self.toggle_mode();
                     return true;
                 }

@@ -28,24 +28,26 @@ impl Form {
         ctx.draw_box_single(0, 0, area.width, area.height, border_color);
     }
 
-    /// Render form title
+    /// The title in the top border, when one is set: in `color` (white by
+    /// default) on the stylesheet's `background`, if it has one
     fn render_title(&self, ctx: &mut RenderContext) {
-        // The title takes `color`; the error red below is validity state and a
-        // rule cannot address it separately, so it stays.
+        let Some(title) = self.title.as_deref() else {
+            return;
+        };
         let title_fg = ctx.css_color(Color::WHITE);
+        let title_bg = ctx.css_background_if_set();
         let area = ctx.area;
         if area.width < 4 {
             return;
         }
 
-        let title = "Form";
         let title_x: u16 = 2;
 
         let max_x = area.width - 1;
         ctx.put_edit_line(title_x, 0, title, 0, max_x - title_x, NO_TABS, |_, ch| {
             let mut cell = Cell::new(ch);
             cell.fg = Some(title_fg);
-            cell.bg = Some(Color::BLACK);
+            cell.bg = title_bg;
             cell
         });
     }
@@ -84,10 +86,11 @@ impl Form {
                 break;
             }
 
-            // Row 2: Error text (red, dim) if touched+errors, otherwise helper text (gray, dim)
-            if show_inline && self.show_errors {
-                render_field_message(ctx, field, content_x, current_y, max_x);
-            }
+            // Row 2: the error (red, dim) where inline errors are shown and
+            // the field is touched and invalid; otherwise its helper text
+            // (gray, dim), whatever the error style (#1072)
+            let inline_errors = show_inline && self.show_errors;
+            render_field_message(ctx, field, content_x, current_y, max_x, inline_errors);
             current_y += 1;
 
             // 1 row gap between fields
@@ -173,8 +176,15 @@ fn render_field_value(ctx: &mut RenderContext, field: &FormField, x: u16, y: u16
 
 /// Row 2 of a field: its first error once it is touched, otherwise its
 /// helper text
-fn render_field_message(ctx: &mut RenderContext, field: &FormField, x: u16, y: u16, max_x: u16) {
-    let show_error = field.is_touched() && field.has_errors();
+fn render_field_message(
+    ctx: &mut RenderContext,
+    field: &FormField,
+    x: u16,
+    y: u16,
+    max_x: u16,
+    inline_errors: bool,
+) {
+    let show_error = inline_errors && field.is_touched() && field.has_errors();
     if show_error {
         if let Some(error_msg) = field.first_error() {
             let error_color = Color::rgb(200, 80, 80);
