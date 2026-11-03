@@ -16,7 +16,8 @@ impl FilePicker {
                 None
             } else {
                 match self.mode {
-                    PickerMode::Open => Some(PickerResult::Selected(entry.path.clone())),
+                    // The path `confirm` gives for the same file (#1110)
+                    PickerMode::Open => Some(PickerResult::Selected(chosen_path(&entry.path))),
                     PickerMode::MultiSelect => {
                         self.toggle_selection();
                         None
@@ -86,12 +87,7 @@ impl FilePicker {
                     let valid_selection = (self.mode == PickerMode::Directory && entry.is_dir)
                         || (self.mode == PickerMode::Open && !entry.is_dir);
                     if valid_selection {
-                        // Return canonicalized absolute path for consistent cross-platform behavior
-                        let path = entry
-                            .path
-                            .canonicalize()
-                            .unwrap_or_else(|_| entry.path.clone());
-                        PickerResult::Selected(path)
+                        PickerResult::Selected(chosen_path(&entry.path))
                     } else {
                         PickerResult::None
                     }
@@ -162,4 +158,11 @@ impl FilePicker {
             self.input_name.backspace();
         }
     }
+}
+
+/// The path a picked entry is returned as, by `enter` and `confirm` alike:
+/// canonical, for consistent cross-platform behavior, or as listed when it
+/// cannot be resolved
+fn chosen_path(path: &std::path::Path) -> std::path::PathBuf {
+    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
 }

@@ -38,7 +38,13 @@ impl CodeEditor {
             let y = row as u16;
 
             // Highlight visible area
-            if start_line >= scroll && start_line < scroll + visible_lines {
+            let in_view = start_line >= scroll && start_line < scroll + visible_lines;
+            let band = if in_view {
+                self.minimap_visible_bg
+            } else {
+                self.minimap_bg
+            };
+            if in_view {
                 for x in 0..minimap_width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(self.minimap_visible_bg);
@@ -51,8 +57,11 @@ impl CodeEditor {
                 let chars: Vec<char> = line.chars().collect();
                 for (i, &ch) in chars.iter().take(minimap_width as usize).enumerate() {
                     if !ch.is_whitespace() {
+                        // On the band it marks, so the rows in view stay
+                        // shown where there is text (#1082)
                         let mut cell = Cell::new('▪');
                         cell.fg = Some(PLACEHOLDER_FG);
+                        cell.bg = Some(band);
                         ctx.set(minimap_x + i as u16, y, cell);
                     }
                 }
