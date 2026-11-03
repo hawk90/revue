@@ -131,14 +131,18 @@ impl DateTimePicker {
 
     /// Create a time-only picker
     pub fn time_only() -> Self {
-        let mut picker = Self::new().format(DateTimeFormat::TimeOnly);
-        picker.mode = DateTimeMode::Time;
-        picker
+        Self::new().format(DateTimeFormat::TimeOnly)
     }
 
-    /// Set display format
+    /// Set display format. A format with no date edits the time, one with
+    /// no time edits the date; with both, Tab switches between them.
     pub fn format(mut self, format: DateTimeFormat) -> Self {
         self.format = format;
+        if !format.has_date() {
+            self.mode = DateTimeMode::Time;
+        } else if !format.has_time() {
+            self.mode = DateTimeMode::Date;
+        }
         self
     }
 
@@ -524,6 +528,10 @@ impl render::Rendering for DateTimePicker {
 
     fn mode(&self) -> DateTimeMode {
         self.mode
+    }
+
+    fn format(&self) -> DateTimeFormat {
+        self.format
     }
 
     fn first_day(&self) -> FirstDayOfWeek {
