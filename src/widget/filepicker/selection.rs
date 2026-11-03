@@ -29,10 +29,16 @@ impl FilePicker {
         }
     }
 
-    /// Toggle selection (for multi-select)
+    /// Toggle the highlighted file's mark, in multi-select: the marked files
+    /// are what [`confirm`](Self::confirm) returns there. In the other modes
+    /// `confirm` returns the highlighted entry and nothing reads a mark, so
+    /// none is made (#1112).
     pub fn toggle_selection(&mut self) {
+        if self.mode != PickerMode::MultiSelect {
+            return;
+        }
         if let Some(entry) = self.entries.get_mut(self.highlighted) {
-            if !entry.is_dir || self.mode == PickerMode::Directory {
+            if !entry.is_dir {
                 // Chosen or not by the chosen paths, so a path is never
                 // added twice (#894)
                 if self.selected.contains(&entry.path) {

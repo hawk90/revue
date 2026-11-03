@@ -243,3 +243,26 @@ fn test_filepicker_typing_outside_save_mode_is_not_kept() {
         other => panic!("expected Selected, got {other:?}"),
     }
 }
+
+/// Only multi-select marks: in the other modes `confirm` returns the
+/// highlighted entry, so a mark there would be a ✓ nothing reads (#1112)
+#[test]
+fn test_filepicker_marks_only_in_multi_select() {
+    let dir = fixture();
+    let mut picker = dir_picker().start_dir(dir.path());
+    highlight(&mut picker, "zdir");
+    picker.toggle_selection();
+    assert!(!picker.highlighted_entry().unwrap().selected);
+    let expected = dir.path().join("zdir").canonicalize().unwrap();
+    assert!(matches!(picker.confirm(), PickerResult::Selected(p) if p == expected));
+
+    let mut picker = file_picker().start_dir(dir.path());
+    highlight(&mut picker, "b.txt");
+    picker.toggle_selection();
+    assert!(!picker.highlighted_entry().unwrap().selected);
+
+    let mut picker = save_picker().start_dir(dir.path());
+    highlight(&mut picker, "b.txt");
+    picker.toggle_selection();
+    assert!(!picker.highlighted_entry().unwrap().selected);
+}
