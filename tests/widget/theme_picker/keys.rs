@@ -39,9 +39,30 @@ impl Model {
         }
     }
 
+    /// Whether `ids[i]` is registered: only those have a row, so the
+    /// selection moves over the others (#1097)
+    fn known(&self, i: usize) -> bool {
+        self.ids.get(i).is_some_and(|id| get_theme(id).is_some())
+    }
+
     fn next(&mut self) {
-        if self.selected + 1 < self.ids.len() {
-            self.selected += 1;
+        if let Some(i) = (self.selected + 1..self.ids.len()).find(|&i| self.known(i)) {
+            self.selected = i;
+        }
+    }
+
+    fn prev(&mut self) {
+        if let Some(i) = (0..self.selected).rev().find(|&i| self.known(i)) {
+            self.selected = i;
+        }
+    }
+
+    /// The next registered theme, back to the first after the last
+    fn next_wrapping(&mut self) {
+        let after = (self.selected + 1..self.ids.len()).find(|&i| self.known(i));
+        let before = (0..=self.selected.min(self.ids.len())).find(|&i| self.known(i));
+        if let Some(i) = after.or(before) {
+            self.selected = i;
         }
     }
 
@@ -57,7 +78,7 @@ impl Model {
                 EventResult::Consumed
             }
             Key::Up | Key::Char('k') if self.open => {
-                self.selected = self.selected.saturating_sub(1);
+                self.prev();
                 EventResult::Consumed
             }
             Key::Down | Key::Char('j') if self.open => {
@@ -69,7 +90,7 @@ impl Model {
                 EventResult::Consumed
             }
             Key::Tab => {
-                self.next();
+                self.next_wrapping();
                 self.apply();
                 EventResult::Consumed
             }
@@ -94,13 +115,13 @@ proptest! {
             selected: 0,
             current: use_theme().get().name,
         };
+        // The first registered theme is selected first
+        if let Some(i) = (0..model.ids.len()).find(|&i| model.known(i)) {
+            model.selected = i;
+        }
 
         for &k in &keys {
             let key = KEYS[k];
-            if key == Key::Tab && model.selected + 1 >= model.ids.len() {
-                // Tab at the last theme stops instead of wrapping (#1097)
-                break;
-            }
             let expected = model.press(key);
             let result = picker.handle_key(&KeyEvent::new(key));
             prop_assert_eq!(result, expected, "{:?}", key);
