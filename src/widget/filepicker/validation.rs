@@ -3,28 +3,6 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// Truncate a string safely at UTF-8 character boundaries
-///
-/// Returns a string truncated to at most `max_len` bytes,
-/// ensuring we don't cut in the middle of a multi-byte UTF-8 character.
-pub(crate) fn truncate_string_safe(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        return s.to_string();
-    }
-
-    // Find the last valid UTF-8 boundary before max_len
-    let mut end = max_len;
-    while !s.is_char_boundary(end) {
-        end -= 1;
-        if end == 0 {
-            // Character is too long, return first character only
-            return format!("{}...", s.chars().next().unwrap_or('�'));
-        }
-    }
-
-    format!("{}...", &s[..end])
-}
-
 /// Error type for file picker operations
 #[derive(Debug, thiserror::Error)]
 pub enum FilePickerError {
