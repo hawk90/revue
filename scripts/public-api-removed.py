@@ -2,6 +2,7 @@
 """The snapshot lines removed since a base, minus path-only changes.
 
 Usage: public-api-removed.py OLD_SNAPSHOT DIFF
+       public-api-removed.py --self-test
 
 OLD_SNAPSHOT is tests/public-api.txt at the merge base; DIFF is
 `git diff -U0` of it from there. Prints each removed line that is a real
@@ -49,19 +50,17 @@ def masked(line, keep):
     return "".join(out)
 
 
-def main():
-    old_snapshot, diff = sys.argv[1], sys.argv[2]
-    with open(old_snapshot, encoding="utf-8") as f:
-        named = named_paths(f.read().splitlines())
+def real_removals(old_lines, diff_lines):
+    """The removed lines of `diff_lines` that are real removals or changes"""
+    named = named_paths(old_lines)
     removed, added = [], []
-    with open(diff, encoding="utf-8") as f:
-        for line in f.read().splitlines():
-            if line.startswith("---") or line.startswith("+++"):
-                continue
-            if line.startswith("-"):
-                removed.append(line[1:])
-            elif line.startswith("+"):
-                added.append(line[1:])
+    for line in diff_lines:
+        if line.startswith("---") or line.startswith("+++"):
+            continue
+        if line.startswith("-"):
+            removed.append(line[1:])
+        elif line.startswith("+"):
+            added.append(line[1:])
 
     # A removed line: its unnameable paths may become any path with the
     # same last segment; every other path must stay as it was
@@ -85,7 +84,72 @@ def main():
             if ok:
                 continue
         real.append(line)
+    return real
 
+
+SELF_TEST_OLD = """\
+pub struct revue::widget::Foo
+pub fn revue::widget::Foo::a(&self) -> revue::widget::private::Hidden
+pub fn revue::widget::Foo::b(&self) -> revue::widget::Bar
+pub fn revue::widget::Foo::c(&self) -> u8
+pub struct revue::widget::Bar
+""".splitlines()
+
+A = "pub fn revue::widget::Foo::a(&self) -> revue::widget::private::Hidden"
+
+# (what, diff, real removals expected)
+SELF_TEST_CASES = [
+    ("unnameable path re-exported", ["-" + A, "+" + A.replace("private::", "")], False),
+    ("line removed outright", ["-" + A], True),
+    (
+        "nameable path changed",
+        [
+            "-pub fn revue::widget::Foo::b(&self) -> revue::widget::Bar",
+            "+pub fn revue::widget::Foo::b(&self) -> revue::widget::other::Bar",
+        ],
+        True,
+    ),
+    ("unnameable type renamed", ["-" + A, "+" + A.replace("private::Hidden", "Other")], True),
+    (
+        "signature changed too",
+        ["-" + A, "+" + A.replace("private::", "").replace("&self", "&mut self")],
+        True,
+    ),
+    (
+        "plain change",
+        ["-pub fn revue::widget::Foo::c(&self) -> u8", "+pub fn revue::widget::Foo::c(&self) -> u16"],
+        True,
+    ),
+    ("item removed", ["-pub struct revue::widget::Bar"], True),
+    ("only additions", ["+pub fn revue::widget::Foo::e(&self)"], False),
+    (
+        "method renamed",
+        ["-" + A, "+" + A.replace("Foo::a", "Foo::z").replace("private::", "")],
+        True,
+    ),
+]
+
+
+def self_test():
+    failed = 0
+    for what, diff, want in SELF_TEST_CASES:
+        got = bool(real_removals(SELF_TEST_OLD, diff))
+        if got != want:
+            print(f"FAIL {what}: real removals {got}, want {want}")
+            failed += 1
+    print(f"{len(SELF_TEST_CASES) - failed}/{len(SELF_TEST_CASES)} cases pass")
+    sys.exit(1 if failed else 0)
+
+
+def main():
+    if sys.argv[1:] == ["--self-test"]:
+        self_test()
+    old_snapshot, diff = sys.argv[1], sys.argv[2]
+    with open(old_snapshot, encoding="utf-8") as f:
+        old_lines = f.read().splitlines()
+    with open(diff, encoding="utf-8") as f:
+        diff_lines = f.read().splitlines()
+    real = real_removals(old_lines, diff_lines)
     for line in real:
         print("-" + line)
     sys.exit(1 if real else 0)

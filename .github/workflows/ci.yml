@@ -391,6 +391,8 @@ jobs:
           cargo install cargo-public-api --locked --version "$(sed -n 's/^TOOL_VERSION=//p' scripts/public-api.sh)"
       - name: The snapshot is the current API
         run: scripts/public-api.sh
+      - name: The removal check tells a re-export from a removal
+        run: python3 scripts/public-api-removed.py --self-test
       - name: No line removed unless the title says breaking
         env:
           TITLE: ${{ github.event.pull_request.title }}
