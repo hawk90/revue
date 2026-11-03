@@ -42,6 +42,10 @@ impl RichTextEditor {
     /// Process markdown shortcuts (called after typing space)
     pub fn process_markdown_shortcuts(&mut self) {
         let block = &self.blocks[self.cursor.0];
+        // Code is literal text: no markdown in it (#1075)
+        if block.block_type == BlockType::CodeBlock {
+            return;
+        }
         let text = block.text();
 
         // Check for shortcuts at line start
@@ -67,12 +71,15 @@ impl RichTextEditor {
         else if prefix.starts_with("1. ") {
             self.apply_shortcut(BlockType::NumberedList, 3);
         }
-        // Horizontal rule
-        else if text == "---" || text == "***" {
+        // Horizontal rule: the shortcuts run after the typed space, so the
+        // block is the marker and that space (#1075)
+        else if text == "--- " || text == "*** " {
             self.clear_selection();
             self.record_blocks(self.cursor.0, 1, |editor| {
                 editor.blocks[editor.cursor.0].block_type = BlockType::HorizontalRule;
                 editor.blocks[editor.cursor.0].set_text("");
+                // The text is gone: the cursor goes to the line's start
+                editor.cursor.1 = 0;
             });
         }
     }

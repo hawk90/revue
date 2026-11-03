@@ -172,10 +172,17 @@ fn test_markdown_code_block_with_language() {
 
 #[test]
 fn test_markdown_code_block_multiple_lines() {
-    let editor = RichTextEditor::new().from_markdown("```python\nline 1\nline 2\nline 3\n```");
-    assert_eq!(editor.block_count(), 1);
-    assert_eq!(editor.blocks[0].block_type, BlockType::CodeBlock);
-    assert_eq!(editor.blocks[0].language, Some("python".to_string()));
+    let md = "```python\nline 1\nline 2\nline 3\n```";
+    let editor = RichTextEditor::new().from_markdown(md);
+    // A code block per line, as the editor keeps one line per block, each
+    // with the fence's language (#1076); export makes one fence of them
+    assert_eq!(editor.block_count(), 3);
+    for (i, block) in editor.blocks.iter().enumerate() {
+        assert_eq!(block.block_type, BlockType::CodeBlock);
+        assert_eq!(block.language, Some("python".to_string()));
+        assert_eq!(block.text(), format!("line {}", i + 1));
+    }
+    assert_eq!(editor.to_markdown(), md);
 }
 
 #[test]
