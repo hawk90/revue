@@ -35,7 +35,8 @@ fn test_filepicker_open_mode_selects_file() {
         other => panic!("expected Selected, got {other:?}"),
     }
     match picker.enter() {
-        Some(PickerResult::Selected(path)) => assert_eq!(path, dir.path().join("A.rs")),
+        // The same path confirm gives (#1110)
+        Some(PickerResult::Selected(path)) => assert_eq!(path, expected),
         other => panic!("expected Selected, got {other:?}"),
     }
 }
@@ -125,7 +126,9 @@ fn test_filepicker_save_mode_uses_typed_name() {
     picker.input_backspace();
     picker.input_char('x');
     match picker.confirm() {
-        PickerResult::Selected(path) => assert_eq!(path, dir.path().join("new.rx")),
+        PickerResult::Selected(path) => {
+            assert_eq!(path, dir.path().canonicalize().unwrap().join("new.rx"))
+        }
         other => panic!("expected Selected, got {other:?}"),
     }
 }
@@ -210,7 +213,9 @@ fn test_filepicker_save_mode_default_name() {
         .default_name("untitled.rs");
 
     match picker.confirm() {
-        PickerResult::Selected(path) => assert_eq!(path, dir.path().join("untitled.rs")),
+        PickerResult::Selected(path) => {
+            assert_eq!(path, dir.path().canonicalize().unwrap().join("untitled.rs"))
+        }
         other => panic!("expected Selected, got {other:?}"),
     }
 }
@@ -239,7 +244,32 @@ fn test_filepicker_typing_outside_save_mode_is_not_kept() {
     picker.input_backspace();
     let picker = picker.mode(revue::widget::PickerMode::Save);
     match picker.confirm() {
-        PickerResult::Selected(path) => assert_eq!(path, dir.path().join("ab")),
+        PickerResult::Selected(path) => {
+            assert_eq!(path, dir.path().canonicalize().unwrap().join("ab"))
+        }
         other => panic!("expected Selected, got {other:?}"),
     }
+}
+
+/// Only multi-select marks: in the other modes `confirm` returns the
+/// highlighted entry, so a mark there would be a ✓ nothing reads (#1112)
+#[test]
+fn test_filepicker_marks_only_in_multi_select() {
+    let dir = fixture();
+    let mut picker = dir_picker().start_dir(dir.path());
+    highlight(&mut picker, "zdir");
+    picker.toggle_selection();
+    assert!(!picker.highlighted_entry().unwrap().selected);
+    let expected = dir.path().join("zdir").canonicalize().unwrap();
+    assert!(matches!(picker.confirm(), PickerResult::Selected(p) if p == expected));
+
+    let mut picker = file_picker().start_dir(dir.path());
+    highlight(&mut picker, "b.txt");
+    picker.toggle_selection();
+    assert!(!picker.highlighted_entry().unwrap().selected);
+
+    let mut picker = save_picker().start_dir(dir.path());
+    highlight(&mut picker, "b.txt");
+    picker.toggle_selection();
+    assert!(!picker.highlighted_entry().unwrap().selected);
 }

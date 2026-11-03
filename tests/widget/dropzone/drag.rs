@@ -192,3 +192,48 @@ fn test_drop_zone_drop_bounds() {
     let bounds = Rect::new(5, 10, 20, 15);
     assert_eq!(zone.drop_bounds(bounds), bounds);
 }
+
+/// A drop of a type the zone does not accept is not taken: the handler does
+/// not run, as the zone already showed "Cannot drop here" (#1108)
+#[test]
+fn test_drop_zone_does_not_take_a_type_it_does_not_accept() {
+    use std::cell::Cell;
+    use std::rc::Rc;
+    let calls = Rc::new(Cell::new(0));
+    let seen = calls.clone();
+    let mut zone = DropZone::new("Files only")
+        .accepts(&["file"])
+        .on_drop(move |_| {
+            seen.set(seen.get() + 1);
+            true
+        });
+    let text = DragData::text("hello");
+    zone.on_drag_enter(&text);
+    assert!(!zone.can_accept(&text));
+    assert!(!Draggable::on_drop(&mut zone, text));
+    assert_eq!(calls.get(), 0, "the handler ran for a rejected type");
+    // An accepted type runs it
+    zone.on_drag_enter(&DragData::new("file", "a.txt"));
+    assert!(Draggable::on_drop(
+        &mut zone,
+        DragData::new("file", "a.txt")
+    ));
+    assert_eq!(calls.get(), 1);
+}
+
+/// A disabled zone is never the hovered target or the one a drag ends on;
+/// enabled, the same zone is (#1108)
+#[test]
+fn test_disabled_drop_zone_is_not_a_drop_target() {
+    use revue::event::drag::DragContext;
+    for disabled in [true, false] {
+        let zone = DropZone::new("Z").disabled(disabled);
+        assert_eq!(zone.can_drop(), !disabled);
+        let mut drag = DragContext::new();
+        drag.register_target(zone.as_target(Rect::new(0, 0, 10, 3)));
+        drag.start_drag(DragData::text("x"), 20, 20);
+        drag.update_position(2, 1);
+        let expected = (!disabled).then(|| zone.id());
+        assert_eq!(drag.hovered_target(), expected, "disabled={disabled}");
+    }
+}

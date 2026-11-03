@@ -155,8 +155,8 @@ pub fn toggle_theme() {
 
 /// Cycle through available themes
 ///
-/// Cycles to the next registered theme. Note that the order is not guaranteed
-/// as themes are stored in a HashMap.
+/// Cycles to the next registered theme, in [`theme_ids`] order (sorted by
+/// id), back to the first after the last.
 ///
 /// # Example
 ///
@@ -176,7 +176,8 @@ pub fn cycle_theme() {
     get_theme_signal().set(theme);
 }
 
-/// Get list of available theme IDs
+/// Get list of available theme IDs, sorted by id (the same order on every
+/// run)
 ///
 /// # Example
 ///
