@@ -89,3 +89,15 @@ fn going_to_the_current_directory_adds_no_history() {
     picker.go_back();
     assert_eq!(picker.current_dir(), root);
 }
+
+/// The error `try_set_start_dir` and `navigate_to` return can be named and
+/// matched (#1445)
+#[test]
+fn the_picker_error_can_be_named() {
+    use revue::widget::FilePickerError;
+    let err = FilePicker::new().try_set_start_dir("../up").err();
+    assert!(
+        matches!(err, Some(FilePickerError::PathTraversal(_))),
+        "{err:?}"
+    );
+}
