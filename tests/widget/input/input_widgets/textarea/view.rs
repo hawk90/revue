@@ -287,3 +287,62 @@ proptest! {
         prop_assert!(cells.iter().all(|&(x, y)| y == cells[0].1 && x - cells[0].0 < 2), "{:?} {:?}", cells, shown);
     }
 }
+
+/// Find matches are on a background, the current one on another, so each
+/// can be told from the text and from each other (#1007)
+#[test]
+fn test_textarea_find_matches_have_backgrounds() {
+    let mut ta = TextArea::new().content("ab ab ab x").line_numbers(false);
+    ta.open_find();
+    ta.set_find_query("ab");
+    let buffer = render(&ta, 20, 3);
+    let bgs: Vec<_> = [0u16, 3, 6, 9]
+        .iter()
+        .map(|&x| buffer.get(x, 0).unwrap().bg)
+        .collect();
+    let (current, other, plain) = (bgs[0], bgs[1], bgs[3]);
+    assert!(current.is_some() && other.is_some(), "{bgs:?}");
+    assert_ne!(current, other, "{bgs:?}");
+    assert_eq!(bgs[2], other);
+    assert_ne!(other, plain);
+}
+
+/// The cursor cell is black text on white, as Input's, and line numbers
+/// are dimmed apart from the text (#1007)
+#[test]
+fn test_textarea_cursor_text_and_line_numbers_are_colored() {
+    let ta = TextArea::new()
+        .content("abc")
+        .focused(true)
+        .line_numbers(true);
+    let buffer = render(&ta, 20, 3);
+    // The text starts after the gutter, at the cursor
+    let gutter = (0..20)
+        .find(|&x| buffer.get(x, 0).unwrap().symbol == 'a')
+        .unwrap();
+    let cursor = buffer.get(gutter, 0).unwrap();
+    assert_eq!(
+        (cursor.symbol, cursor.fg, cursor.bg),
+        ('a', Some(Color::BLACK), Some(Color::WHITE))
+    );
+    let number = (0..gutter)
+        .map(|x| buffer.get(x, 0).unwrap())
+        .find(|c| c.symbol == '1')
+        .unwrap();
+    assert!(number.fg.is_some());
+    assert_ne!(number.fg, buffer.get(gutter + 1, 0).unwrap().fg);
+}
+
+/// In an empty, focused TextArea the cursor covers the placeholder's first
+/// letter instead of blanking it, as Input does (#1007)
+#[test]
+fn test_textarea_cursor_keeps_the_placeholder_glyph() {
+    let ta = TextArea::new()
+        .placeholder("Write here")
+        .focused(true)
+        .line_numbers(false);
+    let buffer = render(&ta, 20, 3);
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!((cell.symbol, cell.bg), ('W', Some(Color::WHITE)));
+    assert_eq!(row(&buffer, 0), "Write here");
+}
