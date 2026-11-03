@@ -23,6 +23,13 @@ where
 
     /// Create a DropTarget for registration
     pub fn as_target(&self, bounds: Rect) -> DropTarget {
+        // A disabled zone refuses every drop, so its target covers no cell:
+        // no drag hovers it or ends on it (#1108)
+        let bounds = if self.state.disabled {
+            Rect::new(bounds.x, bounds.y, 0, 0)
+        } else {
+            bounds
+        };
         DropTarget::new(self.id, bounds).accepts(&self.accepts)
     }
 }
@@ -53,7 +60,10 @@ where
         self.hovered = false;
         self.can_accept_current = false;
 
-        if self.state.disabled {
+        // A disabled zone, or data of a type it does not accept (shown as
+        // "Cannot drop here" while over it), is not taken: the handler does
+        // not run (#1108)
+        if self.state.disabled || !self.can_accept(&data) {
             return false;
         }
         if let Some(ref mut handler) = self.on_drop {
