@@ -89,8 +89,35 @@ fn rows_inserted_above_keep_the_view_on_its_rows() {
     s.scroll_to(10);
     s.rows_inserted(2, 4);
     assert_eq!(s.offset(), 14);
-    s.rows_inserted(14, 1); // at the first visible row: below the anchor
-    assert_eq!(s.offset(), 14);
+    s.rows_inserted(14, 1); // at the first visible row: above it too (#1255)
+    assert_eq!(s.offset(), 15);
+}
+
+/// Rows inserted at the top row keep it on top, at the top of the content
+/// as anywhere else: following the start is not implied (#1255).
+#[test]
+fn rows_inserted_at_the_top_row_go_above_it() {
+    let mut s = drawn(20, 5);
+    s.scroll_to(6);
+    s.rows_inserted(6, 3);
+    assert_eq!(s.visible(), 9..14);
+    s.rows_inserted(14, 2); // just below the view
+    assert_eq!(s.visible(), 9..14);
+    s.rows_inserted(13, 2); // inside the view: the top row stays
+    assert_eq!(s.visible(), 9..14);
+
+    let top = drawn(20, 5);
+    top.rows_inserted(0, 3);
+    assert_eq!(top.offset(), 3);
+}
+
+/// With no row on top there is nothing to keep: the first rows of empty
+/// content are shown from the start.
+#[test]
+fn rows_inserted_with_no_row_on_top_are_shown() {
+    let empty = drawn(0, 5);
+    empty.rows_inserted(0, 8);
+    assert_eq!(empty.visible(), 0..5);
 }
 
 /// A removal that takes the first visible rows leaves the view where they were.
