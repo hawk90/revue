@@ -30,43 +30,52 @@ impl RichTextEditor {
         self.forget_history();
         self.clear_selection();
         self.blocks.clear();
-        let mut in_code_block = false;
-        let mut code_block_lang = String::new();
-        let mut code_block_content = String::new();
+        // Inside a fence: its language. Each line of a fence is a code block
+        // of its own, as the editor keeps one line per block, so the lines
+        // are drawn and edited on rows of their own (#1076); export joins
+        // them into one fence again.
+        let mut fence: Option<Option<String>> = None;
+        let mut fence_lines = 0usize;
+        let code_line = |text: &str, lang: &Option<String>| {
+            let mut block = typed_block(BlockType::CodeBlock, text);
+            block.language = lang.clone();
+            block
+        };
 
         for line in markdown.lines() {
             if let Some(lang_suffix) = line.strip_prefix("```") {
-                if in_code_block {
-                    // End code block
-                    let mut block = typed_block(BlockType::CodeBlock, &code_block_content);
-                    block.language = if code_block_lang.is_empty() {
-                        None
-                    } else {
-                        Some(code_block_lang.clone())
-                    };
-                    self.blocks.push(block);
-                    code_block_content.clear();
-                    code_block_lang.clear();
-                    in_code_block = false;
-                } else {
-                    // Start code block
-                    in_code_block = true;
-                    code_block_lang = lang_suffix.to_string();
+                match fence.take() {
+                    // An empty fence is still a code block, of one empty line
+                    Some(lang) => {
+                        if fence_lines == 0 {
+                            self.blocks.push(code_line("", &lang));
+                        }
+                    }
+                    None => {
+                        fence = Some((!lang_suffix.is_empty()).then(|| lang_suffix.to_string()));
+                        fence_lines = 0;
+                    }
                 }
                 continue;
             }
 
-            if in_code_block {
-                if !code_block_content.is_empty() {
-                    code_block_content.push('\n');
-                }
-                code_block_content.push_str(line);
+            if let Some(lang) = &fence {
+                self.blocks.push(code_line(line, lang));
+                fence_lines += 1;
                 continue;
             }
 
             // Parse block type from line
             let block = Self::parse_markdown_line(line);
             self.blocks.push(block);
+        }
+
+        // A fence never closed runs to the end of the text, as in CommonMark:
+        // its lines are kept (#1076)
+        if let Some(lang) = fence {
+            if fence_lines == 0 {
+                self.blocks.push(code_line("", &lang));
+            }
         }
 
         if self.blocks.is_empty() {
@@ -90,13 +99,12 @@ impl RichTextEditor {
             }
         }
 
-        // Numbered list
-        if line.len() > 2 {
-            let first_char = line.chars().next().unwrap_or(' ');
-            if first_char.is_ascii_digit() {
-                if let Some(idx) = line.find(". ") {
-                    return typed_block(BlockType::NumberedList, &line[idx + 2..]);
-                }
+        // Numbered list: digits, then ". " (#1076: any line starting with a
+        // digit and holding ". " anywhere was one)
+        let digits = line.bytes().take_while(u8::is_ascii_digit).count();
+        if digits > 0 {
+            if let Some(rest) = line[digits..].strip_prefix(". ") {
+                return typed_block(BlockType::NumberedList, rest);
             }
         }
 
