@@ -149,7 +149,7 @@ fn op() -> impl Strategy<Value = Op> {
 
 proptest! {
     /// After any operations the value is inside the range and on the step
-    /// grid from `min`, or the maximum itself.
+    /// grid from `min`, End too (#1012).
     #[test]
     fn prop_slider_value_stays_in_range_on_the_step(
         a in -1e3f64..1e3,
@@ -171,16 +171,15 @@ proptest! {
             }
             let v = s.get_value();
             prop_assert!((min..=max).contains(&v), "{} not in {}..={} after {:?}", v, min, max, o);
-            if step > 0.0 && v != max {
+            if step > 0.0 {
                 let steps = (v - min) / step;
                 prop_assert!((steps - steps.round()).abs() < 1e-6, "{} off the grid of {} after {:?}", v, step, o);
             }
         }
     }
 
-    /// With a step, an increment that moves the value and stays below the
-    /// maximum is undone by a decrement, exactly. (An increment that would
-    /// pass the maximum may not move at all, #1012.)
+    /// With a step, an increment that moves the value is undone by a
+    /// decrement, exactly, at the top too (#1012).
     #[test]
     fn prop_slider_increment_then_decrement_returns(
         // Mostly below the top, so few cases are skipped
@@ -191,8 +190,111 @@ proptest! {
         s.set_value(start);
         let before = s.get_value();
         s.increment();
-        prop_assume!(s.get_value() > before && s.get_value() < 100.0);
+        prop_assume!(s.get_value() > before);
         s.decrement();
         prop_assert_eq!(s.get_value(), before);
     }
+
+    /// Stepping up from the bottom stops where End goes, and stepping down
+    /// from there goes back to the bottom (#1012).
+    #[test]
+    fn prop_slider_steps_reach_the_top_end_goes_to(
+        a in -1e3f64..1e3,
+        b in -1e3f64..1e3,
+        step in 0.5f64..200.0,
+    ) {
+        let mut s = slider().step(step).range(a, b);
+        s.set_max();
+        let top = s.get_value();
+        s.set_min();
+        let steps = ((a - b).abs() / step).ceil() as usize + 2;
+        for _ in 0..steps {
+            s.increment();
+        }
+        prop_assert!((s.get_value() - top).abs() < 1e-9, "{} vs {}", s.get_value(), top);
+        for _ in 0..steps {
+            s.decrement();
+        }
+        prop_assert_eq!(s.get_value(), a.min(b));
+    }
+}
+
+// =========================================================================
+// #1012: with max off the step grid, the top is the last grid value
+// =========================================================================
+
+#[test]
+fn slider_arrows_and_end_agree_at_the_top() {
+    let mut s = slider().step(30.0);
+    s.set_max();
+    let top = s.get_value();
+    assert_eq!(top, 90.0);
+    // one step down and one step up comes back
+    s.decrement();
+    assert_eq!(s.get_value(), 60.0);
+    s.increment();
+    assert_eq!(s.get_value(), top);
+    // and steps up from the bottom reach it, and stop there
+    s.set_min();
+    for _ in 0..10 {
+        s.increment();
+    }
+    assert_eq!(s.get_value(), top);
+}
+
+#[test]
+fn a_value_past_the_last_step_goes_to_it() {
+    let mut s = slider().step(30.0);
+    for v in [91.0, 95.0, 100.0, 1e9, f64::INFINITY] {
+        s.set_value(v);
+        assert_eq!(s.get_value(), 90.0, "{v}");
+    }
+    // The builder too, and before the step is set
+    assert_eq!(slider().value(100.0).step(30.0).get_value(), 90.0);
+    assert_eq!(slider().step(30.0).value(100.0).get_value(), 90.0);
+}
+
+#[test]
+fn max_on_the_grid_is_the_top() {
+    let mut s = slider().range(0.0, 100.0).step(25.0);
+    s.set_max();
+    assert_eq!(s.get_value(), 100.0);
+    let mut s = slider().range(-10.0, 20.0).step(10.0);
+    s.set_max();
+    assert_eq!(s.get_value(), 20.0);
+}
+
+#[test]
+fn a_fractional_step_that_divides_the_range_reaches_max() {
+    // 0.3 / 0.1 is 2.9999999999999996 in floating point
+    let mut s = slider().range(0.0, 0.3).step(0.1);
+    s.set_max();
+    assert!((s.get_value() - 0.3).abs() < 1e-12, "{}", s.get_value());
+    let mut s = slider().range(0.0, 1.0).step(0.1);
+    s.set_max();
+    assert!((s.get_value() - 1.0).abs() < 1e-12, "{}", s.get_value());
+}
+
+#[test]
+fn the_grid_starts_at_min() {
+    // min 5, step 10: 5, 15, ..., 95; 100 is off the grid
+    let mut s = slider().range(5.0, 100.0).step(10.0);
+    s.set_max();
+    assert_eq!(s.get_value(), 95.0);
+}
+
+#[test]
+fn a_step_wider_than_the_range_leaves_only_min() {
+    let mut s = slider().range(0.0, 10.0).step(30.0);
+    s.set_max();
+    assert_eq!(s.get_value(), 0.0);
+    s.increment();
+    assert_eq!(s.get_value(), 0.0);
+}
+
+#[test]
+fn with_no_step_the_top_is_max() {
+    let mut s = slider().range(0.0, 7.5);
+    s.set_max();
+    assert_eq!(s.get_value(), 7.5);
 }

@@ -217,13 +217,28 @@ impl Slider {
         if value.is_nan() {
             return self.value;
         }
-        let clamped = value.clamp(self.min, self.max);
+        let top = self.top();
+        let clamped = value.clamp(self.min, top);
         if self.step > 0.0 {
             let steps = ((clamped - self.min) / self.step).round();
-            (self.min + steps * self.step).clamp(self.min, self.max)
+            (self.min + steps * self.step).clamp(self.min, top)
         } else {
             clamped
         }
+    }
+
+    /// The highest value the slider takes: `max`, or with a step, the last
+    /// value on the step grid at or below it, as HTML's
+    /// `<input type="range">` (#1012). Arrows, End and `set_value` all stop
+    /// there.
+    fn top(&self) -> f64 {
+        if self.step <= 0.0 {
+            return self.max;
+        }
+        // A whole number of steps fits, allowing for the rounding of
+        // `(max - min) / step` (0.3 / 0.1 is 2.999...)
+        let steps = ((self.max - self.min) / self.step * (1.0 + 1e-12)).floor();
+        (self.min + steps * self.step).min(self.max)
     }
 
     /// Get normalized value (0.0 - 1.0)
@@ -274,10 +289,11 @@ impl Slider {
         self.value = self.min;
     }
 
-    /// Set to maximum
+    /// Set to maximum: `max`, or the last step at or below it when `max`
+    /// is not on the step grid
     pub fn set_max(&mut self) {
         self.requested = None;
-        self.value = self.max;
+        self.value = self.top();
     }
 }
 
