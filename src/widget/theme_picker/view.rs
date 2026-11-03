@@ -9,6 +9,8 @@ use crate::widget::traits::{RenderContext, View};
 const MIN_WIDTH: u16 = 10;
 
 impl View for ThemePicker {
+    crate::impl_view_meta!("ThemePicker", focusable);
+
     /// The header (35 columns at most unless a width is set; compact: the
     /// swatch), and the open list, which is drawn in place.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
@@ -36,10 +38,19 @@ impl View for ThemePicker {
         }
 
         let current_theme = use_theme().get();
-        let width = self.width.unwrap_or(area.width.min(35)).max(MIN_WIDTH);
+        // `width`, or 35 at most, never wider than the area (whose width is
+        // MIN_WIDTH at least here)
+        let width = self.width.unwrap_or(35).max(MIN_WIDTH).min(area.width);
 
-        let fg = self.fg.unwrap_or(current_theme.colors.text);
-        let bg = self.bg.unwrap_or(current_theme.colors.surface);
+        // The builder's colors, then the stylesheet's, then the theme's
+        let fg = self
+            .fg
+            .or_else(|| ctx.css_color_if_set())
+            .unwrap_or(current_theme.colors.text);
+        let bg = self
+            .bg
+            .or_else(|| ctx.css_background_if_set())
+            .unwrap_or(current_theme.colors.surface);
 
         if self.compact {
             self.render_compact(ctx, &current_theme);
@@ -50,6 +61,7 @@ impl View for ThemePicker {
                 self.render_dropdown(ctx, &current_theme, width);
             }
         }
+        ctx.bold_when_focused();
     }
 }
 
@@ -109,15 +121,29 @@ impl ThemePicker {
         fg: Color,
         bg: Color,
     ) {
-        // "Theme: " label
-        let mut x = draw_run(ctx, 0, 0, "Theme: ", fg, bg);
+        // The arrow always fits (width is MIN_WIDTH at least); the swatch
+        // and its space when the label leaves room for them; the name in
+        // what is left, so nothing runs past `width`
+        const LABEL: &str = "Theme: ";
+        const ARROW: u16 = 2;
+        const SWATCH: u16 = 5;
+        let label_end = width - ARROW;
+        let mut x = ctx.put_str_with(0, 0, LABEL, label_end, |ch| Cell::new(ch).fg(fg).bg(bg));
+        let preview = self.show_preview && x + SWATCH <= label_end;
+        let name_end = if preview {
+            label_end - SWATCH
+        } else {
+            label_end
+        };
 
         // Theme name
-        x += ctx.put_str_with(x, 0, &current_theme.name, width.saturating_sub(6), |ch| {
-            Cell::new(ch).fg(fg).bg(bg)
-        });
+        if x < name_end {
+            x += ctx.put_str_with(x, 0, &current_theme.name, name_end, |ch| {
+                Cell::new(ch).fg(fg).bg(bg)
+            });
+        }
 
-        if self.show_preview {
+        if preview {
             // Space
             put(ctx, x, 0, ' ', None, Some(bg));
             x += 1;

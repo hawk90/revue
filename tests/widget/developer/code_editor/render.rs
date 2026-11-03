@@ -110,17 +110,15 @@ fn test_render_with_minimap() {
     assert_eq!(minimap(1), "    ▪▪▪▪▪▪");
     assert_eq!(minimap(2), "▪         ");
     assert_eq!(minimap(3), "          ");
-    // Every row shows lines in view: all on the visible-area color (checked
-    // between the marks, which are drawn without it: #1082)
+    // Every row shows lines in view: all on the visible-area color, the
+    // marks too (#1082: they were drawn without it)
     for y in 0..10 {
         for x in 50..60 {
-            if buffer.get(x, y).unwrap().symbol == ' ' {
-                assert_eq!(
-                    bg(&buffer, x, y),
-                    Some(editor.minimap_visible_bg),
-                    "{x},{y}"
-                );
-            }
+            assert_eq!(
+                bg(&buffer, x, y),
+                Some(editor.minimap_visible_bg),
+                "{x},{y}"
+            );
         }
     }
     // The text stops before it: a long line is cut at column 50
@@ -167,4 +165,20 @@ fn test_render_with_selection() {
     // The cursor on the space after it, then the plain band
     assert_eq!(bg(&buffer, 8, 0), Some(editor.cursor_bg));
     assert_eq!(bg(&buffer, 9, 0), Some(editor.current_line_bg));
+}
+
+/// A mark out of view is on the minimap's own background, not a hole of the
+/// editor's (#1082)
+#[test]
+fn test_minimap_marks_out_of_view_keep_the_minimap_background() {
+    let text: String = (0..40).map(|i| format!("line{i}\n")).collect();
+    let editor = CodeEditor::new()
+        .content(text)
+        .minimap(true)
+        .line_numbers(false);
+    let buffer = screen(&editor, 30, 4);
+    // The minimap's last row maps to line 30, out of the 4 in view
+    let mark = buffer.get(20, 3).unwrap();
+    assert_eq!(mark.symbol, '▪');
+    assert_eq!(mark.bg, Some(editor.minimap_bg));
 }
