@@ -538,3 +538,36 @@ fn test_masked_input_cursor_on_the_mask_of_its_character() {
     assert!(row(&buffer, 0).starts_with("[●● "));
     assert_eq!(cursor_cells(&buffer, 0), vec![2]);
 }
+
+/// `fg` colors the value focused or not: focus adds the cursor, it does not
+/// drop the text color (#1073)
+#[test]
+fn test_masked_input_fg_kept_while_focused() {
+    for focused in [false, true] {
+        let input = MaskedInput::new()
+            .value("abcd")
+            .fg(Color::MAGENTA)
+            .focused(focused);
+        let buffer = screen(&input, 30, 1);
+        // The value cells not under the cursor (at the end while focused)
+        for x in 1..5 {
+            assert_eq!(
+                fg(&buffer, x, 0),
+                Some(Color::MAGENTA),
+                "focused={focused} x={x}"
+            );
+        }
+    }
+}
+
+/// A wide glyph cut by the field's edge, masked as well as revealed: the
+/// field keeps its width (#1073)
+#[test]
+fn test_masked_input_field_width_kept_when_a_masked_wide_glyph_is_cut() {
+    let input = MaskedInput::new()
+        .value("비밀번호")
+        .width(5)
+        .mask_style(MaskStyle::ShowFirst(4));
+    let buffer = screen(&input, 30, 1);
+    assert_eq!(row(&buffer, 0), "[비밀 ]");
+}
