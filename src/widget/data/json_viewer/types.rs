@@ -24,7 +24,9 @@ pub enum JsonType {
 pub struct JsonNode {
     /// Key name (empty for root or array elements)
     pub key: String,
-    /// JSON path to this node
+    /// JSON path to this node, as JSONPath writes it (RFC 9535): `$` for
+    /// the root, `.key` for a key that is a plain name, `['key']` for any
+    /// other, `[0]` for an array element; one path per node
     pub path: String,
     /// Value type
     pub value_type: JsonType,

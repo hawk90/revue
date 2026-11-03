@@ -74,7 +74,7 @@ fn every_short_escape_is_decoded() {
 fn escapes_in_keys_are_decoded() {
     let mut viewer = JsonViewer::from_content("{\"a\\\"b\": 1, \"\\u0063\": 2}");
     viewer.select_down();
-    assert_eq!(viewer.selected_path().as_deref(), Some("$.a\"b"));
+    assert_eq!(viewer.selected_path().as_deref(), Some("$['a\"b']"));
     viewer.select_down();
     assert_eq!(viewer.selected_path().as_deref(), Some("$.c"));
 }
@@ -138,4 +138,73 @@ fn numbers_keep_their_text() {
     assert_eq!(viewer.selected_value().as_deref(), Some("-12.5e-3"));
     viewer.select_down();
     assert_eq!(viewer.selected_value().as_deref(), Some("0"));
+}
+
+// =========================================================================
+// Item 2: each member has a path of its own, as JSONPath writes it
+// =========================================================================
+
+#[test]
+fn a_dotted_key_has_its_own_path() {
+    let mut viewer = JsonViewer::from_content(r#"{"a.b":{"x":1},"a":{"b":{"y":2}}}"#);
+    viewer.select_down(); // "a.b"
+    assert_eq!(viewer.selected_path().as_deref(), Some("$['a.b']"));
+    viewer.toggle();
+    // collapsing "a.b" does not collapse a -> b
+    assert!(viewer.is_collapsed("$['a.b']"));
+    assert!(!viewer.is_collapsed("$.a.b"));
+    viewer.select_last();
+    assert_eq!(viewer.selected_path().as_deref(), Some("$.a.b.y"));
+}
+
+#[test]
+fn a_plain_name_keeps_the_dot() {
+    let mut viewer = JsonViewer::from_content(r#"{"user_1":{"Name":{"é":[{"_x":0}]}}}"#);
+    viewer.select_last();
+    assert_eq!(
+        viewer.selected_path().as_deref(),
+        Some("$.user_1.Name.é[0]._x")
+    );
+}
+
+#[test]
+fn other_keys_go_in_brackets() {
+    // (key as written in the JSON, path segment)
+    for (key, want) in [
+        ("a b", "$['a b']"),
+        ("a-b", "$['a-b']"),
+        ("1a", "$['1a']"),
+        ("", "$['']"),
+        ("[0]", "$['[0]']"),
+        ("it's", "$['it\\'s']"),
+        ("back\\\\slash", "$['back\\\\slash']"),
+        ("tab\\t", "$['tab\\t']"),
+        ("nl\\n", "$['nl\\n']"),
+        ("bell\\u0007", "$['bell\\u0007']"),
+        ("del\\u001F", "$['del\\u001f']"),
+        ("quote\\\"", "$['quote\"']"),
+    ] {
+        let mut viewer = JsonViewer::from_content(&format!("{{\"{key}\": 1}}"));
+        viewer.select_down();
+        assert_eq!(viewer.selected_path().as_deref(), Some(want), "{key:?}");
+    }
+}
+
+#[test]
+fn a_member_of_a_bracketed_key_continues_its_path() {
+    let mut viewer = JsonViewer::from_content(r#"{"a.b":{"c d":[{"e":1}]}}"#);
+    viewer.select_last();
+    assert_eq!(
+        viewer.selected_path().as_deref(),
+        Some("$['a.b']['c d'][0].e")
+    );
+}
+
+#[test]
+fn search_tells_a_dotted_key_from_a_nested_one() {
+    let mut viewer = JsonViewer::from_content(r#"{"a.b":"needle","a":{"b":"hay"}}"#);
+    viewer.search("needle");
+    assert_eq!(viewer.match_count(), 1);
+    viewer.next_match();
+    assert_eq!(viewer.selected_path().as_deref(), Some("$['a.b']"));
 }
