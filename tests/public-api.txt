@@ -9461,6 +9461,7 @@ pub revue::prelude::markdown::parser::ParserContext::item_needs_bullet: bool
 pub revue::prelude::markdown::parser::ParserContext::lines: alloc::vec::Vec<revue::widget::markdown::types::Line>
 pub revue::prelude::markdown::parser::ParserContext::link_fg: revue::runtime::style::Color
 pub revue::prelude::markdown::parser::ParserContext::list_depth: usize
+pub revue::prelude::markdown::parser::ParserContext::list_numbers: alloc::vec::Vec<core::option::Option<u64>>
 pub revue::prelude::markdown::parser::ParserContext::ordered_list_num: core::option::Option<u64>
 pub revue::prelude::markdown::parser::ParserContext::quote_fg: revue::runtime::style::Color
 pub revue::prelude::markdown::parser::ParserContext::source: &'a str
@@ -56026,6 +56027,7 @@ pub revue::widget::markdown::parser::ParserContext::item_needs_bullet: bool
 pub revue::widget::markdown::parser::ParserContext::lines: alloc::vec::Vec<revue::widget::markdown::types::Line>
 pub revue::widget::markdown::parser::ParserContext::link_fg: revue::runtime::style::Color
 pub revue::widget::markdown::parser::ParserContext::list_depth: usize
+pub revue::widget::markdown::parser::ParserContext::list_numbers: alloc::vec::Vec<core::option::Option<u64>>
 pub revue::widget::markdown::parser::ParserContext::ordered_list_num: core::option::Option<u64>
 pub revue::widget::markdown::parser::ParserContext::quote_fg: revue::runtime::style::Color
 pub revue::widget::markdown::parser::ParserContext::source: &'a str
