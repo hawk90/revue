@@ -6,7 +6,7 @@ use revue::testing::PipelineHarness;
 
 use super::matrix::catalog::catalog;
 use super::matrix::Content;
-use crate::emulator::{difference, emulate};
+use crate::emulator::{cursor_difference, difference, emulate};
 
 /// Widgets whose screen does not read back yet, each with its issue. The
 /// list may only shrink: a listed widget that reads back fails the test.
@@ -29,7 +29,9 @@ fn every_widget_reads_back_through_a_terminal_emulator() {
             let view = (entry.build)(&content, focused);
             harness.draw(&view);
             let parser = emulate(harness.terminal_output(), w, h);
-            if let Some(diff) = difference(harness.buffer(), parser.screen()) {
+            if let Some(diff) = difference(&harness.screen_buffer(), parser.screen())
+                .or_else(|| cursor_difference(harness.cursor(), parser.screen()))
+            {
                 failed = true;
                 if known.is_none() {
                     failures.push(format!("{} frame {frame}: {diff}", entry.name));

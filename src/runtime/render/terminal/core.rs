@@ -32,12 +32,7 @@ impl<W: Write> Terminal<W> {
     /// The returned terminal is *not* initialized - [`init`](Self::init) is
     /// what enables raw mode and the alternate screen.
     pub fn with_size(writer: W, width: u16, height: u16) -> Self {
-        Self {
-            writer,
-            current: Buffer::new(width, height),
-            raw_mode: false,
-            mouse_capture: false,
-        }
+        Self::assemble(writer, Buffer::new(width, height))
     }
 
     /// Initialize the terminal for TUI mode with mouse capture
@@ -56,6 +51,7 @@ impl<W: Write> Terminal<W> {
         // The hook is what actually restores the terminal - see `panic_hook`.
         super::install_panic_hook();
         self.mouse_capture = mouse_capture;
+        self.cursor_hidden();
         if mouse_capture {
             execute!(
                 self.writer,
@@ -134,6 +130,7 @@ impl<W: Write> Terminal<W> {
     /// Resize the terminal buffer
     pub fn resize(&mut self, width: u16, height: u16) {
         self.current.resize(width, height);
+        self.forget_lifted();
     }
 
     /// Render a buffer to the terminal using diff-based updates
@@ -174,6 +171,8 @@ impl<W: Write> Terminal<W> {
     /// Force a full redraw
     pub fn force_redraw(&mut self, buffer: &Buffer) -> Result<()> {
         queue!(self.writer, Clear(ClearType::All))?;
+        // The screen is blank, so nothing from an earlier caret is left
+        self.forget_lifted();
 
         let mut state = super::types::RenderState::default();
 
@@ -187,6 +186,26 @@ impl<W: Write> Terminal<W> {
             self.current.set(x, y, *cell);
         }
 
+        // The caret's cells as they look without it: the cursor shows it
+        let mut lifted = Vec::new();
+        let caret = self.lift_caret(&mut lifted, buffer);
+        for change in lifted {
+            if !change.cell.is_continuation() {
+                let cell = &change.cell;
+                let hyperlink_url = cell.hyperlink_id.and_then(|id| buffer.get_hyperlink(id));
+                let escape_sequence = cell.sequence_id.and_then(|id| buffer.get_sequence(id));
+                self.draw_cell_stateful(
+                    change.x,
+                    change.y,
+                    cell,
+                    hyperlink_url,
+                    escape_sequence,
+                    &mut state,
+                )?;
+            }
+            self.current.set(change.x, change.y, change.cell);
+        }
+
         // Close any open hyperlink at end of frame
         if state.hyperlink_id.is_some() {
             self.write_hyperlink_end()?;
@@ -197,6 +216,7 @@ impl<W: Write> Terminal<W> {
             queue!(self.writer, SetAttribute(Attribute::Reset))?;
         }
 
+        self.place_cursor(caret, true)?;
         self.writer.flush()?;
         Ok(())
     }
@@ -205,6 +225,7 @@ impl<W: Write> Terminal<W> {
     pub fn clear(&mut self) -> Result<()> {
         execute!(self.writer, Clear(ClearType::All))?;
         self.current.clear();
+        self.forget_lifted();
         Ok(())
     }
 
@@ -217,6 +238,7 @@ impl<W: Write> Terminal<W> {
     /// Hide the cursor
     pub fn hide_cursor(&mut self) -> Result<()> {
         execute!(self.writer, Hide)?;
+        self.cursor_hidden();
         Ok(())
     }
 

@@ -9,7 +9,7 @@ use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::widget::{Border, Input, RichText, Text};
 
-use crate::emulator::{difference, emulate, nz};
+use crate::emulator::{cursor_difference, difference, emulate, nz};
 
 // ---------------------------------------------------------------------------
 // Random buffers
@@ -153,7 +153,9 @@ fn assert_frames_read_back(views: &[&dyn Fn(&mut PipelineHarness)], w: u16, h: u
     for (i, draw) in views.iter().enumerate() {
         draw(&mut harness);
         let parser = emulate(harness.terminal_output(), w, h);
-        if let Some(diff) = difference(harness.buffer(), parser.screen()) {
+        if let Some(diff) = difference(&harness.screen_buffer(), parser.screen())
+            .or_else(|| cursor_difference(harness.cursor(), parser.screen()))
+        {
             panic!("frame {i}: {diff}");
         }
     }

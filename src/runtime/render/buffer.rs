@@ -25,6 +25,21 @@ pub struct Buffer {
     /// While a widget under `overflow: hidden` renders: the only cells writes
     /// may change. See [`replace_clip`](Self::replace_clip).
     clip: Option<Rect>,
+    /// Where the focused field's caret is, see [`set_caret`](Self::set_caret)
+    caret: Option<Caret>,
+}
+
+/// The caret a field drew, which a terminal shows with its own cursor
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Caret {
+    /// Its first cell
+    pub(crate) x: u16,
+    /// Its row
+    pub(crate) y: u16,
+    /// The cells the field drew for it, from `x` on
+    drawn: Vec<Cell>,
+    /// The same cells as they look without a caret drawn on them
+    pub(crate) under: Vec<Cell>,
 }
 
 /// Maximum allowed buffer dimensions to prevent memory exhaustion
@@ -128,6 +143,7 @@ impl Buffer {
             sequences: Vec::new(),
             sequence_cache: HashMap::new(),
             clip: None,
+            caret: None,
         }
     }
 
@@ -174,6 +190,7 @@ impl Buffer {
             sequences: Vec::new(),
             sequence_cache: HashMap::new(),
             clip: None,
+            caret: None,
         })
     }
 
@@ -452,6 +469,7 @@ impl Buffer {
     /// sequences registered for them, so the next frame numbers its own
     pub fn clear(&mut self) {
         self.cells.fill(Cell::default());
+        self.caret = None;
         self.clear_hyperlinks();
         self.clear_sequences();
     }
@@ -489,7 +507,8 @@ impl Buffer {
     /// Copy all cells from another buffer
     ///
     /// Copies the cell data from `other` into this buffer, with the
-    /// hyperlinks and escape sequences the cells' ids point to. Both
+    /// hyperlinks and escape sequences the cells' ids point to, and the
+    /// caret. Both
     /// buffers must have the same dimensions.
     pub fn copy_from(&mut self, other: &Buffer) {
         if self.width == other.width && self.height == other.height {
@@ -498,6 +517,7 @@ impl Buffer {
             self.hyperlink_cache.clone_from(&other.hyperlink_cache);
             self.sequences.clone_from(&other.sequences);
             self.sequence_cache.clone_from(&other.sequence_cache);
+            self.caret.clone_from(&other.caret);
         }
     }
 
@@ -536,6 +556,54 @@ impl Buffer {
         self.cells = new_cells;
         self.width = width;
         self.height = height;
+        self.caret = None;
+    }
+
+    /// Mark the caret a field has just drawn at `(x, y)`: `under` is how
+    /// its cells, from `x` on, look without it.
+    ///
+    /// A terminal shows its own cursor there instead, so an input method
+    /// places its preedit and candidate window at the field (#1457): see
+    /// [`caret`](Self::caret). Each frame has one caret, the last one
+    /// marked. One that is not wholly inside the buffer and the clip is not
+    /// shown, and hides any marked before it: the field is out of view.
+    pub(crate) fn set_caret(&mut self, x: u16, y: u16, under: &[Cell]) {
+        let n = under.len() as u16;
+        let shown = n > 0
+            && (0..n).all(|dx| {
+                x.checked_add(dx)
+                    .is_some_and(|cx| self.writable(cx, y).is_some())
+            });
+        self.caret = shown.then(|| {
+            let start = self.index(x, y).unwrap_or(0);
+            Caret {
+                x,
+                y,
+                drawn: self.cells[start..start + under.len()].to_vec(),
+                under: under.to_vec(),
+            }
+        });
+    }
+
+    /// This buffer as a terminal shows it: the caret's cells as they look
+    /// without it, the terminal's cursor standing in for it
+    pub(crate) fn without_caret(&self) -> Buffer {
+        let mut shown = self.clone();
+        if let Some(caret) = self.caret() {
+            let start = self.index(caret.x, caret.y).unwrap_or(0);
+            shown.cells[start..start + caret.under.len()].copy_from_slice(&caret.under);
+        }
+        shown.caret = None;
+        shown
+    }
+
+    /// The caret to show with the terminal's cursor, if a field marked one
+    /// this frame and nothing has drawn over it since
+    pub(crate) fn caret(&self) -> Option<&Caret> {
+        let caret = self.caret.as_ref()?;
+        let start = self.index(caret.x, caret.y)?;
+        let cells = self.cells.get(start..start + caret.drawn.len())?;
+        (cells == caret.drawn.as_slice()).then_some(caret)
     }
 
     /// Get buffer width

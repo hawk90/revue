@@ -87,6 +87,24 @@ pub(crate) fn visible_from(text: &str, idx: usize, tab: usize) -> usize {
         .map_or(text.chars().count(), |(i, _)| i)
 }
 
+/// The cells [`put_edit_line`](super::RenderContext::put_edit_line) draws
+/// for glyph `ch` styled as `cell`, `w` columns wide: a tab's first cell
+/// and blanks to its stop, or the glyph and its continuation. For the
+/// cells under a caret, see [`set_caret`](super::RenderContext::set_caret).
+pub(crate) fn glyph_cells(mut cell: Cell, ch: char, w: usize) -> Vec<Cell> {
+    if ch != '\t' {
+        return super::caret_cells(cell);
+    }
+    if cell.symbol == '\t' {
+        cell.symbol = ' ';
+    }
+    let mut blank = cell;
+    blank.symbol = ' ';
+    let mut cells = vec![blank; w.max(1)];
+    cells[0] = cell;
+    cells
+}
+
 /// What a cell of a one-line edit field shows, for styling it
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum FieldCell {
@@ -183,28 +201,41 @@ impl super::RenderContext<'_> {
         // A zero-width char takes no cell, so a cursor on one is drawn on
         // the next glyph that has one
         let cursor = field.cursor.map(|c| visible_from(text, c, NO_TABS));
+        // The cursor's glyph as it looks without the cursor, for the
+        // terminal to show its own cursor over
+        let mut under = None;
         self.put_edit_line(x, y, text, scroll, width, NO_TABS, |i, ch| {
-            let kind = if cursor == Some(i) {
-                FieldCell::Cursor
-            } else if placeholder {
+            let kind = if placeholder {
                 FieldCell::Placeholder
             } else if selected(i) {
                 FieldCell::Selected
             } else {
                 FieldCell::Text
             };
-            style(kind, ch)
-        });
-        let len = field.text.chars().count();
-        if !placeholder && cursor.is_some_and(|c| c >= len) {
-            let col = col_of(field.text, usize::MAX, NO_TABS).saturating_sub(scroll);
-            if col < width as usize {
-                self.set(
-                    x.saturating_add(col as u16),
-                    y,
-                    style(FieldCell::Cursor, ' '),
-                );
+            if cursor == Some(i) {
+                under = Some(style(kind, ch));
+                style(FieldCell::Cursor, ch)
+            } else {
+                style(kind, ch)
             }
+        });
+        let Some(cursor) = cursor else {
+            return;
+        };
+        let col = col_of(text, cursor, NO_TABS).saturating_sub(scroll);
+        if col >= width as usize {
+            return;
+        }
+        let cx = x.saturating_add(col as u16);
+        match under {
+            Some(under) => self.set_caret(cx, y, &super::relative::caret_cells(under)),
+            // Past the end of the text: a blank, over what was there
+            None if !placeholder && cursor >= text.chars().count() => {
+                let under = self.get(cx, y).copied().unwrap_or_default();
+                self.set(cx, y, style(FieldCell::Cursor, ' '));
+                self.set_caret(cx, y, &[under]);
+            }
+            None => {}
         }
     }
 

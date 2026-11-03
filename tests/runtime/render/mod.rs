@@ -3,6 +3,7 @@
 mod backend;
 mod batch;
 mod buffer;
+mod caret;
 mod cell;
 mod diff;
 mod emulated;

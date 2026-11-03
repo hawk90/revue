@@ -29,6 +29,20 @@ fn color(c: Option<Color>) -> vt100::Color {
     }
 }
 
+/// Where the screen's cursor is not at `want`, shown: the focused field's
+/// caret (#1457). With no caret, the cursor is not checked: a terminal never
+/// initialized never hid it.
+pub fn cursor_difference(want: Option<(u16, u16)>, screen: &vt100::Screen) -> Option<String> {
+    let (x, y) = want?;
+    let (row, col) = screen.cursor_position();
+    if (col, row) != (x, y) {
+        return Some(format!("cursor at ({col}, {row}), the caret at ({x}, {y})"));
+    }
+    screen
+        .hide_cursor()
+        .then(|| format!("cursor hidden at the caret ({x}, {y})"))
+}
+
 /// Where the screen differs from the buffer, if anywhere
 pub fn difference(buffer: &Buffer, screen: &vt100::Screen) -> Option<String> {
     for y in 0..buffer.height() {

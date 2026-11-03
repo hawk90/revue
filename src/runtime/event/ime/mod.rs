@@ -1,7 +1,7 @@
 //! IME (Input Method Editor) Composition Support
 //!
-//! Provides support for CJK and other complex input methods that require
-//! composition (multiple keystrokes forming a single character).
+//! A composition state machine for CJK and other input methods that need
+//! several keystrokes to form a character.
 //!
 //! # Features
 //!
@@ -9,17 +9,23 @@
 //! - Candidate selection support
 //! - [`PreeditString`], the composing text split at the cursor
 //!
-//! revue draws no IME display. In a terminal the app never sees the
-//! composition: the terminal or OS input method draws the preedit text and
-//! the candidate window itself, at the terminal cursor (#1457), and only the
-//! committed text arrives as key events. So [`ImeConfig`] and
-//! [`CompositionStyle`], which described such a display, are deprecated.
+//! # In a terminal
+//!
+//! A terminal app never sees the composition: the terminal or the OS input
+//! method draws the preedit text and the candidate window itself, at the
+//! terminal's cursor, and only the committed text arrives as key events.
+//! revue shows the terminal's cursor at the focused field's caret, so the
+//! preedit and the candidate window open at the field (#1457). Nothing in a
+//! terminal feeds [`ImeState`], and revue draws no IME display:
+//! [`ImeConfig`] and [`CompositionStyle`], which described one, are
+//! deprecated.
 //!
 //! # State machine
 //!
 //! [`ImeState`] is `Idle`, `Composing` or `Selecting`
-//! ([`CompositionState`]). It never composes by itself: the app feeds it
-//! what the platform input method reports, and it keeps the composition
+//! ([`CompositionState`]), for an app that runs an input method of its own
+//! (a romaji-to-kana converter, say). It never composes by itself: the app
+//! feeds it what its input method produces, and it keeps the composition
 //! consistent and tells the [`on_composition`](ImeState::on_composition)
 //! callbacks.
 //!
@@ -45,7 +51,7 @@
 //! more candidates than the limit, is ignored rather than truncated.
 //!
 //! `commit(text)` commits `text`, whatever is being composed: it is how the
-//! platform's final string gets in. `commit_selected` is for an app that runs
+//! input method's final string gets in. `commit_selected` is for an app that runs
 //! the candidate list itself.
 //!
 //! # Example
