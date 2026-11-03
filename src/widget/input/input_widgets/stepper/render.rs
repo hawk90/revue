@@ -111,26 +111,45 @@ impl Stepper {
 
     fn render_horizontal(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let step_count = self.steps.len();
         let available_width = area.width as usize;
 
-        // Calculate spacing
-        let step_width = available_width / step_count.max(1);
+        // The steps that fit, each its indicator and a blank column at least,
+        // around the current one; "…" marks the ends cut off (#1028)
+        let (start, shown) = self.window(available_width);
+        let cut_left = start > 0;
+        let cut_right = start + shown < self.steps.len();
+        let left = usize::from(cut_left);
+        let usable = available_width - left - usize::from(cut_right);
+        let step_width = usable / shown.max(1);
 
         let y: u16 = 0;
+        if cut_left {
+            ctx.set(0, y, Cell::new('…').fg(self.connector_color));
+        }
+        if cut_right {
+            ctx.set(area.width - 1, y, Cell::new('…').fg(self.connector_color));
+        }
 
-        for (i, step) in self.steps.iter().enumerate() {
-            let x = (i * step_width) as u16;
+        for (j, (i, step)) in self
+            .steps
+            .iter()
+            .enumerate()
+            .skip(start)
+            .take(shown)
+            .enumerate()
+        {
+            let x = (left + j * step_width) as u16;
             let color = self.step_color(ctx, step);
 
             // Step indicator
             self.draw_indicator(ctx, x, y, i, step, color);
 
-            // Connector (except last)
+            // Connector to the next step shown
             if matches!(self.style, StepperStyle::Connected | StepperStyle::Progress)
-                && i < step_count - 1
+                && j + 1 < shown
             {
-                self.draw_connector(ctx, x + 2, ((i + 1) * step_width) as u16, y, step);
+                let next = (left + (j + 1) * step_width) as u16;
+                self.draw_connector(ctx, x + 2, next, y, step);
             }
 
             // Title (below indicator)
@@ -220,8 +239,44 @@ impl Stepper {
 }
 
 impl Stepper {
-    /// Step `i`'s indicator at (x, y): its number or its status icon, in
-    /// `color`, bold while active
+    /// Step `i`'s indicator: its number or its status icon
+    fn indicator(&self, i: usize, step: &Step) -> String {
+        if self.shows_numbers() {
+            format!("{}", i + 1)
+        } else {
+            step.display_icon().to_string()
+        }
+    }
+
+    /// The first step drawn and how many, in a row `width` columns wide.
+    /// Each step needs its widest indicator and a blank column, so numbers
+    /// never run together; when not all fit, the window holds the current
+    /// step and leaves a column for "…" at each end it cuts.
+    fn window(&self, width: usize) -> (usize, usize) {
+        let count = self.steps.len();
+        let indicator_w = self
+            .steps
+            .iter()
+            .enumerate()
+            .map(|(i, step)| crate::utils::display_width(&self.indicator(i, step)))
+            .max()
+            .unwrap_or(1);
+        let min_step = indicator_w + 1;
+        if count * min_step <= width {
+            return (0, count);
+        }
+        let current = self.current.min(count.saturating_sub(1));
+        for shown in (1..count).rev() {
+            let start = current.saturating_sub(shown / 2).min(count - shown);
+            let markers = usize::from(start > 0) + usize::from(start + shown < count);
+            if shown * min_step + markers <= width {
+                return (start, shown);
+            }
+        }
+        (current, 1)
+    }
+
+    /// Step `i`'s indicator at (x, y), in `color`, bold while active
     fn draw_indicator(
         &self,
         ctx: &mut RenderContext,
@@ -231,20 +286,14 @@ impl Stepper {
         step: &Step,
         color: Color,
     ) {
-        let indicator = if self.shows_numbers() {
-            format!("{}", i + 1)
-        } else {
-            step.display_icon().to_string()
-        };
-
-        for (j, ch) in indicator.chars().enumerate() {
+        ctx.put_str_with(x, y, &self.indicator(i, step), u16::MAX, |ch| {
             let mut cell = Cell::new(ch);
             cell.fg = Some(color);
             if step.status == StepStatus::Active {
                 cell.modifier |= Modifier::BOLD;
             }
-            ctx.set(x + j as u16, y, cell);
-        }
+            cell
+        });
     }
 
     /// The horizontal connector after `step`, from `connector_start` up to

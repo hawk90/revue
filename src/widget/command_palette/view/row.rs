@@ -49,30 +49,44 @@ impl CommandPalette {
             content_x += 2;
         }
 
-        content_x = self.draw_label(ctx, layout, item_y, content_x, cmd, row_bg);
-        self.draw_details(ctx, layout, item_y, content_x, cmd, row_bg);
+        // The shortcut, right-aligned in the text columns, is drawn only
+        // when it leaves the label a column and a gap; the label and the
+        // description stop a column before it (#1091)
+        let shortcut_x = cmd
+            .shortcut
+            .as_ref()
+            .filter(|_| self.show_shortcuts)
+            .map(|shortcut| {
+                layout
+                    .text_end
+                    .saturating_sub(display_width(shortcut) as u16)
+            })
+            .filter(|&sx| sx >= content_x + 2 && sx < layout.text_end);
+        let text_end = shortcut_x.map_or(layout.text_end, |sx| sx - 1);
+
+        content_x = self.draw_label(ctx, item_y, content_x, text_end, cmd, row_bg);
+        self.draw_details(ctx, item_y, content_x, text_end, shortcut_x, cmd, row_bg);
 
         // Right border
         self.draw_right(ctx, layout, item_y);
     }
 
-    /// The label from `content_x`, query matches in the match color; returns
-    /// the column after it.
+    /// The label from `content_x` up to `label_end`, query matches in the
+    /// match color; returns the column after it.
     fn draw_label(
         &self,
         ctx: &mut RenderContext,
-        layout: &Layout,
         item_y: u16,
         mut content_x: u16,
+        label_end: u16,
         cmd: &Command,
         row_bg: Color,
     ) -> u16 {
-        let label_end = layout.label_end;
-
         // Label with highlighting
         let highlighted = self.highlight_match(&cmd.label);
         for (ch, is_match) in highlighted {
-            if content_x >= label_end {
+            let cw = char_width(ch) as u16;
+            if content_x + cw > label_end {
                 break;
             }
             let mut cell = Cell::new(ch);
@@ -86,38 +100,31 @@ impl CommandPalette {
                 cell.modifier |= Modifier::BOLD;
             }
             ctx.set(content_x, item_y, cell);
-            content_x += 1;
+            content_x += cw;
         }
         content_x
     }
 
-    /// The dimmed description after the label and the right-aligned shortcut.
+    /// The dimmed description after the label, up to `text_end`, and the
+    /// shortcut at `shortcut_x` when it is drawn.
+    #[allow(clippy::too_many_arguments)]
     fn draw_details(
         &self,
         ctx: &mut RenderContext,
-        layout: &Layout,
         item_y: u16,
         content_x: u16,
+        text_end: u16,
+        shortcut_x: Option<u16>,
         cmd: &Command,
         row_bg: Color,
     ) {
-        let text_end = layout.text_end;
-
-        // Where the right-aligned shortcut starts, if one is drawn.
-        let shortcut_x = cmd
-            .shortcut
-            .as_ref()
-            .filter(|_| self.show_shortcuts)
-            .map(|shortcut| text_end.saturating_sub(display_width(shortcut) as u16));
-
         // Description, dimmed, after the label and clear of the shortcut
         if self.show_descriptions {
             if let Some(ref desc) = cmd.description {
-                let desc_end = shortcut_x.map_or(text_end, |sx| sx.saturating_sub(1));
                 let mut dx = content_x + 2;
                 for ch in desc.chars() {
                     let cw = char_width(ch) as u16;
-                    if dx + cw > desc_end {
+                    if dx + cw > text_end {
                         break;
                     }
                     let mut cell = Cell::new(ch);
@@ -130,17 +137,15 @@ impl CommandPalette {
         }
 
         // Shortcut (right-aligned)
-        if let Some(shortcut_x) = shortcut_x {
-            if let Some(ref shortcut) = cmd.shortcut {
-                let mut dx: u16 = 0;
-                for ch in shortcut.chars() {
-                    let cw = char_width(ch) as u16;
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(SUBTLE_GRAY);
-                    cell.bg = Some(row_bg);
-                    ctx.set(shortcut_x + dx, item_y, cell);
-                    dx += cw;
-                }
+        if let (Some(shortcut_x), Some(shortcut)) = (shortcut_x, cmd.shortcut.as_ref()) {
+            let mut dx: u16 = 0;
+            for ch in shortcut.chars() {
+                let cw = char_width(ch) as u16;
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(SUBTLE_GRAY);
+                cell.bg = Some(row_bg);
+                ctx.set(shortcut_x + dx, item_y, cell);
+                dx += cw;
             }
         }
     }

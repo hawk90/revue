@@ -30,8 +30,14 @@ impl FilePicker {
         Ok(())
     }
 
-    /// Make `dir` the current directory and record it in the history.
+    /// Make `dir` the current directory and record it in the history; the
+    /// directory already shown is only listed again, so Back never returns
+    /// to it (#1110).
     fn visit(&mut self, dir: PathBuf) {
+        if dir == self.current_dir {
+            self.refresh();
+            return;
+        }
         self.current_dir = dir;
         self.history.truncate(self.history_idx + 1);
         self.history.push(self.current_dir.clone());

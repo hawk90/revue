@@ -1,5 +1,6 @@
 //! Digits widget tests
 
+mod format_1066;
 mod view;
 
 use revue::layout::Rect;
@@ -325,7 +326,8 @@ fn test_leading_zeros_changes_output() {
             .separator(',')
             .leading_zeros(false)
             .format_value(),
-        "  1,234"
+        // The width "0,001,234" takes with zeros (#1066)
+        "    1,234"
     );
 }
 
@@ -838,8 +840,8 @@ fn test_digits_builder_chain() {
     assert!(row(&buffer, 0).starts_with("  │ ──┐"));
     let cell = buffer.get(2, 0).unwrap();
     assert_eq!((cell.fg, cell.bg), (Some(Color::CYAN), Some(Color::BLACK)));
-    // The label below
-    assert!(row(&buffer, 5).starts_with("$12345.00"));
+    // The label below, with the value as the glyphs show it (#1066)
+    assert!(row(&buffer, 5).starts_with("$12,345.00"));
     assert_eq!(buffer.get(0, 5).unwrap().fg, Some(Color::CYAN));
 }
 

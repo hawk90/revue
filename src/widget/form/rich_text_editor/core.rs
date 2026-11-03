@@ -54,11 +54,29 @@ impl RichTextEditor {
 
     /// Export as markdown
     pub fn to_markdown(&self) -> String {
-        self.blocks
-            .iter()
-            .map(|b| b.to_markdown())
-            .collect::<Vec<_>>()
-            .join("\n")
+        // Consecutive code lines of one language are one fence, as they
+        // were read (#1076)
+        let mut out: Vec<String> = Vec::new();
+        let mut i = 0;
+        while i < self.blocks.len() {
+            let block = &self.blocks[i];
+            if block.block_type == super::BlockType::CodeBlock {
+                let mut end = i + 1;
+                while self.blocks.get(end).is_some_and(|b| {
+                    b.block_type == super::BlockType::CodeBlock && b.language == block.language
+                }) {
+                    end += 1;
+                }
+                let lines: Vec<String> = self.blocks[i..end].iter().map(|b| b.text()).collect();
+                let lang = block.language.as_deref().unwrap_or("");
+                out.push(format!("```{lang}\n{}\n```", lines.join("\n")));
+                i = end;
+            } else {
+                out.push(block.to_markdown());
+                i += 1;
+            }
+        }
+        out.join("\n")
     }
 
     /// Set view mode

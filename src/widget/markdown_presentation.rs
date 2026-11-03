@@ -75,6 +75,9 @@ pub struct MarkdownPresentation {
     mode: ViewMode,
     /// Where the preview's rows are scrolled to
     scroll: ScrollState,
+    /// Where the shown slide's content rows are scrolled to; a slide shown
+    /// anew starts at its top (#1256)
+    slide_scroll: ScrollState,
     /// Use text sizing protocol for headers
     use_text_sizing: bool,
     /// Figlet font for header fallback
@@ -116,6 +119,7 @@ impl MarkdownPresentation {
             nav,
             mode: ViewMode::Preview,
             scroll: ScrollState::new(),
+            slide_scroll: ScrollState::new(),
             use_text_sizing: text_sizing_supported(),
             figlet_font: FigletFont::Block,
             bg: None,
@@ -143,6 +147,7 @@ impl MarkdownPresentation {
             nav,
             mode: ViewMode::Preview,
             scroll: ScrollState::new(),
+            slide_scroll: ScrollState::new(),
             use_text_sizing: text_sizing_supported(),
             figlet_font: FigletFont::Block,
             bg: None,
@@ -236,29 +241,40 @@ impl MarkdownPresentation {
     ///
     /// Returns `true` if navigation succeeded.
     pub fn next_slide(&mut self) -> bool {
-        self.nav.advance()
+        let moved = self.nav.advance();
+        if moved {
+            self.slide_scroll.scroll_to_top();
+        }
+        moved
     }
 
     /// Go to the previous slide
     ///
     /// Returns `true` if navigation succeeded.
     pub fn prev_slide(&mut self) -> bool {
-        self.nav.prev()
+        let moved = self.nav.prev();
+        if moved {
+            self.slide_scroll.scroll_to_top();
+        }
+        moved
     }
 
     /// Go to a specific slide by index
     pub fn goto(&mut self, index: usize) {
         self.nav.goto(index);
+        self.slide_scroll.scroll_to_top();
     }
 
     /// Go to the first slide
     pub fn first(&mut self) {
         self.nav.first();
+        self.slide_scroll.scroll_to_top();
     }
 
     /// Go to the last slide
     pub fn last(&mut self) {
         self.nav.last();
+        self.slide_scroll.scroll_to_top();
     }
 
     /// Get the current slide index (0-based)
@@ -316,25 +332,47 @@ impl MarkdownPresentation {
         &self.source
     }
 
-    /// Scroll up in preview mode
+    /// Scroll up: the whole document in preview mode, the shown slide's
+    /// content in slides mode
     pub fn scroll_up(&mut self, lines: usize) {
-        self.scroll
-            .set_content(Markdown::new(&self.source).line_count());
-        self.scroll
-            .scroll_by(-(lines.min(isize::MAX as usize) as isize));
+        self.scroll_by(-(lines.min(isize::MAX as usize) as isize));
     }
 
-    /// Scroll down in preview mode
+    /// Scroll down: the whole document in preview mode, the shown slide's
+    /// content in slides mode (within its rows, #1256)
     pub fn scroll_down(&mut self, lines: usize) {
-        self.scroll
-            .set_content(Markdown::new(&self.source).line_count());
-        self.scroll
-            .scroll_by(lines.min(isize::MAX as usize) as isize);
+        self.scroll_by(lines.min(isize::MAX as usize) as isize);
     }
 
-    /// Reset scroll position
+    /// Scroll the current mode's rows by `rows`
+    fn scroll_by(&mut self, rows: isize) {
+        match self.mode {
+            ViewMode::Preview => {
+                self.scroll
+                    .set_content(Markdown::new(&self.source).line_count());
+                self.scroll.scroll_by(rows);
+            }
+            ViewMode::Slides => {
+                let rows_in_slide = self
+                    .slide_content()
+                    .map_or(0, |content| Markdown::new(content).line_count());
+                self.slide_scroll.set_content(rows_in_slide);
+                self.slide_scroll.scroll_by(rows);
+            }
+        }
+    }
+
+    /// The shown slide's markdown without its title
+    fn slide_content(&self) -> Option<String> {
+        self.nav
+            .current_slide()
+            .map(|slide| self.strip_title(slide.markdown()))
+    }
+
+    /// Reset scroll position, in both modes
     pub fn scroll_to_top(&mut self) {
         self.scroll.scroll_to_top();
+        self.slide_scroll.scroll_to_top();
     }
 
     /// Reload from new source
@@ -342,6 +380,7 @@ impl MarkdownPresentation {
         self.source = source.into();
         self.nav = SlideNav::new(&self.source);
         self.scroll.scroll_to_top();
+        self.slide_scroll.scroll_to_top();
     }
 
     /// Render preview mode (full scrollable content)
@@ -424,13 +463,37 @@ impl MarkdownPresentation {
                 );
 
                 let heading_fg = self.heading_fg.unwrap_or_else(|| ctx.css_color(HEADING_FG));
-                let md = Markdown::new(&content)
+                let mut md = Markdown::new(&content)
                     .link_fg(self.link_fg)
                     .code_fg(self.code_fg)
                     .heading_fg(heading_fg);
 
+                // From the scrolled-to row of the slide's content, as the
+                // preview scrolls the document (#1256)
+                self.slide_scroll.set_content(md.line_count());
+                self.slide_scroll
+                    .set_viewport(usize::from(content_area.height));
+                md.lines.drain(..self.slide_scroll.offset());
+
                 let mut content_ctx = ctx.sub_ctx(content_area);
                 md.render(&mut content_ctx);
+
+                // ▲ / ▼ at the content's right edge while rows are above
+                // or below the view
+                let marker_x = content_area.x + content_area.width.saturating_sub(1);
+                let marker = |ctx: &mut RenderContext, y: u16, ch: char| {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(self.accent);
+                    ctx.set(marker_x - ctx.area.x, y - ctx.area.y, cell);
+                };
+                if content_area.height > 0 {
+                    if self.slide_scroll.has_above() {
+                        marker(ctx, content_area.y, '▲');
+                    }
+                    if self.slide_scroll.has_below() {
+                        marker(ctx, content_area.y + content_area.height - 1, '▼');
+                    }
+                }
             }
         }
 

@@ -159,8 +159,12 @@ fn test_json_viewer_selected_row_and_matches_are_colored_across_the_width() {
         }
         let lit = buffer.get(29, y).unwrap().bg == Some(Color::YELLOW);
         let text = row_text(&buffer, y);
-        // "n" matches the key `n`; a null value is not searched
-        assert_eq!(lit, text.contains("\"n\""), "{text:?}");
+        // "n" matches the key `n` and a null value, shown as `null` (#983)
+        assert_eq!(
+            lit,
+            text.contains("\"n\"") || text.contains("null"),
+            "{text:?}"
+        );
     }
 }
 

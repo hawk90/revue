@@ -34,7 +34,11 @@ pub struct ParserContext<'a> {
     /// inline content is collected rather than drawn as it arrives
     pub heading_is_figlet: bool,
     pub list_depth: usize,
+    /// The next number of the innermost list, `None` for a bullet list
     pub ordered_list_num: Option<u64>,
+    /// The outer lists' next numbers, innermost last: a nested list puts
+    /// its parent's here and gives it back when it ends (#893)
+    pub list_numbers: Vec<Option<u64>>,
     pub item_needs_bullet: bool,
     pub in_table: bool,
     pub in_table_head: bool,
@@ -82,6 +86,7 @@ impl<'a> ParserContext<'a> {
             heading_is_figlet: false,
             list_depth: 0,
             ordered_list_num: None,
+            list_numbers: Vec::new(),
             item_needs_bullet: false,
             in_table: false,
             in_table_head: false,

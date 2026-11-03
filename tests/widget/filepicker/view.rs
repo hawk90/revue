@@ -139,7 +139,8 @@ fn test_filepicker_path_is_cut_from_the_left() {
     let dir = tempfile::tempdir().unwrap();
     let leaf = dir.path().join("some_directory").join("leaf_directory");
     fs::create_dir_all(&leaf).unwrap();
-    let full = leaf.display().to_string();
+    // Shown canonical, as the picker keeps it (#1110)
+    let full = leaf.canonicalize().unwrap().display().to_string();
 
     // Room for the whole path: shown after one blank.
     let picker = file_picker().start_dir(&leaf).width(200);
