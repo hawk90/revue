@@ -110,7 +110,7 @@ fn list_themes_verbose_does_not_error() {
 #[test]
 fn install_theme_unknown_returns_error() {
     // This doesn't touch filesystem for unknown themes
-    let result = revue_cli::commands::install_theme("nonexistent-theme");
+    let result = revue_cli::commands::install_theme("nonexistent-theme", false);
     assert!(result.is_err());
 }
 

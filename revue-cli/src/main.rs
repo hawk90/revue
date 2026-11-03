@@ -8,7 +8,7 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[command(name = "revue")]
 #[command(author = "Revue Team")]
-#[command(version = "0.1.0")]
+#[command(version)]
 #[command(about = "CLI tool for Revue TUI framework", long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
@@ -87,13 +87,17 @@ enum Commands {
     Theme {
         /// Theme name to install
         name: String,
+        /// Overwrite the theme file if it already exists
+        #[arg(long)]
+        force: bool,
     },
 
     /// Generate documentation
     Docs {
-        /// Output directory
-        #[arg(short, long, default_value = "docs")]
-        output: String,
+        /// Copy the docs into this directory (default: leave them in the
+        /// target directory, `target/doc`)
+        #[arg(short, long)]
+        output: Option<String>,
     },
 
     /// Add a component or pattern to your project
@@ -193,8 +197,8 @@ fn main() {
         Commands::Snapshot { update, filter } => commands::run_snapshots(update, filter.as_deref()),
         Commands::Inspect { mode } => commands::inspect(&mode),
         Commands::Themes { verbose } => commands::list_themes(verbose),
-        Commands::Theme { name } => commands::install_theme(&name),
-        Commands::Docs { output } => commands::generate_docs(&output),
+        Commands::Theme { name, force } => commands::install_theme(&name, force),
+        Commands::Docs { output } => commands::generate_docs(output.as_deref()),
         Commands::Add { component, name } => {
             let comp_name = match component {
                 ComponentType::Search => "search",

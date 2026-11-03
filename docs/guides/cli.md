@@ -2,6 +2,10 @@
 
 The Revue CLI (`revue`) provides development tools for building terminal UI applications.
 
+The CLI is released with the framework under the same version: `revue --version`
+prints it, and the projects `revue new` writes depend on that release line
+(CLI 3.15.0 writes `revue = "3.15"`).
+
 ## Installation
 
 ```bash
@@ -332,7 +336,7 @@ revue themes --verbose
 Install a theme.
 
 ```bash
-revue theme <name>
+revue theme <name> [--force]
 ```
 
 **Example:**
@@ -341,7 +345,8 @@ revue theme <name>
 revue theme dracula
 ```
 
-**Generated file:** `styles/<name>.css`
+**Generated file:** `styles/<name>.css`. If the file is already there (it may
+have been edited), the command stops and leaves it; `--force` overwrites it.
 
 **Usage:**
 
@@ -365,15 +370,16 @@ revue docs [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-o, --output` | Output directory | `docs` |
+| `-o, --output` | Copy the generated docs into this directory | none: the docs stay in `target/doc` |
 
 **Example:**
 
 ```bash
 revue docs
-
-# Open generated docs
 open target/doc/my_app/index.html
+
+revue docs --output site
+open site/my_app/index.html
 ```
 
 ## Benchmark Commands
