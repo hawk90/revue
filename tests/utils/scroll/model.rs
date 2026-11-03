@@ -182,9 +182,10 @@ impl Model {
                 let top_id = self.rows.get(self.top).copied();
                 let ids = self.fresh(n);
                 self.rows.splice(at..at, ids);
-                // Rows above the view carry its top row down with them
-                if at < self.top {
-                    self.top = self.rows.iter().position(|&id| Some(id) == top_id).unwrap();
+                // The top row stays on top: rows inserted above it, or at
+                // it, carry it down (#1255). With no row on top, nothing moves.
+                if let Some(id) = top_id {
+                    self.top = self.rows.iter().position(|&r| r == id).unwrap();
                 }
                 self.settle();
             }
@@ -279,7 +280,7 @@ proptest! {
         };
         let mut m = Model::new(tail);
         for op in &ops {
-            let (following, old_top, old_len) = (m.following, m.top, m.rows.len());
+            let (following, old_len) = (m.following, m.rows.len());
             let top_id = m.rows.get(m.top).copied();
             match *op {
                 Op::Viewport(v) => s.set_viewport(v),
@@ -325,13 +326,9 @@ proptest! {
             m.apply(op);
             check(&s, &m, op)?;
 
-            // The rows on screen stay put when rows come or go above them.
-            // Rows inserted at the top row go on screen.
-            let above = match *op {
-                Op::Insert(at, _) => at * old_len / 16 < old_top,
-                Op::Remove(..) => true,
-                _ => false,
-            };
+            // The rows on screen stay put when rows come or go above them,
+            // and rows inserted at the top row go above it
+            let above = matches!(op, Op::Insert(..) | Op::Remove(..));
             if let (true, Some(id), false) = (above, top_id, following) {
                 if let Some(at) = m.rows.iter().position(|&r| r == id) {
                     if at <= m.max() {

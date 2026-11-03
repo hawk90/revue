@@ -1,11 +1,16 @@
 //! Project templates and theme definitions
 
-/// The `revue` version requirement written into generated projects.
+/// The `revue` version requirement written into generated projects: the
+/// release line of this CLI, which is released with `revue` under the same
+/// version (#1212). `revue-cli 3.15.0` writes `revue = "3.15"`.
 ///
-/// The templates are written against this release line. A test checks it
-/// against the version of the `revue` crate in this repository, so a major
-/// release that leaves the templates behind fails CI.
-pub const REVUE_VERSION: &str = "3.0";
+/// CI builds each template against the `revue` in this repository, so a
+/// release that leaves the templates behind fails there.
+pub const REVUE_VERSION: &str = concat!(
+    env!("CARGO_PKG_VERSION_MAJOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_MINOR")
+);
 
 /// Generate Cargo.toml
 pub fn cargo_toml(name: &str) -> String {

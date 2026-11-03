@@ -22,25 +22,17 @@ fn cargo_toml_depends_on_revue_from_crates_io() {
     assert_eq!(revue.as_str(), Some(templates::REVUE_VERSION));
 }
 
-/// The generated projects must ask for the release line this repository's
-/// `revue` belongs to: `REVUE_VERSION` (a caret requirement such as "3.0")
-/// must match the workspace crate's version.
+/// The CLI is released with `revue` under the same version, and the
+/// projects it writes ask for that release line (#1212).
 #[test]
-fn revue_version_matches_the_revue_crate() {
+fn the_cli_shares_the_revue_version_and_asks_for_its_line() {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../Cargo.toml");
     let manifest: toml::Table = std::fs::read_to_string(path).unwrap().parse().unwrap();
-    let crate_version = manifest["package"]["version"].as_str().unwrap();
+    let revue = manifest["package"]["version"].as_str().unwrap();
+    assert_eq!(env!("CARGO_PKG_VERSION"), revue);
 
-    let numbers = |v: &str| -> Vec<u64> { v.split('.').map(|n| n.parse().unwrap()).collect() };
-    let required = numbers(templates::REVUE_VERSION);
-    let actual = numbers(crate_version);
-    assert!(
-        actual[0] == required[0] && actual[1] >= required[1],
-        "templates ask for revue {}, but the crate is {}; port the templates \
-         (`revue new`) and update REVUE_VERSION",
-        templates::REVUE_VERSION,
-        crate_version
-    );
+    let line: Vec<&str> = revue.split('.').take(2).collect();
+    assert_eq!(templates::REVUE_VERSION, line.join("."));
 }
 
 #[test]
