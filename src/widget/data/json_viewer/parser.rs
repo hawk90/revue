@@ -61,6 +61,37 @@ fn parse_value(json: &[char], path: &str, depth: usize) -> Option<(JsonNode, usi
     parsed.map(|(node, taken)| (node, start + taken))
 }
 
+/// The path of member `key` of the node at `parent`, as JSONPath writes it
+/// (RFC 9535): `.key` when the key is a member-name shorthand (a letter,
+/// `_` or a non-ASCII char, then those or digits), else `['key']` with the
+/// escapes of a normalized path. Every member gets a path of its own, so
+/// `{"a.b": ..}` (`$['a.b']`) and `{"a": {"b": ..}}` (`$.a.b`) differ (#983).
+fn member_path(parent: &str, key: &str) -> String {
+    let mut chars = key.chars();
+    let first_ok = |c: char| c.is_ascii_alphabetic() || c == '_' || !c.is_ascii();
+    let shorthand =
+        chars.next().is_some_and(first_ok) && chars.all(|c| first_ok(c) || c.is_ascii_digit());
+    if shorthand {
+        return format!("{parent}.{key}");
+    }
+    let mut path = format!("{parent}['");
+    for c in key.chars() {
+        match c {
+            '\'' => path.push_str("\\'"),
+            '\\' => path.push_str("\\\\"),
+            '\u{8}' => path.push_str("\\b"),
+            '\u{c}' => path.push_str("\\f"),
+            '\n' => path.push_str("\\n"),
+            '\r' => path.push_str("\\r"),
+            '\t' => path.push_str("\\t"),
+            c if (c as u32) < 0x20 => path.push_str(&format!("\\u{:04x}", c as u32)),
+            c => path.push(c),
+        }
+    }
+    path.push_str("']");
+    path
+}
+
 /// `$` for the root, else the path as given
 fn node_path(path: &str) -> String {
     if path.is_empty() {
@@ -92,11 +123,7 @@ fn parse_object(json: &[char], path: &str, depth: usize) -> Option<(JsonNode, us
         }
         idx += 1;
 
-        let child_path = if node_path == "$" {
-            format!("$.{}", key)
-        } else {
-            format!("{}.{}", node_path, key)
-        };
+        let child_path = member_path(&node_path, &key);
         let (mut child, consumed) = parse_value(&json[idx..], &child_path, depth + 1)?;
         child.key = key;
         node.children.push(child);
