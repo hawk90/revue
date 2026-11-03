@@ -32,10 +32,12 @@ fn put_query(
     });
 }
 
-/// Draw a dialog box `dialog_width` columns wide, centered on row 0, with
-/// `label` at its start; returns the box's x
-fn draw_dialog_box(ctx: &mut RenderContext, dialog_width: u16, label: &str) -> u16 {
-    let dialog_x = (ctx.area.width.saturating_sub(dialog_width)) / 2;
+/// Draw a dialog box `dialog_width` columns wide, or the area's width when
+/// narrower, centered on row 0, with `label` at its start; returns the box's
+/// x and width
+fn draw_dialog_box(ctx: &mut RenderContext, dialog_width: u16, label: &str) -> (u16, u16) {
+    let dialog_width = dialog_width.min(ctx.area.width);
+    let dialog_x = (ctx.area.width - dialog_width) / 2;
 
     // Background
     for x in 0..dialog_width {
@@ -51,15 +53,14 @@ fn draw_dialog_box(ctx: &mut RenderContext, dialog_width: u16, label: &str) -> u
         cell.bg = Some(Color::rgb(49, 50, 68));
         ctx.set(dialog_x + i as u16, 0, cell);
     }
-    dialog_x
+    (dialog_x, dialog_width)
 }
 
 impl CodeEditor {
     /// Draw the go-to-line box with the typed line number
     pub(super) fn draw_goto_dialog(&self, ctx: &mut RenderContext) {
-        let dialog_width = 20u16;
         let label = "Go to line: ";
-        let dialog_x = draw_dialog_box(ctx, dialog_width, label);
+        let (dialog_x, dialog_width) = draw_dialog_box(ctx, 20, label);
 
         // Input
         let input_x = dialog_x + label.len() as u16;
@@ -75,18 +76,19 @@ impl CodeEditor {
 
     /// Draw the find box with the query and the match count
     pub(super) fn draw_find_dialog(&self, ctx: &mut RenderContext) {
-        let dialog_width = 30u16;
         let label = "Find: ";
-        let dialog_x = draw_dialog_box(ctx, dialog_width, label);
+        let (dialog_x, dialog_width) = draw_dialog_box(ctx, 30, label);
 
-        // Query, leaving 8 columns for the match count
+        // The match count at the box's end, which is in the area however
+        // narrow it is (#1082); the query takes the columns between
+        let count = format!(" {}/{}", self.current_find_index(), self.find_match_count());
+        let count_w = (count.len() as u16).min(dialog_width);
         let query_x = dialog_x + label.len() as u16;
-        let query_w = dialog_width.saturating_sub(label.len() as u16 + 8);
+        // Eight columns kept for the count, or as many as it takes
+        let query_w = dialog_width.saturating_sub(label.len() as u16 + count_w.max(8));
         put_query(ctx, query_x, query_w, &self.find_query, &self.find_scroll);
 
-        // Match count
-        let count = format!(" {}/{}", self.current_find_index(), self.find_match_count());
-        let count_x = dialog_x + dialog_width - count.len() as u16;
+        let count_x = dialog_x + dialog_width - count_w;
         for (i, ch) in count.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(180, 190, 254));
