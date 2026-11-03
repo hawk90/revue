@@ -44,6 +44,19 @@ impl Digits {
     }
 }
 
+impl Digits {
+    /// The row below the digits: the prefix, the value as the digits show
+    /// it, and the suffix
+    fn label(&self) -> String {
+        format!(
+            "{}{}{}",
+            self.prefix.as_deref().unwrap_or(""),
+            self.format_value(),
+            self.suffix.as_deref().unwrap_or("")
+        )
+    }
+}
+
 impl View for Digits {
     crate::impl_view_meta!("Digits");
 
@@ -57,9 +70,7 @@ impl View for Digits {
             .max()
             .unwrap_or(0);
         let (label, label_rows) = if self.prefix.is_some() || self.suffix.is_some() {
-            let label = crate::utils::unicode::display_width(self.prefix.as_deref().unwrap_or(""))
-                + crate::utils::unicode::display_width(&self.value)
-                + crate::utils::unicode::display_width(self.suffix.as_deref().unwrap_or(""));
+            let label = crate::utils::unicode::display_width(&self.label());
             (label, 1)
         } else {
             (0, 0)
@@ -92,15 +103,12 @@ impl View for Digits {
 
         // Add prefix/suffix as regular text below
         if self.prefix.is_some() || self.suffix.is_some() {
-            let label = format!(
-                "{}{}{}",
-                self.prefix.as_deref().unwrap_or(""),
-                self.value,
-                self.suffix.as_deref().unwrap_or("")
-            );
-            let mut text = Text::new(label);
+            let mut text = Text::new(self.label());
             if let Some(fg) = self.fg {
                 text = text.fg(fg);
+            }
+            if let Some(bg) = self.bg {
+                text = text.bg(bg);
             }
             stack = stack.child_sized(text, 1);
         }
