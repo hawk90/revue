@@ -4,6 +4,7 @@
 //! covered by tests/widget/form/rich_text_editor/toolbar.rs and the in-source toolbar
 //! tests; these are the remaining actions.
 
+use revue::event::Key;
 use revue::widget::{BlockType, RichTextEditor, ToolbarAction};
 
 #[test]
@@ -64,4 +65,49 @@ fn test_toolbar_action_horizontal_rule() {
     let mut editor = RichTextEditor::new().content("text");
     editor.toolbar_action(ToolbarAction::HorizontalRule);
     assert_eq!(editor.current_block_type(), BlockType::HorizontalRule);
+}
+
+/// `--- ` and `*** ` make a rule: the shortcut runs after the typed space,
+/// so the text is the marker and that space; the cursor ends at the empty
+/// line's start (#1075)
+#[test]
+fn test_rule_shortcuts_make_a_rule() {
+    for marker in ["--- ", "*** "] {
+        let mut editor = RichTextEditor::new();
+        for ch in marker.chars() {
+            editor.handle_key(&Key::Char(ch));
+        }
+        assert_eq!(
+            editor.current_block_type(),
+            BlockType::HorizontalRule,
+            "{marker:?}"
+        );
+        assert_eq!(editor.cursor_position(), (0, 0), "{marker:?}");
+    }
+    // More after the marker: no rule
+    let mut editor = RichTextEditor::new().content("x");
+    editor.set_cursor(0, 0);
+    for ch in "--- ".chars() {
+        editor.handle_key(&Key::Char(ch));
+    }
+    assert_eq!(editor.current_block_type(), BlockType::Paragraph);
+}
+
+/// In a code block the markers are text: no shortcut changes its type or
+/// eats the marker (#1075)
+#[test]
+fn test_shortcuts_do_not_apply_in_a_code_block() {
+    for marker in ["- ", "# ", "> ", "1. ", "--- "] {
+        let mut editor = RichTextEditor::new().from_markdown("```\nx\n```");
+        editor.set_cursor(0, 0);
+        for ch in marker.chars() {
+            editor.handle_key(&Key::Char(ch));
+        }
+        assert_eq!(
+            editor.current_block_type(),
+            BlockType::CodeBlock,
+            "{marker:?}"
+        );
+        assert_eq!(editor.get_content(), format!("{marker}x"), "{marker:?}");
+    }
 }
