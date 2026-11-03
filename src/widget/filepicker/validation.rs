@@ -4,7 +4,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 /// Error type for file picker operations
+///
+/// Non-exhaustive: more ways a path can be refused may be added.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum FilePickerError {
     /// Path traversal detected
     #[error("Path traversal detected: {0}")]

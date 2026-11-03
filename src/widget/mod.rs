@@ -324,8 +324,8 @@ pub use debug_overlay::{
 };
 pub use dropzone::{drop_zone, DropZone, DropZoneStyle};
 pub use filepicker::{
-    dir_picker, file_picker, save_picker, FileFilter, FilePicker, PickerEntry, PickerMode,
-    PickerResult,
+    dir_picker, file_picker, save_picker, FileFilter, FilePicker, FilePickerError, PickerEntry,
+    PickerMode, PickerResult,
 };
 pub use input_widgets::{
     autocomplete, button, checkbox, color_picker, combobox, currency_input, input, integer_input,
