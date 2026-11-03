@@ -220,17 +220,20 @@ fn test_write_char_private() {
     assert_eq!(terminal.lines[0].cells.len(), 1);
 }
 
-/// A tab that reaches the right edge wraps the cursor to column 0; the tab
-/// must stop there instead of filling line after line forever.
+/// A tab stops at the last column, as in xterm: it never wraps, so tabs
+/// past the last stop leave the cursor there (#1462). The next char goes on
+/// the last column and leaves the wrap pending.
 #[test]
 fn a_tab_at_the_right_edge_ends() {
     let mut terminal = Terminal::new(16, 4);
     terminal.write("0123456789\tX");
-    assert_eq!(terminal.cursor_row, 1);
-    assert_eq!(terminal.cursor_col, 1);
+    assert_eq!((terminal.cursor_row, terminal.cursor_col), (0, 15));
+    assert!(terminal.wrap_pending);
 
+    terminal.write("\r0123456789");
     terminal.write(&"\t".repeat(100));
-    assert!(terminal.cursor_col < 16);
+    assert_eq!((terminal.cursor_row, terminal.cursor_col), (0, 15));
+    assert!(!terminal.wrap_pending);
 }
 
 /// A tab inside an escape sequence acts, and the sequence goes on: the

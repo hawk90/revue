@@ -30,6 +30,9 @@ enum Piece {
     ColonSgr(&'static str, Vec<u16>),
     /// An escape sequence that leaves the screen and the colors alone
     Sequence(&'static str),
+    /// A line-oriented control sequence (#1423): its final byte and its
+    /// parameter as written (`None` for none)
+    Edit(char, Option<usize>),
 }
 
 impl Piece {
@@ -46,20 +49,28 @@ impl Piece {
             ),
             Piece::ColonSgr(raw, _) => raw.to_string(),
             Piece::Sequence(raw) => raw.to_string(),
+            Piece::Edit(op, None) => format!("\x1b[{op}"),
+            Piece::Edit(op, Some(n)) => format!("\x1b[{n}{op}"),
         }
     }
 }
 
 /// Sequences a program writes that draw nothing here: private modes, a
-/// cursor shape, cursor moves and keys, charset selection, saving the
-/// cursor, titles and links (ended by BEL or by ST, with a backslash in the
-/// payload, or empty), and device control strings
-const SEQUENCES: [&str; 14] = [
+/// cursor shape, keys, whole-screen commands (erase display, absolute
+/// position: not a screen grid, #1461), a private-marked or intermediate
+/// cursor move, charset selection, saving the cursor, titles and links
+/// (ended by BEL or by ST, with a backslash in the payload, or empty), and
+/// device control strings
+const SEQUENCES: [&str; 18] = [
     "\x1b[?25l",
     "\x1b[?2004h",
     "\x1b[2 q",
     "\x1b[3~",
-    "\x1b[5A",
+    "\x1b[2J",
+    "\x1b[3;4H",
+    "\x1b[?5A",
+    "\x1b[1 D",
+    "\x1b[3K",
     "\x1b[>4;1m",
     "\x1b(B",
     "\x1b7",
@@ -114,6 +125,11 @@ fn piece() -> impl Strategy<Value = Piece> {
         3 => sgr().prop_map(Piece::Sgr),
         1 => colon_sgr(),
         2 => prop::sample::select(SEQUENCES.to_vec()).prop_map(Piece::Sequence),
+        3 => (
+            prop::sample::select(vec!['K', 'A', 'B', 'C', 'D', 'G']),
+            prop::option::of(prop_oneof![3 => 0usize..4, 1 => 4usize..14]),
+        )
+            .prop_map(|(op, n)| Piece::Edit(op, if op == 'K' { n.map(|n| n % 3) } else { n })),
     ]
 }
 
@@ -245,7 +261,10 @@ struct Grid {
     lines: Vec<Vec<(char, Pen)>>,
     row: usize,
     col: usize,
+    /// On the last column after filling it: the next char wraps (#1462)
+    pending: bool,
     width: usize,
+    height: usize,
     keep: usize,
     pen: Pen,
 }
@@ -256,7 +275,9 @@ impl Grid {
             lines: vec![Vec::new(); height],
             row: 0,
             col: 0,
+            pending: false,
             width,
+            height,
             keep: height + scrollback,
             pen: Pen::reset(),
         }
@@ -271,6 +292,7 @@ impl Grid {
 
     fn next_row(&mut self) {
         self.col = 0;
+        self.pending = false;
         self.row += 1;
         while self.row >= self.lines.len() {
             self.lines.push(Vec::new());
@@ -279,6 +301,9 @@ impl Grid {
     }
 
     fn put(&mut self, ch: char) {
+        if self.pending {
+            self.next_row();
+        }
         while self.row >= self.lines.len() {
             self.lines.push(Vec::new());
         }
@@ -288,9 +313,10 @@ impl Grid {
             line.resize(self.col + 1, blank);
         }
         line[self.col] = (ch, self.pen);
-        self.col += 1;
-        if self.col >= self.width {
-            self.next_row();
+        if self.col + 1 >= self.width {
+            self.pending = true;
+        } else {
+            self.col += 1;
         }
     }
 
@@ -298,15 +324,72 @@ impl Grid {
         match piece {
             Piece::Text(s) => s.chars().for_each(|c| self.put(c)),
             Piece::Newline => self.next_row(),
-            Piece::Return => self.col = 0,
+            Piece::Return => {
+                self.col = 0;
+                self.pending = false;
+            }
+            Piece::Control('\x08') => {
+                self.col = self.col.saturating_sub(1);
+                self.pending = false;
+            }
+            // up to the next stop, never past the last column
             Piece::Tab => {
-                let stop = ((self.col / 8 + 1) * 8).min(self.width);
+                let stop = ((self.col / 8 + 1) * 8).min(self.width - 1);
                 for _ in self.col..stop.max(self.col) {
                     self.put(' ');
                 }
             }
             Piece::Control(_) | Piece::Sequence(_) => {}
             Piece::Sgr(p) | Piece::ColonSgr(_, p) => self.pen.apply(p),
+            Piece::Edit(op, n) => self.edit(*op, *n),
+        }
+    }
+
+    /// ECMA-48 on the screen, the last `height` lines: a count of 0 or none
+    /// is 1, the cursor stops at the screen's edges, and erased cells take
+    /// the pen's background
+    fn edit(&mut self, op: char, n: Option<usize>) {
+        let count = n.unwrap_or(0).max(1);
+        let last = self.width - 1;
+        // every one ends a pending wrap, as xterm's ResetWrap does
+        self.pending = false;
+        match op {
+            'A' => {
+                let top = self.lines.len().saturating_sub(self.height);
+                self.row = self.row.saturating_sub(count).max(top);
+            }
+            'B' => self.row = (self.row + count).min(self.lines.len() - 1),
+            'C' => self.col = (self.col + count).min(last),
+            'D' => self.col = self.col.saturating_sub(count),
+            'G' => self.col = (count - 1).min(last),
+            'K' => {
+                let (from, to) = match n.unwrap_or(0) {
+                    0 => (self.col, self.width),
+                    1 => (0, self.col + 1),
+                    _ => (0, self.width),
+                };
+                let blank = (
+                    ' ',
+                    Pen {
+                        bg: self.pen.bg,
+                        ..Pen::reset()
+                    },
+                );
+                let line = &mut self.lines[self.row];
+                // In the default background the line just ends where it ends
+                let to = if blank.1.bg.is_none() {
+                    to.min(line.len())
+                } else {
+                    to.min(self.width)
+                };
+                if line.len() < to {
+                    line.resize(to, (' ', Pen::reset()));
+                }
+                for cell in line.iter_mut().take(to).skip(from) {
+                    *cell = blank;
+                }
+            }
+            _ => unreachable!(),
         }
     }
 }
