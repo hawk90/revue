@@ -73,9 +73,12 @@ impl FilePicker {
     }
 
     /// Start over in `dir`: it becomes the only history entry, so going
-    /// back never leaves for the directory the picker was built in.
+    /// back never leaves for the directory the picker was built in. It is
+    /// kept canonical, as `navigate_to` keeps the directories it enters: a
+    /// symlink is listed when its canonical target is inside it, which a
+    /// path with a symlink or `.` in it never contains (#1110).
     fn reset_to(&mut self, dir: PathBuf) {
-        self.current_dir = dir;
+        self.current_dir = dir.canonicalize().unwrap_or(dir);
         self.history = vec![self.current_dir.clone()];
         self.history_idx = 0;
         self.refresh();

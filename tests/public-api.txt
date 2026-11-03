@@ -66299,6 +66299,29 @@ impl core::marker::Unpin for revue::widget::FileFilter
 impl core::marker::UnsafeUnpin for revue::widget::FileFilter
 impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::FileFilter
 impl core::panic::unwind_safe::UnwindSafe for revue::widget::FileFilter
+#[non_exhaustive] pub enum revue::widget::FilePickerError
+pub revue::widget::FilePickerError::InvalidCharacters
+pub revue::widget::FilePickerError::InvalidPath(alloc::string::String)
+pub revue::widget::FilePickerError::IoError(core::io::error::Error)
+pub revue::widget::FilePickerError::OutsideAllowedDirectory
+pub revue::widget::FilePickerError::PathTraversal(alloc::string::String)
+pub revue::widget::FilePickerError::ReservedDeviceName(alloc::string::String)
+pub revue::widget::FilePickerError::SymlinkNotAllowed
+impl core::convert::From<core::io::error::Error> for revue::widget::FilePickerError
+pub fn revue::widget::FilePickerError::from(core::io::error::Error) -> Self
+impl core::error::Error for revue::widget::FilePickerError
+pub fn revue::widget::FilePickerError::source(&self) -> core::option::Option<&(dyn core::error::Error + 'static)>
+impl core::fmt::Debug for revue::widget::FilePickerError
+pub fn revue::widget::FilePickerError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for revue::widget::FilePickerError
+pub fn revue::widget::FilePickerError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for revue::widget::FilePickerError
+impl core::marker::Send for revue::widget::FilePickerError
+impl core::marker::Sync for revue::widget::FilePickerError
+impl core::marker::Unpin for revue::widget::FilePickerError
+impl core::marker::UnsafeUnpin for revue::widget::FilePickerError
+impl !core::panic::unwind_safe::RefUnwindSafe for revue::widget::FilePickerError
+impl !core::panic::unwind_safe::UnwindSafe for revue::widget::FilePickerError
 pub enum revue::widget::FileType
 pub revue::widget::FileType::Directory
 pub revue::widget::FileType::Executable
@@ -72203,7 +72226,7 @@ pub fn revue::widget::FilePicker::current_dir(&self) -> &std::path::Path
 pub fn revue::widget::FilePicker::go_back(&mut self)
 pub fn revue::widget::FilePicker::go_forward(&mut self)
 pub fn revue::widget::FilePicker::go_up(&mut self)
-pub fn revue::widget::FilePicker::navigate_to(&mut self, &std::path::Path) -> core::result::Result<(), revue::widget::filepicker::validation::FilePickerError>
+pub fn revue::widget::FilePicker::navigate_to(&mut self, &std::path::Path) -> core::result::Result<(), revue::widget::FilePickerError>
 impl revue::widget::FilePicker
 pub fn revue::widget::FilePicker::default_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn revue::widget::FilePicker::filter(self, revue::widget::FileFilter) -> Self
@@ -72212,7 +72235,7 @@ pub fn revue::widget::FilePicker::mode(self, revue::widget::PickerMode) -> Self
 pub fn revue::widget::FilePicker::show_hidden(self, bool) -> Self
 pub fn revue::widget::FilePicker::start_dir(self, impl core::convert::AsRef<std::path::Path>) -> Self
 pub fn revue::widget::FilePicker::title(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn revue::widget::FilePicker::try_set_start_dir(self, impl core::convert::AsRef<std::path::Path>) -> core::result::Result<Self, revue::widget::filepicker::validation::FilePickerError>
+pub fn revue::widget::FilePicker::try_set_start_dir(self, impl core::convert::AsRef<std::path::Path>) -> core::result::Result<Self, revue::widget::FilePickerError>
 pub fn revue::widget::FilePicker::width(self, u16) -> Self
 impl revue::widget::FilePicker
 pub fn revue::widget::FilePicker::directory() -> Self
