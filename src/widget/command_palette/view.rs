@@ -24,8 +24,6 @@ struct Layout {
     right_x: u16,
     /// End of the text columns
     text_end: u16,
-    /// End of the label column
-    label_end: u16,
 }
 
 impl View for CommandPalette {
@@ -102,17 +100,18 @@ impl CommandPalette {
         let x = (area.width.saturating_sub(width)) / 2;
         let has_title = self.title.is_some();
 
-        // Calculate height
+        // Top border, search line, separator, the rows and the bottom
+        // border, and the title line when there is one
         let visible_count = self.filtered.len().min(self.max_visible as usize);
-        let height = 3 + visible_count as u16 + if has_title { 1 } else { 0 }; // border + input + items
+        let height = 4 + visible_count as u16 + if has_title { 1 } else { 0 };
         let y: u16 = 2; // Offset from top
 
         if y + height > area.height {
             return None;
         }
 
-        // Right border column, end of the text columns and end of the label
-        // column, saturating for a palette narrower than its frame.
+        // Right border column and end of the text columns, saturating for a
+        // palette narrower than its frame.
         Some(Layout {
             x,
             y,
@@ -120,7 +119,6 @@ impl CommandPalette {
             height,
             right_x: (x + width).saturating_sub(1),
             text_end: (x + width).saturating_sub(2),
-            label_end: (x + width).saturating_sub(15),
         })
     }
 
