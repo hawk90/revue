@@ -5,6 +5,7 @@
 mod command;
 mod helper;
 mod impls;
+mod layout_1091;
 mod props;
 mod view;
 
@@ -152,13 +153,14 @@ fn test_command_palette_max_visible() {
         "{}",
         view::row(&b, 5)
     );
-    // Rows 5..19 hold 15 commands; the last of them is under the bottom
-    // border (#1091), so only 14 are checked.
+    // Rows 5..20 hold 15 commands, the last one too, above the bottom
+    // border (#1091).
     assert!(
-        view::row(&b, 18).contains("Command 14 "),
+        view::row(&b, 19).contains("Command 15 "),
         "{}",
-        view::row(&b, 18)
+        view::row(&b, 19)
     );
+    assert!(view::row(&b, 20).contains('╰'), "{}", view::row(&b, 20));
 }
 
 #[test]
@@ -167,9 +169,9 @@ fn test_command_palette_placeholder() {
         .placeholder("Run a command...")
         .command(Command::new("a", "A"));
     palette.show();
-    // The first letter is under the cursor (#1091).
+    // The cursor keeps the first letter (#1091).
     let text = view::row(&view::render(&palette, 70, 12), 3);
-    assert!(text.contains("un a command..."), "{text}");
+    assert!(text.contains("Run a command..."), "{text}");
     assert!(!text.contains("Type to search"), "{text}");
 }
 
@@ -1013,9 +1015,11 @@ fn test_command_palette_render_placeholder() {
     palette.show();
     let b = view::render(&palette, 80, 24);
 
-    // After the cursor at column 14 (#1091), in the disabled grey.
-    let text: String = (15..22).map(|x| b.get(x, 3).unwrap().symbol).collect();
-    assert_eq!(text, "o to...");
+    // The cursor at column 14 keeps the first letter, inverted (#1091);
+    // the rest is in the disabled grey.
+    let text: String = (14..22).map(|x| b.get(x, 3).unwrap().symbol).collect();
+    assert_eq!(text, "Go to...");
+    assert_eq!(b.get(14, 3).unwrap().bg, Some(Color::WHITE));
     assert!((15..22).all(|x| b.get(x, 3).unwrap().fg == Some(DISABLED_FG)));
 }
 
@@ -1066,9 +1070,8 @@ fn test_command_palette_render_many_commands() {
     palette.show();
     let b = view::render(&palette, 80, 24);
 
-    // The first rows in order; no row past the tenth command. The tenth row
-    // is under the bottom border (#1091).
-    for i in 0..9u16 {
+    // The ten rows in order, the tenth too (#1091); no row past it.
+    for i in 0..10u16 {
         let text = view::row(&b, 5 + i);
         assert!(text.contains(&format!("Command {i} ")), "{text}");
     }
@@ -1079,7 +1082,8 @@ fn test_command_palette_render_many_commands() {
             "{text}"
         );
     }
-    assert!(view::row(&b, 14).contains("20/20"), "{}", view::row(&b, 14));
+    // The count on the bottom border, below the tenth row
+    assert!(view::row(&b, 15).contains("20/20"), "{}", view::row(&b, 15));
 }
 
 #[test]
@@ -1216,10 +1220,11 @@ fn test_command_palette_very_long_label() {
     palette.show();
     let b = view::render(&palette, 80, 24);
 
-    // The label runs from column 14 up to the label column's end (55).
-    let text: String = (14..56).map(|x| b.get(x, 5).unwrap().symbol).collect();
-    let want: String = long_label.chars().take(41).collect();
-    assert_eq!(text, format!("{want} "));
+    // With no shortcut the label runs from column 14 to the text columns'
+    // end (68), a blank column before the right border (69) (#1091).
+    let text: String = (14..70).map(|x| b.get(x, 5).unwrap().symbol).collect();
+    let want: String = long_label.chars().take(54).collect();
+    assert_eq!(text, format!("{want} │"));
 }
 
 #[test]
@@ -1473,7 +1478,9 @@ fn test_command_palette_leaves_a_ctrl_or_alt_letter_to_the_app() {
     use revue::event::KeyEvent;
     let mut palette = CommandPalette::new().commands(vec![Command::new("kill", "Kill")]);
     palette.show();
-    assert!(!palette.handle_key_event(&KeyEvent::ctrl(Key::Char('k'))));
+    // Ctrl+J and Ctrl+K move the selection (#1289); other Ctrl letters
+    // are left
+    assert!(!palette.handle_key_event(&KeyEvent::ctrl(Key::Char('x'))));
     assert!(!palette.handle_key_event(&KeyEvent::alt(Key::Char('k'))));
     assert_eq!(palette.get_query(), "");
     assert!(palette.handle_key_event(&KeyEvent::new(Key::Char('k'))));

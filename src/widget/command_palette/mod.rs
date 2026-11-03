@@ -8,7 +8,7 @@
 //! | Feature | Description |
 //!|---------|-------------|
 //! | **Fuzzy Search** | Substring matching on command IDs, labels, descriptions |
-//! | **Keyboard Navigation** | Arrow keys, Enter, Escape |
+//! | **Keyboard Navigation** | Arrow keys (Ctrl+J and Ctrl+K with `handle_key_event`), Enter, Escape |
 //! | **Categories** | Group related commands |
 //! | **Shortcuts** | Display keyboard shortcuts |
 //! | **Icons** | Visual indicators |

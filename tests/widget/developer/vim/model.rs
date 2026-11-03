@@ -16,6 +16,8 @@ struct Model {
     forward: bool,
     /// An operator is pending
     pending: bool,
+    /// Which one: `c` with a motion enters insert mode (#1081)
+    op: char,
     /// A count is being typed (so `0` is a digit)
     counting: bool,
     /// A `g` is waiting for a second one
@@ -40,6 +42,10 @@ impl Model {
                 _ if after_g && *key != Key::Escape => {
                     self.pending = false;
                     self.counting = false;
+                    // `cgg` is a change: insert mode
+                    if ch == Some('g') && self.op == 'c' {
+                        self.mode = Insert;
+                    }
                     return None;
                 }
                 _ if digit => {
@@ -54,6 +60,14 @@ impl Model {
                 _ if *key == Key::Escape => self.pending = false,
                 _ => {
                     self.pending = false;
+                    // A motion completes the operator; `c` then inserts
+                    let zero_motion = matches!(ch, Some('0')) && !self.counting;
+                    let motion = matches!(ch, Some('j' | 'w' | 'G' | 'd' | 'y' | 'c'))
+                        || zero_motion
+                        || *key == Key::Left;
+                    if motion && self.op == 'c' {
+                        self.mode = Insert;
+                    }
                     self.counting = false;
                     return None;
                 }
@@ -62,7 +76,10 @@ impl Model {
         }
         if self.mode == Normal {
             match ch {
-                Some('d' | 'y' | 'c') => self.pending = true,
+                Some(op @ ('d' | 'y' | 'c')) => {
+                    self.pending = true;
+                    self.op = op;
+                }
                 Some('3') => self.counting = true,
                 Some('0') if self.counting => {}
                 _ => self.counting = false,
@@ -99,9 +116,9 @@ impl Model {
                 self.mode = Normal;
                 return Some(VimAction::ExecuteCommand(std::mem::take(&mut self.command)));
             }
+            // Leaves only on an empty line (#1081)
             (Command, Key::Backspace) => {
-                self.command.pop();
-                if self.command.is_empty() {
+                if self.command.pop().is_none() {
                     self.mode = Normal;
                 }
             }
@@ -120,8 +137,7 @@ impl Model {
                 return Some(VimAction::Move(motion));
             }
             (Search, Key::Backspace) => {
-                self.search.pop();
-                if self.search.is_empty() {
+                if self.search.pop().is_none() {
                     self.mode = Normal;
                 }
             }
@@ -181,7 +197,8 @@ proptest! {
     fn prop_vim_modes_follow_the_model(start in start_mode(), keys in prop::collection::vec(key(), 0..60)) {
         let mut vim = VimState::new();
         vim.set_mode(start);
-        let mut model = Model { mode: start, command: String::new(), search: String::new(), forward: true, pending: false, counting: false, g: false };
+        let mut model = Model { mode: start, command: String::new(), search: String::new(), forward: true, pending: false,
+            op: 'd', counting: false, g: false };
         for k in &keys {
             // Backspace on a one-char command line or pattern leaves the
             // mode instead of keeping the empty line open (#1081);

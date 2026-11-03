@@ -8,7 +8,8 @@ fn test_filepicker_lists_dirs_first_then_by_name_without_hidden() {
     let dir = fixture();
     let mut picker = file_picker().start_dir(dir.path());
 
-    assert_eq!(picker.current_dir(), dir.path());
+    // The start directory is kept canonical (#1110)
+    assert_eq!(picker.current_dir(), dir.path().canonicalize().unwrap());
     assert_eq!(listed_names(&mut picker), ["zdir", "A.rs", "b.txt"]);
 }
 
@@ -51,7 +52,7 @@ fn test_filepicker_entry_metadata() {
     let entry = picker.highlighted_entry().unwrap();
     assert!(!entry.is_dir);
     assert_eq!(entry.size, 5);
-    assert_eq!(entry.path, dir.path().join("b.txt"));
+    assert_eq!(entry.path, dir.path().canonicalize().unwrap().join("b.txt"));
 }
 
 #[test]
