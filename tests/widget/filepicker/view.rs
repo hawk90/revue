@@ -41,13 +41,23 @@ fn bold(buffer: &Buffer, x: u16, y: u16) -> bool {
     buffer.get(x, y).unwrap().modifier.contains(Modifier::BOLD)
 }
 
-/// An entry row as the picker formats it: mark, icon, the name padded to 32
-/// and the size right-aligned in 10 (trailing blanks trimmed).
+/// An entry row as the picker formats it in the default 60 columns: mark,
+/// icon, the name padded to the 44 columns the rest leaves, and the size
+/// right-aligned in 10 (trailing blanks trimmed).
 fn entry(mark: &str, dir: bool, name: &str, size: &str) -> String {
     let icon = if dir { "📁" } else { "📄" };
-    format!("{mark}{icon} {name:<32} {size:>10}")
+    format!("{mark}{icon} {name:<44} {size:>10}")
         .trim_end()
         .to_string()
+}
+
+/// The last column of row `y` that is not blank
+fn last_drawn(buffer: &Buffer, y: u16) -> Option<u16> {
+    (0..buffer.width()).rev().find(|&x| {
+        buffer
+            .get(x, y)
+            .is_some_and(|c| c.symbol != ' ' && !c.is_continuation())
+    })
 }
 
 #[test]
@@ -145,19 +155,69 @@ fn test_filepicker_path_is_cut_from_the_left() {
 #[test]
 fn test_filepicker_long_names_are_cut() {
     let dir = tempfile::tempdir().unwrap();
-    let thirty = "abcdefghijklmnopqrstuvwxyz.txt";
-    let forty = "a_name_that_is_forty_characters_long.txt";
-    assert_eq!((thirty.len(), forty.len()), (30, 40));
-    fs::write(dir.path().join(thirty), "").unwrap();
-    fs::write(dir.path().join(forty), "").unwrap();
+    // The name column is 44 wide in the default 60: one name that fits
+    // exactly, one a column over
+    let fits = format!("{}.txt", "a".repeat(40));
+    let over = format!("{}.txt", "b".repeat(41));
+    fs::write(dir.path().join(&fits), "").unwrap();
+    fs::write(dir.path().join(&over), "").unwrap();
     let picker = file_picker().start_dir(dir.path());
     let buffer = draw(&picker, 70, 8);
 
-    assert_eq!(
-        row(&buffer, 3),
-        entry("  ", false, "a_name_that_is_forty_charac...", "0 B")
-    );
-    assert_eq!(row(&buffer, 4), entry("  ", false, thirty, "0 B"));
+    assert_eq!(row(&buffer, 3), entry("  ", false, &fits, "0 B"));
+    let cut = format!("{}...", "b".repeat(41));
+    assert_eq!(row(&buffer, 4), entry("  ", false, &cut, "0 B"));
+}
+
+/// Rows take `width` columns, or the area's when narrower; the size ends
+/// on the last of them (#1111)
+#[test]
+fn test_filepicker_rows_stay_within_the_width() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("a.txt"), "hello").unwrap();
+    let picker = file_picker().start_dir(dir.path()).width(30);
+    let buffer = draw(&picker, 80, 10);
+    // rows: 0 path, 1 separator, 2 "..", 3 a.txt
+    assert_eq!(last_drawn(&buffer, 1), Some(29), "{}", row(&buffer, 1));
+    assert_eq!(last_drawn(&buffer, 3), Some(29), "{}", row(&buffer, 3));
+    // An area narrower than `width`: its columns
+    let picker = file_picker().start_dir(dir.path());
+    let buffer = draw(&picker, 40, 10);
+    assert_eq!(last_drawn(&buffer, 1), Some(39));
+    assert_eq!(last_drawn(&buffer, 3), Some(39), "{}", row(&buffer, 3));
+}
+
+/// The path is cut to the columns the area shows, so its end stays in view
+/// (#1111)
+#[test]
+fn test_filepicker_path_shows_its_end_in_a_narrow_area() {
+    let dir = tempfile::tempdir().unwrap();
+    let leaf = dir.path().join("a_rather_long_directory_name").join("leaf");
+    fs::create_dir_all(&leaf).unwrap();
+    let picker = file_picker().start_dir(&leaf);
+    let top = row(&draw(&picker, 30, 10), 0);
+    assert!(top.starts_with(" ..."), "{top:?}");
+    assert!(top.ends_with("leaf"), "{top:?}");
+}
+
+/// A wide name pads by columns, so every size ends in the same column; a
+/// wide name is cut by columns too (#1111)
+#[test]
+fn test_filepicker_wide_names_keep_the_size_column() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("ab.txt"), "hello").unwrap();
+    fs::write(dir.path().join("한글.txt"), "hello").unwrap();
+    // 24 Hangul syllables and ".txt": 52 columns, past the 44 of the name
+    let long = format!("{}.txt", "가".repeat(24));
+    fs::write(dir.path().join(&long), "x").unwrap();
+    let picker = file_picker().start_dir(dir.path());
+    let buffer = draw(&picker, 80, 10);
+    // rows 3.. sorted: ab.txt, 가…, 한글.txt
+    let ends: Vec<_> = (3..6).map(|y| last_drawn(&buffer, y)).collect();
+    assert_eq!(ends, vec![Some(59); 3], "{:#?}", rows(&buffer));
+    // The long one: 20 syllables (40 columns) and "...", then one pad column
+    let cut = format!("{}... ", "가".repeat(20));
+    assert!(row(&buffer, 4).contains(&cut), "{}", row(&buffer, 4));
 }
 
 #[test]

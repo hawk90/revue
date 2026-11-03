@@ -3041,3 +3041,27 @@ fn test_masked_input_with_min_length_valid() {
 
     assert!(input.validate()); // Long enough
 }
+
+/// A password shorter than 8 characters is Weak at most, whatever classes
+/// it mixes (NIST SP 800-63B: 8 at least); length and classes count above
+/// that (#1073)
+#[test]
+fn test_masked_input_short_password_is_weak_at_most() {
+    for short in ["Ab1!", "aA1!xY2", "!!!!!!!"] {
+        let input = MaskedInput::password().value(short);
+        assert!(
+            input.password_strength() <= 1,
+            "{short}: {}",
+            input.strength_label()
+        );
+    }
+    // At 8 the classes count again
+    let input = MaskedInput::password().value("Ab1!Ab1!");
+    assert_eq!(input.strength_label(), "Very Strong");
+    let input = MaskedInput::password().value("abcdefgh");
+    assert_eq!(input.strength_label(), "Weak");
+    assert_eq!(
+        MaskedInput::password().value("").strength_label(),
+        "Very Weak"
+    );
+}

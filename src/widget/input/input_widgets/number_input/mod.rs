@@ -58,8 +58,9 @@ pub struct NumberInput {
     max: Option<f64>,
     /// Increment/decrement step
     step: f64,
-    /// Decimal precision for display
-    precision: u8,
+    /// Decimal places the value is held and shown with; `None` keeps it as
+    /// given
+    precision: Option<u8>,
     /// Prefix to display before value (e.g., "$")
     prefix: Option<String>,
     /// Suffix to display after value (e.g., "%")
@@ -90,7 +91,7 @@ impl NumberInput {
             min: None,
             max: None,
             step: 1.0,
-            precision: 0,
+            precision: None,
             prefix: None,
             suffix: None,
             editing: false,
@@ -129,9 +130,15 @@ impl NumberInput {
         self
     }
 
-    /// Set decimal precision (number of decimal places to display)
+    /// Set the decimal places the value is held and shown with. A value set,
+    /// typed or stepped is rounded to them, so the value read back is the
+    /// one shown; the bounds are rounded too, and the current value is
+    /// rounded now. Without a precision (the default) the value is kept and
+    /// shown as given (as Element Plus's `el-input-number` with no
+    /// `precision`, and Qt's `QDoubleSpinBox::decimals` once set).
     pub fn precision(mut self, precision: u8) -> Self {
-        self.precision = precision;
+        self.precision = Some(precision);
+        self.value = self.clamp_value(self.value);
         self
     }
 

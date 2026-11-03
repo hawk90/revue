@@ -159,3 +159,20 @@ fn test_number_input_long_text_scrolls_to_the_cursor() {
     assert_eq!(&text[..6], "67890 ");
     assert_eq!(buffer.get(5, 0).unwrap().bg, Some(Color::WHITE));
 }
+
+/// A wide prefix or suffix takes its columns, so the value starts after it
+/// and the suffix after the value (#1016)
+#[test]
+fn test_number_input_wide_prefix_and_suffix_keep_their_columns() {
+    let input = NumberInput::new()
+        .value(3.0)
+        .prefix("원")
+        .suffix("개")
+        .show_buttons(false);
+    let (buffer, _) = render_row(&input, 10);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '원');
+    assert!(buffer.get(1, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '3');
+    assert_eq!(buffer.get(3, 0).unwrap().symbol, '개');
+    assert!(buffer.get(4, 0).unwrap().is_continuation());
+}

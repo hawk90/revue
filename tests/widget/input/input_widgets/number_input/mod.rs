@@ -896,3 +896,36 @@ fn test_percentage_input_helper() {
     input.set_value(-1.0);
     assert_eq!(input.get_value(), 0.0);
 }
+
+/// A range given high to low is swapped, as Slider's is: the value stays
+/// between the two (#1016)
+#[test]
+fn test_number_input_min_above_max_is_swapped() {
+    let input = NumberInput::new().min(10.0).max(5.0).value(7.0);
+    assert_eq!(input.get_value(), 7.0);
+    let mut input = NumberInput::new().min(10.0).max(5.0);
+    input.set_value(20.0);
+    assert_eq!(input.get_value(), 10.0);
+    input.set_value(1.0);
+    assert_eq!(input.get_value(), 5.0);
+    // Home and End go to the low and the high end
+    input.set_to_min();
+    assert_eq!(input.get_value(), 5.0);
+    input.set_to_max();
+    assert_eq!(input.get_value(), 10.0);
+}
+
+/// NaN is no number to hold: the current value stays, with bounds or
+/// without (#1016)
+#[test]
+fn test_number_input_nan_keeps_the_value() {
+    let mut input = NumberInput::new().value(4.0);
+    input.set_value(f64::NAN);
+    assert_eq!(input.get_value(), 4.0);
+    assert_eq!(NumberInput::new().value(f64::NAN).get_value(), 0.0);
+    let mut input = NumberInput::new().min(1.0).max(10.0).value(4.0);
+    input.set_value(f64::NAN);
+    assert_eq!(input.get_value(), 4.0);
+    input.increment();
+    assert_eq!(input.get_value(), 5.0);
+}

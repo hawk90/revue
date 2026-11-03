@@ -52,7 +52,7 @@ impl Model {
             }
             (Key::Enter, Some(_)) => self.commit(),
             (Key::Enter, None) => {
-                let buf: Vec<char> = format!("{:.0}", self.value).chars().collect();
+                let buf: Vec<char> = self.value.to_string().chars().collect();
                 let len = buf.len();
                 self.edit = Some((buf, len));
             }
@@ -92,7 +92,8 @@ impl Model {
     fn shown(&self) -> String {
         match &self.edit {
             Some((buf, _)) => buf.iter().collect(),
-            None => format!("{:.0}", self.value),
+            // No precision: the value as given
+            None => self.value.to_string(),
         }
     }
 }
@@ -142,7 +143,7 @@ proptest! {
     }
 
     /// With bounds given low to high, no sequence of sets, steps or edits
-    /// leaves the value outside them. (High to low and NaN: #1016.)
+    /// leaves the value outside them. (High to low and NaN: their own tests.)
     #[test]
     fn prop_number_input_value_stays_in_bounds(
         a in -1e3f64..1e3,
@@ -196,4 +197,69 @@ fn editing_takes_the_modified_editing_keys() {
     n.handle_key_event(&KeyEvent::ctrl(Key::Char('a')));
     n.handle_key(&Key::Char('-'));
     assert_eq!(n.display_string(), "-");
+}
+
+/// With a precision the value is held at it: typed, stepped or set, the
+/// value read back is the one shown (#1016; as Element Plus and Qt)
+#[test]
+fn a_precision_holds_the_value_at_its_decimals() {
+    use revue::widget::integer_input;
+    // integer_input takes 1.5 as 2, shown and held
+    let mut input = integer_input().focused(true);
+    for k in [Key::Char('1'), Key::Char('.'), Key::Char('5'), Key::Enter] {
+        input.handle_key(&k);
+    }
+    assert_eq!(
+        (input.get_value(), input.display_string()),
+        (2.0, "2".to_string())
+    );
+    // Set and stepped values agree with the display
+    let mut input = NumberInput::new().precision(1).step(0.1);
+    for v in [1.25, 2.555, -0.04, 0.1 + 0.2] {
+        input.set_value(v);
+        let shown: f64 = input.display_string().parse().unwrap();
+        assert_eq!(input.get_value(), shown, "{v}");
+        assert!(
+            !input.display_string().starts_with("-0"),
+            "{v}: no negative zero"
+        );
+    }
+    input.set_value(0.0);
+    for _ in 0..3 {
+        input.increment();
+    }
+    assert_eq!(input.get_value(), 0.3);
+    // A precision given after the value rounds it then
+    let input = NumberInput::new().value(19.987).precision(2);
+    assert_eq!(input.get_value(), 19.99);
+    // A bound off the decimals is rounded too, so the value stays inside
+    // what is shown
+    let mut input = NumberInput::new().min(0.04).max(9.96).precision(1);
+    input.set_value(-5.0);
+    assert_eq!(input.get_value(), 0.0);
+    input.set_value(50.0);
+    assert_eq!(input.get_value(), 10.0);
+}
+
+/// Without a precision (the default) the value is kept and shown as given
+#[test]
+fn no_precision_keeps_the_value_as_given() {
+    let input = NumberInput::new().value(42.5);
+    assert_eq!(
+        (input.get_value(), input.display_string()),
+        (42.5, "42.5".to_string())
+    );
+    let input = NumberInput::new().value(3.0);
+    assert_eq!(input.display_string(), "3");
+    let mut input = NumberInput::new().focused(true);
+    for k in [
+        Key::Char('1'),
+        Key::Char('.'),
+        Key::Char('2'),
+        Key::Char('5'),
+        Key::Enter,
+    ] {
+        input.handle_key(&k);
+    }
+    assert_eq!(input.get_value(), 1.25);
 }
