@@ -7,8 +7,7 @@ use crate::widget::data::json_viewer::search::Search;
 impl Search for JsonViewer {
     fn search(&mut self, query: &str) {
         self.search_state.search_query = query.to_lowercase();
-        self.search_state.search_matches.clear();
-        self.search_state.current_match = 0;
+        self.search_state.clear_matches();
 
         if self.search_state.search_query.is_empty() {
             return;
@@ -21,8 +20,7 @@ impl Search for JsonViewer {
 
     fn clear_search(&mut self) {
         self.search_state.search_query.clear();
-        self.search_state.search_matches.clear();
-        self.search_state.current_match = 0;
+        self.search_state.clear_matches();
     }
 
     fn match_count(&self) -> usize {
@@ -59,13 +57,13 @@ impl JsonViewer {
     }
 
     fn go_to_match(&mut self) {
-        let root = &self.root;
+        let Some(root) = &self.root else {
+            return;
+        };
         let mut selected = self.selection.index().unwrap_or(0);
         self.search_state
-            .go_to_match(&mut self.collapsed, &mut selected, |collapsed| {
-                root.as_ref()
-                    .map(|root| flatten_tree(root, collapsed))
-                    .unwrap_or_default()
+            .go_to_match(root, &mut self.collapsed, &mut selected, |collapsed| {
+                flatten_tree(root, collapsed)
             });
         self.select_row(selected);
     }
