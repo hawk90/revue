@@ -44,8 +44,10 @@ proptest! {
                 Op::Insert(at, n) => {
                     let at = at.min(s.content());
                     s.rows_inserted(at, n);
-                    // Rows above the view carry it down; the end is followed instead
-                    if !before_following && at < before_offset {
+                    // Rows above the view, or at its top row, carry it down;
+                    // the end is followed instead
+                    let has_top = before_offset < s.content() - n;
+                    if !before_following && at <= before_offset && has_top {
                         prop_assert_eq!(s.offset(), (before_offset + n).min(s.max_offset()));
                     }
                 }

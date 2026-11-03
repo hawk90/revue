@@ -4,9 +4,14 @@ use super::{AiStream, StreamStatus};
 
 impl AiStream {
     /// Append text (for streaming)
+    ///
+    /// Text appended to a completed stream reopens it, so the new text is
+    /// typed out: the animation completes the stream whenever it catches up
+    /// with the text it has, even while more is on the way.
     pub fn append(&mut self, text: &str) {
         self.content.push_str(text);
-        if self.status == StreamStatus::Idle {
+        let reopens = self.status == StreamStatus::Complete && !text.is_empty();
+        if self.status == StreamStatus::Idle || reopens {
             self.status = StreamStatus::Streaming;
             self.last_update = Some(crate::utils::clock::now());
         }
