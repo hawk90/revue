@@ -151,13 +151,17 @@ impl TextArea {
             min_height: 3,
             fg: None,
             bg: None,
-            cursor_fg: None,
+            // Black on the white cursor, as Input draws it (#1007)
+            cursor_fg: Some(Color::BLACK),
             selection_bg: Some(Color::rgb(50, 50, 150)),
-            line_number_fg: None,
+            // Dimmed, so line numbers do not read as text (#1007)
+            line_number_fg: Some(Color::rgb(128, 128, 128)),
             highlighter: None,
             find_replace: None,
-            match_highlight_bg: None,
-            current_match_bg: None,
+            // Find matches on a background, the current one on a brighter
+            // one, as before #271 (#1007)
+            match_highlight_bg: Some(Color::rgb(100, 100, 0)),
+            current_match_bg: Some(Color::rgb(255, 200, 0)),
             props: WidgetProps::new(),
             last_viewport_height: std::cell::Cell::new(10),
             last_text_width: std::cell::Cell::new(0),

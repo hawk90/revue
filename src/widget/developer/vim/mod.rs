@@ -36,6 +36,13 @@ pub struct VimState {
     action_count: Option<usize>,
     /// Pending operator
     operator: Option<char>,
+    /// The count typed before the pending operator: vim multiplies it with
+    /// the one typed after (`2d3w` deletes six words, #1363)
+    operator_count: Option<usize>,
+    /// `f`, `F`, `t` or `T`, waiting for the char to find
+    pending_find: Option<char>,
+    /// Whether replace mode is `r`'s, for one char, rather than `R`'s
+    replace_once: bool,
     /// Command buffer (for :commands)
     command_buffer: String,
     /// Search pattern
@@ -62,6 +69,9 @@ impl VimState {
             count: None,
             action_count: None,
             operator: None,
+            operator_count: None,
+            pending_find: None,
+            replace_once: true,
             command_buffer: String::new(),
             search_pattern: String::new(),
             search_forward: true,
@@ -82,6 +92,8 @@ impl VimState {
     pub fn set_mode(&mut self, mode: VimMode) {
         self.mode = mode;
         self.operator = None;
+        self.operator_count = None;
+        self.pending_find = None;
         self.count = None;
         self.action_count = None;
         self.key_buffer.clear();
@@ -91,7 +103,12 @@ impl VimState {
     /// [`handle_key`](Self::handle_key) just returned, until the next key
     /// (default 1). `3j` returns `Move(Down)` and leaves this at 3.
     pub fn count(&self) -> usize {
-        self.count.or(self.action_count).unwrap_or(1)
+        // With an operator pending, the counts before and after it multiply
+        let pending = match (self.operator_count, self.count) {
+            (None, None) => None,
+            (before, after) => Some(before.unwrap_or(1).saturating_mul(after.unwrap_or(1))),
+        };
+        pending.or(self.action_count).unwrap_or(1)
     }
 
     /// Get command buffer
@@ -119,7 +136,9 @@ impl VimState {
         self.mappings.insert(keys.to_string(), action);
     }
 
-    /// Parse and execute a command
+    /// Parse and execute a command. An empty one (`:` then Enter) is
+    /// `Unknown("")`, which does nothing, as in vim; a line number past
+    /// `usize` goes to the last line.
     pub fn execute_command(&mut self, cmd: &str) -> VimCommandResult {
         let cmd = cmd.trim();
 
@@ -137,9 +156,9 @@ impl VimState {
                 let option = cmd[4..].trim();
                 VimCommandResult::Set(option.to_string())
             }
-            _ if cmd.chars().all(|c| c.is_ascii_digit()) => {
-                let line: usize = cmd.parse().unwrap_or(1);
-                VimCommandResult::GoToLine(line)
+            _ if !cmd.is_empty() && cmd.chars().all(|c| c.is_ascii_digit()) => {
+                // All digits: only too large fails to parse
+                VimCommandResult::GoToLine(cmd.parse().unwrap_or(usize::MAX))
             }
             _ => VimCommandResult::Unknown(cmd.to_string()),
         }

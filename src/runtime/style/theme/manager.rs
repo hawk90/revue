@@ -100,9 +100,22 @@ impl ThemeManager {
         self.themes.get(id)
     }
 
-    /// Get all registered theme IDs
+    /// Get all registered theme IDs, sorted: the same order on every run,
+    /// which the picker lists and the cycles step through
     pub fn theme_ids(&self) -> Vec<&str> {
-        self.themes.keys().map(|s| s.as_str()).collect()
+        let mut ids: Vec<&str> = self.themes.keys().map(|s| s.as_str()).collect();
+        ids.sort_unstable();
+        ids
+    }
+
+    /// The IDs of the themes `keep` picks, in [`theme_ids`](Self::theme_ids)
+    /// order
+    fn sorted_ids(&self, keep: impl Fn(&Theme) -> bool) -> Vec<String> {
+        self.theme_ids()
+            .into_iter()
+            .filter(|id| self.themes.get(*id).is_some_and(&keep))
+            .map(str::to_string)
+            .collect()
     }
 
     /// Get all registered themes
@@ -137,7 +150,7 @@ impl ThemeManager {
 
     /// Cycle through all themes
     pub fn cycle(&mut self) {
-        let ids: Vec<String> = self.themes.keys().cloned().collect();
+        let ids = self.sorted_ids(|_| true);
         if ids.is_empty() {
             return;
         }
@@ -152,12 +165,7 @@ impl ThemeManager {
 
     /// Cycle through dark themes only
     pub fn cycle_dark(&mut self) {
-        let dark_ids: Vec<String> = self
-            .themes
-            .iter()
-            .filter(|(_, t)| t.is_dark())
-            .map(|(id, _)| id.clone())
-            .collect();
+        let dark_ids = self.sorted_ids(Theme::is_dark);
 
         if dark_ids.is_empty() {
             return;
@@ -173,12 +181,7 @@ impl ThemeManager {
 
     /// Cycle through light themes only
     pub fn cycle_light(&mut self) {
-        let light_ids: Vec<String> = self
-            .themes
-            .iter()
-            .filter(|(_, t)| t.is_light())
-            .map(|(id, _)| id.clone())
-            .collect();
+        let light_ids = self.sorted_ids(Theme::is_light);
 
         if light_ids.is_empty() {
             return;

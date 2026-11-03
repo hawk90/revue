@@ -50,6 +50,16 @@ impl RichTextEditor {
                 BlockType::Heading3 => {
                     self.render_heading(ctx, x, line.y, width, &text, 3);
                 }
+                // Headings 4 to 6 are headings too (#1076)
+                BlockType::Heading4 => {
+                    self.render_heading(ctx, x, line.y, width, &text, 4);
+                }
+                BlockType::Heading5 => {
+                    self.render_heading(ctx, x, line.y, width, &text, 5);
+                }
+                BlockType::Heading6 => {
+                    self.render_heading(ctx, x, line.y, width, &text, 6);
+                }
                 BlockType::Quote => {
                     ctx.set(
                         x,
@@ -96,8 +106,8 @@ impl RichTextEditor {
         }
     }
 
-    /// A numbered list item: its number - the block's position in the
-    /// document - a dot, and the text.
+    /// A numbered list item: its number within its list (the run of
+    /// numbered items it is in, from 1), a dot, and the text (#1076)
     fn draw_preview_numbered(
         &self,
         ctx: &mut RenderContext,
@@ -108,7 +118,11 @@ impl RichTextEditor {
         text_fg: impl Fn(usize) -> Color,
     ) {
         let x = line.x;
-        let num = (block_idx + 1).to_string();
+        let first = (0..block_idx)
+            .rev()
+            .take_while(|&i| self.blocks[i].block_type == BlockType::NumberedList)
+            .count();
+        let num = (first + 1).to_string();
         let mut col = x;
         for ch in num.chars() {
             if col < x + line.width {

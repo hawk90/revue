@@ -1,5 +1,6 @@
 //! Vim widget tests
 
+mod keys_1081;
 mod model;
 
 use revue::event::Key;
@@ -1366,6 +1367,11 @@ fn an_operator_before_gg_takes_it_as_its_motion() {
     ] {
         let mut vim = VimState::new();
         assert_eq!(keys(&mut vim, text).last(), Some(&expected), "{text}");
+        // A change enters insert mode, as visual `c` does (#1081)
+        if text.starts_with('c') {
+            assert_eq!(vim.mode(), VimMode::Insert, "{text}");
+            vim.handle_key(&KeyEvent::new(Key::Escape));
+        }
         assert_eq!(
             keys(&mut vim, "w").last(),
             Some(&VimAction::Move(VimMotion::Word)),
