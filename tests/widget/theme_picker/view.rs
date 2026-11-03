@@ -292,3 +292,103 @@ fn the_selected_theme_stays_in_view() {
     let shown = rows(&render(&p, 30, 5), 30, 5).concat();
     assert!(shown.contains('▶'), "only Dark and Light are drawn");
 }
+
+// =========================================================================
+// #1097: a stable list, the header and box within their width, view meta,
+// Tab wrapping, unknown ids
+// =========================================================================
+
+use revue::event::{Key, KeyEvent};
+use revue::style::theme_ids;
+use revue::widget::Interactive;
+
+fn render_1097(v: &dyn View, w: u16, h: u16) -> Buffer {
+    let mut b = Buffer::new(w, h);
+    v.render(&mut RenderContext::new(&mut b, Rect::new(0, 0, w, h)));
+    b
+}
+
+fn text_1097(b: &Buffer, w: u16, h: u16) -> String {
+    (0..h)
+        .map(|y| {
+            (0..w)
+                .map(|x| b.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                + "\n"
+        })
+        .collect()
+}
+
+#[test]
+#[serial]
+fn theme_ids_come_in_a_stable_order() {
+    let ids = theme_ids();
+    let mut sorted = ids.clone();
+    sorted.sort();
+    assert_eq!(ids, sorted);
+}
+
+#[test]
+#[serial]
+fn header_stays_within_its_width() {
+    let b = render_1097(&ThemePicker::new().width(10), 40, 1);
+    for x in 10..40 {
+        assert_eq!(b.get(x, 0).unwrap().bg, None, "col {x}");
+    }
+
+    register_theme(
+        "longname",
+        Theme::custom("A theme name that is very long indeed").build(),
+    );
+    set_theme_by_id("longname");
+    let b = render_1097(&ThemePicker::new().themes(["longname"]), 60, 1);
+    for x in 35..60 {
+        assert_eq!(b.get(x, 0).unwrap().bg, None, "col {x}");
+    }
+    set_theme_by_id("dark");
+}
+
+#[test]
+#[serial]
+fn box_keeps_its_border_in_a_narrow_area() {
+    let mut p = ThemePicker::new().themes(["dark", "nord"]).width(50);
+    p.open();
+    let b = render_1097(&p, 30, 6);
+    assert_eq!(
+        b.get(29, 1).unwrap().symbol,
+        '┐',
+        "{}",
+        text_1097(&b, 30, 6)
+    );
+}
+
+#[test]
+#[serial]
+fn view_reports_the_id_and_classes() {
+    let p = ThemePicker::new().element_id("picker").class("themed");
+    assert_eq!(View::id(&p), Some("picker"));
+    assert_eq!(View::classes(&p), ["themed"]);
+}
+
+#[test]
+#[serial]
+fn tab_wraps_to_the_first_theme() {
+    let mut p = ThemePicker::new().themes(["dark", "nord"]);
+    p.handle_key(&KeyEvent::new(Key::Tab));
+    p.handle_key(&KeyEvent::new(Key::Tab));
+    assert_eq!(p.selected_id(), Some("dark"));
+    set_theme_by_id("dark");
+}
+
+#[test]
+#[serial]
+fn an_unknown_id_does_not_hide_the_selection() {
+    let mut p = ThemePicker::new().themes(["bogus", "dark"]);
+    p.open();
+    let b = render_1097(&p, 30, 6);
+    assert!(
+        text_1097(&b, 30, 6).contains('▶'),
+        "{}",
+        text_1097(&b, 30, 6)
+    );
+}

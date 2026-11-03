@@ -374,7 +374,9 @@ fn test_theme_picker_selected_id() {
 
 #[test]
 fn test_theme_picker_selected_id_after_navigation() {
-    let mut picker = ThemePicker::new().themes(["dracula", "nord", "github"]);
+    // "github" is not registered: it has no row, so the selection skips it
+    // (#1097)
+    let mut picker = ThemePicker::new().themes(["dracula", "github", "nord", "monokai"]);
 
     assert_eq!(picker.selected_id(), Some("dracula"));
 
@@ -382,10 +384,13 @@ fn test_theme_picker_selected_id_after_navigation() {
     assert_eq!(picker.selected_id(), Some("nord"));
 
     picker.select_next();
-    assert_eq!(picker.selected_id(), Some("github"));
+    assert_eq!(picker.selected_id(), Some("monokai"));
 
     picker.select_prev();
     assert_eq!(picker.selected_id(), Some("nord"));
+
+    picker.select_prev();
+    assert_eq!(picker.selected_id(), Some("dracula"));
 }
 
 #[test]
@@ -603,9 +608,9 @@ fn test_theme_picker_handle_key_tab() {
     picker.handle_key(&KeyEvent::new(Key::Tab));
     assert_eq!(picker.selected_id(), Some("dracula"));
 
-    // Note: Tab doesn't wrap around - stays at last theme
+    // After the last theme, Tab goes back to the first (#1097)
     picker.handle_key(&KeyEvent::new(Key::Tab));
-    assert_eq!(picker.selected_id(), Some("dracula"));
+    assert_eq!(picker.selected_id(), Some("dark"));
 
     let mut picker = ThemePicker::new().themes(["dark", "light"]);
     let event = KeyEvent::new(Key::Tab);
@@ -970,18 +975,23 @@ fn test_theme_picker_render_with_minimal_area() {
 
 #[test]
 fn test_theme_picker_navigation_bounds() {
-    let mut picker = ThemePicker::new().themes(["a", "b", "c", "d", "e"]);
+    let mut picker = ThemePicker::new().themes(["dark", "light", "nord", "dracula", "monokai"]);
 
     // Navigate to end
     for _ in 0..10 {
         picker.select_next();
     }
-    assert_eq!(picker.selected_id(), Some("e"));
+    assert_eq!(picker.selected_id(), Some("monokai"));
 
     // Navigate to start
     for _ in 0..10 {
         picker.select_prev();
     }
+    assert_eq!(picker.selected_id(), Some("dark"));
+
+    // Only unknown ids: nowhere to move
+    let mut picker = ThemePicker::new().themes(["a", "b"]);
+    picker.select_next();
     assert_eq!(picker.selected_id(), Some("a"));
 }
 
