@@ -151,13 +151,17 @@ impl TextArea {
             min_height: 3,
             fg: None,
             bg: None,
-            cursor_fg: None,
+            // Black on the white cursor, as Input draws it (#1007)
+            cursor_fg: Some(Color::BLACK),
             selection_bg: Some(Color::rgb(50, 50, 150)),
-            line_number_fg: None,
+            // Dimmed, so line numbers do not read as text (#1007)
+            line_number_fg: Some(Color::rgb(128, 128, 128)),
             highlighter: None,
             find_replace: None,
-            match_highlight_bg: None,
-            current_match_bg: None,
+            // Find matches on a background, the current one on a brighter
+            // one, as before #271 (#1007)
+            match_highlight_bg: Some(Color::rgb(100, 100, 0)),
+            current_match_bg: Some(Color::rgb(255, 200, 0)),
             props: WidgetProps::new(),
             last_viewport_height: std::cell::Cell::new(10),
             last_text_width: std::cell::Cell::new(0),
@@ -230,8 +234,9 @@ impl TextArea {
 
     /// Set minimum height in rows (0 = no constraint)
     ///
-    /// Defaults to 3. This prevents the TextArea from collapsing to zero height
-    /// when used as an auto-sized child in a flex/stack layout.
+    /// Defaults to 3. A content-sized stack gives the TextArea at least this
+    /// many rows when it has them, so it does not collapse to zero height;
+    /// the TextArea draws and scrolls in the rows it is given.
     pub fn min_height(mut self, height: u16) -> Self {
         self.min_height = height;
         self

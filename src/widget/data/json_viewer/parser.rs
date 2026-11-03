@@ -1,35 +1,36 @@
-//! JSON parsing for JsonViewer
+//! JSON parsing for JsonViewer: the grammar of RFC 8259, strictly
 
 use super::types::{JsonNode, JsonType};
 
 /// Maximum JSON nesting depth to prevent stack overflow
 const MAX_JSON_DEPTH: usize = 256;
 
-/// Simple JSON parser (handles basic JSON)
-pub fn parse_json(json: &str) -> Option<JsonNode> {
-    let json = json.trim();
-    if json.is_empty() {
-        return None;
-    }
+/// JSON whitespace: space, tab, line feed and carriage return (RFC 8259 §2)
+fn is_ws(c: char) -> bool {
+    matches!(c, ' ' | '\t' | '\n' | '\r')
+}
 
+/// The tree of `json`, one complete JSON value with only whitespace around
+/// it, or `None` when it is not valid JSON
+pub fn parse_json(json: &str) -> Option<JsonNode> {
     let chars: Vec<char> = json.chars().collect();
-    parse_value(&chars, "", 0).map(|(node, _)| node)
+    let (node, taken) = parse_value(&chars, "", 0)?;
+    chars[taken..].iter().all(|&c| is_ws(c)).then_some(node)
 }
 
 /// Whether `json` is one complete JSON value (surrounding whitespace allowed)
 pub(crate) fn is_json(json: &str) -> bool {
-    let json = json.trim();
-    let chars: Vec<char> = json.chars().collect();
-    match parse_value(&chars, "", 0) {
-        // `consumed` counts chars, not bytes.
-        Some((_, consumed)) => json.chars().skip(consumed).all(char::is_whitespace),
-        None => false,
-    }
+    parse_json(json).is_some()
 }
 
 // Each parser takes the chars from where its value starts to the end of the
 // input (a slice of one shared buffer, so nothing is copied per value) and
 // returns the node and the chars it took.
+
+/// The chars of whitespace at the start of `json`
+fn skip_ws(json: &[char]) -> usize {
+    json.iter().take_while(|&&c| is_ws(c)).count()
+}
 
 fn parse_value(json: &[char], path: &str, depth: usize) -> Option<(JsonNode, usize)> {
     // Prevent stack overflow from deeply nested JSON
@@ -37,14 +38,20 @@ fn parse_value(json: &[char], path: &str, depth: usize) -> Option<(JsonNode, usi
         return None;
     }
 
-    let start = json.iter().position(|c| !c.is_whitespace())?;
+    let start = skip_ws(json);
     let json = &json[start..];
     let first = *json.first()?;
+    // The root is `$`, whatever its type
+    let path = &node_path(path);
 
     let parsed = match first {
         '{' => parse_object(json, path, depth),
         '[' => parse_array(json, path, depth),
-        '"' => parse_string(json, path, depth),
+        '"' => {
+            let (value, taken) = parse_string(json)?;
+            let node = JsonNode::new("", path, JsonType::String, depth).with_value(value);
+            Some((node, taken))
+        }
         't' | 'f' => parse_bool(json, path, depth),
         'n' => parse_null(json, path, depth),
         c if c.is_ascii_digit() || c == '-' => parse_number(json, path, depth),
@@ -54,197 +61,209 @@ fn parse_value(json: &[char], path: &str, depth: usize) -> Option<(JsonNode, usi
     parsed.map(|(node, taken)| (node, start + taken))
 }
 
+/// `$` for the root, else the path as given
+fn node_path(path: &str) -> String {
+    if path.is_empty() {
+        "$".to_string()
+    } else {
+        path.to_string()
+    }
+}
+
 fn parse_object(json: &[char], path: &str, depth: usize) -> Option<(JsonNode, usize)> {
     if json.first() != Some(&'{') {
         return None;
     }
-
-    let node_path = if path.is_empty() {
-        "$".to_string()
-    } else {
-        path.to_string()
-    };
-
+    let node_path = node_path(path);
     let mut node = JsonNode::new("", &node_path, JsonType::Object, depth);
-    let mut children = Vec::new();
-    let mut idx = 1; // Skip '{'
-    let chars = json;
+    let mut idx = 1 + skip_ws(&json[1..]);
+
+    if json.get(idx) == Some(&'}') {
+        return Some((node, idx + 1));
+    }
 
     loop {
-        // Skip whitespace
-        while idx < chars.len() && chars[idx].is_whitespace() {
-            idx += 1;
-        }
-
-        if idx >= chars.len() {
+        // A member: a key, a colon and a value
+        let (key, taken) = parse_string(&json[idx..])?;
+        idx += taken;
+        idx += skip_ws(&json[idx..]);
+        if json.get(idx) != Some(&':') {
             return None;
         }
-
-        if chars[idx] == '}' {
-            idx += 1;
-            break;
-        }
-
-        // Skip comma
-        if chars[idx] == ',' {
-            idx += 1;
-            continue;
-        }
-
-        // Parse key
-        if chars[idx] != '"' {
-            return None;
-        }
-        let key_start = idx + 1;
         idx += 1;
-        while idx < chars.len() && chars[idx] != '"' {
-            if chars[idx] == '\\' {
-                idx += 1;
-            }
-            idx += 1;
-        }
-        if idx >= chars.len() {
-            return None;
-        }
-        let key: String = chars[key_start..idx].iter().collect();
-        idx += 1; // Skip closing quote
 
-        // Skip whitespace and colon
-        while idx < chars.len() && (chars[idx].is_whitespace() || chars[idx] == ':') {
-            idx += 1;
-        }
-
-        // Parse value
         let child_path = if node_path == "$" {
             format!("$.{}", key)
         } else {
             format!("{}.{}", node_path, key)
         };
+        let (mut child, consumed) = parse_value(&json[idx..], &child_path, depth + 1)?;
+        child.key = key;
+        node.children.push(child);
+        idx += consumed;
 
-        if let Some((mut child, consumed)) = parse_value(&chars[idx..], &child_path, depth + 1) {
-            child.key = key;
-            children.push(child);
-            idx += consumed;
-        } else {
-            return None;
+        // Then a comma and another member, or the end
+        idx += skip_ws(&json[idx..]);
+        match json.get(idx) {
+            Some(',') => {
+                idx += 1;
+                idx += skip_ws(&json[idx..]);
+            }
+            Some('}') => return Some((node, idx + 1)),
+            _ => return None,
         }
     }
-
-    node.children = children;
-    Some((node, idx))
 }
 
 fn parse_array(json: &[char], path: &str, depth: usize) -> Option<(JsonNode, usize)> {
     if json.first() != Some(&'[') {
         return None;
     }
-
-    let node_path = if path.is_empty() {
-        "$".to_string()
-    } else {
-        path.to_string()
-    };
-
+    let node_path = node_path(path);
     let mut node = JsonNode::new("", &node_path, JsonType::Array, depth);
-    let mut children = Vec::new();
-    let mut idx = 1; // Skip '['
-    let mut array_idx = 0;
-    let chars = json;
+    let mut idx = 1 + skip_ws(&json[1..]);
 
-    loop {
-        // Skip whitespace
-        while idx < chars.len() && chars[idx].is_whitespace() {
-            idx += 1;
-        }
-
-        if idx >= chars.len() {
-            return None;
-        }
-
-        if chars[idx] == ']' {
-            idx += 1;
-            break;
-        }
-
-        // Skip comma
-        if chars[idx] == ',' {
-            idx += 1;
-            continue;
-        }
-
-        // Parse value
-        let child_path = format!("{}[{}]", node_path, array_idx);
-        if let Some((mut child, consumed)) = parse_value(&chars[idx..], &child_path, depth + 1) {
-            child.key = format!("[{}]", array_idx);
-            children.push(child);
-            idx += consumed;
-            array_idx += 1;
-        } else {
-            return None;
-        }
+    if json.get(idx) == Some(&']') {
+        return Some((node, idx + 1));
     }
 
-    node.children = children;
-    Some((node, idx))
+    loop {
+        let array_idx = node.children.len();
+        let child_path = format!("{}[{}]", node_path, array_idx);
+        let (mut child, consumed) = parse_value(&json[idx..], &child_path, depth + 1)?;
+        child.key = format!("[{}]", array_idx);
+        node.children.push(child);
+        idx += consumed;
+
+        // Then a comma and another value, or the end
+        idx += skip_ws(&json[idx..]);
+        match json.get(idx) {
+            Some(',') => idx += 1,
+            Some(']') => return Some((node, idx + 1)),
+            _ => return None,
+        }
+    }
 }
 
-fn parse_string(json: &[char], path: &str, depth: usize) -> Option<(JsonNode, usize)> {
+/// A string from its opening quote: the decoded text and the chars taken,
+/// or `None` when it is not closed, holds a control character or a bad
+/// escape
+fn parse_string(json: &[char]) -> Option<(String, usize)> {
     if json.first() != Some(&'"') {
         return None;
     }
 
-    let chars = json;
     let mut idx = 1;
     let mut value = String::new();
 
-    while idx < chars.len() {
-        let c = chars[idx];
-        if c == '"' {
-            idx += 1;
-            break;
-        }
-        if c == '\\' && idx + 1 < chars.len() {
-            idx += 1;
-            match chars[idx] {
-                'n' => value.push('\n'),
-                'r' => value.push('\r'),
-                't' => value.push('\t'),
-                '"' => value.push('"'),
-                '\\' => value.push('\\'),
-                _ => value.push(chars[idx]),
-            }
-        } else {
-            value.push(c);
-        }
+    loop {
+        let c = *json.get(idx)?;
         idx += 1;
+        match c {
+            '"' => return Some((value, idx)),
+            '\\' => {
+                let escape = *json.get(idx)?;
+                idx += 1;
+                match escape {
+                    '"' => value.push('"'),
+                    '\\' => value.push('\\'),
+                    '/' => value.push('/'),
+                    'b' => value.push('\u{8}'),
+                    'f' => value.push('\u{c}'),
+                    'n' => value.push('\n'),
+                    'r' => value.push('\r'),
+                    't' => value.push('\t'),
+                    'u' => {
+                        let (ch, taken) = parse_unicode_escape(&json[idx..])?;
+                        value.push(ch);
+                        idx += taken;
+                    }
+                    _ => return None,
+                }
+            }
+            c if (c as u32) < 0x20 => return None,
+            c => value.push(c),
+        }
     }
-
-    let node = JsonNode::new("", path, JsonType::String, depth).with_value(value);
-    Some((node, idx))
 }
 
+/// The four hex digits after `\u` as a code unit
+fn hex4(json: &[char]) -> Option<u32> {
+    let digits = json.get(..4)?;
+    digits
+        .iter()
+        .try_fold(0u32, |n, c| Some(n * 16 + c.to_digit(16)?))
+}
+
+/// The char of a `\u` escape from after its `u`, joining a surrogate pair
+/// written as two escapes; a lone surrogate, which JSON's grammar allows
+/// but no char can hold, becomes U+FFFD. Returns the char and the chars
+/// taken.
+fn parse_unicode_escape(json: &[char]) -> Option<(char, usize)> {
+    let unit = hex4(json)?;
+    if (0xD800..0xDC00).contains(&unit) {
+        // A high surrogate: a low one may follow as `\uXXXX`
+        if json.get(4) == Some(&'\\') && json.get(5) == Some(&'u') {
+            if let Some(low) = hex4(&json[6..]) {
+                if (0xDC00..0xE000).contains(&low) {
+                    let code = 0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00);
+                    return Some((char::from_u32(code)?, 10));
+                }
+            }
+        }
+        return Some((char::REPLACEMENT_CHARACTER, 4));
+    }
+    Some((
+        char::from_u32(unit).unwrap_or(char::REPLACEMENT_CHARACTER),
+        4,
+    ))
+}
+
+/// A number: `-`, then `0` or digits not starting with 0, then optionally
+/// a fraction and an exponent (RFC 8259 §6)
 fn parse_number(json: &[char], path: &str, depth: usize) -> Option<(JsonNode, usize)> {
-    let chars = json;
+    let digits_from = |idx: usize| {
+        json[idx.min(json.len())..]
+            .iter()
+            .take_while(|c| c.is_ascii_digit())
+            .count()
+    };
     let mut idx = 0;
 
-    // Optional minus
-    if idx < chars.len() && chars[idx] == '-' {
+    if json.first() == Some(&'-') {
         idx += 1;
     }
 
-    // Digits
-    while idx < chars.len()
-        && (chars[idx].is_ascii_digit()
-            || chars[idx] == '.'
-            || chars[idx] == 'e'
-            || chars[idx] == 'E'
-            || chars[idx] == '+'
-            || chars[idx] == '-')
-    {
-        idx += 1;
+    // The integer part
+    match json.get(idx) {
+        Some('0') => idx += 1,
+        Some(c) if c.is_ascii_digit() => idx += digits_from(idx),
+        _ => return None,
     }
 
-    let value: String = chars[..idx].iter().collect();
+    // A fraction: a dot and at least one digit
+    if json.get(idx) == Some(&'.') {
+        let n = digits_from(idx + 1);
+        if n == 0 {
+            return None;
+        }
+        idx += 1 + n;
+    }
+
+    // An exponent: e or E, a sign maybe, and at least one digit
+    if matches!(json.get(idx), Some('e' | 'E')) {
+        idx += 1;
+        if matches!(json.get(idx), Some('+' | '-')) {
+            idx += 1;
+        }
+        let n = digits_from(idx);
+        if n == 0 {
+            return None;
+        }
+        idx += n;
+    }
+
+    let value: String = json[..idx].iter().collect();
     let node = JsonNode::new("", path, JsonType::Number, depth).with_value(value);
     Some((node, idx))
 }

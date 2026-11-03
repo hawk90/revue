@@ -259,8 +259,7 @@ proptest! {
     /// After any edits and moves, the cursor is drawn once in the area,
     /// wrapped or not, with or without the gutter: past a full row, on a
     /// space past the width, and deep in a line taller than the view too
-    /// (#1008). (`min_height(0)`: the default of 3 keeps the cursor in rows the
-    /// area does not have, #799.)
+    /// (#1008), whatever `min_height` (#1420).
     #[test]
     fn prop_textarea_cursor_always_on_screen(
         keys in prop::collection::vec(key(), 0..60),
@@ -268,11 +267,12 @@ proptest! {
         numbers in any::<bool>(),
         w in 6u16..14,
         h in 1u16..6,
+        min_height in 0u16..6,
     ) {
         let mut ta = TextArea::new()
             .wrap(wrap)
             .line_numbers(numbers)
-            .min_height(0)
+            .min_height(min_height)
             .focused(true);
         for k in &keys {
             ta.handle_key(k);
@@ -286,4 +286,115 @@ proptest! {
         prop_assert!(matches!(cells.len(), 1 | 2), "{:?} {:?}", cells, shown);
         prop_assert!(cells.iter().all(|&(x, y)| y == cells[0].1 && x - cells[0].0 < 2), "{:?} {:?}", cells, shown);
     }
+}
+
+// =========================================================================
+// #1420: min_height is asked of the layout; render scrolls by the rows it has
+// =========================================================================
+
+#[test]
+fn a_wrapped_cursor_row_is_drawn_in_a_one_row_area() {
+    let mut ta = TextArea::new()
+        .line_numbers(false)
+        .content("abcdefgh")
+        .focused(true);
+    ta.set_cursor(0, 7);
+    // Text width 5: "fgh" and the cursor are on the second wrapped row,
+    // the only one drawn
+    let b = render(&ta, 6, 1);
+    assert_eq!(row(&b, 0), "fgh");
+    assert_eq!(cursor_cells(&b), [(2, 0)]);
+}
+
+#[test]
+fn an_unwrapped_cursor_line_is_drawn_in_a_short_area() {
+    for (line, h) in [(1, 1), (2, 1), (2, 2)] {
+        let mut ta = TextArea::new()
+            .line_numbers(false)
+            .wrap(false)
+            .content("zero\none\ntwo")
+            .focused(true);
+        ta.set_cursor(line, 0);
+        let b = render(&ta, 8, h);
+        let want = ["zero", "one", "two"][line];
+        assert_eq!(row(&b, h - 1), want, "line {line}, {h} rows");
+        assert_eq!(cursor_cells(&b), [(0, h - 1)], "line {line}, {h} rows");
+    }
+}
+
+#[test]
+fn min_height_is_asked_of_the_layout() {
+    assert_eq!(View::min_size(&TextArea::new()), (0, 3));
+    assert_eq!(View::min_size(&TextArea::new().min_height(7)), (0, 7));
+    assert_eq!(View::min_size(&TextArea::new().min_height(0)), (0, 0));
+}
+
+#[test]
+fn a_taller_area_than_min_height_is_used_whole() {
+    let ta = TextArea::new()
+        .line_numbers(false)
+        .content("a\nb\nc\nd\ne")
+        .min_height(2);
+    let b = render(&ta, 4, 5);
+    let rows: Vec<String> = (0..5).map(|y| row(&b, y)).collect();
+    assert_eq!(rows, ["a", "b", "c", "d", "e"]);
+}
+
+/// Find matches are on a background, the current one on another, so each
+/// can be told from the text and from each other (#1007)
+#[test]
+fn test_textarea_find_matches_have_backgrounds() {
+    let mut ta = TextArea::new().content("ab ab ab x").line_numbers(false);
+    ta.open_find();
+    ta.set_find_query("ab");
+    let buffer = render(&ta, 20, 3);
+    let bgs: Vec<_> = [0u16, 3, 6, 9]
+        .iter()
+        .map(|&x| buffer.get(x, 0).unwrap().bg)
+        .collect();
+    let (current, other, plain) = (bgs[0], bgs[1], bgs[3]);
+    assert!(current.is_some() && other.is_some(), "{bgs:?}");
+    assert_ne!(current, other, "{bgs:?}");
+    assert_eq!(bgs[2], other);
+    assert_ne!(other, plain);
+}
+
+/// The cursor cell is black text on white, as Input's, and line numbers
+/// are dimmed apart from the text (#1007)
+#[test]
+fn test_textarea_cursor_text_and_line_numbers_are_colored() {
+    let ta = TextArea::new()
+        .content("abc")
+        .focused(true)
+        .line_numbers(true);
+    let buffer = render(&ta, 20, 3);
+    // The text starts after the gutter, at the cursor
+    let gutter = (0..20)
+        .find(|&x| buffer.get(x, 0).unwrap().symbol == 'a')
+        .unwrap();
+    let cursor = buffer.get(gutter, 0).unwrap();
+    assert_eq!(
+        (cursor.symbol, cursor.fg, cursor.bg),
+        ('a', Some(Color::BLACK), Some(Color::WHITE))
+    );
+    let number = (0..gutter)
+        .map(|x| buffer.get(x, 0).unwrap())
+        .find(|c| c.symbol == '1')
+        .unwrap();
+    assert!(number.fg.is_some());
+    assert_ne!(number.fg, buffer.get(gutter + 1, 0).unwrap().fg);
+}
+
+/// In an empty, focused TextArea the cursor covers the placeholder's first
+/// letter instead of blanking it, as Input does (#1007)
+#[test]
+fn test_textarea_cursor_keeps_the_placeholder_glyph() {
+    let ta = TextArea::new()
+        .placeholder("Write here")
+        .focused(true)
+        .line_numbers(false);
+    let buffer = render(&ta, 20, 3);
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!((cell.symbol, cell.bg), ('W', Some(Color::WHITE)));
+    assert_eq!(row(&buffer, 0), "Write here");
 }

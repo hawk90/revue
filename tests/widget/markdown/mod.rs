@@ -942,3 +942,33 @@ Details.
         pilot.snapshot("markdown_toc");
     }
 }
+
+/// A nested list does not take the outer list's numbering with it: after a
+/// bullet sublist, or a numbered one, the outer list goes on (#893)
+#[test]
+fn test_markdown_nested_lists_keep_the_outer_numbers() {
+    let rows = render_rows("1. a\n   - x\n2. b", 40);
+    assert_eq!(
+        row_containing(&rows, "b").unwrap().trim(),
+        "2. b",
+        "{rows:#?}"
+    );
+    let rows = render_rows("1. a\n   1. x\n   2. y\n2. b\n3. c", 40);
+    assert_eq!(
+        row_containing(&rows, " b").unwrap().trim(),
+        "2. b",
+        "{rows:#?}"
+    );
+    assert_eq!(
+        row_containing(&rows, " c").unwrap().trim(),
+        "3. c",
+        "{rows:#?}"
+    );
+    // A bullet list around a numbered one stays bullets
+    let rows = render_rows("- a\n  1. x\n- b", 40);
+    assert_eq!(
+        row_containing(&rows, " b").unwrap().trim(),
+        "• b",
+        "{rows:#?}"
+    );
+}

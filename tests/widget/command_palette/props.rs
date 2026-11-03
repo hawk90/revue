@@ -303,12 +303,13 @@ proptest! {
         let x = (80 - width) / 2;
         let first_row = 2 + 3 + u16::from(titled);
         let shown = m.filtered.len().min(max_visible as usize);
-        // The last row is left out: the bottom border is drawn over it
-        // (#1091).
-        for r in 0..shown.saturating_sub(1) {
+        // Every row is drawn, the last one too (#1091)
+        for r in 0..shown {
             let y = first_row + r as u16;
             let cmd = &m.commands[m.filtered[m.offset + r]];
-            let label_cols = (width - 15).saturating_sub(4) as usize;
+            // No shortcut: the label runs to the text columns' end, a
+            // column before the right border
+            let label_cols = (width - 6) as usize;
             let want: String = cmd.label.chars().take(label_cols).collect();
             let text = row(&b, y);
             let got: String = text.chars().skip(x as usize + 4).take(want.chars().count()).collect();
@@ -321,8 +322,8 @@ proptest! {
             };
             prop_assert_eq!(bg, Some(want_bg), "row {}", r);
         }
-        let bottom = first_row + shown as u16 - 1;
-        let bottom = if shown == 0 { first_row - 1 } else { bottom };
+        // The bottom border is below the last row, or below the separator
+        let bottom = first_row + shown as u16;
         let text = row(&b, bottom);
         prop_assert_eq!(text.chars().nth(x as usize), Some('╰'), "{}", text);
         let count = format!("{}/{}", m.filtered.len(), n);

@@ -125,6 +125,11 @@ fn test_formatted_body_json_header_on_non_json_body() {
         "Internal Server Error",
         "{\"truncated\": [1, 2",
         "{} trailing",
+        // Malformed JSON that looks like it: no comma, a trailing comma,
+        // no colon (#983)
+        "[1 2]",
+        "{\"a\": 1,}",
+        "{\"a\" 1}",
     ] {
         let response = with_content_type("application/json", body);
         assert_eq!(response.formatted_body(), body);

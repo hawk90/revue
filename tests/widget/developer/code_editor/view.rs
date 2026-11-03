@@ -285,3 +285,23 @@ proptest! {
         }
     }
 }
+
+/// In an editor narrower than the find box, the box takes the editor's
+/// width and its match count stays at its end, in view (#1082)
+#[test]
+fn test_code_editor_find_box_shows_the_count_when_narrow() {
+    let mut editor = CodeEditor::new().content("hello");
+    editor.open_find();
+    editor.handle_key(&Key::Char('l'));
+    let buffer = screen(&editor, 24, 2);
+    assert_eq!(row(&buffer, 0), format!("{:<21}1/2", "Find: l"));
+    for x in 0..24 {
+        assert!(buffer.get(x, 0).unwrap().bg.is_some(), "x={x}");
+    }
+    // The go-to-line box fits too: its background spans the 14 columns
+    let mut editor = CodeEditor::new().content("a\nb");
+    editor.open_goto_line();
+    let buffer = screen(&editor, 14, 2);
+    assert_eq!(row(&buffer, 0), "Go to line:");
+    assert!((0..14).all(|x| buffer.get(x, 0).unwrap().bg.is_some()));
+}

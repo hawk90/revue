@@ -121,19 +121,22 @@ fn the_search_line_shows_the_icon_the_query_and_a_cursor_after_it() {
         assert_eq!(cell(&b, x, 3).fg, Some(Color::WHITE));
         assert_eq!(cell(&b, x, 3).bg, Some(EDITOR_BG));
     }
-    assert_eq!(cell(&b, X + 6, 3).symbol, '▏');
-    assert_eq!(cell(&b, X + 6, 3).fg, Some(Color::WHITE));
+    // The cursor is a blank in white after the query, as in Input
+    assert_eq!(cell(&b, X + 6, 3).symbol, ' ');
+    assert_eq!(cell(&b, X + 6, 3).bg, Some(Color::WHITE));
 }
 
-/// The placeholder is drawn in the disabled grey. Its first column is left
-/// out: the cursor is drawn over the placeholder's first letter
-/// (#1091).
+/// The placeholder is drawn in the disabled grey; the cursor over its first
+/// letter keeps the letter, inverted (#1091).
 #[test]
 fn the_placeholder_is_grey() {
     let mut p = CommandPalette::new().placeholder("Find a command");
     p.show();
     let b = render(&p, 70, 12);
-    assert!(row(&b, 3).contains("ind a command"), "{}", row(&b, 3));
+    assert!(row(&b, 3).contains("Find a command"), "{}", row(&b, 3));
+    assert_eq!(cell(&b, X + 4, 3).symbol, 'F');
+    assert_eq!(cell(&b, X + 4, 3).fg, Some(EDITOR_BG));
+    assert_eq!(cell(&b, X + 4, 3).bg, Some(Color::WHITE));
     for x in X + 5..X + 18 {
         assert_eq!(cell(&b, x, 3).fg, Some(DISABLED_FG), "column {x}");
     }
@@ -186,8 +189,7 @@ fn the_selected_row_takes_the_selection_background() {
 
 #[test]
 fn query_matches_are_bold_in_the_match_color() {
-    // Two matches with the same letters: the last row is under the bottom
-    // border (#1091).
+    // Two matches with the same letters
     let mut p = shown(vec![
         Command::new("a", "Save File").icon('S'),
         Command::new("b", "Save Files").icon('S'),
@@ -247,7 +249,6 @@ fn shortcuts_end_before_the_border_and_descriptions_follow_the_label() {
 
 #[test]
 fn a_description_stops_before_the_shortcut() {
-    // A second command: the last row is under the bottom border (#1091).
     let p = shown(vec![
         Command::new("a", "A")
             .description("d".repeat(80))
@@ -262,16 +263,18 @@ fn a_description_stops_before_the_shortcut() {
 }
 
 #[test]
-fn a_long_label_stops_at_the_label_column() {
+fn a_long_label_stops_at_the_text_columns_end() {
     let label = "L".repeat(80);
     let b = render(
         &shown(vec![Command::new("a", &label), Command::new("b", "B")]),
         70,
         12,
     );
-    // The label column ends 15 columns before the frame does.
-    assert_eq!(cell(&b, RIGHT - 15, 5).symbol, 'L');
-    assert_eq!(cell(&b, RIGHT - 14, 5).symbol, ' ');
+    // With no shortcut the label runs to a blank column before the right
+    // border (#1091).
+    assert_eq!(cell(&b, RIGHT - 2, 5).symbol, 'L');
+    assert_eq!(cell(&b, RIGHT - 1, 5).symbol, ' ');
+    assert_eq!(cell(&b, RIGHT, 5).symbol, '│');
 }
 
 #[test]
@@ -306,12 +309,13 @@ fn an_empty_palette_draws_its_frame_and_a_zero_count() {
 #[test]
 fn a_palette_taller_than_the_area_draws_nothing() {
     let p = shown(sample());
-    // Three commands: the frame's height is computed as 3 + 3, and two rows
-    // above it make 8 (#1091 counts one row short); 7 do not fit.
-    let b = render(&p, 70, 8);
+    // Three commands: the frame is 4 + 3 rows high, and two rows above it
+    // make 9; 8 do not fit.
+    let b = render(&p, 70, 9);
     assert_eq!(cell(&b, X, 2).symbol, '╭');
-    let b = render(&p, 70, 7);
-    assert!((0..7).all(|y| row(&b, y).trim().is_empty()));
+    assert_eq!(cell(&b, X, 8).symbol, '╰');
+    let b = render(&p, 70, 8);
+    assert!((0..8).all(|y| row(&b, y).trim().is_empty()));
 }
 
 #[test]
@@ -326,12 +330,12 @@ fn rows_scroll_with_the_selection() {
     }
     assert_eq!(p.selection.offset(), 3);
     let b = render(&p, 70, 14);
-    // Rows 5.. show commands from the offset on. The fifth row is left out:
-    // the bottom border covers it (#1091).
-    for i in 0..4 {
+    // Rows 5..10 show the five commands from the offset on (#1091)
+    for i in 0..5 {
         let text = row(&b, 5 + i);
         assert!(text.contains(&format!("Command {} ", 3 + i)), "{text}");
     }
+    assert_eq!(cell(&b, X, 10).symbol, '╰');
 }
 
 #[test]
