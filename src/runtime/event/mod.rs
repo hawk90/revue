@@ -160,9 +160,10 @@ pub use gesture::{
 };
 pub use handler::{EventContext, EventHandler, EventPhase, HandlerId};
 pub use ime::{
-    Candidate, CompositionEvent, CompositionState, CompositionStyle, ImeConfig, ImeState,
-    PreeditSegment, PreeditString,
+    Candidate, CompositionEvent, CompositionState, ImeState, PreeditSegment, PreeditString,
 };
+#[allow(deprecated)]
+pub use ime::{CompositionStyle, ImeConfig};
 pub use keymap::{Key, KeyBinding, KeyMap};
 pub use reader::EventReader;
 pub(crate) use source::TickSchedule;

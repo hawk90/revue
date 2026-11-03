@@ -88,7 +88,10 @@ impl Model {
         match op {
             Op::Append(text) => {
                 self.text.extend(text.chars());
-                if self.status == StreamStatus::Idle {
+                // Idle starts streaming; text on a completed stream reopens it
+                if self.status == StreamStatus::Idle
+                    || (self.status == StreamStatus::Complete && !text.is_empty())
+                {
                     self.status = StreamStatus::Streaming;
                 }
             }
@@ -259,13 +262,6 @@ proptest! {
         }
         check(&stream, &model, "start")?;
         for (i, op) in ops.iter().enumerate() {
-            // Text appended after the stream completed is never typed out
-            // (#891), so the model leaves that out
-            if matches!(op, Op::Append(t) if !t.is_empty())
-                && model.status == StreamStatus::Complete
-            {
-                continue;
-            }
             match op {
                 Op::Append(text) => stream.append(text),
                 Op::Tick => stream.tick(),
@@ -373,4 +369,96 @@ fn chunk_style_shows_five_chars_a_tick() {
     let stops = stops(&mut stream, 12);
     assert!(stream.is_complete());
     assert_eq!(stops, [5, 10, 12]);
+}
+
+/// Ticks until the stream stops streaming, at most `limit` times
+fn tick_out(stream: &mut AiStream, limit: usize) {
+    for _ in 0..limit {
+        if stream.status() != StreamStatus::Streaming {
+            return;
+        }
+        stream.tick();
+    }
+}
+
+/// A chunk that arrives after the animation has caught up is typed out like
+/// the first one, in every typing style (#891)
+#[test]
+fn text_appended_after_the_animation_catches_up_is_shown() {
+    for style in STYLES {
+        let mut stream = AiStream::new().typing_style(style).typing_speed(0);
+        stream.append("Hel");
+        tick_out(&mut stream, 8);
+        assert!(stream.is_complete(), "{style:?}");
+        stream.append("lo");
+        assert_eq!(stream.status(), StreamStatus::Streaming, "{style:?}");
+        assert!(!stream.is_complete(), "{style:?}");
+        tick_out(&mut stream, 8);
+        assert_eq!(screen(&stream, 6, 1)[0], "Hello ", "{style:?}");
+        assert_eq!(stream.progress(), 1.0, "{style:?}");
+        assert!(stream.is_complete(), "{style:?}");
+    }
+}
+
+/// The reopened stream types the new text from where it stopped, not from
+/// the start: the first tick shows one more char in Character style
+#[test]
+fn a_reopened_stream_types_on_from_the_shown_text() {
+    let mut stream = AiStream::new()
+        .typing_style(TypingStyle::Character)
+        .typing_speed(0)
+        .wrap(false);
+    stream.append("ab");
+    tick_out(&mut stream, 8);
+    stream.append("cd");
+    assert_eq!(stream.progress(), 0.5);
+    stream.tick();
+    assert_eq!(stream.progress(), 0.75);
+    assert_eq!(screen(&stream, 6, 1)[0], "abc█  ");
+    stream.tick();
+    assert_eq!(stream.progress(), 1.0);
+    assert_eq!(screen(&stream, 6, 1)[0], "abcd  ");
+}
+
+/// `complete()` and `set_content` complete the stream too; text after them
+/// reopens it the same way
+#[test]
+fn text_after_complete_or_set_content_reopens_the_stream() {
+    let mut completed = AiStream::new().typing_speed(0).wrap(false);
+    completed.append("ab");
+    completed.complete();
+    completed.append("c");
+    assert_eq!(completed.status(), StreamStatus::Streaming);
+    tick_out(&mut completed, 8);
+    assert_eq!(screen(&completed, 4, 1)[0], "abc ");
+
+    let mut set = AiStream::new().typing_speed(0).wrap(false);
+    set.set_content("ab");
+    set.append("c");
+    assert_eq!(set.status(), StreamStatus::Streaming);
+    assert_eq!(set.progress(), 2.0 / 3.0);
+    tick_out(&mut set, 8);
+    assert_eq!(screen(&set, 4, 1)[0], "abc ");
+}
+
+/// An empty append is not new text: a completed stream stays complete. A
+/// paused or failed stream keeps its status whatever arrives.
+#[test]
+fn append_reopens_only_a_completed_stream_with_new_text() {
+    let mut empty = AiStream::new().typing_speed(0);
+    empty.set_content("ab");
+    empty.append("");
+    assert!(empty.is_complete());
+
+    let mut paused = AiStream::new().typing_speed(0);
+    paused.append("ab");
+    paused.pause();
+    paused.append("c");
+    assert_eq!(paused.status(), StreamStatus::Paused);
+
+    let mut failed = AiStream::new().typing_speed(0);
+    failed.append("ab");
+    failed.error();
+    failed.append("c");
+    assert_eq!(failed.status(), StreamStatus::Error);
 }

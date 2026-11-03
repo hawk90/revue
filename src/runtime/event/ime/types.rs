@@ -1,4 +1,5 @@
-//! Composition state, events, candidates and display configuration
+//! Composition state, events and candidates, and the deprecated display
+//! configuration
 
 // =============================================================================
 // Composition State
@@ -97,6 +98,11 @@ impl From<String> for Candidate {
 // =============================================================================
 
 /// Visual style for composition text
+#[deprecated(
+    since = "3.15.0",
+    note = "revue never draws an IME display: in a terminal the terminal or OS input method draws the preedit and the candidate window, at the terminal cursor (#1457); an app drawing its own keeps its own settings"
+)]
+#[allow(deprecated)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CompositionStyle {
     /// Underline the composing text
@@ -111,6 +117,11 @@ pub enum CompositionStyle {
 }
 
 /// Configuration for IME display
+#[deprecated(
+    since = "3.15.0",
+    note = "revue never draws an IME display: in a terminal the terminal or OS input method draws the preedit and the candidate window, at the terminal cursor (#1457); an app drawing its own keeps its own settings"
+)]
+#[allow(deprecated)]
 #[derive(Debug, Clone)]
 pub struct ImeConfig {
     /// Style for composing text
@@ -125,6 +136,7 @@ pub struct ImeConfig {
     pub inline_composition: bool,
 }
 
+#[allow(deprecated)]
 impl Default for ImeConfig {
     fn default() -> Self {
         Self {

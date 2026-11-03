@@ -16,7 +16,8 @@
 //!   in view. Scrolling up stops that; reaching the end again starts it. A
 //!   view without one never follows.
 //! - Rows inserted or removed above the view move the offset with them, so
-//!   the rows on screen stay put.
+//!   the rows on screen stay put. Rows inserted at the top row go above it,
+//!   at the top of the content too: following the start is not implied.
 //!
 //! The viewport is only known when the view is drawn, so
 //! [`set_viewport`](ScrollState::set_viewport) and
@@ -162,11 +163,14 @@ impl ScrollState {
     }
 
     /// `count` rows were inserted at row `at`. Rows inserted above the view
-    /// move it down with the rows it shows.
+    /// move it down with the rows it shows. Rows inserted at the top row go
+    /// above it too, so it stays on top; only a view with no row on top (no
+    /// content there yet) shows them.
     pub fn rows_inserted(&self, at: usize, count: usize) {
-        self.content.set(self.content.get() + count);
+        let before = self.content.get();
+        self.content.set(before + count);
         let offset = self.offset.get();
-        if at < offset {
+        if at < offset || (at == offset && offset < before) {
             self.offset.set(offset + count);
         }
         self.settle();
