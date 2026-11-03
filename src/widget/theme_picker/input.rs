@@ -29,10 +29,10 @@ impl Interactive for ThemePicker {
                 EventResult::Consumed
             }
             Key::Tab => {
-                // Apply next theme without opening dropdown
-                self.select_next();
-                if self.selected_index == 0 && !self.themes.is_empty() {
-                    // Wrapped around, go to first
+                // Apply the next theme without opening the list, back to the
+                // first after the last
+                if let Some(i) = self.next_known(Some(self.selected_index), true) {
+                    self.selected_index = i;
                 }
                 self.apply_selected();
                 EventResult::Consumed

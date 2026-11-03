@@ -90,7 +90,8 @@ impl ThemePicker {
         S: Into<String>,
     {
         self.themes = theme_ids.into_iter().map(|s| s.into()).collect();
-        self.selected_index = 0;
+        // The first theme that is registered: an unknown id has no row
+        self.selected_index = self.next_known(None, false).unwrap_or(0);
         self
     }
 
@@ -149,16 +150,38 @@ impl ThemePicker {
 
     /// Move selection up
     pub fn select_prev(&mut self) {
-        if self.selected_index > 0 {
-            self.selected_index -= 1;
+        if let Some(i) = self.prev_known(self.selected_index) {
+            self.selected_index = i;
         }
     }
 
     /// Move selection down
     pub fn select_next(&mut self) {
-        if self.selected_index < self.themes.len().saturating_sub(1) {
-            self.selected_index += 1;
+        if let Some(i) = self.next_known(Some(self.selected_index), false) {
+            self.selected_index = i;
         }
+    }
+
+    /// The index of the first registered theme after `from` (from the start
+    /// with `None`), wrapping to the start when `wrap`: unknown ids have no
+    /// row, so the selection never lands on one
+    pub(super) fn next_known(&self, from: Option<usize>, wrap: bool) -> Option<usize> {
+        let start = from.map_or(0, |i| i + 1);
+        let after = (start..self.themes.len()).find(|&i| self.is_known(i));
+        if after.is_some() || !wrap {
+            return after;
+        }
+        (0..start.min(self.themes.len())).find(|&i| self.is_known(i))
+    }
+
+    /// The index of the last registered theme before `from`
+    fn prev_known(&self, from: usize) -> Option<usize> {
+        (0..from).rev().find(|&i| self.is_known(i))
+    }
+
+    /// Whether theme `i` is registered
+    fn is_known(&self, i: usize) -> bool {
+        self.themes.get(i).is_some_and(|id| get_theme(id).is_some())
     }
 
     /// Apply the selected theme
