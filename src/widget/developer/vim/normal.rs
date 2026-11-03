@@ -19,6 +19,19 @@ pub(super) fn basic_motion(key: &Key) -> Option<VimMotion> {
 impl VimState {
     /// Handle key event in normal mode
     pub(super) fn handle_normal(&mut self, key: &KeyEvent) -> VimAction {
+        // Ctrl+R redoes and Ctrl+V starts block visual; vim scrolls or does
+        // more with the other Ctrl letters, so they are left to the app,
+        // never read as the plain letter (#1081)
+        if key.ctrl {
+            return match key.key {
+                Key::Char('r') => VimAction::Redo,
+                Key::Char('v') => {
+                    self.set_mode(VimMode::VisualBlock);
+                    VimAction::EnterVisualBlock
+                }
+                _ => VimAction::None,
+            };
+        }
         if self.take_count_digit(key) {
             return VimAction::None;
         }
@@ -55,27 +68,21 @@ impl VimState {
     /// over to a later motion. Escape goes on to its own handling, and `:`, `/`
     /// and `?` to the command line and search, as vim's do.
     fn complete_operator(&mut self, key: &KeyEvent) -> Option<VimAction> {
-        let op = self.operator?;
+        self.operator?;
         let motion = match key.key {
             Key::Escape | Key::Char(':' | '/' | '?') => return None,
             Key::Char('g') => {
                 self.key_buffer.push('g');
                 return Some(VimAction::None);
             }
+            Key::Char(find @ ('f' | 'F' | 't' | 'T')) => {
+                self.pending_find = Some(find);
+                return Some(VimAction::None);
+            }
             Key::Char(ch) => self.char_to_motion(ch),
             ref other => basic_motion(other),
         };
-        self.operator = None;
-        if motion.is_none() {
-            self.count = None;
-            return Some(VimAction::None);
-        }
-        Some(match op {
-            'd' => VimAction::Delete(motion),
-            'y' => VimAction::Yank(motion),
-            'c' => VimAction::Change(motion),
-            _ => VimAction::None,
-        })
+        Some(self.operator_action(motion))
     }
 
     /// Keys that switch to insert, visual, command or search mode
@@ -131,6 +138,10 @@ impl VimState {
                 self.key_buffer.push('g');
                 return Some(VimAction::None);
             }
+            Key::Char(find @ ('f' | 'F' | 't' | 'T')) => {
+                self.pending_find = Some(find);
+                return Some(VimAction::None);
+            }
             Key::Char('{') => VimMotion::ParagraphBack,
             Key::Char('}') => VimMotion::ParagraphForward,
             Key::Char('%') => VimMotion::MatchBracket,
@@ -147,6 +158,16 @@ impl VimState {
             // Operators
             Key::Char(op @ ('d' | 'y' | 'c')) => {
                 self.operator = Some(op);
+                // Digits after the operator are a count of their own
+                self.operator_count = self.count.take();
+                VimAction::None
+            }
+            // `r` replaces one char, `R` replaces until Escape
+            Key::Char(r @ ('r' | 'R')) => {
+                let count = self.count;
+                self.set_mode(VimMode::Replace);
+                self.replace_once = r == 'r';
+                self.count = count;
                 VimAction::None
             }
 
@@ -156,7 +177,6 @@ impl VimState {
             Key::Char('p') => VimAction::PasteAfter,
             Key::Char('P') => VimAction::PasteBefore,
             Key::Char('u') => VimAction::Undo,
-            Key::Char('r') if key.ctrl => VimAction::Redo,
             Key::Char('.') => VimAction::Repeat,
             Key::Char('J') => VimAction::JoinLines,
             Key::Char('>') => VimAction::Indent,
@@ -165,6 +185,7 @@ impl VimState {
             Key::Escape => {
                 self.count = None;
                 self.operator = None;
+                self.operator_count = None;
                 VimAction::Escape
             }
 
