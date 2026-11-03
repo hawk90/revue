@@ -120,6 +120,14 @@ SELF_TEST_CASES = [
         ["-pub fn revue::widget::Foo::c(&self) -> u8", "+pub fn revue::widget::Foo::c(&self) -> u16"],
         True,
     ),
+    (
+        "a nameable path changed beside a re-export",
+        [
+            "-pub fn revue::widget::Foo::f(&self, revue::widget::private::Hidden) -> revue::widget::Bar",
+            "+pub fn revue::widget::Foo::f(&self, revue::widget::Hidden) -> revue::widget::other::Bar",
+        ],
+        True,
+    ),
     ("item removed", ["-pub struct revue::widget::Bar"], True),
     ("only additions", ["+pub fn revue::widget::Foo::e(&self)"], False),
     (
