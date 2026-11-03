@@ -1,6 +1,8 @@
 //! The IME composition state machine
 
-use super::{Candidate, CompositionEvent, CompositionState, ImeConfig};
+#[allow(deprecated)]
+use super::ImeConfig;
+use super::{Candidate, CompositionEvent, CompositionState};
 use std::sync::Arc;
 
 /// Maximum allowed composition text length to prevent memory exhaustion
@@ -27,7 +29,8 @@ pub struct ImeState {
     candidates: Vec<Candidate>,
     /// Selected candidate index
     selected_candidate: usize,
-    /// Configuration
+    /// Configuration, kept for `config()` only: nothing reads it
+    #[allow(deprecated)]
     config: ImeConfig,
     /// Composition event callbacks
     callbacks: Vec<CompositionCallback>,
@@ -35,6 +38,7 @@ pub struct ImeState {
     enabled: bool,
 }
 
+#[allow(deprecated)]
 impl ImeState {
     /// Create new IME state
     pub fn new() -> Self {
@@ -51,6 +55,10 @@ impl ImeState {
     }
 
     /// Create with custom configuration
+    #[deprecated(
+        since = "3.15.0",
+        note = "revue never draws an IME display: in a terminal the terminal or OS input method draws the preedit and the candidate window, at the terminal cursor (#1457); an app drawing its own keeps its own settings"
+    )]
     pub fn with_config(config: ImeConfig) -> Self {
         Self {
             config,
@@ -63,11 +71,19 @@ impl ImeState {
     // -------------------------------------------------------------------------
 
     /// Get configuration
+    #[deprecated(
+        since = "3.15.0",
+        note = "revue never draws an IME display: in a terminal the terminal or OS input method draws the preedit and the candidate window, at the terminal cursor (#1457); an app drawing its own keeps its own settings"
+    )]
     pub fn config(&self) -> &ImeConfig {
         &self.config
     }
 
     /// Set configuration
+    #[deprecated(
+        since = "3.15.0",
+        note = "revue never draws an IME display: in a terminal the terminal or OS input method draws the preedit and the candidate window, at the terminal cursor (#1457); an app drawing its own keeps its own settings"
+    )]
     pub fn set_config(&mut self, config: ImeConfig) {
         self.config = config;
     }
