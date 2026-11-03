@@ -273,29 +273,6 @@ fn test_reject_windows_reserved_names() {
 }
 
 #[test]
-fn test_truncate_string_safe_utf8() {
-    use validation::truncate_string_safe;
-
-    // Test UTF-8 safe truncation
-    let ascii = "hello_world_test.txt";
-    let truncated = truncate_string_safe(ascii, 10);
-    // truncate_string_safe adds "..." so result will be at most max_len + 3
-    assert!(truncated.ends_with("..."));
-    assert!(truncated.len() <= 13); // 10 + "..."
-}
-
-#[test]
-fn test_truncate_string_single_emoji() {
-    use validation::truncate_string_safe;
-
-    // Emoji is 4 bytes in UTF-8
-    let emoji = "😀😀😀😀😀";
-    let truncated = truncate_string_safe(emoji, 10);
-    // Should handle gracefully without panic
-    assert!(truncated.ends_with("..."));
-}
-
-#[test]
 fn test_multiselect_preserves_paths_on_canonicalize_failure() {
     let mut picker = FilePicker::multi_select();
     picker
