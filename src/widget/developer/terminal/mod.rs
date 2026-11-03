@@ -1,6 +1,22 @@
-//! Terminal widget for embedded terminal emulator
+//! Terminal widget: the output an app writes, read as a terminal reads it,
+//! with scrollback and a command line
 //!
-//! Provides an embedded terminal with ANSI color support and scrollback.
+//! It has no PTY: the app writes text with [`Terminal::write`]. Of the
+//! control characters and sequences it acts on what command output uses on
+//! its own lines, as xterm does:
+//!
+//! - newline, carriage return, tab (stops every 8 columns, never past the
+//!   last) and backspace
+//! - SGR colors and modifiers (`ESC [ … m`)
+//! - erase in line (`ESC [ K`, `1K`, `2K`), cursor up, down, right and left
+//!   (`ESC [ n A` / `B` / `C` / `D`) and a column (`ESC [ n G`); the cursor
+//!   stays on the screen, the last `height` lines
+//! - filling the last column leaves the wrap pending until the next
+//!   printable character
+//!
+//! Whole-screen commands (erase display, absolute position, scroll regions,
+//! the alternate screen) and modes are read and dropped: the lines are a
+//! scrollback, not a screen grid. A full emulator is #1461.
 
 pub use types::{CursorStyle, TermCell, TermLine, TerminalAction};
 

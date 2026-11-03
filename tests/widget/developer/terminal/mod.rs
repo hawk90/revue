@@ -3,6 +3,7 @@
 //! Tests for ANSI parsing, SGR sequences, colors, and terminal behavior.
 
 mod ansi;
+mod line_controls;
 mod model;
 mod pending_wrap;
 mod types;

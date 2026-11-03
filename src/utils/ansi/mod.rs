@@ -19,7 +19,7 @@
 mod scan;
 mod sgr;
 
-pub(crate) use scan::{Scanner, Token};
+pub(crate) use scan::{Csi, Scanner, Token};
 pub(crate) use sgr::SgrState;
 
 use crate::render::Modifier;
