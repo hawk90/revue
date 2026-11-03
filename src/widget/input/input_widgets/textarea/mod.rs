@@ -230,8 +230,9 @@ impl TextArea {
 
     /// Set minimum height in rows (0 = no constraint)
     ///
-    /// Defaults to 3. This prevents the TextArea from collapsing to zero height
-    /// when used as an auto-sized child in a flex/stack layout.
+    /// Defaults to 3. A content-sized stack gives the TextArea at least this
+    /// many rows when it has them, so it does not collapse to zero height;
+    /// the TextArea draws and scrolls in the rows it is given.
     pub fn min_height(mut self, height: u16) -> Self {
         self.min_height = height;
         self

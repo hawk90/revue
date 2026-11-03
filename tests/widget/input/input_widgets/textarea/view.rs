@@ -259,8 +259,7 @@ proptest! {
     /// After any edits and moves, the cursor is drawn once in the area,
     /// wrapped or not, with or without the gutter: past a full row, on a
     /// space past the width, and deep in a line taller than the view too
-    /// (#1008). (`min_height(0)`: the default of 3 keeps the cursor in rows the
-    /// area does not have, #799.)
+    /// (#1008), whatever `min_height` (#1420).
     #[test]
     fn prop_textarea_cursor_always_on_screen(
         keys in prop::collection::vec(key(), 0..60),
@@ -268,11 +267,12 @@ proptest! {
         numbers in any::<bool>(),
         w in 6u16..14,
         h in 1u16..6,
+        min_height in 0u16..6,
     ) {
         let mut ta = TextArea::new()
             .wrap(wrap)
             .line_numbers(numbers)
-            .min_height(0)
+            .min_height(min_height)
             .focused(true);
         for k in &keys {
             ta.handle_key(k);
@@ -286,4 +286,56 @@ proptest! {
         prop_assert!(matches!(cells.len(), 1 | 2), "{:?} {:?}", cells, shown);
         prop_assert!(cells.iter().all(|&(x, y)| y == cells[0].1 && x - cells[0].0 < 2), "{:?} {:?}", cells, shown);
     }
+}
+
+// =========================================================================
+// #1420: min_height is asked of the layout; render scrolls by the rows it has
+// =========================================================================
+
+#[test]
+fn a_wrapped_cursor_row_is_drawn_in_a_one_row_area() {
+    let mut ta = TextArea::new()
+        .line_numbers(false)
+        .content("abcdefgh")
+        .focused(true);
+    ta.set_cursor(0, 7);
+    // Text width 5: "fgh" and the cursor are on the second wrapped row,
+    // the only one drawn
+    let b = render(&ta, 6, 1);
+    assert_eq!(row(&b, 0), "fgh");
+    assert_eq!(cursor_cells(&b), [(2, 0)]);
+}
+
+#[test]
+fn an_unwrapped_cursor_line_is_drawn_in_a_short_area() {
+    for (line, h) in [(1, 1), (2, 1), (2, 2)] {
+        let mut ta = TextArea::new()
+            .line_numbers(false)
+            .wrap(false)
+            .content("zero\none\ntwo")
+            .focused(true);
+        ta.set_cursor(line, 0);
+        let b = render(&ta, 8, h);
+        let want = ["zero", "one", "two"][line];
+        assert_eq!(row(&b, h - 1), want, "line {line}, {h} rows");
+        assert_eq!(cursor_cells(&b), [(0, h - 1)], "line {line}, {h} rows");
+    }
+}
+
+#[test]
+fn min_height_is_asked_of_the_layout() {
+    assert_eq!(View::min_size(&TextArea::new()), (0, 3));
+    assert_eq!(View::min_size(&TextArea::new().min_height(7)), (0, 7));
+    assert_eq!(View::min_size(&TextArea::new().min_height(0)), (0, 0));
+}
+
+#[test]
+fn a_taller_area_than_min_height_is_used_whole() {
+    let ta = TextArea::new()
+        .line_numbers(false)
+        .content("a\nb\nc\nd\ne")
+        .min_height(2);
+    let b = render(&ta, 4, 5);
+    let rows: Vec<String> = (0..5).map(|y| row(&b, y)).collect();
+    assert_eq!(rows, ["a", "b", "c", "d", "e"]);
 }
