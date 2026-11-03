@@ -23,14 +23,19 @@ SNAPSHOT=tests/public-api.txt
 cd "$(dirname "$0")/.."
 
 # --removed BASE: list the snapshot lines removed since BASE (a changed item is
-# a removed line and an added one) and fail when there are any.
+# a removed line and an added one) and fail when there are any. A line whose
+# only change is the path of a type the old snapshot does not list (so no
+# user could name it), now re-exported under the same name, is not counted
+# (#1445; scripts/public-api-removed.py).
 if [ "${1:-}" = "--removed" ]; then
-    removed=$(git diff -U0 "${2:?usage: --removed BASE}...HEAD" -- "$SNAPSHOT" | grep -E '^-[^-]|^-$' || true)
-    if [ -n "$removed" ]; then
-        echo "$removed"
-        exit 1
-    fi
-    exit 0
+    base=$(git merge-base "${2:?usage: --removed BASE}" HEAD)
+    old=$(mktemp)
+    diff=$(mktemp)
+    trap 'rm -f "$old" "$diff"' EXIT
+    git show "$base:$SNAPSHOT" >"$old"
+    git diff -U0 "$base" HEAD -- "$SNAPSHOT" >"$diff"
+    python3 scripts/public-api-removed.py "$old" "$diff"
+    exit
 fi
 
 if ! cargo public-api --version 2>/dev/null | grep -qx "cargo-public-api $TOOL_VERSION"; then
