@@ -59,8 +59,8 @@ impl MultiSelect {
         let max_x = width - 2; // Leave room for arrow
 
         if self.selected.is_empty() && !self.open {
-            // Draw placeholder
-            ctx.draw_text(0, 0, &self.placeholder, PLACEHOLDER_FG);
+            // The placeholder, cut before the gap and the arrow as tags are
+            ctx.draw_text_clipped(0, 0, &self.placeholder, PLACEHOLDER_FG, max_x);
         } else {
             // While searching, the tags leave room for the query: up to
             // QUERY_ROOM columns, half the row at most

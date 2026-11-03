@@ -51264,12 +51264,14 @@ pub fn revue::widget::Form::form_state(&self) -> &revue::prelude::FormState
 pub fn revue::widget::Form::get_error_style(&self) -> revue::widget::ErrorDisplayStyle
 pub fn revue::widget::Form::get_show_errors(&self) -> bool
 pub fn revue::widget::Form::get_submit_text(&self) -> core::option::Option<&alloc::string::String>
+pub fn revue::widget::Form::get_title(&self) -> core::option::Option<&str>
 pub fn revue::widget::Form::is_valid(&self) -> bool
 pub fn revue::widget::Form::new(revue::prelude::FormState) -> Self
 pub fn revue::widget::Form::on_submit(self, alloc::rcs::arc::Arc<dyn core::ops::function::Fn(std::collections::hash::map::HashMap<alloc::string::String, alloc::string::String>)>) -> Self
 pub fn revue::widget::Form::show_errors(self, bool) -> Self
 pub fn revue::widget::Form::submit(&self)
 pub fn revue::widget::Form::submit_text(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn revue::widget::Form::title(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for revue::widget::Form
 pub fn revue::widget::Form::clone(&self) -> Self
 impl core::default::Default for revue::widget::Form
@@ -72423,12 +72425,14 @@ pub fn revue::widget::Form::form_state(&self) -> &revue::prelude::FormState
 pub fn revue::widget::Form::get_error_style(&self) -> revue::widget::ErrorDisplayStyle
 pub fn revue::widget::Form::get_show_errors(&self) -> bool
 pub fn revue::widget::Form::get_submit_text(&self) -> core::option::Option<&alloc::string::String>
+pub fn revue::widget::Form::get_title(&self) -> core::option::Option<&str>
 pub fn revue::widget::Form::is_valid(&self) -> bool
 pub fn revue::widget::Form::new(revue::prelude::FormState) -> Self
 pub fn revue::widget::Form::on_submit(self, alloc::rcs::arc::Arc<dyn core::ops::function::Fn(std::collections::hash::map::HashMap<alloc::string::String, alloc::string::String>)>) -> Self
 pub fn revue::widget::Form::show_errors(self, bool) -> Self
 pub fn revue::widget::Form::submit(&self)
 pub fn revue::widget::Form::submit_text(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn revue::widget::Form::title(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for revue::widget::Form
 pub fn revue::widget::Form::clone(&self) -> Self
 impl core::default::Default for revue::widget::Form

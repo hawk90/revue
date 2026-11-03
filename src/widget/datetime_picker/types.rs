@@ -108,6 +108,18 @@ pub enum DateTimeFormat {
     DateTime12,
 }
 
+impl DateTimeFormat {
+    /// Whether the format shows a date
+    pub(super) fn has_date(self) -> bool {
+        !matches!(self, Self::TimeOnly | Self::TimeWithSeconds)
+    }
+
+    /// Whether the format shows a time
+    pub(super) fn has_time(self) -> bool {
+        self != Self::DateOnly
+    }
+}
+
 /// DateTime picker mode (which component is being edited)
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DateTimeMode {
