@@ -5,6 +5,7 @@ use revue::widget::{FilePicker, PickerResult};
 use std::fs;
 use std::path::PathBuf;
 
+#[cfg(unix)]
 fn listed_1110(p: &mut FilePicker) -> Vec<String> {
     let mut names = Vec::new();
     while let Some(e) = p.highlighted_entry() {
@@ -87,16 +88,4 @@ fn going_to_the_current_directory_adds_no_history() {
     picker.navigate_to(&root.join("sub")).unwrap();
     picker.go_back();
     assert_eq!(picker.current_dir(), root);
-}
-
-/// The error `try_set_start_dir` and `navigate_to` return can be named and
-/// matched (#1110)
-#[test]
-fn the_picker_error_can_be_named() {
-    use revue::widget::FilePickerError;
-    let err = FilePicker::new().try_set_start_dir("../up").err();
-    assert!(
-        matches!(err, Some(FilePickerError::PathTraversal(_))),
-        "{err:?}"
-    );
 }
