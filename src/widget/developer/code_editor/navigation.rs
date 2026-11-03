@@ -193,8 +193,8 @@ impl super::CodeEditor {
     /// start of the character the user sees as one there
     fn same_column_on(&self, line: usize) -> usize {
         let (from, col) = self.cursor_position();
-        let x = col_of(self.line_text(from), col);
-        let idx = char_at_col(self.line_text(line), x);
+        let x = col_of(self.line_text(from), col, self.tab_width());
+        let idx = char_at_col(self.line_text(line), x, self.tab_width());
         let pos = self.edit.pos_at_char(line, idx);
         if self.edit.char_index(pos) == idx {
             idx

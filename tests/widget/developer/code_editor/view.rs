@@ -51,15 +51,15 @@ fn test_code_editor_whitespace_markers() {
         bracket_matching: false,
         ..Default::default()
     };
-    // Spaces only: a tab is drawn zero columns wide, so its `→` never shows
-    // (#982)
+    // A tab's marker is its first cell, the rest of it blank (#1378)
     let editor = CodeEditor::new()
-        .content("x a  b")
+        .content("x a  b\tc")
         .line_numbers(false)
         .focused(false)
         .config(config);
     let buffer = screen(&editor, 10, 1);
-    assert_eq!(row(&buffer, 0), "x·a··b");
+    assert_eq!(row(&buffer, 0), "x·a··b→ c");
+    assert_eq!(buffer.get(6, 0).unwrap().fg, Some(editor.line_number_fg));
     // Markers in the line-number color, text in the text color
     assert_eq!(buffer.get(1, 0).unwrap().fg, Some(editor.line_number_fg));
     assert_eq!(buffer.get(4, 0).unwrap().fg, Some(editor.line_number_fg));
@@ -247,6 +247,8 @@ fn start() -> impl Strategy<Value = String> {
         Just("ab\n한글한글\n\n  x".to_string()),
         Just(format!("{}한\nshort", "w".repeat(70))),
         Just((0..40).map(|i| format!("line {i}\n")).collect::<String>()),
+        // Tabs take columns up to the next stop (#1378)
+        Just("\tx\n\t\tif a {\tb\t한\tc }\nab\tcd".to_string()),
     ]
 }
 

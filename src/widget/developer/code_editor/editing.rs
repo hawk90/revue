@@ -99,6 +99,12 @@ impl super::CodeEditor {
         }
     }
 
+    /// Columns between tab stops: `indent_size` (one at least), so a tab
+    /// indents as far as `indent_size` spaces
+    pub(super) fn tab_width(&self) -> usize {
+        self.config.indent_size.max(1)
+    }
+
     // =========================================================================
     // Undo and redo
     // =========================================================================

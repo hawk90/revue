@@ -5,6 +5,7 @@ use crate::patterns::form::{FieldType, FormField};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::theme::{DISABLED_FG, SECONDARY_TEXT, SUBTLE_GRAY};
+use crate::widget::traits::render_context::edit_line::NO_TABS;
 use crate::widget::traits::{RenderContext, View};
 
 impl Form {
@@ -41,7 +42,7 @@ impl Form {
         let title_x: u16 = 2;
 
         let max_x = area.width - 1;
-        ctx.put_edit_line(title_x, 0, title, 0, max_x - title_x, |_, ch| {
+        ctx.put_edit_line(title_x, 0, title, 0, max_x - title_x, NO_TABS, |_, ch| {
             let mut cell = Cell::new(ch);
             cell.fg = Some(title_fg);
             cell.bg = Some(Color::BLACK);
@@ -199,7 +200,7 @@ pub(super) fn put_text(
     fg: Color,
     modifier: Modifier,
 ) {
-    ctx.put_edit_line(x, y, text, 0, max_x.saturating_sub(x), |_, ch| {
+    ctx.put_edit_line(x, y, text, 0, max_x.saturating_sub(x), NO_TABS, |_, ch| {
         let mut cell = Cell::new(ch);
         cell.fg = Some(fg);
         cell.modifier |= modifier;

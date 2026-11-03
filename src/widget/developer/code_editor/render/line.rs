@@ -42,13 +42,15 @@ impl CodeEditor {
         // Get syntax highlights
         let highlights = self.get_highlights(line);
 
-        // Draw text, in columns: a wide glyph takes two cells.
+        // Draw text, in columns: a wide glyph takes two cells, a tab up to
+        // the next stop.
         ctx.put_edit_line(
             line_num_width,
             y,
             line,
             scroll_x,
             text_width,
+            self.tab_width(),
             |char_idx, ch| {
                 self.text_cell(
                     columns,
@@ -66,7 +68,7 @@ impl CodeEditor {
             .cursor
             .is_some_and(|(l, c)| l == line_idx && c >= line.chars().count())
         {
-            if let Some(x) = col_of(line, usize::MAX).checked_sub(scroll_x) {
+            if let Some(x) = col_of(line, usize::MAX, self.tab_width()).checked_sub(scroll_x) {
                 if x < text_width as usize {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(self.cursor_bg);

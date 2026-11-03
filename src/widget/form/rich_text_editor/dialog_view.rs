@@ -6,7 +6,7 @@ use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::display_width;
-use crate::widget::traits::render_context::edit_line::{col_of, scroll_to_cursor};
+use crate::widget::traits::render_context::edit_line::{col_of, scroll_to_cursor, NO_TABS};
 use crate::widget::traits::RenderContext;
 
 /// The dialog's own fill and text color
@@ -25,9 +25,9 @@ fn put_field(
     fg: Color,
     bg: Color,
 ) {
-    let text_w = col_of(text, usize::MAX);
+    let text_w = col_of(text, usize::MAX, NO_TABS);
     let scroll = scroll_to_cursor(0, text_w, 0, text_w, width as usize);
-    ctx.put_edit_line(x, y, text, scroll, width, |_, ch| {
+    ctx.put_edit_line(x, y, text, scroll, width, NO_TABS, |_, ch| {
         Cell::new(ch).fg(fg).bg(bg)
     });
 }
@@ -148,9 +148,15 @@ impl RichTextEditor {
         // Title
         let title_x = dialog_x + (dialog_width.saturating_sub(display_width(title) as u16)) / 2;
         let title_w = dialog_x + dialog_width - 1 - title_x;
-        ctx.put_edit_line(title_x, dialog_y + 1, title, 0, title_w, |_, ch| {
-            Cell::new(ch).fg(fg).bg(bg)
-        });
+        ctx.put_edit_line(
+            title_x,
+            dialog_y + 1,
+            title,
+            0,
+            title_w,
+            NO_TABS,
+            |_, ch| Cell::new(ch).fg(fg).bg(bg),
+        );
 
         // Typed text runs from column 8 to the right border's padding.
         let field_w = dialog_width.saturating_sub(10);

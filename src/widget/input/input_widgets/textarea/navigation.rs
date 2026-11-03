@@ -149,7 +149,7 @@ impl TextArea {
         let (start, end) = segments[k];
         let text = self.line_text(line);
         let seg: String = text.chars().skip(start).take(end - start).collect();
-        let col = start + char_at_col(&seg, x);
+        let col = start + char_at_col(&seg, x, self.tab_stop());
         // On the start of a character the user sees as one, not inside it
         if k + 1 < segments.len() && col >= end {
             self.cluster_start(line, end.saturating_sub(1)).max(start)
@@ -162,9 +162,11 @@ impl TextArea {
     /// between lines keeps the cursor in place across wide glyphs (a char
     /// index alone drifts one column per wide glyph before it).
     pub(super) fn same_column_on(&self, pos: CursorPos, line: usize) -> usize {
+        let tab = self.tab_stop();
         let col = char_at_col(
             self.line_text(line),
-            col_of(self.line_text(pos.line), pos.col),
+            col_of(self.line_text(pos.line), pos.col, tab),
+            tab,
         );
         self.cluster_start(line, col)
     }

@@ -84,6 +84,9 @@ const DEFAULT_HISTORY_BYTES: usize = 64 * 1024 * 1024;
 /// Typing within this of the last edit joins its undo step, by default
 const DEFAULT_GROUP_DELAY: Duration = Duration::from_millis(500);
 
+/// Columns between tab stops, as TextArea and CodeEditor draw a tab by default
+const DEFAULT_TAB_WIDTH: usize = 4;
+
 /// A cursor and the selection it makes: the text between its anchor and
 /// its head. With the anchor on the head nothing is selected.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -162,6 +165,8 @@ pub struct EditState {
     /// right after one, false after a move or any other edit
     joinable: bool,
     clock: Arc<dyn Fn() -> Instant + Send + Sync>,
+    /// See [`tab_width`](Self::tab_width)
+    tab_width: usize,
 }
 
 impl std::fmt::Debug for EditState {
@@ -198,6 +203,7 @@ impl EditState {
             group_delay: DEFAULT_GROUP_DELAY,
             joinable: false,
             clock: Arc::new(crate::utils::clock::now),
+            tab_width: DEFAULT_TAB_WIDTH,
         }
     }
 
@@ -208,6 +214,18 @@ impl EditState {
             single_line: true,
             ..Self::multi_line()
         }
+    }
+
+    /// Columns between tab stops (one at least; 4 by default), as the field
+    /// draws a tab: Up and Down keep the screen column across tabs by it
+    pub fn tab_width(mut self, width: usize) -> Self {
+        self.set_tab_width(width);
+        self
+    }
+
+    /// Set the columns between tab stops; see [`tab_width`](Self::tab_width)
+    pub fn set_tab_width(&mut self, width: usize) {
+        self.tab_width = width.max(1);
     }
 
     /// Start with `text`, the cursor at its start

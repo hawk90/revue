@@ -44,7 +44,7 @@ impl View for Terminal {
 
         // Render cursor if visible and focused
         if self.show_cursor && self.focused {
-            self.draw_cursor(ctx, area, default_fg);
+            self.draw_cursor(ctx, area, default_fg, default_bg);
         }
 
         // Render input line if there's input
@@ -113,8 +113,16 @@ impl Terminal {
         }
     }
 
-    /// The cursor glyph at the write position, when its line is in view
-    fn draw_cursor(&self, ctx: &mut RenderContext, area: Rect, default_fg: Color) {
+    /// The cursor glyph at the write position, when its line is in view, on
+    /// the background of the cell under it (the terminal's when no code set
+    /// one, or past the line's end)
+    fn draw_cursor(
+        &self,
+        ctx: &mut RenderContext,
+        area: Rect,
+        default_fg: Color,
+        default_bg: Color,
+    ) {
         let visible = self.visible_range();
         if !visible.contains(&self.cursor_row) {
             return;
@@ -131,7 +139,18 @@ impl Terminal {
                 CursorStyle::Bar => '│',
             };
 
-            ctx.set(cursor_x, cursor_y, Cell::new(cursor_char).fg(default_fg));
+            let bg = self
+                .lines
+                .get(self.cursor_row)
+                .and_then(|line| line.cells.get(self.cursor_col))
+                .map(|cell| cell.bg)
+                .filter(|bg| !bg.is_default())
+                .unwrap_or(default_bg);
+            ctx.set(
+                cursor_x,
+                cursor_y,
+                Cell::new(cursor_char).fg(default_fg).bg(bg),
+            );
         }
     }
 
@@ -169,19 +188,17 @@ impl Terminal {
         });
     }
 
-    /// `↑n` near the top-right corner: how many lines the view is scrolled up
+    /// `↑n` near the top-right corner, one column from the edge: how many
+    /// lines the view is scrolled up. Left out when the row has no room
+    /// for it and that column.
     fn draw_scroll_indicator(&self, ctx: &mut RenderContext, area: Rect) {
         let indicator = format!("↑{}", self.lines_below());
-        let indicator_len = indicator.len() as u16;
-        if area.width > indicator_len + 1 {
-            let start_x = area.width - indicator_len - 1;
-            for (i, ch) in indicator.chars().enumerate() {
-                ctx.set(
-                    start_x + i as u16,
-                    0,
-                    Cell::new(ch).fg(Color::YELLOW).bg(SEPARATOR_COLOR),
-                );
-            }
+        let columns = crate::utils::display_width(&indicator) as u16;
+        if area.width > columns + 1 {
+            let start_x = area.width - columns - 1;
+            ctx.put_str_with(start_x, 0, &indicator, area.width, |ch| {
+                Cell::new(ch).fg(Color::YELLOW).bg(SEPARATOR_COLOR)
+            });
         }
     }
 }

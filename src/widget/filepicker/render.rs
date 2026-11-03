@@ -1,7 +1,6 @@
 //! Rendering implementation for the FilePicker widget
 
 use super::types::{PickerEntry, PickerMode};
-use super::validation::truncate_string_safe;
 use super::FilePicker;
 use crate::render::Cell;
 use crate::style::Color;
@@ -18,10 +17,12 @@ impl View for FilePicker {
     fn render(&self, ctx: &mut RenderContext) {
         use crate::widget::stack::vstack;
 
+        // Rows are laid out in `width` columns, or the area's when narrower
+        let width = self.width.min(ctx.area.width);
         let mut content = vstack();
-        content = self.header(content);
-        content = self.rows(content, ctx);
-        content = self.footer(content);
+        content = self.header(content, width);
+        content = self.rows(content, ctx, width);
+        content = self.footer(content, width);
         content.render(ctx);
         ctx.bold_when_focused();
     }
@@ -55,26 +56,28 @@ impl View for NameField {
 }
 
 impl FilePicker {
-    /// The title, the current path, a separator and the parent row.
-    fn header(&self, mut content: Stack) -> Stack {
+    /// The title, the current path, a separator and the parent row, in
+    /// `width` columns
+    fn header(&self, mut content: Stack, width: u16) -> Stack {
         // Title
         if let Some(title) = &self.title {
             content = content.child(Text::new(title).bold());
         }
 
-        content = content.child(Text::new(format!(" {}", self.shown_path())).fg(Color::CYAN));
+        content = content.child(Text::new(format!(" {}", self.shown_path(width))).fg(Color::CYAN));
 
         // Separator
-        content = content.child(Text::new("─".repeat(self.width as usize)).fg(DARK_GRAY));
+        content = content.child(Text::new("─".repeat(width as usize)).fg(DARK_GRAY));
 
         // Parent directory option
         content.child(Text::new("  📁 ..").fg(LIGHT_GRAY))
     }
 
-    /// Current path - truncate from the left to show the end of the path
-    fn shown_path(&self) -> String {
+    /// The current path in a row `width` columns wide, cut from the left so
+    /// its end, the directory's own name, stays in view
+    fn shown_path(&self, width: u16) -> String {
         let path_str = self.current_dir.display().to_string();
-        let max_path_width = (self.width as usize).saturating_sub(4);
+        let max_path_width = (width as usize).saturating_sub(4);
         if crate::utils::display_width(&path_str) > max_path_width {
             let suffix_width = max_path_width.saturating_sub(3); // "..." prefix
                                                                  // Find suffix that fits by iterating from the end
@@ -101,7 +104,7 @@ impl FilePicker {
     /// header and footer, at most `max_visible`; when the entries overflow
     /// it, a row each is kept for the markers. It follows the highlight
     /// (#973).
-    fn rows(&self, mut content: Stack, ctx: &RenderContext) -> Stack {
+    fn rows(&self, mut content: Stack, ctx: &RenderContext, width: u16) -> Stack {
         let len = self.entries.len();
         let room = (ctx.area.height as usize).saturating_sub(self.fixed_rows());
         let window = if len <= room.min(self.max_visible) {
@@ -121,7 +124,7 @@ impl FilePicker {
         }
 
         for i in shown.clone() {
-            content = content.child(self.entry_row(i, ctx));
+            content = content.child(self.entry_row(i, ctx, width));
         }
 
         if shown.end < len {
@@ -140,19 +143,24 @@ impl FilePicker {
         header + footer
     }
 
-    /// One entry: its selection mark, icon, name and size.
-    fn entry_row(&self, i: usize, ctx: &RenderContext) -> Text {
+    /// One entry in `width` columns: its selection mark, icon, name and
+    /// size, the size right-aligned at the end. The name takes the columns
+    /// the rest leaves, cut with `...` when wider, by display width.
+    fn entry_row(&self, i: usize, ctx: &RenderContext, width: u16) -> Text {
+        use crate::utils::{pad_to_width, truncate_with_suffix};
+        /// Mark, icon and the space after it; the space and size after the name
+        const BEFORE_NAME: usize = 5;
+        const SIZE: usize = 10;
         let entry = &self.entries[i];
         let is_highlighted = i == self.highlighted;
 
         let icon = if entry.is_dir { "📁" } else { "📄" };
         let selected_mark = if entry.selected { "✓ " } else { "  " };
-        // Truncate name safely at UTF-8 character boundaries
-        let name = if entry.name.len() > 30 {
-            truncate_string_safe(&entry.name, 27)
-        } else {
-            entry.name.clone()
-        };
+        let name_width = (width as usize).saturating_sub(BEFORE_NAME + 1 + SIZE);
+        let name = pad_to_width(
+            &truncate_with_suffix(&entry.name, name_width, "..."),
+            name_width,
+        );
 
         let size = if entry.is_dir {
             String::new()
@@ -160,7 +168,7 @@ impl FilePicker {
             entry.format_size()
         };
 
-        let line = format!("{}{} {:<32} {:>10}", selected_mark, icon, name, size);
+        let line = format!("{selected_mark}{icon} {name} {size:>SIZE$}");
 
         let mut text = Text::new(&line).fg(self.entry_fg(entry, is_highlighted, ctx));
         if is_highlighted {
@@ -188,16 +196,16 @@ impl FilePicker {
     }
 
     /// A separator, the typed name (save mode), the selection count
-    /// (multi-select) and the help line.
-    fn footer(&self, mut content: Stack) -> Stack {
+    /// (multi-select) and the help line, in `width` columns
+    fn footer(&self, mut content: Stack, width: u16) -> Stack {
         // Separator
-        content = content.child(Text::new("─".repeat(self.width as usize)).fg(DARK_GRAY));
+        content = content.child(Text::new("─".repeat(width as usize)).fg(DARK_GRAY));
 
         // Filename input (for save mode)
         if self.mode == PickerMode::Save {
             content = content.child(NameField {
                 name: self.input_name.clone(),
-                width: self.width,
+                width,
             });
         }
 
