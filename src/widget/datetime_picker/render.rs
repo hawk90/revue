@@ -14,6 +14,7 @@ pub trait Rendering {
     fn date(&self) -> crate::widget::data::calendar::Date;
     fn time(&self) -> super::types::Time;
     fn mode(&self) -> super::types::DateTimeMode;
+    fn format(&self) -> super::types::DateTimeFormat;
     fn first_day(&self) -> crate::widget::data::calendar::FirstDayOfWeek;
     fn cursor_day(&self) -> u32;
     fn time_field(&self) -> super::types::TimeField;
@@ -265,11 +266,11 @@ pub trait Rendering {
             self.draw_text(ctx, field_x, field_y, meridiem, field_fg, false);
         }
 
-        // Instructions
-        let help = if self.mode() == super::types::DateTimeMode::Time {
-            "↑↓: change  ←→: field  Tab: date"
-        } else {
-            "Tab: switch to time"
+        // Instructions; Tab only where it switches, a format with both
+        let help = match (self.mode(), self.format().has_date()) {
+            (super::types::DateTimeMode::Time, true) => "↑↓: change  ←→: field  Tab: date",
+            (super::types::DateTimeMode::Time, false) => "↑↓: change  ←→: field",
+            (super::types::DateTimeMode::Date, _) => "Tab: switch to time",
         };
         self.draw_text(ctx, x, y + 3, help, DISABLED_FG, false);
     }

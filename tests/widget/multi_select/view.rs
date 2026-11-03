@@ -738,3 +738,57 @@ fn the_tag_under_the_cursor_stays_in_view_after_the_marker() {
     v.handle_key(&Key::Left); // c
     assert_eq!(row(&render_in(&v, 14, 1), 0), "... [c] [d]  ▼");
 }
+
+// =========================================================================
+// The header row keeps its arrow (#1093)
+// =========================================================================
+
+/// The default width shows the longest option as a tag
+#[test]
+fn the_longest_tag_fits_the_default_width() {
+    let mut s = fruits();
+    s.select_option(2);
+    let r = row(&render_in(&s, 30, 1), 0);
+    assert!(r.starts_with("[Cherry]"), "{r:?}");
+    let w = s.measure(30, 1).unwrap().0 as usize;
+    assert_eq!(r.chars().nth(w - 1), Some('▼'), "{r:?}");
+}
+
+/// The placeholder and the query are clipped before the arrow, never over
+/// it or past the widget
+#[test]
+fn the_placeholder_and_the_query_keep_the_arrow() {
+    // 1 + 4 = 5 columns: the arrow at column 4, nothing after it
+    let r = row(
+        &render_in(&multi_select().options(vec!["A", "B"]), 30, 1),
+        0,
+    );
+    assert_eq!(r.chars().nth(4), Some('▼'), "{r:?}");
+    assert_eq!(r.chars().take(4).collect::<String>(), "Sel ", "{r:?}");
+    assert_eq!(r.chars().skip(5).collect::<String>().trim(), "", "{r:?}");
+
+    let mut s = fruits();
+    s.select_option(0);
+    s.open();
+    s.set_query("an");
+    let b = render_in(&s, 30, 4);
+    let w = s.measure(30, 4).unwrap().0;
+    assert_eq!(b.get(w - 1, 0).unwrap().symbol, '▲', "{:?}", row(&b, 0));
+    assert_eq!(cols(&b, 0, w, 30).trim(), "", "{:?}", row(&b, 0));
+}
+
+/// Tags that do not fit are marked with `...`, which keeps the arrow
+#[test]
+fn hidden_tags_are_marked_and_the_mark_keeps_the_arrow() {
+    let mut s = MultiSelect::new().options((1..=12).map(|i| format!("Item {i}")).collect());
+    s.select_all();
+    let r = row(&render_in(&s, 30, 1), 0);
+    assert!(r.contains("..."), "{r:?}");
+
+    // 8 columns: "[ab] " ends at column 5, one before max_x = 6
+    let mut s = MultiSelect::new().options(vec!["ab", "cdef"]).width(8);
+    s.select_all();
+    let r = row(&render_in(&s, 20, 1), 0);
+    // ("[ab]" and " ..." do not both fit: the mark alone, the arrow kept)
+    assert_eq!(r.chars().nth(7), Some('▼'), "{r:?}");
+}
