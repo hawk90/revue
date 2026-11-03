@@ -20,7 +20,7 @@ const STYLES: [DigitStyle; 4] = [
     DigitStyle::Braille,
 ];
 
-fn render(d: &Digits, width: u16, height: u16) -> Buffer {
+pub(super) fn render(d: &Digits, width: u16, height: u16) -> Buffer {
     let mut buffer = Buffer::new(width, height);
     d.render(&mut RenderContext::new(
         &mut buffer,
@@ -29,7 +29,7 @@ fn render(d: &Digits, width: u16, height: u16) -> Buffer {
     buffer
 }
 
-fn row(buffer: &Buffer, y: u16) -> String {
+pub(super) fn row(buffer: &Buffer, y: u16) -> String {
     (0..buffer.width())
         .map(|x| buffer.get(x, y).unwrap().symbol)
         .collect()
@@ -61,22 +61,24 @@ fn format_model(
 ) -> String {
     let sign = if negative { "-" } else { "" };
     let tail = frac.map(|f| format!(".{f}")).unwrap_or_default();
+    let group = |int: &str| match sep {
+        Some(s) => grouped(int, s),
+        None => int.to_string(),
+    };
+    // Zeros after the sign up to `min_width` characters before grouping
     let raw_len = sign.len() + int.len() + tail.len();
-    let int = match (zeros, min_width) {
-        (true, Some(w)) if raw_len < w => format!("{}{int}", "0".repeat(w - raw_len)),
+    let zero_int = match min_width {
+        Some(w) if raw_len < w => format!("{}{int}", "0".repeat(w - raw_len)),
         _ => int.to_string(),
     };
-    let int = match sep {
-        Some(s) => grouped(&int, s),
-        None => int,
-    };
-    let shown = format!("{sign}{int}{tail}");
-    match (zeros, min_width) {
-        (false, Some(w)) if shown.chars().count() < w => {
-            format!("{}{shown}", " ".repeat(w - shown.chars().count()))
-        }
-        _ => shown,
+    let padded = format!("{sign}{}{tail}", group(&zero_int));
+    if zeros {
+        return padded;
     }
+    // Blanks take the width the zeros would, separators included (#1066)
+    let shown = format!("{sign}{}{tail}", group(int));
+    let pad = padded.chars().count() - shown.chars().count();
+    format!("{}{shown}", " ".repeat(pad))
 }
 
 #[test]
@@ -200,14 +202,9 @@ proptest! {
     #[test]
     fn formats_like_the_model(
         (negative, int, frac) in number(),
-        // A separator or a width, not both: with both, zero padding counts
-        // the digits and blank padding counts the separators too (#1066),
-        // so the model does not pick a side.
-        (sep, min_width) in prop_oneof![
-            Just((None, None)),
-            prop::sample::select(vec![',', '.', ' ', '_']).prop_map(|s| (Some(s), None)),
-            (0usize..16).prop_map(|w| (None, Some(w))),
-        ],
+        // A separator, a width, or both (#1066)
+        sep in prop::option::of(prop::sample::select(vec![',', '.', ' ', '_'])),
+        min_width in prop::option::of(0usize..16),
         zeros in prop::option::of(any::<bool>()),
     ) {
         let value = format!(
@@ -281,9 +278,9 @@ proptest! {
                     prop_assert_eq!(cell.fg, fg, "fg ({}, {})", x, y);
                     prop_assert_eq!(cell.bg, bg, "bg ({}, {})", x, y);
                 } else if inside {
-                    // The label takes the fg; its bg is left out (#1066:
-                    // the label ignores `bg`).
+                    // The label takes the fg and the bg (#1066)
                     prop_assert_eq!(cell.fg, fg, "label fg ({}, {})", x, y);
+                    prop_assert_eq!(cell.bg, bg, "label bg ({}, {})", x, y);
                 } else {
                     prop_assert_eq!((cell.fg, cell.bg), (None, None), "({}, {})", x, y);
                 }
