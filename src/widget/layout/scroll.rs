@@ -343,6 +343,14 @@ impl ScrollView {
             }
         }
 
+        // A focused field's caret in the content, where it scrolled to: the
+        // terminal shows it with its own cursor (#1457)
+        if let Some(caret) = content_buffer.caret() {
+            if let Some(y) = caret.y.checked_sub(offset).filter(|&y| y < viewport_height) {
+                ctx.set_caret(caret.x, y, &caret.under);
+            }
+        }
+
         self.render_scrollbar(ctx);
     }
 }

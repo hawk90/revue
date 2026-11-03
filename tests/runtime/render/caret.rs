@@ -229,6 +229,43 @@ fn a_caret_wider_than_its_field_shows_no_cursor_and_leaves_the_next_cell() {
     assert_eq!(parser.screen().cell(0, 1).unwrap().contents(), "z");
 }
 
+/// Where the cursor shows for a field on content row 5 of a scroll view
+/// four rows high, scrolled to `offset`
+fn scrolled_cursor(offset: u16) -> Option<(u16, u16)> {
+    use revue::widget::{RenderContext, ScrollView};
+    let view = ScrollView::new()
+        .content_height(20)
+        .show_scrollbar(false)
+        .scroll_offset(offset);
+    let mut content = view.create_content_buffer(10);
+    Input::new().value("ab").render(&mut RenderContext::new(
+        &mut content,
+        revue::layout::Rect::new(0, 5, 10, 1),
+    ));
+    let mut buffer = Buffer::new(10, 4);
+    view.render_content(
+        &mut RenderContext::new(&mut buffer, revue::layout::Rect::new(0, 0, 10, 4)),
+        &content,
+    );
+    let mut terminal = revue::render::Terminal::with_size(Vec::new(), 10, 4);
+    terminal.force_redraw(&buffer).unwrap();
+    let screen = emulate(terminal.writer(), 10, 4);
+    let shown = contains(terminal.writer(), SHOW);
+    shown.then(|| {
+        let (row, col) = screen.screen().cursor_position();
+        (col, row)
+    })
+}
+
+#[test]
+fn a_scroll_view_shows_the_cursor_where_the_field_scrolled_to() {
+    assert_eq!(scrolled_cursor(3), Some((2, 2)));
+    assert_eq!(scrolled_cursor(5), Some((2, 0)));
+    // Scrolled past it, and not yet to it
+    assert_eq!(scrolled_cursor(6), None);
+    assert_eq!(scrolled_cursor(0), None);
+}
+
 // ---------------------------------------------------------------------------
 // Editors
 // ---------------------------------------------------------------------------
