@@ -561,3 +561,51 @@ fn test_combined_builder() {
     assert!(footer[footer.char_indices().nth(1).unwrap().0..].starts_with(&"━".repeat(13)));
     assert_eq!(buffer.get(1, 11).unwrap().fg, Some(Color::MAGENTA));
 }
+
+/// A slide taller than the area scrolls within its content, with a marker
+/// for rows above and below; another slide starts at its top (#1256)
+#[test]
+fn test_slides_mode_scrolls_a_tall_slide() {
+    let body: String = (1..=30).map(|i| format!("line{i:02}\n\n")).collect();
+    let mut pres = slides(&format!("{body}\n---\nsecond"));
+    let shows =
+        |pres: &MarkdownPresentation, text: &str| find(&render(pres, 40, 12), text).is_some();
+    let buffer = render(&pres, 40, 12);
+    assert!(shows(&pres, "line01"));
+    assert!(!shows(&pres, "line30"));
+    assert!(find(&buffer, "▼").is_some(), "{:#?}", rows(&buffer));
+    assert!(find(&buffer, "▲").is_none());
+
+    // Down a few rows: the first line is above, a marker says so
+    pres.scroll_down(4);
+    let buffer = render(&pres, 40, 12);
+    assert!(!shows(&pres, "line01"), "{:#?}", rows(&buffer));
+    assert!(find(&buffer, "▲").is_some(), "{:#?}", rows(&buffer));
+
+    // To the end and no further: the last line shows, nothing below
+    pres.scroll_down(1000);
+    let buffer = render(&pres, 40, 12);
+    assert!(shows(&pres, "line30"), "{:#?}", rows(&buffer));
+    assert!(find(&buffer, "▼").is_none(), "{:#?}", rows(&buffer));
+    pres.scroll_up(1000);
+    assert!(shows(&pres, "line01"));
+
+    // The next slide starts at its top, and coming back does too
+    pres.scroll_down(6);
+    assert!(pres.next_slide());
+    assert!(shows(&pres, "second"));
+    assert!(pres.prev_slide());
+    assert!(shows(&pres, "line01"));
+}
+
+/// Scrolling in slides mode leaves the preview where it was, and the other
+/// way round
+#[test]
+fn test_slide_and_preview_scroll_apart() {
+    let body: String = (1..=30).map(|i| format!("line{i:02}\n\n")).collect();
+    let mut pres = slides(&body);
+    pres.scroll_down(10);
+    pres.toggle_mode();
+    assert_eq!(pres.current_mode(), ViewMode::Preview);
+    assert!(find(&render(&pres, 40, 12), "line01").is_some());
+}
