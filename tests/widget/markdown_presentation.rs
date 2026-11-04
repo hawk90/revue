@@ -609,3 +609,34 @@ fn test_slide_and_preview_scroll_apart() {
     assert_eq!(pres.current_mode(), ViewMode::Preview);
     assert!(find(&render(&pres, 40, 12), "line01").is_some());
 }
+
+/// The preview scrolls through the rows the document wraps to at its width,
+/// not its unwrapped lines (#951): one long paragraph is many rows.
+#[test]
+fn test_preview_scrolls_through_wrapped_rows() {
+    let words: Vec<String> = (0..12).map(|i| format!("w{i:02}")).collect();
+    let mut pres = MarkdownPresentation::new(words.join(" "));
+    // 20 columns hold five words a row: 3 rows, 2 shown
+    let first = rows(&render(&pres, 20, 2));
+    assert!(first[0].starts_with("w00 w01 w02 w03 w04"), "{first:#?}");
+    pres.scroll_down(1000);
+    let last = rows(&render(&pres, 20, 2));
+    assert!(last[1].starts_with("w10 w11"), "{last:#?}");
+    assert!(last[0].starts_with("w05"), "{last:#?}");
+}
+
+/// A slide's content scrolls through its wrapped rows too
+#[test]
+fn test_slide_scrolls_through_wrapped_rows() {
+    let words: Vec<String> = (0..40).map(|i| format!("w{i:02}")).collect();
+    let mut pres = slides(&words.join(" "));
+    // 36 content columns hold nine words a row: 5 rows, 3 shown
+    let buffer = render(&pres, 40, 5);
+    assert!(find(&buffer, "w00").is_some(), "{:#?}", rows(&buffer));
+    assert!(find(&buffer, "w39").is_none(), "{:#?}", rows(&buffer));
+    assert!(find(&buffer, "▼").is_some(), "{:#?}", rows(&buffer));
+    pres.scroll_down(1000);
+    let buffer = render(&pres, 40, 5);
+    assert!(find(&buffer, "w39").is_some(), "{:#?}", rows(&buffer));
+    assert!(find(&buffer, "▼").is_none(), "{:#?}", rows(&buffer));
+}

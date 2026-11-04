@@ -23,7 +23,7 @@ impl Markdown {
                 .with_fg(self.config.heading_fg)
                 .with_modifier(Modifier::BOLD),
         );
-        ctx.lines.push(title);
+        ctx.push_wrapped(title, 0, &[]);
 
         for entry in &self.toc {
             let indent = "  ".repeat(entry.level.saturating_sub(1) as usize);
@@ -34,7 +34,8 @@ impl Markdown {
                     .with_fg(self.config.toc_fg)
                     .with_modifier(Modifier::UNDERLINE),
             );
-            ctx.lines.push(line);
+            let hang = StyledText::new(format!("{indent}  "));
+            ctx.push_wrapped(line, 1, &[hang]);
         }
 
         let mut sep = Line::new();
@@ -61,6 +62,10 @@ impl Markdown {
         }
     }
 
+    /// Lay out the collected code block: each source line highlighted, in a
+    /// box as wide as its widest row. With a width, a line too long for the
+    /// box goes on over the next rows, which keep the box's left edge and
+    /// leave the line-number column blank; nothing of the code is dropped.
     pub(super) fn render_code_block(&self, ctx: &mut parser::ParserContext) {
         ctx.in_code_block = false;
         ctx.new_line();
@@ -68,29 +73,59 @@ impl Markdown {
         // pulldown-cmark may hand the block over in several text events;
         // join them and split on newlines so each source line is its own row.
         let code = std::mem::take(&mut ctx.code_block_lines).concat();
-        let rows: Vec<(String, &str)> = code
-            .lines()
-            .enumerate()
-            .map(|(line_num, line)| {
-                let mut prefix = if ctx.code_border {
-                    "│ ".to_string()
-                } else {
-                    String::new()
-                };
-                if ctx.code_line_numbers {
-                    prefix.push_str(&format!("{:3} │ ", line_num + 1));
-                }
-                (prefix, line)
-            })
-            .collect();
+        // The box's sides take a column each
+        let room = ctx
+            .width()
+            .map(|width| width.saturating_sub(if ctx.code_border { 2 } else { 0 }));
 
-        // The box is as wide as its widest line (prefix included)
-        let inner_width = rows
-            .iter()
-            .map(|(prefix, line)| display_width(prefix) + display_width(line))
-            .max()
-            .unwrap_or(0)
-            .max(2);
+        // (prefix, code) per row
+        let mut rows: Vec<(String, Vec<StyledText>)> = Vec::new();
+        for (line_num, line) in code.lines().enumerate() {
+            let edge = if ctx.code_border { "│ " } else { "" };
+            let (prefix, blank) = if ctx.code_line_numbers {
+                let number = format!("{:3}", line_num + 1);
+                let blank = " ".repeat(display_width(&number));
+                (format!("{edge}{number} │ "), format!("{edge}{blank} │ "))
+            } else {
+                (edge.to_string(), edge.to_string())
+            };
+
+            let tokens = if ctx.syntax_highlight && ctx.code_block_lang != Language::Unknown {
+                ctx.highlighter.highlight_line(line, ctx.code_block_lang)
+            } else {
+                Vec::new()
+            };
+            let segments: Vec<StyledText> = if tokens.is_empty() {
+                vec![StyledText::new(line).with_fg(ctx.code_fg)]
+            } else {
+                tokens
+                    .iter()
+                    .map(|token| {
+                        let fg = ctx.highlighter.token_color(token.token_type);
+                        StyledText::new(token.text.clone()).with_fg(fg)
+                    })
+                    .collect()
+            };
+
+            let code_room = room.map_or(0, |room| room.saturating_sub(display_width(&prefix)));
+            for (i, part) in super::wrap::wrap_chars(&segments, code_room)
+                .into_iter()
+                .enumerate()
+            {
+                let prefix = if i == 0 {
+                    prefix.clone()
+                } else {
+                    blank.clone()
+                };
+                rows.push((prefix, part));
+            }
+        }
+
+        let row_width = |(prefix, code): &(String, Vec<StyledText>)| {
+            display_width(prefix) + code.iter().map(|s| display_width(&s.text)).sum::<usize>()
+        };
+        // The box is as wide as its widest row (prefix included)
+        let inner_width = rows.iter().map(row_width).max().unwrap_or(0).max(2);
 
         let border = |left: &str, right: &str| {
             let mut line = Line::new();
@@ -105,35 +140,18 @@ impl Markdown {
             ctx.lines.push(border("┌", "┐"));
         }
 
-        for (prefix, line) in &rows {
+        for row in &rows {
             let mut code_line = Line::new();
-
+            let (prefix, code) = row;
             if !prefix.is_empty() {
                 code_line.push(StyledText::new(prefix.clone()).with_fg(DISABLED_FG));
             }
-
-            // Apply syntax highlighting if enabled
-            let tokens = if ctx.syntax_highlight && ctx.code_block_lang != Language::Unknown {
-                ctx.highlighter.highlight_line(line, ctx.code_block_lang)
-            } else {
-                Vec::new()
-            };
-            if tokens.is_empty() {
-                code_line.push(StyledText::new(*line).with_fg(ctx.code_fg));
-            } else {
-                // Render highlighted code - tokens contain the text directly
-                for token in &tokens {
-                    let fg = ctx.highlighter.token_color(token.token_type);
-                    code_line.push(StyledText::new(token.text.clone()).with_fg(fg));
-                }
-            }
-
+            code_line.segments.extend(code.iter().cloned());
             if ctx.code_border {
-                let pad = inner_width - display_width(prefix) - display_width(line);
+                let pad = inner_width - row_width(row);
                 code_line
                     .push(StyledText::new(format!("{} │", " ".repeat(pad))).with_fg(DISABLED_FG));
             }
-
             ctx.lines.push(code_line);
         }
 

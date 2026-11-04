@@ -4,6 +4,7 @@
 use super::{parser, AdmonitionType, FootnoteDefinition, Line, Markdown, StyledText};
 use crate::render::Modifier;
 use crate::utils::syntax::Language;
+use crate::utils::unicode::display_width;
 use crate::widget::theme::{DARK_GRAY, PLACEHOLDER_FG};
 
 // Import pulldown-cmark types for parser
@@ -13,12 +14,19 @@ use pulldown_cmark::{CodeBlockKind, Tag, TagEnd};
 impl Markdown {
     /// Parse markdown into styled lines with current options
     pub(super) fn parse_with_options(&self) -> Vec<Line> {
+        self.parse_to_width(None)
+    }
+
+    /// Parse markdown into styled lines, broken to `width` columns
+    /// (`None`: no limit)
+    pub(super) fn parse_to_width(&self, width: Option<usize>) -> Vec<Line> {
         #[allow(unused_imports)]
         #[cfg(feature = "markdown")]
         use pulldown_cmark::{Event, HeadingLevel, Parser, Tag, TagEnd};
 
         let parser = Parser::new_ext(&self.source, parser::ParserContext::parser_options());
         let mut ctx = parser::ParserContext::new(&self.source, &self.config);
+        ctx.set_width(width);
 
         if self.config.show_toc {
             self.render_toc(&mut ctx);
@@ -57,11 +65,7 @@ impl Markdown {
                 Event::TaskListMarker(checked) => {
                     // Task list item - the checkbox stands in for the bullet
                     ctx.item_needs_bullet = false;
-                    if checked {
-                        ctx.add_text("[x] ");
-                    } else {
-                        ctx.add_text("[ ] ");
-                    }
+                    ctx.add_marker(if checked { "[x] " } else { "[ ] " }, false);
                 }
                 // Handle remaining events
                 _ => {}
@@ -86,15 +90,24 @@ impl Markdown {
             sorted_definitions
                 .sort_by_key(|d| ctx.footnote_label_map.get(&d.label).copied().unwrap_or(999));
 
-            for (idx, def) in sorted_definitions.iter().enumerate() {
-                let mut footnote_line = Line::new();
-                footnote_line.push(
-                    StyledText::new(format!("[{}] ", idx + 1))
-                        .with_fg(ctx.link_fg)
-                        .with_modifier(Modifier::BOLD),
-                );
-                footnote_line.push(StyledText::new(&def.content));
-                ctx.lines.push(footnote_line);
+            let footnotes: Vec<Line> = sorted_definitions
+                .iter()
+                .enumerate()
+                .map(|(idx, def)| {
+                    let mut footnote_line = Line::new();
+                    footnote_line.push(
+                        StyledText::new(format!("[{}] ", idx + 1))
+                            .with_fg(ctx.link_fg)
+                            .with_modifier(Modifier::BOLD),
+                    );
+                    footnote_line.push(StyledText::new(&def.content));
+                    footnote_line
+                })
+                .collect();
+            // A footnote's further rows line up after its number
+            for footnote_line in footnotes {
+                let hang = " ".repeat(display_width(&footnote_line.segments[0].text));
+                ctx.push_wrapped(footnote_line, 1, &[StyledText::new(hang)]);
             }
         }
 
@@ -128,7 +141,7 @@ impl Markdown {
                     let marker = "#".repeat(ctx.heading_level as usize);
                     ctx.current_fg = Some(PLACEHOLDER_FG);
                     ctx.current_modifier = Modifier::empty();
-                    ctx.add_text(&format!("{marker} "));
+                    ctx.add_marker(&format!("{marker} "), false);
                 }
                 ctx.current_modifier |= Modifier::BOLD;
                 ctx.current_fg = Some(ctx.heading_fg);
@@ -171,12 +184,12 @@ impl Markdown {
                 // A nested item must not continue its parent's line
                 ctx.flush_line();
                 let indent = "  ".repeat(ctx.list_depth.saturating_sub(1));
-                ctx.add_text(&indent);
+                ctx.add_marker(&indent, false);
 
                 // For ordered lists, add the number now
                 if let Some(n) = ctx.ordered_list_num {
                     ctx.ordered_list_num = Some(n + 1);
-                    ctx.add_text(&format!("{}. ", n));
+                    ctx.add_marker(&format!("{}. ", n), false);
                     ctx.item_needs_bullet = false;
                 } else {
                     // For unordered lists, wait to see if it's a task list;

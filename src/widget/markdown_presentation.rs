@@ -40,7 +40,7 @@
 //! ```
 
 use super::bigtext::BigText;
-use super::markdown::Markdown;
+use super::markdown::{draw_lines, Markdown};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::figlet::FigletFont;
@@ -78,6 +78,10 @@ pub struct MarkdownPresentation {
     /// Where the shown slide's content rows are scrolled to; a slide shown
     /// anew starts at its top (#1256)
     slide_scroll: ScrollState,
+    /// The widths the preview and the slide content were last drawn at:
+    /// markdown wraps to its width, so these give the rows to scroll
+    /// through. `None` until drawn.
+    drawn_widths: std::cell::Cell<(Option<u16>, Option<u16>)>,
     /// Use text sizing protocol for headers
     use_text_sizing: bool,
     /// Figlet font for header fallback
@@ -120,6 +124,7 @@ impl MarkdownPresentation {
             mode: ViewMode::Preview,
             scroll: ScrollState::new(),
             slide_scroll: ScrollState::new(),
+            drawn_widths: std::cell::Cell::new((None, None)),
             use_text_sizing: text_sizing_supported(),
             figlet_font: FigletFont::Block,
             bg: None,
@@ -148,6 +153,7 @@ impl MarkdownPresentation {
             mode: ViewMode::Preview,
             scroll: ScrollState::new(),
             slide_scroll: ScrollState::new(),
+            drawn_widths: std::cell::Cell::new((None, None)),
             use_text_sizing: text_sizing_supported(),
             figlet_font: FigletFont::Block,
             bg: None,
@@ -344,18 +350,25 @@ impl MarkdownPresentation {
         self.scroll_by(lines.min(isize::MAX as usize) as isize);
     }
 
-    /// Scroll the current mode's rows by `rows`
+    /// Scroll the current mode's rows by `rows`: the rows the markdown
+    /// takes at the width it was last drawn at, or with no width limit
+    /// before it is drawn
     fn scroll_by(&mut self, rows: isize) {
+        let row_count = |md: Markdown, width: Option<u16>| match width {
+            Some(width) => md.line_count_at(width),
+            None => md.line_count(),
+        };
+        let (preview_width, slide_width) = self.drawn_widths.get();
         match self.mode {
             ViewMode::Preview => {
                 self.scroll
-                    .set_content(Markdown::new(&self.source).line_count());
+                    .set_content(row_count(Markdown::new(&self.source), preview_width));
                 self.scroll.scroll_by(rows);
             }
             ViewMode::Slides => {
                 let rows_in_slide = self
                     .slide_content()
-                    .map_or(0, |content| Markdown::new(content).line_count());
+                    .map_or(0, |content| row_count(Markdown::new(content), slide_width));
                 self.slide_scroll.set_content(rows_in_slide);
                 self.slide_scroll.scroll_by(rows);
             }
@@ -389,17 +402,20 @@ impl MarkdownPresentation {
         self.fill_background(ctx);
 
         // Render full markdown using Markdown widget
-        let mut md = Markdown::new(&self.source)
+        let md = Markdown::new(&self.source)
             .link_fg(self.link_fg)
             .code_fg(self.code_fg)
             .heading_fg(self.heading_fg.unwrap_or_else(|| ctx.css_color(HEADING_FG)));
 
-        // From the scrolled-to row, kept so the last page is full (#973)
-        self.scroll.set_content(md.line_count());
+        // The rows at this width, from the scrolled-to row, kept so the
+        // last page is full (#973)
+        let width = ctx.area.width;
+        let (_, slide_width) = self.drawn_widths.get();
+        self.drawn_widths.set((Some(width), slide_width));
+        let lines = md.lines_at(width);
+        self.scroll.set_content(lines.len());
         self.scroll.set_viewport(usize::from(ctx.area.height));
-        md.lines.drain(..self.scroll.offset());
-
-        md.render(ctx);
+        draw_lines(lines.get(self.scroll.offset()..).unwrap_or(&[]), ctx);
 
         // Mode indicator in bottom right
         self.render_mode_indicator(ctx, "PREVIEW");
@@ -463,20 +479,26 @@ impl MarkdownPresentation {
                 );
 
                 let heading_fg = self.heading_fg.unwrap_or_else(|| ctx.css_color(HEADING_FG));
-                let mut md = Markdown::new(&content)
+                let md = Markdown::new(&content)
                     .link_fg(self.link_fg)
                     .code_fg(self.code_fg)
                     .heading_fg(heading_fg);
 
-                // From the scrolled-to row of the slide's content, as the
-                // preview scrolls the document (#1256)
-                self.slide_scroll.set_content(md.line_count());
+                // The rows at the content's width, from the scrolled-to row,
+                // as the preview scrolls the document (#1256)
+                let width = content_area.width;
+                let (preview_width, _) = self.drawn_widths.get();
+                self.drawn_widths.set((preview_width, Some(width)));
+                let lines = md.lines_at(width);
+                self.slide_scroll.set_content(lines.len());
                 self.slide_scroll
                     .set_viewport(usize::from(content_area.height));
-                md.lines.drain(..self.slide_scroll.offset());
 
                 let mut content_ctx = ctx.sub_ctx(content_area);
-                md.render(&mut content_ctx);
+                draw_lines(
+                    lines.get(self.slide_scroll.offset()..).unwrap_or(&[]),
+                    &mut content_ctx,
+                );
 
                 // ▲ / ▼ at the content's right edge while rows are above
                 // or below the view
