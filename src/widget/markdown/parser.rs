@@ -7,6 +7,7 @@ use crate::render::Modifier;
 use crate::style::Color;
 use crate::utils::figlet::FigletFont;
 use crate::utils::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
+use crate::utils::unicode::display_width;
 #[cfg(feature = "markdown")]
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
@@ -61,6 +62,15 @@ pub struct ParserContext<'a> {
     pub current_line: Line,
     pub lines: Vec<Line>,
     pub source: &'a str,
+    /// The width the lines are broken to, `None` for no limit
+    width: Option<usize>,
+    /// How many of the current line's first segments are its markers (list
+    /// indent, bullet or number, quote bar, heading `#`s), which the rest of
+    /// the line wraps beside
+    markers: usize,
+    /// What starts each further row of the current line when it wraps: the
+    /// quote bar again, blank columns for the rest of its markers
+    continuation: Vec<StyledText>,
 }
 
 impl<'a> ParserContext<'a> {
@@ -109,20 +119,95 @@ impl<'a> ParserContext<'a> {
             current_line: Line::new(),
             lines: Vec::new(),
             source,
+            width: None,
+            markers: 0,
+            continuation: Vec::new(),
+        }
+    }
+
+    /// Break the lines to `width` columns as they are added (`None`: no
+    /// limit)
+    pub(super) fn set_width(&mut self, width: Option<usize>) {
+        self.width = width;
+    }
+
+    /// The width the lines are broken to, if any
+    pub(super) fn width(&self) -> Option<usize> {
+        self.width
+    }
+
+    /// Add `line` as rows of at most the width: its first `markers`
+    /// segments start the first row and `continuation` the others, and the
+    /// rest wraps beside them at word boundaries.
+    pub(super) fn push_wrapped(
+        &mut self,
+        mut line: Line,
+        markers: usize,
+        continuation: &[StyledText],
+    ) {
+        let Some(width) = self.width else {
+            self.lines.push(line);
+            return;
+        };
+        let markers = markers.min(line.segments.len());
+        let body = line.segments.split_off(markers);
+        let lead = line.segments;
+        let room = width.saturating_sub(segments_width(&lead));
+        let mut rows = super::wrap::wrap_words(&body, room).into_iter();
+        let mut first = lead;
+        first.extend(rows.next().unwrap_or_default());
+        self.lines.push(Line { segments: first });
+        for row in rows {
+            let mut segments = continuation.to_vec();
+            segments.extend(row);
+            self.lines.push(Line { segments });
+        }
+    }
+
+    /// Add the current line, wrapped beside its markers, and start an empty
+    /// one
+    fn push_current(&mut self) {
+        let line = std::mem::take(&mut self.current_line);
+        let markers = std::mem::take(&mut self.markers);
+        let continuation = std::mem::take(&mut self.continuation);
+        self.push_wrapped(line, markers, &continuation);
+    }
+
+    /// Start the current line with a marker: list indent, bullet or number,
+    /// task box, heading `#`s, or (`repeat`) the quote bar, which starts
+    /// every row of the line when it wraps. Other markers leave blank
+    /// columns on the rows after the first. A marker after the line's text
+    /// is plain text.
+    pub(super) fn add_marker(&mut self, text: &str, repeat: bool) {
+        if text.is_empty() {
+            return;
+        }
+        let at_start = self.markers == self.current_line.segments.len();
+        self.add_text(text);
+        if at_start && self.markers < self.current_line.segments.len() {
+            // `add_text` may have put the bullet first
+            for segment in &self.current_line.segments[self.markers..] {
+                self.continuation.push(if repeat && segment.text == text {
+                    segment.clone()
+                } else {
+                    StyledText::new(" ".repeat(display_width(&segment.text)))
+                });
+            }
+            self.markers = self.current_line.segments.len();
         }
     }
 
     /// Flush the current line
     pub fn flush_line(&mut self) {
         if !self.current_line.is_empty() {
-            self.lines.push(std::mem::take(&mut self.current_line));
+            self.push_current();
         }
     }
 
     /// Start a new line
     pub fn new_line(&mut self) {
         if !self.current_line.is_empty() {
-            self.lines.push(std::mem::take(&mut self.current_line));
+            self.push_current();
         }
     }
 
@@ -132,7 +217,7 @@ impl<'a> ParserContext<'a> {
     pub fn add_text(&mut self, text: &str) {
         if !text.is_empty() && self.item_needs_bullet {
             self.item_needs_bullet = false;
-            self.current_line.push(StyledText::new("• "));
+            self.add_marker("• ", false);
         }
         if !text.is_empty() {
             self.current_line.push(StyledText {
@@ -150,7 +235,7 @@ impl<'a> ParserContext<'a> {
             return;
         }
         if self.current_line.is_empty() {
-            self.add_text("│ ");
+            self.add_marker("│ ", true);
         }
         self.add_text(text);
     }
@@ -183,4 +268,9 @@ impl<'a> ParserContext<'a> {
         options.insert(Options::ENABLE_FOOTNOTES);
         options
     }
+}
+
+/// Columns `segments` take
+fn segments_width(segments: &[StyledText]) -> usize {
+    segments.iter().map(|s| display_width(&s.text)).sum()
 }

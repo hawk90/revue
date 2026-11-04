@@ -9656,6 +9656,8 @@ pub fn revue::widget::markdown::Markdown::code_line_numbers(self, bool) -> Self
 pub fn revue::widget::markdown::Markdown::figlet_headings(self, bool) -> Self
 pub fn revue::widget::markdown::Markdown::heading_fg(self, revue::runtime::style::Color) -> Self
 pub fn revue::widget::markdown::Markdown::line_count(&self) -> usize
+pub fn revue::widget::markdown::Markdown::line_count_at(&self, u16) -> usize
+pub fn revue::widget::markdown::Markdown::lines_at(&self, u16) -> alloc::borrow::Cow<'_, [revue::widget::markdown::types::Line]>
 pub fn revue::widget::markdown::Markdown::link_fg(self, revue::runtime::style::Color) -> Self
 pub fn revue::widget::markdown::Markdown::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn revue::widget::markdown::Markdown::show_toc(self, bool) -> Self
@@ -15301,6 +15303,8 @@ pub fn revue::widget::markdown::Markdown::code_line_numbers(self, bool) -> Self
 pub fn revue::widget::markdown::Markdown::figlet_headings(self, bool) -> Self
 pub fn revue::widget::markdown::Markdown::heading_fg(self, revue::runtime::style::Color) -> Self
 pub fn revue::widget::markdown::Markdown::line_count(&self) -> usize
+pub fn revue::widget::markdown::Markdown::line_count_at(&self, u16) -> usize
+pub fn revue::widget::markdown::Markdown::lines_at(&self, u16) -> alloc::borrow::Cow<'_, [revue::widget::markdown::types::Line]>
 pub fn revue::widget::markdown::Markdown::link_fg(self, revue::runtime::style::Color) -> Self
 pub fn revue::widget::markdown::Markdown::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn revue::widget::markdown::Markdown::show_toc(self, bool) -> Self
@@ -56225,6 +56229,8 @@ pub fn revue::widget::markdown::Markdown::code_line_numbers(self, bool) -> Self
 pub fn revue::widget::markdown::Markdown::figlet_headings(self, bool) -> Self
 pub fn revue::widget::markdown::Markdown::heading_fg(self, revue::runtime::style::Color) -> Self
 pub fn revue::widget::markdown::Markdown::line_count(&self) -> usize
+pub fn revue::widget::markdown::Markdown::line_count_at(&self, u16) -> usize
+pub fn revue::widget::markdown::Markdown::lines_at(&self, u16) -> alloc::borrow::Cow<'_, [revue::widget::markdown::types::Line]>
 pub fn revue::widget::markdown::Markdown::link_fg(self, revue::runtime::style::Color) -> Self
 pub fn revue::widget::markdown::Markdown::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn revue::widget::markdown::Markdown::show_toc(self, bool) -> Self
@@ -73840,6 +73846,8 @@ pub fn revue::widget::markdown::Markdown::code_line_numbers(self, bool) -> Self
 pub fn revue::widget::markdown::Markdown::figlet_headings(self, bool) -> Self
 pub fn revue::widget::markdown::Markdown::heading_fg(self, revue::runtime::style::Color) -> Self
 pub fn revue::widget::markdown::Markdown::line_count(&self) -> usize
+pub fn revue::widget::markdown::Markdown::line_count_at(&self, u16) -> usize
+pub fn revue::widget::markdown::Markdown::lines_at(&self, u16) -> alloc::borrow::Cow<'_, [revue::widget::markdown::types::Line]>
 pub fn revue::widget::markdown::Markdown::link_fg(self, revue::runtime::style::Color) -> Self
 pub fn revue::widget::markdown::Markdown::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn revue::widget::markdown::Markdown::show_toc(self, bool) -> Self

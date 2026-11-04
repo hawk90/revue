@@ -2,6 +2,7 @@
 
 mod helpers;
 mod integration;
+mod width;
 
 use revue::layout::Rect;
 use revue::render::Buffer;

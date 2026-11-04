@@ -19,15 +19,26 @@
 //!
 //! # Quick Start
 //!
-//! ```rust,ignore
+//! ```rust
 //! use revue::prelude::*;
 //!
-//! let markdown = "# Welcome to Revue\n\nThis is **bold** and this is *italic*.\n\n## Features\n\n- CSS styling\n- Reactive state\n- 100+ widgets\n\n> Tip: Check out the docs!";
+//! let source = "# Welcome to Revue\n\nThis is **bold** and this is *italic*.\n\n## Features\n\n- CSS styling\n- Reactive state\n- 100+ widgets\n\n> Tip: Check out the docs!";
 //!
-//! markdown()
-//!     .content(markdown)
-//!     .width(60);
+//! let view = markdown(source).show_toc(true);
 //! ```
+//!
+//! # Width
+//!
+//! The widget lays its text out at the width it is drawn at. Paragraphs,
+//! headings, list items, quotes, footnotes and the table of contents wrap
+//! at word boundaries: a list item's further rows line up after its bullet
+//! or number, and every row of a quote starts with the quote bar. A code
+//! block line too long for the box goes on over the next rows, inside the
+//! box. Tables, FIGlet headings and rules are drawn as they are and cut at
+//! the edge.
+//!
+//! [`Markdown::lines`] is the layout without a width limit;
+//! [`Markdown::lines_at`] is the layout at a width, as drawn.
 //!
 //! # Configuration
 //!
@@ -54,6 +65,7 @@ mod events;
 mod helpers;
 pub mod parser;
 pub mod types;
+mod wrap;
 
 use crate::render::Cell;
 use crate::style::Color;
@@ -62,6 +74,7 @@ use crate::utils::syntax::SyntaxTheme;
 use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
+use std::borrow::Cow;
 
 pub use types::{AdmonitionType, FootnoteDefinition, Line, StyledText, TocEntry};
 
@@ -107,9 +120,16 @@ impl Default for MarkdownConfig {
 }
 
 /// A markdown widget for rendering markdown content
+///
+/// It is drawn laid out at the width of its area: see the [module
+/// docs](self#width).
 #[derive(Clone)]
 pub struct Markdown {
     pub source: String,
+    /// The source laid out with no width limit: one line per paragraph,
+    /// list item or code line. Drawing uses [`lines_at`](Self::lines_at)
+    /// the area's width, which is these lines when they all fit and the
+    /// source laid out again at that width when one does not.
     pub lines: Vec<Line>,
     pub toc: Vec<TocEntry>,
     pub config: MarkdownConfig,
@@ -263,9 +283,41 @@ impl Markdown {
         &self.source
     }
 
-    /// Get rendered line count
+    /// The number of [`lines`](Self::lines): the rows the source takes with
+    /// no width limit. For the rows it takes when drawn, see
+    /// [`line_count_at`](Self::line_count_at).
     pub fn line_count(&self) -> usize {
         self.lines.len()
+    }
+
+    /// The source laid out at `width` columns: the rows the widget draws in
+    /// an area that wide, wrapped as the [module docs](self#width) say.
+    ///
+    /// ```rust
+    /// use revue::prelude::*;
+    ///
+    /// let md = markdown("- one two three");
+    /// let rows: Vec<String> = md
+    ///     .lines_at(9)
+    ///     .iter()
+    ///     .map(|line| line.segments.iter().map(|s| s.text.as_str()).collect())
+    ///     .collect();
+    /// assert_eq!(rows, ["• one two", "  three"]);
+    /// ```
+    pub fn lines_at(&self, width: u16) -> Cow<'_, [Line]> {
+        let width = usize::from(width);
+        let fits = self.lines.iter().all(|line| line_width(line) <= width);
+        if fits {
+            Cow::Borrowed(&self.lines)
+        } else {
+            Cow::Owned(self.parse_to_width(Some(width)))
+        }
+    }
+
+    /// The number of rows the widget draws at `width` columns: the length
+    /// of [`lines_at`](Self::lines_at).
+    pub fn line_count_at(&self, width: u16) -> usize {
+        self.lines_at(width).len()
     }
 }
 
@@ -283,26 +335,40 @@ impl View for Markdown {
         if area.width < 1 || area.height < 1 {
             return;
         }
+        draw_lines(&self.lines_at(area.width), ctx);
+    }
+}
 
-        for (y, line) in self.lines.iter().enumerate() {
-            if y as u16 >= area.height {
-                break;
-            }
+/// Columns `line` takes
+fn line_width(line: &Line) -> usize {
+    line.segments
+        .iter()
+        .map(|s| crate::utils::display_width(&s.text))
+        .sum()
+}
 
-            let mut x: u16 = 0;
-            for segment in &line.segments {
-                for ch in segment.text.chars() {
-                    let cw = crate::utils::char_width(ch) as u16;
-                    if x + cw > area.width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = segment.fg;
-                    cell.bg = segment.bg;
-                    cell.modifier = segment.modifier;
-                    ctx.set(x, y as u16, cell);
-                    x += cw;
+/// Draw `lines` from the top of the area, one per row, each cut at the
+/// area's right edge.
+pub(crate) fn draw_lines(lines: &[Line], ctx: &mut RenderContext) {
+    let area = ctx.area;
+    for (y, line) in lines.iter().enumerate() {
+        if y as u16 >= area.height {
+            break;
+        }
+
+        let mut x: u16 = 0;
+        for segment in &line.segments {
+            for ch in segment.text.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if x + cw > area.width {
+                    break;
                 }
+                let mut cell = Cell::new(ch);
+                cell.fg = segment.fg;
+                cell.bg = segment.bg;
+                cell.modifier = segment.modifier;
+                ctx.set(x, y as u16, cell);
+                x += cw;
             }
         }
     }
