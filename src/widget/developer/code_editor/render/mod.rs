@@ -13,6 +13,7 @@ use crate::widget::traits::{RenderContext, View};
 /// The columns the text takes: from `x`, `width` wide, scrolled `scroll_x`
 /// terminal columns; and where the cursor is drawn and what is selected, in
 /// chars, worked out once per render
+#[derive(Clone, Copy)]
 struct TextColumns {
     x: u16,
     width: u16,

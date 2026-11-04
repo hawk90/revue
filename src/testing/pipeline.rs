@@ -165,6 +165,20 @@ impl PipelineHarness {
         self.app.presented_buffer()
     }
 
+    /// The last frame as the terminal shows it: [`buffer`](Self::buffer)
+    /// with the focused field's caret as the cells under it, since the
+    /// terminal's own cursor shows the caret there (see [`cursor`](Self::cursor)).
+    pub fn screen_buffer(&self) -> Buffer {
+        self.buffer().without_caret()
+    }
+
+    /// Where the terminal's cursor is shown, `None` while it is hidden: at
+    /// the focused field's caret, so an input method's preedit and
+    /// candidate window open at the field.
+    pub fn cursor(&self) -> Option<(u16, u16)> {
+        self.terminal.cursor_at()
+    }
+
     /// Rendered screen as text, trailing whitespace and blank lines trimmed;
     /// a wide glyph is one character.
     pub fn screen_text(&self) -> String {

@@ -18,9 +18,11 @@ impl<W: Write> Terminal<W> {
     /// Draws a given set of changes to the terminal and updates the internal current buffer.
     pub(crate) fn draw_changes(
         &mut self,
-        changes: Vec<diff::Change>,
+        mut changes: Vec<diff::Change>,
         buffer: &Buffer,
     ) -> Result<()> {
+        let caret = self.lift_caret(&mut changes, buffer);
+        let wrote = !changes.is_empty();
         let mut state = super::types::RenderState::default();
 
         for change in changes {
@@ -59,6 +61,7 @@ impl<W: Write> Terminal<W> {
             queue!(self.writer, SetAttribute(Attribute::Reset))?;
         }
 
+        self.place_cursor(caret, wrote)?;
         self.writer.flush()?;
         Ok(())
     }

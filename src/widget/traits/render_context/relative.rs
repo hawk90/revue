@@ -44,6 +44,24 @@ impl super::RenderContext<'_> {
         }
     }
 
+    /// Mark the caret just drawn at relative `(x, y)`, for the terminal to
+    /// show with its own cursor: `under` is how its cells, from `x` on, look
+    /// without it (see [`caret_cells`]). A caret not wholly inside the area
+    /// and the clip is out of view, and the frame shows none.
+    ///
+    /// The last caret marked in a frame is the one shown, as only one field
+    /// can take typing; any other stays drawn as the cells it was given.
+    pub(crate) fn set_caret(&mut self, x: u16, y: u16, under: &[Cell]) {
+        let abs_x = self.area.x.saturating_add(x);
+        let abs_y = self.area.y.saturating_add(y);
+        let n = under.len() as u16;
+        let inside = y < self.area.height
+            && x.checked_add(n).is_some_and(|end| end <= self.area.width)
+            && (0..n).all(|dx| !self.is_clipped(abs_x.saturating_add(dx), abs_y));
+        self.buffer
+            .set_caret(abs_x, abs_y, if inside { under } else { &[] });
+    }
+
     /// Draw `text` at relative `(x, y)` in terminal columns, stopping before
     /// relative column `max_x` (and the area's edge), with each glyph's cell
     /// built by `make_cell`. Respects clipping like [`Self::set`]. A wide
@@ -149,4 +167,20 @@ impl super::RenderContext<'_> {
         }
         offset
     }
+}
+
+/// The cells a glyph takes: `cell`, and a continuation with its colors,
+/// modifiers and link when it is wide - for
+/// [`set_caret`](super::RenderContext::set_caret)
+pub(crate) fn caret_cells(cell: Cell) -> Vec<Cell> {
+    let mut cells = vec![cell];
+    if !cell.is_continuation() && char_width(cell.symbol) == 2 {
+        let mut cont = Cell::continuation();
+        cont.fg = cell.fg;
+        cont.bg = cell.bg;
+        cont.modifier = cell.modifier;
+        cont.hyperlink_id = cell.hyperlink_id;
+        cells.push(cont);
+    }
+    cells
 }

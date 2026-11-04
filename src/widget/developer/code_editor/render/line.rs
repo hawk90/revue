@@ -6,7 +6,8 @@ use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::code_editor::{BracketMatch, CodeEditor};
 use crate::widget::syntax::HighlightSpan;
-use crate::widget::traits::render_context::edit_line::col_of;
+use crate::widget::traits::render_context::caret_cells;
+use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, glyph_cells};
 use crate::widget::traits::RenderContext;
 
 impl CodeEditor {
@@ -63,17 +64,40 @@ impl CodeEditor {
             },
         );
 
-        // Draw cursor at end of line if needed
-        if columns
-            .cursor
-            .is_some_and(|(l, c)| l == line_idx && c >= line.chars().count())
-        {
-            if let Some(x) = col_of(line, usize::MAX, self.tab_width()).checked_sub(scroll_x) {
-                if x < text_width as usize {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(self.cursor_bg);
-                    ctx.set(line_num_width + x as u16, y, cell);
-                }
+        let Some((_, c)) = columns.cursor.filter(|&(l, _)| l == line_idx) else {
+            return;
+        };
+        if c < line.chars().count() {
+            // On a glyph: the terminal shows the cursor with its own, over
+            // the glyph as it looks without one
+            let tab = self.tab_width();
+            let (start, w) = (col_of(line, c, tab), cursor_width(line, c, tab));
+            if start >= scroll_x && start + w <= scroll_x + text_width as usize {
+                let ch = line.chars().nth(c).unwrap_or(' ');
+                let bare = TextColumns {
+                    cursor: None,
+                    ..*columns
+                };
+                let cell = self.text_cell(
+                    &bare,
+                    (line_idx, c),
+                    ch,
+                    is_current_line,
+                    bracket_match,
+                    &highlights,
+                );
+                let under = glyph_cells(cell, ch, w);
+                ctx.set_caret(line_num_width + (start - scroll_x) as u16, y, &under);
+            }
+        } else if let Some(x) = col_of(line, usize::MAX, self.tab_width()).checked_sub(scroll_x) {
+            // Past the line's end: a blank
+            if x < text_width as usize {
+                let cx = line_num_width + x as u16;
+                let under = ctx.get(cx, y).copied().unwrap_or_default();
+                let mut cell = Cell::new(' ');
+                cell.bg = Some(self.cursor_bg);
+                ctx.set(cx, y, cell);
+                ctx.set_caret(cx, y, &caret_cells(under));
             }
         }
     }

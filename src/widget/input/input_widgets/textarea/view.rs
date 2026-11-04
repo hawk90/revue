@@ -12,32 +12,37 @@ use super::cursor::CursorPos;
 use super::layout::place_in;
 use super::selection::Selection;
 use super::TextArea;
-use crate::widget::traits::render_context::edit_line::visible_from;
+use crate::widget::traits::render_context::caret_cells;
+use crate::widget::traits::render_context::edit_line::{
+    col_of, cursor_width, glyph_cells, visible_from,
+};
 
 /// The cursors and selections in chars, worked out once per render
 struct Marks {
     /// Where each cursor is drawn: a cursor on a zero-width char (which
     /// takes no cell) on the next glyph that has one, or past the line's end
     cursors: Vec<CursorPos>,
+    /// The primary cursor, drawn where `cursors` draws it: the one the
+    /// terminal shows with its own cursor
+    primary: Option<CursorPos>,
     selections: Vec<Selection>,
 }
 
 impl TextArea {
     fn marks(&self) -> Marks {
         let cursors = self.edit.cursors();
+        let drawn_at = |c: &crate::utils::EditCursor| {
+            let pos = self.char_pos(c.head());
+            let line = self.line_text(pos.line);
+            CursorPos::new(pos.line, visible_from(line, pos.col, self.tab_stop()))
+        };
         Marks {
             cursors: if self.focused {
-                cursors
-                    .iter()
-                    .map(|c| {
-                        let pos = self.char_pos(c.head());
-                        let line = self.line_text(pos.line);
-                        CursorPos::new(pos.line, visible_from(line, pos.col, self.tab_stop()))
-                    })
-                    .collect()
+                cursors.iter().map(drawn_at).collect()
             } else {
                 Vec::new()
             },
+            primary: self.focused.then(|| drawn_at(self.edit.primary())),
             selections: cursors
                 .iter()
                 .filter(|c| c.has_selection())
@@ -74,7 +79,10 @@ impl TextArea {
     }
 
     /// The cell for char `char_idx` of line `line_idx`: a cursor, then the
-    /// selection, then find matches, then syntax colors or the text color
+    /// selection, then find matches, then syntax colors or the text color.
+    /// `bare` leaves the cursor out, for the cell the terminal's cursor
+    /// shows the primary cursor over.
+    #[allow(clippy::too_many_arguments)] // position, char, marks, colors
     fn text_cell(
         &self,
         marks: &Marks,
@@ -83,6 +91,7 @@ impl TextArea {
         ch: char,
         highlights: &Option<Vec<HighlightSpan>>,
         css_fg: Option<Color>,
+        bare: bool,
     ) -> Cell {
         let mut cell = Cell::new(ch);
 
@@ -90,7 +99,7 @@ impl TextArea {
             .selections
             .iter()
             .any(|s| s.contains(line_idx, char_idx));
-        let is_cursor = marks.cursors.contains(&CursorPos::new(line_idx, char_idx));
+        let is_cursor = !bare && marks.cursors.contains(&CursorPos::new(line_idx, char_idx));
 
         // Check if this position is in a find match
         let (is_match, is_current_match) = if let Some(ref state) = self.find_replace {
@@ -227,8 +236,37 @@ impl View for TextArea {
                 scroll_x,
                 text_width,
                 self.tab_stop(),
-                |i, ch| self.text_cell(&marks, line_idx, seg_start + i, ch, &highlights, css_fg),
+                |i, ch| {
+                    self.text_cell(
+                        &marks,
+                        line_idx,
+                        seg_start + i,
+                        ch,
+                        &highlights,
+                        css_fg,
+                        false,
+                    )
+                },
             );
+
+            // The primary cursor on a glyph of this row: the terminal shows
+            // it with its own cursor, over the glyph as it looks without one
+            if let Some(p) = marks
+                .primary
+                .filter(|p| p.line == line_idx && (seg_start..seg_end).contains(&p.col))
+            {
+                let i = p.col - seg_start;
+                let tab = self.tab_stop();
+                let start = col_of(seg, i, tab);
+                let w = cursor_width(seg, i, tab);
+                if start >= scroll_x && start + w <= scroll_x + text_width as usize {
+                    let ch = seg.chars().nth(i).unwrap_or(' ');
+                    let cell =
+                        self.text_cell(&marks, line_idx, p.col, ch, &highlights, css_fg, true);
+                    let under = glyph_cells(cell, ch, w);
+                    ctx.set_caret(text_start_x + (start - scroll_x) as u16, y, &under);
+                }
+            }
 
             // Cursors the text cells do not show: past the line's end (on
             // its last row, or the extra row of one ending in a hanging
@@ -273,10 +311,15 @@ impl View for TextArea {
                         } else {
                             None
                         };
+                        let cx = text_start_x + x as u16;
+                        let bare = ctx.get(cx, y).copied().unwrap_or_default();
                         let mut cell = Cell::new(under.unwrap_or(' '));
                         cell.fg = self.cursor_fg;
                         cell.bg = Some(Color::WHITE);
-                        ctx.set(text_start_x + x as u16, y, cell);
+                        ctx.set(cx, y, cell);
+                        if marks.primary == Some(CursorPos::new(line_idx, col)) {
+                            ctx.set_caret(cx, y, &caret_cells(bare));
+                        }
                     }
                 }
             }

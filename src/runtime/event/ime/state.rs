@@ -17,7 +17,9 @@ const MAX_CANDIDATES: usize = 1_000;
 
 type CompositionCallback = Arc<dyn Fn(&CompositionEvent) + Send + Sync>;
 
-/// IME state manager
+/// IME state manager: the composition state machine an app with its own
+/// input method feeds. A terminal never does - see the
+/// [module docs](super#in-a-terminal).
 pub struct ImeState {
     /// Current composition state
     state: CompositionState,

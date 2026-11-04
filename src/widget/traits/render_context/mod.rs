@@ -16,6 +16,7 @@ mod types;
 mod tests;
 
 pub use overlay::{OverlayEntry, OverlayQueue};
+pub(crate) use relative::caret_cells;
 pub use types::ProgressBarConfig;
 
 use super::View;

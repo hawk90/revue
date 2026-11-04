@@ -57,7 +57,11 @@ impl Input {
         self
     }
 
-    /// Set cursor colors
+    /// Set cursor colors: the caret drawn into the buffer. In a terminal the
+    /// focused field's caret is shown with the terminal's own cursor
+    /// instead, so an input method opens at the field (#1457); these colors
+    /// show where there is no cursor (snapshots, buffer output) and on a
+    /// field that does not have it.
     pub fn cursor_style(mut self, fg: Color, bg: Color) -> Self {
         self.cursor_fg = Some(fg);
         self.cursor_bg = Some(bg);
