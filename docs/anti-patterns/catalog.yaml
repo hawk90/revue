@@ -2556,6 +2556,7 @@ entries:
     observed:
       - "`templates/`의 template 네 개가 3.0에서 build되지 않았고, `revue plugin new`는 `revue = \"0.6\"`을 만들고 없는 `ctx.info`를 불렀다 (#744). `revue new` template 네 개 모두 3.0이 지운 API를 썼다 (#745)."
       - "고친 뒤: CI가 모든 template과 `revue new` 출력을 checkout에 대해 build하고(.github/workflows/ci.yml), `revue-cli/tests/templates_test.rs`가 `REVUE_VERSION`의 major를 확인한다."
+      - "2026-11-05: template은 `revue-cli/templates/<name>/` 한 벌이다 (#1460). CI는 그 아래 모든 directory를 `revue new`로 만들어 checkout에 대해 build하고, 테스트가 그 directory 목록과 `PROJECT_TEMPLATES`가 같은지 확인한다."
   - id: REV-CLI-002
     title: "CLI and Library Version Drift"
     category: cli
@@ -2569,6 +2570,7 @@ entries:
       - "template은 한 벌만 둔다 (REV-ARCH-006)."
     observed:
       - "2026-10-20: revue-cli는 `#[command(version = \"0.1.0\")]`이고(revue-cli/src/main.rs), `revue-cli/src/templates.rs`는 `REVUE_VERSION = \"3.0\"`을, `templates/*/Cargo.toml`은 `revue = \"3.10.1\"`을 쓴다. 버전 출처가 다른 template 두 벌(basic, dashboard, todo, chat과 basic, counter, dashboard, form-app)이 있다 (#745). ci.yml 주석은 아직 `\"3.0.0\"`이라고 적는다."
+      - "고친 뒤 (#1460): `templates/`를 지우고 `revue new` template을 `revue-cli/templates/`의 파일로 옮겼다. `revue new`가 `Cargo.toml`을 직접 써서 버전은 `REVUE_VERSION` 한 곳에서 온다. template directory에 `Cargo.toml`을 두면 `cargo package`가 그 directory를 빼므로 두지 않는다. ci.yml과 CLI guide의 `3.0` 고정값도 지웠다."
   - id: REV-CLI-003
     title: "Destructive Generation"
     category: cli
@@ -2592,6 +2594,7 @@ entries:
     summary: "template가 best practice를 보여주는 최소 예제가 아니라 모든 기능을 넣은 거대한 샘플이 된다. 각 template는 하나의 architectural lesson만 전달해야 한다."
     checked:
       - "2026-10-20: template은 작다(basic main.rs 21줄, counter 78, dashboard 134, form-app 134). #745가 아무도 쓰지 않는 공유 stylesheet를 지우고 template마다 쓰는 규칙만 남겼다."
+      - "2026-11-05: `templates/`를 지운 뒤 남은 `revue new` template의 `app.rs`는 basic 52줄, dashboard 128, chat 176, todo 235줄이다 (#1460)."
   - id: REV-PERF-001
     title: "Benchmarking Toy Counters"
     category: performance

@@ -55,21 +55,65 @@ fn gitignore_not_empty() {
 // Project type templates
 // =============================================================================
 
+/// The text of `path` in the template called `name`.
+fn template_file(name: &str, path: &str) -> &'static str {
+    templates::project_files(name)
+        .unwrap_or_else(|| panic!("{name}: no template"))
+        .get_file(format!("{name}/{path}"))
+        .unwrap_or_else(|| panic!("{name}: no {path}"))
+        .contents_utf8()
+        .unwrap_or_else(|| panic!("{name}: {path} is not UTF-8"))
+}
+
 #[test]
 fn every_project_template_has_its_files() {
     for &name in templates::PROJECT_TEMPLATES {
-        let files = templates::project_files(name).unwrap_or_else(|| panic!("{name}: no files"));
-        assert!(files.main_rs.contains("fn main"), "{name}: main.rs");
+        let main_rs = template_file(name, "src/main.rs");
+        assert!(main_rs.contains("fn main"), "{name}: main.rs");
         assert!(
-            files.main_rs.contains("mod app;"),
+            main_rs.contains("mod app;"),
             "{name}: main.rs declares app.rs"
         );
         assert!(
-            files.main_rs.contains(r#".style("styles/main.css")"#),
+            main_rs.contains(r#".style("styles/main.css")"#),
             "{name}: main.rs loads the stylesheet"
         );
-        assert!(files.app_rs.contains("impl View for"), "{name}: app.rs");
-        assert!(!files.style_css.is_empty(), "{name}: styles/main.css");
+        assert!(
+            template_file(name, "src/app.rs").contains("impl View for"),
+            "{name}: app.rs"
+        );
+        assert!(
+            !template_file(name, "styles/main.css").is_empty(),
+            "{name}: styles/main.css"
+        );
+    }
+}
+
+/// `revue new --template` offers exactly the directories under
+/// `revue-cli/templates/`.
+#[test]
+fn the_template_list_is_the_template_directories() {
+    let mut dirs: Vec<&str> = templates::template_dirs().collect();
+    let mut listed = templates::PROJECT_TEMPLATES.to_vec();
+    dirs.sort_unstable();
+    listed.sort_unstable();
+    assert_eq!(dirs, listed);
+}
+
+/// `cargo package` leaves out a directory that has a `Cargo.toml`, so a
+/// template with one would be missing from the published CLI. `revue new`
+/// writes the manifest itself.
+#[test]
+fn no_template_has_a_manifest_of_its_own() {
+    for &name in templates::PROJECT_TEMPLATES {
+        let mut dirs = vec![templates::project_files(name).unwrap()];
+        while let Some(dir) = dirs.pop() {
+            for file in dir.files() {
+                let file_name = file.path().file_name().unwrap();
+                assert_ne!(file_name, "Cargo.toml", "{}", file.path().display());
+            }
+            dirs.extend(dir.dirs());
+        }
     }
 }
 
@@ -79,10 +123,10 @@ fn every_project_template_has_its_files() {
 fn project_templates_do_not_use_removed_api() {
     let removed = [".mount(", ".alignment(", ".percentage()", "process::exit"];
     for &name in templates::PROJECT_TEMPLATES {
-        let files = templates::project_files(name).unwrap();
-        for source in [files.main_rs, files.app_rs] {
+        for path in ["src/main.rs", "src/app.rs"] {
+            let source = template_file(name, path);
             for call in removed {
-                assert!(!source.contains(call), "{name}: uses `{call}`");
+                assert!(!source.contains(call), "{name}: {path} uses `{call}`");
             }
         }
     }
@@ -91,6 +135,9 @@ fn project_templates_do_not_use_removed_api() {
 #[test]
 fn unknown_project_template_has_no_files() {
     assert!(templates::project_files("nope").is_none());
+    // A directory inside a template is not a template.
+    assert!(templates::project_files("basic/src").is_none());
+    assert!(templates::project_files("").is_none());
 }
 
 // =============================================================================

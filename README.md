@@ -246,20 +246,22 @@ app.run(view, handler)?;
 
 ## Starter Templates
 
-Get started quickly with ready-to-use project templates:
+`revue new` starts a project from a template:
 
 | Template | Description |
 |----------|-------------|
-| [basic](templates/basic/) | Minimal hello world (~20 lines) |
-| [counter](templates/counter/) | Reactive counter with Signal/Computed |
-| [form-app](templates/form-app/) | Form with inputs, validation, feedback |
-| [dashboard](templates/dashboard/) | Multi-panel dashboard with CSS styling |
+| `basic` | Counter: a `Signal`, key handling and a stylesheet |
+| `dashboard` | Gauges, a sparkline and badges, updated on `Event::Tick` |
+| `todo` | An input box, checkboxes and filters |
+| `chat` | A user list with status avatars and a message input |
 
 ```bash
-cp -r templates/counter my-app && cd my-app && cargo run
+cargo install --git https://github.com/hawk90/revue revue-cli
+revue new my-app --template dashboard && cd my-app && cargo run
 ```
 
-See [templates/README.md](templates/README.md) for details.
+The templates live in [revue-cli/templates](revue-cli/templates/); see the
+[CLI guide](docs/guides/cli.md#revue-new) for what `revue new` writes.
 
 <br>
 

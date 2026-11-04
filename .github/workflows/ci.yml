@@ -49,14 +49,12 @@ jobs:
               - 'scripts/public-api.sh'
               - 'scripts/public-api-removed.py'
               - '.github/workflows/ci.yml'
-            # Crates the root `cargo` jobs above never build: revue-cli (a
-            # workspace member they skip; its lock is the root Cargo.lock) and
-            # the templates, which are not members.
-            # The templates are built against this checkout, so a change to
-            # the library can break them too.
+            # A crate the root `cargo` jobs above never build: revue-cli (a
+            # workspace member they skip; its lock is the root Cargo.lock).
+            # The projects `revue new` writes are built against this
+            # checkout, so a change to the library can break them too.
             standalone:
               - 'revue-cli/**'
-              - 'templates/**'
               - 'src/**'
               - 'revue-macros/**'
               - 'Cargo.toml'
@@ -182,31 +180,20 @@ jobs:
           cargo fmt --all -- --check
           cargo clippy --locked --all-targets -- -D warnings
           cargo test --locked
-      # The templates pin the released crate (`revue = "3.0.0"`), so building
-      # them as committed only re-checks that release. Point each one at this
-      # checkout instead: a change that breaks a template fails here, in the
-      # PR that makes it, not after the next release.
-      - name: templates
-        env:
-          CARGO_TARGET_DIR: ${{ github.workspace }}/target/templates
-        run: |
-          for t in templates/*/; do
-            echo "::group::$t"
-            sed -i 's|^revue = .*|revue = { path = "../.." }|' "$t/Cargo.toml"
-            (cd "$t" && cargo fmt -- --check && cargo clippy -- -D warnings)
-            echo "::endgroup::"
-          done
-      # Likewise for the projects `revue new` writes (which ask for
-      # `revue = "3.0"` from crates.io): generate each one outside the checkout
-      # and build it against the checkout. The list is
-      # PROJECT_TEMPLATES in revue-cli/src/templates.rs.
+      # The projects `revue new` writes ask for the CLI's release line from
+      # crates.io (its major.minor), so building them as written only
+      # re-checks that release. Generate each one outside the checkout and
+      # point it at this checkout instead: a change that breaks a template
+      # fails here, in the PR that makes it, not after the next release.
+      # Every directory under revue-cli/templates/ is a template (the CLI's
+      # tests check that PROJECT_TEMPLATES lists exactly these).
       - name: revue new
         env:
           CARGO_TARGET_DIR: ${{ github.workspace }}/target/templates
         run: |
           (cd revue-cli && cargo build --locked --quiet --target-dir target)
           cli="$PWD/revue-cli/target/debug/revue"
-          for t in basic dashboard todo chat; do
+          for t in $(ls revue-cli/templates); do
             echo "::group::revue new --template $t"
             dir="$RUNNER_TEMP/new-$t"
             "$cli" new "$dir" --template "$t" --no-git

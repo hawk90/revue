@@ -1,0 +1,22 @@
+/* Starter styles: loaded by `.style("styles/main.css")` in main.rs */
+
+:root {
+    --fg: #c0caf5;
+    --accent: #7aa2f7;
+}
+
+/* The Border is the view's own body, so it is styled through the view's type.
+   A widget added with `.child(...)` gets its own node and can use a class. */
+Counter {
+    border-color: var(--accent);
+}
+
+.title {
+    color: var(--accent);
+    font-weight: bold;
+}
+
+.count {
+    color: var(--fg);
+    font-weight: bold;
+}
