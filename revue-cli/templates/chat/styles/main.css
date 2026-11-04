@@ -1,0 +1,31 @@
+/* Chat styles: loaded by `.style("styles/main.css")` in main.rs */
+
+:root {
+    --muted: #565f89;
+    --accent: #7aa2f7;
+    --other: #e0af68;
+}
+
+Border {
+    border-color: var(--muted);
+}
+
+/* The box around the message input. */
+.composer {
+    border-color: var(--accent);
+}
+
+.timestamp {
+    color: var(--muted);
+}
+
+.username {
+    color: var(--other);
+    font-weight: bold;
+}
+
+/* Your own name on the messages you sent. */
+.self {
+    color: var(--accent);
+    font-weight: bold;
+}

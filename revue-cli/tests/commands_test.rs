@@ -43,11 +43,21 @@ fn new_project_writes_each_template() {
             fs::read_to_string(project.join(path))
                 .unwrap_or_else(|e| panic!("{template}: {path}: {e}"))
         };
-        let files = revue_cli::templates::project_files(template).unwrap();
-        assert_eq!(read("src/main.rs"), files.main_rs, "{template}");
-        assert_eq!(read("src/app.rs"), files.app_rs, "{template}");
-        // main.rs loads this path, relative to the project root.
-        assert_eq!(read("styles/main.css"), files.style_css, "{template}");
+        // Every file of the template, at its path in the template: main.rs
+        // loads `styles/main.css` relative to the project root.
+        let mut dirs = vec![revue_cli::templates::project_files(template).unwrap()];
+        while let Some(dir) = dirs.pop() {
+            for file in dir.files() {
+                let path = file.path().strip_prefix(template).unwrap();
+                let written = fs::read(project.join(path))
+                    .unwrap_or_else(|e| panic!("{template}: {}: {e}", path.display()));
+                assert_eq!(written, file.contents(), "{template}: {}", path.display());
+            }
+            dirs.extend(dir.dirs());
+        }
+        for path in ["src/main.rs", "src/app.rs", "styles/main.css"] {
+            assert!(project.join(path).is_file(), "{template}: {path}");
+        }
         assert_eq!(read(".gitignore"), revue_cli::templates::gitignore());
 
         let cargo: toml::Table = read("Cargo.toml").parse().unwrap();

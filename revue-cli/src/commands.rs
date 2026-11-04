@@ -45,8 +45,6 @@ pub fn new_project(name: &str, template: &str, init_git: bool) -> Result<()> {
         .and_then(|n| n.to_str())
         .ok_or_else(|| format!("'{}' does not end in a project name", name))?;
     fs::create_dir_all(project_path)?;
-    fs::create_dir_all(project_path.join("src"))?;
-    fs::create_dir_all(project_path.join("styles"))?;
     fs::create_dir_all(project_path.join("assets"))?;
     pb.inc(1);
 
@@ -56,16 +54,10 @@ pub fn new_project(name: &str, template: &str, init_git: bool) -> Result<()> {
     fs::write(project_path.join("Cargo.toml"), cargo_toml)?;
     pb.inc(1);
 
-    // Step 3: Generate source files based on template
-    pb.set_message("Generating source files...");
-    fs::write(project_path.join("src/main.rs"), files.main_rs)?;
-    fs::write(project_path.join("src/app.rs"), files.app_rs)?;
-    pb.inc(1);
-
-    // Step 4: Generate style files
-    pb.set_message("Generating style files...");
-    fs::write(project_path.join("styles/main.css"), files.style_css)?;
-    pb.inc(1);
+    // Steps 3 and 4: the template's sources and styles, as they are
+    pb.set_message("Copying the template...");
+    write_dir(files, project_path)?;
+    pb.inc(2);
 
     // Step 5: Initialize git
     if init_git {
@@ -100,6 +92,25 @@ pub fn new_project(name: &str, template: &str, init_git: bool) -> Result<()> {
     );
     println!();
 
+    Ok(())
+}
+
+/// Writes every file under the template directory `template` into `root`,
+/// at its path in the template.
+fn write_dir(template: &include_dir::Dir<'_>, root: &Path) -> Result<()> {
+    let mut dirs = vec![template];
+    while let Some(dir) = dirs.pop() {
+        for file in dir.files() {
+            // Embedded paths start at `templates/`, with the template's name.
+            let relative = file.path().strip_prefix(template.path())?;
+            let path = root.join(relative);
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(path, file.contents())?;
+        }
+        dirs.extend(dir.dirs());
+    }
     Ok(())
 }
 

@@ -56,8 +56,11 @@ revue new <name> [options]
 
 An unknown template name is an error that lists these.
 
-The generated `Cargo.toml` depends on `revue = "3.0"` from crates.io, so the
-project builds wherever you create it. Run it with `cargo run` from the
+The templates are the directories under `revue-cli/templates/`, built into
+the CLI. `revue new` copies one as it is and writes `Cargo.toml` and
+`.gitignore` itself: the manifest names the package after the project and
+depends on the CLI's release line from crates.io (`revue = "3.15"` from CLI
+3.15.0), so the project builds wherever you create it. Run it with `cargo run` from the
 project root: `src/main.rs` loads `styles/main.css` relative to the working
 directory. Each app shows its keys on screen; it quits with `q` (in `chat`,
 where every printable key is text, with `Esc`).

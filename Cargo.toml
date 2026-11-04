@@ -6,10 +6,6 @@ members = ["revue-macros", "revue-cli"]
 exclude = [
     "fuzz",
     "playground",
-    "templates/basic",
-    "templates/counter",
-    "templates/dashboard",
-    "templates/form-app",
     "tools/theme-builder",
 ]
 resolver = "2"

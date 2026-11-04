@@ -1,0 +1,25 @@
+/* Todo styles: loaded by `.style("styles/main.css")` in main.rs */
+
+:root {
+    --muted: #565f89;
+    --accent: #7aa2f7;
+}
+
+Border {
+    border-color: var(--muted);
+}
+
+/* The input box while you type in it. */
+.editing {
+    border-color: var(--accent);
+}
+
+.title {
+    color: var(--accent);
+    font-weight: bold;
+}
+
+.marker {
+    color: var(--accent);
+    font-weight: bold;
+}

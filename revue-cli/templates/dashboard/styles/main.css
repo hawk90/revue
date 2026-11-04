@@ -1,0 +1,21 @@
+/* Dashboard styles: loaded by `.style("styles/main.css")` in main.rs */
+
+:root {
+    --muted: #565f89;
+    --accent: #7aa2f7;
+    --success: #9ece6a;
+}
+
+/* The panels. */
+Border {
+    border-color: var(--muted);
+}
+
+Sparkline {
+    color: var(--success);
+}
+
+.title {
+    color: var(--accent);
+    font-weight: bold;
+}
