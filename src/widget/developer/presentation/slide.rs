@@ -8,7 +8,11 @@ use crate::style::Color;
 pub struct Slide {
     /// Slide title
     pub title: String,
-    /// Slide content (supports basic markdown)
+    /// Slide content: one string per row, drawn as given. The builders
+    /// ([`bullet`](Self::bullet), [`code`](Self::code), ...) add their
+    /// marker or indent to the text; nothing is read as markdown, so
+    /// `**` or a backtick shows as typed. For slides written in markdown,
+    /// use `MarkdownPresentation` (the `markdown` feature).
     pub content: Vec<String>,
     /// Speaker notes (not displayed)
     pub notes: String,

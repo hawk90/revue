@@ -433,6 +433,23 @@ fn test_render_with_content() {
 }
 
 #[test]
+fn slide_lines_are_drawn_as_given_not_as_markdown() {
+    // Slide content is the builder's lines (#1209): markdown slides are
+    // MarkdownPresentation's. Asterisks, backticks and a leading # stay.
+    let line = "**bold** `code` # x";
+    let pres =
+        Presentation::new().slide(slide("T").line(line).code("a ** b").align(SlideAlign::Left));
+    let buffer = render(&pres);
+    assert!(row(&buffer, 6).starts_with(&format!("  {line}")));
+    // The code block: a blank line, then the code indented by four
+    assert!(row(&buffer, 8).starts_with("      a ** b"));
+    for x in 2..2 + line.len() as u16 {
+        let cell = buffer.get(x, 6).unwrap();
+        assert!(cell.modifier.is_empty(), "column {x} is styled");
+    }
+}
+
+#[test]
 fn test_render_slide_align() {
     let left = Presentation::new().slide(slide("T").line("abc").align(SlideAlign::Left));
     assert!(row(&render(&left), 6).starts_with("  abc"));

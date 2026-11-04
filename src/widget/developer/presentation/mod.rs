@@ -2,6 +2,10 @@
 //!
 //! Create beautiful terminal-based presentations with slides,
 //! transitions, and speaker notes.
+//!
+//! Slides are built in code, and their lines are drawn as given (see
+//! [`Slide::content`]). To present a markdown file, split into slides at
+//! `---`, use `MarkdownPresentation` (the `markdown` feature).
 
 mod navigation;
 mod render;
