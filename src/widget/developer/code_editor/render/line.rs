@@ -87,7 +87,7 @@ impl CodeEditor {
                     &highlights,
                 );
                 let under = glyph_cells(cell, ch, w);
-                ctx.set_caret(line_num_width + (start - scroll_x) as u16, y, &under);
+                ctx.mark_caret(line_num_width + (start - scroll_x) as u16, y, &under);
             }
         } else if let Some(x) = col_of(line, usize::MAX, self.tab_width()).checked_sub(scroll_x) {
             // Past the line's end: a blank
@@ -97,7 +97,7 @@ impl CodeEditor {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(self.cursor_bg);
                 ctx.set(cx, y, cell);
-                ctx.set_caret(cx, y, &caret_cells(under));
+                ctx.mark_caret(cx, y, &caret_cells(under));
             }
         }
     }

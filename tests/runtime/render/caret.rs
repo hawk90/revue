@@ -5,7 +5,7 @@
 //! for output that has no cursor (snapshots, buffer tests).
 
 use revue::event::Key;
-use revue::render::{Buffer, Cell};
+use revue::render::{Buffer, Cell, Modifier};
 use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::widget::{vstack, CodeEditor, Input, RichTextEditor, TextArea, View};
@@ -264,6 +264,212 @@ fn a_scroll_view_shows_the_cursor_where_the_field_scrolled_to() {
     // Scrolled past it, and not yet to it
     assert_eq!(scrolled_cursor(6), None);
     assert_eq!(scrolled_cursor(0), None);
+}
+
+// ---------------------------------------------------------------------------
+// A widget of its own (#1466)
+// ---------------------------------------------------------------------------
+
+/// Draws `text` at the start of its area and puts its caret at `at`
+struct Own {
+    text: &'static str,
+    at: (u16, u16),
+}
+
+impl View for Own {
+    fn render(&self, ctx: &mut revue::widget::RenderContext) {
+        ctx.draw_text(0, 0, self.text, Color::RED);
+        ctx.set_caret(self.at.0, self.at.1);
+    }
+}
+
+#[test]
+fn a_widget_of_its_own_puts_the_cursor_at_its_caret() {
+    let h = drawn(
+        &Own {
+            text: "abc",
+            at: (1, 0),
+        },
+        10,
+        1,
+    );
+    assert_eq!(h.cursor(), Some((1, 0)));
+    // The buffer draws the caret reversed; the screen shows the glyph as
+    // the widget drew it
+    let drawn_cell = h.buffer().get(1, 0).unwrap();
+    assert_eq!(drawn_cell.symbol, 'b');
+    assert!(drawn_cell.modifier.contains(Modifier::REVERSE));
+    let shown = h.screen_buffer();
+    assert_eq!(look(&shown, 1, 0), ('b', Some(Color::RED), None));
+    assert!(!shown
+        .get(1, 0)
+        .unwrap()
+        .modifier
+        .contains(Modifier::REVERSE));
+    // Its neighbors are untouched
+    assert!(!h
+        .buffer()
+        .get(0, 0)
+        .unwrap()
+        .modifier
+        .contains(Modifier::REVERSE));
+    assert!(!h
+        .buffer()
+        .get(2, 0)
+        .unwrap()
+        .modifier
+        .contains(Modifier::REVERSE));
+}
+
+#[test]
+fn a_widget_caret_past_its_text_is_a_reversed_blank() {
+    let h = drawn(
+        &Own {
+            text: "abc",
+            at: (3, 0),
+        },
+        10,
+        1,
+    );
+    assert_eq!(h.cursor(), Some((3, 0)));
+    let cell = h.buffer().get(3, 0).unwrap();
+    assert_eq!(cell.symbol, ' ');
+    assert!(cell.modifier.contains(Modifier::REVERSE));
+}
+
+#[test]
+fn a_widget_caret_on_a_wide_glyph_covers_both_halves_from_either() {
+    for at in [1, 2] {
+        let h = drawn(
+            &Own {
+                text: "a한b",
+                at: (at, 0),
+            },
+            10,
+            1,
+        );
+        assert_eq!(h.cursor(), Some((1, 0)), "caret put at column {at}");
+        let buffer = h.buffer();
+        assert_eq!(buffer.get(1, 0).unwrap().symbol, '한');
+        assert!(buffer
+            .get(1, 0)
+            .unwrap()
+            .modifier
+            .contains(Modifier::REVERSE));
+        assert!(buffer.get(2, 0).unwrap().is_continuation());
+        assert!(buffer
+            .get(2, 0)
+            .unwrap()
+            .modifier
+            .contains(Modifier::REVERSE));
+        assert!(!buffer
+            .get(3, 0)
+            .unwrap()
+            .modifier
+            .contains(Modifier::REVERSE));
+        let shown = h.screen_buffer();
+        assert!(!shown
+            .get(1, 0)
+            .unwrap()
+            .modifier
+            .contains(Modifier::REVERSE));
+        assert!(!shown
+            .get(2, 0)
+            .unwrap()
+            .modifier
+            .contains(Modifier::REVERSE));
+    }
+}
+
+#[test]
+fn a_widget_caret_outside_its_area_shows_no_cursor_and_draws_nothing() {
+    let h = drawn(
+        &Own {
+            text: "abc",
+            at: (10, 0),
+        },
+        10,
+        1,
+    );
+    assert_eq!(h.cursor(), None);
+    // A row below the widget's area, though inside the buffer
+    use revue::widget::RenderContext;
+    let mut buffer = Buffer::new(10, 2);
+    Own {
+        text: "abc",
+        at: (0, 1),
+    }
+    .render(&mut RenderContext::new(
+        &mut buffer,
+        revue::layout::Rect::new(0, 0, 10, 1),
+    ));
+    assert!(!buffer
+        .get(0, 1)
+        .unwrap()
+        .modifier
+        .contains(Modifier::REVERSE));
+    let mut terminal = revue::render::Terminal::with_size(Vec::new(), 10, 2);
+    terminal.force_redraw(&buffer).unwrap();
+    assert!(!contains(terminal.writer(), SHOW));
+}
+
+#[test]
+fn a_widget_caret_under_the_clip_shows_no_cursor_and_draws_nothing() {
+    use revue::widget::RenderContext;
+    let mut buffer = Buffer::new(10, 1);
+    let area = revue::layout::Rect::new(0, 0, 10, 1);
+    let ctx = RenderContext::new(&mut buffer, area);
+    let mut ctx = ctx.with_clip(revue::layout::Rect::new(0, 0, 2, 1));
+    Own {
+        text: "abc",
+        at: (2, 0),
+    }
+    .render(&mut ctx);
+    assert!(!buffer
+        .get(2, 0)
+        .unwrap()
+        .modifier
+        .contains(Modifier::REVERSE));
+    let mut terminal = revue::render::Terminal::with_size(Vec::new(), 10, 1);
+    terminal.force_redraw(&buffer).unwrap();
+    assert!(!contains(terminal.writer(), SHOW));
+}
+
+#[test]
+fn a_widget_caret_after_a_field_takes_the_cursor_from_it() {
+    let view = vstack().child(Input::new().value("one")).child(Own {
+        text: "two",
+        at: (0, 0),
+    });
+    let h = drawn(&view, 10, 2);
+    assert_eq!(h.cursor(), Some((0, 1)));
+}
+
+#[test]
+fn a_reversed_cell_under_a_widget_caret_shows_unreversed_in_the_buffer() {
+    struct Reversed;
+    impl View for Reversed {
+        fn render(&self, ctx: &mut revue::widget::RenderContext) {
+            let mut cell = Cell::new('x');
+            cell.modifier = Modifier::REVERSE;
+            ctx.set(0, 0, cell);
+            ctx.set_caret(0, 0);
+        }
+    }
+    let h = drawn(&Reversed, 4, 1);
+    // A caret on reversed text still stands out where there is no cursor
+    assert!(!h
+        .buffer()
+        .get(0, 0)
+        .unwrap()
+        .modifier
+        .contains(Modifier::REVERSE));
+    assert!(h
+        .screen_buffer()
+        .get(0, 0)
+        .unwrap()
+        .modifier
+        .contains(Modifier::REVERSE));
 }
 
 // ---------------------------------------------------------------------------

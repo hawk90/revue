@@ -44,22 +44,86 @@ impl super::RenderContext<'_> {
         }
     }
 
+    /// Put the caret of the text this widget takes typing for at relative
+    /// `(x, y)`, the cell of the glyph it is on (or the blank past the end
+    /// of the text). Draw the text without a caret of your own first.
+    ///
+    /// In a terminal the caret is shown with the terminal's own cursor, so
+    /// an input method opens its preedit and candidate window there (#1457).
+    /// Where there is no cursor (a snapshot, a buffer) the caret's cells are
+    /// drawn reversed. A caret on a wide glyph covers both of its columns;
+    /// on the glyph's right half it is moved to its left one.
+    ///
+    /// One caret per frame is shown: the last one put, as only one widget
+    /// takes typing. Call it only while the widget has focus. A caret
+    /// outside the area or the clip shows none, and neither does one that
+    /// something drawn later covers, such as a popup.
+    ///
+    /// ```
+    /// use revue::prelude::*;
+    ///
+    /// struct Field;
+    ///
+    /// impl View for Field {
+    ///     fn render(&self, ctx: &mut RenderContext) {
+    ///         ctx.draw_text(0, 0, "abc", Color::WHITE);
+    ///         ctx.set_caret(3, 0); // past the end of "abc"
+    ///     }
+    /// }
+    /// ```
+    pub fn set_caret(&mut self, x: u16, y: u16) {
+        let x = match self.get(x, y) {
+            Some(cell) if cell.is_continuation() && x > 0 => x - 1,
+            _ => x,
+        };
+        let Some(&cell) = self.get(x, y) else {
+            self.mark_caret(x, y, &[]);
+            return;
+        };
+        let mut under = vec![cell];
+        if !cell.is_continuation() && char_width(cell.symbol) == 2 {
+            if let Some(&next) = x.checked_add(1).and_then(|nx| self.get(nx, y)) {
+                under.push(next);
+            }
+        }
+        if self.caret_inside(x, y, under.len() as u16) {
+            let abs_y = self.area.y.saturating_add(y);
+            for dx in 0..under.len() as u16 {
+                let abs_x = self.area.x.saturating_add(x).saturating_add(dx);
+                if let Some(drawn) = self.buffer.get_mut(abs_x, abs_y) {
+                    drawn.modifier.toggle(crate::render::Modifier::REVERSE);
+                }
+            }
+        }
+        self.mark_caret(x, y, &under);
+    }
+
     /// Mark the caret just drawn at relative `(x, y)`, for the terminal to
     /// show with its own cursor: `under` is how its cells, from `x` on, look
     /// without it (see [`caret_cells`]). A caret not wholly inside the area
     /// and the clip is out of view, and the frame shows none.
     ///
-    /// The last caret marked in a frame is the one shown, as only one field
-    /// can take typing; any other stays drawn as the cells it was given.
-    pub(crate) fn set_caret(&mut self, x: u16, y: u16, under: &[Cell]) {
+    /// For a widget that draws its caret in colors of its own; one that
+    /// does not calls [`set_caret`](Self::set_caret). The last caret marked
+    /// in a frame is the one shown, as only one field can take typing; any
+    /// other stays drawn as the cells it was given.
+    pub(crate) fn mark_caret(&mut self, x: u16, y: u16, under: &[Cell]) {
         let abs_x = self.area.x.saturating_add(x);
         let abs_y = self.area.y.saturating_add(y);
-        let n = under.len() as u16;
-        let inside = y < self.area.height
-            && x.checked_add(n).is_some_and(|end| end <= self.area.width)
-            && (0..n).all(|dx| !self.is_clipped(abs_x.saturating_add(dx), abs_y));
+        let inside = self.caret_inside(x, y, under.len() as u16);
         self.buffer
             .set_caret(abs_x, abs_y, if inside { under } else { &[] });
+    }
+
+    /// Whether `n` cells from relative `(x, y)` are all inside the area and
+    /// the clip
+    fn caret_inside(&self, x: u16, y: u16, n: u16) -> bool {
+        let abs_x = self.area.x.saturating_add(x);
+        let abs_y = self.area.y.saturating_add(y);
+        n > 0
+            && y < self.area.height
+            && x.checked_add(n).is_some_and(|end| end <= self.area.width)
+            && (0..n).all(|dx| !self.is_clipped(abs_x.saturating_add(dx), abs_y))
     }
 
     /// Draw `text` at relative `(x, y)` in terminal columns, stopping before
@@ -171,7 +235,7 @@ impl super::RenderContext<'_> {
 
 /// The cells a glyph takes: `cell`, and a continuation with its colors,
 /// modifiers and link when it is wide - for
-/// [`set_caret`](super::RenderContext::set_caret)
+/// [`mark_caret`](super::RenderContext::mark_caret)
 pub(crate) fn caret_cells(cell: Cell) -> Vec<Cell> {
     let mut cells = vec![cell];
     if !cell.is_continuation() && char_width(cell.symbol) == 2 {
