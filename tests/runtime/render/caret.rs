@@ -414,6 +414,28 @@ fn a_widget_caret_outside_its_area_shows_no_cursor_and_draws_nothing() {
 }
 
 #[test]
+fn a_widget_caret_under_the_clip_shows_no_cursor_and_draws_nothing() {
+    use revue::widget::RenderContext;
+    let mut buffer = Buffer::new(10, 1);
+    let area = revue::layout::Rect::new(0, 0, 10, 1);
+    let ctx = RenderContext::new(&mut buffer, area);
+    let mut ctx = ctx.with_clip(revue::layout::Rect::new(0, 0, 2, 1));
+    Own {
+        text: "abc",
+        at: (2, 0),
+    }
+    .render(&mut ctx);
+    assert!(!buffer
+        .get(2, 0)
+        .unwrap()
+        .modifier
+        .contains(Modifier::REVERSE));
+    let mut terminal = revue::render::Terminal::with_size(Vec::new(), 10, 1);
+    terminal.force_redraw(&buffer).unwrap();
+    assert!(!contains(terminal.writer(), SHOW));
+}
+
+#[test]
 fn a_widget_caret_after_a_field_takes_the_cursor_from_it() {
     let view = vstack().child(Input::new().value("one")).child(Own {
         text: "two",

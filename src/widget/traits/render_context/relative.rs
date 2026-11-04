@@ -88,10 +88,9 @@ impl super::RenderContext<'_> {
         }
         if self.caret_inside(x, y, under.len() as u16) {
             let abs_y = self.area.y.saturating_add(y);
-            for (dx, cell) in (0u16..).zip(&under) {
+            for dx in 0..under.len() as u16 {
                 let abs_x = self.area.x.saturating_add(x).saturating_add(dx);
                 if let Some(drawn) = self.buffer.get_mut(abs_x, abs_y) {
-                    *drawn = *cell;
                     drawn.modifier.toggle(crate::render::Modifier::REVERSE);
                 }
             }
