@@ -264,7 +264,7 @@ impl View for TextArea {
                     let cell =
                         self.text_cell(&marks, line_idx, p.col, ch, &highlights, css_fg, true);
                     let under = glyph_cells(cell, ch, w);
-                    ctx.set_caret(text_start_x + (start - scroll_x) as u16, y, &under);
+                    ctx.mark_caret(text_start_x + (start - scroll_x) as u16, y, &under);
                 }
             }
 
@@ -318,7 +318,7 @@ impl View for TextArea {
                         cell.bg = Some(Color::WHITE);
                         ctx.set(cx, y, cell);
                         if marks.primary == Some(CursorPos::new(line_idx, col)) {
-                            ctx.set_caret(cx, y, &caret_cells(bare));
+                            ctx.mark_caret(cx, y, &caret_cells(bare));
                         }
                     }
                 }

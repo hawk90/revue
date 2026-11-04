@@ -90,7 +90,7 @@ pub(crate) fn visible_from(text: &str, idx: usize, tab: usize) -> usize {
 /// The cells [`put_edit_line`](super::RenderContext::put_edit_line) draws
 /// for glyph `ch` styled as `cell`, `w` columns wide: a tab's first cell
 /// and blanks to its stop, or the glyph and its continuation. For the
-/// cells under a caret, see [`set_caret`](super::RenderContext::set_caret).
+/// cells under a caret, see [`mark_caret`](super::RenderContext::mark_caret).
 pub(crate) fn glyph_cells(mut cell: Cell, ch: char, w: usize) -> Vec<Cell> {
     if ch != '\t' {
         return super::caret_cells(cell);
@@ -228,12 +228,12 @@ impl super::RenderContext<'_> {
         }
         let cx = x.saturating_add(col as u16);
         match under {
-            Some(under) => self.set_caret(cx, y, &super::relative::caret_cells(under)),
+            Some(under) => self.mark_caret(cx, y, &super::relative::caret_cells(under)),
             // Past the end of the text: a blank, over what was there
             None if !placeholder && cursor >= text.chars().count() => {
                 let under = self.get(cx, y).copied().unwrap_or_default();
                 self.set(cx, y, style(FieldCell::Cursor, ' '));
-                self.set_caret(cx, y, &[under]);
+                self.mark_caret(cx, y, &[under]);
             }
             None => {}
         }

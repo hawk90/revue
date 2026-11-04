@@ -85,7 +85,7 @@ impl RichTextEditor {
             {
                 let under = ctx.get(col, line.y).copied().unwrap_or_default();
                 ctx.set(col, line.y, Cell::new(' ').bg(self.cursor_bg));
-                ctx.set_caret(col, line.y, &caret_cells(under));
+                ctx.mark_caret(col, line.y, &caret_cells(under));
             }
         }
     }
@@ -190,7 +190,7 @@ impl RichTextEditor {
                     // glyph as it looks without one
                     let mut under = cell;
                     under.bg = Some(if is_selected { self.selection_bg } else { bg });
-                    ctx.set_caret(col, line.y, &caret_cells(under));
+                    ctx.mark_caret(col, line.y, &caret_cells(under));
                 }
                 col += cw;
                 char_idx += 1;

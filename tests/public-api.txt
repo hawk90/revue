@@ -16172,6 +16172,7 @@ pub fn revue::widget::RenderContext<'_>::height(&self) -> u16
 pub fn revue::widget::RenderContext<'_>::put_str(&mut self, u16, u16, &str) -> u16
 pub fn revue::widget::RenderContext<'_>::set(&mut self, u16, u16, revue::render::Cell)
 pub fn revue::widget::RenderContext<'_>::set_bg(&mut self, u16, u16, revue::runtime::style::Color)
+pub fn revue::widget::RenderContext<'_>::set_caret(&mut self, u16, u16)
 pub fn revue::widget::RenderContext<'_>::set_fg(&mut self, u16, u16, revue::runtime::style::Color)
 pub fn revue::widget::RenderContext<'_>::width(&self) -> u16
 impl<'a> revue::widget::RenderContext<'a>
@@ -62179,6 +62180,7 @@ pub fn revue::widget::RenderContext<'_>::height(&self) -> u16
 pub fn revue::widget::RenderContext<'_>::put_str(&mut self, u16, u16, &str) -> u16
 pub fn revue::widget::RenderContext<'_>::set(&mut self, u16, u16, revue::render::Cell)
 pub fn revue::widget::RenderContext<'_>::set_bg(&mut self, u16, u16, revue::runtime::style::Color)
+pub fn revue::widget::RenderContext<'_>::set_caret(&mut self, u16, u16)
 pub fn revue::widget::RenderContext<'_>::set_fg(&mut self, u16, u16, revue::runtime::style::Color)
 pub fn revue::widget::RenderContext<'_>::width(&self) -> u16
 impl<'a> revue::widget::RenderContext<'a>
@@ -75585,6 +75587,7 @@ pub fn revue::widget::RenderContext<'_>::height(&self) -> u16
 pub fn revue::widget::RenderContext<'_>::put_str(&mut self, u16, u16, &str) -> u16
 pub fn revue::widget::RenderContext<'_>::set(&mut self, u16, u16, revue::render::Cell)
 pub fn revue::widget::RenderContext<'_>::set_bg(&mut self, u16, u16, revue::runtime::style::Color)
+pub fn revue::widget::RenderContext<'_>::set_caret(&mut self, u16, u16)
 pub fn revue::widget::RenderContext<'_>::set_fg(&mut self, u16, u16, revue::runtime::style::Color)
 pub fn revue::widget::RenderContext<'_>::width(&self) -> u16
 impl<'a> revue::widget::RenderContext<'a>

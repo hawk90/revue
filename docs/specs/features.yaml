@@ -1656,9 +1656,12 @@ items:
       - the screen shows the caret's cells as they look without it; the buffer keeps the drawn caret for output with no cursor
       - one caret per frame, the last drawn; a caret out of view, or drawn over, shows no cursor
       - one-line fields, TextArea (its primary cursor), CodeEditor and RichTextEditor
+      - a widget of its own puts its caret with RenderContext::set_caret(x, y); the buffer draws it reversed
       - an unchanged frame writes nothing
     evidence:
       - src/runtime/render/buffer.rs::set_caret
+      - src/widget/traits/render_context/relative.rs::set_caret
+      - tests/runtime/render/caret.rs::a_widget_of_its_own_puts_the_cursor_at_its_caret
       - src/runtime/render/terminal/types/cursor.rs::lift_caret
       - src/testing/pipeline.rs::screen_buffer
       - tests/runtime/render/caret.rs
