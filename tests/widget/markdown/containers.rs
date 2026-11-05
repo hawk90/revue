@@ -203,3 +203,11 @@ fn prefixes_wider_than_the_area_cut() {
     assert_eq!(shown("> > > a", 3, 1), ["│ │"]);
     assert_eq!(shown("- - - a", 1, 1), ["•"]);
 }
+
+/// A line break in a quote starts a new row: still so after a nested quote
+/// ends inside it, and not once the quote has ended
+#[test]
+fn line_breaks_follow_the_quote_still_open() {
+    assert_eq!(unwrapped("> > in\n>\n> a\n> b"), ["│ │ in", "│ a", "│ b"]);
+    assert_eq!(unwrapped("> q\n\na\nb"), ["│ q", "a b"]);
+}
