@@ -64,13 +64,52 @@ pub struct ParserContext<'a> {
     pub source: &'a str,
     /// The width the lines are broken to, `None` for no limit
     width: Option<usize>,
-    /// How many of the current line's first segments are its markers (list
-    /// indent, bullet or number, quote bar, heading `#`s), which the rest of
-    /// the line wraps beside
+    /// How many of the current line's first segments are its markers (a
+    /// heading's `#`s), which the rest of the line wraps beside
     markers: usize,
-    /// What starts each further row of the current line when it wraps: the
-    /// quote bar again, blank columns for the rest of its markers
+    /// What starts each further row of the current line when it wraps:
+    /// blank columns under its markers
     continuation: Vec<StyledText>,
+    /// The list items and quotes the current block is in, outermost first
+    containers: Vec<Container>,
+}
+
+/// A block that holds other blocks, a list item or a quote: every row drawn
+/// inside it starts with its prefix, after the prefixes of the containers
+/// around it (#1475)
+struct Container {
+    /// Starts the container's first row: the bullet, number or task box, or
+    /// the quote bar
+    first: Vec<StyledText>,
+    /// Starts each further row: blank columns as wide as `first`, or the
+    /// quote bar again
+    rest: Vec<StyledText>,
+    /// A row has been drawn inside it
+    started: bool,
+    /// A quote, whose bar takes a callout's color
+    quote: bool,
+}
+
+impl Container {
+    /// A list item: `marker` on its first row, blank columns under it after
+    fn item(marker: &str) -> Self {
+        Self {
+            first: vec![StyledText::new(marker)],
+            rest: vec![StyledText::new(" ".repeat(display_width(marker)))],
+            started: false,
+            quote: false,
+        }
+    }
+
+    /// A quote: the bar on every row
+    fn quote(bar: StyledText) -> Self {
+        Self {
+            first: vec![bar.clone()],
+            rest: vec![bar],
+            started: false,
+            quote: true,
+        }
+    }
 }
 
 impl<'a> ParserContext<'a> {
@@ -122,6 +161,7 @@ impl<'a> ParserContext<'a> {
             width: None,
             markers: 0,
             continuation: Vec::new(),
+            containers: Vec::new(),
         }
     }
 
@@ -131,37 +171,117 @@ impl<'a> ParserContext<'a> {
         self.width = width;
     }
 
-    /// The width the lines are broken to, if any
-    pub(super) fn width(&self) -> Option<usize> {
-        self.width
+    /// The columns a block inside the open containers has: the width less
+    /// their prefixes (`None`: no limit)
+    pub(super) fn room(&self) -> Option<usize> {
+        let prefix = self.containers.iter().map(|c| segments_width(&c.rest));
+        self.width.map(|width| width.saturating_sub(prefix.sum()))
     }
 
-    /// Add `line` as rows of at most the width: its first `markers`
-    /// segments start the first row and `continuation` the others, and the
-    /// rest wraps beside them at word boundaries.
+    /// The prefixes the next row starts with, outermost container first; the
+    /// containers count it as drawn
+    fn take_prefix(&mut self) -> Vec<StyledText> {
+        let mut prefix = Vec::new();
+        for container in &mut self.containers {
+            let part = if container.started {
+                &container.rest
+            } else {
+                &container.first
+            };
+            prefix.extend(part.iter().cloned());
+            container.started = true;
+        }
+        prefix
+    }
+
+    /// Add `line` as one row, after the open containers' prefixes; it is
+    /// not wrapped
+    pub(super) fn push_row(&mut self, line: Line) {
+        let mut segments = self.take_prefix();
+        segments.extend(line.segments);
+        self.lines.push(Line { segments });
+    }
+
+    /// Add `line` as rows of at most the width, each after the open
+    /// containers' prefixes: its first `markers` segments start the first
+    /// row and `continuation` the others, and the rest wraps beside them at
+    /// word boundaries.
     pub(super) fn push_wrapped(
         &mut self,
         mut line: Line,
         markers: usize,
         continuation: &[StyledText],
     ) {
-        let Some(width) = self.width else {
-            self.lines.push(line);
+        let Some(room) = self.room() else {
+            self.push_row(line);
             return;
         };
         let markers = markers.min(line.segments.len());
         let body = line.segments.split_off(markers);
         let lead = line.segments;
-        let room = width.saturating_sub(segments_width(&lead));
+        let room = room.saturating_sub(segments_width(&lead));
         let mut rows = super::wrap::wrap_words(&body, room).into_iter();
         let mut first = lead;
         first.extend(rows.next().unwrap_or_default());
-        self.lines.push(Line { segments: first });
+        self.push_row(Line { segments: first });
         for row in rows {
             let mut segments = continuation.to_vec();
             segments.extend(row);
-            self.lines.push(Line { segments });
+            self.push_row(Line { segments });
         }
+    }
+
+    /// Open a list item whose first row starts with `marker`
+    pub(super) fn open_item(&mut self, marker: &str) {
+        self.flush_line();
+        self.containers.push(Container::item(marker));
+    }
+
+    /// Mark the innermost list item as a task: its box stands in for the
+    /// bullet. A box that comes after the item's first row is plain text.
+    pub(super) fn mark_task(&mut self, checked: bool) {
+        let marker = if checked { "[x] " } else { "[ ] " };
+        match self.containers.last_mut() {
+            Some(item) if !item.quote && !item.started => *item = Container::item(marker),
+            _ => self.add_text(marker),
+        }
+    }
+
+    /// Close the innermost list item; an item with nothing in it still
+    /// shows its bullet
+    pub(super) fn close_item(&mut self) {
+        self.flush_line();
+        if self.containers.last().is_some_and(|item| !item.started) {
+            self.push_row(Line::new());
+        }
+        self.containers.pop();
+    }
+
+    /// Open a quote: every row inside it starts with the bar
+    pub(super) fn open_quote(&mut self) {
+        self.flush_line();
+        let bar = StyledText::new("│ ").with_fg(self.quote_fg);
+        self.containers.push(Container::quote(bar));
+    }
+
+    /// Draw the innermost quote's bar in a callout's `color`
+    pub(super) fn color_quote_bar(&mut self, color: Color) {
+        if let Some(quote) = self.containers.iter_mut().rev().find(|c| c.quote) {
+            *quote = Container {
+                started: quote.started,
+                ..Container::quote(StyledText::new("│ ").with_fg(color))
+            };
+        }
+    }
+
+    /// Close the innermost quote; `in_blockquote` stays set while an outer
+    /// quote is open
+    pub(super) fn close_quote(&mut self) {
+        self.flush_line();
+        if let Some(at) = self.containers.iter().rposition(|c| c.quote) {
+            self.containers.truncate(at);
+        }
+        self.in_blockquote = self.containers.iter().any(|c| c.quote);
     }
 
     /// Add the current line, wrapped beside its markers, and start an empty
@@ -173,28 +293,14 @@ impl<'a> ParserContext<'a> {
         self.push_wrapped(line, markers, &continuation);
     }
 
-    /// Start the current line with a marker: list indent, bullet or number,
-    /// task box, heading `#`s, or (`repeat`) the quote bar, which starts
-    /// every row of the line when it wraps. Other markers leave blank
-    /// columns on the rows after the first. A marker after the line's text
-    /// is plain text.
-    pub(super) fn add_marker(&mut self, text: &str, repeat: bool) {
-        if text.is_empty() {
-            return;
-        }
-        let at_start = self.markers == self.current_line.segments.len();
+    /// Start the current line with a marker, a heading's `#`s: the rows
+    /// after the first leave blank columns under it. The line is empty when
+    /// it comes; a heading starts a row of its own.
+    pub(super) fn add_marker(&mut self, text: &str) {
         self.add_text(text);
-        if at_start && self.markers < self.current_line.segments.len() {
-            // `add_text` may have put the bullet first
-            for segment in &self.current_line.segments[self.markers..] {
-                self.continuation.push(if repeat && segment.text == text {
-                    segment.clone()
-                } else {
-                    StyledText::new(" ".repeat(display_width(&segment.text)))
-                });
-            }
-            self.markers = self.current_line.segments.len();
-        }
+        self.continuation
+            .push(StyledText::new(" ".repeat(display_width(text))));
+        self.markers = self.current_line.segments.len();
     }
 
     /// Flush the current line
@@ -212,13 +318,7 @@ impl<'a> ParserContext<'a> {
     }
 
     /// Add text to the current line
-    ///
-    /// The first text of an unordered list item is preceded by its bullet.
     pub fn add_text(&mut self, text: &str) {
-        if !text.is_empty() && self.item_needs_bullet {
-            self.item_needs_bullet = false;
-            self.add_marker("• ", false);
-        }
         if !text.is_empty() {
             self.current_line.push(StyledText {
                 text: text.to_string(),
@@ -229,14 +329,9 @@ impl<'a> ParserContext<'a> {
         }
     }
 
-    /// Add blockquote text; a line inside a quote starts with the quote bar.
+    /// Add blockquote text. The quote bar comes from the open quote, which
+    /// starts every row drawn inside it, so this is `add_text`.
     pub fn add_quote_text(&mut self, text: &str) {
-        if text.is_empty() {
-            return;
-        }
-        if self.current_line.is_empty() {
-            self.add_marker("│ ", true);
-        }
         self.add_text(text);
     }
 

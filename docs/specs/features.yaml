@@ -981,9 +981,11 @@ items:
       - show_toc(true) draws a table of contents (toc_title, entries indented by level in toc_fg) before the document
       - laid out at the drawn width (#951): paragraphs, headings, list items, quotes, footnotes and TOC entries wrap at word boundaries (a list item's rows line up after its bullet, every quote row starts with the bar); a long code line goes on inside its box with nothing dropped; tables are cut at the edge
       - lines_at(width) / line_count_at(width) give the rows drawn at a width; MarkdownPresentation scrolls through them
+      - blocks inside list items and quotes take the containers' prefixes (#1475): a heading, paragraph, code block, table, quote or nested list in an item lines up with the item's text; every row in a quote starts with the bar, one per nesting level, a list in a quote after the bar; a callout's title and bar are inside its quote, the bar in the callout's color
     evidence:
       - src/widget/markdown/mod.rs::lines_at
       - tests/widget/markdown/width.rs
+      - tests/widget/markdown/containers.rs
       - tests/widget/markdown_presentation.rs::test_preview_scrolls_through_wrapped_rows
       - src/widget/markdown/helpers.rs::markdown
       - src/widget/markdown/mod.rs::syntax_highlight

@@ -219,15 +219,3 @@ fn the_wrapped_row_count_is_what_is_drawn() {
     assert_eq!(md.line_count_at(9), 3);
     assert_eq!(md.line_count_at(0), 1, "no width: no wrapping");
 }
-
-/// A heading inside a tight list item comes after the item's text on its
-/// line, so its `#` is text there: the row wraps after the bullet, not after
-/// the `#`
-#[test]
-fn a_marker_after_the_text_wraps_as_text() {
-    let md = Markdown::new("- foo\n  # bar baz qux");
-    let wide = md.lines_at(80);
-    let line: String = wide[0].segments.iter().map(|s| s.text.as_str()).collect();
-    assert_eq!(line, "• foo# bar baz qux");
-    assert_eq!(text_of(&md, 14), ["• foo# bar baz", "  qux"]);
-}

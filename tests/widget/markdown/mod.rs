@@ -1,5 +1,6 @@
 //! Markdown widget tests
 
+mod containers;
 mod helpers;
 mod integration;
 mod width;

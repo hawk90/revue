@@ -40,7 +40,7 @@ impl Markdown {
 
         let mut sep = Line::new();
         sep.push(StyledText::new("─".repeat(40)).with_fg(DARK_GRAY));
-        ctx.lines.push(sep);
+        ctx.push_row(sep);
     }
 
     /// Draw the finished heading as FIGlet big text, one row per art line,
@@ -58,7 +58,7 @@ impl Markdown {
                     .with_fg(ctx.heading_fg)
                     .with_modifier(Modifier::BOLD),
             );
-            ctx.lines.push(line);
+            ctx.push_row(line);
         }
     }
 
@@ -75,8 +75,8 @@ impl Markdown {
         let code = std::mem::take(&mut ctx.code_block_lines).concat();
         // The box's sides take a column each
         let room = ctx
-            .width()
-            .map(|width| width.saturating_sub(if ctx.code_border { 2 } else { 0 }));
+            .room()
+            .map(|room| room.saturating_sub(if ctx.code_border { 2 } else { 0 }));
 
         // (prefix, code) per row
         let mut rows: Vec<(String, Vec<StyledText>)> = Vec::new();
@@ -137,7 +137,7 @@ impl Markdown {
         };
 
         if ctx.code_border {
-            ctx.lines.push(border("┌", "┐"));
+            ctx.push_row(border("┌", "┐"));
         }
 
         for row in &rows {
@@ -152,11 +152,11 @@ impl Markdown {
                 code_line
                     .push(StyledText::new(format!("{} │", " ".repeat(pad))).with_fg(DISABLED_FG));
             }
-            ctx.lines.push(code_line);
+            ctx.push_row(code_line);
         }
 
         if ctx.code_border {
-            ctx.lines.push(border("└", "┘"));
+            ctx.push_row(border("└", "┘"));
         }
 
         ctx.new_line();
@@ -197,7 +197,7 @@ impl Markdown {
             line
         };
 
-        ctx.lines.push(border("┌", "┬", "┐"));
+        ctx.push_row(border("┌", "┬", "┐"));
         for (row_idx, row) in rows.iter().enumerate() {
             let is_header = row_idx == 0;
             let mut line = Line::new();
@@ -217,12 +217,12 @@ impl Markdown {
                 });
                 line.push(StyledText::new("│").with_fg(DISABLED_FG));
             }
-            ctx.lines.push(line);
+            ctx.push_row(line);
             if is_header && rows.len() > 1 {
-                ctx.lines.push(border("├", "┼", "┤"));
+                ctx.push_row(border("├", "┼", "┤"));
             }
         }
-        ctx.lines.push(border("└", "┴", "┘"));
+        ctx.push_row(border("└", "┴", "┘"));
 
         ctx.new_line();
     }

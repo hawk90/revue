@@ -47,8 +47,7 @@ impl Markdown {
                 Event::FootnoteReference(text) => self.handle_footnote_reference(&mut ctx, &text),
                 Event::Rule => {
                     ctx.flush_line();
-                    let rule_line = Line::new();
-                    ctx.lines.push(rule_line);
+                    ctx.push_row(Line::new());
                 }
                 Event::SoftBreak => {
                     if ctx.in_blockquote || ctx.current_admonition.is_some() {
@@ -65,7 +64,7 @@ impl Markdown {
                 Event::TaskListMarker(checked) => {
                     // Task list item - the checkbox stands in for the bullet
                     ctx.item_needs_bullet = false;
-                    ctx.add_marker(if checked { "[x] " } else { "[ ] " }, false);
+                    ctx.mark_task(checked);
                 }
                 // Handle remaining events
                 _ => {}
@@ -82,7 +81,7 @@ impl Markdown {
             sep_line.push(
                 StyledText::new("────────────────────────────────────────").with_fg(DARK_GRAY),
             );
-            ctx.lines.push(sep_line);
+            ctx.push_row(sep_line);
             ctx.new_line();
 
             // Sort footnotes by reference number
@@ -121,6 +120,9 @@ impl Markdown {
     fn handle_start_tag(&self, ctx: &mut parser::ParserContext, tag: Tag) {
         match tag {
             Tag::Heading { level, .. } => {
+                // A heading starts a row of its own, also in a tight list
+                // item, whose text has no paragraph to end it (#1473)
+                ctx.flush_line();
                 ctx.in_heading = true;
                 ctx.heading_level = match level {
                     pulldown_cmark::HeadingLevel::H1 => 1,
@@ -141,7 +143,7 @@ impl Markdown {
                     let marker = "#".repeat(ctx.heading_level as usize);
                     ctx.current_fg = Some(PLACEHOLDER_FG);
                     ctx.current_modifier = Modifier::empty();
-                    ctx.add_marker(&format!("{marker} "), false);
+                    ctx.add_marker(&format!("{marker} "));
                 }
                 ctx.current_modifier |= Modifier::BOLD;
                 ctx.current_fg = Some(ctx.heading_fg);
@@ -181,19 +183,16 @@ impl Markdown {
                 ctx.list_numbers.push(outer);
             }
             Tag::Item => {
-                // A nested item must not continue its parent's line
-                ctx.flush_line();
-                let indent = "  ".repeat(ctx.list_depth.saturating_sub(1));
-                ctx.add_marker(&indent, false);
-
-                // For ordered lists, add the number now
+                // The item's rows start with its number or bullet, after
+                // the prefixes of the items and quotes around it; a nested
+                // item lines up with its parent's text
                 if let Some(n) = ctx.ordered_list_num {
                     ctx.ordered_list_num = Some(n + 1);
-                    ctx.add_marker(&format!("{}. ", n), false);
+                    ctx.open_item(&format!("{}. ", n));
                     ctx.item_needs_bullet = false;
                 } else {
-                    // For unordered lists, wait to see if it's a task list;
-                    // `add_text` emits the bullet before the item's first text
+                    // A task box may still take the bullet's place
+                    ctx.open_item("• ");
                     ctx.item_needs_bullet = true;
                 }
             }
@@ -223,6 +222,7 @@ impl Markdown {
                 ctx.current_footnote_content.clear();
             }
             Tag::BlockQuote(_) => {
+                ctx.open_quote();
                 ctx.in_blockquote = true;
                 ctx.blockquote_first_text = true;
                 ctx.current_admonition = None;
@@ -276,14 +276,12 @@ impl Markdown {
                 ctx.in_footnote_definition = false;
             }
             TagEnd::BlockQuote(_) => {
-                ctx.in_blockquote = false;
                 ctx.blockquote_first_text = false;
-                ctx.flush_line();
+                ctx.close_quote();
                 // Add empty line after admonition
                 if ctx.current_admonition.is_some() {
-                    ctx.lines.push(std::mem::take(&mut ctx.current_line));
-                    let empty_line = Line::new();
-                    ctx.lines.push(empty_line);
+                    ctx.push_row(Line::new());
+                    ctx.push_row(Line::new());
                 }
                 ctx.current_admonition = None;
                 ctx.accumulated_blockquote.clear();
@@ -298,7 +296,7 @@ impl Markdown {
                 ctx.flush_line();
             }
             TagEnd::Item => {
-                ctx.flush_line();
+                ctx.close_item();
                 ctx.item_needs_bullet = false;
             }
             TagEnd::TableCell => {
@@ -337,6 +335,7 @@ impl Markdown {
             let pending = ctx.accumulated_blockquote.clone();
             if let Some(admonition) = AdmonitionType::from_exact_marker(&pending) {
                 ctx.current_admonition = Some(admonition);
+                ctx.color_quote_bar(admonition.color());
                 ctx.flush_line();
                 // Render admonition header with icon and label
                 ctx.current_fg = Some(admonition.color());
@@ -377,6 +376,7 @@ impl Markdown {
     fn handle_html(&self, ctx: &mut parser::ParserContext, text: &str) {
         if let Some(admonition) = AdmonitionType::from_marker(text) {
             ctx.current_admonition = Some(admonition);
+            ctx.color_quote_bar(admonition.color());
             ctx.flush_line();
             // Render admonition header with icon and label
             let color = admonition.color();
