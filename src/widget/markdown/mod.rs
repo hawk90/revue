@@ -34,8 +34,10 @@
 //! at word boundaries: a list item's further rows line up after its bullet
 //! or number, and every row of a quote starts with the quote bar. A code
 //! block line too long for the box goes on over the next rows, inside the
-//! box. Tables, FIGlet headings and rules are drawn as they are and cut at
-//! the edge.
+//! box. A table wider than its room fits it: the widest columns shrink
+//! first, and a cell's text wraps inside its column (a table too narrow for
+//! a column per character is cut at the edge). FIGlet headings and rules are
+//! drawn as they are and cut at the edge.
 //!
 //! # Nesting
 //!
