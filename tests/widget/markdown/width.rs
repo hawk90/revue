@@ -1,5 +1,6 @@
 //! Markdown laid out at the width it is drawn at (#951): prose wraps at word
-//! boundaries beside its markers, code wraps inside its box, tables are cut.
+//! boundaries beside its markers, code wraps inside its box; tables fit the
+//! width in table.rs.
 
 use revue::layout::Rect;
 use revue::render::{Buffer, Modifier};
@@ -175,16 +176,6 @@ fn a_wrapped_code_line_leaves_the_number_column_blank() {
 fn a_code_block_without_a_border_wraps_to_the_area() {
     let md = Markdown::new("```\nabcdefgh\n```").code_border(false);
     assert_eq!(text_of(&md, 3), ["abc", "def", "gh"]);
-}
-
-/// Tables are drawn as they are and cut at the edge
-#[test]
-fn a_table_is_cut_not_wrapped() {
-    let md = Markdown::new("| name | value |\n|---|---|\n| a | b |");
-    let wide = text_of(&md, 80);
-    let narrow = text_of(&md, 8);
-    assert_eq!(wide, narrow);
-    assert_eq!(rows(&draw(&md, 8, 1)), ["┌──────┬"]);
 }
 
 #[test]

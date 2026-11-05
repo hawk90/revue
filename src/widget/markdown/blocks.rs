@@ -5,7 +5,9 @@ use super::{parser, Line, Markdown, StyledText};
 use crate::render::Modifier;
 use crate::utils::figlet::{figlet_with_font, FigletFont};
 use crate::utils::syntax::Language;
-use crate::utils::unicode::{center_to_width, display_width, pad_to_width, right_align_to_width};
+use crate::utils::unicode::{
+    center_to_width, char_width, display_width, pad_to_width, right_align_to_width,
+};
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG};
 
 impl Markdown {
@@ -163,8 +165,12 @@ impl Markdown {
     }
 
     /// Lay out the collected table: a box with the header row, a separator,
-    /// and the body rows, each column as wide as its widest cell. Rows wider
-    /// than the widget are clipped at render time like any other line.
+    /// and the body rows, each column as wide as its widest cell. A table
+    /// wider than the room it has fits it (#1472): the widest columns give
+    /// up columns first, and a cell's text wraps inside its column at word
+    /// boundaries, so a row may take several lines. Nothing of a cell is
+    /// dropped. When even a column per character cannot fit, the table is
+    /// drawn as wide as its cells and cut at the edge.
     pub(super) fn render_table(&self, ctx: &mut parser::ParserContext) {
         use pulldown_cmark::Alignment;
 
@@ -177,15 +183,33 @@ impl Markdown {
         if columns == 0 {
             return;
         }
-        let widths: Vec<usize> = (0..columns)
+        let cells = |col: usize| rows.iter().filter_map(move |row| row.get(col));
+        let natural: Vec<usize> = (0..columns)
             .map(|col| {
-                rows.iter()
-                    .filter_map(|row| row.get(col))
+                cells(col)
                     .map(|cell| display_width(cell))
                     .max()
                     .unwrap_or(0)
             })
             .collect();
+        // A column is never narrower than its widest character
+        let floors: Vec<usize> = (0..columns)
+            .map(|col| {
+                cells(col)
+                    .flat_map(|cell| cell.chars().map(char_width))
+                    .max()
+                    .unwrap_or(0)
+            })
+            .collect();
+        // Each column takes a space either side and a border after it, and
+        // the box a border before the first
+        let room = ctx
+            .room()
+            .and_then(|room| room.checked_sub(1 + 3 * columns));
+        let widths = match room {
+            Some(room) => fit_columns(&natural, &floors, room).unwrap_or(natural),
+            None => natural,
+        };
 
         let border = |left: &str, mid: &str, right: &str| {
             let segments: Vec<String> = widths.iter().map(|w| "─".repeat(w + 2)).collect();
@@ -200,24 +224,39 @@ impl Markdown {
         ctx.push_row(border("┌", "┬", "┐"));
         for (row_idx, row) in rows.iter().enumerate() {
             let is_header = row_idx == 0;
-            let mut line = Line::new();
-            line.push(StyledText::new("│").with_fg(DISABLED_FG));
-            for (col, width) in widths.iter().enumerate() {
-                let cell = row.get(col).map(String::as_str).unwrap_or("");
-                let text = match alignments.get(col) {
-                    Some(Alignment::Center) => center_to_width(cell, *width),
-                    Some(Alignment::Right) => right_align_to_width(cell, *width),
-                    _ => pad_to_width(cell, *width),
-                };
-                let text = StyledText::new(format!(" {text} "));
-                line.push(if is_header {
-                    text.with_fg(ctx.heading_fg).with_modifier(Modifier::BOLD)
-                } else {
-                    text
-                });
+            // Each cell's text as the lines it takes in its column
+            let wrapped: Vec<Vec<String>> = widths
+                .iter()
+                .enumerate()
+                .map(|(col, width)| {
+                    let cell = row.get(col).map(String::as_str).unwrap_or("");
+                    super::wrap::wrap_words(&[StyledText::new(cell)], *width)
+                        .into_iter()
+                        .map(|part| part.into_iter().map(|s| s.text).collect())
+                        .collect()
+                })
+                .collect();
+            let height = wrapped.iter().map(Vec::len).max().unwrap_or(1);
+            for at in 0..height {
+                let mut line = Line::new();
                 line.push(StyledText::new("│").with_fg(DISABLED_FG));
+                for (col, width) in widths.iter().enumerate() {
+                    let part = wrapped[col].get(at).map(String::as_str).unwrap_or("");
+                    let text = match alignments.get(col) {
+                        Some(Alignment::Center) => center_to_width(part, *width),
+                        Some(Alignment::Right) => right_align_to_width(part, *width),
+                        _ => pad_to_width(part, *width),
+                    };
+                    let text = StyledText::new(format!(" {text} "));
+                    line.push(if is_header {
+                        text.with_fg(ctx.heading_fg).with_modifier(Modifier::BOLD)
+                    } else {
+                        text
+                    });
+                    line.push(StyledText::new("│").with_fg(DISABLED_FG));
+                }
+                ctx.push_row(line);
             }
-            ctx.push_row(line);
             if is_header && rows.len() > 1 {
                 ctx.push_row(border("├", "┼", "┤"));
             }
@@ -225,5 +264,90 @@ impl Markdown {
         ctx.push_row(border("└", "┴", "┘"));
 
         ctx.new_line();
+    }
+}
+
+/// Column widths summing to at most `room`: the widest columns are cut down
+/// first, to the width of the next widest, and no column goes below its
+/// floor or above its natural width. `None` when the floors alone are wider
+/// than `room`.
+fn fit_columns(natural: &[usize], floors: &[usize], room: usize) -> Option<Vec<usize>> {
+    let total = natural.iter().sum::<usize>();
+    if total <= room {
+        return Some(natural.to_vec());
+    }
+    let capped = |cap: usize| -> Vec<usize> {
+        natural
+            .iter()
+            .zip(floors)
+            .map(|(&natural, &floor)| natural.min(cap).max(floor))
+            .collect()
+    };
+    if floors.iter().sum::<usize>() > room {
+        return None;
+    }
+    // The largest cap whose widths fit: the sum grows with the cap, and a
+    // cap of 0 leaves only the floors, which fit
+    let (mut low, mut high) = (0, natural.iter().copied().max().unwrap_or(0));
+    while low < high {
+        let mid = (low + high).div_ceil(2);
+        if capped(mid).iter().sum::<usize>() <= room {
+            low = mid;
+        } else {
+            high = mid - 1;
+        }
+    }
+    let mut widths = capped(low);
+    // The columns left out of a whole step up share what is left, first
+    // columns first
+    let mut spare = room - widths.iter().sum::<usize>();
+    for (width, &natural) in widths.iter_mut().zip(natural) {
+        if spare == 0 {
+            break;
+        }
+        if *width == low && natural > low {
+            *width += 1;
+            spare -= 1;
+        }
+    }
+    Some(widths)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fit_columns;
+
+    #[test]
+    fn columns_that_fit_keep_their_width() {
+        assert_eq!(fit_columns(&[3, 5], &[1, 1], 8), Some(vec![3, 5]));
+    }
+
+    /// The widest column gives up columns first, down to the next widest
+    #[test]
+    fn the_widest_column_shrinks_first() {
+        assert_eq!(fit_columns(&[3, 10], &[1, 1], 9), Some(vec![3, 6]));
+        assert_eq!(fit_columns(&[3, 10], &[1, 1], 6), Some(vec![3, 3]));
+        // Level, the one column over goes to the first
+        assert_eq!(fit_columns(&[3, 10], &[1, 1], 5), Some(vec![3, 2]));
+    }
+
+    /// What one step of the cap leaves goes to the first capped columns
+    #[test]
+    fn the_spare_column_goes_to_the_first_capped_column() {
+        assert_eq!(fit_columns(&[8, 8, 2], &[1, 1, 1], 11), Some(vec![5, 4, 2]));
+    }
+
+    /// A wide character keeps its column at two
+    #[test]
+    fn no_column_goes_below_its_floor() {
+        assert_eq!(fit_columns(&[6, 6], &[2, 1], 3), Some(vec![2, 1]));
+        assert_eq!(fit_columns(&[6, 6], &[2, 2], 3), None);
+        // The spare column would go to the first column; the second needs it
+        assert_eq!(fit_columns(&[6, 6], &[1, 2], 3), Some(vec![1, 2]));
+    }
+
+    #[test]
+    fn an_empty_column_stays_empty() {
+        assert_eq!(fit_columns(&[0, 9], &[0, 1], 4), Some(vec![0, 4]));
     }
 }

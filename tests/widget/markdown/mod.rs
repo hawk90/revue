@@ -3,6 +3,7 @@
 mod containers;
 mod helpers;
 mod integration;
+mod table;
 mod width;
 
 use revue::layout::Rect;
