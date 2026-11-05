@@ -290,29 +290,15 @@ pub fn pad_right(text: &str, width: usize) -> String {
 
 /// Wrap text to fit within max_width
 ///
-/// # Arguments
-/// * `text` - Text to wrap
-/// * `max_width` - Maximum line width
-///
-/// # Returns
-/// Vector of lines, each fitting within max_width
+/// The rows [`crate::text::wrap_text`] gives (#1474), the function of the
+/// same name this one used to break differently from. A `max_width` of 0
+/// is taken as 1, as there.
+#[deprecated(
+    since = "3.15.0",
+    note = "use `revue::text::wrap_text`, which breaks the same way"
+)]
 pub fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
-    if max_width == 0 || text.is_empty() {
-        return vec![];
-    }
-    // Handle multiple paragraphs (newlines)
-    let mut lines = Vec::new();
-    for paragraph in text.lines() {
-        if paragraph.is_empty() {
-            lines.push(String::new());
-            continue;
-        }
-        lines.extend(crate::utils::unicode::wrap_to_width(paragraph, max_width));
-    }
-    if lines.is_empty() {
-        lines.push(String::new());
-    }
-    lines
+    crate::text::wrap_text(text, max_width)
 }
 
 /// Split text into fixed-width chunks (for display in columns)

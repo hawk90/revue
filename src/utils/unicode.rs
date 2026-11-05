@@ -213,78 +213,11 @@ pub fn split_at_width(s: &str, width: usize) -> (&str, &str) {
 
 /// Wrap text to a specific display width
 ///
-/// Wraps text at word boundaries when possible.
+/// The rows [`crate::text::wrap_words`] gives (#1474): broken at spaces,
+/// after hyphens and between CJK characters, a word wider than the width
+/// broken across rows, each `\n` starting a new row. Spaces inside a row
+/// are kept, and nothing is dropped but the whitespace at a break. A
+/// `max_width` of 0 is taken as 1, so no text is lost.
 pub fn wrap_to_width(s: &str, max_width: usize) -> Vec<String> {
-    if max_width == 0 {
-        return vec![];
-    }
-
-    let mut lines = Vec::new();
-    let mut current_line = String::new();
-    let mut current_width = 0;
-
-    for word in s.split_whitespace() {
-        let word_width = display_width(word);
-
-        if current_width == 0 {
-            // First word on line
-            if word_width <= max_width {
-                current_line = word.to_string();
-                current_width = word_width;
-            } else {
-                // Word is too long, need to break it
-                let mut remaining = word;
-                while !remaining.is_empty() {
-                    let (chunk, rest) = split_at_width(remaining, max_width);
-                    if chunk.is_empty() {
-                        // Can't fit even a single character, skip to avoid infinite loop
-                        break;
-                    }
-                    lines.push(chunk.to_string());
-                    if rest.is_empty() {
-                        break;
-                    }
-                    remaining = rest;
-                }
-            }
-        } else if current_width + 1 + word_width <= max_width {
-            // Word fits on current line
-            current_line.push(' ');
-            current_line.push_str(word);
-            current_width += 1 + word_width;
-        } else {
-            // Need to wrap
-            lines.push(current_line);
-            if word_width <= max_width {
-                current_line = word.to_string();
-                current_width = word_width;
-            } else {
-                // Word is too long, need to break it
-                current_line = String::new();
-                current_width = 0;
-                let mut remaining = word;
-                while !remaining.is_empty() {
-                    let (chunk, rest) = split_at_width(remaining, max_width);
-                    if chunk.is_empty() {
-                        // Can't fit even a single character (e.g., wide char in narrow width)
-                        // Skip this word to avoid infinite loop
-                        break;
-                    }
-                    if rest.is_empty() {
-                        current_line = chunk.to_string();
-                        current_width = display_width(chunk);
-                    } else {
-                        lines.push(chunk.to_string());
-                    }
-                    remaining = rest;
-                }
-            }
-        }
-    }
-
-    if !current_line.is_empty() {
-        lines.push(current_line);
-    }
-
-    lines
+    crate::text::wrap_words(s, max_width)
 }

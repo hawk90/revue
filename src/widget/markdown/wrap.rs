@@ -2,38 +2,14 @@
 //! each piece's style: at word boundaries for prose, anywhere for code.
 
 use super::StyledText;
-use crate::utils::unicode::{char_width, display_width};
-use textwrap::core::Fragment;
-use textwrap::wrap_algorithms::wrap_first_fit;
-use textwrap::WordSeparator;
-
-/// A word of the line's text, as a byte range into that text, and the
-/// width of the whitespace after it.
-#[derive(Debug)]
-struct Piece {
-    start: usize,
-    word_end: usize,
-    width: usize,
-    whitespace_width: usize,
-}
-
-impl Fragment for Piece {
-    fn width(&self) -> f64 {
-        self.width as f64
-    }
-
-    fn whitespace_width(&self) -> f64 {
-        self.whitespace_width as f64
-    }
-
-    fn penalty_width(&self) -> f64 {
-        0.0
-    }
-}
+use crate::text::{char_rows, word_rows};
+use crate::utils::unicode::display_width;
 
 /// `segments` as rows of at most `width` columns, broken where a line may
-/// break (spaces, and between CJK characters or emoji). The whitespace at a
-/// break is dropped. A word wider than `width` is broken across rows.
+/// break (spaces, after hyphens, and between CJK characters or emoji), by
+/// the same rules as every other wrapped text (`text::word_rows`, #1474).
+/// The whitespace at a break is dropped. A word wider than `width` is
+/// broken across rows.
 ///
 /// A `width` of 0, or text that fits, gives the text back as one row.
 pub(super) fn wrap_words(segments: &[StyledText], width: usize) -> Vec<Vec<StyledText>> {
@@ -41,40 +17,7 @@ pub(super) fn wrap_words(segments: &[StyledText], width: usize) -> Vec<Vec<Style
     if width == 0 || display_width(&text) <= width {
         return vec![segments.to_vec()];
     }
-
-    let mut pieces = Vec::new();
-    for word in WordSeparator::UnicodeBreakProperties.find_words(&text) {
-        let start = word.word.as_ptr() as usize - text.as_ptr() as usize;
-        let word_end = start + word.word.len();
-        let whitespace_width = display_width(word.whitespace);
-        if display_width(word.word) <= width {
-            pieces.push(Piece {
-                start,
-                word_end,
-                width: display_width(word.word),
-                whitespace_width,
-            });
-            continue;
-        }
-        // Too wide for a row on its own: break it where the row is full,
-        // and the whitespace goes with its last part
-        let parts = char_rows(&text[start..word_end], width);
-        let last = parts.len() - 1;
-        for (i, (from, to, part_width)) in parts.into_iter().enumerate() {
-            let is_last = i == last;
-            pieces.push(Piece {
-                start: start + from,
-                word_end: start + to,
-                width: part_width,
-                whitespace_width: if is_last { whitespace_width } else { 0 },
-            });
-        }
-    }
-
-    let rows = wrap_first_fit(&pieces, &[width as f64])
-        .into_iter()
-        .filter_map(|row| Some((row.first()?.start, row.last()?.word_end)));
-    slice_rows(segments, rows)
+    slice_rows(segments, word_rows(&text, width, width, true).into_iter())
 }
 
 /// `segments` as rows of at most `width` columns, broken at the character
@@ -90,25 +33,6 @@ pub(super) fn wrap_chars(segments: &[StyledText], width: usize) -> Vec<Vec<Style
         .into_iter()
         .map(|(from, to, _)| (from, to));
     slice_rows(segments, rows)
-}
-
-/// Byte ranges of `text` and their widths, each row filled to at most
-/// `width` columns. A character wider than `width` gets a row of its own.
-fn char_rows(text: &str, width: usize) -> Vec<(usize, usize, usize)> {
-    let mut rows = Vec::new();
-    let mut start = 0;
-    let mut row_width = 0;
-    for (at, ch) in text.char_indices() {
-        let w = char_width(ch);
-        if row_width + w > width && at > start {
-            rows.push((start, at, row_width));
-            start = at;
-            row_width = 0;
-        }
-        row_width += w;
-    }
-    rows.push((start, text.len(), row_width));
-    rows
 }
 
 /// The parts of `segments` between the byte ranges `rows` of their joined
