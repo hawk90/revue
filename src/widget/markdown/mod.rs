@@ -37,6 +37,16 @@
 //! box. Tables, FIGlet headings and rules are drawn as they are and cut at
 //! the edge.
 //!
+//! # Nesting
+//!
+//! List items and quotes hold other blocks. Every row drawn inside one
+//! starts with its prefix, after the prefixes of the items and quotes
+//! around it: the bullet, number or task box on an item's first row and
+//! blank columns under it after, the quote bar on every row of a quote
+//! (in a callout's color for a callout). A paragraph, heading, code block,
+//! table or nested list inside an item lines up with the item's text, and
+//! the block is laid out at the width less the prefixes.
+//!
 //! [`Markdown::lines`] is the layout without a width limit;
 //! [`Markdown::lines_at`] is the layout at a width, as drawn.
 //!
