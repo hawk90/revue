@@ -154,6 +154,8 @@ pub use bidi::{
     BidiInfo, BidiRun, ResolvedDirection, RtlLayout, TextAlign, TextDirection,
 };
 pub use width::{char_width, CharWidthTable};
+// Markdown breaks its styled lines by the same rows (#1474)
+#[cfg(feature = "markdown")]
 pub(crate) use wrap::{char_rows, word_rows};
 pub use wrap::{
     truncate, truncate_middle, wrap_chars, wrap_text, wrap_words, Overflow, TextWrapper, WrapMode,
