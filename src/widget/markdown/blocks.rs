@@ -342,6 +342,8 @@ mod tests {
     fn no_column_goes_below_its_floor() {
         assert_eq!(fit_columns(&[6, 6], &[2, 1], 3), Some(vec![2, 1]));
         assert_eq!(fit_columns(&[6, 6], &[2, 2], 3), None);
+        // The spare column would go to the first column; the second needs it
+        assert_eq!(fit_columns(&[6, 6], &[1, 2], 3), Some(vec![1, 2]));
     }
 
     #[test]

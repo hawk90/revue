@@ -160,3 +160,19 @@ fn the_row_count_follows_the_wrapped_cells() {
     assert_eq!(md.line_count(), 5);
     assert_eq!(md.line_count_at(20), 7);
 }
+
+/// A column of wide characters keeps two columns when the table is cut to
+/// the bone, so its border stays in line
+#[test]
+fn a_wide_character_column_keeps_two_columns() {
+    assert_eq!(
+        shown("| abc | 가나 |\n|---|---|", 10, 5),
+        [
+            "┌───┬────┐",
+            "│ a │ 가 │",
+            "│ b │ 나 │",
+            "│ c │    │",
+            "└───┴────┘",
+        ]
+    );
+}
