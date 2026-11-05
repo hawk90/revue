@@ -1,6 +1,9 @@
 //! `utils::text`: character/byte indexing, padding, truncation, wrapping
 //! and progress bars
 
+// `wrap_text` here is deprecated for `revue::text::wrap_text` (#1474)
+#![allow(deprecated)]
+
 use revue::utils::text::{
     byte_to_char_index, center, char_count, char_slice, char_to_byte_index,
     char_to_byte_index_with_char, display_width, insert_at_char, pad_left, pad_right, progress_bar,
@@ -484,17 +487,27 @@ fn pad_right_exact_width() {
 
 #[test]
 fn wrap_text_empty() {
-    {
-        assert_eq!(wrap_text("", 10), Vec::<String>::new());
-    }
-    {
-        assert_eq!(wrap_text("", 10), Vec::<String>::new());
-        assert_eq!(wrap_text("hello", 0), Vec::<String>::new());
-    }
+    // Empty text is one empty row, as a blank line is (#1474)
+    assert_eq!(wrap_text("", 10), vec![""]);
+    assert_eq!(wrap_text("", 0), vec![""]);
 }
 #[test]
 fn wrap_text_width_zero() {
-    assert_eq!(wrap_text("hello", 0), Vec::<String>::new());
+    // As width 1, nothing lost (#1474)
+    assert_eq!(wrap_text("hello", 0), vec!["h", "e", "l", "l", "o"]);
+}
+#[test]
+fn wrap_text_is_text_wrap_text() {
+    let texts = ["hello world", "a\n\nb", "a  b", "가나다라", "x-y z", ""];
+    for text in texts {
+        for width in 0..=8 {
+            assert_eq!(
+                wrap_text(text, width),
+                revue::text::wrap_text(text, width),
+                "{text:?} at {width}"
+            );
+        }
+    }
 }
 #[test]
 fn wrap_text_fits_in_one_line() {
@@ -607,8 +620,8 @@ fn pad_left_cjk() {
 #[test]
 fn wrap_text_cjk() {
     let result = wrap_text("가나다라마바사", 5);
-    // Each char is width 2, so max 2 chars per line (width 4), "마" starts new line
-    assert!(result.len() >= 2);
+    // Each char is width 2, so 2 chars per line (width 4)
+    assert_eq!(result, vec!["가나", "다라", "마바", "사"]);
     for line in &result {
         assert!(display_width(line) <= 5);
     }
@@ -896,7 +909,7 @@ fn pad_right_basic() {
 #[test]
 fn wrap_text_basic() {
     let lines = wrap_text("hello world", 5);
-    assert!(lines.len() >= 2);
+    assert_eq!(lines, vec!["hello", "world"]);
 }
 
 #[test]

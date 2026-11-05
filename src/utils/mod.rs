@@ -146,6 +146,8 @@ pub use border::{
 };
 
 // Text utilities
+#[allow(deprecated)] // the same rows as `text::wrap_text`, until 4.0 (#1474)
+pub use text::wrap_text;
 pub use text::{
     byte_to_char_index,
     center,
@@ -161,7 +163,6 @@ pub use text::{
     remove_char_range,
     truncate,
     truncate_start,
-    wrap_text,
 };
 
 // Color utilities

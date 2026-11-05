@@ -1,7 +1,9 @@
 //! Text wrapping and formatting utilities
 
 use crate::utils::unicode::{char_width, display_width, truncate_to_width};
-use textwrap::{Options, WordSeparator, WordSplitter};
+use textwrap::core::Fragment;
+use textwrap::wrap_algorithms::wrap_first_fit;
+use textwrap::{WordSeparator, WordSplitter};
 
 /// Text wrapping mode
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -82,32 +84,62 @@ impl TextWrapper {
     }
 
     /// Wrap text
+    ///
+    /// When wrapping (`WrapMode::Word` or `WrapMode::Char`), each `\n`
+    /// starts a row (a `\r` before it is dropped), so empty text is one
+    /// empty row, and a width of 0 is taken as 1, so no text is lost.
     pub fn wrap(&self, text: &str) -> Vec<String> {
+        // A row of no columns would hold nothing (#1474)
+        let width = self.width.max(1);
         match self.mode {
             WrapMode::NoWrap => text
                 .lines()
                 .map(|line| self.handle_overflow(line))
                 .collect(),
             WrapMode::Word => {
-                let options = Options::new(self.width)
-                    .initial_indent(&self.indent)
-                    .subsequent_indent(&self.subsequent_indent)
-                    .word_separator(WordSeparator::UnicodeBreakProperties)
-                    .word_splitter(if self.break_words {
-                        WordSplitter::HyphenSplitter
+                let mut lines: Vec<String> = Vec::new();
+                for line in text.split('\n') {
+                    let line = line.strip_suffix('\r').unwrap_or(line);
+                    // As in `WrapMode::Char`, the first indent is for the
+                    // first line of the whole text
+                    let (first, rest) = if lines.is_empty() {
+                        (&self.indent, &self.subsequent_indent)
                     } else {
-                        WordSplitter::NoHyphenation
-                    });
-
-                textwrap::wrap(text, options)
-                    .into_iter()
-                    .map(|cow| cow.into_owned())
-                    .collect()
+                        (&self.subsequent_indent, &self.subsequent_indent)
+                    };
+                    let room = |indent: &str| width.saturating_sub(display_width(indent));
+                    let rows = word_rows(line, room(first), room(rest), self.break_words);
+                    if rows.is_empty() {
+                        // A blank line: the indent, unless it is only
+                        // blanks itself
+                        let blank = if first.trim().is_empty() { "" } else { first };
+                        lines.push(blank.to_string());
+                    }
+                    for (i, (start, end)) in rows.into_iter().enumerate() {
+                        let indent = if i == 0 { first } else { rest };
+                        lines.push(format!("{indent}{}", &line[start..end]));
+                    }
+                }
+                lines
             }
             WrapMode::Char => {
                 let mut lines: Vec<String> = Vec::new();
 
-                for line in text.lines() {
+                // As in `WrapMode::Word`: each `\n` starts a row, so empty
+                // text is one empty row (#1474)
+                for line in text.split('\n') {
+                    let line = line.strip_suffix('\r').unwrap_or(line);
+                    if line.is_empty() {
+                        // A blank line: as in `WrapMode::Word`
+                        let indent = if lines.is_empty() {
+                            &self.indent
+                        } else {
+                            &self.subsequent_indent
+                        };
+                        let blank = if indent.trim().is_empty() { "" } else { indent };
+                        lines.push(blank.to_string());
+                        continue;
+                    }
                     let mut rest = line;
                     loop {
                         // As in `WrapMode::Word`, the first indent is for the
@@ -117,7 +149,7 @@ impl TextWrapper {
                         } else {
                             &self.subsequent_indent
                         };
-                        let room = self.width.saturating_sub(display_width(indent));
+                        let room = width.saturating_sub(display_width(indent));
 
                         // Split by display width. Each line takes at least
                         // one char, so a wide char wider than the room, or
@@ -202,16 +234,22 @@ impl Default for TextWrapper {
 }
 
 /// Wrap text to fit within width
+///
+/// A `width` of 0 is taken as 1, so no text is lost.
 pub fn wrap_text(text: &str, width: usize) -> Vec<String> {
     TextWrapper::new(width).wrap(text)
 }
 
 /// Wrap text with word boundaries
+///
+/// A `width` of 0 is taken as 1, so no text is lost.
 pub fn wrap_words(text: &str, width: usize) -> Vec<String> {
     TextWrapper::new(width).mode(WrapMode::Word).wrap(text)
 }
 
 /// Wrap text at character boundaries
+///
+/// A `width` of 0 is taken as 1, so no text is lost.
 pub fn wrap_chars(text: &str, width: usize) -> Vec<String> {
     TextWrapper::new(width).mode(WrapMode::Char).wrap(text)
 }
@@ -236,6 +274,150 @@ pub fn truncate_middle(text: &str, width: usize) -> String {
         .into_iter()
         .next()
         .unwrap_or_default()
+}
+
+/// A word of a line, as a byte range into the line, and the width of the
+/// whitespace after it
+#[derive(Debug)]
+struct Piece {
+    start: usize,
+    word_end: usize,
+    width: usize,
+    whitespace_width: usize,
+}
+
+impl Fragment for Piece {
+    fn width(&self) -> f64 {
+        self.width as f64
+    }
+
+    fn whitespace_width(&self) -> f64 {
+        self.whitespace_width as f64
+    }
+
+    fn penalty_width(&self) -> f64 {
+        0.0
+    }
+}
+
+/// The rows of `line` (no `\n` in it), as byte ranges, broken where a line
+/// may break: at spaces, after hyphens, and between CJK characters or
+/// emoji (Unicode line breaking, UAX #14). The first row has `first`
+/// columns and the others `rest`; when `first` has no room for the first
+/// word, the first row is empty. The whitespace at a break is dropped, and
+/// so is the whitespace the line ends with; whitespace the line starts with
+/// is kept. With `break_long`, a word wider than `rest` is broken where the
+/// row is full; without, it overflows its row. A line of nothing but
+/// whitespace has no rows.
+///
+/// This is the one place prose is broken into rows (#1474): `TextWrapper`,
+/// `wrap_words`, `utils::wrap_to_width` and Markdown's styled lines all
+/// come here.
+pub(crate) fn word_rows(
+    line: &str,
+    first: usize,
+    rest: usize,
+    break_long: bool,
+) -> Vec<(usize, usize)> {
+    let mut pieces = Vec::new();
+    for word in WordSeparator::UnicodeBreakProperties.find_words(line) {
+        let start = word.word.as_ptr() as usize - line.as_ptr() as usize;
+        let whitespace_width = display_width(word.whitespace);
+        // A hyphenated word may break after each of its hyphens
+        let mut cuts: Vec<usize> = WordSplitter::HyphenSplitter
+            .split_points(word.word)
+            .into_iter()
+            .collect();
+        cuts.push(word.word.len());
+        let mut from = 0;
+        for (n, &to) in cuts.iter().enumerate() {
+            let part = &word.word[from..to];
+            let gap = if n == cuts.len() - 1 {
+                whitespace_width
+            } else {
+                0
+            };
+            push_part(&mut pieces, start + from, part, gap, rest, break_long);
+            from = to;
+        }
+    }
+
+    // A first row narrower than the rest stays empty when the first word
+    // fits only the rest; a word too wide for any row overflows the first
+    if pieces
+        .first()
+        .is_some_and(|p| p.width > first && p.width <= rest)
+    {
+        let empty = Piece {
+            start: 0,
+            word_end: 0,
+            width: 0,
+            whitespace_width: 0,
+        };
+        pieces.insert(0, empty);
+    }
+    let rows: Vec<(usize, usize)> = wrap_first_fit(&pieces, &[first as f64, rest as f64])
+        .into_iter()
+        .filter_map(|row| Some((row.first()?.start, row.last()?.word_end)))
+        .collect();
+    if rows.iter().all(|(start, end)| start == end) {
+        return Vec::new();
+    }
+    rows
+}
+
+/// Add `part` of a word, at byte `start` of the line, as one piece, or with
+/// `break_long` as pieces of at most `rest` columns when it is wider; the
+/// whitespace after it goes with its last piece.
+fn push_part(
+    pieces: &mut Vec<Piece>,
+    start: usize,
+    part: &str,
+    whitespace_width: usize,
+    rest: usize,
+    break_long: bool,
+) {
+    let width = display_width(part);
+    if width <= rest || !break_long {
+        pieces.push(Piece {
+            start,
+            word_end: start + part.len(),
+            width,
+            whitespace_width,
+        });
+        return;
+    }
+    let parts = char_rows(part, rest);
+    let last = parts.len() - 1;
+    for (i, (from, to, part_width)) in parts.into_iter().enumerate() {
+        pieces.push(Piece {
+            start: start + from,
+            word_end: start + to,
+            width: part_width,
+            whitespace_width: if i == last { whitespace_width } else { 0 },
+        });
+    }
+}
+
+/// Byte ranges of `text` and their widths, each row filled to at most
+/// `width` columns, broken at the character that would not fit. A
+/// character wider than `width` gets a row of its own. Nothing is dropped:
+/// the rows joined are the text.
+pub(crate) fn char_rows(text: &str, width: usize) -> Vec<(usize, usize, usize)> {
+    let mut rows = Vec::new();
+    let mut start = 0;
+    let mut row_width = 0;
+    for (at, ch) in text.char_indices() {
+        let w = char_width(ch);
+        if row_width + w > width && at > start {
+            rows.push((start, at, row_width));
+            start = at;
+            row_width = 0;
+        }
+        row_width += w;
+    }
+    rows.push((start, text.len(), row_width));
+    rows
 }
 
 #[cfg(test)]

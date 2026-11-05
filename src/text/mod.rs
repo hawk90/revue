@@ -32,20 +32,26 @@
 //!
 //! ## Text Wrapping
 //!
-//! ```rust,ignore
-//! use revue::text::{wrap_text, wrap_words, truncate};
+//! Every wrapped text in revue breaks by the same rules (#1474): at
+//! spaces, after hyphens, and between CJK characters or emoji, with a word
+//! wider than the width broken across rows. The whitespace at a break is
+//! dropped; spaces inside a row are kept. Each `\n` starts a row, so empty
+//! text is one empty row, and a width of 0 is taken as 1: nothing is lost.
 //!
-//! // Wrap text to fit width
-//! let wrapped = wrap_text("Hello world!", 5);
-//! // ["Hello", "world!"]
+//! ```rust
+//! use revue::text::{truncate, wrap_chars, wrap_words};
 //!
-//! // Wrap by words
-//! let wrapped = wrap_words("The quick brown fox", 10);
-//! // ["The quick", "brown fox"]
+//! assert_eq!(wrap_words("The quick brown fox", 10), ["The quick", "brown fox"]);
+//! assert_eq!(wrap_words("Hello world!", 5), ["Hello", "world", "!"]);
+//! assert_eq!(wrap_words("well-known", 6), ["well-", "known"]);
+//! assert_eq!(wrap_words("가나다", 4), ["가나", "다"]);
+//! assert_eq!(wrap_words("", 10), [""]);
+//!
+//! // Breaking anywhere, keeping every character
+//! assert_eq!(wrap_chars("let x = 1;", 4), ["let ", "x = ", "1;"]);
 //!
 //! // Truncate with ellipsis
-//! let truncated = truncate("Long text here", 10);
-//! // "Long text ..."
+//! assert_eq!(truncate("Long text here", 10), "Long te...");
 //! ```
 //!
 //! ## Bidirectional Text
@@ -148,6 +154,9 @@ pub use bidi::{
     BidiInfo, BidiRun, ResolvedDirection, RtlLayout, TextAlign, TextDirection,
 };
 pub use width::{char_width, CharWidthTable};
+// Markdown breaks its styled lines by the same rows (#1474)
+#[cfg(feature = "markdown")]
+pub(crate) use wrap::{char_rows, word_rows};
 pub use wrap::{
     truncate, truncate_middle, wrap_chars, wrap_text, wrap_words, Overflow, TextWrapper, WrapMode,
 };

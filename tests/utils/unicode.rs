@@ -247,15 +247,44 @@ fn test_right_align_to_width_edge_cases() {
 
 #[test]
 fn test_wrap_to_width_edge_cases() {
-    // Empty string
-    assert!(wrap_to_width("", 10).is_empty());
+    // Empty text is one empty row, as a blank line is (#1474)
+    assert_eq!(wrap_to_width("", 10), vec![""]);
 
-    // Zero width
-    assert!(wrap_to_width("hello", 0).is_empty());
+    // Zero width: as width 1, nothing lost (#1474)
+    assert_eq!(wrap_to_width("hello", 0), vec!["h", "e", "l", "l", "o"]);
 
-    // Single character wider than max
-    let lines = wrap_to_width("안", 1);
-    assert!(lines.is_empty()); // Can't fit
+    // A character wider than the width gets a row of its own (#1474)
+    assert_eq!(wrap_to_width("안", 1), vec!["안"]);
+    assert_eq!(wrap_to_width("a안b", 1), vec!["a", "안", "b"]);
+}
+
+#[test]
+fn wrap_to_width_keeps_spaces_and_starts_a_row_at_each_newline() {
+    // #1474: spaces inside a row are kept, and a newline is a row break
+    assert_eq!(wrap_to_width("a  b   c", 4), vec!["a  b", "c"]);
+    assert_eq!(wrap_to_width("one\ntwo three", 9), vec!["one", "two three"]);
+    assert_eq!(wrap_to_width("well-known", 6), vec!["well-", "known"]);
+}
+
+#[test]
+fn wrap_to_width_is_text_wrap_words() {
+    let texts = [
+        "Hello World",
+        "a  b",
+        "x\ny",
+        "가나다 라",
+        "abc-def ghi",
+        "e\u{301}x",
+    ];
+    for text in texts {
+        for width in 0..=8 {
+            assert_eq!(
+                wrap_to_width(text, width),
+                revue::text::wrap_words(text, width),
+                "{text:?} at {width}"
+            );
+        }
+    }
 }
 
 #[test]

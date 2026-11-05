@@ -55,6 +55,24 @@ fn test_richlog_one_column_and_one_row() {
     assert_eq!(rows(&log, 10, 1), ["m2       █"]);
 }
 
+/// A wrapped message is broken by the shared word wrap (#1474): spaces
+/// inside a row stay, a newline starts a row, and CJK breaks between
+/// characters
+#[test]
+fn test_richlog_wrapped_message_keeps_its_spaces_and_lines() {
+    let mut log = bare().wrap(true);
+    log.info("a  b   c\nnext");
+    log.info("xyz안");
+    // The second cell of a wide character reads as \0
+    assert_eq!(rows(&log, 4, 6), ["a  b", "c", "next", "xyz", "안\0", ""]);
+    // Each row of a log of wrapped entries is counted, so the bottom is full
+    let mut log = bare().wrap(true);
+    log.info("one\ntwo");
+    log.info("end");
+    log.scroll_to_bottom();
+    assert_eq!(rows(&log, 6, 3), ["one", "two", "end"]);
+}
+
 #[test]
 fn test_richlog_selection_stops_at_both_ends() {
     let mut log = bare();
