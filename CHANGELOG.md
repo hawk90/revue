@@ -8,6 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.15.0](https://github.com/hawk90/revue/compare/v3.14.0...v3.15.0) (2026-11-06)
 
 
+### Deprecations and behavior changes
+
+Deprecated in 3.15.0, for removal in 4.0:
+* **event:** `ImeConfig`, `CompositionStyle`, and `ImeState::with_config`, `ImeState::config` and `ImeState::set_config` describe an IME display revue never draws. In a terminal, the input method draws the preedit and candidates at the terminal cursor ([#1463](https://github.com/hawk90/revue/issues/1463)).
+* **utils:** `utils::wrap_text`; use `text::wrap_text`, which now gives the same rows ([#1478](https://github.com/hawk90/revue/issues/1478)).
+
+Behavior that changed:
+* **render:** the terminal cursor is shown at the focused field's caret, so an input method opens there. Before, it stayed hidden ([#1467](https://github.com/hawk90/revue/issues/1467)).
+* **widget:** `Markdown` lays out at the width it is drawn at:
+  * paragraphs, headings, list items, quotes and code blocks wrap ([#1471](https://github.com/hawk90/revue/issues/1471));
+  * a table wider than its room shrinks its columns and wraps its cells ([#1477](https://github.com/hawk90/revue/issues/1477)).
+
+  `lines` is still the layout with no width limit. Use `lines_at(width)` for the drawn rows. Blocks inside list items and quotes keep the item's indent and the quote bar, and an item nested in a numbered item lines up with its parent's text: 3 columns after `1. `, not 2 ([#1476](https://github.com/hawk90/revue/issues/1476)).
+* **text, utils:** one word wrap for every wrapped text ([#1478](https://github.com/hawk90/revue/issues/1478)).
+  * `utils::wrap_to_width` now:
+    * keeps the spaces inside a row;
+    * starts a new row at each `\n`;
+    * keeps a character wider than the width.
+  * In the `text` and `utils` wrapping functions:
+    * empty text gives one empty row;
+    * a width of 0 is taken as 1.
+  * `TextWrapper::break_words(false)` keeps long words whole.
+* **cli:**
+  * `revue-cli` now shares revue's version, and `revue new` asks for `revue = "3.15"` ([#1464](https://github.com/hawk90/revue/issues/1464)).
+  * `revue theme <name>` keeps an edited theme file unless given `--force` ([#1464](https://github.com/hawk90/revue/issues/1464)).
+  * The repository's `templates/` directory is gone; `revue new` has the templates ([#1470](https://github.com/hawk90/revue/issues/1470)).
+
 ### Features
 
 * **widget:** a widget of its own can put its caret with set_caret ([#1468](https://github.com/hawk90/revue/issues/1468)) ([3811fe6](https://github.com/hawk90/revue/commit/3811fe63ab4ab58695c2336978c3cc497108ea5c))
