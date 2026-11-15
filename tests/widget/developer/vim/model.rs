@@ -79,6 +79,9 @@ impl Model {
                 Some(op @ ('d' | 'y' | 'c')) => {
                     self.pending = true;
                     self.op = op;
+                    // A count before the operator does not run on into its
+                    // motion: after `3c`, `0` is the line start (#1489)
+                    self.counting = false;
                 }
                 Some('3') => self.counting = true,
                 Some('0') if self.counting => {}
@@ -192,32 +195,62 @@ fn a_key_after_an_operators_waiting_g_opens_nothing() {
     }
 }
 
+/// Press `keys` on a VimState in `start` and on the model, and compare
+/// them after each key
+fn follow_the_model(start: VimMode, keys: &[Key]) -> Result<(), TestCaseError> {
+    let mut vim = VimState::new();
+    vim.set_mode(start);
+    let mut model = Model {
+        mode: start,
+        command: String::new(),
+        search: String::new(),
+        forward: true,
+        pending: false,
+        op: 'd',
+        counting: false,
+        g: false,
+    };
+    for k in keys {
+        // Backspace on a one-char command line or pattern leaves the
+        // mode instead of keeping the empty line open (#1081);
+        // skip it rather than encode it.
+        if *k == Key::Backspace
+            && ((model.mode == VimMode::Command && model.command.chars().count() == 1)
+                || (model.mode == VimMode::Search && model.search.chars().count() == 1))
+        {
+            continue;
+        }
+        let action = vim.handle_key(&KeyEvent::new(*k));
+        let expected = model.press(k);
+        if let Some(expected) = expected {
+            prop_assert_eq!(action, expected, "after {:?}", k);
+        }
+        prop_assert_eq!(vim.mode(), model.mode, "after {:?}", k);
+        prop_assert_eq!(
+            vim.command_buffer(),
+            model.command.as_str(),
+            "after {:?}",
+            k
+        );
+        prop_assert_eq!(vim.search_pattern(), model.search.as_str(), "after {:?}", k);
+    }
+    Ok(())
+}
+
+/// Inputs the property found, kept so they do not depend on the seed
+#[test]
+fn test_found_inputs_follow_the_model() {
+    let keys = |s: &str| s.chars().map(Key::Char).collect::<Vec<_>>();
+    // #1489: `0` after `3c` is the line-start motion, not a count digit
+    for input in ["3c0", "3d0", "3y0", "c30j"] {
+        follow_the_model(VimMode::Normal, &keys(input)).unwrap_or_else(|e| panic!("{input}: {e}"));
+    }
+}
+
 proptest! {
     #[test]
     fn prop_vim_modes_follow_the_model(start in start_mode(), keys in prop::collection::vec(key(), 0..60)) {
-        let mut vim = VimState::new();
-        vim.set_mode(start);
-        let mut model = Model { mode: start, command: String::new(), search: String::new(), forward: true, pending: false,
-            op: 'd', counting: false, g: false };
-        for k in &keys {
-            // Backspace on a one-char command line or pattern leaves the
-            // mode instead of keeping the empty line open (#1081);
-            // skip it rather than encode it.
-            if *k == Key::Backspace
-                && ((model.mode == VimMode::Command && model.command.chars().count() == 1)
-                    || (model.mode == VimMode::Search && model.search.chars().count() == 1))
-            {
-                continue;
-            }
-            let action = vim.handle_key(&KeyEvent::new(*k));
-            let expected = model.press(k);
-            if let Some(expected) = expected {
-                prop_assert_eq!(action, expected, "after {:?}", k);
-            }
-            prop_assert_eq!(vim.mode(), model.mode, "after {:?}", k);
-            prop_assert_eq!(vim.command_buffer(), model.command.as_str(), "after {:?}", k);
-            prop_assert_eq!(vim.search_pattern(), model.search.as_str(), "after {:?}", k);
-        }
+        follow_the_model(start, &keys)?;
     }
 
     /// After any keys and Escape, typed digits are the count, and `G`
@@ -243,4 +276,41 @@ proptest! {
             VimAction::Move(VimMotion::GoToLine(Some(count)))
         );
     }
+}
+
+/// `0` after an operator is the line-start motion even when a count came
+/// before the operator, as in vim (#1489)
+#[test]
+fn test_zero_after_a_counted_operator_is_the_line_start_motion() {
+    for (keys, mode) in [
+        ("3c0", VimMode::Insert),
+        ("c0", VimMode::Insert),
+        ("3d0", VimMode::Normal),
+        ("3y0", VimMode::Normal),
+    ] {
+        let mut vim = VimState::new();
+        for ch in keys.chars() {
+            vim.handle_key(&KeyEvent::new(Key::Char(ch)));
+        }
+        assert_eq!(vim.mode(), mode, "{keys}");
+        // The operator is done: `i` enters insert mode instead of being
+        // taken as its motion
+        if mode == VimMode::Normal {
+            vim.handle_key(&KeyEvent::new(Key::Char('i')));
+            assert_eq!(vim.mode(), VimMode::Insert, "{keys} then i");
+        }
+    }
+}
+
+/// A count typed after the operator still takes `0` as a digit: `c30j`
+/// is one change over 30 lines, so the `0` does not end the operator
+#[test]
+fn test_zero_inside_the_operator_count_is_a_digit() {
+    let mut vim = VimState::new();
+    for ch in "c30".chars() {
+        vim.handle_key(&KeyEvent::new(Key::Char(ch)));
+    }
+    assert_eq!(vim.mode(), VimMode::Normal);
+    vim.handle_key(&KeyEvent::new(Key::Char('j')));
+    assert_eq!(vim.mode(), VimMode::Insert);
 }
