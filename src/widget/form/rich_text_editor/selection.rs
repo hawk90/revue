@@ -45,8 +45,7 @@ impl RichTextEditor {
         let (start, end) = self.selection_range()?;
 
         let mut result = String::new();
-        for block_idx in start.0..=end.0 {
-            let block = &self.blocks[block_idx];
+        for (block_idx, block) in self.blocks.iter().enumerate().take(end.0 + 1).skip(start.0) {
             let text = block.text();
 
             let start_col = if block_idx == start.0 { start.1 } else { 0 };

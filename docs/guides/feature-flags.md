@@ -56,7 +56,7 @@ revue = { version = "3", features = ["gui"] }
 
 | Feature | Dependencies | Purpose |
 |---------|-------------|---------|
-| `tracing` | `tracing`, `tracing-subscriber` | Structured logging and diagnostics |
+| `tracing` | `tracing` | Structured logging and diagnostics (the app installs its own subscriber) |
 | `devtools` | (none) | Developer tools UI overlay |
 
 ## Recommendations by Use Case
