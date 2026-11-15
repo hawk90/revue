@@ -174,6 +174,43 @@ proptest! {
         }
     }
 
+    /// In an area shorter than the alert's height, the rows that fit are the
+    /// model's, and the filled variant keeps its bottom border: the text below
+    /// it is left out, not drawn on the border (#1061).
+    #[test]
+    fn prop_short_alert_keeps_the_rows_that_fit(
+        variant in variant(),
+        message in "[a-z ]{0,40}",
+        title in proptest::option::of("[A-Z][a-z ]{0,30}"),
+        icon in any::<bool>(),
+        dismissible in any::<bool>(),
+        w in 5u16..48,
+        cut in 1u16..3,
+    ) {
+        let mut a = Alert::new(message.clone())
+            .variant(variant)
+            .icon(icon)
+            .dismissible(dismissible);
+        if let Some(t) = &title {
+            a = a.title(t.clone());
+        }
+        let filled = variant == AlertVariant::Filled;
+        let h = a.height().saturating_sub(cut).max(if filled { 2 } else { 1 });
+        let b = draw(&a, w, h);
+        let mut want = model_rows(variant, &message, title.as_deref(), icon, dismissible, w);
+        let bottom = want.pop().unwrap();
+        if filled {
+            want.truncate(h as usize - 1);
+            want.push(bottom);
+        } else {
+            want.push(bottom);
+            want.truncate(h as usize);
+        }
+        for (y, line) in want.iter().enumerate() {
+            prop_assert_eq!(&row(&b, y as u16), line, "row {} of {}", y, h);
+        }
+    }
+
     /// The filled variant cuts wide text by columns and never splits a glyph.
     #[test]
     fn prop_filled_alert_cuts_wide_text_by_columns(
@@ -295,4 +332,18 @@ fn test_alert_custom_icon_turns_the_icon_on() {
         );
         assert_eq!(b.get(x, y).unwrap().symbol, '★', "{variant:?}");
     }
+}
+
+#[test]
+fn test_filled_alert_keeps_its_bottom_border_in_a_short_area() {
+    let a = Alert::new("message").title("Title").icon(false);
+    // 3 rows for a 4-row alert: the title's row fits, the message's does not
+    let b = draw(&a, 20, 3);
+    assert_eq!(row(&b, 1), "│ Title            │");
+    assert_eq!(row(&b, 2), format!("╰{}╯", "─".repeat(18))); // was "╰─message─…╯"
+                                                             // 2 rows: no row inside the border, so no text, icon or dismiss button
+    let a = Alert::new("message").dismissible(true);
+    let b = draw(&a, 20, 2);
+    assert_eq!(row(&b, 0), format!("╭{}╮", "─".repeat(18)));
+    assert_eq!(row(&b, 1), format!("╰{}╯", "─".repeat(18))); // was "╰─ℹ─message─…×─╯"
 }
