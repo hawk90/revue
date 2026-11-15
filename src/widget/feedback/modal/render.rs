@@ -21,7 +21,7 @@ impl View for Modal {
 
         // Draw border
         self.render_border(ctx, x, y, modal_width, modal_height);
-        self.draw_title(ctx, x, y, modal_width);
+        self.draw_title(ctx, x, y, modal_width, modal_height);
         self.draw_content(ctx, x, y, modal_width, modal_height);
         self.draw_buttons(ctx, x, y, modal_width, modal_height);
     }
@@ -61,21 +61,63 @@ impl Modal {
         !self.title.is_empty() && modal_width > 4
     }
 
-    /// The title on the first row inside the border, and the separator below it
-    fn draw_title(&self, ctx: &mut RenderContext, x: u16, y: u16, modal_width: u16) {
+    /// The title on the first row inside the border, and the separator below
+    /// it, each only on a row of the box above the buttons' row: in a box too
+    /// short for them they are left out, not drawn over the bottom border or
+    /// the buttons.
+    fn draw_title(
+        &self,
+        ctx: &mut RenderContext,
+        x: u16,
+        y: u16,
+        modal_width: u16,
+        modal_height: u16,
+    ) {
         if self.has_title(modal_width) {
-            let title_x = x + 2;
+            // Rows `1..end` of the box are free for the title and separator
+            let end = self.rows_above_buttons(modal_width, modal_height);
             let title_width = modal_width.saturating_sub(4);
             let title_fg = self.title_fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
-            ctx.draw_text_clipped_bold(title_x, y + 1, &self.title, title_fg, title_width);
+            let inside = ctx.sub_area(
+                x + 1,
+                y + 1,
+                modal_width.saturating_sub(2),
+                end.saturating_sub(1),
+            );
+            ctx.sub_ctx(inside)
+                .draw_text_clipped_bold(1, 0, &self.title, title_fg, title_width);
 
-            // Title separator
+            if end <= 2 {
+                return;
+            }
             for dx in 1..modal_width.saturating_sub(1) {
                 ctx.set(x + dx, y + 2, Cell::new('─'));
             }
             ctx.set(x, y + 2, Cell::new('├'));
             ctx.set(x + modal_width.saturating_sub(1), y + 2, Cell::new('┤'));
         }
+    }
+
+    /// The width of the buttons' row, or `None` when it is not drawn: no
+    /// buttons, no row for them inside the border, or not all of them fit
+    fn button_row_width(&self, modal_width: u16, modal_height: u16) -> Option<u16> {
+        if self.buttons.is_empty() || modal_height <= 2 {
+            return None;
+        }
+        let total: usize = self
+            .buttons
+            .iter()
+            .map(|b| crate::utils::display_width(&b.label) + 4) // [ label ]
+            .sum::<usize>()
+            + (self.buttons.len() - 1) * 2; // spacing
+        u16::try_from(total).ok().filter(|&t| t <= modal_width)
+    }
+
+    /// The first row of the box (from its top border) that is the buttons'
+    /// row or the bottom border
+    fn rows_above_buttons(&self, modal_width: u16, modal_height: u16) -> u16 {
+        let buttons = u16::from(self.button_row_width(modal_width, modal_height).is_some());
+        modal_height.saturating_sub(1 + buttons)
     }
 
     /// The body widget, or else the text lines, below the title
@@ -124,20 +166,9 @@ impl Modal {
         modal_width: u16,
         modal_height: u16,
     ) {
-        if !self.buttons.is_empty() && modal_height > 2 {
+        if let Some(total_button_width) = self.button_row_width(modal_width, modal_height) {
             let button_y = y + modal_height.saturating_sub(2);
-            let total_button_width: usize = self
-                .buttons
-                .iter()
-                .map(|b| crate::utils::display_width(&b.label) + 4) // [ label ]
-                .sum::<usize>()
-                + (self.buttons.len() - 1) * 2; // spacing
-
-            // Skip drawing buttons if they don't fit
-            if total_button_width as u16 > modal_width {
-                return;
-            }
-            let start_x = x + (modal_width.saturating_sub(total_button_width as u16)) / 2;
+            let start_x = x + (modal_width.saturating_sub(total_button_width)) / 2;
             let mut bx = start_x;
 
             for (i, button) in self.buttons.iter().enumerate() {
