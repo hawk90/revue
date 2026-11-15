@@ -252,6 +252,32 @@ fn the_box_is_pushed_back_from_the_left_and_right_edges() {
 }
 
 #[test]
+fn a_box_shortened_to_its_border_draws_no_title() {
+    // Two rows above the arrow for a 3-row titled box: the title has no row
+    // inside the border and is not drawn below the box, over the arrow
+    let t = Tooltip::new("")
+        .title("T")
+        .style(TooltipStyle::Bordered)
+        .arrow(TooltipArrow::Simple)
+        .position(TooltipPosition::Top)
+        .anchor(2, 3);
+    for overlay in [false, true] {
+        let b = if overlay {
+            render_overlay(&t, 10, 4, Rect::new(0, 0, 10, 4)).0
+        } else {
+            render_in(&t, 10, 4)
+        };
+        assert_eq!(cols(&b, 0, 0..8), "┌─────┐ ", "overlay {overlay}");
+        assert_eq!(cols(&b, 1, 0..8), "└─────┘ ", "overlay {overlay}");
+        assert_eq!(cols(&b, 2, 0..8), "  v     ", "overlay {overlay}");
+        assert!(
+            !(0..4).any(|y| cols(&b, y, 0..10).contains('T')),
+            "overlay {overlay}"
+        );
+    }
+}
+
+#[test]
 fn a_box_taller_than_the_room_is_shortened_to_it() {
     let mut buffer = Buffer::new(12, 7);
     let t = Tooltip::new("A rather long hint")

@@ -294,6 +294,22 @@ fn test_popover_arrow_is_never_drawn_on_the_box() {
 }
 
 #[test]
+fn test_popover_shortened_to_its_border_draws_no_title() {
+    // Two rows above the anchor for a 4-row titled box: no row for the
+    // title inside the border, and none drawn over the bottom border
+    let p = Popover::new("Body")
+        .title("Title")
+        .anchor(5, 2)
+        .position(PopoverPosition::Top)
+        .open(true);
+    let mut b = Buffer::new(20, 3);
+    p.render(&mut RenderContext::new(&mut b, Rect::new(0, 0, 20, 3)));
+    assert_eq!(row(&b, 0).trim(), "┌─────────┐");
+    assert_eq!(row(&b, 1).trim(), "└─────────┘");
+    assert_eq!(row(&b, 2).trim(), "");
+}
+
+#[test]
 fn test_popover_set_anchor() {
     let mut p = Popover::new("Test").anchor(20, 5).open(true);
     p.set_anchor(10, 10);
