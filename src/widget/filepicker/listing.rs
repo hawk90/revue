@@ -85,12 +85,7 @@ impl FilePicker {
         }
 
         // Apply filter (but always show directories in Open mode)
-        let is_dir = path.is_dir();
-        if !is_dir && !self.filter.matches(path) {
-            return false;
-        }
-
-        true
+        path.is_dir() || self.filter.matches(path)
     }
 
     /// Directories first (when `dirs_first`), then by name ignoring case

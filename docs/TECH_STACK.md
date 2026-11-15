@@ -96,7 +96,6 @@ See [Custom Implementations](#custom-implementations) below.
 | **similar** | 3.0 | Text diffing | Diff viewer (`diff` feature) |
 | **qrcode** | 0.14 | QR code generation | QR widget (`qrcode` feature) |
 | **tracing** | 0.1 | Logging | Debug (`tracing` feature) |
-| **tracing-subscriber** | 0.3 | Log output | Debug (`tracing` feature) |
 
 ### Error Handling
 

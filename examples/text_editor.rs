@@ -691,17 +691,17 @@ impl Default for Config {
                         );
                     } else {
                         let mut selected = String::new();
-                        for row in sr..=er {
+                        for (row, line) in self.lines.iter().enumerate().take(er + 1).skip(sr) {
                             if row == sr {
-                                selected.push_str(Self::substr_from(&self.lines[row], sc));
+                                selected.push_str(Self::substr_from(line, sc));
                             } else if row == er {
-                                let line_char_len = self.lines[row].chars().count();
+                                let line_char_len = line.chars().count();
                                 selected.push_str(Self::substr_before(
-                                    &self.lines[row],
+                                    line,
                                     (ec + 1).min(line_char_len),
                                 ));
                             } else {
-                                selected.push_str(&self.lines[row]);
+                                selected.push_str(line);
                             }
                             if row < er {
                                 selected.push('\n');

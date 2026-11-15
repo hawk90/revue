@@ -114,7 +114,6 @@ bitflags = "2.13.2"
 arboard = { version = "3.7.0", optional = true }
 notify = { version = "8.2.1", optional = true }
 tracing = { version = "0.1.44", optional = true }
-tracing-subscriber = { version = "0.3.23", optional = true }
 
 # ═══════════════════════════════════════════
 # QR Code & HTTP & System (optional)
@@ -240,7 +239,7 @@ all-gui = ["std", "syntax-highlighting", "qrcode", "sysinfo", "diff", "clipboard
 # Core optional features
 async = ["dep:tokio"]
 config = ["dep:serde", "dep:toml", "dep:dirs"]
-tracing = ["dep:tracing", "dep:tracing-subscriber"]
+tracing = ["dep:tracing"]
 
 # Heavy optional features
 markdown = ["dep:pulldown-cmark"]
