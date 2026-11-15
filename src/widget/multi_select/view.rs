@@ -208,15 +208,19 @@ impl MultiSelect {
     /// the header without an overlay queue
     fn draw_dropdown(&self, ctx: &mut RenderContext, width: u16, fg: Color, bg: Color) {
         let max_visible = self.filtered.len().min(MAX_DROPDOWN_VISIBLE as usize);
-        let dropdown_h = max_visible.max(1) as u16;
+        // Shorter than asked when the screen has no room for it (it scrolls)
+        let layout = calculate_dropdown_layout(ctx, max_visible.max(1) as u16);
+        let dropdown_h = layout.height;
+        if dropdown_h == 0 {
+            return;
+        }
         let scroll = &self.dropdown_scroll;
         scroll.set_content(self.filtered.len());
-        scroll.set_viewport(max_visible);
+        scroll.set_viewport(max_visible.min(dropdown_h as usize));
         scroll.track(self.dropdown_cursor..self.dropdown_cursor + 1);
         let shown = scroll.visible();
 
         let (abs_x, _) = ctx.absolute_position();
-        let layout = calculate_dropdown_layout(ctx, dropdown_h);
         let overlay_area = crate::layout::Rect::new(abs_x, layout.overlay_y, width, dropdown_h);
         let mut entry = OverlayEntry::new(100, overlay_area);
 

@@ -116,18 +116,26 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     // The rows in view: the dropdown follows the highlight, whatever moved
     // it (#882)
     combobox.sync_scroll();
+    let natural_h = if combobox.loading || combobox.filtered.is_empty() {
+        1u16
+    } else {
+        (combobox.scroll.visible().len() as u16).max(1)
+    };
+
+    // Position the overlay; shorter than asked when the screen has no room
+    // for it, and then the rows in view are fewer
+    let layout = calculate_dropdown_layout(ctx, natural_h);
+    let dropdown_h = layout.height;
+    if dropdown_h == 0 {
+        return;
+    }
+    if dropdown_h < natural_h {
+        combobox.scroll.set_viewport(dropdown_h as usize);
+    }
     if let Some(highlight) = combobox.highlight_rows() {
         combobox.scroll.track(highlight);
     }
     let shown = combobox.scroll.visible();
-    let dropdown_h = if combobox.loading || combobox.filtered.is_empty() {
-        1u16
-    } else {
-        (shown.len() as u16).max(1)
-    };
-
-    // Position the overlay
-    let layout = calculate_dropdown_layout(ctx, dropdown_h);
     let (abs_x, _) = ctx.absolute_position();
     let overlay_area = crate::layout::Rect::new(abs_x, layout.overlay_y, width, dropdown_h);
     let mut entry = crate::widget::traits::OverlayEntry::new(100, overlay_area);

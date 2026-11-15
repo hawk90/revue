@@ -61,10 +61,9 @@ impl Popover {
         }
 
         // Check if click is inside popover
-        let (popup_x, popup_y, _) = self.calculate_position(area_width, area_height);
-        let (popup_w, popup_h) = self.calculate_dimensions(area_width);
-
-        let inside = x >= popup_x && x < popup_x + popup_w && y >= popup_y && y < popup_y + popup_h;
+        let inside = self
+            .calculate_position(area_width, area_height)
+            .is_some_and(|(rect, _)| rect.contains(x, y));
 
         if inside {
             // Click inside popover - could be handled by content

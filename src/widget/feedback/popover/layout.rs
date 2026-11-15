@@ -1,5 +1,7 @@
-use super::types::{PopoverArrow, PopoverPosition};
+use super::types::{PopoverArrow, PopoverPosition, PopoverStyle};
 use super::Popover;
+use crate::layout::anchored::{self, Align, Side};
+use crate::layout::Rect;
 use crate::text::wrap_words;
 use crate::utils::unicode::display_width;
 
@@ -56,83 +58,59 @@ impl Popover {
         (width, height.max(3))
     }
 
-    /// Calculate position based on anchor and available space
+    /// Where the box goes in an `area_width` x `area_height` area, and the
+    /// side it took, by the shared anchored placement rules
+    /// ([`crate::layout::anchored`]): the set side, or the other side of the
+    /// anchor when only that one has room, or the roomier of the two with
+    /// the box shortened to it. `Auto` tries below, above, right and left.
+    /// The box (and an elevated box's shadow) never covers the anchor, and
+    /// the arrow's cell stays free.
+    /// `None` when neither side has a row (or column) to spare.
     pub(super) fn calculate_position(
         &self,
         area_width: u16,
         area_height: u16,
-    ) -> (u16, u16, PopoverPosition) {
-        let (popup_w, popup_h) = self.calculate_dimensions(area_width);
-        let (anchor_x, anchor_y) = self.anchor;
-        let arrow_offset: u16 = if matches!(self.arrow, PopoverArrow::None) {
+    ) -> Option<(Rect, PopoverPosition)> {
+        let size = self.calculate_dimensions(area_width);
+        let gap = if matches!(self.arrow, PopoverArrow::None) {
             0
         } else {
             1
         };
-
-        let position = match self.position {
-            PopoverPosition::Auto => {
-                // Auto-detect best position based on available space
-                let space_above = anchor_y;
-                let space_below = area_height.saturating_sub(anchor_y.saturating_add(1));
-                let space_left = anchor_x;
-                let space_right = area_width.saturating_sub(anchor_x.saturating_add(1));
-
-                if space_below >= popup_h + arrow_offset {
-                    PopoverPosition::Bottom
-                } else if space_above >= popup_h + arrow_offset {
-                    PopoverPosition::Top
-                } else if space_right >= popup_w + arrow_offset {
-                    PopoverPosition::Right
-                } else if space_left >= popup_w + arrow_offset {
-                    PopoverPosition::Left
-                } else {
-                    PopoverPosition::Bottom
-                }
-            }
-            side => side,
+        let sides: &[Side] = match self.position {
+            PopoverPosition::Top => &[Side::Top, Side::Bottom],
+            PopoverPosition::Bottom => &[Side::Bottom, Side::Top],
+            PopoverPosition::Left => &[Side::Left, Side::Right],
+            PopoverPosition::Right => &[Side::Right, Side::Left],
+            PopoverPosition::Auto => &[Side::Bottom, Side::Top, Side::Right, Side::Left],
         };
-        let (x, y) = Self::place(position, self.anchor, (popup_w, popup_h), arrow_offset);
-
-        let x = x.min(area_width.saturating_sub(popup_w));
-        let y = y.min(area_height.saturating_sub(popup_h));
-
-        (x, y, position)
+        // An elevated box is placed with its shadow (one column right, one
+        // row below), so the shadow does not cover the anchor either
+        let shadow = u16::from(matches!(self.popover_style, PopoverStyle::Elevated));
+        let placed = anchored::place(
+            self.anchor_rect(),
+            (size.0 + shadow, size.1 + shadow),
+            sides,
+            Align::Center,
+            gap,
+            Rect::new(0, 0, area_width, area_height),
+        )?;
+        let rect = placed.rect;
+        if rect.width <= shadow || rect.height <= shadow {
+            return None;
+        }
+        let side = match placed.side {
+            Side::Top => PopoverPosition::Top,
+            Side::Bottom => PopoverPosition::Bottom,
+            Side::Left => PopoverPosition::Left,
+            Side::Right => PopoverPosition::Right,
+        };
+        let rect = Rect::new(rect.x, rect.y, rect.width - shadow, rect.height - shadow);
+        Some((rect, side))
     }
 
-    /// The top-left corner of a `size` box on `side` of `anchor`, before
-    /// clamping into the area
-    fn place(
-        side: PopoverPosition,
-        (anchor_x, anchor_y): (u16, u16),
-        (popup_w, popup_h): (u16, u16),
-        arrow_offset: u16,
-    ) -> (u16, u16) {
-        match side {
-            PopoverPosition::Top => {
-                let x = anchor_x.saturating_sub(popup_w / 2);
-                let y = anchor_y.saturating_sub(popup_h + arrow_offset);
-                (x, y)
-            }
-            PopoverPosition::Bottom => {
-                let x = anchor_x.saturating_sub(popup_w / 2);
-                let y = anchor_y.saturating_add(1 + arrow_offset);
-                (x, y)
-            }
-            PopoverPosition::Left => {
-                let x = anchor_x.saturating_sub(popup_w + arrow_offset);
-                let y = anchor_y.saturating_sub(popup_h / 2);
-                (x, y)
-            }
-            PopoverPosition::Right => {
-                let x = anchor_x.saturating_add(1 + arrow_offset);
-                let y = anchor_y.saturating_sub(popup_h / 2);
-                (x, y)
-            }
-            // calculate_position resolves Auto to one of the four sides first
-            PopoverPosition::Auto => {
-                unreachable!("Auto position resolved to concrete position above")
-            }
-        }
+    /// The anchor as a one-cell rect
+    pub(super) fn anchor_rect(&self) -> Rect {
+        Rect::new(self.anchor.0, self.anchor.1, 1, 1)
     }
 }

@@ -1,6 +1,8 @@
 //! Wrapping the text, sizing the box, and placing it next to the anchor
 
 use super::{Tooltip, TooltipArrow, TooltipPosition};
+use crate::layout::anchored::{self, Align, Placed, Side};
+use crate::layout::Rect;
 use crate::text::wrap_words;
 use crate::utils::unicode::display_width;
 
@@ -57,7 +59,7 @@ impl Tooltip {
 
     /// The gap the arrow takes between the anchor and the box: one cell, or
     /// none without an arrow.
-    fn arrow_offset(&self) -> u16 {
+    pub(super) fn arrow_offset(&self) -> u16 {
         if matches!(self.arrow, TooltipArrow::None) {
             0
         } else {
@@ -65,85 +67,45 @@ impl Tooltip {
         }
     }
 
-    /// The side the box goes on: the set one, or for `Auto` the first of
-    /// above, below, right and left with room for the box and the arrow
-    /// (above when none has). Never `Auto`.
-    fn resolve_position(
-        &self,
-        area_width: u16,
-        area_height: u16,
-        tooltip_w: u16,
-        tooltip_h: u16,
-    ) -> TooltipPosition {
-        if self.position != TooltipPosition::Auto {
-            return self.position;
-        }
-        let (anchor_x, anchor_y) = self.anchor;
-        let arrow_offset = self.arrow_offset();
-        // Auto-detect best position based on available space
-        let space_above = anchor_y;
-        let space_below = area_height.saturating_sub(anchor_y.saturating_add(1));
-        let space_left = anchor_x;
-        let space_right = area_width.saturating_sub(anchor_x.saturating_add(1));
-
-        if space_above >= tooltip_h + arrow_offset {
-            TooltipPosition::Top
-        } else if space_below >= tooltip_h + arrow_offset {
-            TooltipPosition::Bottom
-        } else if space_right >= tooltip_w + arrow_offset {
-            TooltipPosition::Right
-        } else if space_left >= tooltip_w + arrow_offset {
-            TooltipPosition::Left
-        } else {
-            TooltipPosition::Top // Default fallback
-        }
+    /// The anchor as a one-cell rect
+    pub(super) fn anchor_rect(&self) -> Rect {
+        Rect::new(self.anchor.0, self.anchor.1, 1, 1)
     }
 
-    /// The box's top-left corner on `position`'s side of the anchor, before
-    /// it is kept inside the area: centered across the anchor, one arrow
-    /// cell away.
-    fn place(&self, position: TooltipPosition, tooltip_w: u16, tooltip_h: u16) -> (u16, u16) {
-        let (anchor_x, anchor_y) = self.anchor;
-        let arrow_offset = self.arrow_offset();
-        match position {
-            // `resolve_position` never returns Auto.
-            TooltipPosition::Top | TooltipPosition::Auto => {
-                let x = anchor_x.saturating_sub(tooltip_w / 2);
-                let y = anchor_y.saturating_sub(tooltip_h + arrow_offset);
-                (x, y)
-            }
-            TooltipPosition::Bottom => {
-                let x = anchor_x.saturating_sub(tooltip_w / 2);
-                let y = anchor_y.saturating_add(1 + arrow_offset);
-                (x, y)
-            }
-            TooltipPosition::Left => {
-                let x = anchor_x.saturating_sub(tooltip_w + arrow_offset);
-                let y = anchor_y.saturating_sub(tooltip_h / 2);
-                (x, y)
-            }
-            TooltipPosition::Right => {
-                let x = anchor_x.saturating_add(1 + arrow_offset);
-                let y = anchor_y.saturating_sub(tooltip_h / 2);
-                (x, y)
-            }
-        }
+    /// Where the box goes in an `area_width` x `area_height` area, in the
+    /// area's coordinates, by the shared anchored placement rules
+    /// ([`crate::layout::anchored`]): the set side, or the other side of the
+    /// anchor when only that one has room, or the roomier of the two with
+    /// the box shortened to it. `Auto` tries above, below, right and left.
+    /// The box never covers the anchor, and the arrow's cell stays free.
+    /// `None` when neither side has a row (or column) to spare.
+    pub(super) fn calculate_position(&self, area_width: u16, area_height: u16) -> Option<Placed> {
+        let sides: &[Side] = match self.position {
+            TooltipPosition::Top => &[Side::Top, Side::Bottom],
+            TooltipPosition::Bottom => &[Side::Bottom, Side::Top],
+            TooltipPosition::Left => &[Side::Left, Side::Right],
+            TooltipPosition::Right => &[Side::Right, Side::Left],
+            TooltipPosition::Auto => &[Side::Top, Side::Bottom, Side::Right, Side::Left],
+        };
+        anchored::place(
+            self.anchor_rect(),
+            self.calculate_dimensions(area_width),
+            sides,
+            Align::Center,
+            self.arrow_offset(),
+            Rect::new(0, 0, area_width, area_height),
+        )
     }
+}
 
-    /// Calculate position based on anchor and available space
-    pub(super) fn calculate_position(
-        &self,
-        area_width: u16,
-        area_height: u16,
-    ) -> (u16, u16, TooltipPosition) {
-        let (tooltip_w, tooltip_h) = self.calculate_dimensions(area_width);
-        let position = self.resolve_position(area_width, area_height, tooltip_w, tooltip_h);
-        let (x, y) = self.place(position, tooltip_w, tooltip_h);
-
-        // Clamp to screen bounds
-        let x = x.min(area_width.saturating_sub(tooltip_w));
-        let y = y.min(area_height.saturating_sub(tooltip_h));
-
-        (x, y, position)
+impl Tooltip {
+    /// The side `side` names
+    pub(super) fn position_of(side: Side) -> TooltipPosition {
+        match side {
+            Side::Top => TooltipPosition::Top,
+            Side::Bottom => TooltipPosition::Bottom,
+            Side::Left => TooltipPosition::Left,
+            Side::Right => TooltipPosition::Right,
+        }
     }
 }

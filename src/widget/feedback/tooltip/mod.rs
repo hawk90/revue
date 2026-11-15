@@ -120,8 +120,11 @@ mod tests {
             .position(TooltipPosition::Auto)
             .anchor(5, 5);
 
-        let (_, _, pos) = t.calculate_position(40, 20);
-        // Should choose a valid position
-        assert!(!matches!(pos, TooltipPosition::Auto));
+        // Auto tries above first, and there is room above row 5
+        let placed = t.calculate_position(40, 20).unwrap();
+        assert_eq!(Tooltip::position_of(placed.side), TooltipPosition::Top);
+        // Not on the first row: below it
+        let placed = t.anchor(5, 0).calculate_position(40, 20).unwrap();
+        assert_eq!(Tooltip::position_of(placed.side), TooltipPosition::Bottom);
     }
 }

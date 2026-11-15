@@ -668,11 +668,11 @@ fn test_tooltip_calculate_position_edge_top_left() {
         .anchor(0, 0)
         .style(TooltipStyle::Bordered);
 
-    // Kept inside the area at the left edge, drawn whole. (Where it goes
-    // with no room above is #1045.)
+    // Kept inside the area at the left edge, drawn whole; with no room
+    // above it goes below, past the arrow (#1045)
     let buffer = render_in(&t, 20, 20);
-    let (x, _) = find(&buffer, "│ Test │").unwrap();
-    assert_eq!(x, 0);
+    assert_eq!(find(&buffer, "│ Test │"), Some((0, 3)));
+    assert_eq!(symbol(&buffer, 0, 1), '▲');
 }
 
 #[test]
@@ -683,10 +683,10 @@ fn test_tooltip_calculate_position_edge_bottom_right() {
         .style(TooltipStyle::Bordered);
 
     // Pushed left so its right border is the area's last column, drawn
-    // whole. (Where it goes with no room below is #1045.)
+    // whole; with no room below it goes above, past the arrow (#1045)
     let buffer = render_in(&t, 20, 20);
-    let (x, _) = find(&buffer, "│ Test │").unwrap();
-    assert_eq!(x, 12);
+    assert_eq!(find(&buffer, "│ Test │"), Some((12, 16)));
+    assert_eq!(symbol(&buffer, 19, 18), '▼');
 }
 
 // =============================================================================
@@ -1052,12 +1052,15 @@ fn test_tooltip_very_small_area() {
         .anchor(0, 0)
         .style(TooltipStyle::Bordered);
 
-    // A 5 x 5 area in a larger buffer: the 8-wide box starts at the
-    // area's corner and nothing is drawn outside the area.
+    // A 5 x 5 area in a larger buffer: no room above the anchor, so the
+    // 8-wide box goes below it, past the arrow, from the area's left edge,
+    // and nothing is drawn outside the area.
     let mut buffer = Buffer::new(10, 10);
     let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 5, 5));
     t.render(&mut ctx);
-    assert_eq!(symbol(&buffer, 0, 0), '┌');
+    assert_eq!(symbol(&buffer, 0, 0), ' ');
+    assert_eq!(symbol(&buffer, 0, 1), '▲');
+    assert_eq!(symbol(&buffer, 0, 2), '┌');
     for y in 0..10 {
         for x in 0..10 {
             if x >= 5 || y >= 5 {
@@ -1511,17 +1514,18 @@ mod snapshots {
     fn test_tooltip_variants() {
         use revue::widget::Tooltip;
 
+        // Three 6-row areas, each anchored on its row 4: the box above
+        // the anchor, the arrow between them
         let view = vstack()
-            .gap(2)
-            .child(Tooltip::info("Info tooltip").visible(true).anchor(5, 1))
+            .child(Tooltip::info("Info tooltip").visible(true).anchor(10, 4))
             .child(
                 Tooltip::warning("Warning tooltip")
                     .visible(true)
-                    .anchor(5, 4),
+                    .anchor(10, 4),
             )
-            .child(Tooltip::error("Error tooltip").visible(true).anchor(5, 7));
+            .child(Tooltip::error("Error tooltip").visible(true).anchor(10, 4));
 
-        let config = TestConfig::with_size(50, 12);
+        let config = TestConfig::with_size(50, 18);
         let mut app = TestApp::with_config(view, config);
         let mut pilot = Pilot::new(&mut app);
 

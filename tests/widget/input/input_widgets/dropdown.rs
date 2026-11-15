@@ -98,6 +98,122 @@ fn test_layout_flips_above_when_near_bottom() {
     assert_eq!(layout.overlay_y, 8u16.saturating_sub(5)); // 3
 }
 
+#[test]
+fn test_layout_no_room_either_side_takes_the_roomier_one_shortened() {
+    // Header on row 1 of 4: one row above, two below
+    let mut buffer = Buffer::new(20, 4);
+    let ctx = RenderContext::new(&mut buffer, Rect::new(0, 1, 20, 1));
+    let layout = calculate_dropdown_layout(&ctx, 3);
+    assert_eq!((layout.overlay_y, layout.height), (2, 2));
+
+    // Header on row 2 of 4: two above, one below
+    let mut buffer = Buffer::new(20, 4);
+    let ctx = RenderContext::new(&mut buffer, Rect::new(0, 2, 20, 1));
+    let layout = calculate_dropdown_layout(&ctx, 3);
+    assert_eq!((layout.overlay_y, layout.height), (0, 2));
+}
+
+#[test]
+fn test_layout_exactly_enough_room_below_stays_below() {
+    let mut buffer = Buffer::new(40, 10);
+    let ctx = RenderContext::new(&mut buffer, Rect::new(0, 4, 40, 1));
+    let layout = calculate_dropdown_layout(&ctx, 5);
+    assert_eq!((layout.overlay_y, layout.height), (5, 5));
+}
+
+#[test]
+fn test_layout_one_row_screen_has_no_room() {
+    let mut buffer = Buffer::new(20, 1);
+    let ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 1));
+    assert_eq!(calculate_dropdown_layout(&ctx, 3).height, 0);
+}
+
+/// Draw `v` in a one-row area on row `row` of a 20 x 4 screen, through the
+/// overlay queue, and return the screen's rows
+fn screen_rows(v: &dyn revue::widget::traits::View, row: u16) -> Vec<String> {
+    let mut b = Buffer::new(20, 4);
+    let mut q = revue::widget::OverlayQueue::new();
+    {
+        let mut ctx =
+            RenderContext::new(&mut b, Rect::new(0, row, 20, 1)).with_overlay_queue(&mut q);
+        v.render(&mut ctx);
+    }
+    q.render_to(&mut b);
+    (0..4)
+        .map(|y| (0..20).map(|x| b.get(x, y).unwrap().symbol).collect())
+        .collect()
+}
+
+fn has_option(row: &str) -> bool {
+    ["Apple", "Banana", "Cherry"]
+        .iter()
+        .any(|o| row.contains(o))
+}
+
+/// The header `v` draws on its own (row 0 of a one-row screen; the inline
+/// dropdown falls off it)
+fn header(v: &dyn revue::widget::traits::View) -> String {
+    let mut b = Buffer::new(20, 1);
+    v.render(&mut RenderContext::new(&mut b, Rect::new(0, 0, 20, 1)));
+    (0..20).map(|x| b.get(x, 0).unwrap().symbol).collect()
+}
+
+/// #1095: with no room for all three options on either side, the dropdown
+/// takes the two rows below and scrolls; it never covers the header.
+/// The three widgets share the placement, so they are tested together
+#[test]
+fn test_dropdowns_do_not_cover_their_header() {
+    use revue::widget::{multi_select, Combobox, Select};
+    let opts = || vec!["Apple", "Banana", "Cherry"];
+
+    let mut m = multi_select().options(opts());
+    m.open();
+    let mut s = Select::new().options(opts());
+    s.open();
+    let mut c = Combobox::new().options(opts());
+    c.open_dropdown();
+
+    for (name, v) in [
+        ("MultiSelect", &m as &dyn revue::widget::traits::View),
+        ("Select", &s),
+        ("Combobox", &c),
+    ] {
+        let rows = screen_rows(v, 1);
+        assert!(!has_option(&rows[0]), "{name}: row 0 {rows:?}");
+        assert_eq!(rows[1], header(v), "{name}: header {rows:?}");
+        assert!(rows[2].contains("Apple"), "{name}: row 2 {rows:?}");
+        assert!(rows[3].contains("Banana"), "{name}: row 3 {rows:?}");
+    }
+    assert!(screen_rows(&m, 1)[1].contains('▲'));
+    assert!(!has_option(&header(&m)));
+}
+
+/// Above the header when that side is roomier: the rows end right above it
+#[test]
+fn test_dropdowns_above_their_header_end_right_above_it() {
+    use revue::widget::{multi_select, Combobox, Select};
+    let opts = || vec!["Apple", "Banana", "Cherry"];
+
+    let mut m = multi_select().options(opts());
+    m.open();
+    let mut s = Select::new().options(opts());
+    s.open();
+    let mut c = Combobox::new().options(opts());
+    c.open_dropdown();
+
+    for (name, v) in [
+        ("MultiSelect", &m as &dyn revue::widget::traits::View),
+        ("Select", &s),
+        ("Combobox", &c),
+    ] {
+        let rows = screen_rows(v, 2);
+        assert!(rows[0].contains("Apple"), "{name}: row 0 {rows:?}");
+        assert!(rows[1].contains("Banana"), "{name}: row 1 {rows:?}");
+        assert_eq!(rows[2], header(v), "{name}: header {rows:?}");
+        assert!(!has_option(&rows[3]), "{name}: row 3 {rows:?}");
+    }
+}
+
 // ==================== render_status_row ====================
 
 #[test]
