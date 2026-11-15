@@ -245,12 +245,20 @@ jobs:
       (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      # rust-toolchain.toml pins the newer development toolchain, and rustup
+      # prefers that file over the default the action below sets: without
+      # this, every cargo command here ran on the pinned toolchain (#1492).
+      # rustup prefers RUSTUP_TOOLCHAIN over the file.
+      RUSTUP_TOOLCHAIN: "1.95.0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # Pinned, not `stable`. On `stable` this job checked nothing about 1.95.
       - uses: dtolnay/rust-toolchain@1.95
         with:
           components: clippy
+      # The log shows the toolchain the checks below run on
+      - run: rustc --version && cargo clippy --version
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       # The MSRV covers every feature combination, so a dependency that raises
       # its own floor above it fails here, not in a consumer's build.

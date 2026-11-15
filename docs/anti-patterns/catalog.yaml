@@ -2858,6 +2858,7 @@ entries:
     summary: "Rust 1.87+ 등을 선언하지만 CI가 실제 최소 버전에서 build하지 않는다. MSRV는 문서가 아니라 테스트 계약이어야 한다."
     observed:
       - "선언한 MSRV 1.88은 기본 feature에서만 맞았다. `sysinfo`는 1.95, `tree-sitter`는 1.90이 필요했고 MSRV job은 기본 feature만 확인했다. job을 1.95로 고정하고 no-default, default, all-features clippy를 확인하게 고쳤다 (#906, .github/workflows/ci.yml)."
+      - "2026-11-15: 그 뒤 추가한 `rust-toolchain.toml`(1.99.1)이 rustup에서 action이 정한 기본 toolchain보다 우선해서, MSRV job의 cargo 명령이 모두 1.99.1로 돌았다. job 로그의 rust-cache 키에 1.99.1이 찍혀 있었고, 1.95 clippy만 잡는 `collapsible_match` 2건이 그동안 지나갔다. job에 `RUSTUP_TOOLCHAIN`을 두고 첫 단계에서 `rustc --version`을 찍는다 (#1492)."
   - id: REV-RUST-011
     title: "Visibility Widened to Make a Split Compile"
     category: rust
