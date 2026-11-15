@@ -92,8 +92,8 @@
       "minimumReleaseAge": null
     },
     {
-      "description": "Rust toolchain pin (rust-toolchain.toml): manual, one PR per release. groupName null keeps it out of the non-major group above: grouped, a new toolchain's lints held back the crate updates and its automerge false stopped the whole group (#1483)",
-      "matchDepNames": [
+      "description": "Rust toolchain pin (rust-toolchain.toml, Renovate's built-in rust-toolchain manager): manual, one PR per release. groupName null keeps it out of the non-major group above: grouped, a new toolchain's lints held back the crate updates, and the cargo manager resolved their Cargo.lock with the new toolchain (#1483)",
+      "matchManagers": [
         "rust-toolchain"
       ],
       "groupName": null,
@@ -110,22 +110,6 @@
         "dtolnay/rust-toolchain"
       ],
       "enabled": false
-    }
-  ],
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "Bump the pinned channel in rust-toolchain.toml",
-      "managerFilePatterns": [
-        "/(^|/)rust-toolchain\\.toml$/"
-      ],
-      "matchStrings": [
-        "channel\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "depNameTemplate": "rust-toolchain",
-      "packageNameTemplate": "rust-lang/rust",
-      "datasourceTemplate": "github-releases",
-      "versioningTemplate": "semver"
     }
   ]
 }
