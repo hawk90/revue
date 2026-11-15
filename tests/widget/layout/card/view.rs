@@ -573,9 +573,11 @@ fn test_borderless_card_separator_past_the_box_is_left_out() {
         .elevated()
         .title("T")
         .subtitle("S")
+        .header(Text::new("H"))
         .body(Text::new("B"));
+    // The box is rows 0..3; the separator's row is 3, the shadow's
     let rows = rows_of(&render_buffer(&c, 6, 4, None));
-    assert_eq!(rows[3], " ▀▀▀▀▀");
+    assert_eq!(rows[3], " ▀▀▀▀▀"); // was "─────▀"
 }
 
 #[test]
