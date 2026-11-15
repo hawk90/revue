@@ -498,6 +498,7 @@ entries:
       - "cascade는 모든 node에 대해 계산되었지만 style은 root에만 전달되어 읽는 곳이 없었다. layout engine은 매 frame 돌았지만 결과를 읽는 곳이 없었고, layout tree에는 간선이 없어 root 외의 node가 모두 0×0이었다 (docs/refactor/findings-render-pipeline.md F-5, F-6, docs/refactor/findings-layout.md L-1, L-5)."
       - "`set_hover`와 `App::request_redraw()`를 부르는 곳이 없었다 (docs/refactor/phase2-hit-test.md, findings-render-pipeline.md F-1)."
       - "2026-10-20 기준: `AppBuilder::devtools(true)`가 세우는 `devtools_enabled`를 읽는 곳이 없다. `RenderContext::with_transitions`와 `TransitionManager::start_for_node`/`active_node_ids`를 부르는 곳이 없어 transition 값이 widget에 닿지 않는다. 공개 설정 약 60개가 저장만 되고 읽히지 않는다 (#799)."
+      - "2026-11-15: `HttpClient::send()`가 `HttpBackend`를 부르지 않고 URL과 관계없이 지어낸 `200 OK`를 보여 주었다. `http` feature의 `reqwest`는 쓰는 곳이 없어 Rust 1.100의 `unused_dependencies` lint가 잡았다. 이제 `send`는 요청을 쌓고, 앱이 꺼내 실행한 뒤 `complete`로 돌려준다 (#1487)."
   - id: REV-TREE-001
     title: "Rebuild Everything Every Frame"
     category: ui-tree
@@ -2254,6 +2255,7 @@ entries:
       - "CPU 작업과 오래 막히는 I/O를 다른 경로로 보낸다. pool이 작을수록(#1143의 min(core 수, 약 4)) 중요하다. #1143: 오래 막히는 작업은 계산용 pool이 아닌 blocking lane으로 보내고, lane에도 thread 상한, bounded queue, 취소, generation으로 낡은 결과 버리기를 똑같이 둔다. `async` feature에서는 tokio의 blocking pool이 그 lane이다."
     checked:
       - "2026-10-20: WorkerPool 하나에 priority queue 하나이고 I/O와 CPU를 나누지 않는다. 내장 코드가 이 pool에 blocking I/O를 보내는 곳은 없다(HttpClient는 backend를 부르지 않고, FilePicker는 UI thread에서 읽는다). starvation 사례는 없다."
+      - "2026-11-15: HttpClient는 이제 요청을 앱에 넘기고, `http` feature의 `ReqwestBackend`는 blocking 호출이다. 어느 thread에서 돌릴지는 앱이 정하며, 내장 코드는 여전히 pool에 I/O를 보내지 않는다. 예제는 `WorkerPool::new(2)`에 넣는다. blocking lane은 #1143에서 만든다 (#1487)."
   - id: REV-ASYNC-006
     title: "No Panic Boundary"
     category: async

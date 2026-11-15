@@ -2,7 +2,8 @@
 //! MockHttpBackend's matching, and round trips of the query encoding, the
 //! basic-auth encoding and the JSON formatter
 //!
-//! Nothing here touches the network: `send()` builds a mock response.
+//! Nothing here touches the network: `send()` only queues the request, and
+//! the model hands results back through `complete`.
 
 use proptest::prelude::*;
 use revue::layout::Rect;
@@ -10,7 +11,7 @@ use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
     HttpBackend, HttpClient, HttpMethod, HttpRequest, HttpResponse, MockHttpBackend,
-    RequestBuilder, RequestState, ResponseView,
+    RequestBuilder, RequestId, RequestState, ResponseView,
 };
 use std::time::Duration;
 
@@ -50,6 +51,11 @@ const URLS: [&str; 5] = [
 enum Op {
     SetUrl(usize),
     Send,
+    /// The app takes the queued request
+    Take,
+    /// The app completes the n-th taken request (mod the number taken) with
+    /// a response of this status, or with an error for 0
+    Complete(usize, u16),
     Back,
     Forward,
     Cycle,
@@ -66,6 +72,8 @@ fn op() -> impl Strategy<Value = Op> {
     prop_oneof![
         3 => (0..URLS.len()).prop_map(Op::SetUrl),
         3 => Just(Op::Send),
+        3 => Just(Op::Take),
+        3 => (0usize..4, prop::sample::select(vec![0u16, 200, 404])).prop_map(|(n, s)| Op::Complete(n, s)),
         3 => Just(Op::Back),
         2 => Just(Op::Forward),
         1 => Just(Op::Cycle),
@@ -94,6 +102,16 @@ struct Model {
     status: Option<u16>,
     view: ResponseView,
     show_headers: bool,
+    /// The last URL given was refused, so the request still holds an older one
+    rejected: bool,
+    /// The id of the latest send, counting from 1
+    sent: u64,
+    /// The send queued and not taken yet
+    pending: Option<u64>,
+    /// The latest send not yet completed or cleared: only its result applies
+    in_flight: Option<u64>,
+    /// The ids of the requests taken, in order, and what the client gave
+    taken: Vec<(u64, RequestId)>,
     /// An error is still set although a later call should have dropped it:
     /// a response set after an error, or a valid URL after a refused one.
     /// The error and the state are not checked until a call resets them (#1083).
@@ -105,10 +123,12 @@ const REFUSED: &str = "Invalid URL";
 proptest! {
     /// After any sequence of calls, every getter and rows 0 and 2 agree with
     /// a plain model: valid URLs replace the request's URL and move the
-    /// cursor to its end, refused ones set the error; `send` records the
-    /// request in history and succeeds; back and forward walk the history and
-    /// restore its requests; `clear` drops the response, the error and the
-    /// scroll.
+    /// cursor to its end, refused ones set the error; `send` refuses an empty
+    /// or refused URL, otherwise records the request in history, queues it and
+    /// waits; each queued request is taken once, and only the latest send's
+    /// result is applied; back and forward walk the history and restore its
+    /// requests; `clear` drops the response, the error, the scroll and the
+    /// request in flight.
     #[test]
     fn prop_client_state_follows_the_model(ops in prop::collection::vec(op(), 0..40)) {
         let mut c = HttpClient::new();
@@ -125,6 +145,11 @@ proptest! {
             status: None,
             view: ResponseView::Body,
             show_headers: false,
+            rejected: false,
+            sent: 0,
+            pending: None,
+            in_flight: None,
+            taken: Vec::new(),
             stale: false,
         };
         for o in &ops {
@@ -136,7 +161,9 @@ proptest! {
                         m.stale |= m.error == Some(REFUSED);
                         m.url = URLS[i].to_string();
                         m.cursor = m.url.len();
+                        m.rejected = false;
                     } else {
+                        m.rejected = true;
                         m.error = Some(REFUSED);
                         m.state = RequestState::Error;
                         m.stale = false;
@@ -144,13 +171,61 @@ proptest! {
                 }
                 Op::Send => {
                     c.send();
-                    m.history.push((m.url.clone(), m.method));
-                    m.index = m.history.len();
-                    m.state = RequestState::Success;
-                    m.error = None;
-                    m.status = Some(200);
-                    m.scroll = 0;
+                    if m.rejected || m.url.is_empty() {
+                        m.error = Some(REFUSED);
+                        m.state = RequestState::Error;
+                        m.pending = None;
+                        m.in_flight = None;
+                    } else {
+                        m.history.push((m.url.clone(), m.method));
+                        m.index = m.history.len();
+                        m.state = RequestState::Sending;
+                        m.error = None;
+                        m.sent += 1;
+                        m.pending = Some(m.sent);
+                        m.in_flight = Some(m.sent);
+                    }
                     m.stale = false;
+                }
+                Op::Take => {
+                    let got = c.take_request();
+                    prop_assert_eq!(got.is_some(), m.pending.is_some(), "after {:?}", o);
+                    if let (Some(got), Some(id)) = (got, m.pending.take()) {
+                        // The request as it was sent: the last history entry
+                        // of that send
+                        prop_assert_eq!(got.request.url(), m.history[m.history.len() - 1].0.as_str());
+                        m.taken.push((id, got.id));
+                    }
+                }
+                Op::Complete(n, status) => {
+                    if m.taken.is_empty() {
+                        continue;
+                    }
+                    let (id, client_id) = m.taken[n % m.taken.len()];
+                    let result = if status == 0 {
+                        Err("down".to_string())
+                    } else {
+                        Ok(HttpResponse { status, status_text: "T".into(), ..Default::default() })
+                    };
+                    let applied = c.complete(client_id, result);
+                    prop_assert_eq!(applied, m.in_flight == Some(id), "after {:?}", o);
+                    if applied {
+                        m.in_flight = None;
+                        if status == 0 {
+                            m.error = Some("down");
+                            m.state = RequestState::Error;
+                            m.stale = false;
+                        } else {
+                            m.stale |= m.error.is_some();
+                            m.status = Some(status);
+                            m.scroll = 0;
+                            m.state = if (200..300).contains(&status) {
+                                RequestState::Success
+                            } else {
+                                RequestState::Error
+                            };
+                        }
+                    }
                 }
                 Op::Back => {
                     c.history_back();
@@ -209,6 +284,8 @@ proptest! {
                 }
                 Op::Clear => {
                     c.clear();
+                    m.pending = None;
+                    m.in_flight = None;
                     m.status = None;
                     m.error = None;
                     m.state = RequestState::Idle;
@@ -256,6 +333,7 @@ proptest! {
                 prop_assert_eq!(c.error().map(|e| e.contains(m.error.unwrap_or("-"))), m.error.map(|_| true), "after {:?}", o);
                 let second = row(&c, 2);
                 match (m.error, m.status) {
+                    _ if m.state == RequestState::Sending => prop_assert_eq!(second, "⠋ Sending request..."),
                     (Some(e), _) => prop_assert!(second.starts_with("✗ Error: ") && second.contains(e), "after {:?}: {:?}", o, second),
                     (None, Some(s)) => prop_assert!(second.starts_with(&format!("{s} ")), "after {:?}: {:?}", o, second),
                     (None, None) => prop_assert_eq!(second, "Enter a URL and press Enter to send request"),

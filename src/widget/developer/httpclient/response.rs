@@ -44,7 +44,14 @@ impl HttpResponse {
 
     /// Get content type
     pub fn content_type(&self) -> ContentType {
-        ContentType::from_header(self.headers.get("Content-Type").map(|s| s.as_str()))
+        // Header names are case-insensitive (RFC 9110): a real client
+        // reports them lowercase.
+        let value = self
+            .headers
+            .iter()
+            .find(|(name, _)| name.eq_ignore_ascii_case("content-type"))
+            .map(|(_, value)| value.as_str());
+        ContentType::from_header(value)
     }
 
     /// Try to format body as pretty JSON

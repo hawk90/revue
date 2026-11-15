@@ -50,7 +50,7 @@ revue = { version = "3", features = ["gui"] }
 | `sysinfo` | `sysinfo` | System information widget (CPU, memory, processes) |
 | `clipboard` | `arboard` | System clipboard copy/paste support |
 | `hot-reload` | `notify` | Reload `.style()` CSS files on change during development (`.hot_reload(true)` or `REVUE_HOT_RELOAD=1`; `revue dev` enables both) |
-| `http` | `reqwest` | HTTP request support |
+| `http` | `reqwest` | `ReqwestBackend`: sends the requests `HttpClient` queues (run it on a worker, see `examples/http_client.rs`) |
 
 ### Development
 

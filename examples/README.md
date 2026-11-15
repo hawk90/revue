@@ -65,6 +65,7 @@ cargo run --example <name>
 |---------|-------------|
 | [worker_basic](worker_basic.rs) | Basic worker thread usage |
 | [worker_progress](worker_progress.rs) | Worker with progress reporting |
+| [http_client](http_client.rs) | HttpClient sending real requests on a worker (`--features http`) |
 
 ## Advanced
 

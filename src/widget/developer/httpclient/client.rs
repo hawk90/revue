@@ -22,6 +22,10 @@ impl HttpClient {
             history: Vec::new(),
             history_index: 0,
             show_headers: false,
+            url_rejected: false,
+            pending: None,
+            in_flight: None,
+            next_request_id: 0,
             props: WidgetProps::new(),
         }
     }
@@ -34,6 +38,7 @@ impl HttpClient {
         let url_str = url.into();
         if let Some(valid_req) = HttpRequest::new(&url_str) {
             self.request.url = valid_req.url;
+            self.url_rejected = false;
         } else {
             self.reject_url();
         }

@@ -1,5 +1,6 @@
 //! HTTP client types
 
+use super::HttpRequest;
 use crate::style::Color;
 
 /// HTTP method
@@ -48,6 +49,22 @@ impl HttpMethod {
             HttpMethod::OPTIONS => Color::rgb(171, 178, 191), // Gray
         }
     }
+}
+
+/// Identifies one [`send`](super::HttpClient::send), so that
+/// [`complete`](super::HttpClient::complete) can drop the result of a request
+/// that a later send replaced
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct RequestId(pub(super) u64);
+
+/// A request the app should run, taken with
+/// [`take_request`](super::HttpClient::take_request)
+#[derive(Clone, Debug)]
+pub struct PendingRequest {
+    /// Pass this to [`complete`](super::HttpClient::complete) with the result
+    pub id: RequestId,
+    /// The request as it was when sent
+    pub request: HttpRequest,
 }
 
 /// Request state

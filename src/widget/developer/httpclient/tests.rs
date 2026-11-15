@@ -43,11 +43,17 @@ fn test_http_request_url() {
 
 #[test]
 fn test_send_request() {
-    let mut client = get("https://httpbin.org/get");
+    let mut client = get("https://api.example.com/get");
     client.send();
+    assert_eq!(client.state(), RequestState::Sending);
+
+    let backend = MockHttpBackend::new();
+    backend.mock_json("api.example.com", 200, r#"{"ok": true}"#);
+    let pending = client.take_request().unwrap();
+    assert!(client.complete(pending.id, backend.send(&pending.request)));
 
     assert_eq!(client.state(), RequestState::Success);
-    assert!(client.response().is_some());
+    assert_eq!(client.response().unwrap().body, r#"{"ok": true}"#);
 }
 
 #[test]

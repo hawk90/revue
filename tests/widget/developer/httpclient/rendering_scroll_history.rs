@@ -65,11 +65,34 @@ fn test_render_too_small_draws_nothing() {
 fn test_render_with_response() {
     let mut client = http_get("https://example.com");
     client.send();
+    let pending = client.take_request().unwrap();
+    let body = "{\n  \"status\": \"success\",\n}".to_string();
+    client.complete(
+        pending.id,
+        Ok(HttpResponse {
+            status: 200,
+            status_text: "OK".to_string(),
+            headers: HashMap::new(),
+            size: body.len(),
+            body,
+            time: Duration::from_millis(5),
+        }),
+    );
     let rows = rows(&client, 80, 20);
     assert!(rows[2].starts_with("200 OK • "), "{rows:?}");
     assert!(rows[3].starts_with("Body Headers Raw"), "{rows:?}");
     assert_eq!(rows[4], "{");
     assert_eq!(rows[5], "  \"status\": \"success\",");
+}
+
+#[test]
+fn test_render_while_sending() {
+    let mut client = http_get("https://example.com");
+    client.send();
+    assert_eq!(rows(&client, 80, 20)[2], "⠋ Sending request...");
+    // Taking the request does not change what is shown
+    client.take_request();
+    assert_eq!(rows(&client, 80, 20)[2], "⠋ Sending request...");
 }
 
 #[test]
