@@ -73086,10 +73086,12 @@ pub fn revue::widget::HttpClient::element_id(self, impl core::convert::Into<allo
 pub fn revue::widget::HttpClient::keyed(self, impl core::convert::Into<revue::dom::WidgetKey>) -> Self
 impl revue::widget::HttpClient
 pub fn revue::widget::HttpClient::clear(&mut self)
+pub fn revue::widget::HttpClient::complete(&mut self, revue::widget::RequestId, core::result::Result<revue::widget::HttpResponse, alloc::string::String>) -> bool
 pub fn revue::widget::HttpClient::send(&mut self)
 pub fn revue::widget::HttpClient::set_error(&mut self, impl core::convert::Into<alloc::string::String>)
 pub fn revue::widget::HttpClient::set_response(&mut self, revue::widget::HttpResponse)
 pub fn revue::widget::HttpClient::set_url(&mut self, impl core::convert::Into<alloc::string::String>)
+pub fn revue::widget::HttpClient::take_request(&mut self) -> core::option::Option<revue::widget::PendingRequest>
 impl revue::widget::HttpClient
 pub fn revue::widget::HttpClient::cycle_method(&mut self)
 pub fn revue::widget::HttpClient::history_back(&mut self)
@@ -74782,6 +74784,20 @@ impl core::marker::Unpin for revue::widget::Pane
 impl core::marker::UnsafeUnpin for revue::widget::Pane
 impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::Pane
 impl core::panic::unwind_safe::UnwindSafe for revue::widget::Pane
+pub struct revue::widget::PendingRequest
+pub revue::widget::PendingRequest::id: revue::widget::RequestId
+pub revue::widget::PendingRequest::request: revue::widget::HttpRequest
+impl core::clone::Clone for revue::widget::PendingRequest
+pub fn revue::widget::PendingRequest::clone(&self) -> Self
+impl core::fmt::Debug for revue::widget::PendingRequest
+pub fn revue::widget::PendingRequest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for revue::widget::PendingRequest
+impl core::marker::Send for revue::widget::PendingRequest
+impl core::marker::Sync for revue::widget::PendingRequest
+impl core::marker::Unpin for revue::widget::PendingRequest
+impl core::marker::UnsafeUnpin for revue::widget::PendingRequest
+impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::PendingRequest
+impl core::panic::unwind_safe::UnwindSafe for revue::widget::PendingRequest
 pub struct revue::widget::PerfMetrics
 impl revue::widget::PerfMetrics
 pub fn revue::widget::PerfMetrics::avg_frame_time_ms(&self) -> f64
@@ -75650,6 +75666,44 @@ impl core::marker::Unpin for revue::widget::RequestBuilder
 impl core::marker::UnsafeUnpin for revue::widget::RequestBuilder
 impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::RequestBuilder
 impl core::panic::unwind_safe::UnwindSafe for revue::widget::RequestBuilder
+pub struct revue::widget::RequestId(_)
+impl core::clone::Clone for revue::widget::RequestId
+pub fn revue::widget::RequestId::clone(&self) -> Self
+impl core::cmp::Eq for revue::widget::RequestId
+impl core::cmp::PartialEq for revue::widget::RequestId
+pub fn revue::widget::RequestId::eq(&self, &Self) -> bool
+impl core::fmt::Debug for revue::widget::RequestId
+pub fn revue::widget::RequestId::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for revue::widget::RequestId
+pub fn revue::widget::RequestId::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for revue::widget::RequestId
+impl core::marker::StructuralPartialEq for revue::widget::RequestId
+impl core::marker::Freeze for revue::widget::RequestId
+impl core::marker::Send for revue::widget::RequestId
+impl core::marker::Sync for revue::widget::RequestId
+impl core::marker::Unpin for revue::widget::RequestId
+impl core::marker::UnsafeUnpin for revue::widget::RequestId
+impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::RequestId
+impl core::panic::unwind_safe::UnwindSafe for revue::widget::RequestId
+pub struct revue::widget::ReqwestBackend
+impl revue::widget::ReqwestBackend
+pub fn revue::widget::ReqwestBackend::new() -> Self
+pub fn revue::widget::ReqwestBackend::with_client(reqwest::blocking::client::Client) -> Self
+impl core::clone::Clone for revue::widget::ReqwestBackend
+pub fn revue::widget::ReqwestBackend::clone(&self) -> Self
+impl core::default::Default for revue::widget::ReqwestBackend
+pub fn revue::widget::ReqwestBackend::default() -> Self
+impl core::fmt::Debug for revue::widget::ReqwestBackend
+pub fn revue::widget::ReqwestBackend::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl revue::widget::HttpBackend for revue::widget::ReqwestBackend
+pub fn revue::widget::ReqwestBackend::send(&self, &revue::widget::HttpRequest) -> core::result::Result<revue::widget::HttpResponse, alloc::string::String>
+impl core::marker::Freeze for revue::widget::ReqwestBackend
+impl core::marker::Send for revue::widget::ReqwestBackend
+impl core::marker::Sync for revue::widget::ReqwestBackend
+impl core::marker::Unpin for revue::widget::ReqwestBackend
+impl core::marker::UnsafeUnpin for revue::widget::ReqwestBackend
+impl !core::panic::unwind_safe::RefUnwindSafe for revue::widget::ReqwestBackend
+impl !core::panic::unwind_safe::UnwindSafe for revue::widget::ReqwestBackend
 pub struct revue::widget::Resizable<F> where F: core::ops::function::FnMut(u16, u16)
 impl revue::widget::Resizable
 pub fn revue::widget::Resizable::bg(self, revue::runtime::style::Color) -> Self
@@ -79499,6 +79553,8 @@ pub trait revue::widget::HttpBackend: core::marker::Send + core::marker::Sync
 pub fn revue::widget::HttpBackend::send(&self, &revue::widget::HttpRequest) -> core::result::Result<revue::widget::HttpResponse, alloc::string::String>
 impl revue::widget::HttpBackend for revue::widget::MockHttpBackend
 pub fn revue::widget::MockHttpBackend::send(&self, &revue::widget::HttpRequest) -> core::result::Result<revue::widget::HttpResponse, alloc::string::String>
+impl revue::widget::HttpBackend for revue::widget::ReqwestBackend
+pub fn revue::widget::ReqwestBackend::send(&self, &revue::widget::HttpRequest) -> core::result::Result<revue::widget::HttpResponse, alloc::string::String>
 pub trait revue::widget::Interactive: revue::widget::View
 pub fn revue::widget::Interactive::focusable(&self) -> bool
 pub fn revue::widget::Interactive::handle_key(&mut self, &revue::runtime::event::KeyEvent) -> revue::widget::EventResult
