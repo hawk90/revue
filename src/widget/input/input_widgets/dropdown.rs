@@ -51,7 +51,7 @@ pub struct DropdownLayout {
 
 /// Calculate the dropdown overlay's position below the header (the first row
 /// of the widget's area), by the shared anchored placement rules
-/// ([`crate::layout::anchored`]): below it, or above it when only that side
+/// (`crate::layout::anchored`, internal): below it, or above it when only that side
 /// of the screen has room, or on the roomier side shortened to fit. The
 /// dropdown never covers the header.
 pub fn calculate_dropdown_layout(ctx: &RenderContext, dropdown_height: u16) -> DropdownLayout {
