@@ -1,6 +1,7 @@
 //! Drawing the tooltip as an overlay: background, border, title, text and arrow
 
 use super::{Tooltip, TooltipArrow, TooltipPosition};
+use crate::layout::anchored::Placed;
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
@@ -92,8 +93,9 @@ impl Tooltip {
             cell_with(border.top_right, fg, bg),
         );
 
-        // Title (bold)
-        if let Some(ref title) = self.title {
+        // Title (bold), on the row under the top border: not in a box
+        // shortened to its border
+        if let (Some(title), true) = (&self.title, tooltip_h > 2) {
             entry.push_str_with(2, 1, title, tooltip_w.saturating_sub(2), |ch| {
                 let mut c = cell_with(ch, fg, bg);
                 c.modifier |= Modifier::BOLD;
@@ -160,44 +162,24 @@ impl Tooltip {
         }
     }
 
-    /// The arrow in the cell between the box (`tooltip`) and the anchor, as
-    /// a 1-cell overlay above the box; not drawn if that cell is in the box
-    /// or off the buffer.
-    fn draw_arrow(
-        &self,
-        ctx: &mut RenderContext,
-        actual_position: TooltipPosition,
-        tooltip: Rect,
-        fg: Color,
-    ) {
-        let (tooltip_x, tooltip_y, tooltip_w, tooltip_h) =
-            (tooltip.x, tooltip.y, tooltip.width, tooltip.height);
-        let (arrow_char, _) = self.arrow.chars(actual_position);
-        let (arrow_abs_x, arrow_abs_y) = match actual_position {
-            TooltipPosition::Top => (self.anchor.0, tooltip_y + tooltip_h),
-            TooltipPosition::Bottom => (self.anchor.0, tooltip_y.saturating_sub(1)),
-            TooltipPosition::Left => (tooltip_x + tooltip_w, self.anchor.1),
-            TooltipPosition::Right => (tooltip_x.saturating_sub(1), self.anchor.1),
-            TooltipPosition::Auto => (self.anchor.0, tooltip_y + tooltip_h),
+    /// The arrow in the gap cell between the anchor and the box, as a
+    /// 1-cell overlay above the box (inline without an overlay layer); not
+    /// drawn outside the area.
+    fn draw_arrow(&self, ctx: &mut RenderContext, placed: Placed, fg: Color) {
+        let Some((x, y)) = placed.arrow_cell(self.anchor_rect(), self.arrow_offset()) else {
+            return;
         };
-
-        let inside = arrow_abs_x >= tooltip_x
-            && arrow_abs_x < tooltip_x + tooltip_w
-            && arrow_abs_y >= tooltip_y
-            && arrow_abs_y < tooltip_y + tooltip_h;
-
-        let buf_w = ctx.buffer.width();
-        let buf_h = ctx.buffer.height();
-        if !inside && arrow_abs_x < buf_w && arrow_abs_y < buf_h {
-            let arrow_area = Rect::new(arrow_abs_x, arrow_abs_y, 1, 1);
-            let mut arrow_entry = OverlayEntry::new(151, arrow_area);
-            let mut cell = Cell::new(arrow_char);
-            cell.fg = Some(fg);
-            arrow_entry.push(0, 0, cell);
-            // Without an overlay layer, draw inline like the body below.
-            if !ctx.queue_overlay(arrow_entry) {
-                ctx.set(arrow_abs_x, arrow_abs_y, cell);
-            }
+        if x >= ctx.area.width || y >= ctx.area.height {
+            return;
+        }
+        let (arrow_char, _) = self.arrow.chars(Self::position_of(placed.side));
+        let mut cell = Cell::new(arrow_char);
+        cell.fg = Some(fg);
+        let (ox, oy) = ctx.absolute_position();
+        let mut arrow_entry = OverlayEntry::new(151, Rect::new(ox + x, oy + y, 1, 1));
+        arrow_entry.push(0, 0, cell);
+        if !ctx.queue_overlay(arrow_entry) {
+            ctx.set(x, y, cell);
         }
     }
 }
@@ -211,28 +193,30 @@ impl View for Tooltip {
         }
 
         let area = ctx.area;
-        let (tooltip_w, tooltip_h) = self.calculate_dimensions(area.width);
-        let (tooltip_x, tooltip_y, actual_position) =
-            self.calculate_position(area.width, area.height);
+        // In the area's coordinates; the overlay layer takes the screen's
+        let Some(placed) = self.calculate_position(area.width, area.height) else {
+            return;
+        };
+        let rect = placed.rect;
 
         // Builder, then the stylesheet, then the tooltip style's own palette.
         let (default_fg, default_bg) = self.style.colors();
         let fg = self.fg.unwrap_or_else(|| ctx.css_color(default_fg));
         let bg = self.bg.unwrap_or_else(|| ctx.css_background(default_bg));
 
-        // Build overlay entry (all coordinates relative to tooltip area)
-        let overlay_area = Rect::new(tooltip_x, tooltip_y, tooltip_w, tooltip_h);
+        let (ox, oy) = ctx.absolute_position();
+        let overlay_area = Rect::new(ox + rect.x, oy + rect.y, rect.width, rect.height);
         let entry = self.draw_box(overlay_area, area.width, fg, bg);
 
         // Arrow — queue as separate 1-cell overlay at higher z-index
         if !matches!(self.arrow, TooltipArrow::None) {
-            self.draw_arrow(ctx, actual_position, overlay_area, fg);
+            self.draw_arrow(ctx, placed, fg);
         }
 
         // Queue tooltip as overlay; fallback to inline
         if !ctx.queue_overlay(entry.clone()) {
             for oc in &entry.cells {
-                ctx.set(tooltip_x + oc.x, tooltip_y + oc.y, oc.cell);
+                ctx.set(rect.x + oc.x, rect.y + oc.y, oc.cell);
             }
         }
     }

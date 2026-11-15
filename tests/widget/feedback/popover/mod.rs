@@ -252,6 +252,48 @@ fn test_popover_auto_goes_above_without_room_below() {
 }
 
 #[test]
+fn test_popover_without_room_flips_and_leaves_the_anchor_free() {
+    // #1045: asked below the last row, the box goes above, the arrow between
+    let p = Popover::new("Test")
+        .anchor(20, 19)
+        .position(PopoverPosition::Bottom)
+        .arrow(PopoverArrow::Simple)
+        .open(true);
+    let b = render(&p);
+    assert_eq!(symbol(&b, 20, 19), ' ');
+    assert_eq!(symbol(&b, 20, 18), 'v');
+    assert_eq!(corner(&b), Some((15, 15)));
+    // Right of the last column: to the left, the arrow next to the anchor
+    let p = Popover::new("Test")
+        .anchor(39, 10)
+        .position(PopoverPosition::Right)
+        .arrow(PopoverArrow::Simple)
+        .open(true);
+    let b = render(&p);
+    assert_eq!(symbol(&b, 39, 10), ' ');
+    assert_eq!(symbol(&b, 38, 10), '>');
+    assert_eq!(corner(&b), Some((28, 9)));
+}
+
+#[test]
+fn test_popover_arrow_is_never_drawn_on_the_box() {
+    // #1045: a 3-row box with an arrow under an anchor on row 0 of a 3-row
+    // area: one row is left past the arrow, the box is shortened to it
+    for (arrow, ch) in [(PopoverArrow::Simple, '^'), (PopoverArrow::Unicode, '▲')] {
+        let p = Popover::new("")
+            .anchor(0, 0)
+            .position(PopoverPosition::Bottom)
+            .arrow(arrow)
+            .open(true);
+        let mut b = Buffer::new(10, 3);
+        p.render(&mut RenderContext::new(&mut b, Rect::new(0, 0, 10, 3)));
+        assert_eq!(symbol(&b, 0, 0), ' ', "{arrow:?}");
+        assert_eq!(symbol(&b, 0, 1), ch, "{arrow:?}");
+        assert_ne!(row(&b, 2).trim(), "", "{arrow:?}");
+    }
+}
+
+#[test]
 fn test_popover_set_anchor() {
     let mut p = Popover::new("Test").anchor(20, 5).open(true);
     p.set_anchor(10, 10);

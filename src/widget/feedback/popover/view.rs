@@ -1,5 +1,7 @@
 use super::types::{PopoverArrow, PopoverPosition, PopoverStyle};
 use super::Popover;
+use crate::layout::anchored::{Placed, Side};
+use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::border::BorderChars;
@@ -32,14 +34,16 @@ impl View for Popover {
         }
 
         let area = ctx.area;
-        let (popup_w, popup_h) = self.calculate_dimensions(area.width);
-        let (popup_x, popup_y, actual_position) = self.calculate_position(area.width, area.height);
+        let Some((rect, side)) = self.calculate_position(area.width, area.height) else {
+            return;
+        };
+        let (popup_x, popup_y) = (rect.x, rect.y);
         let frame = Frame {
-            x: popup_x,
-            y: popup_y,
-            w: popup_w,
-            h: popup_h,
-            side: actual_position,
+            x: rect.x,
+            y: rect.y,
+            w: rect.width,
+            h: rect.height,
+            side,
         };
         let colors = self.colors(ctx);
 
@@ -171,14 +175,19 @@ impl Popover {
             ctx.set(popup_x + popup_w - 1, popup_y, edge(border.top_right));
         }
 
-        // Title if present
-        if let Some(ref title) = self.title {
+        // Title if present, on the row under the top border: not in a box
+        // shortened to its border
+        if let (Some(title), true) = (&self.title, popup_h > 2) {
             let title_x = popup_x + 2;
             let title_y = popup_y + 1;
             let (fg, bg) = (colors.fg, colors.bg);
-            ctx.put_str_with(title_x, title_y, title, popup_x + popup_w - 2, |ch| {
-                Cell::new(ch).fg(fg).bg(bg).bold()
-            });
+            ctx.put_str_with(
+                title_x,
+                title_y,
+                title,
+                (popup_x + popup_w).saturating_sub(2),
+                |ch| Cell::new(ch).fg(fg).bg(bg).bold(),
+            );
         }
 
         // Side borders
@@ -257,14 +266,18 @@ impl Popover {
             side: actual_position,
         } = frame;
         let arrow_char = self.arrow.chars(actual_position);
-        let (arrow_x, arrow_y) = match actual_position {
-            PopoverPosition::Top => (self.anchor.0, popup_y + popup_h),
-            PopoverPosition::Bottom => (self.anchor.0, popup_y.saturating_sub(1)),
-            PopoverPosition::Left => (popup_x + popup_w, self.anchor.1),
-            PopoverPosition::Right => (popup_x.saturating_sub(1), self.anchor.1),
-            // Auto is already resolved to a concrete position in calculate_position
-            // This case should never be reached, but use Bottom as fallback
-            PopoverPosition::Auto => (self.anchor.0, popup_y.saturating_sub(1)),
+        let placed = Placed {
+            rect: Rect::new(popup_x, popup_y, popup_w, popup_h),
+            side: match actual_position {
+                PopoverPosition::Top => Side::Top,
+                PopoverPosition::Left => Side::Left,
+                PopoverPosition::Right => Side::Right,
+                PopoverPosition::Bottom | PopoverPosition::Auto => Side::Bottom,
+            },
+        };
+        // The gap cell between the anchor and the box: never on the box
+        let Some((arrow_x, arrow_y)) = placed.arrow_cell(self.anchor_rect(), 1) else {
+            return;
         };
 
         if arrow_x < area.width && arrow_y < area.height {

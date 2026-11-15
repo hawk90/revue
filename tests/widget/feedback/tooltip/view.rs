@@ -95,8 +95,88 @@ fn overlay_at_the_origin_draws_what_inline_draws() {
             }
         }
     }
-    // Not checked in offset areas: there the overlay ignores the area's
-    // position (#1053).
+}
+
+#[test]
+fn overlay_in_an_offset_area_draws_what_inline_draws() {
+    // #1053: the overlay layer takes screen coordinates; the box and the
+    // arrow are placed in the area like inline, not at the screen's origin
+    let area = Rect::new(10, 4, 20, 8);
+    for style in STYLES {
+        for side in SIDES {
+            for arrow in [
+                TooltipArrow::None,
+                TooltipArrow::Simple,
+                TooltipArrow::Unicode,
+            ] {
+                let t = Tooltip::new("Hi")
+                    .style(style)
+                    .position(side)
+                    .arrow(arrow)
+                    .anchor(10, 5);
+                let mut inline = Buffer::new(30, 12);
+                t.render(&mut RenderContext::new(&mut inline, area));
+                let (overlay, queued) = render_overlay(&t, 30, 12, area);
+                assert!(queued);
+                assert!(same(&inline, &overlay), "{style:?} {side:?} {arrow:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn without_room_on_its_side_the_box_flips_and_leaves_the_anchor_free() {
+    // #1045: anchor on the last row, asked below: the box goes above it,
+    // the arrow between them
+    let t = Tooltip::new("Test")
+        .anchor(20, 19)
+        .position(TooltipPosition::Bottom)
+        .visible(true);
+    let b = render_in(&t, 40, 20);
+    assert_eq!(symbol(&b, 20, 19), ' ');
+    assert_eq!(symbol(&b, 20, 18), '▼');
+    assert_eq!(row(&b, 17).trim(), "└──────┘");
+    // And the other three sides at their edges
+    for (side, anchor, arrow) in [
+        (TooltipPosition::Top, (20, 0), '▲'),
+        (TooltipPosition::Left, (0, 10), '◀'),
+        (TooltipPosition::Right, (39, 10), '▶'),
+    ] {
+        let t = Tooltip::new("Test")
+            .anchor(anchor.0, anchor.1)
+            .position(side);
+        let b = render_in(&t, 40, 20);
+        assert_eq!(symbol(&b, anchor.0, anchor.1), ' ', "{side:?}");
+        let next = match side {
+            TooltipPosition::Top => (anchor.0, anchor.1 + 1),
+            TooltipPosition::Left => (anchor.0 + 1, anchor.1),
+            _ => (anchor.0 - 1, anchor.1),
+        };
+        assert_eq!(symbol(&b, next.0, next.1), arrow, "{side:?}");
+    }
+}
+
+#[test]
+fn without_room_on_either_side_the_box_is_shortened_off_the_anchor() {
+    // A 3-row box in a 5-row area, anchored on row 2: one row each side past
+    // the arrow; the box takes the asked side's row and never the anchor's
+    for side in [TooltipPosition::Top, TooltipPosition::Bottom] {
+        let t = Tooltip::new("Test").anchor(10, 2).position(side);
+        let b = render_in(&t, 20, 5);
+        assert_eq!(row(&b, 2).trim(), "", "{side:?}");
+        let (box_row, arrow_row) = if side == TooltipPosition::Top {
+            (0, 1)
+        } else {
+            (4, 3)
+        };
+        assert_ne!(row(&b, box_row).trim(), "", "{side:?}");
+        assert_eq!(row(&b, arrow_row).trim().chars().count(), 1, "{side:?}");
+    }
+    // No row at all past the arrow: nothing is drawn
+    let t = Tooltip::new("Test")
+        .anchor(10, 1)
+        .position(TooltipPosition::Top);
+    assert_eq!(box_cells(&render_in(&t, 20, 3)), 0);
 }
 
 #[test]
@@ -172,19 +252,24 @@ fn the_box_is_pushed_back_from_the_left_and_right_edges() {
 }
 
 #[test]
-fn a_box_taller_than_the_area_is_cut_at_its_bottom_edge() {
-    let mut buffer = Buffer::new(12, 6);
-    let t = Tooltip::new("A rather long hint").anchor(1, 1);
-    let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 1, 6, 3));
+fn a_box_taller_than_the_room_is_shortened_to_it() {
+    let mut buffer = Buffer::new(12, 7);
+    let t = Tooltip::new("A rather long hint")
+        .position(TooltipPosition::Bottom)
+        .anchor(1, 0);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 1, 6, 5));
     t.render(&mut ctx);
     // As wide as the area, with two columns of text per row, so it keeps
-    // its right border; drawn from the area's corner, nothing outside it.
-    assert_eq!(cols(&buffer, 1, 0..10), "  ┌────┐  ");
-    assert_eq!(cols(&buffer, 2, 0..10), "  │ A  │  ");
-    assert_eq!(cols(&buffer, 3, 0..10), "  │ ra │  ");
-    for y in 0..6 {
+    // its right border; the three rows past the arrow hold the border and
+    // the first line, and nothing is drawn outside the area.
+    assert_eq!(cols(&buffer, 1, 0..10), "          ");
+    assert_eq!(cols(&buffer, 2, 0..10), "   ▲      ");
+    assert_eq!(cols(&buffer, 3, 0..10), "  ┌────┐  ");
+    assert_eq!(cols(&buffer, 4, 0..10), "  │ A  │  ");
+    assert_eq!(cols(&buffer, 5, 0..10), "  └────┘  ");
+    for y in 0..7 {
         for x in 0..12 {
-            if !(2..8).contains(&x) || !(1..4).contains(&y) {
+            if !(2..8).contains(&x) || !(1..6).contains(&y) {
                 assert_eq!(buffer.get(x, y).unwrap(), &Cell::default(), "({x}, {y})");
             }
         }
@@ -301,18 +386,20 @@ fn a_wide_word_is_broken_between_glyphs() {
 #[test]
 fn a_wide_glyph_gets_its_two_columns_in_an_area_too_narrow_for_them() {
     // A 3-column area leaves 1 column inside the padding: "한" still gets
-    // 2, and the box is cut at the area's edge instead of dropping it
+    // 2, and the box is cut at the area's edge instead of dropping it. No
+    // room above the anchor: the two rows go below it
     let t = Tooltip::new("한글")
         .style(TooltipStyle::Plain)
         .arrow(TooltipArrow::None)
         .anchor(0, 0);
-    let buffer = render_in(&t, 3, 2);
-    for y in 0..2 {
+    let buffer = render_in(&t, 3, 3);
+    assert!((0..3).all(|x| buffer.get(x, 0).unwrap().bg.is_none()));
+    for y in 1..3 {
         assert!(buffer.get(0, y).unwrap().bg.is_some(), "row {y}");
         assert!(buffer.get(2, y).unwrap().bg.is_some(), "row {y}");
     }
-    assert_eq!(symbol(&buffer, 1, 0), '한');
-    assert!(buffer.get(2, 0).unwrap().is_continuation());
-    assert_eq!(symbol(&buffer, 1, 1), '글');
+    assert_eq!(symbol(&buffer, 1, 1), '한');
     assert!(buffer.get(2, 1).unwrap().is_continuation());
+    assert_eq!(symbol(&buffer, 1, 2), '글');
+    assert!(buffer.get(2, 2).unwrap().is_continuation());
 }

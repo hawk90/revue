@@ -1096,7 +1096,7 @@ entries:
       - "hit test는 layout rect와 z-order로 해서 그린 것과 같은 결과를 낸다 (INV-14, #1142)."
     observed:
       - "z-index가 있는 overlay queue를 쓰는 것은 Toast, Tooltip, Dropdown뿐이다. Modal은 본 pass에서 부모 영역 안에 그려지므로 위에 보이는지는 마지막에 그려지는지에 달려 있다 (src/widget/feedback/modal/render.rs). CSS `z-index`/`position`은 parse되지만 적용되지 않는다 (docs/guides/styling.md)."
-      - "overlay는 `hit_map`에 없어 overlay 위를 누르면 그 아래 것이 받는다 (docs/refactor/phase2-hit-test.md). #1053: overlay layer로 보낸 Tooltip이 inline과 다른 곳에 그려진다."
+      - "overlay는 `hit_map`에 없어 overlay 위를 누르면 그 아래 것이 받는다 (docs/refactor/phase2-hit-test.md). #1053: overlay layer로 보낸 Tooltip이 영역 좌표를 화면 좌표로 넘겨 inline과 다른 곳에 그려졌다(고침: overlay rect에 `absolute_position()`을 더한다)."
   - id: REV-RENDER-009
     title: "Unbounded Frame Rate"
     category: render
@@ -1371,6 +1371,29 @@ entries:
       - "자식 rect를 엔진에 보고하지 않아 hit test와 devtools가 그 자식을 모른다"
     fix:
       - "탈출구는 드물게 쓰고 widget마다 문서로 남긴다. 직접 배치한 자식의 rect는 엔진에 보고한다 (#1144, #1142)."
+  - id: REV-LAYOUT-013
+    title: "Clamp Instead of Flip"
+    category: layout
+    review_tag: LAYOUT
+    status: observed
+    assumes: [cell-grid]
+    decisions: ["#1144"]
+    summary: "anchor 옆에 여는 box(tooltip, popover, dropdown)를 요청한 쪽에 놓은 뒤 영역 안으로 clamp만 한다. 그쪽에 자리가 없으면 box가 anchor 쪽으로 밀려 와 anchor를 덮는다. 같은 계산이 widget마다 복사되어 규칙도 조금씩 다르다."
+    problem:
+      - "box가 자기가 가리키는 것(버튼, header, 입력 줄)을 가린다."
+      - "arrow가 box 위나 아무것도 없는 곳에 그려진다."
+      - "widget마다 Auto의 순서, 좌표계(영역/화면), 자리가 없을 때의 처리가 다르다."
+    detect:
+      - "`x.min(area_width - w)`, `y.min(area_height - h)`로 위치를 고치는데 반대쪽을 먼저 시도하지 않는다"
+      - "`anchor_y.saturating_sub(h)`처럼 0에서 멈추는 flip"
+      - "anchor 옆 배치 함수가 widget마다 따로 있다"
+    fix:
+      - "하나의 배치 함수(`crate::layout::anchored`): 요청한 쪽에 다 들어가면 거기, 아니면 반대쪽(flip), 둘 다 안 되면 더 넓은 쪽에 그 크기로 줄여서(size) 놓는다. clamp는 변을 따라서만 한다(shift). anchor와 box 사이 gap 칸에 arrow를 둔다. Floating UI의 flip/shift/size, CSS anchor positioning의 `position-try-fallbacks: flip-block`과 같은 규칙이다."
+      - "anchor, 경계, 결과를 한 좌표계에 둔다. overlay로 보낼 때만 화면 좌표로 바꾼다 (REV-RENDER-008)."
+      - "4.0에서는 layout engine의 `position: absolute`가 같은 함수를 쓴다 (#1144)."
+    observed:
+      - "Popover와 Tooltip이 같은 `calculate_position`을 하나씩 가지고 clamp만 해서 anchor를 덮었다 (#1045). `calculate_dropdown_layout`은 위로 flip했지만 위에도 자리가 없으면 0에서 멈춰 Select, Combobox, MultiSelect의 header를 덮었다 (#1095). 셋을 `crate::layout::anchored::place`로 모아 고쳤다."
+      - "ContextMenu(`context_menu/view.rs`)와 menu_bar의 dropdown은 아직 자기 clamp를 쓴다 (#1051, #1050)."
   - id: REV-STYLE-001
     title: "Parse CSS Every Frame"
     category: style

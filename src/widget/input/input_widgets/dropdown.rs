@@ -10,6 +10,8 @@
 //!       [indicator]  [gap]  [label text]        [scroll?]
 //! ```
 
+use crate::layout::anchored::{self, Align, Side};
+use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::theme::MAX_DROPDOWN_VISIBLE;
@@ -41,24 +43,37 @@ pub fn label_width(total_width: u16, reserve_right: u16) -> usize {
 pub struct DropdownLayout {
     /// Absolute Y coordinate for the overlay
     pub overlay_y: u16,
-    /// Height of the dropdown in rows
+    /// Height of the dropdown in rows: the height asked for, or fewer when
+    /// the screen has no room for it on either side of the header; 0 when
+    /// it has none at all
     pub height: u16,
 }
 
-/// Calculate dropdown overlay position, flipping above the anchor if
-/// there isn't enough space below.
+/// Calculate the dropdown overlay's position below the header (the first row
+/// of the widget's area), by the shared anchored placement rules
+/// ([`crate::layout::anchored`]): below it, or above it when only that side
+/// of the screen has room, or on the roomier side shortened to fit. The
+/// dropdown never covers the header.
 pub fn calculate_dropdown_layout(ctx: &RenderContext, dropdown_height: u16) -> DropdownLayout {
-    let (_, abs_y) = ctx.absolute_position();
-    let buf_height = ctx.buffer.height();
-    let space_below = buf_height.saturating_sub(abs_y + 1);
-    let overlay_y = if space_below >= dropdown_height {
-        abs_y + 1
-    } else {
-        abs_y.saturating_sub(dropdown_height)
-    };
-    DropdownLayout {
-        overlay_y,
-        height: dropdown_height,
+    let (abs_x, abs_y) = ctx.absolute_position();
+    let header = Rect::new(abs_x, abs_y, ctx.area.width, 1);
+    let screen = Rect::new(0, 0, ctx.buffer.width(), ctx.buffer.height());
+    match anchored::place(
+        header,
+        (ctx.area.width, dropdown_height),
+        &[Side::Bottom, Side::Top],
+        Align::Start,
+        0,
+        screen,
+    ) {
+        Some(placed) => DropdownLayout {
+            overlay_y: placed.rect.y,
+            height: placed.rect.height,
+        },
+        None => DropdownLayout {
+            overlay_y: abs_y.saturating_add(1),
+            height: 0,
+        },
     }
 }
 

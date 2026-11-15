@@ -164,14 +164,22 @@ fn test_popover_elevated_shadow_is_one_column_and_one_row() {
         }
     }
 
-    // In the bottom-right corner there is no room for it
+    // In the bottom-right corner the box goes above the anchor, placed with
+    // its shadow: the shadow fits, and neither covers the anchor
     let cornered = Popover::new("Test")
         .anchor(39, 19)
         .popover_style(PopoverStyle::Elevated)
         .open(true);
     let b = render(&cornered);
-    assert_eq!(corner(&b), Some((30, 17)));
-    assert!((0..20).all(|y| (0..40).all(|x| b.get(x, y).unwrap().bg != shadow)));
+    assert_eq!(corner(&b), Some((29, 15)));
+    for y in 0..20 {
+        for x in 0..40 {
+            let expected =
+                (x == 39 && (16..=18).contains(&y)) || (y == 18 && (30..=39).contains(&x));
+            assert_eq!(b.get(x, y).unwrap().bg == shadow, expected, "({x}, {y})");
+        }
+    }
+    assert_eq!(b.get(39, 19).unwrap(), &revue::render::Cell::default());
 }
 
 /// The symbols of row `y` in `xs`

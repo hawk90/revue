@@ -89,66 +89,128 @@ fn model_size(lines: &[String], title: Option<&str>, area_width: u16) -> (u16, u
     (w, h.max(3))
 }
 
-/// The side the box takes: the requested one, or for Auto the first of
-/// below, above, right, left with room, else below
-fn model_side(
-    side: PopoverPosition,
-    (ax, ay): (u16, u16),
-    (w, h): (u16, u16),
-    arrow: u16,
-    (aw, ah): (u16, u16),
-) -> PopoverPosition {
-    if side != PopoverPosition::Auto {
-        return side;
-    }
-    if ah.saturating_sub(ay + 1) >= h + arrow {
-        PopoverPosition::Bottom
-    } else if ay >= h + arrow {
-        PopoverPosition::Top
-    } else if aw.saturating_sub(ax + 1) >= w + arrow {
-        PopoverPosition::Right
-    } else if ax >= w + arrow {
-        PopoverPosition::Left
-    } else {
-        PopoverPosition::Bottom
+/// The cells free on `side` of the anchor past the arrow, in the area
+fn room(side: PopoverPosition, (ax, ay): (u16, u16), arrow: u16, (aw, ah): (u16, u16)) -> u16 {
+    match side {
+        PopoverPosition::Top => ay.saturating_sub(arrow).min(ah),
+        PopoverPosition::Bottom => ah.saturating_sub(ay.saturating_add(1 + arrow)),
+        PopoverPosition::Left => ax.saturating_sub(arrow).min(aw),
+        PopoverPosition::Right => aw.saturating_sub(ax.saturating_add(1 + arrow)),
+        PopoverPosition::Auto => unreachable!(),
     }
 }
 
-/// Whether `side` of the anchor has room for the box and the arrow
+fn opposite(side: PopoverPosition) -> PopoverPosition {
+    match side {
+        PopoverPosition::Top => PopoverPosition::Bottom,
+        PopoverPosition::Bottom => PopoverPosition::Top,
+        PopoverPosition::Left => PopoverPosition::Right,
+        PopoverPosition::Right => PopoverPosition::Left,
+        PopoverPosition::Auto => unreachable!(),
+    }
+}
+
+/// The rows (above or below) or columns (left or right) a `(w, h)` block
+/// takes
+fn depth(side: PopoverPosition, (w, h): (u16, u16)) -> u16 {
+    if matches!(side, PopoverPosition::Left | PopoverPosition::Right) {
+        w
+    } else {
+        h
+    }
+}
+
+/// Whether `side` has room for the whole `(w, h)` block past the arrow
 fn has_room(
     side: PopoverPosition,
-    (ax, ay): (u16, u16),
-    (w, h): (u16, u16),
+    anchor: (u16, u16),
+    block: (u16, u16),
     arrow: u16,
-    (aw, ah): (u16, u16),
+    area: (u16, u16),
 ) -> bool {
-    match side {
-        PopoverPosition::Top => ay >= h + arrow,
-        PopoverPosition::Bottom => ah.saturating_sub(ay + 1) >= h + arrow,
-        PopoverPosition::Left => ax >= w + arrow,
-        PopoverPosition::Right => aw.saturating_sub(ax + 1) >= w + arrow,
-        PopoverPosition::Auto => unreachable!(),
-    }
+    room(side, anchor, arrow, area) >= depth(side, block)
 }
 
-/// The box's corner on a side with room: centered on the anchor across the
-/// side and pushed back into the area, one cell (two with an arrow) away
-/// from the anchor along it
-fn model_corner(
+/// The side the block (the box, with an elevated box's shadow) takes: the
+/// first of the requested side and its opposite (for Auto: below, above,
+/// right, left) with room for it, else the roomier of the first two (the
+/// first on a tie)
+fn model_side(
+    side: PopoverPosition,
+    anchor: (u16, u16),
+    block: (u16, u16),
+    arrow: u16,
+    area: (u16, u16),
+) -> PopoverPosition {
+    let order = if side == PopoverPosition::Auto {
+        vec![
+            PopoverPosition::Bottom,
+            PopoverPosition::Top,
+            PopoverPosition::Right,
+            PopoverPosition::Left,
+        ]
+    } else {
+        vec![side, opposite(side)]
+    };
+    order
+        .iter()
+        .copied()
+        .find(|&s| has_room(s, anchor, block, arrow, area))
+        .unwrap_or_else(|| {
+            let (first, other) = (order[0], opposite(order[0]));
+            if room(other, anchor, arrow, area) > room(first, anchor, arrow, area) {
+                other
+            } else {
+                first
+            }
+        })
+}
+
+/// The box drawn, `(x, y, w, h)`: the block on `side`, one arrow cell from
+/// the anchor, shortened to the room there, centered across the anchor and
+/// shifted inside the area along the side, less the shadow; `None` when no
+/// box is left
+fn model_box(
     side: PopoverPosition,
     (ax, ay): (u16, u16),
     (w, h): (u16, u16),
+    shadow: u16,
     arrow: u16,
     (aw, ah): (u16, u16),
-) -> (u16, u16) {
-    let (x, y) = match side {
-        PopoverPosition::Top => (ax.saturating_sub(w / 2), ay - h - arrow),
-        PopoverPosition::Bottom => (ax.saturating_sub(w / 2), ay + 1 + arrow),
-        PopoverPosition::Left => (ax - w - arrow, ay.saturating_sub(h / 2)),
-        PopoverPosition::Right => (ax + 1 + arrow, ay.saturating_sub(h / 2)),
-        PopoverPosition::Auto => unreachable!(),
+) -> Option<(u16, u16, u16, u16)> {
+    let (bw, bh) = (w + shadow, h + shadow);
+    let d = depth(side, (bw, bh)).min(room(side, (ax, ay), arrow, (aw, ah)));
+    if d <= shadow {
+        return None;
+    }
+    let shift = |at: u16, size: u16, edge: u16| at.min(edge.saturating_sub(size));
+    let (x, y, bw, bh) = match side {
+        PopoverPosition::Bottom => (
+            shift(ax.saturating_sub(bw / 2), bw, aw),
+            ay + 1 + arrow,
+            bw,
+            d,
+        ),
+        PopoverPosition::Right => (
+            ax + 1 + arrow,
+            shift(ay.saturating_sub(bh / 2), bh, ah),
+            d,
+            bh,
+        ),
+        PopoverPosition::Left => (
+            ax.saturating_sub(arrow).min(aw) - d,
+            shift(ay.saturating_sub(bh / 2), bh, ah),
+            d,
+            bh,
+        ),
+        _ => (
+            shift(ax.saturating_sub(bw / 2), bw, aw),
+            ay.saturating_sub(arrow).min(ah) - d,
+            bw,
+            d,
+        ),
     };
-    (x.min(aw - w), y.min(ah - h))
+    Some((x, y, bw - shadow, bh - shadow))
 }
 
 fn render_in(p: &Popover, aw: u16, ah: u16) -> Buffer {
@@ -189,9 +251,9 @@ fn arrow_char(arrow: PopoverArrow, side: PopoverPosition) -> char {
 }
 
 proptest! {
-    /// The box on the screen has the model's size and lines, lies inside the
-    /// area, and, where its side has room, sits at the model's corner with
-    /// the arrow next to the anchor and the anchor uncovered
+    /// The box on the screen is the model's: on the side it takes, shortened
+    /// to the room there, with its lines; the anchor is uncovered and the
+    /// arrow next to it
     #[test]
     fn prop_box_matches_the_model(
         text in content(),
@@ -226,17 +288,42 @@ proptest! {
         }
         let b = render_in(&p, area.0, area.1);
         let arrow_len = u16::from(arrow != PopoverArrow::None);
-        let taken = model_side(side, anchor, size, arrow_len, area);
-        let room = has_room(taken, anchor, size, arrow_len, area);
-        // Without room on its side the box is pushed over the anchor and the
-        // arrow can land on the box's border (#1045); with an arrow only
-        // the sides with room are checked
-        if !room && arrow != PopoverArrow::None {
+        let shadow = u16::from(style == PopoverStyle::Elevated);
+        let block = (size.0 + shadow, size.1 + shadow);
+        let taken = model_side(side, anchor, block, arrow_len, area);
+        let Some((x, y, w, h)) = model_box(taken, anchor, size, shadow, arrow_len, area) else {
+            prop_assert!((0..area.1).all(|cy| (0..area.0).all(|cx| symbol(&b, cx, cy) == ' ')));
             return Ok(());
+        };
+
+        // The anchor is never covered, by the box or its shadow (#1045), and
+        // the arrow is next to it
+        let (ax, ay) = anchor;
+        prop_assert_eq!(b.get(ax, ay).unwrap(), &revue::render::Cell::default());
+        if arrow != PopoverArrow::None {
+            let at = match taken {
+                PopoverPosition::Top => (ax, ay - 1),
+                PopoverPosition::Bottom => (ax, ay + 1),
+                PopoverPosition::Left => (ax - 1, ay),
+                PopoverPosition::Right => (ax + 1, ay),
+                PopoverPosition::Auto => unreachable!(),
+            };
+            prop_assert_eq!(symbol(&b, at.0, at.1), arrow_char(arrow, taken));
         }
 
-        let (x, y, w, h) = drawn_box(&b).expect("a whole box");
-        prop_assert_eq!((w, h), size);
+        // A box shortened to fewer rows (or columns) than its border, title
+        // and lines need is checked for its corner only
+        let drawn = drawn_box(&b);
+        if (w, h) != size || h < 2 {
+            // (a box one cell wide or high has no corners to find)
+            if w >= 2 && h >= 2 {
+                prop_assert_eq!(drawn.map(|d| (d.0, d.1, d.3)), Some((x, y, h)));
+            }
+            return Ok(());
+        }
+        let (dx, dy, dw, dh) = drawn.expect("a whole box");
+        prop_assert_eq!((dx, dy, dh), (x, y, h));
+        prop_assert_eq!(dw, w);
         prop_assert!(x + w <= area.0 && y + h <= area.1);
         let first = y + 1 + u16::from(title.is_some());
         if let Some(t) = &title {
@@ -248,25 +335,6 @@ proptest! {
         for (i, line) in lines.iter().enumerate() {
             let shown: String = (x + 2..x + w - 2).map(|cx| symbol(&b, cx, first + i as u16)).collect();
             prop_assert_eq!(shown.trim_end(), line.trim_end(), "line {}", i);
-        }
-
-        // and where the box goes without room is #1045
-        if !room {
-            return Ok(());
-        }
-        prop_assert_eq!((x, y), model_corner(taken, anchor, size, arrow_len, area));
-        let covers_anchor = (x..x + w).contains(&anchor.0) && (y..y + h).contains(&anchor.1);
-        prop_assert!(!covers_anchor);
-        if arrow != PopoverArrow::None {
-            let (ax, ay) = anchor;
-            let at = match taken {
-                PopoverPosition::Top => (ax, ay - 1),
-                PopoverPosition::Bottom => (ax, ay + 1),
-                PopoverPosition::Left => (ax - 1, ay),
-                PopoverPosition::Right => (ax + 1, ay),
-                PopoverPosition::Auto => unreachable!(),
-            };
-            prop_assert_eq!(symbol(&b, at.0, at.1), arrow_char(arrow, taken));
         }
     }
 
@@ -323,10 +391,6 @@ proptest! {
         }
         // The box's cells are the ones painted with its background
         let b = render_in(&p, aw, ah);
-        // Without room the arrow can be drawn over the box (#1045)
-        if matches!(symbol(&b, cx, cy), '▲' | '▼' | '◀' | '▶') {
-            return Ok(());
-        }
         let inside = b.get(cx, cy).is_some_and(|c| c.bg == Some(Color::rgb(1, 2, 3)));
         if inside {
             prop_assert!(handled);

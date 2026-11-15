@@ -1,5 +1,5 @@
 //! Tooltip proptests against plain models: the wrapped lines, the box
-//! size, the side and corner it takes; the anchor left free and the arrow
+//! size, the side it takes and the box it draws there; the anchor left free and the arrow
 //! next to it; the overlay layer drawing what the inline fallback draws
 
 use proptest::prelude::*;
@@ -119,25 +119,50 @@ fn model_size(
     (w, h)
 }
 
-/// Whether `side` of the anchor has room for the box and the arrow
-fn has_room(
-    side: TooltipPosition,
-    (ax, ay): (u16, u16),
-    (w, h): (u16, u16),
-    arrow: u16,
-    (aw, ah): (u16, u16),
-) -> bool {
+/// The cells free on `side` of the anchor past the arrow, in the area
+fn room(side: TooltipPosition, (ax, ay): (u16, u16), arrow: u16, (aw, ah): (u16, u16)) -> u16 {
     match side {
-        TooltipPosition::Top => ay >= h + arrow,
-        TooltipPosition::Bottom => ah.saturating_sub(ay.saturating_add(1)) >= h + arrow,
-        TooltipPosition::Left => ax >= w + arrow,
-        TooltipPosition::Right => aw.saturating_sub(ax.saturating_add(1)) >= w + arrow,
-        TooltipPosition::Auto => false,
+        TooltipPosition::Top => ay.saturating_sub(arrow).min(ah),
+        TooltipPosition::Bottom => ah.saturating_sub(ay.saturating_add(1).saturating_add(arrow)),
+        TooltipPosition::Left => ax.saturating_sub(arrow).min(aw),
+        TooltipPosition::Right => aw.saturating_sub(ax.saturating_add(1).saturating_add(arrow)),
+        TooltipPosition::Auto => 0,
     }
 }
 
-/// The side the box takes: the requested one, or for Auto the first of
-/// above, below, right, left with room, else above
+fn opposite(side: TooltipPosition) -> TooltipPosition {
+    match side {
+        TooltipPosition::Top => TooltipPosition::Bottom,
+        TooltipPosition::Bottom => TooltipPosition::Top,
+        TooltipPosition::Left => TooltipPosition::Right,
+        TooltipPosition::Right => TooltipPosition::Left,
+        TooltipPosition::Auto => TooltipPosition::Auto,
+    }
+}
+
+/// The rows (above or below) or columns (left or right) the box takes
+fn depth(side: TooltipPosition, (w, h): (u16, u16)) -> u16 {
+    if matches!(side, TooltipPosition::Left | TooltipPosition::Right) {
+        w
+    } else {
+        h
+    }
+}
+
+/// Whether `side` has room for the whole box past the arrow
+fn has_room(
+    side: TooltipPosition,
+    anchor: (u16, u16),
+    size: (u16, u16),
+    arrow: u16,
+    area: (u16, u16),
+) -> bool {
+    room(side, anchor, arrow, area) >= depth(side, size)
+}
+
+/// The side the box takes: the first of the requested side and its
+/// opposite (for Auto: above, below, right, left) with room for it, else
+/// the roomier of the first two (the first on a tie)
 fn model_side(
     side: TooltipPosition,
     anchor: (u16, u16),
@@ -145,36 +170,57 @@ fn model_side(
     arrow: u16,
     area: (u16, u16),
 ) -> TooltipPosition {
-    if side != TooltipPosition::Auto {
-        return side;
-    }
-    [
-        TooltipPosition::Top,
-        TooltipPosition::Bottom,
-        TooltipPosition::Right,
-        TooltipPosition::Left,
-    ]
-    .into_iter()
-    .find(|&s| has_room(s, anchor, size, arrow, area))
-    .unwrap_or(TooltipPosition::Top)
+    let order = if side == TooltipPosition::Auto {
+        vec![
+            TooltipPosition::Top,
+            TooltipPosition::Bottom,
+            TooltipPosition::Right,
+            TooltipPosition::Left,
+        ]
+    } else {
+        vec![side, opposite(side)]
+    };
+    order
+        .iter()
+        .copied()
+        .find(|&s| has_room(s, anchor, size, arrow, area))
+        .unwrap_or_else(|| {
+            let (first, other) = (order[0], opposite(order[0]));
+            if room(other, anchor, arrow, area) > room(first, anchor, arrow, area) {
+                other
+            } else {
+                first
+            }
+        })
 }
 
-/// The box's corner: on `side`, centered across the anchor, one arrow cell
-/// away, then pushed back inside the area
-fn model_corner(
+/// The box drawn, `(x, y, w, h)`: on `side`, one arrow cell from the
+/// anchor, shortened to the room there, centered across the anchor and then
+/// shifted inside the area along the side; `None` without room
+fn model_box(
     side: TooltipPosition,
     (ax, ay): (u16, u16),
     (w, h): (u16, u16),
     arrow: u16,
     (aw, ah): (u16, u16),
-) -> (u16, u16) {
-    let (x, y) = match side {
-        TooltipPosition::Bottom => (ax.saturating_sub(w / 2), ay.saturating_add(1 + arrow)),
-        TooltipPosition::Left => (ax.saturating_sub(w + arrow), ay.saturating_sub(h / 2)),
-        TooltipPosition::Right => (ax.saturating_add(1 + arrow), ay.saturating_sub(h / 2)),
-        _ => (ax.saturating_sub(w / 2), ay.saturating_sub(h + arrow)),
-    };
-    (x.min(aw.saturating_sub(w)), y.min(ah.saturating_sub(h)))
+) -> Option<(u16, u16, u16, u16)> {
+    let d = depth(side, (w, h)).min(room(side, (ax, ay), arrow, (aw, ah)));
+    if d == 0 {
+        return None;
+    }
+    let shift = |at: u16, size: u16, edge: u16| at.min(edge.saturating_sub(size));
+    Some(match side {
+        TooltipPosition::Bottom => (shift(ax.saturating_sub(w / 2), w, aw), ay + 1 + arrow, w, d),
+        TooltipPosition::Right => (ax + 1 + arrow, shift(ay.saturating_sub(h / 2), h, ah), d, h),
+        TooltipPosition::Left => {
+            let x = ax.saturating_sub(arrow).min(aw) - d;
+            (x, shift(ay.saturating_sub(h / 2), h, ah), d, h)
+        }
+        _ => {
+            let y = ay.saturating_sub(arrow).min(ah) - d;
+            (shift(ax.saturating_sub(w / 2), w, aw), y, w, d)
+        }
+    })
 }
 
 /// The arrow glyph pointing from the box on `side` toward the anchor
@@ -245,6 +291,16 @@ impl Case {
     fn side_taken(&self) -> TooltipPosition {
         model_side(
             self.side,
+            self.anchor,
+            self.size(),
+            self.arrow_cells(),
+            self.area,
+        )
+    }
+
+    fn model_box(&self) -> Option<(u16, u16, u16, u16)> {
+        model_box(
+            self.side_taken(),
             self.anchor,
             self.size(),
             self.arrow_cells(),
@@ -324,21 +380,28 @@ proptest! {
     })]
 
     /// The cells with a background are exactly the model's box, cut to the
-    /// area; a bordered box that fits has its corners where the model puts
+    /// area; a bordered box drawn whole has its corners where the model puts
     /// them, and the first line starts inside the padding
     #[test]
     fn prop_box_matches_the_model(c in case()) {
         let buffer = c.render();
-        let (w, h) = c.size();
-        let (x, y) = model_corner(c.side_taken(), c.anchor, (w, h), c.arrow_cells(), c.area);
         let (aw, ah) = c.area;
+        let Some((x, y, w, h)) = c.model_box() else {
+            for cy in 0..ah {
+                for cx in 0..aw {
+                    prop_assert!(buffer.get(cx, cy).unwrap().bg.is_none(), "({}, {})", cx, cy);
+                }
+            }
+            return Ok(());
+        };
         for cy in 0..ah {
             for cx in 0..aw {
                 let inside = (x..x + w).contains(&cx) && (y..y + h).contains(&cy);
                 prop_assert_eq!(buffer.get(cx, cy).unwrap().bg.is_some(), inside, "({}, {})", cx, cy);
             }
         }
-        if c.bordered() && w <= aw && h <= ah {
+        let whole = (w, h) == c.size();
+        if c.bordered() && w <= aw && h <= ah && whole {
             let corner = buffer.get(x, y).unwrap().symbol;
             prop_assert!(matches!(corner, '┌' | '╭'), "corner {:?}", corner);
             let corner = buffer.get(x + w - 1, y + h - 1).unwrap().symbol;
@@ -350,7 +413,7 @@ proptest! {
         let tx = x + if c.bordered() { 2 } else { 1 } + lead;
         let ty = y + if c.bordered() { 1 + u16::from(c.title.is_some()) } else { 0 };
         if let Some(first) = first {
-            if tx < aw && ty < ah && w <= aw {
+            if tx < aw && ty < ah && w <= aw && whole {
                 prop_assert_eq!(buffer.get(tx, ty).unwrap().symbol, first);
             }
         }
@@ -372,19 +435,17 @@ proptest! {
         prop_assert_eq!(kept, text);
     }
 
-    /// With room on the side the box takes, the anchor's cell stays free
-    /// and the arrow is in the cell next to it, pointing at it
+    /// The anchor's cell stays free (#1045), and with the box drawn the
+    /// arrow is in the cell next to it, pointing at it
     #[test]
-    fn prop_the_anchor_stays_free_and_the_arrow_points_at_it(c in cases(16..60, 8u16..24, 0)) {
+    fn prop_the_anchor_stays_free_and_the_arrow_points_at_it(c in cases(16..60, prop_oneof![1u16..5, 5u16..24], 0)) {
         let (ax, ay) = c.anchor;
-        let side = c.side_taken();
-        // Without room the box is pushed over the anchor: #1045.
-        prop_assume!(has_room(side, c.anchor, c.size(), c.arrow_cells(), c.area));
         let buffer = c.render();
         let anchor = buffer.get(ax, ay).unwrap();
         prop_assert_eq!(anchor.symbol, ' ');
         prop_assert_eq!(anchor.bg, None);
-        if c.arrow != TooltipArrow::None {
+        if c.arrow != TooltipArrow::None && c.model_box().is_some() {
+            let side = c.side_taken();
             let (x, y) = match side {
                 TooltipPosition::Bottom => (ax, ay + 1),
                 TooltipPosition::Left => (ax - 1, ay),
@@ -395,11 +456,13 @@ proptest! {
         }
     }
 
-    /// A box that fits the area is drawn whole, whatever the anchor
+    /// A box with room on the side it takes is drawn whole, whatever the
+    /// anchor
     #[test]
-    fn prop_a_box_that_fits_stays_inside_the_area(c in case()) {
+    fn prop_a_box_with_room_is_drawn_whole(c in case()) {
         let (w, h) = c.size();
         prop_assume!(w <= c.area.0 && h <= c.area.1);
+        prop_assume!(has_room(c.side_taken(), c.anchor, c.size(), c.arrow_cells(), c.area));
         let buffer = c.render();
         let n = (0..c.area.1)
             .flat_map(|y| (0..c.area.0).map(move |x| (x, y)))
@@ -409,8 +472,7 @@ proptest! {
     }
 
     /// At the origin the overlay layer draws the same cells as the inline
-    /// fallback. (Not in an offset area: there the overlay ignores the
-    /// area's position, #1053.)
+    /// fallback (in an offset area too: `view.rs`, #1053)
     #[test]
     fn prop_overlay_at_the_origin_matches_inline(c in case()) {
         let inline = c.render();

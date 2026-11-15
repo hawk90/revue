@@ -121,9 +121,12 @@ impl View for Select {
                 .collect()
         };
 
-        let dropdown_h = dropdown_height(visible_options.len(), None);
-
-        let layout = calculate_dropdown_layout(ctx, dropdown_h);
+        // Shorter than asked when the screen has no room for it (it scrolls)
+        let layout = calculate_dropdown_layout(ctx, dropdown_height(visible_options.len(), None));
+        let dropdown_h = layout.height;
+        if dropdown_h == 0 {
+            return;
+        }
         let (abs_x, _) = ctx.absolute_position();
         let overlay_area = crate::layout::Rect::new(abs_x, layout.overlay_y, width, dropdown_h);
         let mut entry = crate::widget::traits::OverlayEntry::new(100, overlay_area);
