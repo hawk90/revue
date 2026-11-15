@@ -315,6 +315,10 @@ const REAL_TIME: &[(&str, &str)] = &[
         "debounces real file events",
     ),
     ("src/core/app/profiler.rs", "measures real work"),
+    (
+        "src/widget/developer/httpclient/reqwest_backend.rs",
+        "times a real network request, on a worker",
+    ),
     ("src/utils/profiler.rs", "measures real work"),
     ("src/devtools/profiler/core.rs", "measures real work"),
     ("src/devtools/profiler/types.rs", "measures real work"),
@@ -331,10 +335,6 @@ const REAL_TIME: &[(&str, &str)] = &[
     (
         "src/widget/debug_overlay/event_log.rs",
         "stamps real events",
-    ),
-    (
-        "src/widget/developer/httpclient/exchange.rs",
-        "times a real request",
     ),
     ("src/runtime/event/custom/types.rs", "stamps real events"),
     ("src/state/tasks/runner.rs", "waits on real threads"),

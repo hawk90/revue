@@ -180,18 +180,15 @@ fn test_http_client_cycle_method_full_cycle() {
 }
 
 #[test]
-fn test_http_client_send_mock_response() {
+fn test_http_client_send_waits_instead_of_answering() {
     let mut client = HttpClient::new().url("https://example.com");
     client.send();
-    assert_eq!(client.state(), RequestState::Success);
-    let response = client.response().unwrap();
-    assert_eq!(response.status, 200);
-    assert_eq!(response.status_text, "OK");
-    assert!(response.body.contains("\"status\": \"success\""));
-    assert_eq!(response.size, response.body.len());
+    // No made-up response: the request waits for the app (#1487).
+    assert_eq!(client.state(), RequestState::Sending);
+    assert!(client.response().is_none());
     assert_eq!(
-        response.headers.get("Content-Length"),
-        Some(&response.body.len().to_string())
+        client.take_request().unwrap().request.url(),
+        "https://example.com"
     );
 }
 
@@ -201,7 +198,7 @@ fn test_http_client_send_clears_error() {
     client.set_error("previous failure");
     client.send();
     assert!(client.error().is_none());
-    assert_eq!(client.state(), RequestState::Success);
+    assert_eq!(client.state(), RequestState::Sending);
 }
 
 #[test]

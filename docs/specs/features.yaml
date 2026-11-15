@@ -1149,9 +1149,14 @@ items:
     acceptance:
       - url, method, headers
       - request/response view with history
+      - send queues the request for the app, and only the latest send's result is applied
+      - the `http` feature's ReqwestBackend sends it over the network
     evidence:
       - src/widget/developer/httpclient/helpers.rs::http_client
       - tests/widget/developer/httpclient/client.rs
+      - tests/widget/developer/httpclient/exchange.rs::test_result_of_an_earlier_send_is_dropped
+      - tests/widget/developer/httpclient/reqwest_backend.rs::test_sends_method_url_params_headers_and_body
+      - examples/http_client.rs
     source:
       - FEATURES.md §Advanced Widgets / HTTP Client
   - id: WID-033
