@@ -463,9 +463,8 @@ proptest! {
         downs in 0usize..12,
         pick in any::<prop::sample::Index>(),
         mode in prop_oneof![Just(CollapseMode::Expanded), Just(CollapseMode::Collapsed), Just(CollapseMode::Auto)],
-        // Widths of 0 and 1 panic (#1032)
-        expanded in 2u16..30,
-        collapsed in 2u16..8,
+        expanded in 0u16..30,
+        collapsed in 0u16..8,
         threshold in 0u16..30,
         (w, h) in (3u16..36, 2u16..16),
         header in any::<bool>(),
@@ -512,29 +511,14 @@ proptest! {
         } else {
             0
         };
-        // The indicator and icon are placed without checking the bar's
-        // width, so a deep row in a narrow bar draws past it (#1032).
-        // Check "nothing right of the bar"
-        // only when no drawn row reaches past it.
-        let mut overflows = false;
         for y in 0..h {
+            if cw == 0 {
+                break;
+            }
             prop_assert_eq!(buffer.get(cw - 1, y).unwrap().symbol, '│', "border y={}", y);
             let expected_bg = if y >= top && y < bottom {
                 match rows.get((y - top) as usize + offset) {
-                    Some((Row::Item(id, depth, _), Some(n))) => {
-                        let x_icon = if is_collapsed { 1 } else { 3 + 2 * *depth as u16 };
-                        let indicator_out =
-                            !is_collapsed && !n.children.is_empty() && 1 + 2 * *depth as u16 >= cw;
-                        if indicator_out || n.icon && x_icon >= cw {
-                            overflows = true;
-                        }
-                        // A badge as wide as the bar starts at column 0
-                        // and covers the row's first cell (#1032).
-                        let badge_at_0 = !is_collapsed
-                            && n.badge.as_ref().is_some_and(|b| b.len() as u16 + 2 >= cw);
-                        if badge_at_0 {
-                            continue;
-                        }
+                    Some((Row::Item(id, _, _), Some(n))) => {
                         if n.disabled {
                             BAR_BG
                         } else if selected.as_deref() == Some(id.as_str()) {
@@ -554,25 +538,25 @@ proptest! {
                 prop_assert_eq!(buffer.get(0, y).unwrap().bg, Some(expected_bg), "row {}", y);
             }
         }
-        if header {
+        // A one-column bar is all border
+        if header && cw > 1 {
             prop_assert_eq!(buffer.get(0, 1).unwrap().symbol, '─');
             // A footer in a short bar draws its separator over the header.
             if !is_collapsed && cw >= 6 && (!footer || h >= 4) {
                 prop_assert!(super::row(&buffer, 0).contains("Head"));
             }
         }
-        if footer {
+        if footer && cw > 1 {
             prop_assert_eq!(buffer.get(0, h - 2).unwrap().symbol, '─');
             if !is_collapsed && cw >= 6 {
                 prop_assert!(super::row(&buffer, h - 1).contains("Foot"));
             }
         }
-        if !overflows {
-            for y in 0..h {
-                for x in cw..w {
-                    let c = buffer.get(x, y).unwrap();
-                    prop_assert_eq!((c.symbol, c.bg), (' ', None), "({}, {})", x, y);
-                }
+        // Nothing right of the bar, however deep its rows (#1032)
+        for y in 0..h {
+            for x in cw..w {
+                let c = buffer.get(x, y).unwrap();
+                prop_assert_eq!((c.symbol, c.bg), (' ', None), "({}, {})", x, y);
             }
         }
     }
@@ -644,4 +628,68 @@ fn test_sidebar_collapse_all_keeps_a_hover() {
     sb.collapse_all();
     sb.select_hovered();
     assert_eq!(sb.selected_id(), Some("p")); // was None: index 2 is past the one visible row
+}
+
+// Widths the builders allow but the area guard does not see (#1032)
+
+#[test]
+fn test_sidebar_expanded_width_1_draws_only_its_border() {
+    let sb = Sidebar::new()
+        .expanded_width(1)
+        .header("App")
+        .items(vec![SidebarItem::new("a", "A")]);
+    let buffer = screen(&sb, 10, 4);
+    for y in 0..4 {
+        assert_eq!(super::row(&buffer, y), "│         ", "row {y}");
+    }
+}
+
+#[test]
+fn test_sidebar_of_width_0_draws_nothing() {
+    for sb in [
+        Sidebar::new()
+            .expanded_width(0)
+            .items(vec![SidebarItem::new("a", "A")]),
+        Sidebar::new()
+            .collapse_mode(CollapseMode::Collapsed)
+            .collapsed_width(0),
+    ] {
+        let buffer = screen(&sb, 10, 4);
+        for y in 0..4 {
+            assert_eq!(super::row(&buffer, y).trim(), "", "row {y}");
+        }
+    }
+}
+
+#[test]
+fn test_sidebar_deep_rows_stay_inside_the_bar() {
+    let sb = Sidebar::new()
+        .expanded_width(5)
+        .items(vec![SidebarItem::new("p", "P").expanded(true).children(
+            vec![SidebarItem::new("c", "C")
+                .icon('I')
+                .expanded(true)
+                .children(vec![
+                    SidebarItem::new("g", "G").children(vec![SidebarItem::new("x", "X")])
+                ])],
+        )]);
+    let buffer = screen(&sb, 12, 3);
+    for y in 0..3 {
+        for x in 5..12 {
+            assert_eq!(buffer.get(x, y).unwrap().symbol, ' ', "({x}, {y})"); // was 'I' at (5, 1)
+        }
+    }
+}
+
+#[test]
+fn test_sidebar_wide_badge_leaves_the_indicator_and_the_border() {
+    let sb = Sidebar::new()
+        .expanded_width(8)
+        .items(vec![SidebarItem::new("p", "P")
+            .badge("12345")
+            .children(vec![SidebarItem::new("c", "C")])]);
+    let buffer = screen(&sb, 10, 2);
+    // No room is left for the label; the badge starts after the indicator
+    // and is cut before the blank column at the border
+    assert_eq!(super::row(&buffer, 0), " ▶ 123 │  "); // was " 12345 │", over the indicator
 }

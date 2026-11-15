@@ -184,6 +184,9 @@ struct Inner {
     border_color: Color,
     content_x: u16,
     content_width: u16,
+    /// The box inside the border and the padding (absolute), where the
+    /// card's own parts are drawn
+    content: Rect,
 }
 
 impl Inner {
@@ -196,13 +199,27 @@ impl Inner {
         } else {
             area.width.saturating_sub(padding.saturating_mul(2))
         };
+        let top = u16::from(has_border);
+        let content = Rect::new(
+            area.x.saturating_add(content_x),
+            area.y.saturating_add(top),
+            content_width,
+            area.height.saturating_sub(top.saturating_mul(2)),
+        );
         Self {
             area,
             has_border,
             border_color,
             content_x,
             content_width,
+            content,
         }
+    }
+
+    /// The row below the content box (relative to the card), where the
+    /// bottom border is
+    fn content_bottom(&self) -> u16 {
+        self.content.bottom().saturating_sub(self.area.y)
     }
 
     /// The four corners and edges of the frame
@@ -286,8 +303,8 @@ impl Card {
             inner.draw_frame(ctx, chars);
         }
 
-        let mut current_y: u16 = if has_border { 1 } else { 0 };
-        current_y = self.draw_heading(ctx, &inner, title_color, current_y);
+        let top = u16::from(has_border);
+        let mut current_y = top.saturating_add(self.draw_heading(ctx, &inner, title_color));
         current_y = self.draw_header_separator(ctx, &inner, current_y);
         current_y = self.draw_body(ctx, &inner, current_y);
         self.draw_footer(ctx, &inner, current_y);
@@ -319,73 +336,61 @@ impl Card {
     }
 
     /// The title (with the collapse icon), the subtitle and the custom
-    /// header, from row `current_y`. Returns the row below them.
-    fn draw_heading(
-        &self,
-        ctx: &mut RenderContext,
-        inner: &Inner,
-        title_color: Color,
-        mut current_y: u16,
-    ) -> u16 {
-        let content_x = inner.content_x;
-        let content_width = inner.content_width;
-
-        // Draw title
-        if let Some(ref title) = self.title {
-            let title_x = content_x;
-
-            // Collapse icon
-            if self.collapsible {
-                let mut icon_cell = Cell::new(self.collapse_icon());
-                icon_cell.fg = Some(title_color);
-                ctx.set(title_x, current_y, icon_cell);
-
+    /// header, one row each from the top of the content box. Returns the
+    /// rows they take, counted even past the box: a part that falls outside
+    /// it is cut, not drawn over the border or the shadow.
+    fn draw_heading(&self, ctx: &mut RenderContext, inner: &Inner, title_color: Color) -> u16 {
+        let content = inner.content;
+        let mut row: u16 = 0;
+        {
+            // Inside the content box, so a row below it is dropped by `set`
+            let mut ctx = ctx.sub_ctx(content);
+            if let Some(ref title) = self.title {
+                let mut x = 0;
+                if self.collapsible {
+                    let mut icon_cell = Cell::new(self.collapse_icon());
+                    icon_cell.fg = Some(title_color);
+                    ctx.set(0, row, icon_cell);
+                    x = 2;
+                }
                 TextDraw {
                     text: title,
-                    x: title_x + 2,
-                    y: current_y,
+                    x,
+                    y: row,
                     color: title_color,
-                    max_width: content_width.saturating_sub(2),
+                    max_width: content.width.saturating_sub(x),
                     bold: true,
                 }
-                .draw(ctx);
-            } else {
+                .draw(&mut ctx);
+                row += 1;
+            }
+            if let Some(ref subtitle) = self.subtitle {
                 TextDraw {
-                    text: title,
-                    x: title_x,
-                    y: current_y,
-                    color: title_color,
-                    max_width: content_width,
-                    bold: true,
+                    text: subtitle,
+                    x: 0,
+                    y: row,
+                    color: LIGHT_GRAY,
+                    max_width: content.width,
+                    bold: false,
                 }
-                .draw(ctx);
+                .draw(&mut ctx);
+                row += 1;
             }
-            current_y += 1;
         }
 
-        // Draw subtitle
-        if let Some(ref subtitle) = self.subtitle {
-            TextDraw {
-                text: subtitle,
-                x: content_x,
-                y: current_y,
-                color: LIGHT_GRAY,
-                max_width: content_width,
-                bold: false,
-            }
-            .draw(ctx);
-            current_y += 1;
-        }
-
-        // Draw custom header
+        // A child widget, so through `render_child` (which registers it), in
+        // its row cut to the content box
         if let Some(ref header) = self.header {
             if self.shown() {
-                let header_area = ctx.sub_area(content_x, current_y, content_width, 1);
-                ctx.render_child(header.as_ref(), header_area);
-                current_y += 1;
+                let header_row =
+                    Rect::new(content.x, content.y.saturating_add(row), content.width, 1);
+                if let Some(header_area) = header_row.intersection(&content) {
+                    ctx.render_child(header.as_ref(), header_area);
+                }
+                row += 1;
             }
         }
-        current_y
+        row
     }
 
     /// Draw header separator if we have header content and body. Returns
@@ -397,13 +402,16 @@ impl Card {
         mut current_y: u16,
     ) -> u16 {
         if self.has_header() && self.body.is_some() && self.shown() {
-            // Separator line
+            // Separator line, on a row of the content box only: below it
+            // is the bottom border (or the shadow)
             let sep_y = current_y;
-            if inner.has_border {
-                inner.draw_framed_separator(ctx, sep_y);
-            } else {
-                for x in 0..inner.area.width {
-                    ctx.set(x, sep_y, Cell::new('─').fg(Color::rgb(50, 50, 50)));
+            if sep_y < inner.content_bottom() {
+                if inner.has_border {
+                    inner.draw_framed_separator(ctx, sep_y);
+                } else {
+                    for x in 0..inner.area.width {
+                        ctx.set(x, sep_y, Cell::new('─').fg(Color::rgb(50, 50, 50)));
+                    }
                 }
             }
             current_y += 1;

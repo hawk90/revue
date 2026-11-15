@@ -175,11 +175,11 @@ fn test_modal_enter_without_buttons_keeps_the_trap() {
     assert_eq!(fm.current(), Some(1));
 }
 
-/// The box a plain model of the layout draws for ASCII text in an area tall
-/// enough for the whole modal: centered, `width` wide (at most the area minus
-/// four columns), the title row and separator, the content lines cut at the
-/// padding, and the buttons centered on the row above the bottom border when
-/// they fit.
+/// The box a plain model of the layout draws for ASCII text: centered,
+/// `width` wide (at most the area minus four columns) and cut to the area's
+/// height, the title row and separator when the box has rows for them inside
+/// its border, the content lines cut at the padding, and the buttons
+/// centered on the row above the bottom border when they fit.
 fn model(
     title: &str,
     lines: &[String],
@@ -218,9 +218,21 @@ fn model(
             r[x + mw - 1] = rt;
         }
     }
+    let text = labels
+        .iter()
+        .map(|l| format!("[ {l} ]"))
+        .collect::<Vec<_>>()
+        .join("  ");
+    let total = text.chars().count();
+    let buttons = !labels.is_empty() && mh > 2 && total <= mw;
+    // The title and separator take rows `1..end` of the box, above the
+    // buttons' row and the bottom border
+    let end = mh.saturating_sub(1 + usize::from(buttons));
     let has_title = !title.is_empty() && mw > 4;
-    if has_title {
+    if has_title && end > 1 {
         put(&mut g, x + 2, y + 1, title, mw - 4);
+    }
+    if has_title && end > 2 {
         let sep: String = std::iter::once('├')
             .chain(std::iter::repeat_n('─', mw - 2))
             .chain(std::iter::once('┤'))
@@ -234,24 +246,16 @@ fn model(
         }
         put(&mut g, x + 2, cy0 + i, line, mw.saturating_sub(4));
     }
-    if !labels.is_empty() && mh > 2 {
-        let text = labels
-            .iter()
-            .map(|l| format!("[ {l} ]"))
-            .collect::<Vec<_>>()
-            .join("  ");
-        let total = text.chars().count();
-        if total <= mw {
-            put(&mut g, x + (mw - total) / 2, y + mh - 2, &text, total);
-        }
+    if buttons {
+        put(&mut g, x + (mw - total) / 2, y + mh - 2, &text, total);
     }
     g.into_iter().map(|r| r.into_iter().collect()).collect()
 }
 
 proptest! {
     /// Any title, lines, buttons and width draw the box the model gives, in
-    /// any area tall enough for it. (In a shorter area the title is drawn
-    /// outside the box: #1060.)
+    /// any area: in one too short for the whole modal the title and the
+    /// separator keep to the rows above the buttons or are left out (#1060).
     #[test]
     fn prop_modal_box_follows_the_model(
         title in "[A-Za-z ]{0,30}",
@@ -261,6 +265,7 @@ proptest! {
         width in 0u16..60,
         aw in 0u16..60,
         extra in 0u16..4,
+        cut in 0u16..12,
     ) {
         let mut m = Modal::new()
             .title(title.clone())
@@ -274,7 +279,7 @@ proptest! {
         }
         m.show();
         let req = m.required_height();
-        let ah = req + 2 + extra;
+        let ah = (req + 2 + extra).saturating_sub(cut);
         let b = draw(&m, aw, ah);
         let want = model(&title, &lines, &labels, width, aw, ah, req);
         for (y, line) in want.iter().enumerate() {
@@ -373,4 +378,58 @@ fn test_modal_content_stops_above_the_button_row() {
             "  └────────┘  ",
         ]
     );
+}
+
+#[test]
+fn test_short_modal_keeps_its_title_inside_the_box() {
+    // In a 4-row area the box is 2 rows (rows 1 and 2), with no row inside
+    // the border for the title
+    let mut m = Modal::new().title("Test").content("Body").ok();
+    m.show();
+    let b = draw(&m, 80, 4);
+    assert_eq!(row(&b, 2).trim(), format!("└{}┘", "─".repeat(38))); // was "└─Test───…┘"
+    assert_eq!(row(&b, 3).trim(), ""); // was "├───…┤"
+}
+
+#[test]
+fn test_modal_three_rows_tall_has_its_title_but_no_separator() {
+    // A 5-row area gives a 3-row box: the title's row is the only one
+    // inside the border, and the row under it is the bottom border
+    let mut m = Modal::new().title("Test").content("Body");
+    m.show();
+    let b = draw(&m, 80, 5);
+    assert_eq!(row(&b, 2).trim(), format!("│ Test{}│", " ".repeat(33)));
+    assert_eq!(row(&b, 3).trim(), format!("└{}┘", "─".repeat(38))); // was "├───…┤"
+}
+
+#[test]
+fn test_modal_with_no_box_draws_no_title() {
+    // A 3-row area leaves one row for the box: no box, so no title
+    let mut m = Modal::new().title("Test").content("Body");
+    m.show();
+    let b = draw(&m, 80, 3);
+    for y in 0..3 {
+        assert_eq!(row(&b, y).trim(), "", "row {y}"); // was "Test" on row 1
+    }
+}
+
+#[test]
+fn test_short_modal_keeps_the_buttons_row_for_the_buttons() {
+    // A 6-row area gives a 4-row box: the title's row, then the buttons'
+    // row, where the separator used to run between the buttons
+    let mut m = Modal::new().title("Test").content("Body").ok();
+    m.show();
+    let b = draw(&m, 80, 6);
+    assert_eq!(row(&b, 2).trim(), format!("│ Test{}│", " ".repeat(33)));
+    assert_eq!(
+        row(&b, 3).trim(),
+        format!("│{}[ OK ]{}│", " ".repeat(16), " ".repeat(16))
+    ); // was "├───…[ OK ]…┤"
+
+    // A 5-row area gives a 3-row box: its one row inside is the buttons'
+    let b = draw(&m, 80, 5);
+    assert_eq!(
+        row(&b, 2).trim(),
+        format!("│{}[ OK ]{}│", " ".repeat(16), " ".repeat(16))
+    ); // was "│ Test   [ OK ]…│"
 }

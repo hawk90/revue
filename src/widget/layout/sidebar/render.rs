@@ -28,6 +28,11 @@ impl Sidebar {
         if content_width == 0 {
             return;
         }
+        // Everything is drawn in the bar, so a part that reaches past its
+        // width (a deep row's indicator or icon) is cut at the bar instead of
+        // drawn over what the layout put to its right
+        let bar_area = ctx.sub_area(0, 0, content_width, area.height);
+        let ctx = &mut ctx.sub_ctx(bar_area);
 
         // Fill background
         for y in 0..area.height {
@@ -288,18 +293,31 @@ impl Sidebar {
             }
 
             if let Some(badge) = &item.badge {
-                self.draw_badge(ctx, badge, y, content_width);
+                self.draw_badge(ctx, badge, x, y, content_width);
             }
         }
     }
 
-    /// Draw an item's badge at the right of the bar, before the border column
-    fn draw_badge(&self, ctx: &mut RenderContext, badge: &str, y: u16, content_width: u16) {
-        let badge_x = content_width.saturating_sub(display_width(badge) as u16 + 2);
+    /// Draw an item's badge at the right of the bar, with a blank column
+    /// before the border. A badge too wide for that starts at `from` (the
+    /// column after the row's indicator, icon and label) and is cut before
+    /// the blank column, so it covers neither them nor the border.
+    fn draw_badge(
+        &self,
+        ctx: &mut RenderContext,
+        badge: &str,
+        from: u16,
+        y: u16,
+        content_width: u16,
+    ) {
+        let badge_x = content_width
+            .saturating_sub(display_width(badge) as u16 + 2)
+            .max(from);
+        let end = content_width.saturating_sub(2);
         let mut dx: u16 = 0;
         for ch in badge.chars() {
             let cw = char_width(ch) as u16;
-            if badge_x + dx + cw > content_width {
+            if badge_x + dx + cw > end {
                 break;
             }
             let mut cell = Cell::new(ch);

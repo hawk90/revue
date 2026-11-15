@@ -145,10 +145,21 @@ impl Alert {
         // Draw border
         self.draw_alert_border(ctx, border_color, bg_color);
 
-        // Content area
-        let content_x: u16 = 2;
+        // The text is drawn inside the border, so in an area shorter than the
+        // alert's height a row below it is left out, not drawn on the bottom
+        // border
+        let inside = ctx.sub_area(
+            1,
+            1,
+            area.width.saturating_sub(2),
+            area.height.saturating_sub(2),
+        );
+        let ctx = &mut ctx.sub_ctx(inside);
+
+        // Content area: one column of padding inside the border
+        let content_x: u16 = 1;
         let content_width = area.width.saturating_sub(4);
-        let mut y: u16 = 1;
+        let mut y: u16 = 0;
 
         // Icon and title/message
         let icon_offset = if self.show_icon {
@@ -181,7 +192,7 @@ impl Alert {
 
         // Dismiss button
         if self.dismissible {
-            Self::draw_dismiss(ctx, area.width - 3, 1, LIGHT_GRAY, Some(bg_color));
+            Self::draw_dismiss(ctx, area.width - 4, 0, LIGHT_GRAY, Some(bg_color));
         }
     }
 

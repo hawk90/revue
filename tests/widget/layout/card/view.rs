@@ -314,8 +314,8 @@ impl Spec {
         }
     }
 
-    /// The rows a card of `w` x `h` should show (at least its measured
-    /// height)
+    /// The rows a card of `w` x `h` should show. Shorter than its measured
+    /// height, the parts below the content box are left out.
     #[allow(clippy::needless_range_loop)] // grid cells by column
     fn model(&self, w: u16, h: u16) -> Vec<String> {
         let (w, h) = (w as usize, h as usize);
@@ -348,13 +348,18 @@ impl Spec {
         let p = self.padding as usize;
         let cx = b + p;
         let cw = bw.saturating_sub(2 * b + 2 * p);
+        // The row below the content box: the bottom border, or the shadow
+        let cb = bh - b;
         let put = |g: &mut Vec<Vec<char>>, x: usize, y: usize, text: &str, max: usize| {
+            if y >= cb {
+                return;
+            }
             for (i, ch) in text.chars().take(max).enumerate() {
                 g[y][x + i] = ch;
             }
         };
         let separator = |g: &mut Vec<Vec<char>>, y: usize| {
-            if framed {
+            if framed && y < cb {
                 g[y][0] = '├';
                 g[y][bw - 1] = '┤';
                 for x in 1..bw - 1 {
@@ -366,7 +371,9 @@ impl Spec {
         let mut y = b;
         if let Some(t) = &self.title {
             if self.collapsible {
-                g[y][cx] = if self.expanded { '▼' } else { '▶' };
+                if cw > 0 && y < cb {
+                    g[y][cx] = if self.expanded { '▼' } else { '▶' };
+                }
                 put(&mut g, cx + 2, y, t, cw.saturating_sub(2));
             } else {
                 put(&mut g, cx, y, t, cw);
@@ -387,7 +394,7 @@ impl Spec {
             if has_header && self.body.is_some() {
                 if framed {
                     separator(&mut g, y);
-                } else {
+                } else if y < cb {
                     for x in 0..bw {
                         g[y][x] = '─';
                     }
@@ -397,7 +404,7 @@ impl Spec {
             let footer_rows = if self.footer.is_some() { 2 } else { 0 };
             if let Some(lines) = &self.body {
                 let end = bh - b - footer_rows;
-                for (i, l) in lines.iter().enumerate().take(end - y) {
+                for (i, l) in lines.iter().enumerate().take(end.saturating_sub(y)) {
                     put(&mut g, cx, y + i, l, cw);
                 }
                 y = end.max(y);
@@ -469,6 +476,20 @@ proptest! {
         prop_assert_eq!(rows, spec.model(w, h), "{:?} at {}x{}", spec, w, h);
     }
 
+    /// Shorter than its measured height, a card keeps every part inside
+    /// its frame: what does not fit is left out, not drawn over the
+    /// bottom border or the shadow (#1030).
+    #[test]
+    fn prop_short_card_keeps_its_parts_inside_the_frame(
+        spec in spec(),
+        w in 4u16..30,
+        h in 3u16..10,
+    ) {
+        let card = spec.card();
+        let rows = rows_of(&render_buffer(&card, w, h, None));
+        prop_assert_eq!(rows, spec.model(w, h), "{:?} at {}x{}", spec, w, h);
+    }
+
     /// Keys collapse and expand only an enabled collapsible card; `toggle`
     /// needs a collapsible card, `expand` and `collapse` do not.
     #[test]
@@ -523,4 +544,62 @@ fn test_card_collapsible_title_is_bold_after_its_icon() {
     let t = b.get(4, 1).unwrap();
     assert_eq!((t.symbol, t.fg), ('T', Some(Color::GREEN)));
     assert!(t.modifier.contains(revue::render::Modifier::BOLD));
+}
+
+// A card shorter than its parts (#1030): what does not fit inside the frame
+// is left out, not drawn over the bottom border or the shadow.
+
+#[test]
+fn test_card_parts_past_the_frame_are_left_out() {
+    // Title, subtitle and header need three inner rows; 4 rows leave two
+    let c = Card::new().title("T").subtitle("S").header(Text::new("H"));
+    let rows = rows_of(&render_buffer(&c, 5, 4, None));
+    assert_eq!(rows, ["┌───┐", "│ T │", "│ S │", "└───┘"]); // was "└─H─┘"
+}
+
+#[test]
+fn test_card_separator_past_the_frame_keeps_the_bottom_border() {
+    let c = Card::new().title("T").body(Text::new("B"));
+    let rows = rows_of(&render_buffer(&c, 6, 3, None));
+    assert_eq!(rows, ["┌────┐", "│ T  │", "└────┘"]); // was "├────┤"
+}
+
+#[test]
+fn test_borderless_card_separator_past_the_box_is_left_out() {
+    // Without a border the content box is the whole card; a separator
+    // below it would be drawn on the shadow
+    let c = Card::new()
+        .border_style(BorderType::None)
+        .elevated()
+        .title("T")
+        .subtitle("S")
+        .header(Text::new("H"))
+        .body(Text::new("B"));
+    // The box is rows 0..3; the separator's row is 3, the shadow's
+    let rows = rows_of(&render_buffer(&c, 6, 4, None));
+    assert_eq!(rows[3], " ▀▀▀▀▀"); // was "─────▀"
+}
+
+#[test]
+fn test_elevated_card_parts_stay_off_the_shadow() {
+    let c = Card::new()
+        .elevated()
+        .title("T")
+        .subtitle("S")
+        .header(Text::new("H"));
+    let rows = rows_of(&render_buffer(&c, 8, 4, None));
+    assert_eq!(rows[2], "└─────┘▌"); // was "└─S───┘▌"
+    assert_eq!(rows[3], " ▀▀▀▀▀▀▀"); // was " ▀H▀▀▀▀▀"
+}
+
+#[test]
+fn test_collapse_icon_needs_a_content_column() {
+    // padding 3 leaves no content column in a 5-wide box
+    let c = Card::new()
+        .elevated()
+        .padding(3)
+        .collapsible(true)
+        .title("T");
+    let rows = rows_of(&render_buffer(&c, 6, 5, None));
+    assert_eq!(rows[1], "│   │▌"); // was "│   ▼▌"
 }
