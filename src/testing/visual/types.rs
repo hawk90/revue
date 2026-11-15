@@ -153,16 +153,11 @@ impl CapturedCell {
         }
 
         // Compare styles if enabled
-        if include_styles
-            && (self.bold != other.bold
-                || self.italic != other.italic
-                || self.underline != other.underline
-                || self.dim != other.dim)
-        {
-            return false;
-        }
-
-        true
+        !include_styles
+            || (self.bold == other.bold
+                && self.italic == other.italic
+                && self.underline == other.underline
+                && self.dim == other.dim)
     }
 }
 
