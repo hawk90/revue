@@ -121,7 +121,8 @@ impl Model {
             }
             // Leaves only on an empty line (#1081)
             (Command, Key::Backspace) => {
-                if self.command.pop().is_none() {
+                let was_empty = self.command.pop().is_none();
+                if was_empty {
                     self.mode = Normal;
                 }
             }
@@ -140,7 +141,8 @@ impl Model {
                 return Some(VimAction::Move(motion));
             }
             (Search, Key::Backspace) => {
-                if self.search.pop().is_none() {
+                let was_empty = self.search.pop().is_none();
+                if was_empty {
                     self.mode = Normal;
                 }
             }
