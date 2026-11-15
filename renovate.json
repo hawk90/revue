@@ -92,10 +92,11 @@
       "minimumReleaseAge": null
     },
     {
-      "description": "Rust toolchain pin (rust-toolchain.toml): manual, one PR per release",
+      "description": "Rust toolchain pin (rust-toolchain.toml): manual, one PR per release. groupName null keeps it out of the non-major group above: grouped, a new toolchain's lints held back the crate updates and its automerge false stopped the whole group (#1483)",
       "matchDepNames": [
         "rust-toolchain"
       ],
+      "groupName": null,
       "automerge": false,
       "commitMessageTopic": "Rust toolchain",
       "minimumReleaseAge": "14 days"
