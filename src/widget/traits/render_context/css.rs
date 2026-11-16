@@ -179,10 +179,7 @@ impl RenderContext<'_> {
     /// Falling back to `color` mirrors CSS, where `border-color`'s initial
     /// value is `currentColor`.
     pub fn css_border_or_text_color(&self) -> Option<crate::style::Color> {
-        let style = self.style?;
-        [style.visual.border_color, style.visual.color]
-            .into_iter()
-            .find(|&candidate| candidate != crate::style::Color::default())
+        self.style.and_then(border_or_text_color)
     }
 
     /// The `gap` the stylesheet set, if it set one.
@@ -272,3 +269,12 @@ impl RenderContext<'_> {
 }
 
 use crate::widget::traits::render_context::RenderContext;
+
+/// `style`'s `border-color`, else its `color`, else `None`: what
+/// [`RenderContext::css_border_or_text_color`] reads, for a caller that holds
+/// the style without a context (a `measure_styled`).
+pub(crate) fn border_or_text_color(style: &crate::style::Style) -> Option<Color> {
+    [style.visual.border_color, style.visual.color]
+        .into_iter()
+        .find(|&candidate| candidate != crate::style::Color::default())
+}
