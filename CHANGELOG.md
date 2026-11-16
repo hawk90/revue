@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.16.0](https://github.com/hawk90/revue/compare/v3.15.0...v3.16.0) (2026-11-16)
+
+
+### Features
+
+* **widget:** HttpClient hands its request to the app with take_request and complete, and ReqwestBackend sends it (http feature) ([77df10d](https://github.com/hawk90/revue/commit/77df10d5579940815c6e2389fc6a0d13e7fcec5a))
+
+
+### Bug Fixes
+
+* **deps:** drop unused dependencies and pass Rust 1.100 clippy ([#1484](https://github.com/hawk90/revue/issues/1484)) ([1e9584a](https://github.com/hawk90/revue/commit/1e9584a4655f8c4dfa51be207367fffb45b8ad05))
+* **deps:** unicode-properties 0.1.5 gives CharWidthTable the Unicode 18 emoji ([#1491](https://github.com/hawk90/revue/issues/1491)) ([544d562](https://github.com/hawk90/revue/commit/544d562868e4819aabebfb81f7243b44060ea5d2))
+* **deps:** update non-major dependencies ([#1483](https://github.com/hawk90/revue/issues/1483)) ([ab518bb](https://github.com/hawk90/revue/commit/ab518bb4be2e2744e9c89571ccc0c2055fadccd3))
+* **deps:** update rust crate ureq to 3.5.2 ([#1499](https://github.com/hawk90/revue/issues/1499)) ([bcc9a15](https://github.com/hawk90/revue/commit/bcc9a158dccd7778e1a393468ec13cb816bf02ab))
+* **widget:** an accordion's border from the stylesheet insets its rows ([#1505](https://github.com/hawk90/revue/issues/1505)) ([64bf97e](https://github.com/hawk90/revue/commit/64bf97eef24dc82d7f599486d26324b1513be163)), closes [#883](https://github.com/hawk90/revue/issues/883) [#1504](https://github.com/hawk90/revue/issues/1504)
+* **widget:** anchored boxes flip to the other side instead of covering their anchor ([#1497](https://github.com/hawk90/revue/issues/1497)) ([de931a1](https://github.com/hawk90/revue/commit/de931a106476cb2653d19609cc61b047fefa68c7)), closes [#1045](https://github.com/hawk90/revue/issues/1045) [#1053](https://github.com/hawk90/revue/issues/1053) [#1095](https://github.com/hawk90/revue/issues/1095)
+* **widget:** bordered widgets draw their own parts inside the frame ([#1501](https://github.com/hawk90/revue/issues/1501)) ([24386dd](https://github.com/hawk90/revue/commit/24386dd796d3243d15292c1c71ee9e457303cc1a))
+* **widget:** glyphs drawn on a band of background keep it ([#1503](https://github.com/hawk90/revue/issues/1503)) ([e29ba99](https://github.com/hawk90/revue/commit/e29ba99d5bf8b4eeee516ed53d641a1c6af021f0)), closes [#1039](https://github.com/hawk90/revue/issues/1039) [#1502](https://github.com/hawk90/revue/issues/1502) [#982](https://github.com/hawk90/revue/issues/982)
+* **widget:** grid lines and track sums saturate instead of overflowing ([#1506](https://github.com/hawk90/revue/issues/1506)) ([f39af2c](https://github.com/hawk90/revue/commit/f39af2ce4f4629ade9bc4b882cd4fe3664986ad0)), closes [#1372](https://github.com/hawk90/revue/issues/1372)
+* **widget:** HttpClient::send no longer shows a made-up 200 OK for any URL ([77df10d](https://github.com/hawk90/revue/commit/77df10d5579940815c6e2389fc6a0d13e7fcec5a))
+* **widget:** pagination fits its pages to the row and keeps the current one ([#1507](https://github.com/hawk90/revue/issues/1507)) ([a1ecb7d](https://github.com/hawk90/revue/commit/a1ecb7dd41f467b9b56c40f8e5b6455c5e9dce18)), closes [#1371](https://github.com/hawk90/revue/issues/1371) [#1104](https://github.com/hawk90/revue/issues/1104)
+
 ## [3.15.0](https://github.com/hawk90/revue/compare/v3.14.0...v3.15.0) (2026-11-06)
 
 
