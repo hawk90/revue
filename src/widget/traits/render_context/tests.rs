@@ -314,6 +314,31 @@ fn test_fill_bg() {
 }
 
 #[test]
+fn fill_bg_under_fills_only_the_cells_without_a_background() {
+    let mut buffer = test_buffer();
+    // An area offset from the buffer's origin, clipped to its first 4 columns
+    let mut ctx =
+        RenderContext::new(&mut buffer, Rect::new(2, 1, 6, 2)).with_clip(Rect::new(2, 1, 4, 2));
+    let (bg, own) = (Color::BLUE, Color::RED);
+    ctx.draw_char(0, 0, 'a', Color::WHITE); // no background
+    ctx.draw_char_bg(1, 0, 'b', Color::WHITE, own); // its own
+
+    // Past the area's right edge and bottom too: those are left alone
+    ctx.fill_bg_under(0, 0, 10, 5, bg);
+
+    let a = buffer.get(2, 1).unwrap();
+    assert_eq!((a.symbol, a.fg, a.bg), ('a', Some(Color::WHITE), Some(bg)));
+    let b = buffer.get(3, 1).unwrap();
+    assert_eq!((b.symbol, b.bg), ('b', Some(own)));
+    // Inside the clip: filled; outside the clip (cols 6, 7) or the area: not
+    assert_eq!(buffer.get(5, 2).unwrap().bg, Some(bg));
+    assert_eq!(buffer.get(6, 1).unwrap().bg, None);
+    assert_eq!(buffer.get(8, 1).unwrap().bg, None);
+    assert_eq!(buffer.get(2, 3).unwrap().bg, None);
+    assert_eq!(buffer.get(1, 1).unwrap().bg, None);
+}
+
+#[test]
 fn test_clear() {
     let mut buffer = test_buffer();
     let mut ctx = RenderContext::new(&mut buffer, test_area());

@@ -142,15 +142,37 @@ fn test_collapsible_content_background_fills_the_row() {
     let c = Collapsible::new("T")
         .content("x")
         .content_colors(Color::YELLOW, Some(Color::BLUE))
+        .border_color(Color::RED)
         .expanded(true);
     let buffer = draw(&c, 10, 3);
-    // Column 0 is the border cell, which drops the background (a bug
-    // reported from the #930 audit, not checked here)
-    for x in 1..10 {
+    // Every column, the border cell too (#1039), which keeps its glyph and
+    // the border color
+    for x in 0..10 {
         assert_eq!(buffer.get(x, 1).unwrap().bg, Some(Color::BLUE), "x={x}");
     }
-    // The header row does not take it
+    let border = buffer.get(0, 1).unwrap();
+    assert_eq!((border.symbol, border.fg), ('│', Some(Color::RED)));
+    assert_eq!(buffer.get(2, 1).unwrap().symbol, 'x');
+    // The header row and the bottom border row are not content: they do not
+    // take it
     assert_eq!(buffer.get(5, 0).unwrap().bg, None);
+    for x in 0..10 {
+        assert_eq!(buffer.get(x, 2).unwrap().bg, None, "x={x}");
+    }
+}
+
+#[test]
+fn test_collapsible_content_background_without_a_border() {
+    let c = Collapsible::new("T")
+        .content("x")
+        .content_colors(Color::YELLOW, Some(Color::BLUE))
+        .border(false)
+        .expanded(true);
+    let buffer = draw(&c, 10, 2);
+    assert_eq!(row(&buffer, 1), " x");
+    for x in 0..10 {
+        assert_eq!(buffer.get(x, 1).unwrap().bg, Some(Color::BLUE), "x={x}");
+    }
 }
 
 fn key() -> impl Strategy<Value = Key> {

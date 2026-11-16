@@ -122,6 +122,37 @@ impl RenderContext<'_> {
         }
     }
 
+    /// Give every cell of the rectangle (relative coordinates) that has no
+    /// background yet the color `bg`, keeping its glyph.
+    ///
+    /// For a band of background (a row, a content area) under glyphs drawn
+    /// without one: draw them first, then call this. [`Buffer::set`] replaces
+    /// the whole cell, so a glyph written after [`fill_bg`](Self::fill_bg)
+    /// without a background punches a hole in the band; a cell that has its
+    /// own background (a tag, a highlight) keeps it. The band version of what
+    /// [`fill_box_background`](Self::fill_box_background) does for the box.
+    ///
+    /// [`Buffer::set`]: crate::render::Buffer::set
+    pub(crate) fn fill_bg_under(&mut self, x: u16, y: u16, w: u16, h: u16, bg: Color) {
+        for dy in 0..h {
+            for dx in 0..w {
+                let (rx, ry) = (x.saturating_add(dx), y.saturating_add(dy));
+                if rx >= self.area.width || ry >= self.area.height {
+                    continue;
+                }
+                let (abs_x, abs_y) = (self.area.x + rx, self.area.y + ry);
+                if self.is_clipped(abs_x, abs_y) {
+                    continue;
+                }
+                if let Some(cell) = self.buffer.get_mut(abs_x, abs_y) {
+                    if cell.bg.is_none() {
+                        cell.bg = Some(bg);
+                    }
+                }
+            }
+        }
+    }
+
     /// Fill a row with spaces, setting optional fg and bg colors
     pub fn fill_row(&mut self, y: u16, width: u16, fg: Option<Color>, bg: Option<Color>) {
         for x in 0..width {
