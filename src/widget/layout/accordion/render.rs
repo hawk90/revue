@@ -1,7 +1,9 @@
 //! View implementation for Accordion
 
+use crate::style::{Color, Style};
 use crate::utils::border::render_border;
 use crate::widget::theme::SEPARATOR_COLOR;
+use crate::widget::traits::render_context::{border_or_text_color, StyledSubtree};
 use crate::widget::traits::{RenderContext, View};
 
 use super::{Accordion, AccordionSection};
@@ -15,16 +17,19 @@ impl View for Accordion {
     /// Every row of its sections, inside the builder's border; the headers
     /// and dividers stretch across the offered width.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
-        let border = if self.border_color.is_some() { 2 } else { 0 };
-        let rows = u16::try_from(self.rows().len()).unwrap_or(u16::MAX);
-        let area = crate::widget::layout::constraints::constrain(
-            crate::layout::Rect::new(0, 0, max_width, rows.saturating_add(border)),
-            self.min_width,
-            self.min_height,
-            self.max_width,
-            self.max_height,
-        );
-        Some((area.width.min(max_width), area.height.min(max_height)))
+        self.measure_bordered(max_width, max_height, self.border_color.is_some())
+    }
+
+    /// [`measure`](View::measure), inside the border the stylesheet may add
+    /// too (#883), so a content-sized stack leaves room for it.
+    fn measure_styled(
+        &self,
+        max_width: u16,
+        max_height: u16,
+        subtree: StyledSubtree<'_>,
+    ) -> Option<(u16, u16)> {
+        let bordered = self.resolved_border(subtree.style()).is_some();
+        self.measure_bordered(max_width, max_height, bordered)
     }
 
     fn fills(&self) -> crate::widget::Fill {
@@ -41,6 +46,37 @@ impl View for Accordion {
             self.max_height,
         );
         crate::widget::layout::constraints::within(ctx, area, |ctx| self.render_constrained(ctx));
+    }
+}
+
+impl Accordion {
+    /// The border's color: the builder's, else the stylesheet's `border-color`,
+    /// else its `color` (CSS's `currentColor`). `None` draws no border.
+    ///
+    /// Drawing, the insets and the measured size all ask this, so they agree
+    /// on whether there is a border (#883).
+    fn resolved_border(&self, style: Option<&Style>) -> Option<Color> {
+        self.border_color
+            .or_else(|| style.and_then(border_or_text_color))
+    }
+
+    /// Every row of the sections, plus two for a border.
+    fn measure_bordered(
+        &self,
+        max_width: u16,
+        max_height: u16,
+        bordered: bool,
+    ) -> Option<(u16, u16)> {
+        let border = if bordered { 2 } else { 0 };
+        let rows = u16::try_from(self.rows().len()).unwrap_or(u16::MAX);
+        let area = crate::widget::layout::constraints::constrain(
+            crate::layout::Rect::new(0, 0, max_width, rows.saturating_add(border)),
+            self.min_width,
+            self.min_height,
+            self.max_width,
+            self.max_height,
+        );
+        Some((area.width.min(max_width), area.height.min(max_height)))
     }
 }
 
@@ -68,27 +104,28 @@ impl Accordion {
             return;
         }
 
-        let (content_x_off, content_y_off, content_width, content_height) =
-            if self.border_color.is_some() {
-                (
-                    1u16,
-                    1u16,
-                    area.width.saturating_sub(2),
-                    area.height.saturating_sub(2),
-                )
-            } else {
-                (0u16, 0u16, area.width, area.height)
-            };
+        let border = self.resolved_border(ctx.style);
+        let (content_x_off, content_y_off, content_width, content_height) = if border.is_some() {
+            (
+                1u16,
+                1u16,
+                area.width.saturating_sub(2),
+                area.height.saturating_sub(2),
+            )
+        } else {
+            (0u16, 0u16, area.width, area.height)
+        };
 
-        // Draw border if set
-        // Builder first, then the stylesheet's `border-color` (falling back to
-        // `color`, as CSS does). No border is drawn when neither names one.
-        if let Some(border_color) = self.border_color.or_else(|| ctx.css_border_or_text_color()) {
+        if let Some(border_color) = border {
             render_border(ctx, area, border_color);
         }
 
+        // Every row draws inside the border, so a glyph past the inner width
+        // (the icon at three columns) is clipped instead of covering a side.
+        let inside = ctx.sub_area(content_x_off, content_y_off, content_width, content_height);
+        let ctx = &mut ctx.sub_ctx(inside);
         let inner = Inner {
-            x: content_x_off,
+            x: 0,
             width: content_width,
         };
         // The rows, scrolled to keep the selected section in view (#973)
@@ -108,7 +145,7 @@ impl Accordion {
         }
 
         for (k, row) in rows[self.scroll.visible()].iter().enumerate() {
-            let y = content_y_off + k as u16;
+            let y = k as u16;
             match *row {
                 Row::Header(i) => {
                     let is_selected = self.selection.is_selected(i);

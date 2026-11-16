@@ -312,3 +312,142 @@ fn accordion_selection_stays_on_its_section_when_one_above_is_removed() {
     acc.remove_section(0);
     assert_eq!(acc.selected(), 0, "B is now at 0");
 }
+
+// ---------------------------------------------------------------------------
+// A border from the stylesheet (#883)
+// ---------------------------------------------------------------------------
+
+/// Draw `acc` with `style` as its computed style.
+fn draw_styled(acc: &Accordion, style: &revue::style::Style, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::with_style(&mut buffer, Rect::new(0, 0, w, h), style);
+    acc.render(&mut ctx);
+    buffer
+}
+
+fn css_style(border_color: Color, color: Color) -> revue::style::Style {
+    let mut style = revue::style::Style::default();
+    style.visual.border_color = border_color;
+    style.visual.color = color;
+    style
+}
+
+fn one() -> Accordion {
+    Accordion::new().section(AccordionSection::new("A").line("a1").expanded(true))
+}
+
+const FRAMED_ONE: [&str; 5] = [
+    "┌──────────┐",
+    "│ ▼ A      │",
+    "│   a1     │",
+    "│          │",
+    "└──────────┘",
+];
+
+/// The issue's case: `border-color` alone draws the border, and the header and
+/// content rows sit inside it instead of over its sides and top.
+#[test]
+fn a_border_color_from_the_stylesheet_insets_the_rows() {
+    let style = css_style(Color::MAGENTA, Color::default());
+    let buffer = draw_styled(&one(), &style, 12, 5);
+    let rows: Vec<String> = (0..5).map(|y| row(&buffer, y)).collect();
+    assert_eq!(rows, FRAMED_ONE);
+    for (x, y) in [(0, 1), (11, 1), (0, 2), (11, 2), (5, 0)] {
+        assert_eq!(
+            buffer.get(x, y).unwrap().fg,
+            Some(Color::MAGENTA),
+            "({x},{y})"
+        );
+    }
+}
+
+/// `color` alone stands in for `border-color` (CSS's `currentColor`), and
+/// insets the rows the same way.
+#[test]
+fn a_color_from_the_stylesheet_insets_the_rows() {
+    let style = css_style(Color::default(), Color::RED);
+    let buffer = draw_styled(&one(), &style, 12, 5);
+    let rows: Vec<String> = (0..5).map(|y| row(&buffer, y)).collect();
+    assert_eq!(rows, FRAMED_ONE);
+    assert_eq!(buffer.get(0, 1).unwrap().fg, Some(Color::RED));
+}
+
+/// The builder's color outranks the stylesheet's; the frame is the same.
+#[test]
+fn the_builder_border_outranks_the_stylesheet() {
+    let style = css_style(Color::MAGENTA, Color::default());
+    let buffer = draw_styled(&one().border(Color::GREEN), &style, 12, 5);
+    let rows: Vec<String> = (0..5).map(|y| row(&buffer, y)).collect();
+    assert_eq!(rows, FRAMED_ONE);
+    assert_eq!(buffer.get(0, 1).unwrap().fg, Some(Color::GREEN));
+}
+
+/// At the narrowest width that draws, the border - the stylesheet's or the
+/// builder's - keeps its sides: the icon, a column past the one inside, is
+/// clipped instead of drawn over the right side.
+#[test]
+fn a_border_keeps_its_sides_at_three_columns() {
+    let style = css_style(Color::MAGENTA, Color::default());
+    for buffer in [
+        draw_styled(&one(), &style, 3, 4),
+        draw(&one().border(Color::GREEN), 3, 4),
+    ] {
+        let rows: Vec<String> = (0..4).map(|y| row(&buffer, y)).collect();
+        assert_eq!(rows, ["┌─┐", "│ │", "│ │", "└─┘"]);
+    }
+}
+
+/// A style that names neither color draws no border, and the rows start at
+/// the edge as without a style.
+#[test]
+fn a_style_without_border_colors_draws_no_border() {
+    let style = css_style(Color::default(), Color::default());
+    let styled = draw_styled(&one(), &style, 12, 3);
+    let plain = draw(&one(), 12, 3);
+    let rows: Vec<String> = (0..3).map(|y| row(&styled, y)).collect();
+    assert_eq!(rows, [" ▼ A", "   a1", ""]);
+    for y in 0..3 {
+        for x in 0..12 {
+            let (a, b) = (styled.get(x, y).unwrap(), plain.get(x, y).unwrap());
+            assert_eq!((a.symbol, a.fg, a.bg), (b.symbol, b.fg, b.bg), "({x},{y})");
+        }
+    }
+}
+
+/// In a content-sized stack the accordion's measured height includes the
+/// stylesheet's border, so the next sibling starts below its bottom row
+/// rather than over it.
+#[test]
+fn a_content_sized_stack_leaves_room_for_a_stylesheet_border() {
+    use revue::prelude::{vstack, Text};
+    use revue::testing::PipelineHarness;
+
+    struct Page;
+    impl View for Page {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .content_sized(true)
+                .child(one())
+                .child(Text::new("after"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Page"
+        }
+    }
+
+    for css in [
+        "Accordion { border-color: magenta; }",
+        "Accordion { color: red; }",
+    ] {
+        let mut h = PipelineHarness::with_css(css, 12, 8)
+            .dom_from_render(true)
+            .css_layout(true);
+        h.draw(&Page);
+        assert_eq!(
+            h.screen_text(),
+            "┌──────────┐\n│ ▼ A      │\n│   a1     │\n└──────────┘\nafter",
+            "{css}"
+        );
+    }
+}

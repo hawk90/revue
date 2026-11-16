@@ -2,6 +2,7 @@
 
 pub(crate) mod box_model;
 mod css;
+pub(crate) use css::border_or_text_color;
 pub(crate) mod edit_line;
 mod focus;
 pub mod overlay;
