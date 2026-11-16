@@ -19,25 +19,79 @@ fn put(ctx: &mut RenderContext, x: u16, ch: char, fg: Color, modifier: Modifier)
 fn put_str(ctx: &mut RenderContext, mut x: u16, text: &str, fg: Color, modifier: Modifier) -> u16 {
     for ch in text.chars() {
         put(ctx, x, ch, fg, modifier);
-        x += 1;
+        x = x.saturating_add(1);
     }
     x
 }
 
+/// The pages Full draws: the window `start..=end`, and whether page 1 and
+/// the last page are added where the window does not reach them
+#[derive(Clone, Copy)]
+struct Pages {
+    start: u16,
+    end: u16,
+    ends: bool,
+}
+
 impl Pagination {
-    /// Calculate visible page range
-    fn visible_range(&self) -> (u16, u16) {
-        let half = self.max_visible / 2;
+    /// The window of `max_visible` pages, with both ends, as wide as the row
+    /// may be
+    fn visible_pages(&self) -> Pages {
+        let (start, end) = self.window(self.max_visible);
+        Pages {
+            start,
+            end,
+            ends: true,
+        }
+    }
+
+    /// A run of `size` pages (all of them when fewer) with the current page
+    /// as close to its middle as the ends allow
+    fn window(&self, size: u16) -> (u16, u16) {
+        let size = size.max(1);
+        let half = size / 2;
         let start = if self.current <= half {
             1
-        } else if self.current >= self.total - half {
-            self.total.saturating_sub(self.max_visible - 1)
+        } else if self.current >= self.total.saturating_sub(half) {
+            self.total.saturating_sub(size - 1)
         } else {
             self.current - half
         };
 
-        let end = start.saturating_add(self.max_visible - 1).min(self.total);
+        let end = start.saturating_add(size - 1).min(self.total);
         (start.max(1), end)
+    }
+
+    /// The pages Full draws in `width` columns (#1104): `max_visible` pages
+    /// and both ends, or as many fewer pages as it takes for the row to fit,
+    /// down to the current page alone; if that still does not fit, without
+    /// the ends. The window always holds the current page, so a narrow row
+    /// gives up the pages beside it first, then page 1 and the last page,
+    /// and the current page last.
+    fn fitted_pages(&self, width: u16) -> Pages {
+        // A page takes at least two columns, so more than `width / 2 + 1`
+        // pages never fit; this also bounds the search for a huge
+        // `max_visible` (#1371).
+        let most = self.max_visible.min(self.total.max(1)).min(width / 2 + 1);
+        (1..=most)
+            .rev()
+            .map(|size| {
+                let (start, end) = self.window(size);
+                Pages {
+                    start,
+                    end,
+                    ends: true,
+                }
+            })
+            .find(|&pages| self.full_width(pages) <= width)
+            .unwrap_or_else(|| {
+                let (start, end) = self.window(1);
+                Pages {
+                    start,
+                    end,
+                    ends: false,
+                }
+            })
     }
 
     /// The color of a button that moves away from an end: inactive when the
@@ -54,43 +108,46 @@ impl Pagination {
     fn natural_width(&self) -> u16 {
         let digits = |n: u16| n.to_string().len() as u16;
         match self.style {
-            PaginationStyle::Full => {
-                let (start, end) = self.visible_range();
-                let mut x = 0u16;
-                // The button after the pages: its own column, no space after.
-                if self.show_edges {
-                    x += 2 + 1;
-                }
-                if self.show_arrows {
-                    x += 2 + 2;
-                }
-                if start > 1 {
-                    x += 2 + if start > 2 { 2 } else { 0 };
-                }
-                for page in start..=end {
-                    x = x.saturating_add(digits(page) + 1);
-                    if page == self.current {
-                        x += 2;
-                    }
-                }
-                if end < self.total {
-                    if end < self.total - 1 {
-                        x += 2;
-                    }
-                    x = x.saturating_add(digits(self.total) + 1);
-                }
-                // Without a last button, the space after the final page or
-                // arrow is not drawn.
-                if self.show_edges {
-                    x
-                } else {
-                    x.saturating_sub(1)
-                }
-            }
+            PaginationStyle::Full => self.full_width(self.visible_pages()),
             // `← ` the text ` →`
             PaginationStyle::Simple => 8 + 4 + digits(self.current) + digits(self.total) + 1,
             PaginationStyle::Compact => digits(self.current) + digits(self.total) + 1,
             PaginationStyle::Dots => (self.total.saturating_mul(2)).saturating_sub(1),
+        }
+    }
+
+    /// The columns Full draws with `pages`. Follows `render_full`.
+    fn full_width(&self, Pages { start, end, ends }: Pages) -> u16 {
+        let digits = |n: u16| n.to_string().len() as u16;
+        let mut x = 0u16;
+        // The button after the pages: its own column, no space after.
+        if self.show_edges {
+            x = x.saturating_add(2 + 1);
+        }
+        if self.show_arrows {
+            x = x.saturating_add(2 + 2);
+        }
+        if ends && start > 1 {
+            x = x.saturating_add(2 + if start > 2 { 2 } else { 0 });
+        }
+        for page in start..=end {
+            x = x.saturating_add(digits(page) + 1);
+            if page == self.current {
+                x = x.saturating_add(2);
+            }
+        }
+        if ends && end < self.total {
+            if end < self.total - 1 {
+                x = x.saturating_add(2);
+            }
+            x = x.saturating_add(digits(self.total) + 1);
+        }
+        // Without a last button, the space after the final page or arrow is
+        // not drawn.
+        if self.show_edges {
+            x
+        } else {
+            x.saturating_sub(1)
         }
     }
 
@@ -101,23 +158,24 @@ impl Pagination {
             // First button
             let color = self.nav_color(self.is_first(), inactive_color);
             put(ctx, x, '«', color, Modifier::empty());
-            x += 2;
+            x = x.saturating_add(2);
         }
 
         if self.show_arrows {
             // Prev button
             let color = self.nav_color(self.is_first(), inactive_color);
             put(ctx, x, '‹', color, Modifier::empty());
-            x += 2;
+            x = x.saturating_add(2);
         }
 
-        x = self.render_pages(ctx, x, inactive_color, focus_mark);
+        let pages = self.fitted_pages(ctx.area.width);
+        x = self.render_pages(ctx, x, pages, inactive_color, focus_mark);
 
         if self.show_arrows {
             // Next button
             let color = self.nav_color(self.is_last(), inactive_color);
             put(ctx, x, '›', color, Modifier::empty());
-            x += 2;
+            x = x.saturating_add(2);
         }
 
         if self.show_edges {
@@ -127,26 +185,25 @@ impl Pagination {
         }
     }
 
-    /// The page window from column `x`, with the first and last page and an
-    /// ellipsis where the window does not reach them; returns the column
-    /// after it.
+    /// The pages from column `x`: the window, and (with `ends`) the first and
+    /// last page and an ellipsis where the window does not reach them;
+    /// returns the column after it.
     fn render_pages(
         &self,
         ctx: &mut RenderContext,
         mut x: u16,
+        Pages { start, end, ends }: Pages,
         inactive_color: Color,
         focus_mark: Modifier,
     ) -> u16 {
-        let (start, end) = self.visible_range();
-
         // Ellipsis before
-        if start > 1 {
+        if ends && start > 1 {
             put(ctx, x, '1', inactive_color, Modifier::empty());
-            x += 2;
+            x = x.saturating_add(2);
 
             if start > 2 {
                 put(ctx, x, '…', inactive_color, Modifier::empty());
-                x += 2;
+                x = x.saturating_add(2);
             }
         }
 
@@ -156,10 +213,10 @@ impl Pagination {
         }
 
         // Ellipsis after
-        if end < self.total {
+        if ends && end < self.total {
             if end < self.total - 1 {
                 put(ctx, x, '…', inactive_color, Modifier::empty());
-                x += 2;
+                x = x.saturating_add(2);
             }
 
             x = put_str(
@@ -169,7 +226,7 @@ impl Pagination {
                 inactive_color,
                 Modifier::empty(),
             );
-            x += 1;
+            x = x.saturating_add(1);
         }
         x
     }
@@ -188,7 +245,7 @@ impl Pagination {
 
         if is_current {
             put(ctx, x, '[', self.active_color, Modifier::empty());
-            x += 1;
+            x = x.saturating_add(1);
         }
 
         let (fg, modifier) = if is_current {
@@ -200,10 +257,10 @@ impl Pagination {
 
         if is_current {
             put(ctx, x, ']', self.active_color, Modifier::empty());
-            x += 1;
+            x = x.saturating_add(1);
         }
 
-        x += 1; // Space between
+        x = x.saturating_add(1); // Space between
         x
     }
 
@@ -212,11 +269,11 @@ impl Pagination {
         let mut x: u16 = 0;
         let prev_color = self.nav_color(self.is_first(), inactive_color);
         put(ctx, x, '←', prev_color, Modifier::empty());
-        x += 2;
+        x = x.saturating_add(2);
 
         let text = format!("Page {} of {}", self.current, self.total);
         x = put_str(ctx, x, &text, inactive_color, focus_mark);
-        x += 1;
+        x = x.saturating_add(1);
 
         let next_color = self.nav_color(self.is_last(), inactive_color);
         put(ctx, x, '→', next_color, Modifier::empty());
@@ -234,15 +291,11 @@ impl Pagination {
         );
     }
 
-    /// Dots: `○ ○ ● ○ ○`
+    /// Dots: `○ ○ ● ○ ○`, as many as fit, around the current page (#1104)
     fn render_dots(&self, ctx: &mut RenderContext, inactive_color: Color, focus_mark: Modifier) {
-        let area = ctx.area;
+        let (start, end) = self.window(ctx.area.width.div_ceil(2));
         let mut x: u16 = 0;
-        for page in 1..=self.total {
-            if x >= area.width {
-                break;
-            }
-
+        for page in start..=end {
             let is_current = page == self.current;
             let ch = if is_current { '●' } else { '○' };
             let (fg, modifier) = if is_current {
@@ -251,7 +304,7 @@ impl Pagination {
                 (inactive_color, Modifier::empty())
             };
             put(ctx, x, ch, fg, modifier);
-            x += 2;
+            x = x.saturating_add(2);
         }
     }
 }

@@ -62,8 +62,9 @@ impl Pagination {
         self.current == 1
     }
 
-    /// Check if on last page
+    /// Check if on last page. With no pages it is: there is no page after
+    /// page 1 (#1104).
     pub fn is_last(&self) -> bool {
-        self.current == self.total
+        self.current >= self.total
     }
 }

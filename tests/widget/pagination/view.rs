@@ -277,17 +277,27 @@ proptest! {
         prop_assert_eq!(text(&render(&p.compact(), 40)), format!("{}/{}", shown, total));
     }
 
-    /// Dots: one dot per page, two columns apart, until the row is full; the
-    /// current page's dot is filled and active.
+    /// Dots: one dot per page, two columns apart, as many as the row holds;
+    /// when not all fit, a run around the current page, centered as far as
+    /// the ends allow (#1104). The current page's dot is filled and active.
     #[test]
     fn dots_draw_one_dot_per_page(total in 0u16..40, current_seed in any::<u16>(), width in 1u16..60) {
         let current = 1 + current_seed % total.max(1);
         let buffer = render(&colored(total, current, PaginationStyle::Dots), width);
-        let fitting = total.min(width.div_ceil(2));
+        let size = width.div_ceil(2);
+        let shown = total.min(size);
+        let half = size / 2;
+        let start = if current <= half {
+            1
+        } else if current + half >= total {
+            total + 1 - shown
+        } else {
+            current - half
+        };
         for x in 0..width {
             let cell = buffer.get(x, 0).unwrap();
-            let page = x / 2 + 1;
-            let (symbol, fg) = if x % 2 == 1 || page > fitting {
+            let page = start + x / 2;
+            let (symbol, fg) = if x % 2 == 1 || page >= start + shown {
                 (' ', None)
             } else if page == current {
                 ('●', ACTIVE)
@@ -295,6 +305,178 @@ proptest! {
                 ('○', INACTIVE)
             };
             prop_assert_eq!((cell.symbol, cell.fg), (symbol, fg), "column {}", x);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Huge values, no pages, and rows too narrow for the window (#1104, #1371)
+// ---------------------------------------------------------------------------
+
+/// The page tokens of a Full row, buttons dropped
+fn page_numbers(tokens: &[Token]) -> Vec<u16> {
+    tokens
+        .iter()
+        .filter_map(|t| match t {
+            Token::Page(n, _) => Some(*n),
+            Token::Gap => None,
+        })
+        .collect()
+}
+
+/// A huge `max_visible` over `u16::MAX` pages draws the pages that fit,
+/// without overflowing the column (#1371), at every current page.
+#[test]
+fn a_huge_window_over_huge_totals_draws_what_fits() {
+    for current in [1, u16::MAX / 2, u16::MAX] {
+        let p = colored(u16::MAX, current, PaginationStyle::Full).max_visible(u16::MAX);
+        let row = text(&render(&p, 80));
+        assert!(row.chars().count() <= 80, "{row}");
+        assert!(row.starts_with("« ‹ ") && row.ends_with(" › »"), "{row}");
+        let tokens = parse_pages(&row);
+        let bracketed: Vec<u16> = tokens
+            .iter()
+            .filter_map(|t| match t {
+                Token::Page(n, true) => Some(*n),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(bracketed, vec![current], "{row}");
+        let pages = page_numbers(&tokens);
+        assert!(pages.windows(2).all(|w| w[0] < w[1]), "{row}");
+        assert_eq!(
+            (pages.first(), pages.last()),
+            (Some(&1), Some(&u16::MAX)),
+            "{row}"
+        );
+    }
+    // Its natural width saturates rather than overflow.
+    let p = Pagination::new(u16::MAX).max_visible(u16::MAX);
+    assert_eq!(p.measure(u16::MAX, 1), Some((u16::MAX, 1)));
+}
+
+/// With no pages there is nowhere to go: the next and last buttons are
+/// inactive like the first and previous ones (#1104).
+#[test]
+fn with_no_pages_every_button_is_inactive() {
+    let p = colored(0, 1, PaginationStyle::Full);
+    assert!(p.is_first() && p.is_last());
+    let buffer = render(&p, 20);
+    assert_eq!(text(&buffer), "« ‹ › »");
+    for ch in ['«', '‹', '›', '»'] {
+        assert_eq!(fg_of(&buffer, ch), INACTIVE, "{ch}");
+    }
+    let buffer = render(&colored(0, 1, PaginationStyle::Simple), 20);
+    assert_eq!(text(&buffer), "← Page 1 of 0 →");
+    assert_eq!(
+        (fg_of(&buffer, '←'), fg_of(&buffer, '→')),
+        (INACTIVE, INACTIVE)
+    );
+}
+
+/// A row narrower than the window gives up the pages beside the current one
+/// first, then page 1 and the last page; the current page stays (#1104).
+#[test]
+fn a_narrow_full_row_keeps_the_current_page() {
+    let p = |current| Pagination::new(10).current(current);
+    for (width, current, want) in [
+        // The window of 7 fits as it is.
+        (40, 5, "« ‹ 1 2 3 4 [5] 6 7 8 … 10 › »"),
+        // Fewer pages around the current one.
+        (24, 5, "« ‹ 1 … 4 [5] 6 … 10 › »"),
+        (20, 5, "« ‹ 1 … [5] … 10 › »"),
+        // Too narrow even for one page with the ends: the ends go.
+        (12, 5, "« ‹ [5] › »"),
+        // Too narrow for that too: cut at the edge, the current page kept.
+        (10, 5, "« ‹ [5] ›"),
+        // At an end the window keeps to that side.
+        (20, 1, "« ‹ [1] 2 3 … 10 › »"),
+        (20, 10, "« ‹ 1 … 8 9 [10] › »"),
+    ] {
+        assert_eq!(text(&render(&p(current), width)), want, "width {width}");
+    }
+}
+
+/// Dots in a row too short for every page show a run around the current one
+/// (#1104): `new(100).current(50)` in 30 columns has its filled dot in the
+/// middle.
+#[test]
+fn dots_too_many_for_the_row_center_the_current_page() {
+    let buffer = render(&colored(100, 50, PaginationStyle::Dots), 30);
+    assert_eq!(text(&buffer), "○ ○ ○ ○ ○ ○ ○ ● ○ ○ ○ ○ ○ ○ ○");
+    assert_eq!(fg_of(&buffer, '●'), ACTIVE);
+    // At the ends the run keeps to that side.
+    assert_eq!(
+        text(&render(&colored(100, 100, PaginationStyle::Dots), 9)),
+        "○ ○ ○ ○ ●"
+    );
+    assert_eq!(
+        text(&render(&colored(100, 1, PaginationStyle::Dots), 9)),
+        "● ○ ○ ○ ○"
+    );
+}
+
+proptest! {
+    /// Full at any width that holds `« ‹ [current] › »`: the row fits, the
+    /// current page is the one bracketed, inside a run of consecutive pages;
+    /// page 1 and the last page stand outside the run only with an ellipsis
+    /// for the pages skipped, and are kept or given up together (#1104).
+    #[test]
+    fn full_fits_any_row_that_holds_the_current_page(
+        total in 1u16..400,
+        current_seed in any::<u16>(),
+        max_visible in 1u16..20,
+        extra in 0u16..40,
+    ) {
+        let current = 1 + current_seed % total;
+        let width = current.to_string().len() as u16 + 10 + extra;
+        let p = Pagination::new(total).current(current).max_visible(max_visible);
+        let row = text(&render(&p, width));
+        prop_assert!(row.chars().count() <= width as usize, "{}", row);
+        prop_assert!(row.starts_with("« ‹ ") && row.ends_with(" › »"), "{}", row);
+
+        let mut tokens = parse_pages(&row);
+        let bracketed: Vec<u16> = tokens
+            .iter()
+            .filter_map(|t| match t { Token::Page(n, true) => Some(*n), _ => None })
+            .collect();
+        prop_assert_eq!(bracketed, vec![current], "{}", row);
+
+        // Strip the ends: page 1 and the last page with what stands between
+        // them and the run
+        let mut first = false;
+        if tokens.len() > 1 && tokens[0] == Token::Page(1, false)
+            && matches!(tokens[1], Token::Gap | Token::Page(2, _))
+            && tokens.len() > 2
+        {
+            if tokens[1] == Token::Gap {
+                tokens.drain(..2);
+            } else {
+                tokens.remove(0);
+            }
+            first = true;
+        }
+        let mut last = false;
+        let n = tokens.len();
+        if n > 1 && tokens[n - 1] == Token::Page(total, false) {
+            if tokens[n - 2] == Token::Gap {
+                tokens.truncate(n - 2);
+            } else {
+                tokens.truncate(n - 1);
+            }
+            last = true;
+        }
+        let run: Vec<u16> = tokens
+            .iter()
+            .map(|t| match t { Token::Page(n, _) => Ok(*n), Token::Gap => Err(()) })
+            .collect::<Result<_, _>>()
+            .map_err(|_| TestCaseError::fail(format!("an ellipsis inside the run: {row}")))?;
+        prop_assert!(run.windows(2).all(|w| w[1] == w[0] + 1), "{}", row);
+        prop_assert!(run.contains(&current), "{}", row);
+        // The ends are given up together: when the run reaches neither end,
+        // both are drawn or neither is.
+        if run[0] > 1 && *run.last().unwrap() < total {
+            prop_assert_eq!(first, last, "{}", row);
         }
     }
 }
