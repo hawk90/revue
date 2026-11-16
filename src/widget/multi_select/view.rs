@@ -45,8 +45,8 @@ impl MultiSelect {
         ((max_option_len + 4) as u16).min(max_width)
     }
 
-    /// The header row: its background, the arrow, and the tags (with the
-    /// query while searching) or the placeholder
+    /// The header row: the arrow, and the tags (with the query while
+    /// searching) or the placeholder, on the header background
     fn draw_header(&self, ctx: &mut RenderContext, width: u16, fg: Color, bg: Color) {
         // Draw background for header row
         ctx.fill_row(0, width, Some(fg), Some(bg));
@@ -88,6 +88,10 @@ impl MultiSelect {
                 });
             }
         }
+
+        // The row's background under what was drawn without one (the arrow,
+        // the placeholder, the "..." markers); the tags keep their own
+        ctx.fill_bg_under(0, 0, width, 1, bg);
     }
 
     /// The selected options as `[label]` tags, and `...` in place of the first

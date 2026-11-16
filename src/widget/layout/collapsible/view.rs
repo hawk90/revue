@@ -175,5 +175,11 @@ impl Collapsible {
             cell.bg = content_bg;
             cell
         });
+
+        // The band's background under what was drawn without one (the
+        // border), so the row has no hole in it
+        if let Some(bg) = content_bg {
+            ctx.fill_bg_under(0, y, width, 1, bg);
+        }
     }
 }

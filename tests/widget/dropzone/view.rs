@@ -52,6 +52,33 @@ fn test_drop_zone_style_highlight() {
     assert!(reject.get(0, 0).unwrap().bg.is_some());
     assert_ne!(accept.get(0, 0).unwrap().bg, reject.get(0, 0).unwrap().bg);
 }
+
+#[test]
+fn test_drop_zone_highlight_verdict_keeps_the_fill() {
+    // The verdict's letters sit on the highlight, not in a hole in it
+    // (#982), on an accepted and a rejected drag, and over the zone's own
+    // `bg`, which the highlight covers
+    for (accept, text, fill) in [
+        (true, "Drop here!", Color::rgb(30, 60, 30)),
+        (false, "Cannot drop here", Color::rgb(60, 30, 30)),
+    ] {
+        let mut zone = DropZone::new("Drop")
+            .style(DropZoneStyle::Highlight)
+            .bg(Color::BLUE);
+        zone.set_hovered(true, accept);
+        let buffer = render(&zone, 20, 3);
+        assert!(row(&buffer, 1).contains(text), "{:?}", row(&buffer, 1));
+        for y in 0..3 {
+            for x in 0..20 {
+                assert_eq!(
+                    buffer.get(x, y).unwrap().bg,
+                    Some(fill),
+                    "({x}, {y}) {text}"
+                ); // was None under the letters
+            }
+        }
+    }
+}
 #[test]
 fn test_drop_zone_style_minimal() {
     let mut zone = DropZone::new("Test").style(DropZoneStyle::Minimal);

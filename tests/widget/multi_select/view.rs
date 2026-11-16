@@ -395,7 +395,9 @@ fn a_width_below_three_is_raised_to_three() {
         v.open();
         let b = render_in(&v, 20, 1);
         assert_eq!(cols(&b, 0, 0, 4), "  ▲ ", "{w}");
-        assert_eq!((bg(&b, 2, 0), bg(&b, 3, 0)), (None, None), "{w}");
+        // The arrow is on the header's background (#1502); past the
+        // header nothing is drawn
+        assert_eq!((bg(&b, 2, 0), bg(&b, 3, 0)), (Some(BG), None), "{w}");
         assert_eq!(bg(&b, 1, 0), Some(BG), "{w}");
     }
 }
@@ -791,4 +793,37 @@ fn hidden_tags_are_marked_and_the_mark_keeps_the_arrow() {
     let r = row(&render_in(&s, 20, 1), 0);
     // ("[ab]" and " ..." do not both fit: the mark alone, the arrow kept)
     assert_eq!(r.chars().nth(7), Some('▼'), "{r:?}");
+}
+
+// The header's background under every glyph drawn on it (#1502)
+
+#[test]
+fn test_multi_select_header_background_reaches_its_glyphs() {
+    // The placeholder (cut to "Pic") and the arrow, in a 5-column header
+    let s = multi_select().placeholder("Pick").options(vec!["a"]);
+    let b = render_in(&s, 14, 1);
+    assert_eq!(cols(&b, 0, 0, 5), "Pic ▼");
+    for x in 0..5 {
+        assert_eq!(bg(&b, x, 0), Some(BG), "x={x}"); // was None at the placeholder and the arrow
+    }
+    assert_eq!(bg(&b, 5, 0), None);
+}
+
+#[test]
+fn test_multi_select_overflow_marker_is_on_the_header_background() {
+    // Tags that do not all fit: the "..." markers sit on the header's
+    // background, the tags keep their own
+    let s = multi_select()
+        .options(vec!["alpha", "beta", "gamma", "delta"])
+        .selected_indices(vec![0, 1, 2, 3])
+        .width(16);
+    let w = 20;
+    let b = render_in(&s, w, 1);
+    let row = cols(&b, 0, 0, w);
+    let dots = row.find("...").expect("a marker");
+    for x in dots..dots + 3 {
+        assert_eq!(bg(&b, x as u16, 0), Some(BG), "x={x} in {row:?}"); // was None
+    }
+    let tag = row.find('[').expect("a tag") as u16;
+    assert_eq!(bg(&b, tag, 0), Some(TAG_BG));
 }

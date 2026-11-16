@@ -354,17 +354,8 @@ proptest! {
     #[test]
     fn every_cell_follows_the_model(s in setup()) {
         let buffer = render(&build(&s), s.width, s.height);
-        let (mut actual, mut expected) = (cells(&buffer), model(&s));
-        if s.hovered && s.style == DropZoneStyle::Highlight {
-            // The verdict's cells lose the highlight fill (#982), so
-            // their background is not compared.
-            let y = usize::from(s.height / 2);
-            for x in 2..usize::from(s.width.saturating_sub(2)) {
-                actual[y][x].2 = None;
-                expected[y][x].2 = None;
-            }
-        }
-        prop_assert_eq!(actual, expected, "{:?}", s);
+        // The verdict on the highlight keeps the fill too (#982)
+        prop_assert_eq!(cells(&buffer), model(&s), "{:?}", s);
     }
 
     #[test]

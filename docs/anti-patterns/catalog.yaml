@@ -1173,6 +1173,7 @@ entries:
       - "4.0에서 Element paint는 node의 계산된 style을 받으므로 글자마다 배경을 정하지 않는다 (#1145)."
     observed:
       - "`Buffer::set`이 cell 전체를 바꿔, 박스를 자기 배경으로 칠한 뒤 글자를 쓰는 widget이 자기 배경에 구멍을 냈다. examples/slideshow는 슬라이드 배경 위 글자 칸 279개가 terminal 배경으로 뚫려 있었다. `fill_background_under`와 `fill_box_background`로 고쳤다 (docs/refactor/findings-default-flip.md)."
+      - "박스가 아니라 행 띠(내용 행, header 행)에 배경을 칠하는 widget은 글자마다 `_bg` 변형으로 배경을 넘겨야 했고, 빠뜨린 칸에 구멍이 났다: Collapsible의 왼쪽 테두리(#1039), MultiSelect header의 화살표·placeholder·`...`(#1502), DropZone Highlight의 판정 문구(#982). Accordion·VirtualList는 글자마다 넘겨 맞았다. 조사는 `fill_bg`/`fill_row`를 부르는 widget만 다 보았고, 직접 cell을 칠하는 widget은 #982(4.0)에서 본다. 고침: 띠 단위로 `RenderContext::fill_bg_under`(배경 없는 칸만 채움)를 글자를 다 그린 뒤 부른다."
   - id: REV-LAYOUT-001
     title: "Layout and Paint Interleaving"
     category: layout

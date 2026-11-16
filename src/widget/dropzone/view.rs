@@ -103,15 +103,20 @@ where
         }
     }
 
+    /// The Highlight style's fill while a drag is over the zone: green when
+    /// it can be dropped, red when not
+    fn highlight_bg(&self) -> Color {
+        if self.can_accept_current {
+            Color::rgb(30, 60, 30)
+        } else {
+            Color::rgb(60, 30, 30)
+        }
+    }
+
     /// The Highlight style: the zone filled while a drag is over it.
     fn draw_highlight(&self, ctx: &mut RenderContext, height: u16) {
         if self.hovered {
-            let bg = if self.can_accept_current {
-                Color::rgb(30, 60, 30)
-            } else {
-                Color::rgb(60, 30, 30)
-            };
-            fill_bg(ctx, height, bg);
+            fill_bg(ctx, height, self.highlight_bg());
         }
     }
 
@@ -161,6 +166,11 @@ where
                 ctx.draw_text_clipped_bg(text_x, text_y, display_text, text_color, bg, max_len)
             }
             _ => ctx.draw_text_clipped(text_x, text_y, display_text, text_color, max_len),
+        }
+        // The verdict on the highlight keeps its fill (#982), written without
+        // a background so the widget's own `bg` does not cover it
+        if highlighted {
+            ctx.fill_bg_under(text_x, text_y, max_len, 1, self.highlight_bg());
         }
     }
 
