@@ -516,3 +516,32 @@ fn a_start_without_an_end_spans_one_track() {
         }));
     assert_eq!(rows(&render(&g, 4, 1)), vec!["  aa"]);
 }
+
+/// A start line of `u16::MAX` with no tracks defined counts its tracks
+/// without overflowing (#1372). The tracks it asks for are too narrow to
+/// show: nothing is drawn, inside the area or out of it.
+#[test]
+fn a_start_line_of_u16_max_counts_its_tracks_without_overflowing() {
+    for placement in [
+        GridPlacement {
+            col_start: u16::MAX,
+            row_start: 1,
+            ..Default::default()
+        },
+        GridPlacement {
+            col_start: 1,
+            row_start: u16::MAX,
+            ..Default::default()
+        },
+    ] {
+        let g = Grid::new().item(GridItem::new(Fill('a')).place(placement));
+        let mut buffer = Buffer::new(44, 7);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 1, 40, 5));
+        g.render(&mut ctx);
+        for y in 0..7 {
+            for x in 0..44 {
+                assert_eq!(sym(&buffer, x, y), ' ', "({x},{y}) {placement:?}");
+            }
+        }
+    }
+}
