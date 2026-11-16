@@ -516,3 +516,66 @@ fn a_start_without_an_end_spans_one_track() {
         }));
     assert_eq!(rows(&render(&g, 4, 1)), vec!["  aa"]);
 }
+
+/// A start line of `u16::MAX` with no tracks defined counts its tracks
+/// without overflowing (#1372). The tracks it asks for are too narrow to
+/// show: nothing is drawn, inside the area or out of it.
+#[test]
+fn a_start_line_of_u16_max_counts_its_tracks_without_overflowing() {
+    for placement in [
+        GridPlacement {
+            col_start: u16::MAX,
+            row_start: 1,
+            ..Default::default()
+        },
+        GridPlacement {
+            col_start: 1,
+            row_start: u16::MAX,
+            ..Default::default()
+        },
+    ] {
+        let g = Grid::new().item(GridItem::new(Fill('a')).place(placement));
+        let mut buffer = Buffer::new(44, 7);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 1, 40, 5));
+        g.render(&mut ctx);
+        for y in 0..7 {
+            for x in 0..44 {
+                assert_eq!(sym(&buffer, x, y), ' ', "({x},{y}) {placement:?}");
+            }
+        }
+    }
+}
+
+/// Tracks wider than the area in all end at its last column instead of
+/// wrapping to the first: a fixed track of `u16::MAX` columns fills the area,
+/// and the track after it starts past the area and draws nothing.
+#[test]
+fn tracks_wider_than_the_area_end_at_its_edge() {
+    for gap in [0, 1, u16::MAX] {
+        let g = Grid::new()
+            .columns(vec![TrackSize::Fixed(u16::MAX), TrackSize::Fixed(1)])
+            .rows(vec![TrackSize::Fixed(1)])
+            .gap(gap)
+            .child(Fill('a'))
+            .child(Fill('b'));
+        assert_eq!(
+            rows(&render(&g, 6, 2)),
+            vec!["aaaaaa", "      "],
+            "gap {gap}"
+        );
+    }
+}
+
+/// Many gaps add up past `u16::MAX` without overflowing: a start line of
+/// `u16::MAX` asks for that many tracks, each with a gap of 2.
+#[test]
+fn many_tracks_with_gaps_do_not_overflow() {
+    let g = Grid::new()
+        .gap(2)
+        .item(GridItem::new(Fill('a')).place(GridPlacement {
+            col_start: u16::MAX,
+            row_start: 1,
+            ..Default::default()
+        }));
+    assert!(blank(&render(&g, 40, 5)));
+}

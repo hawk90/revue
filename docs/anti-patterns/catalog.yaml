@@ -1278,6 +1278,7 @@ entries:
     observed:
       - "filetree `depth * indent` overflow (#967), tree 행의 열 합산이 depth × indent가 65535에 가까워지면 overflow(`indent(u16::MAX)`는 depth 1, `indent(40000)`은 depth 2), filetree 크기 열 `width - len - 1` underflow (#855, #968에서 고침), virtuallist `visible_count - 1` underflow (#857, #972에서 고침). 목록은 #978."
       - "layout engine flex의 `.sum::<u16>()`이 검사 없이 더한다 (#871)."
+      - "Grid는 사용자가 정하는 선 번호와 track 크기를 검사 없이 더했다: track이 정의되지 않았을 때 `col_start + 1`(#1372), track 위치의 크기·gap 누적, gap 총합 `(개수 - 1) * gap`, `GridPlacement::cell`/`col_span`/`row_span`/`area`의 끝 선. 모두 포화 연산으로 고쳤고, 영역보다 넓은 track은 영역 끝에서 멈춘다."
   - id: REV-LAYOUT-007
     title: "Hidden Widgets Still Participate"
     category: layout

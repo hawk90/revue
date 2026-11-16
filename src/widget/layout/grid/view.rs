@@ -21,9 +21,11 @@ impl View for Grid {
 
         // Determine grid dimensions
         let col_count = track_count(&self.columns, &self.items, |p| {
-            p.col_end.max(p.col_start + 1)
+            p.col_end.max(p.col_start.saturating_add(1))
         });
-        let row_count = track_count(&self.rows, &self.items, |p| p.row_end.max(p.row_start + 1));
+        let row_count = track_count(&self.rows, &self.items, |p| {
+            p.row_end.max(p.row_start.saturating_add(1))
+        });
 
         // Build track definitions
         let col_tracks = track_defs(&self.columns, self.auto_cols, col_count);
