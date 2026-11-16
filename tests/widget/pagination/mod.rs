@@ -843,7 +843,8 @@ mod edge_cases {
     #[test]
     fn test_pagination_all_styles() {
         let styles = [
-            (revue::widget::PaginationStyle::Full, "« ‹ [1] 2 3 4 5 6 7"),
+            // Full narrows its page window to fit the row (#1104)
+            (revue::widget::PaginationStyle::Full, "« ‹ [1] 2 3 … 10 › »"),
             (revue::widget::PaginationStyle::Simple, "← Page 1 of 10 →"),
             (revue::widget::PaginationStyle::Compact, "1/10"),
             (revue::widget::PaginationStyle::Dots, "● ○ ○ ○ ○ ○ ○ ○ ○ ○"),
@@ -852,7 +853,7 @@ mod edge_cases {
         for (style, want) in styles {
             let pagination = Pagination::new(10).style(style);
             let buffer = draw(&pagination, 20, 10);
-            // Every style is one row, cut at the area's edge
+            // Every style is one row, cut at the area's edge if it does not fit
             assert_eq!(row(&buffer, 0), want, "{style:?}");
             assert!((1..10).all(|y| row(&buffer, y).is_empty()), "{style:?}");
         }
