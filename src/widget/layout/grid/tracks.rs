@@ -17,7 +17,8 @@ impl Grid {
             return vec![];
         }
 
-        let total_gaps = (tracks.len().saturating_sub(1)) as u16 * gap;
+        let gaps = u16::try_from(tracks.len().saturating_sub(1)).unwrap_or(u16::MAX);
+        let total_gaps = gaps.saturating_mul(gap);
         let available = available.saturating_sub(total_gaps);
 
         // First pass: calculate fixed sizes and collect fr units
@@ -72,9 +73,11 @@ impl Grid {
         positions.push(pos);
 
         for (i, &size) in sizes.iter().enumerate() {
-            pos += size;
+            // Saturating: tracks wider than the area in all (a large fixed
+            // size, many gaps) end at the last column, not wrap to the first.
+            pos = pos.saturating_add(size);
             if i < sizes.len() - 1 {
-                pos += gap;
+                pos = pos.saturating_add(gap);
             }
             positions.push(pos);
         }

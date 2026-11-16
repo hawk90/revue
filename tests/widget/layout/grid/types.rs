@@ -363,3 +363,20 @@ fn test_grid_item_full_placement() {
     assert_eq!(item.placement.row_start, 1);
     assert_eq!(item.placement.row_end, 3);
 }
+
+/// The placement constructors saturate the end line instead of overflowing
+/// (#1372): an end past `u16::MAX` is `u16::MAX`.
+#[test]
+fn test_grid_placement_constructors_saturate_the_end_line() {
+    use revue::widget::GridPlacement;
+    let m = u16::MAX;
+    let cell = GridPlacement::cell(m, m);
+    assert_eq!((cell.col_end, cell.row_end), (m, m));
+    assert_eq!(GridPlacement::col_span(m - 1, 5).col_end, m);
+    assert_eq!(GridPlacement::row_span(m - 1, 5).row_end, m);
+    let area = GridPlacement::area(m - 1, m - 2, 5, 5);
+    assert_eq!((area.col_end, area.row_end), (m, m));
+    // Below the top the sums are unchanged.
+    let area = GridPlacement::area(2, 3, 4, 5);
+    assert_eq!((area.col_end, area.row_end), (6, 8));
+}

@@ -43,9 +43,9 @@ impl GridPlacement {
     pub fn cell(col: u16, row: u16) -> Self {
         Self {
             col_start: col,
-            col_end: col + 1,
+            col_end: col.saturating_add(1),
             row_start: row,
-            row_end: row + 1,
+            row_end: row.saturating_add(1),
         }
     }
 
@@ -53,7 +53,7 @@ impl GridPlacement {
     pub fn col_span(col: u16, span: u16) -> Self {
         Self {
             col_start: col,
-            col_end: col + span,
+            col_end: col.saturating_add(span),
             row_start: 0,
             row_end: 0,
         }
@@ -65,7 +65,7 @@ impl GridPlacement {
             col_start: 0,
             col_end: 0,
             row_start: row,
-            row_end: row + span,
+            row_end: row.saturating_add(span),
         }
     }
 
@@ -73,9 +73,9 @@ impl GridPlacement {
     pub fn area(col_start: u16, row_start: u16, col_span: u16, row_span: u16) -> Self {
         Self {
             col_start,
-            col_end: col_start + col_span,
+            col_end: col_start.saturating_add(col_span),
             row_start,
-            row_end: row_start + row_span,
+            row_end: row_start.saturating_add(row_span),
         }
     }
 

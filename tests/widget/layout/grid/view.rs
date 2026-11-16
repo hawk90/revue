@@ -545,3 +545,37 @@ fn a_start_line_of_u16_max_counts_its_tracks_without_overflowing() {
         }
     }
 }
+
+/// Tracks wider than the area in all end at its last column instead of
+/// wrapping to the first: a fixed track of `u16::MAX` columns fills the area,
+/// and the track after it starts past the area and draws nothing.
+#[test]
+fn tracks_wider_than_the_area_end_at_its_edge() {
+    for gap in [0, 1, u16::MAX] {
+        let g = Grid::new()
+            .columns(vec![TrackSize::Fixed(u16::MAX), TrackSize::Fixed(1)])
+            .rows(vec![TrackSize::Fixed(1)])
+            .gap(gap)
+            .child(Fill('a'))
+            .child(Fill('b'));
+        assert_eq!(
+            rows(&render(&g, 6, 2)),
+            vec!["aaaaaa", "      "],
+            "gap {gap}"
+        );
+    }
+}
+
+/// Many gaps add up past `u16::MAX` without overflowing: a start line of
+/// `u16::MAX` asks for that many tracks, each with a gap of 2.
+#[test]
+fn many_tracks_with_gaps_do_not_overflow() {
+    let g = Grid::new()
+        .gap(2)
+        .item(GridItem::new(Fill('a')).place(GridPlacement {
+            col_start: u16::MAX,
+            row_start: 1,
+            ..Default::default()
+        }));
+    assert!(blank(&render(&g, 40, 5)));
+}
