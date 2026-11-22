@@ -118,11 +118,11 @@ tracing = { version = "0.1.44", optional = true }
 # ═══════════════════════════════════════════
 # QR Code & HTTP & System (optional)
 # ═══════════════════════════════════════════
-qrcode = { version = "0.14.1", optional = true }
-sysinfo = { version = "0.40.3", optional = true }
+qrcode = { version = "0.15.0", optional = true }
+sysinfo = { version = "0.40.4", optional = true }
 reqwest = { version = "0.13.5", features = ["blocking"], optional = true }
 similar = { version = "3.2.1", optional = true }
-regex = { version = "1.13.1", optional = true }
+regex = { version = "1.13.2", optional = true }
 
 # ═══════════════════════════════════════════
 # Error Handling
@@ -156,7 +156,7 @@ proptest = "1.12.0"
 tempfile = "3.27.0"
 serial_test = "4.0"
 yaml-rust2 = { version = "0.13.0", default-features = false }
-trybuild = "1.0.122"
+trybuild = "1.0.125"
 # A terminal emulator: tests feed it the bytes revue writes and compare its
 # screen with the buffer (#1164)
 vt100 = "0.18.1"
