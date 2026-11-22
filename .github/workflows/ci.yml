@@ -144,7 +144,7 @@ jobs:
         with:
           cache: false
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
-      - uses: taiki-e/install-action@0a0c50fe05aa033ec260d3cad6f57802a568e4d6 # cargo-nextest
+      - uses: taiki-e/install-action@04ea90b020813c5982f133f058f43ea6eb8b27ff # cargo-nextest
       # Report every failing test, not just the first: a platform-specific
       # break (Windows above all) usually fails several tests at once.
       - run: cargo nextest run --all-features --tests --no-fail-fast
@@ -221,7 +221,7 @@ jobs:
           components: llvm-tools-preview
           cache: false
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
-      - uses: taiki-e/install-action@c2e5d2ce8920c881761c4cabb41434daa1f95687 # cargo-llvm-cov
+      - uses: taiki-e/install-action@41e135bca37b18b5a9cc134855b5b3bccbedbf26 # cargo-llvm-cov
       # Codecov's own format carries llvm-cov's region counts, so a line where
       # only some regions ran (one side of an `if`, a short-circuited `&&`)
       # shows as partial. lcov from a stable toolchain has line counts only.
