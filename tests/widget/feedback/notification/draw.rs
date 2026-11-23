@@ -52,13 +52,15 @@ fn test_center_timer_bar_drains() {
         .position(NotificationPosition::TopLeft)
         .width(24);
     c.push(Notification::info("Timed").duration(4));
+    // A fresh timer fills all 22 cells between the corners (#1048: it
+    // started two cells short)
     let full = row(&render(&c, 50, 10), 2);
-    assert_eq!(full.matches('━').count(), 20);
+    assert_eq!(&full[..24 * 3], format!("╰{}╯", "━".repeat(22)));
 
     c.tick();
     c.tick();
     let half = row(&render(&c, 50, 10), 2);
-    assert_eq!(half.matches('━').count(), 10);
+    assert_eq!(half.matches('━').count(), 11);
 
     let c = c.show_timer(false);
     let off = row(&render(&c, 50, 10), 2);
@@ -185,6 +187,8 @@ fn test_center_row_colors() {
 fn test_center_selected_border_is_white() {
     let mut c = full();
     c.select_next();
+    // One tick drains a quarter of the timer, so its last cells are drained
+    c.tick();
     let buffer = render(&c, 30, 8);
     let white = Some(Color::WHITE);
     for (x, y) in [(0, 0), (5, 0), (23, 0), (0, 1), (23, 3), (0, 5), (23, 5)] {
@@ -298,9 +302,9 @@ proptest! {
     }
 
     /// The timer drains from the right as the notification ticks: its
-    /// filled cells are a run from the left that never grows, and it stays
-    /// within three cells of the remaining share of the border. (A fresh
-    /// timer is not drawn full: #1048.)
+    /// filled cells are a run from the left that never grows, and they are
+    /// the remaining share of the border rounded, so a fresh timer is full
+    /// (#1048).
     #[test]
     fn prop_center_timer_drains(width in 20u16..60, duration in 1u32..30) {
         let mut c = notification_center().position(NotificationPosition::TopLeft).width(width);
@@ -313,7 +317,10 @@ proptest! {
             prop_assert!(inner[filled..].iter().all(|&ch| ch == '─'), "{}", line);
             prop_assert!(filled <= last, "tick {}: {}", tick, line);
             let share = (duration - tick) as f64 / duration as f64 * (width - 2) as f64;
-            prop_assert!((filled as f64 - share).abs() <= 3.0, "tick {}: {}", tick, line);
+            prop_assert!((filled as f64 - share).abs() <= 0.5 + 1e-9, "tick {}: {}", tick, line);
+            if tick == 0 {
+                prop_assert_eq!(filled, width as usize - 2);
+            }
             last = filled;
             c.tick();
         }

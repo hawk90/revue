@@ -396,3 +396,25 @@ fn test_notification_moves_follow_the_screen_at_the_bottom() {
     c.handle_key(&Key::Down);
     assert_eq!(selected_messages(&c), ["2"]);
 }
+
+/// At the top positions the newest is the top box. Up and Down follow the
+/// screen there too: Down moves one box down, not to the next newer
+/// notification, which is drawn above (#1048; fixed with #882's move to the
+/// screen order, pinned here)
+#[test]
+fn test_notification_down_moves_down_the_screen_at_the_top() {
+    let c = &mut center_with(3);
+    // Drawn top to bottom: 3, 2, 1
+    c.handle_key(&Key::Up);
+    assert_eq!(selected_messages(c), ["1"]);
+    c.handle_key(&Key::Up);
+    assert_eq!(selected_messages(c), ["2"]);
+    c.handle_key(&Key::Up);
+    assert_eq!(selected_messages(c), ["3"]);
+    c.handle_key(&Key::Down);
+    assert_eq!(selected_messages(c), ["2"]);
+    c.handle_key(&Key::Down);
+    assert_eq!(selected_messages(c), ["1"]);
+    c.handle_key(&Key::Down);
+    assert_eq!(selected_messages(c), ["3"]);
+}
