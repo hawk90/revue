@@ -124,6 +124,33 @@ impl Alert {
         }
     }
 
+    /// The message's lines from row `y`, one per row; the first is cut to
+    /// `first_w` columns (it may share its row with the dismiss button), the
+    /// others to `max_w`. Rows past the context's area are cut by `set`.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_message(
+        &self,
+        ctx: &mut RenderContext,
+        x: u16,
+        y: u16,
+        first_w: u16,
+        max_w: u16,
+        fg: Color,
+        bg: Option<Color>,
+    ) {
+        for (i, line) in self.message_lines().enumerate() {
+            let Ok(dy) = u16::try_from(i) else { break };
+            let Some(ly) = y.checked_add(dy).filter(|&ly| ly < ctx.area.height) else {
+                break;
+            };
+            let w = if i == 0 { first_w } else { max_w };
+            match bg {
+                Some(bg) => ctx.draw_text_clipped_bg(x, ly, line, fg, bg, w),
+                None => Self::draw_run(ctx, x, ly, line, w, fg, false),
+            }
+        }
+    }
+
     fn render_filled(
         &self,
         ctx: &mut RenderContext,
@@ -178,15 +205,16 @@ impl Alert {
         if let Some(ref title) = self.title {
             ctx.draw_text_clipped_bg_bold(text_x, y, title, Color::WHITE, bg_color, first_row_w);
             y += 1;
-            ctx.draw_text_clipped_bg(text_x, y, &self.message, SECONDARY_TEXT, bg_color, max_w);
+            self.draw_message(ctx, text_x, y, max_w, max_w, SECONDARY_TEXT, Some(bg_color));
         } else {
-            ctx.draw_text_clipped_bg(
+            self.draw_message(
+                ctx,
                 text_x,
                 y,
-                &self.message,
-                Color::WHITE,
-                bg_color,
                 first_row_w,
+                max_w,
+                Color::WHITE,
+                Some(bg_color),
             );
         }
 
@@ -220,21 +248,17 @@ impl Alert {
             0
         };
 
-        // Title
+        // Title, then the message's lines below it; without a title the
+        // message starts on the dismiss button's row
+        let text_x = content_x + icon_offset;
+        let max_w = content_width - icon_offset;
+        let first_row_w = max_w.saturating_sub(self.dismiss_reserve());
         if let Some(ref title) = self.title {
-            let title_x = content_x + icon_offset;
-            let max_w = content_width - icon_offset;
-            let title_w = max_w.saturating_sub(self.dismiss_reserve());
-            Self::draw_run(ctx, title_x, y, title, title_w, text_fg, true);
+            Self::draw_run(ctx, text_x, y, title, first_row_w, text_fg, true);
             y += 1;
-
-            // Message
-            let msg_x = content_x + icon_offset;
-            Self::draw_run(ctx, msg_x, y, &self.message, max_w, MUTED_TEXT, false);
+            self.draw_message(ctx, text_x, y, max_w, max_w, MUTED_TEXT, None);
         } else {
-            let msg_x = content_x + icon_offset;
-            let max_w = (content_width - icon_offset).saturating_sub(self.dismiss_reserve());
-            Self::draw_run(ctx, msg_x, y, &self.message, max_w, text_fg, false);
+            self.draw_message(ctx, text_x, y, first_row_w, max_w, text_fg, None);
         }
 
         // Dismiss button
@@ -257,22 +281,15 @@ impl Alert {
             x += 2;
         }
 
-        // Title or message
+        // Title on the first row and the message's lines below it, or the
+        // message from the first row; every line starts after the icon
+        let first_w = first_row_end.saturating_sub(x);
+        let max_w = area.width.saturating_sub(x);
         if let Some(ref title) = self.title {
-            // Title on first line
-            let title_w = first_row_end.saturating_sub(x);
-            Self::draw_run(ctx, x, y, title, title_w, accent_color, true);
-
-            // Message on second line
-            if area.height > 1 {
-                let msg_x: u16 = if self.show_icon { 2 } else { 0 };
-                let msg_w = area.width.saturating_sub(msg_x);
-                Self::draw_run(ctx, msg_x, y + 1, &self.message, msg_w, MUTED_TEXT, false);
-            }
+            Self::draw_run(ctx, x, y, title, first_w, accent_color, true);
+            self.draw_message(ctx, x, y + 1, max_w, max_w, MUTED_TEXT, None);
         } else {
-            // Just message
-            let msg_w = first_row_end.saturating_sub(x);
-            Self::draw_run(ctx, x, y, &self.message, msg_w, text_fg, false);
+            self.draw_message(ctx, x, y, first_w, max_w, text_fg, None);
         }
 
         // Dismiss button

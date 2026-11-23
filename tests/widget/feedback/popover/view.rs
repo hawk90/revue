@@ -237,6 +237,88 @@ fn test_popover_max_width_zero_wraps_at_forty() {
     assert_eq!(symbol(&auto, 9, 6), '└');
 }
 
+/// The cells of a minimal popover's box: those in its background color
+fn minimal_box(b: &Buffer) -> Vec<(u16, u16)> {
+    let bg = Some(Color::rgb(40, 40, 45));
+    (0..b.height())
+        .flat_map(|y| (0..b.width()).map(move |x| (x, y)))
+        .filter(|&(x, y)| b.get(x, y).unwrap().bg == bg)
+        .collect()
+}
+
+/// The Minimal style has no border, but it still draws its title (#1046):
+/// bold, on the box's first row one column in, with the content on the rows
+/// below. The box was sized for the title and drew only the content.
+#[test]
+fn test_minimal_popover_draws_its_title() {
+    let p = Popover::new("Hi")
+        .title("A rather long title")
+        .popover_style(PopoverStyle::Minimal)
+        .anchor(20, 5)
+        .open(true);
+    let b = render(&p);
+    // Title 19 + 2, plus the padding 2 = 23 wide; title and content rows,
+    // and the minimum height of 3. Centered under the anchor at x = 9.
+    let cells = minimal_box(&b);
+    assert_eq!(cells.len(), 23 * 3);
+    assert_eq!(cells.first(), Some(&(9, 6)));
+    assert_eq!(cells.last(), Some(&(31, 8)));
+    assert_eq!(&row(&b, 6)[10..32], "A rather long title   ");
+    assert_eq!(&row(&b, 7)[10..32], "Hi                    ");
+    assert!(row(&b, 8).trim().is_empty());
+    assert!(b.get(10, 6).unwrap().modifier.contains(Modifier::BOLD));
+    assert!(!b.get(10, 7).unwrap().modifier.contains(Modifier::BOLD));
+}
+
+/// Each line of a minimal popover's content goes below the title, and the
+/// box grows a row for it.
+#[test]
+fn test_minimal_popover_title_rows() {
+    let p = Popover::new("a\nb\nc")
+        .title("T")
+        .popover_style(PopoverStyle::Minimal)
+        .anchor(20, 5)
+        .open(true);
+    let b = render(&p);
+    let cells = minimal_box(&b);
+    let (top, bottom) = (cells[0].1, cells.last().unwrap().1);
+    assert_eq!((top, bottom), (6, 9));
+    let lines: Vec<String> = (6..10).map(|y| row(&b, y).trim().to_string()).collect();
+    assert_eq!(lines, ["T", "a", "b", "c"]);
+}
+
+/// A title wider than a minimal box is cut one column before its right
+/// edge, like the content, and never drawn past the box.
+#[test]
+fn test_minimal_popover_cuts_a_wide_title() {
+    let p = Popover::new("Hi")
+        .title("A rather long title")
+        .popover_style(PopoverStyle::Minimal)
+        .anchor(5, 1)
+        .open(true);
+    let mut b = Buffer::new(12, 8);
+    p.render(&mut RenderContext::new(&mut b, Rect::new(0, 0, 12, 8)));
+    let cells = minimal_box(&b);
+    let (x0, y0) = cells[0];
+    let x1 = cells.iter().map(|c| c.0).max().unwrap();
+    // Every glyph is inside the box, and the last column of the box is blank
+    for y in 0..8 {
+        for x in 0..12 {
+            let c = b.get(x, y).unwrap();
+            if c.symbol != ' ' {
+                assert!(cells.contains(&(x, y)), "({x}, {y}) {:?}", c.symbol);
+                assert!(x < x1, "({x}, {y}) {:?}", c.symbol);
+            }
+        }
+    }
+    let title: String = (x0 + 1..x1).map(|x| symbol(&b, x, y0)).collect();
+    assert!(
+        "A rather long title".starts_with(title.trim_end()),
+        "{title:?}"
+    );
+    assert!(!title.trim().is_empty());
+}
+
 #[test]
 fn test_popover_long_title_sets_the_width() {
     let p = Popover::new("Hi")

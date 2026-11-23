@@ -505,6 +505,9 @@ proptest! {
         let buffer = screen(&sb, w, h);
 
         let top = if header { 2 } else { 0 };
+        // The footer is left out when its text row would be one of the
+        // header's (#1500)
+        let footer = footer && h > top;
         let bottom = h - if footer { 2 } else { 0 };
         // The item rows follow the hover (#882): one draw after the moves
         // scrolls from the top just far enough to show it. Nothing is
@@ -546,8 +549,7 @@ proptest! {
         // A one-column bar is all border
         if header && cw > 1 {
             prop_assert_eq!(buffer.get(0, 1).unwrap().symbol, '─');
-            // A footer in a short bar draws its separator over the header.
-            if !is_collapsed && cw >= 6 && (!footer || h >= 4) {
+            if !is_collapsed && cw >= 6 {
                 prop_assert!(super::row(&buffer, 0).contains("Head"));
             }
         }
@@ -641,6 +643,48 @@ fn test_sidebar_hover_skips_dividers() {
     assert_eq!(sb.hovered_index(), 0);
     sb.hover_down();
     assert_eq!(sb.hovered_index(), 2);
+}
+
+// ── Header and footer in a short bar (#1500) ──────────────────────────
+
+fn head_foot_bar() -> Sidebar {
+    Sidebar::new()
+        .expanded_width(10)
+        .header("Head")
+        .footer("Foot")
+        .items(vec![SidebarItem::new("a", "A")])
+}
+
+/// In a bar too short for both, the footer is left out instead of drawn over
+/// the header (its separator replaced the header text, and its text was
+/// drawn on the header's separator).
+#[test]
+fn test_sidebar_short_bar_footer_leaves_the_header() {
+    let b = screen(&head_foot_bar(), 10, 2);
+    assert_eq!(super::row(&b, 0), "   Head  │");
+    assert_eq!(super::row(&b, 1), "─────────│");
+}
+
+/// Three rows hold both: the two separators share row 1, and no item row is
+/// left between them.
+#[test]
+fn test_sidebar_three_rows_hold_header_and_footer() {
+    let b = screen(&head_foot_bar(), 10, 3);
+    assert_eq!(super::row(&b, 0), "   Head  │");
+    assert_eq!(super::row(&b, 1), "─────────│");
+    assert_eq!(super::row(&b, 2), "   Foot  │");
+}
+
+/// Without a header, two rows hold the footer: its separator and its text.
+#[test]
+fn test_sidebar_footer_alone_in_two_rows() {
+    let sb = Sidebar::new()
+        .expanded_width(10)
+        .footer("Foot")
+        .items(vec![SidebarItem::new("a", "A")]);
+    let b = screen(&sb, 10, 2);
+    assert_eq!(super::row(&b, 0), "─────────│");
+    assert_eq!(super::row(&b, 1), "   Foot  │");
 }
 
 // ── Scroll and hover (#882, #975) ──────────────────────────────────────

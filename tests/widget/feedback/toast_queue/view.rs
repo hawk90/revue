@@ -61,6 +61,26 @@ fn test_toast_queue_colors() {
     assert!(!row(&b, 6).contains('×'));
 }
 
+/// A message as wide as the toast stops one blank column before the close
+/// mark instead of losing a character under it (#1380); without the mark it
+/// runs up to the right border
+#[test]
+fn test_toast_queue_message_leaves_the_close_mark_its_columns() {
+    let row_of = |dismissible: bool| {
+        let mut q = ToastQueue::new()
+            .position(ToastPosition::TopLeft)
+            .toast_width(16);
+        q.push_entry(
+            ToastEntry::new("abcdefghijklmnop", ToastLevel::Info).dismissible(dismissible),
+        );
+        q.tick();
+        row(&render(&q, 20, 5), 2)
+    };
+    let icon = ToastLevel::Info.icon();
+    assert_eq!(row_of(true), format!(" │ {icon} abcdefgh × │   "));
+    assert_eq!(row_of(false), format!(" │ {icon} abcdefghijk│   "));
+}
+
 #[test]
 fn test_toast_queue_close_mark_needs_eleven_columns() {
     for (width, shown) in [(10, false), (11, true)] {
@@ -253,7 +273,7 @@ proptest! {
     /// bottom the stack ends one row above the edge.
     #[test]
     fn prop_toast_queue_stack_follows_the_model(
-        toasts in prop::collection::vec((level(), "[a-z]{1,8}", any::<bool>()), 1..5),
+        toasts in prop::collection::vec((level(), "[a-z]{1,30}", any::<bool>()), 1..5),
         pos in position(),
         up in any::<bool>(),
         gap in 0u16..3,
@@ -293,7 +313,11 @@ proptest! {
             let rows = [
                 format!("╭{}╮", "─".repeat(tw - 2)),
                 {
-                    let mut r: Vec<char> = format!("│ {} {:<w$}│", level.icon(), msg, w = tw - 5)
+                    // A dismissible toast's message stops one blank column
+                    // before the close mark (#1380)
+                    let room = tw - if *dismissible { 8 } else { 5 };
+                    let shown: String = msg.chars().take(room).collect();
+                    let mut r: Vec<char> = format!("│ {} {:<w$}│", level.icon(), shown, w = tw - 5)
                         .chars()
                         .collect();
                     if *dismissible {
