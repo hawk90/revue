@@ -50,7 +50,9 @@ impl EmptyStateType {
 /// Empty state visual variant
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum EmptyStateVariant {
-    /// Full display with border (default)
+    /// Full display (default): the icon, title, description and action
+    /// stacked and centered in the area, without a border of its own (put
+    /// it in a [`Border`](crate::widget::Border) for one)
     #[default]
     Full,
     /// Compact inline display
