@@ -94,10 +94,13 @@ pub fn compute_flex(
 
     if total_grow > 0.0 && remaining > 0 {
         // Distribute remaining space proportionally by flex_grow
-        let mut grow_distributed: u16 = 0;
         let grow_children: Vec<usize> = (0..children.len())
             .filter(|&i| child_flex_grows[i] > 0.0)
             .collect();
+        // Rounded at the cumulative boundaries, so equal grows differ by at
+        // most a cell instead of the last child taking the rest (#1514)
+        let grows: Vec<f32> = grow_children.iter().map(|&i| child_flex_grows[i]).collect();
+        let shares = crate::layout::split_by_weight(remaining, &grows);
 
         for (gi, &i) in grow_children.iter().enumerate() {
             let child_id = children[i];
@@ -106,18 +109,11 @@ pub fn compute_flex(
                 None => continue,
             };
 
-            let share = if gi == grow_children.len() - 1 {
-                // Last grow child gets the remainder to avoid rounding errors
-                remaining.saturating_sub(grow_distributed)
-            } else {
-                ((remaining as f32) * child_flex_grows[i] / total_grow).clamp(0.0, u16::MAX as f32)
-                    as u16
-            };
+            let share = shares[gi];
 
             let size = child_main_sizes[i].saturating_add(share);
             let size = apply_main_constraints(child, direction, size, available_main);
             child_main_sizes[i] = size;
-            grow_distributed = grow_distributed.saturating_add(share);
         }
 
         // Auto children without flex_grow get 0 extra space when flex_grow is active

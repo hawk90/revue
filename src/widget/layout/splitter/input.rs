@@ -72,18 +72,20 @@ impl Splitter {
         self.active_divider = None;
     }
 
-    /// Resize by delta
+    /// Resize by delta: `delta` hundredths of ratio move from the pane after
+    /// the divider to the pane before it (or back), as far as the giving
+    /// pane has ratio left. The two ratios keep their sum, so the panes that
+    /// do not touch the divider keep their share (#885); each pane's
+    /// `min_size` and `max_size` still hold in cells when it is drawn.
     pub fn resize(&mut self, delta: i16) {
         if let Some((before, after)) = self.active_divider.and_then(|d| self.divider_panes(d)) {
-            let current_ratio = self.panes[before].ratio;
-            let next_ratio = self.panes[after].ratio;
+            let current_ratio = self.panes[before].ratio.max(0.0);
+            let next_ratio = self.panes[after].ratio.max(0.0);
 
-            let change = delta as f32 * 0.01;
-            let new_current = (current_ratio + change).clamp(0.1, 0.9);
-            let new_next = (next_ratio - change).clamp(0.1, 0.9);
+            let change = (f32::from(delta) * 0.01).clamp(-current_ratio, next_ratio);
 
-            self.panes[before].ratio = new_current;
-            self.panes[after].ratio = new_next;
+            self.panes[before].ratio = current_ratio + change;
+            self.panes[after].ratio = next_ratio - change;
         }
     }
 

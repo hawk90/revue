@@ -215,3 +215,21 @@ fn test_calculate_tracks_gap_exceeds_available() {
     assert_eq!(result[0], 0);
     assert_eq!(result[1], 0);
 }
+
+/// Fr tracks use all the space left and equal ones differ by at most a
+/// cell: each share was truncated, so four tracks in 6 got 1, 1, 1, 1 and
+/// two cells went unused (#1514)
+#[test]
+fn test_fr_tracks_use_all_the_space() {
+    let g = Grid::new();
+    let four = [TrackSize::Fr(1.0); 4];
+    assert_eq!(
+        g.test_calculate_tracks(6, &four, TrackSize::Fr(1.0), 0),
+        [2, 1, 2, 1]
+    );
+    let mixed = [TrackSize::Fixed(2), TrackSize::Fr(1.0), TrackSize::Fr(2.0)];
+    assert_eq!(
+        g.test_calculate_tracks(11, &mixed, TrackSize::Fr(1.0), 0),
+        [2, 3, 6]
+    );
+}

@@ -48,18 +48,25 @@ impl Grid {
         }
 
         // Second pass: distribute remaining space to fr units
+        // Rounded at the cumulative boundaries, so the fr tracks use all the
+        // space left and equal ones differ by at most a cell; truncating each
+        // share left cells unused at the end (#1514)
         if total_fr > 0.0 {
-            let per_fr = (remaining as f32) / total_fr;
-            for (i, track) in tracks.iter().enumerate() {
-                match track {
-                    TrackSize::Fr(fr) => {
-                        sizes[i] = (per_fr * fr) as u16;
-                    }
+            let fr_tracks: Vec<(usize, f32)> = tracks
+                .iter()
+                .enumerate()
+                .filter_map(|(i, track)| match track {
+                    TrackSize::Fr(fr) => Some((i, *fr)),
                     TrackSize::Auto | TrackSize::MinContent | TrackSize::MaxContent => {
-                        sizes[i] = per_fr as u16;
+                        Some((i, 1.0))
                     }
-                    _ => {}
-                }
+                    _ => None,
+                })
+                .collect();
+            let weights: Vec<f32> = fr_tracks.iter().map(|&(_, w)| w).collect();
+            let shares = crate::layout::split_by_weight(remaining, &weights);
+            for (&(i, _), size) in fr_tracks.iter().zip(shares) {
+                sizes[i] = size;
             }
         }
 

@@ -453,4 +453,26 @@ mod tests {
         let engine = LayoutEngine::new();
         assert!(engine.try_layout(DomId::new(999)).is_none());
     }
+    #[test]
+    fn equal_flex_grow_children_differ_by_at_most_a_cell() {
+        // The last child took the remainder: 1, 1, 1, 3 (#1514)
+        let mut engine = LayoutEngine::new();
+        let mut cs = Style::default();
+        cs.layout.flex_grow = 1.0;
+        let ids: Vec<DomId> = (1..=4).map(DomId::new).collect();
+        for id in &ids {
+            engine.create_node(*id, &cs).unwrap();
+        }
+        let mut ps = Style::default();
+        ps.layout.display = Display::Flex;
+        ps.layout.flex_direction = FlexDirection::Row;
+        let parent = DomId::new(9);
+        engine.create_node_with_children(parent, &ps, &ids).unwrap();
+        engine.compute(parent, 6, 1).unwrap();
+        let w: Vec<u16> = ids
+            .iter()
+            .map(|id| engine.layout(*id).unwrap().width)
+            .collect();
+        assert_eq!(w, [2, 1, 2, 1]);
+    }
 }

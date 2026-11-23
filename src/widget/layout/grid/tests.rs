@@ -164,17 +164,18 @@ fn test_grid_with_explicit_placement() {
 
     use crate::widget::traits::View;
     View::render(&g, &mut ctx);
-    // Tracks are 13 wide (40 / 3) and 6 tall (20 / 3)
+    // 40 columns in three tracks of 13, 14 and 13, and 20 rows in 7, 6 and
+    // 7: each track ends at its share rounded (#1514)
     let text = |x: u16, y: u16, n: u16| -> String {
         (x..x + n)
             .map(|x| buffer.get(x, y).unwrap().symbol)
             .collect()
     };
     assert_eq!(text(0, 0, 6), "Header");
-    assert_eq!(text(0, 6, 7), "Sidebar");
-    assert_eq!(text(13, 6, 7), "Content");
+    assert_eq!(text(0, 7, 7), "Sidebar");
+    assert_eq!(text(13, 7, 7), "Content");
     // The sidebar's second row is empty, and nothing else was drawn there
-    assert_eq!(text(0, 12, 13), " ".repeat(13));
+    assert_eq!(text(0, 13, 13), " ".repeat(13));
 }
 
 #[test]

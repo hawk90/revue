@@ -5,9 +5,10 @@ use revue::layout::Rect;
 use revue::widget::{pane, splitter, Splitter};
 
 fn widths(s: &Splitter) -> Vec<u16> {
-    // 42 columns: 41 for the panes plus a one-column divider. An odd pane
-    // budget keeps every ratio used below away from a rounding boundary.
-    s.pane_areas(Rect::new(0, 0, 42, 10))
+    // 43 columns: 42 for the panes plus a one-column divider, so no ratio
+    // used below lands on half a cell: 0.5 gives 21, 0.55 23.1, 0.6 25.2,
+    // 0.7 29.4 (each pane its share rounded, #1514)
+    s.pane_areas(Rect::new(0, 0, 43, 10))
         .iter()
         .map(|(_, r)| r.width)
         .collect()
@@ -21,7 +22,7 @@ fn two_panes() -> Splitter {
 fn test_splitter_resize_without_active_divider_does_nothing() {
     let mut s = two_panes();
     s.resize(10);
-    assert_eq!(widths(&s), vec![20, 21]);
+    assert_eq!(widths(&s), vec![21, 21]);
 }
 
 #[test]
@@ -29,9 +30,9 @@ fn test_splitter_resize_moves_divider() {
     let mut s = two_panes();
     s.start_resize(0);
     s.resize(10);
-    assert_eq!(widths(&s), vec![24, 17]);
+    assert_eq!(widths(&s), vec![25, 17]);
     s.resize(-20);
-    assert_eq!(widths(&s), vec![16, 25]);
+    assert_eq!(widths(&s), vec![17, 25]);
 }
 
 #[test]
@@ -39,8 +40,9 @@ fn test_splitter_resize_ratio_is_clamped() {
     let mut s = two_panes();
     s.start_resize(0);
     s.resize(100);
-    // Ratios clamp at 0.9 / 0.1
-    assert_eq!(widths(&s), vec![36, 5]);
+    // All of the right pane's ratio moves left (1.0 / 0.0), and the right
+    // pane keeps its minimum of 5 cells
+    assert_eq!(widths(&s), vec![37, 5]);
 }
 
 #[test]
@@ -49,7 +51,7 @@ fn test_splitter_stop_resize() {
     s.start_resize(0);
     s.stop_resize();
     s.resize(10);
-    assert_eq!(widths(&s), vec![20, 21]);
+    assert_eq!(widths(&s), vec![21, 21]);
 }
 
 #[test]
@@ -58,7 +60,7 @@ fn test_splitter_start_resize_rejects_out_of_range_divider() {
     // Two panes have a single divider (index 0)
     s.start_resize(1);
     s.resize(10);
-    assert_eq!(widths(&s), vec![20, 21]);
+    assert_eq!(widths(&s), vec![21, 21]);
 }
 
 #[test]
@@ -75,7 +77,7 @@ fn test_splitter_arrow_keys_need_active_divider() {
     let mut s = two_panes();
     assert!(!s.handle_key(&Key::Right));
     assert!(!s.handle_key(&Key::Enter));
-    assert_eq!(widths(&s), vec![20, 21]);
+    assert_eq!(widths(&s), vec![21, 21]);
 }
 
 #[test]
@@ -83,16 +85,16 @@ fn test_splitter_keys_resize_in_steps_of_five() {
     let mut s = two_panes();
     s.start_resize(0);
     assert!(s.handle_key(&Key::Right));
-    assert_eq!(widths(&s), vec![22, 19]);
+    assert_eq!(widths(&s), vec![23, 19]);
     assert!(s.handle_key(&Key::Char('l')));
     assert!(s.handle_key(&Key::Down));
     assert!(s.handle_key(&Key::Char('j')));
-    assert_eq!(widths(&s), vec![28, 13]);
+    assert_eq!(widths(&s), vec![29, 13]);
     assert!(s.handle_key(&Key::Left));
     assert!(s.handle_key(&Key::Char('h')));
     assert!(s.handle_key(&Key::Up));
     assert!(s.handle_key(&Key::Char('k')));
-    assert_eq!(widths(&s), vec![20, 21]);
+    assert_eq!(widths(&s), vec![21, 21]);
 }
 
 #[test]
@@ -102,7 +104,7 @@ fn test_splitter_enter_and_escape_end_resize() {
         s.start_resize(0);
         assert!(s.handle_key(&key));
         assert!(!s.handle_key(&Key::Right));
-        assert_eq!(widths(&s), vec![20, 21]);
+        assert_eq!(widths(&s), vec![21, 21]);
     }
 }
 
@@ -153,16 +155,16 @@ fn test_splitter_toggle_pane_hides_it_from_layout() {
 fn test_splitter_vertical_uses_the_same_keys() {
     let mut s = splitter().vertical().pane(pane("top")).pane(pane("bottom"));
     let heights = |s: &Splitter| -> Vec<u16> {
-        s.pane_areas(Rect::new(0, 0, 10, 42))
+        s.pane_areas(Rect::new(0, 0, 10, 43))
             .iter()
             .map(|(_, r)| r.height)
             .collect()
     };
     s.start_resize(0);
     assert!(s.handle_key(&Key::Down));
-    assert_eq!(heights(&s), vec![22, 19]);
+    assert_eq!(heights(&s), vec![23, 19]);
     assert!(s.handle_key(&Key::Up));
-    assert_eq!(heights(&s), vec![20, 21]);
+    assert_eq!(heights(&s), vec![21, 21]);
 }
 
 #[test]
@@ -172,7 +174,7 @@ fn test_splitter_other_keys_are_not_taken() {
     for key in [Key::BackTab, Key::Char('x'), Key::Home, Key::Char('H')] {
         assert!(!s.handle_key(&key), "{key:?}");
     }
-    assert_eq!(widths(&s), vec![20, 21]);
+    assert_eq!(widths(&s), vec![21, 21]);
     assert_eq!(s.focused(), Some("left"));
 }
 
@@ -418,4 +420,47 @@ fn test_splitter_focus_leaves_a_collapsed_pane() {
     s.toggle_pane(1);
     s.focus_next();
     assert_eq!(s.focused(), Some("b"));
+}
+
+/// Resizing a divider moves ratio from one of its panes to the other, so
+/// their sum stays and the panes that do not touch it stay where they are:
+/// each ratio was clamped to 0.1..0.9 on its own, which changed the sum, and
+/// `pane_areas` normalizes by it (#885)
+#[test]
+fn test_splitter_resizing_a_divider_leaves_other_panes_alone() {
+    let mut s = splitter()
+        .pane(pane("a").ratio(0.15).min_size(0))
+        .pane(pane("b").ratio(0.5).min_size(0))
+        .pane(pane("c").ratio(0.35).min_size(0));
+    let area = Rect::new(0, 0, 102, 1);
+    let before = s.pane_areas(area);
+    s.start_resize(0);
+    s.resize(-10);
+    let after = s.pane_areas(area);
+    assert_eq!(after[2].1, before[2].1);
+    // A step past what the giving pane has stops at zero
+    s.resize(-100);
+    let after = s.pane_areas(area);
+    assert_eq!(after[0].1.width, 0);
+    assert_eq!(after[2].1, before[2].1);
+}
+
+#[test]
+fn test_splitter_a_small_step_moves_only_its_divider() {
+    // Ratios under 0.1 jumped to it on the first step, moving every divider
+    let mut s = splitter().panes(
+        (0..12)
+            .map(|i| pane(format!("p{i}")).ratio(0.05).min_size(0))
+            .collect(),
+    );
+    let area = Rect::new(0, 0, 121, 1);
+    let before = s.pane_areas(area);
+    s.start_resize(0);
+    s.resize(1);
+    let after = s.pane_areas(area);
+    let end = |r: Rect| r.x + r.width;
+    assert_eq!(end(after[1].1), end(before[1].1));
+    for i in 2..12 {
+        assert_eq!(after[i].1, before[i].1, "pane {i}");
+    }
 }

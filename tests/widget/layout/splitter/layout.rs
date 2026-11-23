@@ -143,9 +143,14 @@ proptest! {
         }
     }
 
-    /// A pane but the last keeps to its limits where the area has room:
-    /// no wider than `max_size` (when set), and at least `min_size` unless
-    /// `max_size` is smaller or the area runs out first.
+    /// Every pane keeps to its limits where there is room: no wider than
+    /// `max_size` (when set), and at least `min_size` (capped by `max_size`)
+    /// unless the room runs out first. A `max_size` below the default
+    /// `min_size` of 5 is honored. The room is what the dividers
+    /// leave, less the panes before it; the last pane keeps its minimum too
+    /// (it used to get only what the others left, #885/#1514). Only the last
+    /// pane may pass its `max_size`: when every pane is at a limit and room
+    /// is left, it takes the rest, as in SplitView.
     #[test]
     fn prop_splitter_panes_keep_their_limits(
         specs in prop::collection::vec(pane_spec(), 2..6),
@@ -155,17 +160,16 @@ proptest! {
         let specs: Vec<PaneSpec> = specs.into_iter().map(|p| PaneSpec { collapsed: false, ..p }).collect();
         let s = build(&specs, vertical);
         let areas = s.pane_areas(area);
-        let ((start, extent), _) = axes(area, vertical);
-        let end = u32::from(start) + u32::from(extent);
-        for (i, ((_, r), p)) in areas.iter().zip(&specs).enumerate().take(specs.len() - 1) {
-            let ((s0, len), _) = axes(*r, vertical);
-            let room = end - u32::from(s0);
-            if p.max > 0 {
+        let ((_, extent), _) = axes(area, vertical);
+        let mut room = u32::from(extent).saturating_sub(specs.len() as u32 - 1);
+        for (i, ((_, r), p)) in areas.iter().zip(&specs).enumerate() {
+            let ((_, len), _) = axes(*r, vertical);
+            if p.max > 0 && i + 1 < specs.len() {
                 prop_assert!(len <= p.max, "pane {} is {} > max {}", i, len, p.max);
             }
-            if p.max == 0 || p.min <= p.max {
-                prop_assert!(u32::from(len) >= u32::from(p.min).min(room), "pane {} is {} < min {}", i, len, p.min);
-            }
+            let min = if p.max > 0 { p.min.min(p.max) } else { p.min };
+            prop_assert!(u32::from(len) >= u32::from(min).min(room), "pane {} is {} < min {}", i, len, min);
+            room = room.saturating_sub(u32::from(len));
         }
     }
 }
@@ -217,4 +221,36 @@ fn test_splitter_all_collapsed_has_no_areas() {
     s.toggle_pane(0);
     s.toggle_pane(1);
     assert!(s.pane_areas(Rect::new(0, 0, 20, 5)).is_empty());
+}
+
+/// Equal panes differ by at most a cell: each share was truncated and the
+/// last pane took the rest, 1, 1, 1, 3 for four panes in 6 cells (#1514)
+#[test]
+fn test_splitter_equal_panes_differ_by_at_most_a_cell() {
+    let s = Splitter::new().panes(
+        (0..4)
+            .map(|i| Pane::new(i.to_string()).min_size(0))
+            .collect(),
+    );
+    // 9 columns: three dividers and 6 for the panes
+    let widths: Vec<u16> = s
+        .pane_areas(Rect::new(0, 0, 9, 1))
+        .iter()
+        .map(|(_, r)| r.width)
+        .collect();
+    assert_eq!(widths, [2, 1, 2, 1]);
+}
+
+/// The last pane keeps its minimum: it got only what the others left
+#[test]
+fn test_splitter_last_pane_keeps_its_minimum() {
+    let s = Splitter::new()
+        .pane(Pane::new("a").ratio(1.0).min_size(0))
+        .pane(Pane::new("b").ratio(0.0).min_size(6));
+    let widths: Vec<u16> = s
+        .pane_areas(Rect::new(0, 0, 21, 1))
+        .iter()
+        .map(|(_, r)| r.width)
+        .collect();
+    assert_eq!(widths, [14, 6]);
 }

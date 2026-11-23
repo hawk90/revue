@@ -2,24 +2,25 @@
 
 /// What a pane asks for: a share of the room, within its bounds
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(super) struct PaneSpec {
+pub(in crate::widget::layout) struct PaneSpec {
     /// Share of the room, relative to the other panes
-    pub weight: f32,
+    pub(in crate::widget::layout) weight: f32,
     /// Fewest cells
-    pub min: u16,
+    pub(in crate::widget::layout) min: u16,
     /// Most cells (0 = no limit)
-    pub max: u16,
+    pub(in crate::widget::layout) max: u16,
 }
 
 /// Sizes for `specs` that add up to exactly `available` cells.
 ///
 /// Each pane gets its weight's share, held to its bounds: a pane whose share
 /// falls outside them gets the bound, and the others share what is left.
-/// Shares are rounded so the boundaries between panes land where the exact
-/// shares put them, so the sizes always add up. When the minimums alone
+/// A pane whose `max` is below its `min` is held at its `max`. Shares are
+/// rounded so the boundaries between panes land where the exact shares put
+/// them, so the sizes always add up. When the minimums alone
 /// overrun `available`, the panes at the end are cut; when every pane is held
 /// at its bound and room is left over, the last pane takes it.
-pub(super) fn sizes(specs: &[PaneSpec], available: u16) -> Vec<u16> {
+pub(in crate::widget::layout) fn sizes(specs: &[PaneSpec], available: u16) -> Vec<u16> {
     let mut fixed: Vec<Option<u16>> = vec![None; specs.len()];
 
     loop {
@@ -33,8 +34,16 @@ pub(super) fn sizes(specs: &[PaneSpec], available: u16) -> Vec<u16> {
         for (&i, w) in free.iter().zip(weights) {
             let share = room * w / total;
             let spec = specs[i];
-            if share < f64::from(spec.min) {
-                fixed[i] = Some(spec.min);
+            // A maximum below the minimum caps it, whichever bound the share
+            // crosses: Splitter panes have a minimum by default, so an
+            // explicit maximum is the one the caller asked for
+            let min = if spec.max > 0 {
+                spec.min.min(spec.max)
+            } else {
+                spec.min
+            };
+            if share < f64::from(min) {
+                fixed[i] = Some(min);
                 changed = true;
             } else if spec.max > 0 && share > f64::from(spec.max) {
                 fixed[i] = Some(spec.max);
@@ -140,6 +149,13 @@ mod tests {
 
     fn spec(weight: f32, min: u16, max: u16) -> PaneSpec {
         PaneSpec { weight, min, max }
+    }
+
+    #[test]
+    fn a_max_below_the_min_caps_it() {
+        // Whichever bound the share crosses, the pane gets its maximum
+        assert_eq!(sizes(&[spec(1.0, 4, 1), spec(0.0, 0, 0)], 5), [1, 4]);
+        assert_eq!(sizes(&[spec(0.0, 4, 1), spec(1.0, 0, 0)], 5), [1, 4]);
     }
 
     #[test]
