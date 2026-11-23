@@ -44,13 +44,46 @@ fn test_empty_state_stylesheet_color_is_the_accent() {
     css.visual.color = Color::MAGENTA;
     let es = EmptyState::error("T").description("d").action("a");
     let buffer = draw(&es, 20, 6, Some(&css));
-    // Rows: icon 0, title 2, description 3, action 5
-    assert_eq!(buffer.get(10, 0).unwrap().fg, Some(Color::MAGENTA));
+    // Rows: icon 0, title 2, description 3, action 5; the one-column icon
+    // is centered at (20 - 1) / 2
+    assert_eq!(buffer.get(9, 0).unwrap().symbol, '⚠');
+    assert_eq!(buffer.get(9, 0).unwrap().fg, Some(Color::MAGENTA));
     assert_eq!(buffer.get(7, 5).unwrap().symbol, '[');
     assert_eq!(buffer.get(7, 5).unwrap().fg, Some(Color::MAGENTA));
     // The title and description keep their own colors
     assert_eq!(buffer.get(9, 2).unwrap().fg, Some(Color::WHITE));
     assert_eq!(buffer.get(9, 3).unwrap().fg, Some(LIGHT_GRAY));
+}
+
+/// The full layout's icon is centered by its width, as the text is: it was
+/// drawn from the middle column, one column right of center (#1070)
+#[test]
+fn test_empty_state_icon_is_centered_over_the_title() {
+    // A two-column icon over a two-column title, in an even and an odd width
+    for width in [40, 41] {
+        let b = draw(&EmptyState::new("ab"), width, 3, None);
+        let icon_x = (0..width).find(|&x| b.get(x, 0).unwrap().symbol == '📭');
+        let title_x = (0..width).find(|&x| b.get(x, 2).unwrap().symbol == 'a');
+        assert_eq!(icon_x, title_x, "width {width}");
+    }
+    // A one-column icon over a one-column title
+    let b = draw(&EmptyState::error("x"), 40, 3, None);
+    assert_eq!(b.get(19, 0).unwrap().symbol, '⚠');
+    assert_eq!(b.get(19, 2).unwrap().symbol, 'x');
+}
+
+/// The full layout draws no border of its own: the docs said "with border"
+/// but nothing drew one (#1070); the variant's docs now say it has none
+#[test]
+fn test_empty_state_full_draws_no_border() {
+    let es = EmptyState::new("ab").description("d").action("go");
+    let b = draw(&es, 20, 7, None);
+    for y in 0..7 {
+        for x in 0..20 {
+            let s = b.get(x, y).unwrap().symbol;
+            assert!(!"┌┐└┘─│╭╮╰╯".contains(s), "({x}, {y}) {s:?}");
+        }
+    }
 }
 
 #[test]
@@ -195,7 +228,8 @@ fn model(c: &Case) -> (u16, Model) {
             // Centered as a block; parts that fall past the bottom are dropped
             let mut y = h.saturating_sub(rows as usize) / 2;
             if c.icon {
-                m.put(w / 2, y, "*", accent, false);
+                // Centered by its width, like the text (#1070)
+                m.put((w - 1) / 2, y, "*", accent, false);
                 y += 2;
             }
             if y < h {

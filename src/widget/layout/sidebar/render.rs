@@ -57,8 +57,16 @@ impl Sidebar {
             y += 1;
         }
 
-        // Rows above the footer
-        let footer_height = if self.footer.is_some() { 2 } else { 0 };
+        // The footer takes the last two rows (its separator and its text)
+        // only when its text row is below the header's rows: in a bar too
+        // short for both, the header is kept and the footer left out (#1500).
+        // In a bar just tall enough, the two separators share a row.
+        let header_rows = y;
+        let footer = self
+            .footer
+            .as_ref()
+            .filter(|_| area.height.saturating_sub(1) >= header_rows);
+        let footer_height = if footer.is_some() { 2 } else { 0 };
 
         // Get visible items
         let items = self.visible_items();
@@ -82,8 +90,8 @@ impl Sidebar {
             y += 1;
         }
 
-        // Render footer if present
-        if let Some(footer) = &self.footer {
+        // Render footer if there is room for it
+        if let Some(footer) = footer {
             // Separator line before footer
             let footer_y = area.height - 2;
             self.draw_separator(ctx, 0..content_width, footer_y);

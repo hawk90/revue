@@ -70,9 +70,10 @@ textwrap = "0.16.4"
 # ═══════════════════════════════════════════
 # Date & Time
 # ═══════════════════════════════════════════
-# The local date and time for the date pickers (#1210). chrono reads the time
-# zone files itself instead of calling localtime_r (RUSTSEC-2020-0159).
-chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+# The local date and time for the date pickers (#1210). jiff reads the time
+# zone files itself instead of calling localtime_r (RUSTSEC-2020-0159); it
+# replaced chrono, which is unmaintained (RUSTSEC-2026-0543).
+jiff = "1.0.2"
 
 # ═══════════════════════════════════════════
 # Markdown & Syntax (optional)

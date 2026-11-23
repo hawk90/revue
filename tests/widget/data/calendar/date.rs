@@ -281,9 +281,12 @@ fn test_date_default() {
 }
 
 fn local_date() -> Date {
-    use chrono::Datelike;
-    let today = chrono::Local::now().date_naive();
-    Date::new(today.year(), today.month(), today.day())
+    let today = jiff::ZonedDateTime::now().date();
+    Date::new(
+        i32::from(today.year()),
+        today.month() as u32,
+        today.day() as u32,
+    )
 }
 
 #[test]

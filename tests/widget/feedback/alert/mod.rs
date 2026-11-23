@@ -837,11 +837,41 @@ fn test_alert_zero_area() {
 
 #[test]
 fn test_alert_newline_in_message() {
-    // The first line is drawn where the message starts. (What follows it
-    // is drawn on the same row, run together: #1061.)
-    let b = draw(&Alert::new("Line 1\nLine 2\nLine 3"), 40, 3);
-    assert!(row(&b, 1).starts_with("│ ℹ Line 1"), "{}", row(&b, 1));
-    assert_eq!(Alert::new("Line 1\nLine 2\nLine 3").height(), 3);
+    // Each line of the message is drawn on its own row, under the first, and
+    // counted in the height; they used to run together on one row (#1061)
+    let a = Alert::new("Line 1\nLine 2\nLine 3").dismissible(true);
+    assert_eq!(a.height(), 5);
+    let b = draw(&a, 20, 5);
+    let rows: Vec<String> = (0..5).map(|y| row(&b, y)).collect();
+    assert_eq!(
+        rows,
+        [
+            "╭──────────────────╮",
+            "│ ℹ Line 1       × │",
+            "│   Line 2         │",
+            "│   Line 3         │",
+            "╰──────────────────╯",
+        ]
+    );
+    // Titled, the lines follow the title; outlined and minimal count no
+    // border rows
+    for v in [
+        AlertVariant::Filled,
+        AlertVariant::Outlined,
+        AlertVariant::Minimal,
+    ] {
+        let a = Alert::new("L1\nL2").title("T").icon(false).variant(v);
+        let border = u16::from(v == AlertVariant::Filled);
+        assert_eq!(a.height(), 3 + 2 * border, "{v:?}");
+        let b = draw(&a, 20, a.height());
+        let all: Vec<String> = (0..a.height()).map(|y| row(&b, y)).collect();
+        assert!(all[(1 + border) as usize].contains("L1"), "{v:?}: {all:?}");
+        assert!(all[(2 + border) as usize].contains("L2"), "{v:?}: {all:?}");
+        assert!(!all.iter().any(|r| r.contains("L1L2")), "{v:?}: {all:?}");
+    }
+    // A trailing line break adds no row; an empty message keeps one
+    assert_eq!(Alert::new("a\n").height(), 3);
+    assert_eq!(Alert::new("").height(), 3);
 }
 
 #[test]
