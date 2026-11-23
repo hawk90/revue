@@ -103,12 +103,22 @@ impl Sidebar {
     }
 
     /// Get flattened list of visible items
+    ///
+    /// A titled section starts with its title row. An untitled section
+    /// starts with a divider row (`Section(None)`) when it has items and a
+    /// section with items comes before it: dividers go only between
+    /// non-empty sections, never before the first (#1033).
     pub fn visible_items(&self) -> Vec<FlattenedItem> {
         let mut items = Vec::new();
+        let mut items_before = false;
         for section in &self.sections {
+            let has_items = !section.items.is_empty();
             if section.title.is_some() {
                 items.push(FlattenedItem::Section(section.title.clone()));
+            } else if has_items && items_before {
+                items.push(FlattenedItem::Section(None));
             }
+            items_before |= has_items;
             for item in &section.items {
                 Self::flatten_item(item, 0, &mut items);
             }
