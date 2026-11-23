@@ -13,8 +13,10 @@ fn test_sidebar_visible_items() {
 
     let items = sb.visible_items();
 
-    // Section header + item A + item B
-    assert_eq!(items.len(), 3);
+    // Section header + item A + a divider before the untitled section
+    // (#1033) + item B
+    assert_eq!(items.len(), 4);
+    assert!(matches!(items[2], FlattenedItem::Section(None)));
 
     // First should be section
     assert!(matches!(items[0], FlattenedItem::Section(_)));

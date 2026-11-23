@@ -68,6 +68,9 @@ mod node;
 mod position;
 pub mod responsive;
 mod tree;
+mod weights;
+
+pub(crate) use weights::split_by_weight;
 
 pub use engine::{LayoutEngine, LayoutError, LayoutResult};
 pub use responsive::{
