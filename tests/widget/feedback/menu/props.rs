@@ -29,19 +29,10 @@ fn kind() -> impl Strategy<Value = Kind> {
     ]
 }
 
-/// Menus of 0..6 items. The first item is never a separator: `open_menu`
-/// selects index 0 whatever it is (#1050), which the model
-/// below does not copy.
+/// Menus of 0..6 items of any kind, leading separators included (opening a
+/// menu selects its first item that is not one, #1050)
 fn menus() -> impl Strategy<Value = Vec<Vec<Kind>>> {
-    prop::collection::vec(
-        prop::collection::vec(kind(), 0..6).prop_map(|mut items| {
-            if items.first() == Some(&Kind::Separator) {
-                items[0] = Kind::Plain;
-            }
-            items
-        }),
-        0..4,
-    )
+    prop::collection::vec(prop::collection::vec(kind(), 0..6), 0..4)
 }
 
 fn key() -> impl Strategy<Value = Key> {
@@ -91,11 +82,7 @@ impl BarModel {
         if i < self.menus.len() {
             self.menu = i;
             self.open = true;
-            self.item = if self.menus[i].is_empty() {
-                None
-            } else {
-                Some(0)
-            };
+            self.item = self.menus[i].iter().position(|k| *k != Kind::Separator);
         }
     }
 
@@ -110,10 +97,10 @@ impl BarModel {
             return;
         };
         let n = items.len();
-        if n == 0 {
+        // Nothing to select: only separators, or no items
+        let Some(cur) = self.item else {
             return;
-        }
-        let cur = self.item.unwrap_or(0);
+        };
         let mut next = cur;
         loop {
             next = if back {
@@ -243,24 +230,38 @@ proptest! {
         }
     }
 
-    /// The context menu: Up and Down stop at the ends, Enter runs the
-    /// item unless it is disabled and closes, Escape closes, and a hidden
-    /// menu takes no keys. No separators: they are selectable and drawn as
-    /// blank rows (#1051).
+    /// The context menu: Up and Down skip separators and stop at the ends,
+    /// Enter runs a plain item and closes, and on a disabled item or a
+    /// separator returns false and stays open, as MenuBar's does (#1051);
+    /// Escape closes, and a hidden menu takes no keys.
     #[test]
     fn prop_context_menu_keys_match_model(
-        disabled in prop::collection::vec(any::<bool>(), 0..6),
+        kinds in prop::collection::vec(kind(), 0..6),
         keys in prop::collection::vec(key(), 0..40),
         at in (0u16..30, 0u16..12),
     ) {
         let log: Log = Rc::new(RefCell::new(Vec::new()));
-        let items = disabled.iter().enumerate().map(|(i, &d)| {
-            item(if d { Kind::Disabled } else { Kind::Plain }, 0, i, &log)
-        });
+        let items = kinds.iter().enumerate().map(|(i, &k)| item(k, 0, i, &log));
         let mut m = ContextMenu::new().items(items.collect());
         m.show(at.0, at.1);
-        let (mut selected, mut visible) = (0usize, true);
-        let n = disabled.len();
+        let first = kinds.iter().position(|k| *k != Kind::Separator).unwrap_or(0);
+        let (mut selected, mut visible) = (first, true);
+        let n = kinds.len();
+        // The next item that is not a separator from `from` in `dir`, or
+        // `from` when there is none that way
+        let step = |from: usize, down: bool| -> usize {
+            let mut i = from;
+            loop {
+                i = match (down, i) {
+                    (true, i) if i + 1 < n => i + 1,
+                    (false, i) if i > 0 => i - 1,
+                    _ => return from,
+                };
+                if kinds[i] != Kind::Separator {
+                    return i;
+                }
+            }
+        };
         for key in &keys {
             log.borrow_mut().clear();
             let (handled, chosen) = if !visible {
@@ -268,17 +269,20 @@ proptest! {
             } else {
                 match key {
                     Key::Up | Key::Char('k') => {
-                        selected = selected.saturating_sub(1);
+                        selected = step(selected, false);
                         (true, None)
                     }
                     Key::Down | Key::Char('j') => {
-                        selected = (selected + 1).min(n.saturating_sub(1));
+                        selected = step(selected, true);
                         (true, None)
                     }
-                    Key::Enter | Key::Char(' ') => {
-                        visible = false;
-                        (true, (selected < n && !disabled[selected]).then_some((0, selected)))
-                    }
+                    Key::Enter | Key::Char(' ') => match kinds.get(selected) {
+                        Some(Kind::Plain) => {
+                            visible = false;
+                            (true, Some((0, selected)))
+                        }
+                        _ => (false, None),
+                    },
                     Key::Escape => {
                         visible = false;
                         (true, None)
@@ -294,7 +298,9 @@ proptest! {
             let rows: Vec<u16> = (0..12)
                 .filter(|&y| (0..30).any(|x| b.get(x, y).unwrap().bg == Some(SELECTED_BG)))
                 .collect();
-            if visible && n > 0 {
+            // A separator row is never highlighted: only separators leaves
+            // nothing highlighted
+            if visible && kinds.get(selected).is_some_and(|k| *k != Kind::Separator) {
                 let top = at.1.min(12 - (n as u16 + 2));
                 prop_assert_eq!(rows, vec![top + 1 + selected as u16]);
             } else {
@@ -302,15 +308,16 @@ proptest! {
             }
             if !visible {
                 m.show(at.0, at.1);
-                selected = 0;
+                selected = first;
                 visible = true;
             }
         }
     }
 
-    /// The open menu's dropdown: under its title, as wide as its widest item
-    /// and as tall as its items, both cut at the area's edges, with a full
-    /// frame and nothing drawn outside it below the bar.
+    /// The open menu's dropdown: under its title, moved left to fit the area
+    /// (#1050), as wide as its widest item (or the area) and as tall as its
+    /// items (cut at the bottom), with a full frame and nothing drawn outside
+    /// it below the bar, shortcuts included.
     #[test]
     fn prop_menu_bar_dropdown_box(
         titles in prop::collection::vec(prop::sample::select(vec!["F", "Edit", "파일", "", "📁 x"]), 1..4),
@@ -324,10 +331,7 @@ proptest! {
         h in 0u16..12,
     ) {
         let open = pick.index(titles.len());
-        let x0 = titles[..open].iter().map(|t| display_width(t) as u16 + 2).sum::<u16>();
-        // The first menu's dropdown in a one-column area panics when it has
-        // an item row (#1050)
-        prop_assume!(!(x0 == 0 && w == 1 && h >= 3));
+        let title_x = titles[..open].iter().map(|t| display_width(t) as u16 + 2).sum::<u16>();
         let width_of = |labels: &[(&str, Option<&str>)]| {
             labels
                 .iter()
@@ -335,15 +339,6 @@ proptest! {
                 .max()
                 .unwrap() as u16
         };
-        let mut labels = labels;
-        // In a dropdown cut narrower than its items, a shortcut is drawn over
-        // the left border and past it (#1050):
-        // cut dropdowns are checked without shortcuts
-        if width_of(&labels) > w.saturating_sub(x0) {
-            for (_, s) in labels.iter_mut() {
-                *s = None;
-            }
-        }
         let need = width_of(&labels);
         let mut bar = MenuBar::new();
         for (m, t) in titles.iter().enumerate() {
@@ -362,7 +357,7 @@ proptest! {
         bar.open_menu(open);
         let b = render(&bar, w, h);
         let sym = |x: u16, y: u16| b.get(x, y).unwrap().symbol;
-        if h < 2 || x0 >= w {
+        if h < 2 || title_x >= w {
             // No room: nothing below the bar
             for y in 1..h {
                 for x in 0..w {
@@ -371,7 +366,8 @@ proptest! {
             }
             return Ok(());
         }
-        let bw = need.min(w - x0);
+        let bw = need.min(w);
+        let x0 = title_x.min(w - bw);
         let bh = (labels.len() as u16 + 2).min(h - 1);
         for y in 1..h {
             for x in 0..w {
@@ -421,10 +417,9 @@ proptest! {
         }
     }
 
-    /// The context menu's box: moved left and up to fit, from the area's
-    /// origin when it is wider, no taller than the area (the items scroll,
-    /// #973), with a full frame and nothing outside it; nothing in an area
-    /// with no row inside a frame.
+    /// The context menu's box: moved left and up to fit, no wider than the
+    /// area and no taller (the items scroll, #973), with a full frame and
+    /// nothing outside it; nothing in an area with no row inside a frame.
     #[test]
     fn prop_context_menu_box(
         labels in prop::collection::vec(prop::sample::select(vec!["a", "Open", "설정", "A longer label", ""]), 1..8),
@@ -435,7 +430,7 @@ proptest! {
         let mut m = ContextMenu::new().items(labels.iter().map(|l| MenuItem::new(*l)).collect());
         m.show(at.0, at.1);
         let b = render(&m, w, h);
-        let bw = labels.iter().map(|l| display_width(l)).max().unwrap() as u16 + 4;
+        let bw = (labels.iter().map(|l| display_width(l)).max().unwrap() as u16 + 4).min(w);
         let bh = (labels.len() as u16 + 2).min(h);
         if bh < 3 {
             prop_assert!(b.cells().iter().all(|c| c.symbol == ' '));
@@ -451,7 +446,7 @@ proptest! {
                     prop_assert_eq!(sym(x, y), ' ', "outside at ({}, {})", x, y);
                 } else if (x, y) == (x0, y0) {
                     prop_assert_eq!(sym(x, y), '┌');
-                } else if (x, y) == (x0 + bw - 1, y0 + bh - 1) {
+                } else if bw > 1 && (x, y) == (x0 + bw - 1, y0 + bh - 1) {
                     prop_assert_eq!(sym(x, y), '┘');
                 } else if x == x0 && y > y0 && y < y0 + bh - 1 {
                     prop_assert_eq!(sym(x, y), '│');

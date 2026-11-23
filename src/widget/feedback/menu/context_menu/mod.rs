@@ -6,7 +6,7 @@ mod view;
 use super::types::MenuItem;
 use crate::style::Color;
 use crate::utils::ScrollState;
-use crate::widget::theme::DARK_BG;
+use crate::widget::theme::{DARK_BG, DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -28,6 +28,8 @@ pub struct ContextMenu {
     fg: Option<Color>,
     selected_bg: Color,
     selected_fg: Color,
+    disabled_fg: Color,
+    shortcut_fg: Color,
     /// Widget properties
     props: WidgetProps,
 }
@@ -52,6 +54,8 @@ impl ContextMenu {
             fg: None,
             selected_bg: Color::rgb(60, 100, 180),
             selected_fg: Color::WHITE,
+            disabled_fg: DISABLED_FG,
+            shortcut_fg: LIGHT_GRAY,
             props: WidgetProps::new(),
         }
     }
@@ -73,7 +77,9 @@ impl ContextMenu {
         self.x = x;
         self.y = y;
         self.visible = true;
-        self.selected = 0;
+        // The first item that can be selected: a leading separator is
+        // skipped (#1051)
+        self.selected = super::list::first_selectable(&self.items).unwrap_or(0);
     }
 
     /// Hide menu

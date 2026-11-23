@@ -1,5 +1,6 @@
 //! Moving through the items, choosing one, and closing
 
+use super::super::list::{choosable, step};
 use super::ContextMenu;
 use crate::event::Key;
 
@@ -11,25 +12,25 @@ impl ContextMenu {
         }
 
         match key {
+            // Up and Down skip separators and stop at the ends (#1051)
             Key::Up | Key::Char('k') => {
-                if self.selected > 0 {
-                    self.selected -= 1;
-                }
+                self.selected = step(&self.items, self.selected, -1, false);
                 true
             }
             Key::Down | Key::Char('j') => {
-                if self.selected < self.items.len().saturating_sub(1) {
-                    self.selected += 1;
-                }
+                self.selected = step(&self.items, self.selected, 1, false);
                 true
             }
-            Key::Enter | Key::Char(' ') => {
-                if let Some(item) = self.items.get(self.selected) {
+            // A disabled item or a separator is not chosen: the menu stays
+            // open, as MenuBar's does (#1051)
+            Key::Enter | Key::Char(' ') => match self.items.get(self.selected) {
+                Some(item) if choosable(item) => {
                     item.execute();
+                    self.hide();
+                    true
                 }
-                self.hide();
-                true
-            }
+                _ => false,
+            },
             Key::Escape => {
                 self.hide();
                 true
