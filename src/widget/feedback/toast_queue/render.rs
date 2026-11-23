@@ -132,9 +132,13 @@ fn draw_content(
         );
     }
 
+    // The close mark is drawn three columns in from the right edge; a
+    // message on its row stops one blank column before it (#1380)
+    let has_close = entry.dismissible && toast_w > 10;
+
     // Message
     let msg_x = content_x + 2;
-    let max_msg_width = toast_w.saturating_sub(5) as usize;
+    let max_msg_width = toast_w.saturating_sub(if has_close { 8 } else { 5 }) as usize;
     let truncated_msg = truncate_to_width(&entry.message, max_msg_width);
     let mut dx: u16 = 0;
     for ch in truncated_msg.chars() {
@@ -148,7 +152,7 @@ fn draw_content(
     }
 
     // Dismiss hint for dismissible toasts
-    if entry.dismissible && toast_w > 10 {
+    if has_close {
         let dismiss_x = x + toast_w - 3;
         ctx.set(dismiss_x, content_y, cell('×', Some(DISABLED_FG), bg));
     }

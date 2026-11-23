@@ -1,5 +1,6 @@
 //! Opening, closing and moving through the menus and their items
 
+use super::super::list::{choosable, first_selectable, selectable, step};
 use super::MenuBar;
 use crate::event::Key;
 
@@ -9,11 +10,9 @@ impl MenuBar {
         if index < self.menus.len() {
             self.selected_menu = index;
             self.open = true;
-            self.selected_item = if self.menus[index].items.is_empty() {
-                None
-            } else {
-                Some(0)
-            };
+            // The first item that can be selected: a leading separator is
+            // skipped, as Up and Down skip them (#1050)
+            self.selected_item = first_selectable(&self.menus[index].items);
         }
     }
 
@@ -59,13 +58,13 @@ impl MenuBar {
     pub fn next_item(&mut self) {
         if let Some(menu) = self.menus.get(self.selected_menu) {
             if !menu.items.is_empty() {
-                let current = self.selected_item.unwrap_or(0);
-                let mut next = (current + 1) % menu.items.len();
-                // Skip separators
-                while menu.items[next].separator && next != current {
-                    next = (next + 1) % menu.items.len();
+                let next = match self.selected_item {
+                    Some(current) => step(&menu.items, current, 1, true),
+                    None => first_selectable(&menu.items).unwrap_or(0),
+                };
+                if selectable(&menu.items[next]) {
+                    self.selected_item = Some(next);
                 }
-                self.selected_item = Some(next);
             }
         }
     }
@@ -74,13 +73,10 @@ impl MenuBar {
     pub fn prev_item(&mut self) {
         if let Some(menu) = self.menus.get(self.selected_menu) {
             if !menu.items.is_empty() {
-                let current = self.selected_item.unwrap_or(0);
-                let mut prev = current.checked_sub(1).unwrap_or(menu.items.len() - 1);
-                // Skip separators
-                while menu.items[prev].separator && prev != current {
-                    prev = prev.checked_sub(1).unwrap_or(menu.items.len() - 1);
+                let prev = step(&menu.items, self.selected_item.unwrap_or(0), -1, true);
+                if selectable(&menu.items[prev]) {
+                    self.selected_item = Some(prev);
                 }
-                self.selected_item = Some(prev);
             }
         }
     }
@@ -90,7 +86,7 @@ impl MenuBar {
         if let Some(item_idx) = self.selected_item {
             if let Some(menu) = self.menus.get(self.selected_menu) {
                 if let Some(item) = menu.items.get(item_idx) {
-                    if !item.disabled && !item.separator {
+                    if choosable(item) {
                         item.execute();
                         self.close();
                         return true;

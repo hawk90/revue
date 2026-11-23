@@ -146,20 +146,21 @@ fn test_menu_bar_item_states_on_screen() {
     );
     bar.open_menu(0);
     let b = render(&bar, 24, 9);
-    // 21 columns: the long label plus padding and borders
-    assert_eq!(row(&b, 1), format!("┌{}┐   ", "─".repeat(19)));
-    assert_eq!(row(&b, 3), format!("│ ✓ Wrap{}│   ", " ".repeat(12)));
-    assert_eq!(row(&b, 4), format!("│   Ruler{}│   ", " ".repeat(11)));
-    assert_eq!(row(&b, 6), format!("│ More{}▶│   ", " ".repeat(13)));
-    assert_eq!(row(&b, 7), format!("│ Go{}F5 │   ", " ".repeat(13)));
-    assert_eq!(row(&b, 8), format!("└{}┘   ", "─".repeat(19)));
+    // 23 columns: the long label, the check mark's two columns (#884),
+    // padding and borders
+    assert_eq!(row(&b, 1), format!("┌{}┐ ", "─".repeat(21)));
+    assert_eq!(row(&b, 3), format!("│ ✓ Wrap{}│ ", " ".repeat(14)));
+    assert_eq!(row(&b, 4), format!("│   Ruler{}│ ", " ".repeat(13)));
+    assert_eq!(row(&b, 6), format!("│ More{}▶│ ", " ".repeat(15)));
+    assert_eq!(row(&b, 7), format!("│ Go{}F5 │ ", " ".repeat(15)));
+    assert_eq!(row(&b, 8), format!("└{}┘ ", "─".repeat(21)));
     // The disabled row is dim, the shortcut has its own color
     assert_eq!(b.get(2, 5).unwrap().fg, Some(DISABLED_FG));
-    assert_eq!(b.get(17, 7).unwrap().fg, Some(LIGHT_GRAY));
+    assert_eq!(b.get(19, 7).unwrap().fg, Some(LIGHT_GRAY));
     // The first row is selected across the inside of the box
     assert_eq!(b.get(1, 2).unwrap().bg, Some(SELECTED_BG));
-    assert_eq!(b.get(19, 2).unwrap().bg, Some(SELECTED_BG));
-    assert_eq!(b.get(20, 2).unwrap().bg, Some(DARK_BG));
+    assert_eq!(b.get(21, 2).unwrap().bg, Some(SELECTED_BG));
+    assert_eq!(b.get(22, 2).unwrap().bg, Some(DARK_BG));
 }
 
 #[test]
@@ -180,8 +181,9 @@ fn test_menu_bar_dropdown_sits_under_its_title() {
 
 #[test]
 fn test_menu_bar_dropdown_clipped_to_the_area() {
-    // Taller and wider than the area: the box ends at the bottom row and
-    // the right edge, with as many items as fit
+    // Taller and wider than the area: the box ends at the bottom row with
+    // as many items as fit, and is narrowed to the area, moved left from
+    // under its title to fit, as ContextMenu does (#1050)
     let mut bar = MenuBar::new().menu(Menu::new("A")).menu(
         Menu::new("B").items(
             (0..20)
@@ -191,10 +193,10 @@ fn test_menu_bar_dropdown_clipped_to_the_area() {
     );
     bar.open_menu(1);
     let b = render(&bar, 9, 5);
-    assert_eq!(row(&b, 1), "   ┌────┐");
-    assert_eq!(row(&b, 2), "   │ It │");
-    assert_eq!(row(&b, 3), "   │ It │");
-    assert_eq!(row(&b, 4), "   └────┘");
+    assert_eq!(row(&b, 1), "┌───────┐");
+    assert_eq!(row(&b, 2), "│ Item  │");
+    assert_eq!(row(&b, 3), "│ Item  │");
+    assert_eq!(row(&b, 4), "└───────┘");
 }
 
 #[test]
@@ -227,10 +229,11 @@ fn test_context_menu_kept_inside_the_area() {
     let b = render(&make(200, 200), 12, 7);
     assert_eq!(row(&b, 3), "    ┌──────┐");
     assert_eq!(row(&b, 6), "    └──────┘");
-    // Wider than the area: from the left edge, cut at the right
+    // Wider than the area: narrowed to it from the left edge, keeping its
+    // right border; the labels are cut inside it
     let b = render(&make(5, 0), 6, 4);
-    assert_eq!(row(&b, 0), "┌─────");
-    assert_eq!(row(&b, 1), "│ Cut ");
+    assert_eq!(row(&b, 0), "┌────┐");
+    assert_eq!(row(&b, 1), "│ Cu │");
 }
 
 #[test]
@@ -365,4 +368,96 @@ fn test_menu_bar_two_column_dropdown_keeps_its_border() {
     bar.open_menu(0);
     let buffer = render(&bar, 2, 4);
     assert_eq!(row(&buffer, 2), "││");
+}
+
+// ── #1050 and #1051: one list for both menus ────────────────────────────
+
+#[test]
+fn test_menu_bar_cut_dropdown_keeps_the_shortcut_inside() {
+    // The "Edit" dropdown needs 20 columns: in a 10-column bar it is
+    // narrowed to the bar and moved to its left edge, and the shortcut stays
+    // inside the border, cut, with the label left out before it
+    let mut bar = MenuBar::new()
+        .menu(Menu::new("File"))
+        .menu(Menu::new("Edit").item(MenuItem::new("Undo").shortcut("Ctrl+Shift+Z")));
+    bar.open_menu(1);
+    let b = render(&bar, 10, 4);
+    assert_eq!(row(&b, 1), "┌────────┐");
+    assert_eq!(row(&b, 2), "│ Ctrl+S │");
+    assert_eq!(row(&b, 3), "└────────┘");
+}
+
+#[test]
+fn test_menu_bar_open_skips_a_leading_separator() {
+    let mut bar = MenuBar::new().menu(Menu::new("F").separator().item(MenuItem::new("A")));
+    bar.open_menu(0);
+    let b = render(&bar, 10, 5);
+    // Row 2 is the separator, row 3 the item: the item is selected
+    assert_eq!(b.get(2, 3).unwrap().bg, Some(SELECTED_BG));
+    assert!(bar.handle_key(&Key::Enter));
+    // A menu of separators only has nothing selected, and Enter does nothing
+    let mut bar = MenuBar::new().menu(Menu::new("F").separator().separator());
+    bar.open_menu(0);
+    bar.handle_key(&Key::Down);
+    let b = render(&bar, 12, 5);
+    assert!((0..12).all(|x| (2..4).all(|y| b.get(x, y).unwrap().bg != Some(SELECTED_BG))));
+    assert!(!bar.handle_key(&Key::Enter));
+}
+
+#[test]
+fn test_menu_bar_checked_items_get_room_for_the_mark() {
+    // Moved from #884: "✓ Wr" before, the label cut by the mark's columns
+    let mut bar = MenuBar::new().menu(Menu::new("V").item(MenuItem::new("Wrap").checked(true)));
+    bar.open_menu(0);
+    let b = render(&bar, 12, 4);
+    assert_eq!(row(&b, 2), "│ ✓ Wrap │  ");
+}
+
+#[test]
+fn test_context_menu_draws_separators_and_skips_them() {
+    let mut m = ContextMenu::new()
+        .item(MenuItem::new("Cut"))
+        .item(MenuItem::separator())
+        .item(MenuItem::new("Paste"));
+    m.show(0, 0);
+    m.handle_key(&Key::Down);
+    let buffer = render(&m, 12, 6);
+    assert_eq!(row(&buffer, 2), "├───────┤   ");
+    // Down went past the separator to "Paste"
+    assert_eq!(buffer.get(2, 3).unwrap().bg, Some(SELECTED_BG));
+    // A leading separator is skipped when the menu opens
+    let mut m = ContextMenu::new()
+        .item(MenuItem::separator())
+        .item(MenuItem::new("A"));
+    m.show(0, 0);
+    assert_eq!(render(&m, 12, 6).get(2, 2).unwrap().bg, Some(SELECTED_BG));
+}
+
+#[test]
+fn test_context_menu_draws_item_state() {
+    let mut m = ContextMenu::new()
+        .item(MenuItem::new("Cut").shortcut("Ctrl+X"))
+        .item(MenuItem::new("Off").disabled(true))
+        .item(MenuItem::new("Wrap").checked(true))
+        .item(MenuItem::new("More").submenu(vec![MenuItem::new("x")]));
+    m.show(0, 0);
+    let buffer = render(&m, 20, 6);
+    // "Cut", two columns and "Ctrl+X", plus the check mark's two columns:
+    // 17 wide
+    assert_eq!(row(&buffer, 1), "│ Cut    Ctrl+X │   ");
+    assert_eq!(buffer.get(2, 2).unwrap().fg, Some(DISABLED_FG));
+    assert_eq!(row(&buffer, 3), "│ ✓ Wrap        │   ");
+    assert_eq!(row(&buffer, 4), "│ More         ▶│   ");
+    assert_eq!(buffer.get(9, 1).unwrap().fg, Some(LIGHT_GRAY));
+}
+
+#[test]
+fn test_context_menu_disabled_item_is_not_chosen() {
+    let mut m = ContextMenu::new()
+        .item(MenuItem::new("Off").disabled(true))
+        .item(MenuItem::new("On"));
+    m.show(0, 0);
+    // As MenuBar does: false, and the menu stays open
+    assert!(!m.handle_key(&Key::Enter));
+    assert!(m.is_visible());
 }

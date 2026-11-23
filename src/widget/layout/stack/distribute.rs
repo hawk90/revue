@@ -113,22 +113,18 @@ impl Stack {
             }
             let auto_min: u16 = remaining.saturating_sub(room);
             let flex_space = remaining.saturating_sub(auto_min);
-            let mut distributed: u16 = 0;
-
-            for (fi, &i) in flex_indices.iter().enumerate() {
-                let grow = match child_sizes[i] {
+            // Rounded at the cumulative boundaries, so equal flex children
+            // differ by at most a cell and the last is not left empty (#1379)
+            let grows: Vec<f32> = flex_indices
+                .iter()
+                .map(|&i| match child_sizes[i] {
                     ChildSize::Flex(g) => g,
                     _ => 0.0,
-                };
-                let size = if fi == flex_indices.len() - 1 {
-                    flex_space.saturating_sub(distributed)
-                } else {
-                    // Rounding up may not take more than is left.
-                    let share = ((flex_space as f32) * grow / total_grow).round() as u16;
-                    share.min(flex_space.saturating_sub(distributed))
-                };
+                })
+                .collect();
+            let shares = crate::layout::split_by_weight(flex_space, &grows);
+            for (&i, size) in flex_indices.iter().zip(shares) {
                 result[i] = size;
-                distributed = distributed.saturating_add(size);
             }
 
             // Auto children get 1 pixel each when flex is active

@@ -5,6 +5,7 @@
 mod context_menu;
 mod frame;
 mod helpers;
+mod list;
 mod menu_bar;
 mod types;
 
