@@ -387,3 +387,35 @@ mod model {
         }
     }
 }
+
+/// Collapsing the focused pane hands the focus to the next visible pane,
+/// and Tab and Shift+Tab never stick on a hidden one: the focus used to stay
+/// on the collapsed pane and Tab did nothing (#885)
+#[test]
+fn test_splitter_focus_leaves_a_collapsed_pane() {
+    let mut s = splitter()
+        .pane(pane("a").collapsible())
+        .pane(pane("b").collapsible())
+        .pane(pane("c").collapsible());
+    s.focus_next();
+    assert_eq!(s.focused(), Some("b"));
+    s.toggle_pane(1);
+    assert_eq!(s.focused(), Some("c"));
+    s.focus_next();
+    assert_eq!(s.focused(), Some("a"));
+    s.focus_prev();
+    assert_eq!(s.focused(), Some("c"));
+    // The last visible pane collapsed: the focus wraps to the first
+    s.toggle_pane(2);
+    assert_eq!(s.focused(), Some("a"));
+    // Every pane collapsed: nothing to move to, the focus stays
+    s.toggle_pane(0);
+    assert_eq!(s.focused(), Some("a"));
+    s.focus_next();
+    s.focus_prev();
+    assert_eq!(s.focused(), Some("a"));
+    // Expanding a pane makes it reachable again
+    s.toggle_pane(1);
+    s.focus_next();
+    assert_eq!(s.focused(), Some("b"));
+}

@@ -105,6 +105,19 @@ impl Resizable<fn(u16, u16)> {
     }
 }
 
+/// `to` moved onto the `grid`, in the direction it moved from `from`: the
+/// first grid line at or past it growing, at or before it shrinking
+fn snap_toward(from: u16, to: u16, grid: u16) -> u16 {
+    let grid = grid.max(1);
+    if to > from {
+        to.div_ceil(grid).saturating_mul(grid)
+    } else if to < from {
+        (to / grid) * grid
+    } else {
+        to
+    }
+}
+
 impl<F> Resizable<F>
 where
     F: FnMut(u16, u16),
@@ -293,6 +306,16 @@ where
             self.height
         };
 
+        // Snapped toward the change: a step smaller than the grid would
+        // round back to where it started, so it goes to the next grid line
+        // in its direction instead (#885)
+        let (new_width, new_height) = match self.snap_to_grid {
+            Some((gw, gh)) => (
+                snap_toward(self.width, new_width, gw),
+                snap_toward(self.height, new_height, gh),
+            ),
+            None => (new_width, new_height),
+        };
         let (w, h) = self.constrain_size(new_width, new_height);
 
         if w != self.width || h != self.height {
