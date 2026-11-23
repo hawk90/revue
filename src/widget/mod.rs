@@ -13,6 +13,7 @@
 //! | [`Border`] | Bordered container | [`border()`] |
 //! | [`Tabs`] | Tab navigation | [`tabs()`] |
 //! | [`ScrollView`] | Scrollable area | [`scroll_view()`] |
+//! | [`Scrollbar`] | A scrollbar on its own | [`scrollbar()`] |
 //! | [`Layers`] | Overlapping widgets | [`layers()`] |
 //! | [`Positioned`] | Absolute positioning | [`positioned()`] |
 //! | [`Grid`] | CSS Grid layout | [`grid()`] |
@@ -289,14 +290,14 @@ pub use display::{
 pub use layout::{
     accordion, border, card, collapsible, dock, draw_border, grid, grid_item, grid_template,
     hsplit, hstack, layer, layers, pane, positioned, resizable, screen, screen_stack, scroll,
-    scroll_view, section, sidebar, sidebar_item, sidebar_section, sidebar_section_titled,
-    split_view, splitter, stack, tab_view, tabs, vsplit, vstack, Accordion, AccordionSection,
-    Anchor, Border, BorderType, Card, CardVariant, CollapseMode, Collapsible, Direction, Dock,
-    DockPosition, DockState, FlattenedItem, Grid, GridAlign, GridItem, GridPlacement, HSplit,
-    Layers, Pane, Positioned, Resizable, ResizeDirection, ResizeHandle, ResizeStyle, Screen,
-    ScreenStack, ScreenTransition, ScrollView, Sidebar, SidebarItem, SidebarSection,
-    SplitOrientation, SplitState, SplitView, Splitter, SplitterStyle, Stack, Tab, TabBar, TabState,
-    TabView, Tabs, TrackSize, VSplit,
+    scroll_view, scrollbar, section, sidebar, sidebar_item, sidebar_section,
+    sidebar_section_titled, split_view, splitter, stack, tab_view, tabs, vsplit, vstack, Accordion,
+    AccordionSection, Anchor, Border, BorderType, Card, CardVariant, CollapseMode, Collapsible,
+    Direction, Dock, DockPosition, DockState, FlattenedItem, Grid, GridAlign, GridItem,
+    GridPlacement, HSplit, Layers, Pane, Positioned, Resizable, ResizeDirection, ResizeHandle,
+    ResizeStyle, Screen, ScreenStack, ScreenTransition, ScrollView, Scrollbar, Sidebar,
+    SidebarItem, SidebarSection, SplitOrientation, SplitState, SplitView, Splitter, SplitterStyle,
+    Stack, Tab, TabBar, TabState, TabView, Tabs, TrackSize, VSplit,
 };
 // Input widgets (re-exported from input_widgets module)
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
