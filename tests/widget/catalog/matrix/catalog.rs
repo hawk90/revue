@@ -209,6 +209,14 @@ pub fn catalog() -> Vec<Entry> {
                     .scroll_offset(1),
             )
         }),
+        e("Scrollbar", |c, _| {
+            Box::new(
+                Scrollbar::vertical()
+                    .content_length(c.items.len() * 3)
+                    .viewport_length(c.items.len())
+                    .offset(1),
+            )
+        }),
         e("Sidebar", |c, _| {
             Box::new(
                 Sidebar::new().header(t(c)).footer(t(c)).items(

@@ -7,6 +7,10 @@ use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// A scrollable view widget
+///
+/// Its scrollbar shows only while the content is taller than the area. For
+/// a scrollbar that always takes its column, next to rows the app draws and
+/// scrolls itself, use [`Scrollbar`](super::Scrollbar).
 #[derive(Clone)]
 pub struct ScrollView {
     content_height: u16,
@@ -267,22 +271,15 @@ impl ScrollView {
 
         let scrollbar_x = area.width - 1;
 
-        // Calculate scrollbar thumb position and size
-        let thumb_height = ((viewport_height as f32 / self.content_height as f32)
-            * viewport_height as f32)
-            .max(1.0) as u16;
-        let thumb_height = thumb_height.max(1).min(viewport_height);
-
-        let max_offset = self.content_height.saturating_sub(viewport_height);
-        let scroll_ratio = if max_offset > 0 {
-            self.offset_for(viewport_height) as f32 / max_offset as f32
-        } else {
-            0.0
+        // The thumb, by the rule the standalone Scrollbar draws with
+        let Some((thumb_position, thumb_height)) = super::scroll_bar::scrollbar_thumb(
+            usize::from(self.content_height),
+            usize::from(viewport_height),
+            usize::from(self.offset_for(viewport_height)),
+            viewport_height,
+        ) else {
+            return;
         };
-
-        let thumb_position = ((viewport_height - thumb_height) as f32 * scroll_ratio)
-            .max(0.0)
-            .min((viewport_height - thumb_height) as f32) as u16;
 
         // Draw scrollbar track
         for y in 0..viewport_height {
