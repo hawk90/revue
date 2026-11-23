@@ -450,6 +450,34 @@ fn test_resizable_grid_snap_different_grids() {
     assert_eq!(r.size(), (30, 15));
 }
 
+/// A step smaller than the grid goes to the next grid line in its
+/// direction: rounding to the nearest line took every one-cell key press or
+/// drag back to where it started (#885)
+#[test]
+fn test_resizable_grid_snap_steps_toward_the_change() {
+    let mut r = Resizable::new(10, 10)
+        .snap_to_grid(5, 5)
+        .handles(&[ResizeHandle::Right, ResizeHandle::Bottom])
+        .focused(true);
+    r.handle_key(&Key::Right);
+    assert_eq!(r.size(), (15, 10));
+    r.handle_key(&Key::Right);
+    assert_eq!(r.size(), (20, 10));
+    r.handle_key(&Key::Left);
+    assert_eq!(r.size(), (15, 10));
+    r.handle_key(&Key::Down);
+    assert_eq!(r.size(), (15, 15));
+    r.handle_key(&Key::Up);
+    assert_eq!(r.size(), (15, 10));
+    // A drag of a few cells goes to the line at or past where it went
+    r.start_resize(ResizeHandle::Right);
+    r.apply_delta(3, 0);
+    assert_eq!(r.size(), (20, 10));
+    r.apply_delta(-7, 0);
+    assert_eq!(r.size(), (10, 10));
+    r.end_resize();
+}
+
 // ==================== Handle Hit Tests ====================
 
 #[test]

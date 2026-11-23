@@ -121,22 +121,22 @@ fn test_context_menu_render() {
 
     menu.show(5, 5);
     menu.render(&mut ctx);
-    // A 9x6 box at (5, 5): the widest label "Paste" plus borders and padding.
-    // Only the frame and the labels are checked: the separator and shortcut
-    // rows are #1051.
+    // A 17x6 box at (5, 5): "Paste", two columns, "Ctrl+V", borders and
+    // padding; the shortcuts right-aligned and the separator joined to the
+    // border (#1051)
     let text = |x0: u16, y: u16, w: u16| -> String {
         (x0..x0 + w)
             .map(|x| buffer.get(x, y).unwrap().symbol)
             .collect()
     };
-    assert_eq!(text(5, 5, 9), "┌───────┐");
-    assert_eq!(text(5, 6, 5), "│ Cut");
-    assert_eq!(text(5, 7, 6), "│ Copy");
-    assert_eq!(text(5, 9, 7), "│ Paste");
-    assert_eq!(text(5, 10, 9), "└───────┘");
-    assert_eq!(text(13, 6, 1), "│");
+    assert_eq!(text(5, 5, 17), "┌───────────────┐");
+    assert_eq!(text(5, 6, 17), "│ Cut    Ctrl+X │");
+    assert_eq!(text(5, 7, 17), "│ Copy   Ctrl+C │");
+    assert_eq!(text(5, 8, 17), "├───────────────┤");
+    assert_eq!(text(5, 9, 17), "│ Paste  Ctrl+V │");
+    assert_eq!(text(5, 10, 17), "└───────────────┘");
     assert_eq!(text(4, 5, 1), " ");
-    assert_eq!(text(14, 5, 1), " ");
+    assert_eq!(text(22, 5, 1), " ");
     assert_eq!(text(5, 11, 1), " ");
     // The first item is selected
     let selected = buffer.get(7, 6).unwrap();

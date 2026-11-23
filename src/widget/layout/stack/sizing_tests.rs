@@ -273,9 +273,30 @@ fn test_stack_calculate_sizes_rules_hold_for_every_combination() {
 #[test]
 fn test_stack_rounded_flex_shares_do_not_overflow() {
     use ChildSize::Flex;
-    // Half a cell each rounds up to one, three times over.
+    // Half a cell each: rounded at the cumulative boundaries (0.5, 1, 1.5,
+    // 2), the shares add up to the two cells, with no overflow.
     let combo = [Flex(1.0), Flex(1.0), Flex(1.0), Flex(1.0)];
-    assert_eq!(Stack::calculate_sizes(&combo, 2, 4), vec![1, 1, 0, 0]);
+    assert_eq!(Stack::calculate_sizes(&combo, 2, 4), vec![1, 0, 1, 0]);
+}
+
+#[test]
+fn test_stack_equal_flex_children_differ_by_at_most_a_cell() {
+    use ChildSize::Flex;
+    // Rounding each share on its own gave 2, 2, 2, 0: the last child had no
+    // width (#1379)
+    let combo = [Flex(1.0), Flex(1.0), Flex(1.0), Flex(1.0)];
+    assert_eq!(Stack::calculate_sizes(&combo, 6, 4), vec![2, 1, 2, 1]);
+    for avail in 0..40u16 {
+        for n in 1..7 {
+            let sizes = Stack::calculate_sizes(&vec![Flex(1.0); n], avail, n);
+            assert_eq!(
+                sizes.iter().map(|&s| u32::from(s)).sum::<u32>(),
+                u32::from(avail)
+            );
+            let (lo, hi) = (sizes.iter().min().unwrap(), sizes.iter().max().unwrap());
+            assert!(hi - lo <= 1, "{avail} / {n}: {sizes:?}");
+        }
+    }
 }
 
 #[test]

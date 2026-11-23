@@ -101,6 +101,7 @@ impl NotificationCenter {
         notification: &Notification,
         x: u16,
         y: u16,
+        width: u16,
         is_selected: bool,
     ) {
         // The level palette is this widget's own default and a rule naming the
@@ -108,7 +109,7 @@ impl NotificationCenter {
         let color = ctx.css_color(notification.level.color());
         let frame = Frame {
             x,
-            width: self.width,
+            width,
             color,
             bg: notification.level.bg_color(),
             border: if is_selected { Color::WHITE } else { color },
@@ -203,8 +204,10 @@ impl NotificationCenter {
 
         // Timer indicator
         if self.show_timer && notification.duration > 0 {
+            // The timer is the `width - 2` cells between the corners, all
+            // filled while the whole duration remains (#1048)
             let remaining = notification.remaining();
-            let timer_width = (width - 4) as f64;
+            let timer_width = f64::from(width - 2);
             let timer_filled = (remaining * timer_width).round() as u16;
 
             for dx in 1..width - 1 {

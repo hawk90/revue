@@ -14,23 +14,33 @@ impl Splitter {
             .collect()
     }
 
-    /// Focus next pane
+    /// Focus next pane: the next visible one after the focused pane,
+    /// wrapping around. From a collapsed pane it is the first visible one
+    /// after it, so Tab never sticks on a hidden pane (#885).
     pub fn focus_next(&mut self) {
         let visible = self.visible_indices();
-
-        if let Some(pos) = visible.iter().position(|&i| i == self.focused_pane) {
-            let next = (pos + 1) % visible.len();
-            self.focused_pane = visible[next];
+        let next = visible
+            .iter()
+            .copied()
+            .find(|&i| i > self.focused_pane)
+            .or_else(|| visible.first().copied());
+        if let Some(next) = next {
+            self.focused_pane = next;
         }
     }
 
-    /// Focus previous pane
+    /// Focus previous pane: the previous visible one before the focused
+    /// pane, wrapping around, from a collapsed pane too
     pub fn focus_prev(&mut self) {
         let visible = self.visible_indices();
-
-        if let Some(pos) = visible.iter().position(|&i| i == self.focused_pane) {
-            let prev = if pos == 0 { visible.len() - 1 } else { pos - 1 };
-            self.focused_pane = visible[prev];
+        let prev = visible
+            .iter()
+            .copied()
+            .rev()
+            .find(|&i| i < self.focused_pane)
+            .or_else(|| visible.last().copied());
+        if let Some(prev) = prev {
+            self.focused_pane = prev;
         }
     }
 
@@ -78,9 +88,19 @@ impl Splitter {
     }
 
     /// Toggle collapse for pane
+    ///
+    /// Collapsing the focused pane moves the focus to the next visible
+    /// pane, so `focused` never names a hidden one (#885).
     pub fn toggle_pane(&mut self, index: usize) {
         if let Some(pane) = self.panes.get_mut(index) {
             pane.toggle_collapse();
+        }
+        let hidden = self
+            .panes
+            .get(self.focused_pane)
+            .is_some_and(|p| p.collapsed);
+        if hidden {
+            self.focus_next();
         }
     }
 
