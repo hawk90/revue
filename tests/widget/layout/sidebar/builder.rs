@@ -138,3 +138,33 @@ fn test_sidebar_styling() {
         ('│', Some(Color::rgb(60, 60, 60)), Some(Color::BLACK))
     );
 }
+
+/// `sections` replaces every section added before it, by `section` or
+/// `items`; `section` and `items` after it add to what it set. Its docs said
+/// "Add" (#1033); the 3.x behavior is pinned here, and one rule for every
+/// collection builder is left to 4.0.
+#[test]
+fn test_sidebar_sections_replaces_what_came_before() {
+    let a = || SidebarItem::new("a", "A");
+    let b = || SidebarSection::new(vec![SidebarItem::new("b", "B")]);
+    let c = || SidebarSection::titled("C", vec![SidebarItem::new("c", "C")]);
+    let ids = |sb: &Sidebar| -> Vec<String> {
+        sb.visible_items()
+            .iter()
+            .filter_map(|f| match f {
+                FlattenedItem::Item { item, .. } => Some(item.id.clone()),
+                FlattenedItem::Section(_) => None,
+            })
+            .collect()
+    };
+    let before = Sidebar::new()
+        .items(vec![a()])
+        .section(c())
+        .sections(vec![b()]);
+    assert_eq!(ids(&before), ["b"]);
+    let after = Sidebar::new()
+        .sections(vec![b()])
+        .items(vec![a()])
+        .section(c());
+    assert_eq!(ids(&after), ["b", "a", "c"]);
+}

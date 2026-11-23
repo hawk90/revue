@@ -11,13 +11,17 @@ impl Sidebar {
         self
     }
 
-    /// Add multiple sections
+    /// Replace all sections, including those that earlier
+    /// [`section`](Self::section) and [`items`](Self::items) calls added
+    ///
+    /// Call it before `section` and `items` to keep what they add.
     pub fn sections(mut self, sections: Vec<SidebarSection>) -> Self {
         self.sections = sections;
         self
     }
 
-    /// Add items without a section title
+    /// Add one section without a title, holding `items`, after the
+    /// sections already added
     pub fn items(mut self, items: Vec<SidebarItem>) -> Self {
         self.sections.push(SidebarSection::new(items));
         self
