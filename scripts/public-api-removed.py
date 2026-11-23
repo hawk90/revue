@@ -13,10 +13,18 @@ only type paths changed, each from a path the old snapshot never lists as
 an item (so no user could name it, e.g. a type in a private module) to a
 path ending in the same name. Re-exporting such a type changes how the
 signatures that use it print, and nothing breaks (#1445).
+
+Nor is a removed impl of a nightly-only auto trait (`Freeze`,
+`UnsafeUnpin`): stable code cannot name them, so a type that gains
+interior mutability and stops being `Freeze` breaks nobody (#1516).
 """
 import re
 import sys
 
+# Auto traits that exist only on nightly: an impl of one, or of its negation
+UNSTABLE_AUTO_TRAIT = re.compile(
+    r"^impl(?:<.*>)? !?core::marker::(?:Freeze|UnsafeUnpin) for "
+)
 PATH = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)+")
 # An item line: optional attributes, `pub`, a kind, then the item's path
 ITEM = re.compile(
@@ -73,6 +81,8 @@ def real_removals(old_lines, diff_lines):
 
     real = []
     for line in removed:
+        if UNSTABLE_AUTO_TRAIT.match(line):
+            continue
         names = unnameable_names(line)
         if names:
             key = removal_key(line)
@@ -130,6 +140,22 @@ SELF_TEST_CASES = [
     ),
     ("item removed", ["-pub struct revue::widget::Bar"], True),
     ("only additions", ["+pub fn revue::widget::Foo::e(&self)"], False),
+    (
+        "a nightly-only auto trait flipped",
+        [
+            "-impl core::marker::Freeze for revue::widget::Foo",
+            "+impl !core::marker::Freeze for revue::widget::Foo",
+        ],
+        False,
+    ),
+    (
+        "Sync lost",
+        [
+            "-impl core::marker::Sync for revue::widget::Foo",
+            "+impl !core::marker::Sync for revue::widget::Foo",
+        ],
+        True,
+    ),
     (
         "method renamed",
         ["-" + A, "+" + A.replace("Foo::a", "Foo::z").replace("private::", "")],
