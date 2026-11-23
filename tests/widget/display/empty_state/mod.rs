@@ -130,7 +130,7 @@ fn test_empty_state_new() {
     let es = EmptyState::new("No items");
     let buffer = draw(&es, 40, 10);
     // Full by default: icon, a blank row, the title, centered in 40x10
-    let icon = buffer.get(20, 3).unwrap();
+    let icon = buffer.get(19, 3).unwrap();
     assert_eq!(icon.symbol, '📭');
     assert_eq!(icon.fg, Some(EmptyStateType::Empty.color()));
     assert_eq!(row(&buffer, 5), "No items");
@@ -145,7 +145,7 @@ fn test_empty_state_default() {
     let es = EmptyState::default();
     assert_eq!(es.height(), 3);
     let buffer = draw(&es, 40, 10);
-    assert_eq!(buffer.get(20, 3).unwrap().symbol, '📭');
+    assert_eq!(buffer.get(19, 3).unwrap().symbol, '📭');
     assert_eq!(row(&buffer, 5), "No items");
 }
 
@@ -162,7 +162,7 @@ fn test_empty_state_helper_function() {
 fn test_empty_state_no_results() {
     let es = EmptyState::no_results("No results found");
     let buffer = draw(&es, 40, 10);
-    let icon = buffer.get(20, 3).unwrap();
+    let icon = buffer.get(19, 3).unwrap();
     assert_eq!(icon.symbol, '🔍');
     assert_eq!(icon.fg, Some(Color::rgb(100, 149, 237)));
     assert_eq!(row(&buffer, 5), "No results found");
@@ -181,7 +181,7 @@ fn test_empty_state_no_results_helper() {
 fn test_empty_state_error() {
     let es = EmptyState::error("Failed to load");
     let buffer = draw(&es, 40, 10);
-    let icon = buffer.get(20, 3).unwrap();
+    let icon = buffer.get(19, 3).unwrap();
     assert_eq!(icon.symbol, '⚠');
     assert_eq!(icon.fg, Some(Color::rgb(220, 80, 80)));
 }
@@ -199,7 +199,7 @@ fn test_empty_state_error_helper() {
 fn test_empty_state_no_permission() {
     let es = EmptyState::no_permission("Access denied");
     let buffer = draw(&es, 40, 10);
-    let icon = buffer.get(20, 3).unwrap();
+    let icon = buffer.get(19, 3).unwrap();
     assert_eq!(icon.symbol, '🔒');
     assert_eq!(icon.fg, Some(Color::rgb(255, 165, 0)));
 }
@@ -208,7 +208,7 @@ fn test_empty_state_no_permission() {
 fn test_empty_state_offline() {
     let es = EmptyState::offline("No connection");
     let buffer = draw(&es, 40, 10);
-    let icon = buffer.get(20, 3).unwrap();
+    let icon = buffer.get(19, 3).unwrap();
     assert_eq!(icon.symbol, '📡');
     assert_eq!(icon.fg, Some(EmptyStateType::Offline.color()));
 }
@@ -217,7 +217,7 @@ fn test_empty_state_offline() {
 fn test_empty_state_first_use() {
     let es = EmptyState::first_use("Welcome!");
     let buffer = draw(&es, 40, 10);
-    let icon = buffer.get(20, 3).unwrap();
+    let icon = buffer.get(19, 3).unwrap();
     assert_eq!(icon.symbol, '🚀');
     assert_eq!(icon.fg, Some(Color::rgb(100, 200, 100)));
 }
@@ -252,9 +252,9 @@ fn test_empty_state_description() {
 fn test_empty_state_type_builder() {
     let es = EmptyState::new("Search empty").state_type(EmptyStateType::NoResults);
     let buffer = draw(&es, 40, 10);
-    assert_eq!(buffer.get(20, 3).unwrap().symbol, '🔍');
+    assert_eq!(buffer.get(19, 3).unwrap().symbol, '🔍');
     assert_eq!(
-        buffer.get(20, 3).unwrap().fg,
+        buffer.get(19, 3).unwrap().fg,
         Some(EmptyStateType::NoResults.color())
     );
 }
@@ -263,7 +263,7 @@ fn test_empty_state_type_builder() {
 fn test_empty_state_variant_builder_full() {
     let es = EmptyState::new("Test").variant(EmptyStateVariant::Full);
     let buffer = draw(&es, 40, 10);
-    assert_eq!(buffer.get(20, 3).unwrap().symbol, '📭');
+    assert_eq!(buffer.get(19, 3).unwrap().symbol, '📭');
     assert_eq!(row(&buffer, 5), "Test");
     assert_eq!(buffer.get(18, 5).unwrap().symbol, 'T');
 }
@@ -296,7 +296,7 @@ fn test_empty_state_icon_show() {
     let es = EmptyState::new("Test").icon(true);
     let buffer = draw(&es, 40, 5);
     // Three rows centered in five: icon on row 1, title on row 3
-    assert_eq!(buffer.get(20, 1).unwrap().symbol, '📭');
+    assert_eq!(buffer.get(19, 1).unwrap().symbol, '📭');
     assert_eq!(row(&buffer, 3), "Test");
 }
 
@@ -317,7 +317,7 @@ fn test_empty_state_icon_hide() {
 fn test_empty_state_custom_icon() {
     let es = EmptyState::new("Test").custom_icon('★');
     let buffer = draw(&es, 40, 10);
-    assert_eq!(buffer.get(20, 3).unwrap().symbol, '★');
+    assert_eq!(buffer.get(19, 3).unwrap().symbol, '★');
     assert_eq!(find(&buffer, '📭'), None);
 }
 
@@ -344,7 +344,7 @@ fn test_empty_state_builder_chain() {
 
     let buffer = draw(&es, 40, 10);
     // Six rows centered in ten: icon, blank, title, description, blank, action
-    let icon = buffer.get(20, 2).unwrap();
+    let icon = buffer.get(19, 2).unwrap();
     assert_eq!(icon.symbol, '🔎');
     assert_eq!(icon.fg, Some(EmptyStateType::NoResults.color()));
     assert_eq!(row(&buffer, 4), "No results");
@@ -416,7 +416,7 @@ fn test_empty_state_height_minimal() {
 fn test_empty_state_render_full_basic() {
     let es = EmptyState::new("No items yet").variant(EmptyStateVariant::Full);
     let buffer = draw(&es, 40, 10);
-    assert_eq!(find(&buffer, '📭'), Some((20, 3)));
+    assert_eq!(find(&buffer, '📭'), Some((19, 3)));
     assert_eq!(row(&buffer, 4), "");
     assert_eq!(row(&buffer, 5), "No items yet");
 }
@@ -478,7 +478,7 @@ fn test_empty_state_render_full_with_custom_icon() {
         .variant(EmptyStateVariant::Full)
         .custom_icon('★');
     let buffer = draw(&es, 40, 10);
-    assert_eq!(find(&buffer, '★'), Some((20, 3)));
+    assert_eq!(find(&buffer, '★'), Some((19, 3)));
 }
 
 // =============================================================================
@@ -809,7 +809,7 @@ fn test_empty_state_empty_title() {
     let es = EmptyState::new("");
     let buffer = draw(&es, 40, 10);
     // The icon is still drawn; the title row stays blank
-    assert_eq!(find(&buffer, '📭'), Some((20, 3)));
+    assert_eq!(find(&buffer, '📭'), Some((19, 3)));
     assert_eq!(row(&buffer, 5), "");
 }
 
@@ -843,7 +843,7 @@ fn test_empty_state_height_less_than_content() {
     let mut ctx = RenderContext::new(&mut buffer, area);
     es.render(&mut ctx);
     // From the top: what fits is drawn, the rest is dropped
-    assert_eq!(find(&buffer, '📭'), Some((20, 0)));
+    assert_eq!(find(&buffer, '📭'), Some((19, 0)));
     assert_eq!(row(&buffer, 2), "Test");
     assert_eq!(find(&buffer, 'D'), None);
     assert_eq!(find(&buffer, '['), None);
