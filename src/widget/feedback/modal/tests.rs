@@ -497,12 +497,11 @@ mod render {
             let mut m = Modal::new().title("Test").content("Body").ok();
             m.show();
             m.render(&mut ctx);
-            // At three and four rows the title is drawn outside its box (#1060),
-            // so only the smaller areas are
-            // checked
-            if height <= 2 {
-                assert!(text(&buffer).trim().is_empty(), "{height}");
-            }
+            // Below four rows there is no box, so nothing is drawn; at four
+            // the two-row box has no room inside for the title
+            let drawn = text(&buffer);
+            assert!(!drawn.contains("Test"), "{height}");
+            assert_eq!(drawn.trim().is_empty(), height < 4, "{height}");
         }
     }
 
@@ -623,6 +622,7 @@ mod key_handling {
         use crate::event::Key;
 
         let mut m = Modal::new();
+        m.show();
         let result = m.handle_key(&Key::Enter);
         assert_eq!(result, None);
     }
@@ -632,6 +632,7 @@ mod key_handling {
         use crate::event::Key;
 
         let mut m = Modal::new().ok();
+        m.show();
         let result = m.handle_key(&Key::Char('x'));
         assert_eq!(result, None);
     }

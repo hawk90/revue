@@ -52,8 +52,10 @@ impl Modal {
         };
 
         let button_line = if self.buttons.is_empty() { 0 } else { 1 };
-        // top border + title + title separator + content + padding + buttons + bottom border
-        3 + content_lines + 1 + button_line + 1
+        // The title and its separator take two rows only when there is a title
+        let title_rows = if self.title.is_empty() { 0 } else { 2 };
+        // top border + title rows + content + padding + buttons + bottom border
+        1 + title_rows + content_lines + 1 + button_line + 1
     }
 
     /// Whether the title row and its separator are drawn
@@ -90,11 +92,16 @@ impl Modal {
             if end <= 2 {
                 return;
             }
+            // The separator joins the border, so it takes the border color
             for dx in 1..modal_width.saturating_sub(1) {
-                ctx.set(x + dx, y + 2, Cell::new('─'));
+                ctx.set(x + dx, y + 2, self.border_cell('─'));
             }
-            ctx.set(x, y + 2, Cell::new('├'));
-            ctx.set(x + modal_width.saturating_sub(1), y + 2, Cell::new('┤'));
+            ctx.set(x, y + 2, self.border_cell('├'));
+            ctx.set(
+                x + modal_width.saturating_sub(1),
+                y + 2,
+                self.border_cell('┤'),
+            );
         }
     }
 
