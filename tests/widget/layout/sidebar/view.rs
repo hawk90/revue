@@ -299,10 +299,15 @@ fn flatten(s: &Sections) -> Vec<(Row, Option<Node>)> {
         }
     }
     let mut out = vec![];
+    // An untitled section is divided from a non-empty one before it (#1033)
+    let mut items_before = false;
     for (title, nodes) in s {
         if let Some(t) = title {
             out.push((Row::Title(t.clone()), None));
+        } else if !nodes.is_empty() && items_before {
+            out.push((Row::Title(String::new()), None));
         }
+        items_before |= !nodes.is_empty();
         for n in nodes {
             walk(n, 0, &mut out);
         }
@@ -560,6 +565,82 @@ proptest! {
             }
         }
     }
+}
+
+// ── Dividers between untitled sections (#1033) ────────────────────────
+
+fn untitled(ids: &[&str]) -> SidebarSection {
+    SidebarSection::new(
+        ids.iter()
+            .map(|id| SidebarItem::new(*id, id.to_uppercase()))
+            .collect(),
+    )
+}
+
+/// Two untitled sections in a row ran together; now a divider row separates
+/// them, drawn as a line inside the bar's padding
+#[test]
+fn test_sidebar_untitled_section_draws_a_divider() {
+    let sb = Sidebar::new()
+        .expanded_width(10)
+        .section(untitled(&["a"]))
+        .section(untitled(&["b"]));
+    let b = screen(&sb, 10, 4);
+    assert!(super::row(&b, 0).contains('A'));
+    assert_eq!(super::row(&b, 1), " ────────│");
+    assert!(super::row(&b, 2).contains('B'));
+}
+
+/// Dividers go only between non-empty sections: none before the first,
+/// none for an empty section, and a titled section keeps its title row
+/// instead of a divider
+#[test]
+fn test_sidebar_dividers_only_between_non_empty_sections() {
+    let rows = |sb: Sidebar| -> Vec<String> {
+        sb.visible_items()
+            .into_iter()
+            .map(|f| match f {
+                FlattenedItem::Section(None) => "---".to_string(),
+                FlattenedItem::Section(Some(t)) => format!("[{t}]"),
+                FlattenedItem::Item { item, .. } => item.id,
+            })
+            .collect()
+    };
+    // Leading empty section, then items: no divider before the first items
+    let sb = Sidebar::new()
+        .section(untitled(&[]))
+        .section(untitled(&["a"]))
+        .section(untitled(&[]))
+        .section(untitled(&["b"]));
+    assert_eq!(rows(sb), ["a", "---", "b"]);
+    // Titled sections keep their titles; an untitled one after them gets a
+    // divider, and one before them does not
+    let sb = Sidebar::new()
+        .section(untitled(&["a"]))
+        .section(SidebarSection::titled(
+            "T",
+            vec![SidebarItem::new("t", "T")],
+        ))
+        .section(untitled(&["b"]));
+    assert_eq!(rows(sb), ["a", "[T]", "t", "---", "b"]);
+}
+
+/// Hover skips a divider row and stays on its item when rows move
+#[test]
+fn test_sidebar_hover_skips_dividers() {
+    let mut sb = Sidebar::new()
+        .section(untitled(&["a"]))
+        .section(untitled(&["b"]));
+    // Row 1 is the divider; "b" is row 2. Nothing hovered reads as row 0,
+    // so the first move down goes from "a" to "b"
+    sb.hover_down();
+    assert_eq!(sb.hovered_index(), 2);
+    sb.hover_up();
+    assert_eq!(sb.hovered_index(), 0);
+    sb.hover_up();
+    assert_eq!(sb.hovered_index(), 0);
+    sb.hover_down();
+    assert_eq!(sb.hovered_index(), 2);
 }
 
 // ── Scroll and hover (#882, #975) ──────────────────────────────────────

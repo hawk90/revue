@@ -15,7 +15,8 @@ fn test_sidebar_items() {
             SidebarItem::new("settings", "Settings"),
         ]);
 
-    // `items` appends an untitled section: no title row before its items.
+    // `items` appends an untitled section: no title row before its items,
+    // but a divider row from the section above (#1033).
     let ids: Vec<String> = sb
         .visible_items()
         .into_iter()
@@ -24,7 +25,16 @@ fn test_sidebar_items() {
             FlattenedItem::Item { item, .. } => item.id,
         })
         .collect();
-    assert_eq!(ids, ["section Some(\"Top\")", "a", "home", "settings"]);
+    assert_eq!(
+        ids,
+        [
+            "section Some(\"Top\")",
+            "a",
+            "section None",
+            "home",
+            "settings"
+        ]
+    );
 }
 
 #[test]
