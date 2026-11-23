@@ -56,5 +56,6 @@ fn modal_selection_follows_new_buttons() {
     m.next_button();
     m.next_button();
     let mut m = m.buttons(vec![ModalButton::new("Only")]);
+    m.show();
     assert_eq!(m.handle_key(&Key::Enter), Some(0)); // Some(2) before
 }

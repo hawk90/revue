@@ -27,8 +27,15 @@ impl Modal {
     }
 
     /// Handle key input, returns Some(button_index) if button confirmed
+    ///
+    /// A hidden modal handles no keys: it neither confirms nor moves its
+    /// selection, since the user cannot see what they would be choosing.
     pub fn handle_key(&mut self, key: &crate::event::Key) -> Option<usize> {
         use crate::event::Key;
+
+        if !self.visible {
+            return None;
+        }
 
         match key {
             Key::Enter | Key::Char(' ') => {

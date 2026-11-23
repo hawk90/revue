@@ -62,11 +62,24 @@ fn test_modal_colors() {
         .title_fg(Color::CYAN)
         .border_fg(Color::GREEN);
     m.show();
-    // 40 x 6 box centered in 44 x 9: rows 1 to 6 from x = 2. (The
-    // separator under the title has no color: #1060.)
+    // 40 x 6 box centered in 44 x 9: rows 1 to 6 from x = 2. The separator
+    // under the title (row 3) joins the border, so it is in the border color
+    // too (#1060).
     let b = draw(&m, 44, 9);
     assert_eq!(b.get(2, 1).unwrap().symbol, '┌');
-    for (x, y) in [(2, 1), (20, 1), (41, 1), (2, 5), (41, 5), (2, 6), (41, 6)] {
+    assert_eq!(row(&b, 3).trim(), format!("├{}┤", "─".repeat(38)));
+    for (x, y) in [
+        (2, 1),
+        (20, 1),
+        (41, 1),
+        (2, 3),
+        (20, 3),
+        (41, 3),
+        (2, 5),
+        (41, 5),
+        (2, 6),
+        (41, 6),
+    ] {
         assert_eq!(b.get(x, y).unwrap().fg, Some(Color::GREEN), "({x}, {y})");
     }
     let title = b.get(4, 2).unwrap();
@@ -302,7 +315,8 @@ proptest! {
     }
 
     /// Left/h and Right/l/Tab move the selection and wrap; Enter and Space
-    /// confirm it when there are buttons; Escape hides the modal.
+    /// confirm it when there are buttons; Escape hides the modal, and a
+    /// hidden modal ignores every key.
     #[test]
     fn prop_modal_keys_follow_the_model(
         n in 0usize..5,
@@ -327,7 +341,9 @@ proptest! {
         let mut sel = 0usize;
         let mut visible = true;
         for k in &keys {
+            // Once Escape hides it, the modal handles no keys (#1060)
             let want = match k {
+                _ if !visible => None,
                 Key::Enter | Key::Char(' ') if n > 0 => Some(sel),
                 Key::Left | Key::Char('h') if n > 0 => {
                     sel = (sel + n - 1) % n;
@@ -358,6 +374,57 @@ fn test_modal_required_height() {
     assert_eq!(m.required_height(), 7);
     assert_eq!(m.ok().required_height(), 8);
     assert_eq!(Modal::new().title("T").height(3).ok().required_height(), 3);
+    // Without a title there are no rows for it (#1060): border, two lines,
+    // padding, buttons, border
+    let m = Modal::new().content("a\nb");
+    assert_eq!(m.required_height(), 5);
+    assert_eq!(m.ok().required_height(), 6);
+}
+
+#[test]
+fn test_untitled_modal_keeps_one_row_of_padding() {
+    // The content starts under the top border and one empty row separates
+    // it from the buttons, as with a title (#1060)
+    let mut m = Modal::new().content("a\nb").ok().width(20);
+    m.show();
+    let b = draw(&m, 24, 8);
+    let rows: Vec<String> = (0..8).map(|y| row(&b, y)).collect();
+    assert_eq!(
+        rows,
+        [
+            " ".repeat(24),
+            "  ┌──────────────────┐  ".to_string(),
+            "  │ a                │  ".to_string(),
+            "  │ b                │  ".to_string(),
+            "  │                  │  ".to_string(),
+            "  │      [ OK ]      │  ".to_string(),
+            "  └──────────────────┘  ".to_string(),
+            " ".repeat(24),
+        ]
+    );
+}
+
+#[test]
+fn test_hidden_modal_does_not_confirm() {
+    // Keys sent to a modal before it is shown, or after Escape hid it, do not
+    // confirm or move the selection the user cannot see (#1060)
+    let mut m = Modal::confirm("Delete", "Sure?");
+    assert!(!m.is_visible());
+    for k in [
+        Key::Enter,
+        Key::Char(' '),
+        Key::Right,
+        Key::Tab,
+        Key::Char('l'),
+    ] {
+        assert_eq!(m.handle_key(&k), None, "{k:?}");
+    }
+    assert_eq!(m.selected_button(), 0);
+    m.show();
+    m.handle_key(&Key::Right);
+    m.handle_key(&Key::Escape);
+    assert_eq!(m.handle_key(&Key::Enter), None);
+    assert_eq!(m.selected_button(), 1);
 }
 
 #[test]
