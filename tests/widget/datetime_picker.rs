@@ -234,8 +234,7 @@ fn test_time_hm() {
 }
 
 fn local_time() -> Time {
-    use chrono::Timelike;
-    let now = chrono::Local::now();
+    let now = jiff::ZonedDateTime::now();
     Time::new(now.hour() as u8, now.minute() as u8, now.second() as u8)
 }
 
