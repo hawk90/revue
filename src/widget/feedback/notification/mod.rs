@@ -45,8 +45,32 @@ pub struct NotificationCenter {
     selected: KeyedSelection<u64>,
     /// Focused state
     focused: bool,
+    /// The notifications the last render drew, newest first
+    drawn: DrawnIds,
     /// Widget properties
     props: WidgetProps,
+}
+
+/// The ids of the boxes the last render drew, newest first; `None` before
+/// the first render. Behind a lock so `render(&self)` can record them and
+/// the center stays `Send + Sync`; a clone gets its own copy.
+#[derive(Default)]
+struct DrawnIds(std::sync::Mutex<Option<Vec<u64>>>);
+
+impl DrawnIds {
+    fn set(&self, ids: Vec<u64>) {
+        *self.0.lock().unwrap_or_else(|e| e.into_inner()) = Some(ids);
+    }
+
+    fn get(&self) -> Option<Vec<u64>> {
+        self.0.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+}
+
+impl Clone for DrawnIds {
+    fn clone(&self) -> Self {
+        Self(std::sync::Mutex::new(self.get()))
+    }
 }
 
 impl NotificationCenter {
@@ -63,6 +87,7 @@ impl NotificationCenter {
             tick_counter: 0,
             selected: KeyedSelection::new(),
             focused: false,
+            drawn: DrawnIds::default(),
             props: WidgetProps::new(),
         }
     }

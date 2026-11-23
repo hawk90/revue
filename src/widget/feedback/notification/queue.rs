@@ -76,6 +76,18 @@ impl NotificationCenter {
             .map(|n| n.id)
     }
 
+    /// The ids the keys move over: the shown notifications that the last
+    /// render drew, newest first. A box the area was too short for is left
+    /// out, so it cannot be selected unseen (#1516). Before the first render,
+    /// every shown one.
+    pub(super) fn selectable_ids(&self) -> Vec<u64> {
+        let shown: Vec<u64> = self.shown_ids().collect();
+        match self.drawn.get() {
+            Some(drawn) => shown.into_iter().filter(|id| drawn.contains(id)).collect(),
+            None => shown,
+        }
+    }
+
     /// After the shown notifications changed: keep the selection on its
     /// notification, or move it to the one now in its place when it went
     /// (#975)
