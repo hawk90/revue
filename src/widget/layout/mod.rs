@@ -23,6 +23,7 @@
 //! | [`TabView`] | Tab bar and the selected tab's widget | [`tab_view()`] |
 //! | [`Dock`] | IDE-style areas: left, right, top, bottom, center | [`dock()`] |
 //! | [`ScrollView`] | Scrollable container | [`scroll_view()`] |
+//! | [`Scrollbar`] | A scrollbar on its own, for a view the app scrolls | [`scrollbar()`] |
 //! | [`Layers`] | Z-index layering | [`layers()`] |
 //! | [`Positioned`] | Absolute positioning | [`positioned()`] |
 //!
@@ -130,6 +131,7 @@ pub mod positioned;
 pub mod resizable;
 pub mod screen;
 pub mod scroll;
+pub mod scroll_bar;
 pub mod sidebar;
 pub mod split_view;
 pub mod splitter;
@@ -152,6 +154,7 @@ pub use positioned::{positioned, Anchor, Positioned};
 pub use resizable::{resizable, Resizable, ResizeDirection, ResizeHandle, ResizeStyle};
 pub use screen::{screen, screen_stack, Screen, ScreenStack, ScreenTransition};
 pub use scroll::{scroll_view, ScrollView};
+pub use scroll_bar::{scrollbar, Scrollbar};
 pub use sidebar::{
     sidebar, sidebar_item, sidebar_section, sidebar_section_titled, CollapseMode, FlattenedItem,
     Sidebar, SidebarItem, SidebarSection,
