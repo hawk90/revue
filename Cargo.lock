@@ -2817,7 +2817,7 @@ dependencies = [
 
 [[package]]
 name = "revue"
-version = "3.15.0"
+version = "3.16.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2875,7 +2875,7 @@ dependencies = [
 
 [[package]]
 name = "revue-cli"
-version = "3.15.0"
+version = "3.16.0"
 dependencies = [
  "clap",
  "colored",
@@ -2894,7 +2894,7 @@ dependencies = [
 
 [[package]]
 name = "revue-macros"
-version = "3.15.0"
+version = "3.16.0"
 dependencies = [
  "proc-macro2",
  "quote",
