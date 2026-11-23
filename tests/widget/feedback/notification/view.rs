@@ -131,15 +131,18 @@ fn test_center_area_heights() {
 
 #[test]
 fn test_center_columns_when_the_area_is_narrow() {
-    // The box keeps its width; right and center positions start at column 0
-    // when the area is narrower, and the area clips the box
+    // In an area narrower than the box, the box is narrowed to the area
+    // (#1048), so right and center positions start at column 0 and the right
+    // border is on the area's last column
     for position in [
         NotificationPosition::TopRight,
         NotificationPosition::TopCenter,
     ] {
         let mut c = notification_center().position(position);
         c.info("m");
-        assert_eq!(corners(&render(&c, 30, 5)), [(0, 0)], "{position:?}");
+        let b = render(&c, 30, 5);
+        assert_eq!(corners(&b), [(0, 0)], "{position:?}");
+        assert_eq!(box_width(&b, (0, 0)), 30, "{position:?}");
     }
     // Odd leftover columns put the center box one column left of the middle
     for (position, y) in [
@@ -251,26 +254,28 @@ proptest! {
         prop_assert_eq!(drawn, expected);
     }
 
-    /// At the bottom, when the stack fits, the newest box sits on the last
-    /// row and older ones go up from it. Areas too short for the stack are
-    /// not generated: the boxes then overlap (#884).
+    /// At the bottom, the newest box sits on the last row and older ones go
+    /// up from it, each `spacing` rows above the previous; a box with no
+    /// room above the last one is left out and the next one tries the same
+    /// place, as at the top. In a short area the boxes overlapped at row 0
+    /// (#884, #1048).
     #[test]
     fn prop_center_bottom_stacking(
         items in prop::collection::vec(item(), 1..8),
         max in 1usize..8,
         spacing in 0u16..3,
-        extra in 0u16..10,
+        height in 3u16..40,
     ) {
         let shown: Vec<(usize, &Item)> = items.iter().enumerate().rev().take(max).collect();
-        let total: u16 = shown.iter().map(|(_, it)| it.height() + spacing).sum::<u16>() - spacing;
-        let height = total + extra;
         let c = stacked(&items, NotificationPosition::BottomLeft, max, spacing);
         let mut expected = Vec::new();
         let mut bottom = height;
         for (i, it) in &shown {
-            let y = bottom - it.height();
-            expected.push((y, format!("m{i}")));
-            bottom = y.saturating_sub(spacing);
+            if bottom >= it.height() {
+                let y = bottom - it.height();
+                expected.push((y, format!("m{i}")));
+                bottom = y.saturating_sub(spacing);
+            }
         }
         expected.reverse();
         let buffer = render(&c, 50, height);
@@ -279,5 +284,69 @@ proptest! {
             .map(|(cx, cy)| (cy, message_below(&buffer, cx, cy)))
             .collect();
         prop_assert_eq!(drawn, expected);
+    }
+}
+
+/// A box wider than the area is narrowed to it: the right border, the end
+/// of the text and the right-aligned action stay on screen (#1048)
+#[test]
+fn test_notification_fits_a_narrow_area() {
+    let mut c = notification_center(); // 40 wide, top right
+    c.push(Notification::info("hello").action("Undo"));
+    let b = render(&c, 30, 5);
+    assert_eq!(corners(&b), [(0, 0)]);
+    assert_eq!(box_width(&b, (0, 0)), 30);
+    assert_eq!(b.get(29, 0).unwrap().symbol, '╮');
+    assert!(
+        row(&b, 2).trim_end().ends_with("[Undo] │"),
+        "{:?}",
+        row(&b, 2)
+    );
+    // Top, message, action, bottom
+    assert_eq!(b.get(29, 3).unwrap().symbol, '╯');
+    // An area too narrow for a box draws nothing
+    let b = render(&c, 3, 5);
+    assert!((0..5).all(|y| row(&b, y).trim().is_empty()));
+}
+
+/// Growing up from the bottom, a box with no room above the last one is left
+/// out: it was pinned at row 0 and drawn over the box below it (#1048,
+/// moved from #884). Growing down, a box past the bottom is left out, as
+/// before.
+#[test]
+fn test_notification_stack_leaves_out_the_boxes_that_do_not_fit() {
+    for position in [
+        NotificationPosition::BottomLeft,
+        NotificationPosition::TopLeft,
+    ] {
+        let mut c = notification_center()
+            .position(position)
+            .show_icons(false)
+            .show_timer(false)
+            .width(20)
+            .max_visible(5);
+        for m in ["1", "2", "3"] {
+            c.info(m);
+        }
+        // Boxes are 3 rows with 1 row of spacing: two fit in 8 rows, not three
+        let b = render(&c, 20, 8);
+        let tops: Vec<u16> = corners(&b).into_iter().map(|(_, y)| y).collect();
+        let messages: Vec<String> = tops.iter().map(|&y| message_of(&row(&b, y + 1))).collect();
+        match position {
+            NotificationPosition::BottomLeft => {
+                assert_eq!(tops, [1, 5]);
+                assert_eq!(messages, ["2", "3"]);
+            }
+            _ => {
+                assert_eq!(tops, [0, 4]);
+                assert_eq!(messages, ["3", "2"]);
+            }
+        }
+        // Every row is a whole box's or blank: nothing drawn over another
+        for y in 0..8 {
+            let r = row(&b, y);
+            let inside = tops.iter().any(|&t| y >= t && y < t + 3);
+            assert_eq!(!r.trim().is_empty(), inside, "{position:?} row {y}: {r:?}");
+        }
     }
 }
