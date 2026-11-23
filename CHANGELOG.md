@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.16.0](https://github.com/hawk90/revue/compare/v3.15.0...v3.16.0) (2026-11-23)
+
+
+### Features
+
+* **widget:** a standalone scrollbar for a view the app scrolls itself ([#1524](https://github.com/hawk90/revue/issues/1524)) ([dbc8fb5](https://github.com/hawk90/revue/commit/dbc8fb5ddb74ff16f05b84f72e5c1120a193513a)), closes [#954](https://github.com/hawk90/revue/issues/954)
+* **widget:** HttpClient hands its request to the app with take_request and complete, and ReqwestBackend sends it (http feature) ([77df10d](https://github.com/hawk90/revue/commit/77df10d5579940815c6e2389fc6a0d13e7fcec5a))
+
+
+### Bug Fixes
+
+* **deps:** drop unused dependencies and pass Rust 1.100 clippy ([#1484](https://github.com/hawk90/revue/issues/1484)) ([1e9584a](https://github.com/hawk90/revue/commit/1e9584a4655f8c4dfa51be207367fffb45b8ad05))
+* **deps:** replace unmaintained chrono with jiff and update url, rustix and clipboard-win ([#1510](https://github.com/hawk90/revue/issues/1510)) ([47713b6](https://github.com/hawk90/revue/commit/47713b6bf41b500a37dae4b4369c0dc84bd931d3))
+* **deps:** unicode-properties 0.1.5 gives CharWidthTable the Unicode 18 emoji ([#1491](https://github.com/hawk90/revue/issues/1491)) ([544d562](https://github.com/hawk90/revue/commit/544d562868e4819aabebfb81f7243b44060ea5d2))
+* **deps:** update non-major dependencies ([#1483](https://github.com/hawk90/revue/issues/1483)) ([ab518bb](https://github.com/hawk90/revue/commit/ab518bb4be2e2744e9c89571ccc0c2055fadccd3))
+* **deps:** update rust crate ureq to 3.5.2 ([#1499](https://github.com/hawk90/revue/issues/1499)) ([bcc9a15](https://github.com/hawk90/revue/commit/bcc9a158dccd7778e1a393468ec13cb816bf02ab))
+* **layout:** flex, grid and splitter share space by weight with cumulative rounding, and a splitter divider moves only its two panes ([#1526](https://github.com/hawk90/revue/issues/1526)) ([8d2a33c](https://github.com/hawk90/revue/commit/8d2a33ca88c0e75ebd21f8eb434a253e010fac6f)), closes [#1514](https://github.com/hawk90/revue/issues/1514) [#885](https://github.com/hawk90/revue/issues/885)
+* **widget:** a dismissible toast's message leaves the close mark its columns ([#1517](https://github.com/hawk90/revue/issues/1517)) ([a88b9bd](https://github.com/hawk90/revue/commit/a88b9bd9c033d18e53ba662d0ed8d590171378c9)), closes [#1380](https://github.com/hawk90/revue/issues/1380)
+* **widget:** a minimal popover draws its title ([#1513](https://github.com/hawk90/revue/issues/1513)) ([5ac6f09](https://github.com/hawk90/revue/commit/5ac6f09f2577403122e16ad0aa134c4a4163c8db)), closes [#1046](https://github.com/hawk90/revue/issues/1046)
+* **widget:** a modal's separator takes the border color, untitled modals keep no title rows, and a hidden modal handles no keys ([#1508](https://github.com/hawk90/revue/issues/1508)) ([7a7e0e3](https://github.com/hawk90/revue/commit/7a7e0e3b13147719119c037688fc542e9f290a67)), closes [#1060](https://github.com/hawk90/revue/issues/1060)
+* **widget:** a notification center's keys select only the boxes it drew ([#1521](https://github.com/hawk90/revue/issues/1521)) ([12bfede](https://github.com/hawk90/revue/commit/12bfedee1f46c343950ef2c501d0761591746b20)), closes [#1516](https://github.com/hawk90/revue/issues/1516)
+* **widget:** a notification's fresh timer is drawn full, its box fits a narrow area, and bottom stacks no longer overlap ([#1520](https://github.com/hawk90/revue/issues/1520)) ([9d11238](https://github.com/hawk90/revue/commit/9d112388e3c79d0638edb2ad6c99e1479b722b18)), closes [#1048](https://github.com/hawk90/revue/issues/1048)
+* **widget:** a sidebar too short for its header and footer leaves the footer out ([#1512](https://github.com/hawk90/revue/issues/1512)) ([d2312ce](https://github.com/hawk90/revue/commit/d2312ce673c60421668d7f7474d940afca733426)), closes [#1500](https://github.com/hawk90/revue/issues/1500)
+* **widget:** an accordion's border from the stylesheet insets its rows ([#1505](https://github.com/hawk90/revue/issues/1505)) ([64bf97e](https://github.com/hawk90/revue/commit/64bf97eef24dc82d7f599486d26324b1513be163)), closes [#883](https://github.com/hawk90/revue/issues/883) [#1504](https://github.com/hawk90/revue/issues/1504)
+* **widget:** an alert draws each line of its message on its own row ([#1509](https://github.com/hawk90/revue/issues/1509)) ([3f1c92e](https://github.com/hawk90/revue/commit/3f1c92e24ef651cd4a18e45b4a5ea8ef82c0d2bc)), closes [#1061](https://github.com/hawk90/revue/issues/1061)
+* **widget:** an empty state's icon is centered by its width, and the full variant's docs drop the border it never drew ([#1515](https://github.com/hawk90/revue/issues/1515)) ([427fa1c](https://github.com/hawk90/revue/commit/427fa1c31833071562abaf1aca546e8a2dca9cf0)), closes [#1070](https://github.com/hawk90/revue/issues/1070)
+* **widget:** anchored boxes flip to the other side instead of covering their anchor ([#1497](https://github.com/hawk90/revue/issues/1497)) ([de931a1](https://github.com/hawk90/revue/commit/de931a106476cb2653d19609cc61b047fefa68c7)), closes [#1045](https://github.com/hawk90/revue/issues/1045) [#1053](https://github.com/hawk90/revue/issues/1053) [#1095](https://github.com/hawk90/revue/issues/1095)
+* **widget:** bordered widgets draw their own parts inside the frame ([#1501](https://github.com/hawk90/revue/issues/1501)) ([24386dd](https://github.com/hawk90/revue/commit/24386dd796d3243d15292c1c71ee9e457303cc1a))
+* **widget:** both menus draw and move through their items with one list, so a context menu shows item state and a menu bar dropdown fits its area ([#1522](https://github.com/hawk90/revue/issues/1522)) ([4650c61](https://github.com/hawk90/revue/commit/4650c61bd5bea44a0873ae0ab55d8469d8cd7d46)), closes [#1050](https://github.com/hawk90/revue/issues/1050) [#1051](https://github.com/hawk90/revue/issues/1051)
+* **widget:** equal flex children in a stack differ by at most a cell ([#1519](https://github.com/hawk90/revue/issues/1519)) ([1a321c6](https://github.com/hawk90/revue/commit/1a321c686c1db710995efa5bbe2c4606a7c02ab2)), closes [#1379](https://github.com/hawk90/revue/issues/1379)
+* **widget:** glyphs drawn on a band of background keep it ([#1503](https://github.com/hawk90/revue/issues/1503)) ([e29ba99](https://github.com/hawk90/revue/commit/e29ba99d5bf8b4eeee516ed53d641a1c6af021f0)), closes [#1039](https://github.com/hawk90/revue/issues/1039) [#1502](https://github.com/hawk90/revue/issues/1502) [#982](https://github.com/hawk90/revue/issues/982)
+* **widget:** grid lines and track sums saturate instead of overflowing ([#1506](https://github.com/hawk90/revue/issues/1506)) ([f39af2c](https://github.com/hawk90/revue/commit/f39af2ce4f4629ade9bc4b882cd4fe3664986ad0)), closes [#1372](https://github.com/hawk90/revue/issues/1372)
+* **widget:** HttpClient::send no longer shows a made-up 200 OK for any URL ([77df10d](https://github.com/hawk90/revue/commit/77df10d5579940815c6e2389fc6a0d13e7fcec5a))
+* **widget:** pagination fits its pages to the row and keeps the current one ([#1507](https://github.com/hawk90/revue/issues/1507)) ([a1ecb7d](https://github.com/hawk90/revue/commit/a1ecb7dd41f467b9b56c40f8e5b6455c5e9dce18)), closes [#1371](https://github.com/hawk90/revue/issues/1371) [#1104](https://github.com/hawk90/revue/issues/1104)
+* **widget:** splitter focus leaves a collapsed pane, and a snapping resizable steps to the next grid line ([#1523](https://github.com/hawk90/revue/issues/1523)) ([b494957](https://github.com/hawk90/revue/commit/b494957d50e4f689c280eee5cd4d5dbd015654b3)), closes [#885](https://github.com/hawk90/revue/issues/885)
+* **widget:** untitled sidebar sections are divided from the non-empty section before them ([#1518](https://github.com/hawk90/revue/issues/1518)) ([55b6b79](https://github.com/hawk90/revue/commit/55b6b79e30096646a5172dddead1c954c0eded91)), closes [#1033](https://github.com/hawk90/revue/issues/1033)
+
 ## [3.15.0](https://github.com/hawk90/revue/compare/v3.14.0...v3.15.0) (2026-11-06)
 
 
