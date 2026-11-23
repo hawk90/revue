@@ -61,6 +61,10 @@ pub struct Alert {
 
 impl Alert {
     /// Create a new alert with a message
+    ///
+    /// Each line of the message (split at `\n`) is drawn on its own row and
+    /// counted in [`height`](Alert::height); a line too wide is cut, not
+    /// wrapped.
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
@@ -148,16 +152,24 @@ impl Alert {
         self.dismissed = false;
     }
 
+    /// The message's lines, each drawn on its own row: split at line breaks
+    /// as [`str::lines`] does, and one empty line for an empty message
+    fn message_lines(&self) -> impl Iterator<Item = &str> {
+        let empty = self.message.is_empty().then_some("");
+        self.message.lines().chain(empty)
+    }
+
     /// Calculate the height needed for this alert
     pub fn height(&self) -> u16 {
         if self.dismissed {
             return 0;
         }
-        // Title and message each take a row.
-        let text_rows = if self.title.is_some() { 2 } else { 1 };
+        // The title takes a row, and each line of the message one more.
+        let message_rows = u16::try_from(self.message_lines().count()).unwrap_or(u16::MAX);
+        let text_rows = message_rows.saturating_add(u16::from(self.title.is_some()));
         match self.variant {
             // Rounded border above and below the text.
-            AlertVariant::Filled => text_rows + 2,
+            AlertVariant::Filled => text_rows.saturating_add(2),
             // Outlined is only the accent bar down the left edge, and Minimal
             // has no border at all: neither adds a row.
             AlertVariant::Outlined | AlertVariant::Minimal => text_rows,
