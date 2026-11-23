@@ -16419,6 +16419,47 @@ impl core::marker::Unpin for revue::widget::ScrollView
 impl core::marker::UnsafeUnpin for revue::widget::ScrollView
 impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::ScrollView
 impl core::panic::unwind_safe::UnwindSafe for revue::widget::ScrollView
+pub struct revue::prelude::Scrollbar
+impl revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::class(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn revue::widget::Scrollbar::classes<I, S>(self, I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
+pub fn revue::widget::Scrollbar::element_id(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn revue::widget::Scrollbar::keyed(self, impl core::convert::Into<revue::dom::WidgetKey>) -> Self
+impl revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::content_length(self, usize) -> Self
+pub fn revue::widget::Scrollbar::horizontal() -> Self
+pub fn revue::widget::Scrollbar::offset(self, usize) -> Self
+pub fn revue::widget::Scrollbar::thumb_color(self, revue::runtime::style::Color) -> Self
+pub fn revue::widget::Scrollbar::track_color(self, revue::runtime::style::Color) -> Self
+pub fn revue::widget::Scrollbar::vertical() -> Self
+pub fn revue::widget::Scrollbar::viewport_length(self, usize) -> Self
+impl core::clone::Clone for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::clone(&self) -> Self
+impl revue::widget::StyledView for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::add_class(&mut self, impl core::convert::Into<alloc::string::String>)
+pub fn revue::widget::Scrollbar::has_class(&self, &str) -> bool
+pub fn revue::widget::Scrollbar::remove_class(&mut self, &str)
+pub fn revue::widget::Scrollbar::set_id(&mut self, impl core::convert::Into<alloc::string::String>)
+pub fn revue::widget::Scrollbar::toggle_class(&mut self, &str)
+impl revue::widget::View for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::children(&self) -> &[alloc::boxed::Box<dyn revue::widget::View>]
+pub fn revue::widget::Scrollbar::classes(&self) -> &[alloc::string::String]
+pub fn revue::widget::Scrollbar::fills(&self) -> revue::widget::Fill
+pub fn revue::widget::Scrollbar::id(&self) -> core::option::Option<&str>
+pub fn revue::widget::Scrollbar::inline_style(&self) -> core::option::Option<revue::style::Style>
+pub fn revue::widget::Scrollbar::key(&self) -> core::option::Option<revue::dom::WidgetKey>
+pub fn revue::widget::Scrollbar::measure(&self, u16, u16) -> core::option::Option<(u16, u16)>
+pub fn revue::widget::Scrollbar::meta(&self) -> revue::prelude::WidgetMeta
+pub fn revue::widget::Scrollbar::needs_render(&self) -> bool
+pub fn revue::widget::Scrollbar::render(&self, &mut revue::widget::RenderContext<'_>)
+pub fn revue::widget::Scrollbar::widget_type(&self) -> &'static str
+impl core::marker::Freeze for revue::widget::Scrollbar
+impl core::marker::Send for revue::widget::Scrollbar
+impl core::marker::Sync for revue::widget::Scrollbar
+impl core::marker::Unpin for revue::widget::Scrollbar
+impl core::marker::UnsafeUnpin for revue::widget::Scrollbar
+impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::Scrollbar
+impl core::panic::unwind_safe::UnwindSafe for revue::widget::Scrollbar
 pub struct revue::prelude::SearchState
 impl revue::state::patterns::search::SearchState
 pub fn revue::state::patterns::search::SearchState::activate(&mut self)
@@ -19129,6 +19170,18 @@ pub fn revue::widget::ScrollView::meta(&self) -> revue::prelude::WidgetMeta
 pub fn revue::widget::ScrollView::needs_render(&self) -> bool
 pub fn revue::widget::ScrollView::render(&self, &mut revue::widget::RenderContext<'_>)
 pub fn revue::widget::ScrollView::widget_type(&self) -> &'static str
+impl revue::widget::View for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::children(&self) -> &[alloc::boxed::Box<dyn revue::widget::View>]
+pub fn revue::widget::Scrollbar::classes(&self) -> &[alloc::string::String]
+pub fn revue::widget::Scrollbar::fills(&self) -> revue::widget::Fill
+pub fn revue::widget::Scrollbar::id(&self) -> core::option::Option<&str>
+pub fn revue::widget::Scrollbar::inline_style(&self) -> core::option::Option<revue::style::Style>
+pub fn revue::widget::Scrollbar::key(&self) -> core::option::Option<revue::dom::WidgetKey>
+pub fn revue::widget::Scrollbar::measure(&self, u16, u16) -> core::option::Option<(u16, u16)>
+pub fn revue::widget::Scrollbar::meta(&self) -> revue::prelude::WidgetMeta
+pub fn revue::widget::Scrollbar::needs_render(&self) -> bool
+pub fn revue::widget::Scrollbar::render(&self, &mut revue::widget::RenderContext<'_>)
+pub fn revue::widget::Scrollbar::widget_type(&self) -> &'static str
 impl revue::widget::View for revue::widget::Sidebar
 pub fn revue::widget::Sidebar::children(&self) -> &[alloc::boxed::Box<dyn revue::widget::View>]
 pub fn revue::widget::Sidebar::classes(&self) -> &[alloc::string::String]
@@ -19969,6 +20022,7 @@ pub fn revue::prelude::rich_text() -> revue::widget::RichText
 pub fn revue::prelude::richlog() -> revue::widget::RichLog
 pub fn revue::prelude::run_blocking<F, T>(F) -> revue::prelude::WorkerHandle<T> where F: core::ops::function::FnOnce() -> T + core::marker::Send + 'static, T: core::marker::Send + 'static
 pub fn revue::prelude::scroll_view() -> revue::widget::ScrollView
+pub fn revue::prelude::scrollbar() -> revue::widget::Scrollbar
 pub fn revue::prelude::select() -> revue::widget::input_widgets::select::Select
 pub fn revue::prelude::set_high_contrast(bool)
 pub fn revue::prelude::set_reduced_motion(bool)
@@ -62852,6 +62906,12 @@ pub fn revue::widget::ScrollView::has_class(&self, &str) -> bool
 pub fn revue::widget::ScrollView::remove_class(&mut self, &str)
 pub fn revue::widget::ScrollView::set_id(&mut self, impl core::convert::Into<alloc::string::String>)
 pub fn revue::widget::ScrollView::toggle_class(&mut self, &str)
+impl revue::widget::StyledView for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::add_class(&mut self, impl core::convert::Into<alloc::string::String>)
+pub fn revue::widget::Scrollbar::has_class(&self, &str) -> bool
+pub fn revue::widget::Scrollbar::remove_class(&mut self, &str)
+pub fn revue::widget::Scrollbar::set_id(&mut self, impl core::convert::Into<alloc::string::String>)
+pub fn revue::widget::Scrollbar::toggle_class(&mut self, &str)
 impl revue::widget::StyledView for revue::widget::Sidebar
 pub fn revue::widget::Sidebar::add_class(&mut self, impl core::convert::Into<alloc::string::String>)
 pub fn revue::widget::Sidebar::has_class(&self, &str) -> bool
@@ -63989,6 +64049,18 @@ pub fn revue::widget::ScrollView::meta(&self) -> revue::prelude::WidgetMeta
 pub fn revue::widget::ScrollView::needs_render(&self) -> bool
 pub fn revue::widget::ScrollView::render(&self, &mut revue::widget::RenderContext<'_>)
 pub fn revue::widget::ScrollView::widget_type(&self) -> &'static str
+impl revue::widget::View for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::children(&self) -> &[alloc::boxed::Box<dyn revue::widget::View>]
+pub fn revue::widget::Scrollbar::classes(&self) -> &[alloc::string::String]
+pub fn revue::widget::Scrollbar::fills(&self) -> revue::widget::Fill
+pub fn revue::widget::Scrollbar::id(&self) -> core::option::Option<&str>
+pub fn revue::widget::Scrollbar::inline_style(&self) -> core::option::Option<revue::style::Style>
+pub fn revue::widget::Scrollbar::key(&self) -> core::option::Option<revue::dom::WidgetKey>
+pub fn revue::widget::Scrollbar::measure(&self, u16, u16) -> core::option::Option<(u16, u16)>
+pub fn revue::widget::Scrollbar::meta(&self) -> revue::prelude::WidgetMeta
+pub fn revue::widget::Scrollbar::needs_render(&self) -> bool
+pub fn revue::widget::Scrollbar::render(&self, &mut revue::widget::RenderContext<'_>)
+pub fn revue::widget::Scrollbar::widget_type(&self) -> &'static str
 impl revue::widget::View for revue::widget::Sidebar
 pub fn revue::widget::Sidebar::children(&self) -> &[alloc::boxed::Box<dyn revue::widget::View>]
 pub fn revue::widget::Sidebar::classes(&self) -> &[alloc::string::String]
@@ -76229,6 +76301,47 @@ impl core::marker::Unpin for revue::widget::ScrollView
 impl core::marker::UnsafeUnpin for revue::widget::ScrollView
 impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::ScrollView
 impl core::panic::unwind_safe::UnwindSafe for revue::widget::ScrollView
+pub struct revue::widget::Scrollbar
+impl revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::class(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn revue::widget::Scrollbar::classes<I, S>(self, I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
+pub fn revue::widget::Scrollbar::element_id(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn revue::widget::Scrollbar::keyed(self, impl core::convert::Into<revue::dom::WidgetKey>) -> Self
+impl revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::content_length(self, usize) -> Self
+pub fn revue::widget::Scrollbar::horizontal() -> Self
+pub fn revue::widget::Scrollbar::offset(self, usize) -> Self
+pub fn revue::widget::Scrollbar::thumb_color(self, revue::runtime::style::Color) -> Self
+pub fn revue::widget::Scrollbar::track_color(self, revue::runtime::style::Color) -> Self
+pub fn revue::widget::Scrollbar::vertical() -> Self
+pub fn revue::widget::Scrollbar::viewport_length(self, usize) -> Self
+impl core::clone::Clone for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::clone(&self) -> Self
+impl revue::widget::StyledView for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::add_class(&mut self, impl core::convert::Into<alloc::string::String>)
+pub fn revue::widget::Scrollbar::has_class(&self, &str) -> bool
+pub fn revue::widget::Scrollbar::remove_class(&mut self, &str)
+pub fn revue::widget::Scrollbar::set_id(&mut self, impl core::convert::Into<alloc::string::String>)
+pub fn revue::widget::Scrollbar::toggle_class(&mut self, &str)
+impl revue::widget::View for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::children(&self) -> &[alloc::boxed::Box<dyn revue::widget::View>]
+pub fn revue::widget::Scrollbar::classes(&self) -> &[alloc::string::String]
+pub fn revue::widget::Scrollbar::fills(&self) -> revue::widget::Fill
+pub fn revue::widget::Scrollbar::id(&self) -> core::option::Option<&str>
+pub fn revue::widget::Scrollbar::inline_style(&self) -> core::option::Option<revue::style::Style>
+pub fn revue::widget::Scrollbar::key(&self) -> core::option::Option<revue::dom::WidgetKey>
+pub fn revue::widget::Scrollbar::measure(&self, u16, u16) -> core::option::Option<(u16, u16)>
+pub fn revue::widget::Scrollbar::meta(&self) -> revue::prelude::WidgetMeta
+pub fn revue::widget::Scrollbar::needs_render(&self) -> bool
+pub fn revue::widget::Scrollbar::render(&self, &mut revue::widget::RenderContext<'_>)
+pub fn revue::widget::Scrollbar::widget_type(&self) -> &'static str
+impl core::marker::Freeze for revue::widget::Scrollbar
+impl core::marker::Send for revue::widget::Scrollbar
+impl core::marker::Sync for revue::widget::Scrollbar
+impl core::marker::Unpin for revue::widget::Scrollbar
+impl core::marker::UnsafeUnpin for revue::widget::Scrollbar
+impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::Scrollbar
+impl core::panic::unwind_safe::UnwindSafe for revue::widget::Scrollbar
 pub struct revue::widget::SearchBar
 impl revue::widget::input_widgets::search_bar::SearchBar
 pub fn revue::widget::input_widgets::search_bar::SearchBar::backspace(&mut self)
@@ -80039,6 +80152,12 @@ pub fn revue::widget::ScrollView::has_class(&self, &str) -> bool
 pub fn revue::widget::ScrollView::remove_class(&mut self, &str)
 pub fn revue::widget::ScrollView::set_id(&mut self, impl core::convert::Into<alloc::string::String>)
 pub fn revue::widget::ScrollView::toggle_class(&mut self, &str)
+impl revue::widget::StyledView for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::add_class(&mut self, impl core::convert::Into<alloc::string::String>)
+pub fn revue::widget::Scrollbar::has_class(&self, &str) -> bool
+pub fn revue::widget::Scrollbar::remove_class(&mut self, &str)
+pub fn revue::widget::Scrollbar::set_id(&mut self, impl core::convert::Into<alloc::string::String>)
+pub fn revue::widget::Scrollbar::toggle_class(&mut self, &str)
 impl revue::widget::StyledView for revue::widget::Sidebar
 pub fn revue::widget::Sidebar::add_class(&mut self, impl core::convert::Into<alloc::string::String>)
 pub fn revue::widget::Sidebar::has_class(&self, &str) -> bool
@@ -81180,6 +81299,18 @@ pub fn revue::widget::ScrollView::meta(&self) -> revue::prelude::WidgetMeta
 pub fn revue::widget::ScrollView::needs_render(&self) -> bool
 pub fn revue::widget::ScrollView::render(&self, &mut revue::widget::RenderContext<'_>)
 pub fn revue::widget::ScrollView::widget_type(&self) -> &'static str
+impl revue::widget::View for revue::widget::Scrollbar
+pub fn revue::widget::Scrollbar::children(&self) -> &[alloc::boxed::Box<dyn revue::widget::View>]
+pub fn revue::widget::Scrollbar::classes(&self) -> &[alloc::string::String]
+pub fn revue::widget::Scrollbar::fills(&self) -> revue::widget::Fill
+pub fn revue::widget::Scrollbar::id(&self) -> core::option::Option<&str>
+pub fn revue::widget::Scrollbar::inline_style(&self) -> core::option::Option<revue::style::Style>
+pub fn revue::widget::Scrollbar::key(&self) -> core::option::Option<revue::dom::WidgetKey>
+pub fn revue::widget::Scrollbar::measure(&self, u16, u16) -> core::option::Option<(u16, u16)>
+pub fn revue::widget::Scrollbar::meta(&self) -> revue::prelude::WidgetMeta
+pub fn revue::widget::Scrollbar::needs_render(&self) -> bool
+pub fn revue::widget::Scrollbar::render(&self, &mut revue::widget::RenderContext<'_>)
+pub fn revue::widget::Scrollbar::widget_type(&self) -> &'static str
 impl revue::widget::View for revue::widget::Sidebar
 pub fn revue::widget::Sidebar::children(&self) -> &[alloc::boxed::Box<dyn revue::widget::View>]
 pub fn revue::widget::Sidebar::classes(&self) -> &[alloc::string::String]
@@ -82120,6 +82251,7 @@ pub fn revue::widget::scatter_plot(&[(f64, f64)]) -> revue::widget::data::chart:
 pub fn revue::widget::screen(revue::widget::screen::ScreenId) -> revue::widget::Screen
 pub fn revue::widget::screen_stack() -> revue::widget::ScreenStack
 pub fn revue::widget::scroll_view() -> revue::widget::ScrollView
+pub fn revue::widget::scrollbar() -> revue::widget::Scrollbar
 pub fn revue::widget::search_bar() -> revue::widget::input_widgets::search_bar::SearchBar
 pub fn revue::widget::section(impl core::convert::Into<alloc::string::String>) -> revue::widget::AccordionSection
 pub fn revue::widget::select() -> revue::widget::input_widgets::select::Select

@@ -1391,6 +1391,26 @@ items:
     source:
       - 'issue #193 (IDE-style docking), issue #836 (steps 3 and 4)'
     notes: "Built from SplitView (WID-045) and TabView (WID-046); its state is a DockState the app keeps, a handle whose clones share it (as are SplitState and TabState). Replaces the crate-private DockManager (#798). Not yet: keyboard focus between areas, persisted layout, keyboard resizing at dock level."
+  - id: WID-048
+    title: Standalone scrollbar for a view the app scrolls
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    phase: 3.16.0
+    acceptance:
+      - takes the content length, the offset and the shown length (default the bar's own length)
+      - always takes its column (vertical) or row (horizontal); with nothing to scroll it draws only the track
+      - the thumb is the shown share of the track, at least a cell, at the start at offset 0 and at the end on the last page
+      - ScrollView draws its thumb by the same rule
+    evidence:
+      - src/widget/layout/scroll_bar.rs::scrollbar_thumb
+      - tests/widget/layout/scrollbar.rs::test_scrollbar_keeps_its_column_with_nothing_to_scroll
+      - tests/widget/layout/scrollbar.rs::test_scrollbar_draws_the_thumb_at_the_offset
+      - tests/widget/layout/scrollbar.rs::prop_scrollbar_thumb_is_one_run
+    source:
+      - 'issue #954'
+    notes: VirtualList and DataGrid still draw their own scrollbars (track '░'); moving them to scrollbar_thumb would change how they look.
   - id: CHART-001
     title: Shared chart components (Axis, Legend, ColorScheme, ChartGrid)
     area: chart

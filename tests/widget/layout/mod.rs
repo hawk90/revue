@@ -11,6 +11,7 @@ mod positioned;
 mod resizable;
 mod screen;
 mod scroll;
+mod scrollbar;
 mod sidebar;
 mod split_view;
 mod splitter;
