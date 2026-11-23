@@ -66,6 +66,7 @@ impl View for Popover {
             content_start_y = popup_y;
         }
 
+        self.draw_title(ctx, frame, colors, (content_start_x, content_start_y));
         self.draw_content(ctx, frame, colors, (content_start_x, content_start_y));
         self.draw_arrow(ctx, frame, colors);
     }
@@ -143,7 +144,33 @@ impl Popover {
         }
     }
 
-    /// The frame's border, and the title on the row below its top edge
+    /// The title, bold, on the first content row (below the top border, or
+    /// the box's first row without one) and cut where the content is: it is
+    /// left out of a box with no content row
+    fn draw_title(
+        &self,
+        ctx: &mut RenderContext,
+        frame: Frame,
+        colors: Colors,
+        (content_start_x, content_start_y): (u16, u16),
+    ) {
+        let Some(title) = &self.title else {
+            return;
+        };
+        let has_border = self.popover_style.border_chars().is_some();
+        let rows = frame.h.saturating_sub(if has_border { 2 } else { 0 });
+        if rows == 0 {
+            return;
+        }
+        // One blank column before the right edge (or the border)
+        let end = (frame.x + frame.w).saturating_sub(if has_border { 2 } else { 1 });
+        let (fg, bg) = (colors.fg, colors.bg);
+        ctx.put_str_with(content_start_x, content_start_y, title, end, |ch| {
+            Cell::new(ch).fg(fg).bg(bg).bold()
+        });
+    }
+
+    /// The frame's border
     fn draw_border(
         &self,
         ctx: &mut RenderContext,
@@ -173,21 +200,6 @@ impl Popover {
                 ctx.set(popup_x + dx, popup_y, edge(border.horizontal));
             }
             ctx.set(popup_x + popup_w - 1, popup_y, edge(border.top_right));
-        }
-
-        // Title if present, on the row under the top border: not in a box
-        // shortened to its border
-        if let (Some(title), true) = (&self.title, popup_h > 2) {
-            let title_x = popup_x + 2;
-            let title_y = popup_y + 1;
-            let (fg, bg) = (colors.fg, colors.bg);
-            ctx.put_str_with(
-                title_x,
-                title_y,
-                title,
-                (popup_x + popup_w).saturating_sub(2),
-                |ch| Cell::new(ch).fg(fg).bg(bg).bold(),
-            );
         }
 
         // Side borders
@@ -228,11 +240,8 @@ impl Popover {
         } = frame;
         let (fg, bg) = (colors.fg, colors.bg);
         let lines = self.wrap_content(area.width);
-        let text_y_offset = if self.title.is_some() && self.popover_style.border_chars().is_some() {
-            1
-        } else {
-            0
-        };
+        // The content starts below the title, in every style
+        let text_y_offset = u16::from(self.title.is_some());
 
         // The last row is the bottom border, if there is one.
         let content_end_y = if self.popover_style.border_chars().is_some() {

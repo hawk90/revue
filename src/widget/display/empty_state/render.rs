@@ -101,9 +101,10 @@ impl EmptyState {
 
         let mut y = start_y;
 
-        // Icon (centered, large)
+        // Icon, centered by its width like the text below it
         if self.show_icon && y < area.height {
-            self.draw_icon(ctx, area.width / 2, y, accent);
+            let icon_w = char_width(self.get_icon()) as u16;
+            self.draw_icon(ctx, area.width.saturating_sub(icon_w) / 2, y, accent);
             y += 2;
         }
 
