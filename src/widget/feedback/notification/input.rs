@@ -21,10 +21,13 @@ impl NotificationCenter {
     }
 
     /// Select the shown notification below the selected one on screen,
-    /// wrapping around; with none selected, the top one. Only shown
-    /// notifications can be selected (#882).
+    /// wrapping around; with none selected, the top one. Only the drawn
+    /// notifications can be selected (#882, #1516).
     pub fn select_next(&mut self) {
-        let ids: Vec<u64> = self.shown_ids().collect();
+        let ids = self.selectable_ids();
+        // The stored index may come from the shown list (after a push or a
+        // tick): find the key in the list the keys move over first
+        self.selected.sync(ids.iter().copied());
         if self.stacks_up() {
             self.selected.prev_wrapping(ids.len(), |i| ids[i]);
         } else {
@@ -35,7 +38,10 @@ impl NotificationCenter {
     /// Select the shown notification above the selected one on screen,
     /// wrapping around; with none selected, the bottom one
     pub fn select_prev(&mut self) {
-        let ids: Vec<u64> = self.shown_ids().collect();
+        let ids = self.selectable_ids();
+        // The stored index may come from the shown list (after a push or a
+        // tick): find the key in the list the keys move over first
+        self.selected.sync(ids.iter().copied());
         if self.stacks_up() {
             self.selected.next_wrapping(ids.len(), |i| ids[i]);
         } else {

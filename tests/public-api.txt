@@ -74492,7 +74492,7 @@ pub fn revue::widget::NotificationCenter::meta(&self) -> revue::prelude::WidgetM
 pub fn revue::widget::NotificationCenter::needs_render(&self) -> bool
 pub fn revue::widget::NotificationCenter::render(&self, &mut revue::widget::RenderContext<'_>)
 pub fn revue::widget::NotificationCenter::widget_type(&self) -> &'static str
-impl core::marker::Freeze for revue::widget::NotificationCenter
+impl !core::marker::Freeze for revue::widget::NotificationCenter
 impl core::marker::Send for revue::widget::NotificationCenter
 impl core::marker::Sync for revue::widget::NotificationCenter
 impl core::marker::Unpin for revue::widget::NotificationCenter

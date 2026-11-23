@@ -55,6 +55,7 @@ impl View for NotificationCenter {
         // A box needs its two borders and two inner columns
         let width = self.box_width(area);
         if width < 4 {
+            self.drawn.set(Vec::new());
             return;
         }
         let visible = self
@@ -63,14 +64,17 @@ impl View for NotificationCenter {
             .rev()
             .take(self.max_visible)
             .collect::<Vec<_>>();
+        let mut drawn = Vec::with_capacity(visible.len());
 
         // Calculate starting position based on notification position (relative coordinates)
         let (start_x, mut current_y, direction) = self.stack_origin(area);
 
         // Render each notification
-        for (idx, notification) in visible.iter().enumerate() {
+        for notification in visible.iter() {
             let height = self.notification_height(notification);
-            let is_selected = self.selected.is_selected(idx);
+            // By id: the keys move over the drawn ones, not over every
+            // shown one, so an index in `visible` would not match (#1516)
+            let is_selected = self.selected.key() == Some(&notification.id);
 
             // A box that does not fit is left out and the next one tries the
             // same place: growing down, one past the bottom of the area;
@@ -89,6 +93,7 @@ impl View for NotificationCenter {
             }
 
             self.render_notification(ctx, notification, start_x, y, width, is_selected);
+            drawn.push(notification.id);
 
             if direction < 0 {
                 // At row 0 no box fits above: every box is at least 3 rows
@@ -97,5 +102,6 @@ impl View for NotificationCenter {
                 current_y = y.saturating_add(height).saturating_add(self.spacing);
             }
         }
+        self.drawn.set(drawn);
     }
 }

@@ -418,3 +418,91 @@ fn test_notification_down_moves_down_the_screen_at_the_top() {
     c.handle_key(&Key::Down);
     assert_eq!(selected_messages(c), ["3"]);
 }
+
+/// Only the boxes the last render drew can be selected: in an area too
+/// short for every shown box, Down skipped to one left out, and nothing on
+/// screen was highlighted (#1516)
+#[test]
+fn test_notification_keys_select_only_the_drawn_boxes() {
+    let c = &mut center_with(3); // top-left, boxes of 3 rows, spacing 1
+    let selected_drawn = |c: &NotificationCenter, h: u16| -> Vec<String> {
+        let b = render(c, 30, h);
+        super::helpers::corners(&b)
+            .into_iter()
+            .filter(|&(x, y)| b.get(x, y).unwrap().fg == Some(revue::style::Color::WHITE))
+            .map(|(_, y)| message_of(&row(&b, y + 1)))
+            .collect()
+    };
+    // 8 rows draw "3" and "2"; "1" is left out
+    render(c, 30, 8);
+    for want in ["3", "2", "3", "2"] {
+        c.handle_key(&Key::Down);
+        assert_eq!(selected_drawn(c, 8), [want]);
+    }
+    c.handle_key(&Key::Up);
+    assert_eq!(selected_drawn(c, 8), ["3"]);
+    // Once the area has room for all three, the third one can be selected
+    render(c, 30, 12);
+    c.handle_key(&Key::Up);
+    assert_eq!(selected_drawn(c, 12), ["1"]);
+}
+
+/// Before the first render every shown notification can be selected, and a
+/// clone keeps its own record of what it drew
+#[test]
+fn test_notification_selection_before_a_render_and_in_clones() {
+    let c = &mut center_with(3);
+    c.handle_key(&Key::Up);
+    assert_eq!(selected_messages(c), ["1"]);
+    let mut short = center_with(3);
+    render(&short, 30, 8);
+    let mut copy = short.clone();
+    render(&copy, 30, 12);
+    copy.handle_key(&Key::Up);
+    short.handle_key(&Key::Up);
+    // The copy drew all three, the original only two
+    assert_eq!(selected_messages(&copy), ["1"]);
+    let b = render(&short, 30, 8);
+    let white = super::helpers::corners(&b)
+        .into_iter()
+        .filter(|&(x, y)| b.get(x, y).unwrap().fg == Some(revue::style::Color::WHITE))
+        .count();
+    assert_eq!(white, 1);
+}
+
+/// The selection keeps its place when a tick resyncs it against every shown
+/// notification: with a tall box in the middle left out, the drawn list
+/// ([3, 1]) and the shown one ([3, 2, 1]) give "1" different places, and
+/// Up from it must still reach "3"
+#[test]
+fn test_notification_keys_after_a_tick_with_a_box_left_out() {
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .show_icons(false)
+        .focused(true);
+    c.push(Notification::info("1").duration(100));
+    c.push(
+        Notification::info("2")
+            .title("T")
+            .progress(0.5)
+            .action("Go")
+            .duration(100),
+    );
+    c.push(Notification::info("3").duration(100));
+    let selected_drawn = |c: &NotificationCenter| -> Vec<String> {
+        let b = render(c, 30, 8);
+        super::helpers::corners(&b)
+            .into_iter()
+            .filter(|&(x, y)| b.get(x, y).unwrap().fg == Some(revue::style::Color::WHITE))
+            .map(|(_, y)| message_of(&row(&b, y + 1)))
+            .collect()
+    };
+    // "2" is 6 rows: it does not fit below "3" in 8 rows, "1" takes its place
+    render(&c, 30, 8);
+    c.handle_key(&Key::Down);
+    c.handle_key(&Key::Down);
+    assert_eq!(selected_drawn(&c), ["1"]);
+    c.tick();
+    c.handle_key(&Key::Up);
+    assert_eq!(selected_drawn(&c), ["3"]);
+}
