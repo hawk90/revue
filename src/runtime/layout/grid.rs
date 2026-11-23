@@ -166,9 +166,7 @@ fn calculate_track_sizes(
 
     // Second pass: distribute remaining space to fr units
     if total_fr > 0.0 {
-        let per_fr = (remaining as f32) / total_fr;
-        let mut distributed: u16 = 0;
-        // Collect indices of fr/auto tracks for last-child remainder correction
+        // The fr and auto tracks (an auto track counts as 1fr)
         let fr_indices: Vec<usize> = tracks
             .iter()
             .enumerate()
@@ -184,18 +182,18 @@ fn calculate_track_sizes(
             .map(|(i, _)| i)
             .collect();
 
-        for (fi, &i) in fr_indices.iter().enumerate() {
-            let size = if fi == fr_indices.len() - 1 {
-                // Last fr track gets remainder to avoid rounding overshoot
-                remaining.saturating_sub(distributed)
-            } else {
-                match tracks[i] {
-                    GridTrack::Fr(fr) => (per_fr * fr).round() as u16,
-                    _ => per_fr.round() as u16,
-                }
-            };
+        // Rounded at the cumulative boundaries, so equal tracks differ by
+        // at most a cell instead of the last one taking the rest (#1514)
+        let weights: Vec<f32> = fr_indices
+            .iter()
+            .map(|&i| match tracks[i] {
+                GridTrack::Fr(fr) => *fr,
+                _ => 1.0,
+            })
+            .collect();
+        let shares = crate::layout::split_by_weight(remaining, &weights);
+        for (&i, size) in fr_indices.iter().zip(shares) {
             sizes[i] = size;
-            distributed = distributed.saturating_add(size);
         }
     }
 
@@ -573,5 +571,20 @@ mod tests {
 
         // Should not panic
         compute_grid(&mut tree, 1, 100, 100);
+    }
+    #[test]
+    fn equal_fr_tracks_differ_by_at_most_a_cell() {
+        // The last track took the remainder: 2, 2, 2, 0 (#1514)
+        let t = vec![GridTrack::Fr(1.0); 4];
+        assert_eq!(calculate_track_sizes(6, &t, 4, 0), [2, 1, 2, 1]);
+        assert_eq!(
+            calculate_track_sizes(
+                7,
+                &[GridTrack::Fixed(1), GridTrack::Fr(1.0), GridTrack::Fr(2.0)],
+                3,
+                0
+            ),
+            [1, 2, 4]
+        );
     }
 }

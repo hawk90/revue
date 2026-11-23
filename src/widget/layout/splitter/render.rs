@@ -91,10 +91,11 @@ mod tests {
             .pane(Pane::new("a").ratio(0.5))
             .pane(Pane::new("b").ratio(0.5));
         s.render(&mut ctx);
-        // 79 columns for the panes: the left one is 39 wide, then the divider
+        // 79 columns for the panes: the left one is 40 wide (39.5 rounded),
+        // then the divider
         for y in 0..24 {
             for x in 0..80 {
-                let ch = if x == 39 { '│' } else { ' ' };
+                let ch = if x == 40 { '│' } else { ' ' };
                 assert_eq!(buf.get(x, y).unwrap().symbol, ch, "({x}, {y})");
             }
         }

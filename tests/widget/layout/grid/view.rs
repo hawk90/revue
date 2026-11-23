@@ -429,11 +429,20 @@ fn test_grid_css_gaps_override_the_builder() {
 // Property tests: every auto-placed child is drawn in its own cell
 // =========================================================================
 
+/// Where `n` equal tracks sharing `total` cells start, and where the last
+/// ends: each boundary is its share rounded (#1514), so the tracks cover
+/// all of `total` and differ by at most a cell
+fn bounds(total: u16, n: usize) -> Vec<u16> {
+    (0..=n)
+        .map(|i| (f64::from(total) * i as f64 / n as f64).round() as u16)
+        .collect()
+}
+
 proptest! {
     /// With equal Fr tracks and no gap, child `i` fills exactly the cell
     /// the flow direction gives it: `(i % cols, i / cols)` row-major or
-    /// `(i / rows, i % rows)` column-major. Cells past the last whole
-    /// track are blank.
+    /// `(i / rows, i % rows)` column-major. The tracks cover the whole area
+    /// (#1514: they were truncated, leaving the last cells blank).
     ///
     /// The children never outnumber the defined cells: extra children get
     /// no track (#1037).
@@ -455,25 +464,21 @@ proptest! {
             grid = grid.child(Fill((b'a' + i as u8) as char));
         }
         let buffer = render(&grid, w, h);
-        let cw = (w as usize / cols) as u16;
-        let rh = (h as usize / rows_n) as u16;
+        let (xs, ys) = (bounds(w, cols), bounds(h, rows_n));
         for y in 0..h {
             for x in 0..w {
-                let expected = if cw == 0 || rh == 0 || x >= cw * cols as u16 || y >= rh * rows_n as u16 {
-                    ' '
-                } else {
-                    let (c, r) = ((x / cw) as usize, (y / rh) as usize);
-                    let i = if col_flow { c * rows_n + r } else { r * cols + c };
-                    if i < n { (b'a' + i as u8) as char } else { ' ' }
-                };
+                let c = (0..cols).find(|&c| x >= xs[c] && x < xs[c + 1]).unwrap();
+                let r = (0..rows_n).find(|&r| y >= ys[r] && y < ys[r + 1]).unwrap();
+                let i = if col_flow { c * rows_n + r } else { r * cols + c };
+                let expected = if i < n { (b'a' + i as u8) as char } else { ' ' };
                 prop_assert_eq!(sym(&buffer, x, y), expected, "({}, {})", x, y);
             }
         }
     }
 
-    /// With a gap, each child's cell still starts at its track's start:
-    /// `c * (cw + gap)` across and `r * (rh + gap)` down. (Where a cell
-    /// ends is #881: it runs over the gap.)
+    /// With a gap, each child's cell still starts at its track's start: the
+    /// tracks before it and their gaps. (Where a cell ends is #881: it runs
+    /// over the gap.)
     #[test]
     fn prop_grid_cells_start_after_the_gaps(
         cols in 1usize..5,
@@ -490,11 +495,11 @@ proptest! {
         let buffer = render(&grid, w, h);
         let avail_w = w.saturating_sub(col_gap * (cols as u16 - 1));
         let avail_h = h.saturating_sub(row_gap * (rows_n as u16 - 1));
-        let cw = avail_w / cols as u16;
-        let rh = avail_h / rows_n as u16;
+        let (xs, ys) = (bounds(avail_w, cols), bounds(avail_h, rows_n));
         for r in 0..rows_n {
             for c in 0..cols {
-                let (x, y) = (c as u16 * (cw + col_gap), r as u16 * (rh + row_gap));
+                let (x, y) = (xs[c] + c as u16 * col_gap, ys[r] + r as u16 * row_gap);
+                let (cw, rh) = (xs[c + 1] - xs[c], ys[r + 1] - ys[r]);
                 if cw > 0 && rh > 0 && x < w && y < h {
                     prop_assert_eq!(sym(&buffer, x, y), (b'a' + (r * cols + c) as u8) as char);
                 }

@@ -45,7 +45,7 @@
 //! }
 //! ```
 
-mod layout;
+pub(in crate::widget::layout) mod layout;
 mod state;
 
 pub use state::SplitState;
