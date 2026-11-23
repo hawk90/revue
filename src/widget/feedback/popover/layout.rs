@@ -51,9 +51,9 @@ impl Popover {
         let width = (text_width + chrome)
             .max(10)
             .min(area_width.max(content_width.max(1) + chrome));
-        let height = lines.len() as u16
-            + if has_border { 2 } else { 0 }
-            + if has_title && has_border { 1 } else { 0 };
+        // The title takes a row above the content in every style (#1046)
+        let height =
+            lines.len() as u16 + if has_border { 2 } else { 0 } + if has_title { 1 } else { 0 };
 
         (width, height.max(3))
     }
