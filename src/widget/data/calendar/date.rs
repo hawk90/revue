@@ -19,9 +19,13 @@ impl Date {
 
     /// Today's date in the local time zone
     pub fn today() -> Self {
-        use chrono::Datelike;
-        let today = chrono::Local::now().date_naive();
-        Self::new(today.year(), today.month(), today.day())
+        let today = jiff::ZonedDateTime::now().date();
+        // jiff's month is 1..=12 and its day 1..=31, as here.
+        Self::new(
+            i32::from(today.year()),
+            today.month() as u32,
+            today.day() as u32,
+        )
     }
 
     /// Check if date is valid

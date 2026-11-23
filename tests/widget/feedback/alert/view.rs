@@ -48,7 +48,13 @@ fn model_rows(
     w: u16,
 ) -> Vec<String> {
     let w = w as usize;
-    let rows = if title.is_some() { 2 } else { 1 };
+    // Each line of the message is a row of its own (#1061), and an empty
+    // message still takes one
+    let mut lines: Vec<&str> = message.lines().collect();
+    if message.is_empty() {
+        lines.push("");
+    }
+    let rows = lines.len() + usize::from(title.is_some());
     let h = if variant == AlertVariant::Filled {
         rows + 2
     } else {
@@ -69,6 +75,13 @@ fn model_rows(
             dx += cw;
         }
     };
+    // The message's lines from row `y`: the first cut to `first`, the
+    // others to `max`
+    let put_lines = |grid: &mut Vec<Vec<char>>, x: usize, y: usize, first: usize, max: usize| {
+        for (i, l) in lines.iter().enumerate() {
+            put(grid, x, y + i, l, if i == 0 { first } else { max });
+        }
+    };
     let reserve = if dismissible { 2 } else { 0 };
     let io = if icon { 2 } else { 0 };
     match variant {
@@ -87,9 +100,9 @@ fn model_rows(
             match title {
                 Some(t) => {
                     put(&mut grid, 2 + io, 1, t, first);
-                    put(&mut grid, 2 + io, 2, message, max);
+                    put_lines(&mut grid, 2 + io, 2, max, max);
                 }
-                None => put(&mut grid, 2 + io, 1, message, first),
+                None => put_lines(&mut grid, 2 + io, 1, first, max),
             }
             if dismissible {
                 grid[1][w - 3] = '×';
@@ -106,9 +119,9 @@ fn model_rows(
             match title {
                 Some(t) => {
                     put(&mut grid, 2 + io, 0, t, max.saturating_sub(reserve));
-                    put(&mut grid, 2 + io, 1, message, max);
+                    put_lines(&mut grid, 2 + io, 1, max, max);
                 }
-                None => put(&mut grid, 2 + io, 0, message, max.saturating_sub(reserve)),
+                None => put_lines(&mut grid, 2 + io, 0, max.saturating_sub(reserve), max),
             }
             if dismissible {
                 grid[0][w - 2] = '×';
@@ -122,9 +135,9 @@ fn model_rows(
             match title {
                 Some(t) => {
                     put(&mut grid, io, 0, t, first);
-                    put(&mut grid, io, 1, message, w - io);
+                    put_lines(&mut grid, io, 1, w - io, w - io);
                 }
-                None => put(&mut grid, io, 0, message, first),
+                None => put_lines(&mut grid, io, 0, first, w - io),
             }
             if dismissible {
                 grid[0][w - 1] = '×';
@@ -152,7 +165,7 @@ proptest! {
     #[test]
     fn prop_alert_rows_follow_the_model(
         variant in variant(),
-        message in "[a-z ]{0,40}",
+        message in "[a-z \\n]{0,40}",
         title in proptest::option::of("[A-Z][a-z ]{0,30}"),
         icon in any::<bool>(),
         dismissible in any::<bool>(),
@@ -180,7 +193,7 @@ proptest! {
     #[test]
     fn prop_short_alert_keeps_the_rows_that_fit(
         variant in variant(),
-        message in "[a-z ]{0,40}",
+        message in "[a-z \\n]{0,40}",
         title in proptest::option::of("[A-Z][a-z ]{0,30}"),
         icon in any::<bool>(),
         dismissible in any::<bool>(),

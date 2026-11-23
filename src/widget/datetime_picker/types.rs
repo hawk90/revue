@@ -30,9 +30,8 @@ impl Time {
 
     /// The current time of day in the local time zone
     pub fn now() -> Self {
-        use chrono::Timelike;
-        let now = chrono::Local::now();
-        // Each field is below 60, so it fits a u8.
+        let now = jiff::ZonedDateTime::now();
+        // Each field is in 0..60, so it fits a u8.
         Self::new(now.hour() as u8, now.minute() as u8, now.second() as u8)
     }
 
