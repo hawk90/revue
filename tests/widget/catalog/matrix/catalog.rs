@@ -13,6 +13,7 @@ use revue::devtools::{
 use revue::layout::Rect;
 use revue::patterns::form::FormState;
 use revue::style::Color;
+use revue::utils::display_width;
 use revue::widget::*;
 
 use super::Content;
@@ -33,18 +34,19 @@ fn t(c: &Content) -> String {
     c.text.clone()
 }
 
-/// Numbers derived from the items: one per item, spread over 0..100.
+/// Numbers derived from the items' widths: one per item, spread over 0..100.
 fn nums(c: &Content) -> Vec<f64> {
     c.items
         .iter()
         .enumerate()
-        .map(|(i, s)| ((i * 37 + s.len() * 11) % 101) as f64)
+        .map(|(i, s)| ((i * 37 + display_width(s) * 11) % 101) as f64)
         .collect()
 }
 
-/// A scalar derived from the text: 0 for "", up to 100.
+/// A scalar derived from the text's width: 0 for "", up to 100. Two texts of
+/// the same width give the same numbers, so a wide text changes only the text.
 fn val(c: &Content) -> f64 {
-    (c.text.chars().count() % 101) as f64
+    (display_width(&c.text) % 101) as f64
 }
 
 /// The items as CSV/log-style lines.

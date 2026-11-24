@@ -55,6 +55,7 @@ pub mod pairwise;
 mod selection;
 pub mod sentinel;
 pub mod sizes;
+mod text_rules;
 
 use std::collections::BTreeSet;
 use std::fmt;
