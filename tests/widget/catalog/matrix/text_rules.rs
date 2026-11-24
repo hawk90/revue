@@ -133,9 +133,12 @@ const SHOWS_NO_TEXT: &[(&str, &str)] = &[
 const SHOWS_TEXT_BUGS: &[(&str, &str)] = &[
     (
         "StatusIndicator",
-        "label() alone draws nothing: the default style is a dot",
+        "#1528: label() alone draws nothing, the default style is a dot",
     ),
-    ("DividerVertical", "the label is drawn only when horizontal"),
+    (
+        "DividerVertical",
+        "#1528: the label is drawn only when horizontal",
+    ),
 ];
 
 #[test]
@@ -188,10 +191,10 @@ const DERIVED: &[(&str, &str)] = &[
 
 /// Known bugs of the width rule
 const WIDTH_BUGS: &[(&str, &str)] = &[
-    ("Chart", "legend box sized in bytes"),
-    ("PieChart", "legend box sized in bytes"),
-    ("ScatterChart", "legend box sized in bytes"),
-    ("TimeSeries", "legend steps one column per char"),
+    ("Chart", "#1527: legend box sized in bytes"),
+    ("PieChart", "#1527: legend box sized in bytes"),
+    ("ScatterChart", "#1527: legend box sized in bytes"),
+    ("TimeSeries", "#1527: legend steps one column per char"),
 ];
 
 #[test]
