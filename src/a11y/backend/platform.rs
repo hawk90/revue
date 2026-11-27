@@ -4,9 +4,49 @@ use crate::utils::accessibility::Priority;
 use crate::utils::lock::{read_or_recover, write_or_recover};
 #[cfg(target_os = "linux")]
 use crate::utils::shell::sanitize_string;
+use std::process::{Command, ExitStatus, Stdio};
 use std::sync::{Arc, RwLock};
+use std::thread::JoinHandle;
 
 use super::types::ScreenReader;
+
+/// Run a screen-reader command in the background (#937).
+///
+/// The command gets none of the app's stdio, so nothing it prints (an
+/// AppleScript error, a missing `spd-say`) lands on the terminal UI, and a
+/// thread waits for it, so it leaves no zombie behind. Under `cfg(test)`
+/// the command is recorded instead of run: tests never start a real
+/// speech command.
+#[cfg_attr(
+    not(any(target_os = "macos", target_os = "windows", target_os = "linux")),
+    allow(dead_code)
+)]
+fn run_detached(cmd: Command) {
+    #[cfg(test)]
+    tests::record(&cmd);
+    #[cfg(not(test))]
+    let _ = spawn_reaped(cmd);
+}
+
+/// Start `cmd` with null stdio and wait for it on its own thread; the
+/// handle yields the exit status.
+#[cfg_attr(
+    all(
+        not(test),
+        not(any(target_os = "macos", target_os = "windows", target_os = "linux"))
+    ),
+    allow(dead_code)
+)]
+fn spawn_reaped(mut cmd: Command) -> std::io::Result<JoinHandle<std::io::Result<ExitStatus>>> {
+    let mut child = cmd
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+    std::thread::Builder::new()
+        .name("revue-a11y-reaper".to_string())
+        .spawn(move || child.wait())
+}
 
 /// macOS VoiceOver backend
 pub struct MacOSBackend {
@@ -38,7 +78,6 @@ impl ScreenReader for MacOSBackend {
             #[cfg(target_os = "macos")]
             {
                 use crate::utils::shell::escape_applescript;
-                use std::process::Command;
 
                 // Use osascript to trigger VoiceOver announcement
                 let script = if priority == Priority::Assertive {
@@ -53,7 +92,9 @@ impl ScreenReader for MacOSBackend {
                     )
                 };
 
-                let _ = Command::new("osascript").arg("-e").arg(&script).spawn();
+                let mut cmd = Command::new("osascript");
+                cmd.arg("-e").arg(&script);
+                run_detached(cmd);
             }
         }
     }
@@ -71,13 +112,13 @@ impl ScreenReader for MacOSBackend {
     }
 
     fn stop(&self) {
+        // Like `announce`, nothing to stop without a screen reader (#937)
         #[cfg(target_os = "macos")]
-        {
-            use std::process::Command;
-            let _ = Command::new("osascript")
-                .arg("-e")
-                .arg("tell application \"VoiceOver\" to stop speaking")
-                .spawn();
+        if self.available {
+            let mut cmd = Command::new("osascript");
+            cmd.arg("-e")
+                .arg("tell application \"VoiceOver\" to stop speaking");
+            run_detached(cmd);
         }
     }
 }
@@ -112,7 +153,6 @@ impl ScreenReader for WindowsBackend {
             #[cfg(target_os = "windows")]
             {
                 use crate::utils::shell::escape_powershell;
-                use std::process::Command;
 
                 // Use PowerShell to trigger announcement via SAPI
                 // Using single-quoted string with proper escaping
@@ -123,10 +163,9 @@ impl ScreenReader for WindowsBackend {
                     escape_powershell(message)
                 );
 
-                let _ = Command::new("powershell")
-                    .arg("-Command")
-                    .arg(&script)
-                    .spawn();
+                let mut cmd = Command::new("powershell");
+                cmd.arg("-Command").arg(&script);
+                run_detached(cmd);
             }
         }
     }
@@ -174,8 +213,6 @@ impl ScreenReader for LinuxBackend {
             // In a real implementation, this would use atspi or zbus crate
             #[cfg(target_os = "linux")]
             {
-                use std::process::Command;
-
                 // Sanitize message to prevent command injection
                 let sanitized = sanitize_string(message);
 
@@ -187,7 +224,7 @@ impl ScreenReader for LinuxBackend {
                 }
 
                 cmd.arg(&sanitized);
-                let _ = cmd.spawn();
+                run_detached(cmd);
             }
         }
     }
@@ -206,10 +243,12 @@ impl ScreenReader for LinuxBackend {
     }
 
     fn stop(&self) {
+        // Like `announce`, nothing to stop without a screen reader (#937)
         #[cfg(target_os = "linux")]
-        {
-            use std::process::Command;
-            let _ = Command::new("spd-say").arg("--cancel").spawn();
+        if self.available {
+            let mut cmd = Command::new("spd-say");
+            cmd.arg("--cancel");
+            run_detached(cmd);
         }
     }
 }
@@ -305,10 +344,132 @@ impl ScreenReader for NullBackend {
 }
 
 // KEEP HERE - Tests access private fields (MacOSBackend.available, WindowsBackend.available, etc.)
+// and the private command seam (`run_detached` records under cfg(test))
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
+
+    thread_local! {
+        /// The commands `run_detached` was given on this thread, as program
+        /// then arguments
+        static RAN: RefCell<Vec<Vec<String>>> = const { RefCell::new(Vec::new()) };
+    }
+
+    /// Record `cmd` in place of running it
+    pub(super) fn record(cmd: &Command) {
+        let mut line = vec![cmd.get_program().to_string_lossy().into_owned()];
+        line.extend(cmd.get_args().map(|a| a.to_string_lossy().into_owned()));
+        RAN.with(|ran| ran.borrow_mut().push(line));
+    }
+
+    /// The commands recorded on this thread since the last call
+    fn take_ran() -> Vec<Vec<String>> {
+        RAN.with(|ran| std::mem::take(&mut *ran.borrow_mut()))
+    }
+
+    // Commands (#937)
+
+    #[test]
+    fn test_unavailable_backends_run_no_command() {
+        let _ = take_ran();
+        let mac = MacOSBackend { available: false };
+        mac.announce("a", Priority::Polite);
+        mac.announce("a", Priority::Assertive);
+        mac.stop();
+        let windows = WindowsBackend { available: false };
+        windows.announce("a", Priority::Assertive);
+        windows.stop();
+        let linux = LinuxBackend { available: false };
+        linux.announce("a", Priority::Assertive);
+        linux.stop();
+        assert_eq!(take_ran(), Vec::<Vec<String>>::new());
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_macos_backend_commands_when_available() {
+        let _ = take_ran();
+        let backend = MacOSBackend { available: true };
+        backend.announce("hi", Priority::Assertive);
+        backend.stop();
+        assert_eq!(
+            take_ran(),
+            [
+                vec![
+                    "osascript".to_string(),
+                    "-e".to_string(),
+                    "tell application \"VoiceOver\" to output \"hi\"".to_string(),
+                ],
+                vec![
+                    "osascript".to_string(),
+                    "-e".to_string(),
+                    "tell application \"VoiceOver\" to stop speaking".to_string(),
+                ],
+            ]
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_linux_backend_commands_when_available() {
+        let _ = take_ran();
+        let backend = LinuxBackend { available: true };
+        backend.announce("hi", Priority::Assertive);
+        backend.announce("hi", Priority::Polite);
+        backend.stop();
+        assert_eq!(
+            take_ran(),
+            [
+                vec!["spd-say", "--priority", "important", "hi"],
+                vec!["spd-say", "hi"],
+                vec!["spd-say", "--cancel"],
+            ]
+            .map(|line| line.into_iter().map(String::from).collect::<Vec<_>>())
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_windows_backend_command_when_available() {
+        let _ = take_ran();
+        let backend = WindowsBackend { available: true };
+        backend.announce("hi", Priority::Assertive);
+        let ran = take_ran();
+        assert_eq!(ran.len(), 1);
+        assert_eq!(ran[0][..2], ["powershell", "-Command"]);
+        assert!(ran[0][2].ends_with("$synth.Speak('hi')"), "{ran:?}");
+    }
+
+    /// The child gets null stdin, stdout and stderr, and the returned
+    /// thread reaps it: joining yields its exit status
+    #[test]
+    #[cfg(unix)]
+    fn test_spawn_reaped_nulls_stdio_and_waits() {
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c").arg(
+            "[ /dev/stdin -ef /dev/null ] && [ /dev/stdout -ef /dev/null ] \
+             && [ /dev/stderr -ef /dev/null ] && exit 7",
+        );
+        let status = spawn_reaped(cmd).unwrap().join().unwrap().unwrap();
+        assert_eq!(status.code(), Some(7));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_spawn_reaped_waits() {
+        let mut cmd = Command::new("cmd");
+        cmd.args(["/C", "exit 7"]);
+        let status = spawn_reaped(cmd).unwrap().join().unwrap().unwrap();
+        assert_eq!(status.code(), Some(7));
+    }
+
+    #[test]
+    fn test_spawn_reaped_reports_a_missing_program() {
+        let cmd = Command::new("revue-no-such-program-937");
+        assert!(spawn_reaped(cmd).is_err());
+    }
 
     // MacOSBackend tests
     #[test]
@@ -529,20 +690,6 @@ mod tests {
     fn test_null_backend_active_screen_reader() {
         let backend = NullBackend;
         assert!(backend.active_screen_reader().is_none());
-    }
-
-    #[test]
-    fn test_macos_backend_stop() {
-        let backend = MacOSBackend::new();
-        // Should not panic
-        backend.stop();
-    }
-
-    #[test]
-    fn test_linux_backend_stop() {
-        let backend = LinuxBackend::new();
-        // Should not panic
-        backend.stop();
     }
 
     #[test]
