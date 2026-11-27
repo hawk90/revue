@@ -608,12 +608,32 @@ mod tests {
 
     #[test]
     fn test_range_picker_handle_key_space_selects() {
-        let mut picker = RangePicker::new();
+        // Fixed dates: with `RangePicker::new()` alone both ends are today, and
+        // day 25 would come before the start from the 26th of a month on.
+        let mut picker = RangePicker::new()
+            .start_date(Date::new(2025, 6, 15))
+            .end_date(Date::new(2025, 6, 20));
         picker.end_cursor_day = 25;
         picker.focus = RangeFocus::End;
 
         picker.handle_key(&Key::Char(' '));
-        assert_eq!(picker.end.date.day, 25);
+        assert_eq!(picker.start.date, Date::new(2025, 6, 15));
+        assert_eq!(picker.end.date, Date::new(2025, 6, 25));
+    }
+
+    #[test]
+    fn test_range_picker_handle_key_space_end_before_start_swaps() {
+        let mut picker = RangePicker::new()
+            .start_date(Date::new(2025, 6, 15))
+            .end_date(Date::new(2025, 6, 20));
+        picker.end_cursor_day = 10;
+        picker.focus = RangeFocus::End;
+
+        picker.handle_key(&Key::Char(' '));
+        assert_eq!(picker.start.date, Date::new(2025, 6, 10));
+        assert_eq!(picker.end.date, Date::new(2025, 6, 15));
+        assert_eq!(picker.start_cursor_day, 10);
+        assert_eq!(picker.end_cursor_day, 15);
     }
 
     // =========================================================================
