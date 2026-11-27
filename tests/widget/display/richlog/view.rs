@@ -650,3 +650,151 @@ fn test_richlog_select_next_after_the_filter_hides_every_entry() {
     log.select_next();
     assert!(text(&log, 10, 3).iter().all(|r| r.trim().is_empty()));
 }
+
+/// Which rows of `log` drawn `w` wide are the selected entry's (drawn white)
+fn selected_rows(log: &RichLog, w: u16, h: u16) -> Vec<bool> {
+    let buffer = draw(log, w, h);
+    (0..h)
+        .map(|y| buffer.get(0, y).unwrap().fg == Some(Color::WHITE))
+        .collect()
+}
+
+/// A filter given after a selection that hides the selected entry and every
+/// other one leaves nothing selected: toggling does nothing (#1370)
+#[test]
+fn test_richlog_toggle_after_the_filter_hides_every_entry() {
+    let mut log = bare();
+    log.info("a");
+    log.info("b");
+    log.select_next();
+    let mut log = log.min_level(LogLevel::Fatal);
+    log.toggle_selected();
+    log.select_prev();
+    assert!(text(&log, 10, 3).iter().all(|r| r.is_empty()));
+    // Entries logged after it are not selected
+    log.log(LogEntry::new("boom").level(LogLevel::Fatal));
+    assert_eq!(selected_rows(&log, 10, 2), [false, false]);
+}
+
+/// A filter that hides entries above the selected one keeps the selection on
+/// its entry, now higher up the list (#1370)
+#[test]
+fn test_richlog_filter_keeps_the_selection_on_its_entry() {
+    let mut log = bare();
+    log.info("a");
+    log.log(LogEntry::new("b").level(LogLevel::Error).detail("at b"));
+    log.info("c");
+    log.select_next();
+    log.select_next();
+    let mut log = log.min_level(LogLevel::Warning);
+    assert_eq!(selected_rows(&log, 10, 3), [true, false, false]);
+    log.toggle_selected();
+    assert_eq!(text(&log, 10, 3), ["b", "  at b", ""]);
+    assert_eq!(selected_rows(&log, 10, 3), [true, false, false]);
+}
+
+/// A filter that hides the selected entry moves the selection to the
+/// entry now at its place, or the last one; every move starts from there
+/// (#1370)
+#[test]
+fn test_richlog_filter_hiding_the_selected_entry_moves_the_selection() {
+    let mut log = bare();
+    log.error("a");
+    log.info("b");
+    log.error("c");
+    log.info("d");
+    // d, the last entry, is selected
+    for _ in 0..4 {
+        log.select_next();
+    }
+    let mut log = log.min_level(LogLevel::Warning);
+    // d is hidden: the last entry left, c, is selected
+    assert_eq!(text(&log, 10, 3), ["a", "c", ""]);
+    assert_eq!(selected_rows(&log, 10, 3), [false, true, false]);
+    log.select_next();
+    assert_eq!(selected_rows(&log, 10, 3), [false, true, false]);
+    log.select_prev();
+    assert_eq!(selected_rows(&log, 10, 3), [true, false, false]);
+    log.select_next();
+    log.toggle_selected();
+    assert_eq!(selected_rows(&log, 10, 3), [false, true, false]);
+
+    // b, between a and c, is selected and hidden: c, now at its place, is
+    let mut log = bare();
+    log.error("a");
+    log.info("b");
+    log.error("c");
+    log.select_next();
+    log.select_next();
+    let log = log.min_level(LogLevel::Warning);
+    assert_eq!(selected_rows(&log, 10, 3), [false, true, false]);
+}
+
+/// Every cell of `buffer` in `area` has the background `bg`, and every other
+/// cell none
+fn assert_bg_fills(buffer: &revue::render::Buffer, area: revue::layout::Rect, bg: Color) {
+    for y in 0..buffer.height() {
+        for x in 0..buffer.width() {
+            let inside = x >= area.x && x < area.right() && y >= area.y && y < area.bottom();
+            let want = inside.then_some(bg);
+            assert_eq!(buffer.get(x, y).unwrap().bg, want, "({x}, {y})");
+        }
+    }
+}
+
+/// `bg` paints the whole area, also with no entry to draw (#1063)
+#[test]
+fn test_richlog_bg_fills_an_empty_log() {
+    let log = RichLog::new().bg(Color::BLUE);
+    let buffer = draw(&log, 10, 3);
+    assert_bg_fills(&buffer, revue::layout::Rect::new(0, 0, 10, 3), Color::BLUE);
+    assert!(buffer.cells().iter().all(|c| c.symbol == ' '));
+
+    // The same when the filter hides every entry
+    let mut log = RichLog::new().bg(Color::BLUE);
+    log.info("a");
+    let log = log.min_level(LogLevel::Error);
+    assert_bg_fills(
+        &draw(&log, 10, 3),
+        revue::layout::Rect::new(0, 0, 10, 3),
+        Color::BLUE,
+    );
+}
+
+/// `bg` paints the rows below the last entry, and only the log's area when
+/// it is drawn at an offset (#1063)
+#[test]
+fn test_richlog_bg_fills_the_rows_below_the_entries() {
+    let mut log = bare().bg(Color::BLUE);
+    log.info("a");
+    let buffer = draw(&log, 10, 3);
+    assert_bg_fills(&buffer, revue::layout::Rect::new(0, 0, 10, 3), Color::BLUE);
+    assert_eq!(rows(&log, 10, 3), ["a", "", ""]);
+
+    let area = revue::layout::Rect::new(2, 1, 6, 3);
+    let mut buffer = revue::render::Buffer::new(10, 5);
+    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
+    revue::widget::View::render(&log, &mut ctx);
+    assert_bg_fills(&buffer, area, Color::BLUE);
+    assert_eq!(buffer.get(2, 1).unwrap().symbol, 'a');
+}
+
+/// The scroll marker keeps the background, at the top and the bottom
+/// (#1063)
+#[test]
+fn test_richlog_scroll_marker_keeps_the_bg() {
+    let mut log = bare().bg(Color::BLUE).auto_scroll(false);
+    for i in 0..10 {
+        log.info(format!("m{i}"));
+    }
+    let buffer = draw(&log, 10, 3);
+    let marker = *buffer.get(9, 0).unwrap();
+    assert_eq!(marker.symbol, '█');
+    assert_eq!(marker.bg, Some(Color::BLUE));
+    assert_bg_fills(&buffer, revue::layout::Rect::new(0, 0, 10, 3), Color::BLUE);
+
+    log.scroll_to_bottom();
+    let buffer = draw(&log, 10, 3);
+    assert_eq!(buffer.get(9, 2).unwrap().symbol, '█');
+    assert_bg_fills(&buffer, revue::layout::Rect::new(0, 0, 10, 3), Color::BLUE);
+}
