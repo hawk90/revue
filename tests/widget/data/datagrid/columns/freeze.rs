@@ -2,7 +2,7 @@
 
 use super::super::{render_to, row_text};
 use proptest::prelude::*;
-use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
+use revue::widget::data::datagrid::{DataGrid, FooterRow, GridColumn, GridRow};
 
 /// Six fixed-width columns "C0".."C5" so positions are deterministic.
 fn six_col_grid() -> DataGrid {
@@ -213,4 +213,83 @@ proptest! {
         let drawn: Vec<usize> = (0..6).filter_map(x_of).collect();
         prop_assert!(drawn.windows(2).all(|w| w[0] < w[1]), "{:?}", drawn);
     }
+}
+
+/// Three 6-wide columns A, B, C with one row a1, b1, c1.
+fn abc_fixed() -> DataGrid {
+    DataGrid::new()
+        .column(GridColumn::new("a", "A").width(6))
+        .column(GridColumn::new("b", "B").width(6))
+        .column(GridColumn::new("c", "C").width(6))
+        .row(
+            GridRow::new()
+                .cell("a", "a1")
+                .cell("b", "b1")
+                .cell("c", "c1"),
+        )
+}
+
+/// With only right-frozen columns, the footer label goes in the leftmost
+/// column drawn, not in the right-frozen one.
+#[test]
+fn test_footer_label_in_the_first_column_with_right_frozen() {
+    let grid = abc_fixed()
+        .freeze_columns_right(1)
+        .footer(FooterRow::new("Total"));
+    let buffer = render_to(&grid, 24, 4);
+    // A 0..6, B 7..13, gap 14..17, C (right-frozen) 17..23
+    assert_eq!(row_text(&buffer, 3, 24), "Total │      │         │");
+}
+
+/// Same with a left-frozen and a right-frozen column: the label stays in the
+/// left-frozen one.
+#[test]
+fn test_footer_label_in_the_left_frozen_column() {
+    let grid = abc_fixed()
+        .freeze_columns_left(1)
+        .freeze_columns_right(1)
+        .footer(FooterRow::new("Total"));
+    let buffer = render_to(&grid, 24, 4);
+    assert_eq!(row_text(&buffer, 3, 24), "Total │      │         │");
+}
+
+/// A middle column that would end right where the right-frozen block starts
+/// is dropped: its separator would cover the block's first cell.
+#[test]
+fn test_middle_column_does_not_cover_the_right_frozen_block() {
+    let mut grid = DataGrid::new().freeze_columns_right(1);
+    for (i, w) in [5, 7, 3, 3, 3, 5].into_iter().enumerate() {
+        grid = grid.column(GridColumn::new(format!("c{i}"), format!("C{i}")).width(w));
+    }
+    let grid = grid.row(GridRow::new().cell("c4", "x").cell("c5", "five"));
+    let buffer = render_to(&grid, 31, 3);
+    // C4 (x 22..25) would put its separator on x 25, C5's first cell
+    assert_eq!(row_text(&buffer, 0, 31), "C0   │C1     │C2 │C3 │   C5   │");
+    assert_eq!(row_text(&buffer, 1, 31), "     │       │   │   │   five │");
+}
+
+/// One cell narrower and C4 fits with its separator, flush against C5.
+#[test]
+fn test_middle_column_with_its_separator_fits_before_the_right_frozen_block() {
+    let mut grid = DataGrid::new().freeze_columns_right(1);
+    for (i, w) in [5, 7, 3, 3, 3, 5].into_iter().enumerate() {
+        grid = grid.column(GridColumn::new(format!("c{i}"), format!("C{i}")).width(w));
+    }
+    let grid = grid.row(GridRow::new().cell("c4", "x").cell("c5", "five"));
+    let buffer = render_to(&grid, 32, 3);
+    assert_eq!(row_text(&buffer, 0, 32), "C0   │C1     │C2 │C3 │C4 │C5   │");
+    assert_eq!(row_text(&buffer, 1, 32), "     │       │   │   │x  │five │");
+}
+
+/// Without right-frozen columns, a last column whose cells end at the right
+/// edge is still drawn; only its separator falls outside.
+#[test]
+fn test_last_column_ending_at_the_edge_without_right_frozen() {
+    let grid = DataGrid::new()
+        .column(GridColumn::new("a", "A").width(5))
+        .column(GridColumn::new("b", "B").width(4))
+        .row(GridRow::new().cell("a", "a1").cell("b", "b1"));
+    let buffer = render_to(&grid, 10, 3);
+    assert_eq!(row_text(&buffer, 0, 10), "A    │B   ");
+    assert_eq!(row_text(&buffer, 1, 10), "a1   │b1  ");
 }
