@@ -18,7 +18,7 @@ impl<'a> BoxPlotRender<'a> {
         }
 
         let n_groups = self.group_count;
-        let group_width = self.chart_area.width / n_groups as u16;
+        let group_width = (self.chart_area.width as usize / n_groups) as u16;
         let box_width = (group_width as f64 * self.box_width) as u16;
 
         for (i, group) in self.groups.iter().enumerate() {
@@ -224,7 +224,7 @@ impl<'a> BoxPlotRender<'a> {
             x >= area.x && x < area.x + area.width && y >= area.y && y < area.y + area.height
         };
         let n_groups = self.group_count;
-        let group_height = area.height / n_groups as u16;
+        let group_height = (area.height as usize / n_groups) as u16;
         let box_height = (group_height as f64 * self.box_width) as u16;
         let to_x = |value: f64| area.x + self.value_to_screen(value, area.width);
 

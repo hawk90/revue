@@ -367,7 +367,9 @@ impl TimeTravelDebugger {
         let count = snapshots.len();
         self.import(snapshots);
         if let Some(p) = position.filter(|&p| p < count) {
-            self.position = p;
+            // As a jump: at an earlier position the next record drops the
+            // snapshots after it (#853)
+            self.jump_to(p);
         }
         Ok(count)
     }

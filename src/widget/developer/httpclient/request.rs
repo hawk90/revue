@@ -79,15 +79,17 @@ impl HttpRequest {
 
     /// Build URL with query parameters
     ///
-    /// URL-encodes all query parameters to prevent injection attacks.
-    /// Enforces maximum URL length.
+    /// URL-encodes all query parameters to prevent injection attacks. The
+    /// parameters come in key order, so the same request gives the same URL
+    /// on every run (#1083).
     pub fn full_url(&self) -> String {
         if self.params.is_empty() {
             self.url.clone()
         } else {
-            let params: Vec<String> = self
-                .params
-                .iter()
+            let mut sorted: Vec<(&String, &String)> = self.params.iter().collect();
+            sorted.sort();
+            let params: Vec<String> = sorted
+                .into_iter()
                 .map(|(k, v)| format!("{}={}", percent_encode(k), percent_encode(v)))
                 .collect();
             format!("{}?{}", self.url, params.join("&"))

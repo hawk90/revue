@@ -39,11 +39,11 @@ fn each_column_starts_at_its_offset() {
     let buffer = draw(&monitor, 100, 5);
     assert_eq!(
         row(&buffer, 1).trim_end(),
-        "PID▲   NAME                CPU%   MEM%   MEM     STATUS    COMMAND"
+        "PID▲    NAME                CPU%   MEM%   MEM     STATUS    COMMAND"
     );
     assert_eq!(
         row(&buffer, 2).trim_end(),
-        "    42 rustc                 12.5    4.5      3M Sleeping  rustc --edition"
+        "     42 rustc                 12.5    4.5      3M Sleeping  rustc --edition"
     );
 }
 
@@ -113,7 +113,7 @@ fn the_header_fills_its_row_bold_in_the_header_colors() {
         Some(Color::rgb(1, 2, 3)),
         Modifier::BOLD,
     );
-    for x in [0, 7, 27, 34, 41, 49, 59] {
+    for x in [0, 8, 28, 35, 42, 50, 60] {
         assert_eq!(style(&buffer, x, 1), bold, "x={x}");
     }
 }
@@ -124,28 +124,28 @@ fn the_sort_arrow_marks_the_sort_column_and_its_direction() {
         (
             ProcessSort::Pid,
             false,
-            "PID▼   NAME                CPU%   MEM%   MEM     STATUS",
+            "PID▼    NAME                CPU%   MEM%   MEM     STATUS",
         ),
         (
             ProcessSort::Name,
             true,
-            "PID    NAME▲               CPU%   MEM%   MEM     STATUS",
+            "PID     NAME▲               CPU%   MEM%   MEM     STATUS",
         ),
         (
             ProcessSort::Cpu,
             false,
-            "PID    NAME                CPU%▼  MEM%   MEM     STATUS",
+            "PID     NAME                CPU%▼  MEM%   MEM     STATUS",
         ),
         // MEM% and MEM both sort by memory
         (
             ProcessSort::Memory,
             true,
-            "PID    NAME                CPU%   MEM%▲  MEM▲    STATUS",
+            "PID     NAME                CPU%   MEM%▲  MEM▲    STATUS",
         ),
         (
             ProcessSort::Status,
             false,
-            "PID    NAME                CPU%   MEM%   MEM     STATUS▼",
+            "PID     NAME                CPU%   MEM%   MEM     STATUS▼",
         ),
     ];
     for (sort, asc, header) in cases {
@@ -172,8 +172,8 @@ fn cpu_turns_medium_above_30_and_high_above_80() {
     for (cpu, want) in cases {
         let monitor = monitor_with(vec![process(1, "a", cpu, 0, 0.0, "Run", "", "0")]);
         let buffer = draw(&monitor, 60, 5);
-        // The column is right-aligned in six cells from x=27
-        for x in 27..33 {
+        // The column is right-aligned in six cells from x=28
+        for x in 28..34 {
             assert_eq!(buffer.get(x, 2).unwrap().fg, Some(want), "cpu={cpu} x={x}");
         }
     }
@@ -190,7 +190,7 @@ fn mem_percent_turns_high_above_10_and_is_the_row_color_otherwise() {
         let monitor = monitor_with(vec![process(1, "a", 0.0, 0, percent, "Run", "", "0")])
             .colors(colors.clone());
         let buffer = draw(&monitor, 60, 5);
-        for x in 34..40 {
+        for x in 35..41 {
             assert_eq!(buffer.get(x, 2).unwrap().fg, Some(want), "{percent}% x={x}");
         }
     }
@@ -208,12 +208,12 @@ fn row_columns_have_their_colors() {
     let buffer = draw(&monitor, 70, 5);
     let fg = |x| buffer.get(x, 2).unwrap().fg;
     // PID, name and memory; the name and memory default to white
-    assert_eq!(fg(5), Some(Color::rgb(1, 1, 1)));
-    assert_eq!(fg(7), Some(Color::WHITE));
-    assert_eq!(fg(47), Some(Color::WHITE));
+    assert_eq!(fg(6), Some(Color::rgb(1, 1, 1)));
+    assert_eq!(fg(8), Some(Color::WHITE));
+    assert_eq!(fg(48), Some(Color::WHITE));
     // Status and command are light gray
-    assert_eq!(fg(49), Some(LIGHT_GRAY));
-    assert_eq!(fg(59), Some(LIGHT_GRAY));
+    assert_eq!(fg(50), Some(LIGHT_GRAY));
+    assert_eq!(fg(60), Some(LIGHT_GRAY));
     // ProcColors::name sets the name and memory columns
     let named = monitor_with(vec![process(4321, "abc", 0.0, 2048, 0.0, "Run", "c", "0")]).colors(
         ProcColors {
@@ -222,8 +222,8 @@ fn row_columns_have_their_colors() {
         },
     );
     let buffer = draw(&named, 70, 5);
-    assert_eq!(buffer.get(7, 2).unwrap().fg, Some(Color::rgb(7, 7, 7)));
-    assert_eq!(buffer.get(47, 2).unwrap().fg, Some(Color::rgb(7, 7, 7)));
+    assert_eq!(buffer.get(8, 2).unwrap().fg, Some(Color::rgb(7, 7, 7)));
+    assert_eq!(buffer.get(48, 2).unwrap().fg, Some(Color::rgb(7, 7, 7)));
 }
 
 #[test]
@@ -252,15 +252,90 @@ fn a_long_name_is_cut_at_19_columns_and_a_long_status_at_8() {
         "0",
     )]);
     let line = row(&draw(&monitor, 60, 5), 2);
-    assert_eq!(&line[7..27], "abcdefghijklmnopqrs ");
-    assert_eq!(&line[49..58], "Uninterr ");
+    assert_eq!(&line[8..28], "abcdefghijklmnopqrs ");
+    assert_eq!(&line[50..59], "Uninterr ");
+}
+
+/// The header drew STATUS wherever it fit while the rows drew the status
+/// only wider than 55, so at 50-55 the header stood over an empty column
+/// (#1084). Both are now clipped at the area, like the other columns.
+#[test]
+fn the_status_column_and_its_header_are_clipped_at_the_area_alike() {
+    let monitor = monitor_with(vec![process(1, "a", 0.0, 0, 0.0, "Sleeping", "", "0")]);
+    for w in 40..=62u16 {
+        let buffer = draw(&monitor, w, 5);
+        let shown = w.saturating_sub(50) as usize;
+        for x in 50..w {
+            let i = (x - 50) as usize;
+            let header = buffer.get(x, 1).unwrap();
+            let want = "STATUS".chars().nth(i).unwrap_or(' ');
+            assert_eq!(header.symbol, want, "w={w} x={x} header");
+            let cell = buffer.get(x, 2).unwrap();
+            let want = "Sleeping".chars().nth(i).unwrap_or(' ');
+            assert_eq!(cell.symbol, want, "w={w} x={x} row");
+            if i < 8 {
+                assert_eq!(cell.fg, Some(LIGHT_GRAY), "w={w} x={x}");
+            }
+        }
+        // As many status cells as header cells, up to the header's six
+        let header: String = row(&buffer, 1).chars().skip(50).collect();
+        let status: String = row(&buffer, 2).chars().skip(50).collect();
+        assert_eq!(header.trim_end().len(), shown.min(6), "w={w} {header:?}");
+        assert_eq!(status.trim_end().len(), shown.min(8), "w={w} {status:?}");
+    }
+}
+
+/// The PID was drawn in six cells and the name started at the seventh, so a
+/// 7-digit PID (Linux goes to 4194304) ran into the name (#1084)
+#[test]
+fn a_seven_digit_pid_is_kept_apart_from_the_name() {
+    let pid_color = ProcColors::default().pid;
+    let monitor = monitor_with(vec![
+        process(7, "a", 0.0, 0, 0.0, "Run", "", "0"),
+        process(999_999, "b", 0.0, 0, 0.0, "Run", "", "0"),
+        process(4_194_304, "init", 0.0, 0, 0.0, "Run", "", "0"),
+    ]);
+    let buffer = draw(&monitor, 60, 6);
+    assert_eq!(&row(&buffer, 2)[..10], "      7 a ");
+    assert_eq!(&row(&buffer, 3)[..10], " 999999 b ");
+    assert_eq!(&row(&buffer, 4)[..13], "4194304 init ");
+    for x in 0..7 {
+        assert_eq!(buffer.get(x, 4).unwrap().fg, Some(pid_color), "x={x}");
+    }
+    // The gap is a plain cell, and the name's first cell is the name's
+    assert_eq!(buffer.get(7, 4).unwrap().fg, None);
+    assert_eq!(buffer.get(8, 4).unwrap().fg, Some(Color::WHITE));
+}
+
+/// A PID wider than the column is cut at it: the gap before the name stays
+#[test]
+fn a_pid_wider_than_seven_digits_keeps_the_gap() {
+    let monitor = monitor_with(vec![process(123_456_789, "x", 0.0, 0, 0.0, "Run", "", "0")]);
+    let line = row(&draw(&monitor, 60, 5), 2);
+    assert_eq!(&line[..10], "1234567 x ");
+}
+
+/// sysinfo reports 0 total memory where it cannot read it; the share of 0
+/// was drawn as "NaN%" (#1084)
+#[test]
+fn the_stats_bar_shows_no_nan_when_the_system_reports_no_memory() {
+    let monitor = monitor_with(numbered(1)); // an empty System: total memory 0
+    assert_eq!(monitor.memory_usage(), (0, 0));
+    let stats = row(&draw(&monitor, 80, 5), 0);
+    assert_eq!(
+        stats.trim_end(),
+        "CPU:   0.0%  MEM: 0 / 0 (0.0%)  Processes: 1"
+    );
 }
 
 #[test]
-fn the_status_column_is_drawn_only_wider_than_55() {
-    let monitor = monitor_with(vec![process(1, "a", 0.0, 0, 0.0, "Run", "", "0")]);
-    assert_eq!(&row(&draw(&monitor, 55, 5), 2)[49..55], "      ");
-    assert_eq!(&row(&draw(&monitor, 56, 5), 2)[49..56], "Run    ");
+fn memory_percent_is_the_share_and_0_without_a_total() {
+    use crate::widget::developer::procmon::refresh::memory_percent;
+    assert_eq!(memory_percent(0, 0), 0.0);
+    assert_eq!(memory_percent(5, 0), 0.0);
+    assert_eq!(memory_percent(1, 4), 25.0);
+    assert_eq!(memory_percent(4, 4), 100.0);
+    assert_eq!(memory_percent(u64::MAX, u64::MAX), 100.0);
 }
 
 #[test]
@@ -281,10 +356,10 @@ fn show_cmd_falls_back_to_the_name_and_stops_at_the_area() {
     .show_cmd(true);
     let buffer = draw(&monitor, 70, 5);
     // The header has the 3-byte arrow; count columns, not bytes
-    let header: String = row(&buffer, 1).chars().skip(59).collect();
+    let header: String = row(&buffer, 1).chars().skip(60).collect();
     assert_eq!(header.trim_end(), "COMMAND");
-    assert_eq!(row(&buffer, 2)[59..].trim_end(), "named");
-    assert_eq!(&row(&buffer, 3)[59..], "/usr/bin/a-");
+    assert_eq!(row(&buffer, 2)[60..].trim_end(), "named");
+    assert_eq!(&row(&buffer, 3)[60..], "/usr/bin/a");
 }
 
 #[test]

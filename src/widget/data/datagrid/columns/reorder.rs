@@ -39,17 +39,11 @@ impl DataGrid {
         }
 
         let visible_cols = self.visible_columns_in_order();
-        let mut slots: Vec<(usize, u16, u16)> = self
+        let target = self
             .layout_column_slots(&visible_cols, area)
             .iter()
-            .map(|s| (s.display_idx, s.x, s.width))
-            .collect();
-        slots.sort_by_key(|&(_, x, _)| x);
-
-        let target = slots
-            .into_iter()
-            .find(|&(_, col_x, width)| x < col_x + width / 2)
-            .map(|(display_idx, _, _)| display_idx)
+            .find(|s| x < s.x + s.width / 2)
+            .map(|s| s.display_idx)
             // Past all columns: drop at the end
             .unwrap_or(visible_cols.len());
         self.drop_target_col = Some(target);
@@ -88,14 +82,7 @@ impl DataGrid {
 
         // Make column_order a full permutation of `columns` (hidden ones
         // included, so they keep their place relative to their neighbors).
-        let mut order = std::mem::take(&mut self.column_order);
-        order.retain(|&i| i < self.columns.len());
-        for i in 0..self.columns.len() {
-            if !order.contains(&i) {
-                order.push(i);
-            }
-        }
-
+        let mut order = self.full_column_order();
         order.retain(|&i| i != col);
         let insert_at = if to < visible.len() {
             let anchor = visible[to];

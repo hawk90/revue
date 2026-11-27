@@ -114,6 +114,32 @@ mod tests {
         }
     }
 
+    /// The position was restored without marking the debugger as
+    /// traveling, so the next record kept the snapshots after it (#853)
+    #[test]
+    fn a_record_after_an_import_at_an_earlier_position_drops_the_future() {
+        let session = r#"{"snapshots": [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}],
+            "current_position": 1}"#;
+        let ids = |d: &TimeTravelDebugger| d.snapshots().iter().map(|s| s.id).collect::<Vec<_>>();
+
+        let mut debugger = TimeTravelDebugger::new();
+        debugger.import_json(session).unwrap();
+        assert_eq!(debugger.position(), 1);
+        assert!(debugger.is_traveling());
+        debugger.record(StateSnapshot::new(0));
+        assert_eq!(ids(&debugger), [1, 2, 6]);
+        assert_eq!(debugger.position(), 2);
+        assert!(!debugger.is_traveling());
+
+        // At the latest position nothing is dropped
+        let latest = session.replace("\"current_position\": 1", "\"current_position\": 4");
+        let mut debugger = TimeTravelDebugger::new();
+        debugger.import_json(&latest).unwrap();
+        assert!(!debugger.is_traveling());
+        debugger.record(StateSnapshot::new(0));
+        assert_eq!(ids(&debugger), [1, 2, 3, 4, 5, 6]);
+    }
+
     #[test]
     fn an_import_needs_only_ids() {
         let mut debugger = TimeTravelDebugger::new();
