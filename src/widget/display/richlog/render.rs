@@ -47,14 +47,13 @@ impl RichLog {
         message + details
     }
 
-    /// Fill row `y` with the background color, when one is set
-    fn fill_row(&self, ctx: &mut RenderContext, y: u16, width: u16) {
+    /// Give every cell of the area that has no background yet the `bg`
+    /// color, when one is set: the gaps between the columns, the rows below
+    /// the last entry and the scroll marker. Called after the glyphs are
+    /// drawn, so none of them leaves a hole in it.
+    fn fill_bg(&self, ctx: &mut RenderContext) {
         if let Some(bg) = self.bg {
-            for x in 0..width {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(bg);
-                ctx.set(x, y, cell);
-            }
+            ctx.fill_bg_under(0, 0, ctx.area.width, ctx.area.height, bg);
         }
     }
 
@@ -125,7 +124,11 @@ impl View for RichLog {
 
         // Nothing fits in a zero-sized area, and the scroll indicator's math
         // below needs at least one row and one column.
-        if entries.is_empty() || area.width == 0 || area.height == 0 {
+        if area.width == 0 || area.height == 0 {
+            return;
+        }
+        if entries.is_empty() {
+            self.fill_bg(ctx);
             return;
         }
 
@@ -170,8 +173,6 @@ impl View for RichLog {
                 }
                 let y = (at - visible.start) as u16;
 
-                self.fill_row(ctx, y, area.width);
-
                 // The prefix columns go on the entry's first row only
                 if line_idx == 0 {
                     self.draw_prefix(ctx, &columns, entry, y);
@@ -185,6 +186,7 @@ impl View for RichLog {
         }
 
         self.draw_scroll_indicator(ctx);
+        self.fill_bg(ctx);
     }
 }
 
