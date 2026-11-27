@@ -14,15 +14,14 @@ impl DataGrid {
 
         let mut output = String::new();
 
-        // Get visible columns
+        // Columns in display order
         let visible_cols: Vec<_> = if options.visible_columns_only {
-            self.columns
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| c.visible)
-                .collect()
+            self.visible_columns_in_order()
         } else {
-            self.columns.iter().enumerate().collect()
+            self.full_column_order()
+                .into_iter()
+                .map(|i| (i, &self.columns[i]))
+                .collect()
         };
 
         // Export headers
@@ -79,9 +78,9 @@ impl DataGrid {
 
     /// Copy current cell value
     pub fn copy_cell(&self) -> String {
-        let visible_cols: Vec<_> = self.columns.iter().filter(|c| c.visible).collect();
+        let col = self.columns.get(self.selected_col).filter(|c| c.visible);
 
-        if let Some(col) = visible_cols.get(self.selected_col) {
+        if let Some(col) = col {
             if let Some(&actual_idx) = self.filtered_indices().get(self.selected_row) {
                 if let Some(row) = self.rows.get(actual_idx) {
                     return row.get(&col.key).unwrap_or("").to_string();
