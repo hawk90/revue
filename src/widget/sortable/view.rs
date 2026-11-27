@@ -10,7 +10,7 @@ use super::core::SortableList;
 impl View for SortableList {
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let visible_count = (area.height / self.item_height) as usize;
+        let visible_count = (area.height / self.row_height()) as usize;
 
         // The items in view, following the selection (#973)
         self.view().set_content(self.items.len());
@@ -27,7 +27,7 @@ impl View for SortableList {
             .skip(scroll)
             .take(visible_count)
         {
-            let y = (i - scroll) as u16 * self.item_height;
+            let y = (i - scroll) as u16 * self.row_height();
 
             // Determine colors
             let is_selected = self.selected == Some(i);
@@ -104,7 +104,7 @@ impl View for SortableList {
         // Draw final drop indicator at end if needed
         if let Some(target) = self.drop_target {
             if target == self.items.len() && self.dragging.is_some() {
-                let y = visible_count.min(self.items.len() - scroll) as u16 * self.item_height;
+                let y = visible_count.min(self.items.len() - scroll) as u16 * self.row_height();
                 if y < area.height {
                     ctx.draw_hline(0, y, area.width, '─', self.drag_color);
                 }
@@ -169,7 +169,7 @@ impl Interactive for SortableList {
         }
 
         let relative_y = event.y.saturating_sub(area.y) as usize;
-        let clicked_idx = (relative_y / self.item_height as usize + self.view().offset())
+        let clicked_idx = (relative_y / self.row_height() as usize + self.view().offset())
             .min(self.items.len().saturating_sub(1));
 
         match event.kind {
