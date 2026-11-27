@@ -1,6 +1,7 @@
 //! Performance profiler tests
 
 use revue::utils::profiler::{profile, FlameNode, Profiler, Stats};
+use revue::utils::{display_width, truncate_to_width};
 use std::thread;
 use std::time::Duration;
 
@@ -110,14 +111,46 @@ fn test_profiler_report_truncates_long_ascii_name() {
     assert!(!report.contains(&name));
 }
 
-#[test]
-fn test_profiler_report_keeps_30_char_non_ascii_name() {
+/// The report's header and its one row, for a profiler with one operation
+fn header_and_row(name: &str) -> (String, String) {
     let profiler = Profiler::new();
-    // 30 characters but 90 bytes: fits the column, so it is not cut
-    let name = "렌".repeat(30);
-    profiler.record(&name, Duration::from_millis(10));
+    profiler.record(name, Duration::from_millis(10));
+    let report = profiler.report();
+    let lines: Vec<&str> = report.lines().collect();
+    assert_eq!(lines.len(), 6, "{report}");
+    (lines[3].to_string(), lines[5].to_string())
+}
 
-    assert!(profiler.report().contains(&name));
+/// The calls column of a row: the 8 columns after the 30-column name and a space
+fn calls_column(row: &str) -> &str {
+    let name_and_space = truncate_to_width(row, 31);
+    assert_eq!(display_width(name_and_space), 31, "{row:?}");
+    &row[name_and_space.len()..name_and_space.len() + 8]
+}
+
+#[test]
+fn test_profiler_report_keeps_30_column_wide_name() {
+    // 15 Hangul characters: 45 bytes, 30 columns, so it fits the column whole
+    let name = "렌".repeat(15);
+    let (header, row) = header_and_row(&name);
+
+    assert_eq!(&row[..name.len()], name);
+    assert_eq!(calls_column(&row), "       1");
+    assert_eq!(calls_column(&header), "   Calls");
+    assert_eq!(display_width(&row), display_width(&header));
+}
+
+#[test]
+fn test_profiler_report_cuts_31_column_wide_name_by_columns() {
+    // 31 columns: 13 Hangul characters (26 columns) fit before the "...",
+    // and one space pads the name to 30 columns
+    let name = format!("{}a", "렌".repeat(15));
+    let (header, row) = header_and_row(&name);
+
+    let expected = format!("{}... ", "렌".repeat(13));
+    assert_eq!(&row[..expected.len()], expected);
+    assert_eq!(calls_column(&row), "       1");
+    assert_eq!(display_width(&row), display_width(&header));
 }
 
 #[test]
