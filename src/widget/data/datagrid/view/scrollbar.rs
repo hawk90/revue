@@ -23,14 +23,17 @@ impl DataGrid {
             return;
         }
 
+        // The track spans every line of the shown rows (`row_height` lines
+        // each); the thumb is sized and placed by rows.
         let scrollbar_x = area.width - 1;
-        let scrollbar_height = visible_height as f64;
+        let track_lines = visible_height * self.options.row_height.max(1) as usize;
+        let scrollbar_height = track_lines as f64;
         let thumb_height =
             (scrollbar_height * visible_height as f64 / total_rows as f64).max(1.0) as u16;
         let thumb_pos = (self.scroll_row as f64 / (total_rows - visible_height) as f64
             * (scrollbar_height - thumb_height as f64)) as u16;
 
-        for i in 0..visible_height {
+        for i in 0..track_lines {
             let scrollbar_y = content_y + i as u16;
             let i_u16 = i as u16;
             let is_thumb = i_u16 >= thumb_pos && i_u16 < (thumb_pos + thumb_height);

@@ -119,8 +119,9 @@ pub fn compute_flex(
         // Auto children without flex_grow get 0 extra space when flex_grow is active
     } else if auto_count > 0 && remaining > 0 {
         // No flex_grow: distribute remaining space equally to auto-sized children
-        let per_auto = remaining / auto_count as u16;
-        let extra = remaining % auto_count as u16;
+        // Divided in usize: `auto_count as u16` wraps to 0 at 65536 (#1531)
+        let per_auto = (remaining as usize / auto_count) as u16;
+        let extra = (remaining as usize % auto_count) as u16;
         let mut extra_given = 0u16;
 
         for (i, &child_id) in children.iter().enumerate() {
@@ -282,19 +283,18 @@ fn compute_justify_offsets(
         JustifyContent::Center => (free_space / 2, 0),
         JustifyContent::SpaceBetween => {
             if child_count > 1 {
-                (0, free_space / (child_count - 1) as u16)
+                (0, (free_space as usize / (child_count - 1)) as u16)
             } else {
                 (0, 0)
             }
         }
-        JustifyContent::SpaceAround => {
-            if child_count > 0 {
-                let space = free_space / child_count as u16;
+        JustifyContent::SpaceAround => match usize::from(free_space).checked_div(child_count) {
+            Some(space) => {
+                let space = space as u16;
                 (space / 2, space)
-            } else {
-                (0, 0)
             }
-        }
+            None => (0, 0),
+        },
     }
 }
 

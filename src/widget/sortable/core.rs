@@ -76,6 +76,12 @@ impl SortableList {
         }
     }
 
+    /// The rows an item takes: `item_height`, with 0 read as 1 (as
+    /// `VirtualList::item_height` clamps it), so the divisions by it hold
+    pub(super) fn row_height(&self) -> u16 {
+        self.item_height.max(1)
+    }
+
     /// Where the items are scrolled to (drawn in `view.rs`)
     pub(super) fn view(&self) -> &ScrollState {
         &self.view

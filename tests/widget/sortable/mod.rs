@@ -346,6 +346,28 @@ fn test_sortable_list_render_truncates_label() {
     assert_eq!(row(&buffer, 0), "≡   Lon");
 }
 
+/// An item height of 0 divided by zero in render and the mouse handlers
+/// (#1531); it reads as 1, as `VirtualList::item_height` clamps it
+#[test]
+fn test_sortable_list_item_height_zero_reads_as_one() {
+    let mut list = abc();
+    list.item_height = 0;
+    let buffer = render(&list, 6, 4);
+    let rows: Vec<String> = (0..4).map(|y| row(&buffer, y)).collect();
+    assert_eq!(rows, ["≡   A ", "≡   B ", "≡   C ", "      "]);
+
+    // A click on row 1 selects the item on row 1
+    list.handle_mouse(&mouse(5, 1, MouseEventKind::Down(MouseButton::Left)), AREA);
+    assert_eq!(list.selected(), Some(1));
+
+    // A drag from the handle of "A" to row 2 targets row 2
+    list.handle_mouse(&mouse(0, 0, MouseEventKind::Down(MouseButton::Left)), AREA);
+    list.handle_mouse(&mouse(0, 2, MouseEventKind::Drag(MouseButton::Left)), AREA);
+    assert_eq!(list.drop_target, Some(2));
+    list.update_drop_target(9, 0);
+    assert_eq!(list.drop_target, Some(3));
+}
+
 // ---------------------------------------------------------------------------
 // Keyboard
 // ---------------------------------------------------------------------------

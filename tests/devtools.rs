@@ -5,6 +5,8 @@ mod alloc_cap;
 
 #[path = "devtools/inspector/mod.rs"]
 mod inspector;
+#[path = "devtools/profiler.rs"]
+mod profiler;
 #[path = "devtools/render.rs"]
 mod render;
 

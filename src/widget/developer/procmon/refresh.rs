@@ -7,11 +7,13 @@ impl ProcessMonitor {
     /// Set filter string
     pub fn filter(&mut self, filter: impl Into<String>) {
         self.filter = filter.into().to_lowercase();
+        self.apply_list_settings();
     }
 
     /// Clear filter
     pub fn clear_filter(&mut self) {
         self.filter.clear();
+        self.apply_list_settings();
     }
 
     /// Toggle sort column
@@ -22,6 +24,7 @@ impl ProcessMonitor {
             self.sort = column;
             self.sort_asc = false;
         }
+        self.apply_list_settings();
     }
 
     /// Refresh process list
@@ -52,7 +55,7 @@ impl ProcessMonitor {
             self.set_process_list(Vec::new());
             return;
         };
-        let total_memory = system.total_memory() as f32;
+        let total_memory = system.total_memory();
 
         let all = system
             .processes()
@@ -65,7 +68,7 @@ impl ProcessMonitor {
                     name: proc.name().to_string_lossy().into_owned(),
                     cpu: proc.cpu_usage(),
                     memory,
-                    memory_percent: (memory as f32 / total_memory) * 100.0,
+                    memory_percent: memory_percent(memory, total_memory),
                     status: format!("{:?}", proc.status()),
                     cmd: proc
                         .cmd()
@@ -85,10 +88,18 @@ impl ProcessMonitor {
         self.set_process_list(all);
     }
 
-    /// Filter and sort a freshly read process list and keep it
+    /// Keep a freshly read process list and list it through the view, the
+    /// filter and the sort
     pub(super) fn set_process_list(&mut self, all: Vec<ProcessInfo>) {
-        self.processes = all
-            .into_iter()
+        self.all = all;
+        self.apply_list_settings();
+    }
+
+    /// List the last list read through the current view, filter and sort
+    pub(super) fn apply_list_settings(&mut self) {
+        self.processes = self
+            .all
+            .iter()
             // The `User` view keeps the processes owned by whoever runs this
             // one; when that is unknown it keeps them all.
             .filter(|p| match (self.view, &self.current_user) {
@@ -103,6 +114,7 @@ impl ProcessMonitor {
                         || p.cmd.to_lowercase().contains(&self.filter)
                 }
             })
+            .cloned()
             .collect();
 
         // Sort
@@ -140,6 +152,16 @@ impl ProcessMonitor {
         self.system.as_ref().map_or((0, 0), |system| {
             (system.used_memory(), system.total_memory())
         })
+    }
+}
+
+/// `memory` as a percentage of `total`; 0 when the system reports no total
+/// memory (sysinfo gives 0 where it cannot read it)
+pub(super) fn memory_percent(memory: u64, total: u64) -> f32 {
+    if total == 0 {
+        0.0
+    } else {
+        memory as f32 / total as f32 * 100.0
     }
 }
 

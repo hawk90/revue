@@ -59,11 +59,13 @@ impl DataGrid {
     /// Applies column freeze and horizontal scroll: the first `frozen_left`
     /// display columns (widened to the last `GridColumn::frozen` one) are
     /// pinned to the left, the last `frozen_right` are pinned flush to the
-    /// right, and the columns in between scroll horizontally by `scroll_col`. Middle columns that would collide with the right-frozen
-    /// region are dropped.
+    /// right, and the columns in between scroll horizontally by `scroll_col`.
+    /// A middle column whose cells or trailing separator would reach the
+    /// right-frozen region is dropped, with the ones after it.
     ///
     /// `widths` is parallel to `visible_cols` (display order). Returned slots
-    /// carry absolute x positions including the `row_num_width` gutter.
+    /// are in display order, left to right, and carry absolute x positions
+    /// including the `row_num_width` gutter.
     pub(crate) fn compute_column_slots<'a>(
         &self,
         visible_cols: &[(usize, &'a GridColumn)],
@@ -101,31 +103,24 @@ impl DataGrid {
         }
         let left_end = x;
 
-        // 2) Right-frozen columns, pinned flush to the right in order (never
-        //    overlapping the left-frozen region).
+        // 2) Where the right-frozen columns start: flush to the right, never
+        //    overlapping the left-frozen region.
         let right_total: u16 = (n - frozen_right..n).map(span_at).sum();
         let right_start = content_end.saturating_sub(right_total).max(left_end);
-        let mut rx = right_start;
-        for (i, &(orig, col)) in visible_cols.iter().enumerate().skip(n - frozen_right) {
-            slots.push(ColumnSlot {
-                orig_idx: orig,
-                col,
-                display_idx: i,
-                x: rx,
-                width: width_at(i),
-            });
-            rx = rx.saturating_add(span_at(i));
-        }
 
-        // 3) Scrollable middle columns, offset by scroll_col, stopping before
-        //    the right-frozen region.
+        // 3) Scrollable middle columns, offset by scroll_col. With
+        //    right-frozen columns, a middle column must fit with its
+        //    separator, which would otherwise cover the first right-frozen
+        //    cell; without them only its cells have to fit (the separator at
+        //    the edge is clipped).
         let mid_lo = frozen_left;
         let mid_hi = n - frozen_right;
         let first = mid_lo + self.scroll_col.min(mid_hi.saturating_sub(mid_lo));
         let mut mx = left_end;
         for (i, &(orig, col)) in visible_cols.iter().enumerate().take(mid_hi).skip(first) {
             let w = width_at(i);
-            if mx.saturating_add(w) > right_start {
+            let needed = if frozen_right > 0 { span_at(i) } else { w };
+            if mx.saturating_add(needed) > right_start {
                 break;
             }
             slots.push(ColumnSlot {
@@ -136,6 +131,19 @@ impl DataGrid {
                 width: w,
             });
             mx = mx.saturating_add(span_at(i));
+        }
+
+        // 4) Right-frozen columns, in order from right_start.
+        let mut rx = right_start;
+        for (i, &(orig, col)) in visible_cols.iter().enumerate().skip(n - frozen_right) {
+            slots.push(ColumnSlot {
+                orig_idx: orig,
+                col,
+                display_idx: i,
+                x: rx,
+                width: width_at(i),
+            });
+            rx = rx.saturating_add(span_at(i));
         }
 
         slots

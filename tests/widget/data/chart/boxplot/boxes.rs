@@ -327,3 +327,28 @@ proptest! {
         }
     }
 }
+
+/// The plot width and height were divided by `group_count as u16`, which
+/// is 0 at 65536 groups (#1531). Each group now gets no cells, and the
+/// value axis is drawn as for one group with the same data
+#[test]
+fn test_boxplot_65536_groups_draw_the_value_axis() {
+    let data = [0.0, 50.0, 100.0];
+    let mut many = BoxPlot::new();
+    for i in 0..65_536 {
+        many = many.group(format!("g{i}"), &data);
+    }
+    let one = BoxPlot::new().group("g65535", &data);
+
+    // Vertical: the value labels in the 6 columns at the left
+    let (a, b) = (rows(&render(&many, 30, 12)), rows(&render(&one, 30, 12)));
+    let left = |r: &[String]| -> Vec<String> { r.iter().map(|l| l[..6].to_string()).collect() };
+    assert_eq!(left(&a), left(&b));
+
+    // Horizontal: the value labels on the bottom row
+    let (a, b) = (
+        rows(&render(&many.horizontal(), 30, 12)),
+        rows(&render(&one.horizontal(), 30, 12)),
+    );
+    assert_eq!(a[11], b[11]);
+}

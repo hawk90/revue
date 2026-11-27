@@ -32,6 +32,22 @@ impl DataGrid {
         }
     }
 
+    /// Every column index, hidden ones included, in display order:
+    /// `column_order` (out-of-range and repeated entries dropped), then the
+    /// columns it does not list, in definition order.
+    pub(crate) fn full_column_order(&self) -> Vec<usize> {
+        let n = self.columns.len();
+        let mut seen = vec![false; n];
+        let mut order = Vec::with_capacity(n);
+        for i in self.column_order.iter().copied().chain(0..n) {
+            if i < n && !seen[i] {
+                seen[i] = true;
+                order.push(i);
+            }
+        }
+        order
+    }
+
     /// Display position (among visible columns) of column `col`
     fn display_position(&self, col: usize) -> Option<usize> {
         self.visible_columns_in_order()
