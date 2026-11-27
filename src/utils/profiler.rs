@@ -25,7 +25,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 use std::time::{Duration, Instant};
 
-use crate::utils::unicode::{pad_to_width, truncate_with_suffix};
+use crate::utils::unicode::{display_width, pad_to_width, truncate_with_suffix};
 
 // =============================================================================
 // Timing Entry
@@ -327,11 +327,15 @@ impl Profiler {
         let mut entries: Vec<_> = stats.into_iter().collect();
         entries.sort_by_key(|b| std::cmp::Reverse(b.1.total));
 
-        output.push_str(&format!(
-            "{:<30} {:>8} {:>10} {:>10} {:>10} {:>10}\n",
+        let header = format!(
+            "{:<30} {:>8} {:>10} {:>10} {:>10} {:>10}",
             "Operation", "Calls", "Total(ms)", "Avg(ms)", "Min(ms)", "Max(ms)"
-        ));
-        output.push_str(&"-".repeat(80));
+        );
+        // The separator spans the header: it was a fixed 80 under 83 (#1534)
+        let separator = "-".repeat(display_width(&header));
+        output.push_str(&header);
+        output.push('\n');
+        output.push_str(&separator);
         output.push('\n');
 
         for (name, stat) in entries {

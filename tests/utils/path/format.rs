@@ -89,6 +89,24 @@ fn test_shorten_path_does_not_split_a_wide_char_at_the_edge() {
     assert_eq!(display_width(&short), 7);
 }
 
+/// Below 3 columns the "..." alone was wider than asked (#1534)
+#[test]
+fn test_shorten_path_below_three_columns_cuts_the_dots() {
+    assert_eq!(shorten_path("/a/bcdef", 3), "...");
+    assert_eq!(shorten_path("/a/bcdef", 2), "..");
+    assert_eq!(shorten_path("/a/bcdef", 1), ".");
+    assert_eq!(shorten_path("/a/bcdef", 0), "");
+}
+
+/// Every component fits once the empty ones are dropped, but the path as
+/// given does not: a relative path gained a leading `/` (#1534)
+#[test]
+fn test_shorten_path_keeps_a_relative_path_relative() {
+    // 8 columns as given; "a/b" plus the 4-column margin is 7
+    assert_eq!(shorten_path("a//////b", 7), "a/b");
+    assert_eq!(shorten_path("/a//////b", 8), "/a/b");
+}
+
 #[test]
 fn test_path_display_max_width_keeps_wide_path_that_fits_in_columns() {
     let display = PathDisplay::new().tilde(false);
