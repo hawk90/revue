@@ -20,7 +20,20 @@ struct Columns {
 
 impl Columns {
     fn new(viewer: &LogViewer, width: u16) -> Self {
-        let line_number = if viewer.show_line_numbers { 6 } else { 0 };
+        // The numbers are right-aligned in at least five columns, wider when
+        // a number has more digits, and a space after them
+        let line_number = if viewer.show_line_numbers {
+            let widest = viewer
+                .entries
+                .iter()
+                .map(|entry| entry.line_number)
+                .max()
+                .unwrap_or(0);
+            let digits = widest.checked_ilog10().map_or(1, |log| log + 1);
+            (digits.max(5) + 1) as u16
+        } else {
+            0
+        };
         let bookmark = 2;
         let timestamp = if viewer.show_timestamps { 12 } else { 0 };
         let level = if viewer.show_levels { 5 } else { 0 };
@@ -36,8 +49,12 @@ impl Columns {
         }
     }
 
+    fn bookmark_x(&self) -> u16 {
+        self.line_number
+    }
+
     fn timestamp_x(&self) -> u16 {
-        self.line_number + self.bookmark
+        self.bookmark_x() + self.bookmark
     }
 
     fn level_x(&self) -> u16 {
@@ -148,19 +165,18 @@ impl LogViewer {
             ctx.set(x, y, blank);
         }
 
-        let mut x = 0u16;
         if self.show_line_numbers {
-            let num_str = format!("{:>5}", entry.line_number);
-            for ch in num_str.chars() {
+            let digits = columns.line_number as usize - 1;
+            let num_str = format!("{:>digits$}", entry.line_number);
+            for (x, ch) in (0..).zip(num_str.chars()) {
                 ctx.set(x, y, cell(ch, self.line_number_fg, row_bg));
-                x += 1;
             }
-            x += 1; // Space after line number
         }
 
         let bookmark_char = if entry.bookmarked { '★' } else { ' ' };
+        let x = columns.bookmark_x();
         ctx.set(x, y, cell(bookmark_char, self.bookmark_fg, row_bg));
-        x += columns.bookmark;
+        let mut x = columns.timestamp_x();
 
         if self.show_timestamps {
             if let Some(ref ts) = entry.timestamp {
