@@ -38,23 +38,35 @@ impl View for Terminal {
             }
         }
 
-        // The rows in view: as many as the area has (#973)
-        self.scroll.set_viewport(area.height as usize);
-        self.draw_lines(ctx, area, default_fg, default_bg);
+        // The command line, while focused with input, has the bottom row to
+        // itself: the output scrolls in the rows above it, so its newest
+        // line is not hidden under the prompt (#1381)
+        let input_shown = !self.input_buffer.is_empty() && self.focused;
+        let output_rows = if input_shown {
+            area.height - 1
+        } else {
+            area.height
+        };
 
-        // Render cursor if visible and focused
-        if self.show_cursor && self.focused {
-            self.draw_cursor(ctx, area, default_fg, default_bg);
+        if output_rows > 0 {
+            // The rows in view: as many as the output has (#973)
+            self.scroll.set_viewport(output_rows as usize);
+            let output = Rect::new(area.x, area.y, area.width, output_rows);
+            self.draw_lines(ctx, output, default_fg, default_bg);
+
+            // Render cursor if visible and focused
+            if self.show_cursor && self.focused {
+                self.draw_cursor(ctx, output, default_fg, default_bg);
+            }
+
+            // Render scroll indicator if scrolled
+            if self.lines_below() > 0 {
+                self.draw_scroll_indicator(ctx, output);
+            }
         }
 
-        // Render input line if there's input
-        if !self.input_buffer.is_empty() && self.focused {
+        if input_shown {
             self.draw_input_line(ctx, area, default_fg);
-        }
-
-        // Render scroll indicator if scrolled
-        if self.lines_below() > 0 {
-            self.draw_scroll_indicator(ctx, area);
         }
     }
 }

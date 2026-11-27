@@ -196,6 +196,53 @@ fn test_a_valid_url_after_a_refused_one_can_be_sent() {
     assert_eq!(built.take_request().unwrap().request.url(), "https://ok.io");
 }
 
+/// A valid URL left the refusal of the one before it on screen and the
+/// state at Error (#1083): it drops the refusal and the state is the
+/// exchange's again, for the setter and the builder alike
+#[test]
+fn test_a_valid_url_drops_the_refusal_before_it() {
+    let refused_then_ok = |c: &mut HttpClient| {
+        c.set_url("ftp://refused");
+        assert_eq!(c.state(), RequestState::Error);
+        c.set_url("https://ok.io");
+        assert_eq!(c.error(), None);
+        c.state()
+    };
+    // Nothing sent: idle
+    assert_eq!(refused_then_ok(&mut HttpClient::new()), RequestState::Idle);
+    let built = HttpClient::new().url("ftp://refused").url("https://ok.io");
+    assert_eq!((built.error(), built.state()), (None, RequestState::Idle));
+    assert_eq!(built.url_cursor_for_testing(), 13);
+    // A request in flight: still sending, and its result applies
+    let (mut c, pending) = sent("https://a.io");
+    assert_eq!(refused_then_ok(&mut c), RequestState::Sending);
+    assert!(c.complete(pending.id, Ok(response(200, "x"))));
+    // A response shown: its state, a 2xx or not
+    assert_eq!(refused_then_ok(&mut c), RequestState::Success);
+    c.set_response(response(500, "x"));
+    assert_eq!(refused_then_ok(&mut c), RequestState::Error);
+    // Another error stays: only the refusal goes
+    let mut c = HttpClient::new();
+    c.set_url("ftp://refused");
+    c.set_error("down");
+    c.set_url("https://ok.io");
+    assert_eq!((c.error(), c.state()), (Some("down"), RequestState::Error));
+    // A refused send is a refusal too
+    let mut c = HttpClient::new();
+    c.send();
+    c.set_url("https://ok.io");
+    assert_eq!((c.error(), c.state()), (None, RequestState::Idle));
+}
+
+/// A response applied after an error replaces it (#1083)
+#[test]
+fn test_a_response_after_an_error_clears_it() {
+    let (mut c, pending) = sent("https://a.io");
+    c.set_error("timeout");
+    assert!(c.complete(pending.id, Ok(response(201, "x"))));
+    assert_eq!((c.error(), c.state()), (None, RequestState::Success));
+}
+
 #[test]
 fn test_mock_backend_runs_the_taken_request() {
     let backend = MockHttpBackend::new();
