@@ -1,6 +1,9 @@
 //! Tests for path formatting utilities
 
-use revue::utils::path::{abbreviate_path, abbreviate_path_keep, relative_to, shorten_path};
+use revue::utils::display_width;
+use revue::utils::path::{
+    abbreviate_path, abbreviate_path_keep, relative_to, shorten_path, PathDisplay,
+};
 use std::path::Path;
 
 // =========================================================================
@@ -50,6 +53,50 @@ fn test_shorten_path_empty() {
     let path = "";
     let result = shorten_path(path, 10);
     assert_eq!(result, "");
+}
+
+#[test]
+fn test_shorten_path_keeps_wide_path_that_fits_in_columns() {
+    // 12 columns, 15 bytes
+    assert_eq!(shorten_path("/홈/파일.txt", 12), "/홈/파일.txt");
+}
+
+#[test]
+fn test_shorten_path_keeps_wide_filename_whole_after_ellipsis() {
+    // The 8-column filename plus ".../" is 12 columns
+    let short = shorten_path("/홈/문서/파일.txt", 12);
+    assert_eq!(short, ".../파일.txt");
+    assert_eq!(display_width(&short), 12);
+}
+
+#[test]
+fn test_shorten_path_one_column_short_keeps_wide_filename_after_dots() {
+    // 11 columns: ".../파일.txt" is one too many, "...파일.txt" fits exactly
+    assert_eq!(shorten_path("/홈/파일.txt", 11), "...파일.txt");
+}
+
+#[test]
+fn test_shorten_path_cuts_wide_filename_by_columns() {
+    // 10 columns leave 7 for the filename: "파일.tx"
+    assert_eq!(shorten_path("/홈/파일.txt", 10), "...파일.tx");
+}
+
+#[test]
+fn test_shorten_path_does_not_split_a_wide_char_at_the_edge() {
+    // 8 columns leave 5 for the filename; the third Hangul char would need 6
+    let short = shorten_path("/a/파일파일", 8);
+    assert_eq!(short, "...파일");
+    assert_eq!(display_width(&short), 7);
+}
+
+#[test]
+fn test_path_display_max_width_keeps_wide_path_that_fits_in_columns() {
+    let display = PathDisplay::new().tilde(false);
+    assert_eq!(
+        display.clone().max_width(12).format("/홈/파일.txt"),
+        "/홈/파일.txt"
+    );
+    assert_eq!(display.max_width(11).format("/홈/파일.txt"), "...파일.txt");
 }
 
 // =========================================================================
