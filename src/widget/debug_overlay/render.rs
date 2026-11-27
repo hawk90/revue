@@ -3,7 +3,7 @@
 
 use super::{DebugOverlay, DebugPosition};
 use crate::layout::Rect;
-use crate::render::Buffer;
+use crate::render::{Buffer, Cell};
 use crate::style::Color;
 use crate::utils::{draw_text_overlay, truncate_to_width};
 use crate::widget::{RenderContext, View};
@@ -74,29 +74,15 @@ impl<V: View> DebugOverlay<V> {
         );
     }
 
-    /// Fill background. A wide glyph of the view that the panel's edge cuts
-    /// in half is blanked: the terminal erases it (#974).
+    /// Fill the panel with whole blank cells in its colors: nothing of the
+    /// view under it stays, not its modifiers, link or escape sequence
+    /// (#1105). A wide glyph of the view that the panel's edge cuts in half
+    /// is blanked: the terminal erases it (#974).
     fn fill_panel(&self, buffer: &mut Buffer, rect: Rect) {
-        for y in rect.y..rect.y + rect.height {
-            let right = rect.x + rect.width;
-            if rect.x > 0 && buffer.get(rect.x, y).is_some_and(|c| c.is_continuation()) {
-                if let Some(cell) = buffer.get_mut(rect.x - 1, y) {
-                    cell.symbol = ' ';
-                }
-            }
-            if buffer.get(right, y).is_some_and(|c| c.is_continuation()) {
-                if let Some(cell) = buffer.get_mut(right, y) {
-                    cell.symbol = ' ';
-                }
-            }
-            for x in rect.x..rect.x + rect.width {
-                if let Some(cell) = buffer.get_mut(x, y) {
-                    cell.symbol = ' ';
-                    cell.bg = Some(self.config.bg_color);
-                    cell.fg = Some(self.config.fg_color);
-                }
-            }
-        }
+        let blank = Cell::new(' ')
+            .fg(self.config.fg_color)
+            .bg(self.config.bg_color);
+        buffer.fill(rect.x, rect.y, rect.width, rect.height, blank);
     }
 
     /// Draw text at position
