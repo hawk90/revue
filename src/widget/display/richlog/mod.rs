@@ -144,9 +144,12 @@ impl RichLog {
         self
     }
 
-    /// Set minimum level
+    /// Set minimum level. Given after entries were logged, it hides the
+    /// ones below it; the selection stays on its entry, or moves to the
+    /// entry now at its place when it is hidden (the last one if none is).
     pub fn min_level(mut self, level: LogLevel) -> Self {
         self.min_level = level;
+        self.sync_selection();
         self
     }
 
@@ -233,7 +236,8 @@ impl RichLog {
             .map(|(_, id)| *id)
     }
 
-    /// Find the selected entry again after entries went
+    /// Find the selected entry again after entries went or the filter
+    /// changed
     fn sync_selection(&mut self) {
         let Self {
             entries,
