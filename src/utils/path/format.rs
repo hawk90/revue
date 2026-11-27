@@ -41,8 +41,13 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
     };
 
     if display_width(filename) + 4 > max_width {
+        // Below 3 columns not even "..." fits: cut it to the width, as
+        // `truncate_with_suffix` cuts its suffix (#1534)
+        if max_width < 3 {
+            return truncate_to_width("...", max_width).to_string();
+        }
         // Even filename doesn't fit, truncate it to the columns left after "..."
-        let truncated = truncate_to_width(filename, max_width.saturating_sub(3));
+        let truncated = truncate_to_width(filename, max_width - 3);
         return format!("...{}", truncated);
     }
 
@@ -77,8 +82,12 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
         } else {
             format!(".../{}", result)
         }
-    } else {
+    } else if full.starts_with('/') {
         format!("/{}", result)
+    } else {
+        // Every component fits once empty ones (`a//b`) are dropped; a
+        // relative path stays relative (#1534)
+        result
     }
 }
 

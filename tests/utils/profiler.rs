@@ -128,6 +128,19 @@ fn calls_column(row: &str) -> &str {
     &row[name_and_space.len()..name_and_space.len() + 8]
 }
 
+/// The separator was a fixed 80 columns under an 83-column header (#1534)
+#[test]
+fn test_profiler_report_separator_spans_the_header() {
+    let profiler = Profiler::new();
+    profiler.record("a", Duration::from_millis(1));
+    let report = profiler.report();
+    let lines: Vec<&str> = report.lines().collect();
+    assert_eq!(lines.len(), 6, "{report}");
+    assert_eq!(display_width(lines[3]), 83, "{report}");
+    assert_eq!(lines[4], "-".repeat(83), "{report}");
+    assert_eq!(display_width(lines[5]), 83, "{report}");
+}
+
 #[test]
 fn test_profiler_report_keeps_30_column_wide_name() {
     // 15 Hangul characters: 45 bytes, 30 columns, so it fits the column whole

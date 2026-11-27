@@ -226,7 +226,7 @@ impl Table {
         // Calculate fixed and auto columns
         let mut widths: Vec<u16> = self.columns.iter().map(|c| c.width).collect();
         let fixed_total = widths.iter().fold(0u16, |sum, &w| sum.saturating_add(w));
-        let auto_count = widths.iter().filter(|&&w| w == 0).count() as u16;
+        let auto_count = widths.iter().filter(|&&w| w == 0).count();
 
         // Distribute remaining space to auto columns
         let border_space = if self.border {
@@ -239,10 +239,11 @@ impl Table {
             .saturating_sub(border_space)
             .saturating_sub(scrollbar_width);
 
-        if let Some(auto_width) = remaining.checked_div(auto_count) {
+        // Divided in usize: the count as u16 wraps at 65536 (#1546)
+        if let Some(auto_width) = usize::from(remaining).checked_div(auto_count) {
             for w in &mut widths {
                 if *w == 0 {
-                    *w = auto_width.max(1);
+                    *w = (auto_width as u16).max(1);
                 }
             }
         }

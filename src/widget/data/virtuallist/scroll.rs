@@ -68,7 +68,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     /// Items that fit in `viewport_height` rows at the uniform height; at
     /// least one. Used for page moves.
     pub(super) fn visible_count(&self, viewport_height: u16) -> usize {
-        usize::from(viewport_height / self.item_height.max(1)).max(1)
+        usize::from(viewport_height / self.row_height()).max(1)
     }
 
     /// The rows item `index` takes
