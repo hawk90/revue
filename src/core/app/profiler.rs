@@ -250,23 +250,34 @@ impl FpsCounter {
 
     /// Record a frame
     pub fn frame(&mut self) {
-        let now = Instant::now();
+        self.frame_at(Instant::now());
+    }
+
+    /// Record a frame at `now`, dropping the frames older than the window
+    fn frame_at(&mut self, now: Instant) {
         self.frames.push(now);
 
-        // Remove old frames outside window
-        let cutoff = now - self.window;
-        self.frames.retain(|&t| t >= cutoff);
+        // A window longer than the time `Instant` can reach back keeps every
+        // frame instead of panicking on the subtraction.
+        if let Some(cutoff) = now.checked_sub(self.window) {
+            self.frames.retain(|&t| t >= cutoff);
+        }
     }
 
     /// Get current FPS
+    ///
+    /// The rate of the frames in the window over the time they span:
+    /// `(frames - 1) / (last - first)`. It needs two frames that are apart in
+    /// time; otherwise it is `0.0`.
     pub fn fps(&self) -> f64 {
-        if self.frames.len() < 2 {
+        let (Some(&first), Some(&last)) = (self.frames.first(), self.frames.last()) else {
+            return 0.0;
+        };
+        let span = last.duration_since(first).as_secs_f64();
+        if span <= 0.0 {
             return 0.0;
         }
-
-        let count = self.frames.len();
-        let window_secs = self.window.as_secs_f64();
-        count as f64 / window_secs
+        (self.frames.len() - 1) as f64 / span
     }
 
     /// Get frame time (average)
@@ -896,6 +907,56 @@ mod tests {
         assert_eq!(stats.avg, Duration::from_millis(10));
         assert_eq!(stats.min, Duration::from_millis(10));
         assert_eq!(stats.max, Duration::from_millis(10));
+    }
+
+    /// Frames 10 ms apart, starting at `start`
+    fn frames_10ms_apart(fps: &mut FpsCounter, start: Instant, count: u32) {
+        for i in 0..count {
+            fps.frame_at(start + Duration::from_millis(10) * i);
+        }
+    }
+
+    #[test]
+    fn test_fps_counter_partial_window_counts_the_span_of_its_frames() {
+        // Three frames 10 ms apart fill 20 ms of a 1 s window: 100 fps, not 3.
+        let mut fps = FpsCounter::new();
+        frames_10ms_apart(&mut fps, Instant::now(), 3);
+        assert!((fps.fps() - 100.0).abs() < 1e-6, "{}", fps.fps());
+        let frame_time = fps.frame_time().unwrap();
+        assert!(
+            frame_time.abs_diff(Duration::from_millis(10)) < Duration::from_micros(1),
+            "{frame_time:?}"
+        );
+    }
+
+    #[test]
+    fn test_fps_counter_full_window_drops_old_frames() {
+        // 101 frames over 1 s, then the window of 500 ms keeps the last 51.
+        let mut fps = FpsCounter::new().window(Duration::from_millis(500));
+        frames_10ms_apart(&mut fps, Instant::now(), 101);
+        assert_eq!(fps.frames.len(), 51);
+        assert!((fps.fps() - 100.0).abs() < 1e-6, "{}", fps.fps());
+    }
+
+    #[test]
+    fn test_fps_counter_one_frame_or_zero_span_is_zero() {
+        let start = Instant::now();
+        let mut fps = FpsCounter::new();
+        fps.frame_at(start);
+        assert_eq!(fps.fps(), 0.0);
+        fps.frame_at(start);
+        assert_eq!(fps.fps(), 0.0);
+        assert_eq!(fps.frame_time(), None);
+        fps.frame_at(start + Duration::from_millis(20));
+        assert!((fps.fps() - 100.0).abs() < 1e-6, "{}", fps.fps());
+    }
+
+    #[test]
+    fn test_fps_counter_window_longer_than_instant_reaches_keeps_every_frame() {
+        let mut fps = FpsCounter::new().window(Duration::from_secs(u64::MAX));
+        fps.frame();
+        fps.frame();
+        assert_eq!(fps.frames.len(), 2);
     }
 
     #[test]
