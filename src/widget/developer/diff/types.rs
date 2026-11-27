@@ -11,7 +11,8 @@ pub enum DiffMode {
     Split,
     /// Unified diff format
     Unified,
-    /// Inline differences (character-level)
+    /// Meant for character-level differences within a line; drawn as
+    /// [`DiffMode::Unified`] for now (#1202)
     Inline,
 }
 
@@ -39,7 +40,9 @@ pub enum ChangeType {
     Removed,
     /// Line was added
     Added,
-    /// Line was modified
+    /// Line was modified. The viewer does not produce it yet: a changed
+    /// line is a [`ChangeType::Removed`] line followed by an
+    /// [`ChangeType::Added`] one (#1202)
     Modified,
 }
 

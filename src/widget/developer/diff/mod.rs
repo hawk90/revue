@@ -1,7 +1,8 @@
 //! Diff Viewer widget for side-by-side code comparison
 //!
-//! Displays differences between two texts with syntax highlighting
-//! and unified/split view modes.
+//! Displays the line differences between two texts side by side (split)
+//! or in one column (unified). The text is drawn in the change colors; it
+//! is not syntax highlighted.
 
 mod render;
 mod types;
