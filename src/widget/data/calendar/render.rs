@@ -8,7 +8,18 @@ use crate::utils::{char_width, display_width};
 use crate::widget::traits::RenderContext;
 
 use super::types::{DateMarker, FirstDayOfWeek};
-use super::Date;
+use super::{days_in_month, first_day_of_month, Date};
+
+/// The cells a month takes: the seven days are 20 columns and a focused
+/// calendar's `▶` sits two past them, the week numbers take four on the left
+/// and a border one on each side; the header, a blank row and the day names
+/// take three rows above the `weeks`.
+pub(super) fn month_size(week_numbers: bool, border: bool, arrows: bool, weeks: u16) -> (u16, u16) {
+    let border = if border { 2 } else { 0 };
+    let week_numbers = if week_numbers { 4 } else { 0 };
+    let arrows = if arrows { 2 } else { 0 };
+    (20 + arrows + week_numbers + border, 3 + weeks + border)
+}
 
 /// Calendar rendering state
 pub struct CalendarRender<'a> {
@@ -49,10 +60,27 @@ impl<'a> CalendarRender<'a> {
         }
     }
 
-    /// Render month view
+    /// The weeks the shown month spans: four to six rows of days
+    pub fn weeks(&self) -> u16 {
+        let first = first_day_of_month(self.year, self.month);
+        let lead = match self.first_day {
+            FirstDayOfWeek::Sunday => first,
+            FirstDayOfWeek::Monday => (first + 6) % 7,
+        };
+        (lead + days_in_month(self.year, self.month)).div_ceil(7) as u16
+    }
+
+    /// Render month view: the whole month, or nothing when the area is
+    /// smaller than [`month_size`] for this setup
     pub fn render_month(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        if area.width < 20 || area.height < 8 {
+        let (width, height) = month_size(
+            self.show_week_numbers,
+            self.border_color.is_some(),
+            self.focused,
+            self.weeks(),
+        );
+        if area.width < width || area.height < height {
             return;
         }
 

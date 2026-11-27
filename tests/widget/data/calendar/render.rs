@@ -62,8 +62,91 @@ fn test_calendar_render_small_area() {
     let cal = Calendar::new(2025, 1);
     assert!(screen_in(&cal, 19, 8).iter().all(|r| r.trim().is_empty()));
     assert!(screen_in(&cal, 20, 7).iter().all(|r| r.trim().is_empty()));
-    // 20x8 is the smallest area that draws
+    // 20x8 is the smallest area that draws a five-week month
     assert_eq!(screen_in(&cal, 20, 8)[0].trim(), "January 2025");
+}
+
+/// The size a month takes, from its setup (#998): the grid is 20 columns,
+/// the focus arrow two more, week numbers four and a border two; the header
+/// and day names are three rows over the weeks of the month, and a border
+/// two more. In that size the month is drawn whole, one column or row less
+/// and nothing is drawn.
+#[test]
+fn test_calendar_draws_whole_or_not_at_all() {
+    // February 2015 spans four weeks, January 2025 five, March 2025 six
+    for (year, month, weeks) in [(2015, 2, 4u16), (2025, 1, 5), (2025, 3, 6)] {
+        for setup in 0..8u8 {
+            let (week_numbers, border, focused) = (setup & 1 != 0, setup & 2 != 0, setup & 4 != 0);
+            let plain = Calendar::new(year, month)
+                .week_numbers(week_numbers)
+                .focused(focused);
+            let cal = if border {
+                plain.clone().border(Color::WHITE)
+            } else {
+                plain.clone()
+            };
+            let edge = if border { 2 } else { 0 };
+            let inner_w = 20 + if focused { 2 } else { 0 } + if week_numbers { 4 } else { 0 };
+            let (w, h) = (inner_w + edge, 3 + weeks + edge);
+            let name =
+                format!("{year}-{month} numbers {week_numbers} border {border} focused {focused}");
+
+            // Without a border, in a large area: the month touches its last
+            // column and row and draws nothing past them
+            let large = screen_in(&plain, 40, 14);
+            let col = |rows: &[String], x: u16| -> Vec<char> {
+                rows.iter()
+                    .map(|r| r.chars().nth(x.into()).unwrap())
+                    .collect()
+            };
+            assert!(
+                col(&large, inner_w - 1).into_iter().any(|c| c != ' '),
+                "{name}: last column"
+            );
+            assert!(
+                (inner_w..40).all(|x| col(&large, x).into_iter().all(|c| c == ' ')),
+                "{name}: past the width"
+            );
+            assert_ne!(
+                large[usize::from(h - edge - 1)].trim(),
+                "",
+                "{name}: last row"
+            );
+            assert!(
+                large[usize::from(h - edge)..]
+                    .iter()
+                    .all(|r| r.trim().is_empty()),
+                "{name}"
+            );
+
+            // In exactly its size: every cell as in the large area, inside
+            // the border when it has one
+            let exact = screen_in(&cal, w, h);
+            let inset = usize::from(border);
+            for (y, row) in exact.iter().enumerate() {
+                let row: Vec<char> = row.chars().collect();
+                for (x, &ch) in row.iter().enumerate() {
+                    let on_border =
+                        border && (x == 0 || y == 0 || x + 1 == row.len() || y + 1 == exact.len());
+                    if on_border {
+                        assert_ne!(ch, ' ', "{name}: border at ({x}, {y})");
+                    } else {
+                        let want = large[y - inset].chars().nth(x - inset).unwrap();
+                        assert_eq!(ch, want, "{name} at ({x}, {y}): {exact:#?}");
+                    }
+                }
+            }
+
+            // One column or one row less: nothing
+            for (w, h) in [(w - 1, h), (w, h - 1)] {
+                let rows = screen_in(&cal, w, h);
+                assert!(
+                    rows.iter().all(|r| r.trim().is_empty()),
+                    "{name} at {w}x{h}: {rows:#?}"
+                );
+            }
+        }
+    }
 }
 
 #[test]
