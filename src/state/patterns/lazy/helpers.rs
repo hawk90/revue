@@ -27,7 +27,7 @@ where
     LazySync::new(loader)
 }
 
-/// Create a paged data source
+/// Create a paged data source (a `page_size` of 0 is read as 1)
 pub fn paged<T, F>(total: usize, page_size: usize, loader: F) -> PagedData<T, F>
 where
     F: Fn(usize, usize) -> Vec<T>,

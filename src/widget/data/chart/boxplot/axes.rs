@@ -37,7 +37,7 @@ impl<'a> BoxPlotRender<'a> {
 
         // Group labels, left-aligned in the label column on each group's center row
         let label_width = chart.x.saturating_sub(area.x + 1) as usize;
-        let group_height = chart.height / self.group_count as u16;
+        let group_height = (chart.height as usize / self.group_count) as u16;
         for (i, group) in self.groups.iter().enumerate() {
             let y = chart.y + (i as u16 * group_height) + group_height / 2;
             let label = truncate_to_width(&group.label, label_width);
@@ -113,7 +113,7 @@ impl<'a> BoxPlotRender<'a> {
         // Category axis labels (bottom)
         let n_groups = self.group_count;
         let chart_width = area.width.saturating_sub(y_label_width);
-        let group_width = chart_width / n_groups as u16;
+        let group_width = (chart_width as usize / n_groups) as u16;
 
         for (i, group) in self.groups.iter().enumerate() {
             let x = area.x + y_label_width + (i as u16 * group_width) + group_width / 2;

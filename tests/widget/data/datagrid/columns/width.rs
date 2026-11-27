@@ -208,6 +208,18 @@ fn test_zero_width_column_with_a_value() {
     assert_eq!(rendered_widths(grid, 100, 0), vec![0, 10]);
 }
 
+/// The space left over was divided by `auto_cols.len() as u16`, which is
+/// 0 at 65536 auto-width columns (#1531)
+#[test]
+fn test_65536_auto_columns_share_the_space() {
+    let cols: Vec<GridColumn> = (0..65_536)
+        .map(|i| col(&format!("c{i}")).min_width(0))
+        .collect();
+    let grid = DataGrid::new().columns(cols);
+    // 100 cells among 65536 columns is no width each: a separator per cell
+    assert_eq!(rendered_widths(grid, 100, 0), vec![0; 100]);
+}
+
 #[test]
 fn test_calculate_widths_empty() {
     let grid = DataGrid::new();
