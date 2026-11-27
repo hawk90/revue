@@ -346,23 +346,17 @@ fn test_validate_within_base_non_existent_within() {
 #[test]
 fn test_shorten_path_unicode_filename() {
     // Test with Unicode filename to ensure no panic
+    // 17 columns (23 bytes) fit in 20, so the path is kept whole
     let short = shorten_path("/tmp/한글파일.txt", 20);
-    // Should contain the filename or be shortened appropriately
-    assert!(short.len() <= 20);
-    // Should not panic on UTF-8 boundaries
+    assert_eq!(short, "/tmp/한글파일.txt");
 }
 
 #[test]
 fn test_shorten_path_small_width() {
-    // Test with small max_width
-    // Note: shorten_path measures in bytes, but UTF-8 characters can be multi-byte
-    // With max_width=10, we get "..." + up to 7 bytes of filename
+    // With max_width=10, we get "..." + up to 7 columns of the filename;
+    // "한글파" is 6 columns, and "일" would make it 8
     let short = shorten_path("/tmp/한글파일.txt", 10);
-    // With max_width=10, we should get "..." + some of the filename
-    assert!(short.starts_with("..."));
-    // The result will be "..." + truncated filename
-    // For "한글파일.txt", truncating to 7 bytes gives "한글" (6 bytes) or similar
-    assert!(short.len() <= 10);
+    assert_eq!(short, "...한글파");
 }
 
 // ============================================================================
@@ -597,11 +591,10 @@ fn test_shorten_path_one_char_overflow() {
 #[test]
 fn test_shorten_path_unicode_boundary() {
     // Test at boundary where last character is multi-byte
+    // "/tmp/한글.txt" is 13 columns; the 8-column filename does not fit with
+    // ".../", so it is cut to the 8 columns after "..." and stays whole
     let short = shorten_path("/tmp/한글.txt", 11);
-    // "/tmp/한글.txt" = 11 chars but "한글" are 3 bytes each = 6 bytes
-    // Total = 10 bytes + /tmp/ = 5 + .txt = 4 = 15 bytes
-    assert!(short.len() <= 11);
-    // Should not panic on UTF-8 boundary
+    assert_eq!(short, "...한글.txt");
 }
 
 #[test]

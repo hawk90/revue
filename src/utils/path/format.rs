@@ -1,9 +1,11 @@
 use std::path::Path;
 
 use crate::utils::path::util::normalize_separators;
+use crate::utils::unicode::{display_width, truncate_to_width};
 
 /// Shorten a path to fit within a maximum width
 ///
+/// The width is in terminal columns, so a wide (CJK) character counts as two.
 /// Replaces leading directories with "..." if needed.
 ///
 /// # Example
@@ -20,7 +22,7 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
     // Convert to display string with normalized separators for consistent handling
     let full = normalize_separators(&path.display().to_string());
 
-    if full.len() <= max_width {
+    if display_width(&full) <= max_width {
         return full;
     }
 
@@ -38,39 +40,26 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
         None => return full,
     };
 
-    if filename.len() + 4 > max_width {
-        // Even filename doesn't fit, truncate it
-        // Use char_indices for safe UTF-8 truncation
-        let max_bytes = max_width.saturating_sub(3);
-
-        // Find the byte position where we should truncate
-        // We want to include characters that fit within max_bytes
-        let mut truncate_pos = 0;
-        for (byte_start, ch) in filename.char_indices() {
-            let byte_end = byte_start + ch.len_utf8();
-            if byte_end > max_bytes {
-                // This character would exceed the limit
-                break;
-            }
-            // This character fits, include it
-            truncate_pos = byte_end;
-        }
-
-        return format!("...{}", &filename[..truncate_pos]);
+    if display_width(filename) + 4 > max_width {
+        // Even filename doesn't fit, truncate it to the columns left after "..."
+        let truncated = truncate_to_width(filename, max_width.saturating_sub(3));
+        return format!("...{}", truncated);
     }
 
     // Try to include as many trailing components as possible
     let mut result = String::new();
+    let mut result_width = 0;
     let mut included = 0;
 
     for (i, component) in components.iter().rev().enumerate() {
         let needed = if i == 0 {
-            component.len()
+            display_width(component)
         } else {
-            component.len() + 1 // +1 for separator
+            display_width(component) + 1 // +1 for separator
         };
 
-        if result.len() + needed + 4 <= max_width {
+        if result_width + needed + 4 <= max_width {
+            result_width += needed;
             if i > 0 {
                 result = format!("{}/{}", component, result);
             } else {

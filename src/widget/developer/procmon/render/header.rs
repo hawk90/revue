@@ -1,7 +1,8 @@
 //! The two rows above the processes: the system stats bar and the column header
 
-use super::{put_chars, CMD_X, HEADER_ROW};
+use super::{put_chars, CMD_X, CPU_X, HEADER_ROW, MEM_PERCENT_X, MEM_X, NAME_X, STATUS_X};
 use crate::render::{Cell, Modifier};
+use crate::widget::developer::procmon::refresh::memory_percent;
 use crate::widget::developer::procmon::{ProcessMonitor, ProcessSort};
 use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::RenderContext;
@@ -27,18 +28,17 @@ impl ProcessMonitor {
             ctx.set(x, HEADER_ROW, cell);
         }
 
-        // Column headers
+        // Column headers, each where its column starts
         let headers = [
-            ("PID", 7, ProcessSort::Pid),
-            ("NAME", 20, ProcessSort::Name),
-            ("CPU%", 7, ProcessSort::Cpu),
-            ("MEM%", 7, ProcessSort::Memory),
-            ("MEM", 8, ProcessSort::Memory),
-            ("STATUS", 10, ProcessSort::Status),
+            ("PID", 0, ProcessSort::Pid),
+            ("NAME", NAME_X, ProcessSort::Name),
+            ("CPU%", CPU_X, ProcessSort::Cpu),
+            ("MEM%", MEM_PERCENT_X, ProcessSort::Memory),
+            ("MEM", MEM_X, ProcessSort::Memory),
+            ("STATUS", STATUS_X, ProcessSort::Status),
         ];
 
-        let mut x_offset = 0u16;
-        for (name, width, sort) in headers {
+        for (name, x, sort) in headers {
             let indicator = if self.sort == sort {
                 if self.sort_asc {
                     "▲"
@@ -50,10 +50,9 @@ impl ProcessMonitor {
             };
 
             let text = format!("{}{}", name, indicator);
-            put_chars(ctx, x_offset, HEADER_ROW, &text, area.width, |ch| {
+            put_chars(ctx, x, HEADER_ROW, &text, area.width, |ch| {
                 self.header_cell(ch)
             });
-            x_offset += width as u16;
         }
 
         if self.show_cmd {
@@ -74,7 +73,7 @@ impl ProcessMonitor {
             cpu,
             Self::format_bytes(used_mem),
             Self::format_bytes(total_mem),
-            (used_mem as f64 / total_mem as f64) * 100.0,
+            memory_percent(used_mem, total_mem),
             self.process_count()
         );
 

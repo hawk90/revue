@@ -741,7 +741,7 @@ three_ways!(
     ProcSilent,
     Color::WHITE,
     (60, 8),
-    |h: &PipelineHarness| h.buffer().get(7, 2).and_then(|c| c.fg)
+    |h: &PipelineHarness| h.buffer().get(8, 2).and_then(|c| c.fg)
 );
 
 // Slide.content_color - probed on the body line.

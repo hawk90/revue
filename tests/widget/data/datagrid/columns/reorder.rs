@@ -3,6 +3,7 @@
 use revue::event::{MouseButton, MouseEventKind};
 use revue::layout::Rect;
 use revue::render::Buffer;
+use revue::style::Color;
 use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
 use revue::widget::traits::{RenderContext, View};
 
@@ -355,4 +356,46 @@ fn test_keyboard_reorder_callback_reports_display_positions() {
     grid.move_column_left();
     assert_eq!(header_titles(&grid), "ADC");
     assert_eq!(*moved.borrow(), Some((2, 1)));
+}
+
+/// x of every drop marker (a cyan `│`) in the header row.
+fn drop_markers(grid: &DataGrid) -> Vec<u16> {
+    let area = drag_area();
+    let mut buffer = Buffer::new(area.width, area.height);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    grid.render(&mut ctx);
+    (0..area.width)
+        .filter(|&x| {
+            let cell = buffer.get(x, 0).unwrap();
+            cell.symbol == '│' && cell.fg == Some(Color::CYAN)
+        })
+        .collect()
+}
+
+/// A drop before the right-frozen column draws one marker, just before it,
+/// and none at the end of the header.
+#[test]
+fn test_drop_marker_before_a_right_frozen_column_drawn_once() {
+    let mut grid = drag_grid(&[("a", true), ("b", true), ("c", true)]).freeze_columns_right(1);
+    grid.dragging_col = Some(0);
+    grid.drop_target_col = Some(2);
+    // A 0..4, B 5..9, C (right-frozen) 35..39
+    assert_eq!(drop_markers(&grid), vec![34]);
+}
+
+/// A drop past the last column draws one marker, on the last separator.
+#[test]
+fn test_drop_marker_past_the_right_frozen_column() {
+    let mut grid = drag_grid(&[("a", true), ("b", true), ("c", true)]).freeze_columns_right(1);
+    grid.dragging_col = Some(0);
+    grid.drop_target_col = Some(3);
+    assert_eq!(drop_markers(&grid), vec![39]);
+}
+
+/// Dragging with the mouse onto the right-frozen column drops before it.
+#[test]
+fn test_drag_onto_a_right_frozen_column() {
+    let mut grid = drag_grid(&[("a", true), ("b", true), ("c", true)]).freeze_columns_right(1);
+    drag_header(&mut grid, 'A', 35);
+    assert_eq!(header_titles(&grid), "BAC");
 }

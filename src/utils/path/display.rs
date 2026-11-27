@@ -3,11 +3,12 @@ use std::path::Path;
 use crate::utils::path::format::abbreviate_path_keep;
 use crate::utils::path::format::shorten_path;
 use crate::utils::path::home::home_relative;
+use crate::utils::unicode::display_width;
 
 /// Path display options
 #[derive(Clone, Debug)]
 pub struct PathDisplay {
-    /// Maximum display width
+    /// Maximum display width, in terminal columns
     pub max_width: Option<usize>,
     /// Replace home with ~
     pub use_tilde: bool,
@@ -71,7 +72,7 @@ impl PathDisplay {
         }
 
         if let Some(max) = self.max_width {
-            if result.len() > max {
+            if display_width(&result) > max {
                 result = shorten_path(&result, max);
             }
         }
