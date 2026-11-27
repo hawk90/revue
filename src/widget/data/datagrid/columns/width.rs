@@ -47,10 +47,11 @@ impl DataGrid {
         }
 
         // Reserve the row-number gutter as drawn, each column's trailing
-        // separator and the scrollbar column.
-        let gutter = self.row_number_gutter_width();
-        let borders = visible_cols.len() as u16 + 1;
-        let available = available.saturating_sub(gutter + borders);
+        // separator and the scrollbar column. Counted in usize: the column
+        // count as u16 plus one overflows at 65535 columns and wraps at
+        // 65536 (#1546); what is left is at most `available`.
+        let reserved = usize::from(self.row_number_gutter_width()) + visible_cols.len() + 1;
+        let available = usize::from(available).saturating_sub(reserved) as u16;
 
         // Start with fixed or min widths
         let mut widths: Vec<u16> = visible_cols

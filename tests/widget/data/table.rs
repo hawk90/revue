@@ -87,6 +87,28 @@ fn test_table_with_many_columns() {
     assert_eq!(row_text(&render(&t, 30, 4), 1), "│0│1│2│3│4│5│6│7│8│9│");
 }
 
+/// The auto-width columns were counted as u16 (#1546): at 65536 the count
+/// was 0 and no column got space, at 65537 it was 1 and the first column
+/// took the whole row. Either way each column gets the one-cell minimum.
+#[test]
+fn test_table_auto_columns_past_u16_get_a_cell_each() {
+    for count in [65_536, 65_537] {
+        let cols: Vec<Column> = (0..count)
+            .map(|i| Column::new(format!("{}", i % 10)))
+            .collect();
+        let t = Table::new(cols).border(false);
+        let buffer = render(&t, 10, 3);
+        for x in 0..10u16 {
+            let expected = char::from_digit(u32::from(x), 10).unwrap();
+            assert_eq!(
+                buffer.get(x, 0).unwrap().symbol,
+                expected,
+                "{count}: column {x}"
+            );
+        }
+    }
+}
+
 #[test]
 fn test_table_default() {
     let t = Table::default();

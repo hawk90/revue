@@ -174,6 +174,31 @@ fn test_virtual_list_highlight_covers_every_row_of_a_tall_item() {
     assert_eq!(highlighted(&buffer), [2, 3]);
 }
 
+/// `item_height` is a `pub` field the builder clamps but a caller can set
+/// to 0; the list divided by it (#1546). It draws and moves as height 1.
+#[test]
+fn test_virtual_list_item_height_field_of_zero_is_one_row() {
+    let mut list = numbers(10).show_scrollbar(false);
+    list.item_height = 0;
+    let buffer = render(&list, 4, 3);
+    assert_eq!(rows(&buffer, 4), ["0", "1", "2"]);
+    assert_eq!(highlighted(&buffer), [0]);
+
+    list.page_down(3);
+    list.select_next();
+    list.scroll_by(1);
+    assert_eq!(list.selected_index(), Some(4));
+    let buffer = render(&list, 4, 3);
+    assert_eq!(rows(&buffer, 4), ["3", "4", "5"]);
+    assert_eq!(highlighted(&buffer), [1]);
+
+    list.select_last();
+    list.set_scroll_position(1.0);
+    let buffer = render(&list, 4, 3);
+    assert_eq!(rows(&buffer, 4), ["7", "8", "9"]);
+    assert_eq!(highlighted(&buffer), [2]);
+}
+
 #[test]
 fn test_virtual_list_scrollbar_only_when_items_overflow() {
     let fits = numbers(3);

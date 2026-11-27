@@ -214,3 +214,15 @@ fn test_calculate_widths_empty() {
     let buf = render_to(&grid, 80, 5);
     assert!(!row_text(&buf, 0, 80).contains('│'));
 }
+
+/// The separators were counted as `columns as u16 + 1`, which overflows at
+/// 65535 columns (#1546)
+#[test]
+fn test_65535_columns_reserve_their_separators() {
+    let cols: Vec<GridColumn> = (0..65_535)
+        .map(|i| col(&format!("c{i}")).min_width(0))
+        .collect();
+    let grid = DataGrid::new().columns(cols);
+    // No space is left once the separators are reserved: a separator per cell
+    assert_eq!(rendered_widths(grid, 100, 0), vec![0; 100]);
+}

@@ -3,6 +3,13 @@
 use super::core::VirtualList;
 
 impl<T: ToString + Clone> VirtualList<T> {
+    /// The uniform rows an item takes: `item_height`, with 0 read as 1 (as
+    /// the `item_height` builder clamps it), since the field is `pub` and
+    /// the divisions by it must hold (#1546)
+    pub(super) fn row_height(&self) -> u16 {
+        self.item_height.max(1)
+    }
+
     /// Rebuild the height cache for variable-height mode
     pub(super) fn rebuild_height_cache(&mut self) {
         if let Some(ref calc) = self.height_calculator {
@@ -24,7 +31,7 @@ impl<T: ToString + Clone> VirtualList<T> {
         if self.height_calculator.is_some() && index < self.height_cache.len() {
             self.height_cache[index]
         } else {
-            self.item_height
+            self.row_height()
         }
     }
 
@@ -33,14 +40,14 @@ impl<T: ToString + Clone> VirtualList<T> {
         if self.height_calculator.is_some() && !self.cumulative_heights.is_empty() {
             *self.cumulative_heights.last().unwrap_or(&0)
         } else {
-            self.items.len() as u32 * self.item_height as u32
+            self.items.len() as u32 * self.row_height() as u32
         }
     }
 
     /// Find item index at given row offset (for variable heights)
     pub(super) fn index_at_row(&self, row: u32) -> usize {
         if self.height_calculator.is_none() || self.cumulative_heights.is_empty() {
-            return (row / self.item_height as u32) as usize;
+            return (row / self.row_height() as u32) as usize;
         }
 
         // Binary search for the item containing this row
@@ -54,7 +61,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     /// Get row offset of item at index (for variable heights)
     pub(super) fn row_of_index(&self, index: usize) -> u32 {
         if self.height_calculator.is_none() || self.cumulative_heights.is_empty() {
-            return index as u32 * self.item_height as u32;
+            return index as u32 * self.row_height() as u32;
         }
 
         if index == 0 {
