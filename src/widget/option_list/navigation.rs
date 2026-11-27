@@ -1,8 +1,29 @@
 //! Querying, selecting and moving the highlight between options
 
 use super::{OptionEntry, OptionItem, OptionList};
+use crate::event::Key;
 
 impl OptionList {
+    /// Handle a key, returning whether it is one the list handles.
+    ///
+    /// The keys are those of [`List`](crate::widget::List), plus Enter and
+    /// Space to select: `Up`/`k` and `Down`/`j` move the highlight to the
+    /// option before or after it, `Home` and `End` to the first or last
+    /// option, and `Enter` or `Space` select the highlighted option.
+    pub fn handle_key(&mut self, key: &Key) -> bool {
+        match key {
+            Key::Up | Key::Char('k') => self.highlight_previous(),
+            Key::Down | Key::Char('j') => self.highlight_next(),
+            Key::Home => self.highlight_first(),
+            Key::End => self.highlight_last(),
+            Key::Enter | Key::Char(' ') => {
+                self.select_highlighted();
+            }
+            _ => return false,
+        }
+        true
+    }
+
     /// Get option count (excluding separators and groups)
     pub fn option_count(&self) -> usize {
         self.entries

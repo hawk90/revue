@@ -23,10 +23,12 @@ pub struct LogViewer {
     /// All log entries
     entries: Vec<LogEntry>,
     /// A sequence id per entry, parallel to `entries`: the selection's key.
-    /// `line_number` repeats once old entries are trimmed.
+    /// `line_number` comes from the caller in `push_entry` and can repeat.
     ids: Vec<u64>,
     /// The id the next entry gets
     next_id: u64,
+    /// The highest line number so far: `push` numbers its line after it
+    lines: usize,
     /// Where the filtered view is scrolled to, one row per entry. Following
     /// the end is the live tail mode.
     scroll: ScrollState,
@@ -79,6 +81,7 @@ impl LogViewer {
             entries: Vec::new(),
             ids: Vec::new(),
             next_id: 0,
+            lines: 0,
             scroll: ScrollState::new().follow_end(true),
             selection: KeyedSelection::new(),
             filter: LogFilter::new(),

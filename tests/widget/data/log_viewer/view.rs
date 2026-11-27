@@ -174,6 +174,87 @@ fn test_log_viewer_message_starts_after_the_shown_columns() {
     }
 }
 
+/// The number column is five wide up to 99999 and widens for longer
+/// numbers, so the bookmark, level and message move right together (#976)
+#[test]
+fn test_log_viewer_long_line_numbers_keep_the_columns() {
+    let plain = || {
+        LogViewer::new()
+            .show_timestamps(false)
+            .show_source(false)
+            .tail_mode(false)
+    };
+    // (numbers, the column width): five digits fit, six and seven widen it
+    for (numbers, digits) in [
+        (&[1, 99_999][..], 5u16),
+        (&[1, 100_000][..], 6),
+        (&[1_234_567, 2][..], 7),
+    ] {
+        let mut viewer = plain();
+        for &n in numbers {
+            let mut entry = LogEntry::new("x", n).message("msg");
+            entry.bookmarked = true;
+            viewer.push_entry(entry);
+        }
+        let buffer = render(&viewer, 40, 2);
+        for (y, &n) in (0..).zip(numbers) {
+            let label = format!("{numbers:?} row {y}");
+            let d = usize::from(digits);
+            assert_eq!(cells(&buffer, 0, y, digits), format!("{n:>d$}"), "{label}");
+            assert_eq!(cells(&buffer, digits, y, 1), " ", "{label}");
+            assert_eq!(cells(&buffer, digits + 1, y, 1), "★", "{label}");
+            assert_eq!(cells(&buffer, digits + 3, y, 4), "●INF", "{label}");
+            assert_eq!(cells(&buffer, digits + 7, y, 1), " ", "{label}");
+            assert_eq!(cells(&buffer, digits + 8, y, 3), "msg", "{label}");
+            let drawn = row_text(&buffer, y).chars().count();
+            assert_eq!(drawn, d + 11, "nothing after the message: {label}");
+        }
+    }
+}
+
+/// `push` numbers its line after the last one loaded or pushed: trimming
+/// old entries and the blank lines `load` skipped do not make a number
+/// repeat (#976)
+#[test]
+fn test_log_viewer_line_numbers_never_repeat() {
+    let numbers = |viewer: &mut LogViewer| {
+        viewer.scroll_to_top();
+        let mut numbers = Vec::new();
+        for _ in 0..viewer.filtered_len() {
+            numbers.push(viewer.selected_entry().unwrap().line_number);
+            viewer.select_next();
+        }
+        numbers
+    };
+
+    // Trimmed down to the last three
+    let mut viewer = LogViewer::new().max_entries(3);
+    numbered(&mut viewer, 5);
+    assert_eq!(numbers(&mut viewer), [3, 4, 5]);
+    viewer.push("l6");
+    assert_eq!(numbers(&mut viewer), [4, 5, 6]);
+
+    // `load` starts again at 1 and counts its blank lines
+    viewer.load("a\n\nb");
+    viewer.push("c");
+    assert_eq!(numbers(&mut viewer), [1, 3, 4]);
+    viewer.load("\n\n");
+    viewer.push("d");
+    assert_eq!(numbers(&mut viewer), [3]);
+
+    // After a numbered entry, a push goes on from the highest number
+    let mut viewer = LogViewer::new();
+    viewer.push_entry(LogEntry::new("x", 10));
+    viewer.push_entry(LogEntry::new("y", 4));
+    viewer.push("z");
+    assert_eq!(numbers(&mut viewer), [10, 4, 11]);
+
+    // `clear` starts again at 1
+    viewer.clear();
+    viewer.push("first");
+    assert_eq!(numbers(&mut viewer), [1]);
+}
+
 #[test]
 fn test_log_viewer_message_is_cut_at_the_area_edge() {
     let mut viewer = bare();

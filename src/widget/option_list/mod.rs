@@ -4,6 +4,10 @@
 //! separators, and keyboard navigation. Unlike SelectionList which is for
 //! multi-select, OptionList is for single selection with enhanced display.
 //!
+//! [`OptionList::handle_key`] handles the keys: `Up`/`k` and `Down`/`j` move
+//! the highlight, `Home` and `End` go to the first and last option, and
+//! `Enter` or `Space` select the highlighted option.
+//!
 //! # Example
 //!
 //! ```rust,ignore
