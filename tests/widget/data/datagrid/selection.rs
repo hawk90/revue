@@ -51,6 +51,45 @@ fn test_select_prev_col() {
     assert_eq!(grid.selected_col, 0); // Can't go before first
 }
 
+/// After a reorder, Right and Left walk the columns as drawn and stop at
+/// the drawn edges.
+#[test]
+fn test_column_navigation_follows_the_display_order() {
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("a", "A"))
+        .column(GridColumn::new("b", "B"))
+        .column(GridColumn::new("c", "C"));
+    grid.column_order = vec![2, 0, 1]; // drawn C A B
+    grid.selected_col = 2;
+    grid.select_prev_col();
+    assert_eq!(grid.selected_col, 2); // C is drawn first
+    for want in [0, 1, 1] {
+        grid.select_next_col();
+        assert_eq!(grid.selected_col, want);
+    }
+    for want in [0, 2, 2] {
+        grid.select_prev_col();
+        assert_eq!(grid.selected_col, want);
+    }
+}
+
+/// Navigation skips a hidden column in the display order.
+#[test]
+fn test_column_navigation_skips_hidden_in_display_order() {
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("a", "A"))
+        .column(GridColumn::new("b", "B").visible(false))
+        .column(GridColumn::new("c", "C"));
+    grid.column_order = vec![2, 1, 0]; // drawn C A
+    grid.selected_col = 2;
+    grid.select_next_col();
+    assert_eq!(grid.selected_col, 0);
+    grid.select_next_col();
+    assert_eq!(grid.selected_col, 0);
+    grid.select_prev_col();
+    assert_eq!(grid.selected_col, 2);
+}
+
 #[test]
 fn test_page_up() {
     let mut grid = DataGrid::new().column(GridColumn::new("a", "A"));

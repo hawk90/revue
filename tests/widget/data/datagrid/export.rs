@@ -106,6 +106,65 @@ fn test_copy_cell_empty() {
     assert!(cell.is_empty());
 }
 
+/// Three columns A, B, C with one row a1, b1, c1.
+fn abc() -> DataGrid {
+    DataGrid::new()
+        .column(GridColumn::new("a", "A"))
+        .column(GridColumn::new("b", "B"))
+        .column(GridColumn::new("c", "C"))
+        .row(
+            GridRow::new()
+                .cell("a", "a1")
+                .cell("b", "b1")
+                .cell("c", "c1"),
+        )
+}
+
+/// `selected_col` indexes `columns`, so a hidden column before it does not
+/// shift the copied cell.
+#[test]
+fn test_copy_cell_with_a_hidden_column_first() {
+    let mut grid = abc();
+    grid.columns[0].visible = false;
+    grid.selected_col = 1;
+    assert_eq!(grid.copy_cell(), "b1");
+    grid.selected_col = 2;
+    assert_eq!(grid.copy_cell(), "c1");
+}
+
+/// A reordered column is copied from its own cell.
+#[test]
+fn test_copy_cell_after_a_reorder() {
+    let mut grid = abc();
+    grid.column_order = vec![2, 0, 1];
+    grid.selected_col = 0;
+    assert_eq!(grid.copy_cell(), "a1");
+}
+
+/// Export writes the columns in the order they are drawn.
+#[test]
+fn test_export_follows_the_display_order() {
+    let mut grid = abc();
+    grid.column_order = vec![2, 0, 1];
+    assert_eq!(grid.export(&ExportOptions::new()), "C,A,B\nc1,a1,b1\n");
+    grid.columns[0].visible = false;
+    assert_eq!(grid.export(&ExportOptions::new()), "C,B\nc1,b1\n");
+}
+
+/// Exporting every column keeps hidden ones at their place in the order,
+/// and a column the order leaves out comes last.
+#[test]
+fn test_export_all_columns_in_display_order() {
+    let mut grid = abc();
+    grid.columns[0].visible = false;
+    let mut all = ExportOptions::new();
+    all.visible_columns_only = false;
+    grid.column_order = vec![2, 0, 1];
+    assert_eq!(grid.export(&all), "C,A,B\nc1,a1,b1\n");
+    grid.column_order = vec![1, 2];
+    assert_eq!(grid.export(&all), "B,C,A\nb1,c1,a1\n");
+}
+
 /// Split CSV text into records, undoing the quoting the export applies
 fn parse_csv(text: &str) -> Vec<Vec<String>> {
     let mut records = Vec::new();
