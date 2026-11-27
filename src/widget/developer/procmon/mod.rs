@@ -39,7 +39,10 @@ pub struct ProcessMonitor {
     /// System info handle
     /// `None` when the platform gave no system to read: nothing is listed
     system: Option<System>,
-    /// Cached process list
+    /// The last list read, before the view and the filter, so that changing
+    /// a list setting applies at once (#1084)
+    all: Vec<ProcessInfo>,
+    /// The listed processes: `all` through the view and the filter, sorted
     processes: Vec<ProcessInfo>,
     /// Sort column
     sort: ProcessSort,
@@ -82,6 +85,7 @@ impl ProcessMonitor {
     fn with_system(system: Option<System>) -> Self {
         Self {
             system,
+            all: Vec::new(),
             processes: Vec::new(),
             sort: ProcessSort::default(),
             sort_asc: false,
@@ -101,12 +105,14 @@ impl ProcessMonitor {
     /// Set sort column
     pub fn sort_by(mut self, sort: ProcessSort) -> Self {
         self.sort = sort;
+        self.apply_list_settings();
         self
     }
 
     /// Set sort direction
     pub fn ascending(mut self, asc: bool) -> Self {
         self.sort_asc = asc;
+        self.apply_list_settings();
         self
     }
 
@@ -116,6 +122,7 @@ impl ProcessMonitor {
     /// program (all of them when that user is unknown).
     pub fn view(mut self, view: ProcessView) -> Self {
         self.view = view;
+        self.apply_list_settings();
         self
     }
 

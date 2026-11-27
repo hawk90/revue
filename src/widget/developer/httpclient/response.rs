@@ -54,6 +54,23 @@ impl HttpResponse {
         ContentType::from_header(value)
     }
 
+    /// The headers ordered by name, ignoring ASCII case (names that differ
+    /// only in case by the name as written): the same order on every run,
+    /// which the `HashMap` does not keep (#1083)
+    pub(super) fn sorted_headers(&self) -> Vec<(&str, &str)> {
+        let mut headers: Vec<(&str, &str)> = self
+            .headers
+            .iter()
+            .map(|(name, value)| (name.as_str(), value.as_str()))
+            .collect();
+        headers.sort_by(|(a, _), (b, _)| {
+            a.to_ascii_lowercase()
+                .cmp(&b.to_ascii_lowercase())
+                .then_with(|| a.cmp(b))
+        });
+        headers
+    }
+
     /// Try to format body as pretty JSON
     pub fn pretty_json(&self) -> Option<String> {
         self.format_json(&self.body)
@@ -67,7 +84,8 @@ impl HttpResponse {
         let mut in_string = false;
         let mut escape_next = false;
 
-        for ch in json.chars() {
+        let mut chars = json.chars().peekable();
+        while let Some(ch) = chars.next() {
             if escape_next {
                 result.push(ch);
                 escape_next = false;
@@ -94,6 +112,16 @@ impl HttpResponse {
             match ch {
                 '{' | '[' => {
                     result.push(ch);
+                    // An empty container stays on one line: `{}`, `[]`
+                    let close = if ch == '{' { '}' } else { ']' };
+                    while chars
+                        .next_if(|c| matches!(c, ' ' | '\n' | '\r' | '\t'))
+                        .is_some()
+                    {}
+                    if chars.next_if_eq(&close).is_some() {
+                        result.push(close);
+                        continue;
+                    }
                     indent += 1;
                     result.push('\n');
                     result.push_str(&"  ".repeat(indent));

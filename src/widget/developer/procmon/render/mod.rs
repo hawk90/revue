@@ -13,8 +13,27 @@ use crate::widget::traits::{RenderContext, View};
 /// [`ProcColors::name`](crate::widget::ProcColors::name) nor the stylesheet names one.
 const PROC_FG: Color = Color::WHITE;
 
+/// The PID column's width: 7 digits, as Linux PIDs reach 4194304
+/// (`pid_max` on 64-bit systems), right-aligned (#1084)
+const PID_WIDTH: u16 = 7;
+
+/// Where the name column starts, one cell after the PID column
+const NAME_X: u16 = PID_WIDTH + 1;
+
+/// Where the CPU% column starts
+const CPU_X: u16 = NAME_X + 20;
+
+/// Where the MEM% column starts
+const MEM_PERCENT_X: u16 = CPU_X + 7;
+
+/// Where the memory column starts
+const MEM_X: u16 = MEM_PERCENT_X + 7;
+
+/// Where the status column starts
+const STATUS_X: u16 = MEM_X + 8;
+
 /// Where the command column starts, after the status column
-const CMD_X: u16 = 59;
+const CMD_X: u16 = STATUS_X + 10;
 
 /// The column header sits under the stats bar (row 0).
 const HEADER_ROW: u16 = 1;

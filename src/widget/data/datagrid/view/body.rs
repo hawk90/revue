@@ -58,7 +58,9 @@ impl DataGrid {
         }
     }
 
-    /// Draw one data row at `row_y`: its number, background and cells
+    /// Draw one data row at `row_y`: its number, background and cells. The
+    /// background and separators cover all `row_height` lines; the number
+    /// and the values go on the first.
     fn render_row(
         &self,
         ctx: &mut RenderContext,
@@ -69,6 +71,7 @@ impl DataGrid {
     ) {
         let is_selected = render_idx == self.selected_row;
         let row_bg = self.row_bg(render_idx);
+        let lines = self.options.row_height.max(1);
 
         // Draw row number
         if self.options.show_row_numbers {
@@ -89,7 +92,7 @@ impl DataGrid {
             content_start,
             row_y,
             params.content_end.saturating_sub(content_start),
-            1,
+            lines,
             row_bg,
         );
 
@@ -111,11 +114,13 @@ impl DataGrid {
             };
             self.render_cell(ctx, row, slot.col, &pos, &state);
 
-            // Draw separator
-            let mut sep = Cell::new('│');
-            sep.fg = Some(self.colors.border_color);
-            sep.bg = Some(row_bg);
-            ctx.set(slot.x + slot.width, row_y, sep);
+            // Draw the separator on every line of the row
+            for dy in 0..lines {
+                let mut sep = Cell::new('│');
+                sep.fg = Some(self.colors.border_color);
+                sep.bg = Some(row_bg);
+                ctx.set(slot.x + slot.width, row_y + dy, sep);
+            }
         }
     }
 

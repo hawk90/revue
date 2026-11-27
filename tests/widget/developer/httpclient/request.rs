@@ -111,15 +111,15 @@ fn test_http_request_full_url_with_one_param() {
 
 #[test]
 fn test_http_request_full_url_with_multiple_params() {
-    let full_url = request("https://example.com/api")
-        .param("foo", "bar")
-        .param("baz", "qux")
-        .full_url();
-    // Parameter order follows the map, so accept either.
-    assert!(
-        full_url == "https://example.com/api?foo=bar&baz=qux"
-            || full_url == "https://example.com/api?baz=qux&foo=bar",
-        "{full_url}"
+    // The parameters come in key order, the same URL on every run (#1083):
+    // byte order, so upper case first; the key is compared before encoding
+    let mut req = request("https://example.com/api");
+    for k in ["f", "c", "a", "e", "B", "d", "a b"] {
+        req = req.param(k, "1");
+    }
+    assert_eq!(
+        req.full_url(),
+        "https://example.com/api?B=1&a=1&a+b=1&c=1&d=1&e=1&f=1"
     );
 }
 

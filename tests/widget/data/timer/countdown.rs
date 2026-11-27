@@ -134,6 +134,21 @@ fn test_timer_format_precise() {
     assert_eq!(timer.format_remaining(), "01:05.000");
 }
 
+/// From an hour on Precise shows the hours, as Short does; 3661 s showed
+/// `01:01.000` (#1201)
+#[test]
+fn test_timer_format_precise_with_hours() {
+    let precise = |secs| {
+        Timer::countdown(secs)
+            .format(TimerFormat::Precise)
+            .format_remaining()
+    };
+    assert_eq!(precise(3599), "59:59.000");
+    assert_eq!(precise(3600), "01:00:00.000");
+    assert_eq!(precise(3661), "01:01:01.000");
+    assert_eq!(precise(100 * 3600), "100:00:00.000");
+}
+
 #[test]
 fn test_timer_format_compact_hours() {
     let timer = Timer::countdown(3661).format(TimerFormat::Compact);
@@ -1237,7 +1252,8 @@ proptest! {
         prop_assert_eq!(timer(TimerFormat::Full), format!("{h:02}:{m:02}:{s:02}"));
         let short = if h > 0 { format!("{h:02}:{m:02}:{s:02}") } else { format!("{m:02}:{s:02}") };
         prop_assert_eq!(timer(TimerFormat::Short), short);
-        prop_assert_eq!(timer(TimerFormat::Precise), format!("{m:02}:{s:02}.000"));
+        let precise = if h > 0 { format!("{h:02}:{m:02}:{s:02}.000") } else { format!("{m:02}:{s:02}.000") };
+        prop_assert_eq!(timer(TimerFormat::Precise), precise);
         let compact = if h > 0 { format!("{h}h {m}m") } else if m > 0 { format!("{m}m {s}s") } else { format!("{s}s") };
         prop_assert_eq!(timer(TimerFormat::Compact), compact);
         // The first row shows it

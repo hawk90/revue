@@ -402,6 +402,38 @@ fn test_datagrid_row_height_spaces_the_rows() {
     }
 }
 
+/// row_height(2): the background and separators cover both lines of a
+/// row, the value sits on the first, and the scrollbar spans every line
+#[test]
+fn test_datagrid_row_height_paints_every_line_of_a_row() {
+    let grid = DataGrid::new()
+        .row_height(2)
+        .column(GridColumn::new("a", "A").width(4))
+        .rows(
+            (0..30)
+                .map(|i| GridRow::new().cell("a", format!("r{i}")))
+                .collect(),
+        );
+    let colors = GridColors::default();
+    let buffer = render_to(&grid, 14, 9);
+    for (y, text, bg) in [
+        (1, "r0  │", colors.selected_bg),
+        (2, "    │", colors.selected_bg),
+        (3, "r1  │", colors.alt_row_bg),
+        (4, "    │", colors.alt_row_bg),
+        (7, "r3  │", colors.alt_row_bg),
+        (8, "    │", colors.alt_row_bg),
+    ] {
+        assert_eq!(&row_text(&buffer, y, 14)[..text.len()], text, "line {y}");
+        // up to the " 1/30 " row indicator on the last line
+        for x in 0..7 {
+            assert_eq!(buffer.get(x, y).unwrap().bg, Some(bg), "({x}, {y})");
+        }
+    }
+    let bar: String = (1..9).map(|y| buffer.get(13, y).unwrap().symbol).collect();
+    assert_eq!(bar, "█░░░░░░░");
+}
+
 /// With 100 rows the row-number gutter holds three right-aligned digits
 #[test]
 fn test_datagrid_row_number_gutter_grows_to_three_digits() {

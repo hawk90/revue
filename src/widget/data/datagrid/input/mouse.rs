@@ -63,13 +63,10 @@ impl DataGrid {
     /// horizontal scroll), so a click lands on the column that is drawn there.
     pub(crate) fn header_slots_by_x(&self, area: Rect) -> Vec<(usize, u16, u16)> {
         let visible_cols = self.visible_columns_in_order();
-        let mut slots: Vec<(usize, u16, u16)> = self
-            .layout_column_slots(&visible_cols, area)
+        self.layout_column_slots(&visible_cols, area)
             .iter()
             .map(|s| (s.orig_idx, s.x, s.width))
-            .collect();
-        slots.sort_by_key(|&(_, x, _)| x);
-        slots
+            .collect()
     }
 
     /// Test if position is on a column resize handle

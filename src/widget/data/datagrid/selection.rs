@@ -86,14 +86,9 @@ impl DataGrid {
         self.filtered_count()
     }
 
-    /// Select next column
+    /// Select the column drawn right of the selected one
     pub fn select_next_col(&mut self) {
-        let visible_cols: Vec<_> = self
-            .columns
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| c.visible)
-            .collect();
+        let visible_cols = self.visible_columns_in_order();
         if let Some(pos) = visible_cols
             .iter()
             .position(|(i, _)| *i == self.selected_col)
@@ -104,14 +99,9 @@ impl DataGrid {
         }
     }
 
-    /// Select previous column
+    /// Select the column drawn left of the selected one
     pub fn select_prev_col(&mut self) {
-        let visible_cols: Vec<_> = self
-            .columns
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| c.visible)
-            .collect();
+        let visible_cols = self.visible_columns_in_order();
         if let Some(pos) = visible_cols
             .iter()
             .position(|(i, _)| *i == self.selected_col)

@@ -111,6 +111,20 @@ fn test_format_json_nested_indentation() {
     );
 }
 
+/// An empty object or array was split over three lines, with a blank,
+/// indented one in the middle (#1083)
+#[test]
+fn test_format_json_keeps_empty_containers_on_one_line() {
+    let f = |json: &str| HttpResponse::default().format_json(json).unwrap();
+    assert_eq!(f("{}"), "{}");
+    assert_eq!(f("[]"), "[]");
+    assert_eq!(f("[ \n\t ]"), "[]");
+    assert_eq!(f(r#"{"a":{},"b":[ ]}"#), "{\n  \"a\": {},\n  \"b\": []\n}");
+    assert_eq!(f("[[],[{}]]"), "[\n  [],\n  [\n    {}\n  ]\n]");
+    // A string that looks like one is left alone
+    assert_eq!(f(r#"["{}"]"#), "[\n  \"{}\"\n]");
+}
+
 #[test]
 fn test_formatted_body_non_json_untouched() {
     let response = with_content_type("text/plain", "  plain   text  ");

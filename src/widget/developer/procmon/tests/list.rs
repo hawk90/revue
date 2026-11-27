@@ -178,6 +178,38 @@ proptest! {
         }
     }
 
+    /// Changing the filter or the sort after the list came in lists the same
+    /// processes, in the same order, as setting them before it (#1084)
+    #[test]
+    fn settings_changed_after_the_list_apply_to_it_at_once(
+        list in prop::collection::vec(arb_process(), 0..25),
+        sort in prop::sample::select(SORTS.to_vec()),
+        asc in any::<bool>(),
+        filter in prop::sample::select(vec!["", "sh", "Bash", "build", "nothing"]),
+    ) {
+        let mut before = bare().sort_by(sort).ascending(asc);
+        before.filter(filter);
+        before.set_process_list(list.clone());
+
+        // Listed first with the defaults (CPU, descending, no filter), then
+        // filtered and sorted with the calls an app makes
+        let mut after = bare();
+        after.set_process_list(list);
+        after.filter(filter);
+        after.toggle_sort(sort);
+        if after.sort_asc != asc {
+            after.toggle_sort(sort);
+        }
+        prop_assert_eq!((after.sort, after.sort_asc), (sort, asc));
+        let got: Vec<_> = after.processes.iter().map(key).collect();
+        let want: Vec<_> = before.processes.iter().map(key).collect();
+        prop_assert_eq!(got, want);
+        prop_assert_eq!(
+            after.selected_process().is_some(),
+            after.process_count() > 0
+        );
+    }
+
     /// Choosing the sort column again flips the direction; another column
     /// sorts descending. The header's arrow follows.
     #[test]
@@ -284,4 +316,79 @@ fn the_selection_stays_on_its_process_when_a_refresh_reorders_the_list() {
     // When it exits, the process now in its place is selected
     monitor.set_process_list(vec![process(1, "build", 5.0, 0, 0.0, "Run", "", "0")]);
     assert_eq!(monitor.selected_process().unwrap().name, "build");
+}
+
+/// `filter`, `clear_filter` and `toggle_sort` changed only the settings; the
+/// rows waited for the next refresh, and `clear_filter` could not bring the
+/// hidden processes back before it (#1084)
+#[test]
+fn filter_and_clear_filter_apply_to_the_rows_at_once() {
+    let mut monitor = monitor_with(vec![
+        process(1, "init", 0.0, 0, 0.0, "Run", "", "0"),
+        process(2, "sh", 0.0, 0, 0.0, "Run", "", "0"),
+        process(3, "bash", 0.0, 0, 0.0, "Run", "", "0"),
+        process(4, "vim", 0.0, 0, 0.0, "Run", "", "0"),
+    ]);
+    monitor.page_down(2); // bash
+    monitor.filter("SH");
+    assert_eq!(pids_on_screen(&draw(&monitor, 60, 8)), [2, 3]);
+    assert_eq!(monitor.process_count(), 2);
+    assert_eq!(monitor.selected_process().unwrap().name, "bash");
+
+    monitor.filter("zz-no-such-process-zz");
+    assert_eq!(monitor.process_count(), 0);
+    assert!(monitor.selected_process().is_none());
+    assert!(pids_on_screen(&draw(&monitor, 60, 8)).is_empty());
+
+    monitor.clear_filter();
+    let buffer = draw(&monitor, 60, 8);
+    assert_eq!(pids_on_screen(&buffer), [1, 2, 3, 4]);
+    // With nothing selected, the selection starts at the top
+    assert_eq!(monitor.selected_process().unwrap().pid, 1);
+    assert_eq!(highlighted_rows(&monitor, &buffer), [2]);
+
+    // A selection that stays listed stays on its process
+    monitor.page_down(3); // vim
+    monitor.filter("i"); // init, vim
+    assert_eq!(monitor.selected_process().unwrap().name, "vim");
+    monitor.clear_filter();
+    assert_eq!(monitor.selected_process().unwrap().name, "vim");
+    let buffer = draw(&monitor, 60, 8);
+    assert_eq!(pids_on_screen(&buffer), [1, 2, 3, 4]);
+    assert_eq!(highlighted_rows(&monitor, &buffer), [5]);
+}
+
+#[test]
+fn toggle_sort_reorders_the_rows_with_the_header() {
+    let mut monitor = monitor_with(numbered(3)); // PID, ascending
+    monitor.toggle_sort(ProcessSort::Pid);
+    let buffer = draw(&monitor, 60, 6);
+    assert!(super::row(&buffer, 1).starts_with("PID▼"));
+    assert_eq!(pids_on_screen(&buffer), [102, 101, 100]);
+    // The selection stays on its process, now the last row
+    assert_eq!(monitor.selected_process().unwrap().pid, 100);
+    assert_eq!(highlighted_rows(&monitor, &buffer), [4]);
+
+    monitor.toggle_sort(ProcessSort::Pid);
+    assert_eq!(pids_on_screen(&draw(&monitor, 60, 6)), [100, 101, 102]);
+}
+
+/// The builders apply to a list already held, as the calls do
+#[test]
+fn the_sort_and_view_builders_apply_to_the_list_held() {
+    let list = vec![
+        process(1, "init", 0.0, 0, 0.0, "Run", "", "0"),
+        process(2, "mine", 0.0, 0, 0.0, "Run", "", "501"),
+    ];
+    let monitor = monitor_with(list.clone()).ascending(false);
+    assert_eq!(pids_on_screen(&draw(&monitor, 60, 6)), [2, 1]);
+    let monitor = monitor_with(list.clone())
+        .sort_by(ProcessSort::Name)
+        .ascending(false);
+    assert_eq!(pids_on_screen(&draw(&monitor, 60, 6)), [2, 1]);
+
+    let mut monitor = monitor_with(list);
+    monitor.current_user = Some("501".to_string());
+    let monitor = monitor.view(ProcessView::User);
+    assert_eq!(pids_on_screen(&draw(&monitor, 60, 6)), [2]);
 }
