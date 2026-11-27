@@ -1,5 +1,6 @@
 //! OptionList widget tests
 
+use revue::event::Key;
 use revue::style::Color;
 use revue::widget::option_item;
 use revue::widget::option_list;
@@ -70,6 +71,72 @@ fn test_navigation_on_empty_list() {
         assert!(!list.select_highlighted());
         assert!(list.__test_selected().is_none());
     }
+}
+
+#[test]
+fn test_keys_move_the_highlight() {
+    // Groups and separators between options are skipped, and the disabled
+    // option is stepped over as by `highlight_next`
+    let mut list = OptionList::new()
+        .group("G")
+        .option("A", "")
+        .separator()
+        .add_option(OptionItem::new("B").disabled(true))
+        .option("C", "")
+        .option("D", "");
+    let mut seen = Vec::new();
+    for key in [
+        Key::Down,
+        Key::Char('j'),
+        Key::Char('j'), // past the last option: stays
+        Key::Up,
+        Key::Char('k'),
+        Key::Char('k'), // before the first option: stays
+        Key::End,
+        Key::Home,
+    ] {
+        assert!(list.handle_key(&key), "{key:?}");
+        seen.push(list.__test_highlighted());
+    }
+    assert_eq!(seen, [2, 3, 3, 2, 0, 0, 3, 0]);
+    assert!(list.__test_selected().is_none(), "moving does not select");
+}
+
+#[test]
+fn test_enter_and_space_select_the_highlighted_option() {
+    let mut list = OptionList::new()
+        .option("A", "")
+        .add_option(OptionItem::new("B").disabled(true))
+        .option("C", "");
+    assert!(list.handle_key(&Key::Enter));
+    assert_eq!(list.__test_selected(), Some(0));
+    list.handle_key(&Key::End);
+    assert!(list.handle_key(&Key::Char(' ')));
+    assert_eq!(list.__test_selected(), Some(2));
+    assert_eq!(list.get_selected_value(), Some("C"));
+
+    // A disabled option is not selected
+    let mut list = OptionList::new().add_option(OptionItem::new("A").disabled(true));
+    assert!(list.handle_key(&Key::Enter));
+    assert!(list.handle_key(&Key::Char(' ')));
+    assert!(list.__test_selected().is_none());
+}
+
+#[test]
+fn test_keys_on_an_empty_list_and_other_keys() {
+    let mut list = OptionList::new().separator().group("Empty");
+    for key in [Key::Down, Key::Up, Key::Home, Key::End, Key::Enter] {
+        assert!(list.handle_key(&key));
+    }
+    assert_eq!(list.__test_highlighted(), 0);
+    assert!(list.__test_selected().is_none());
+
+    let mut list = OptionList::new().option("A", "").option("B", "");
+    for key in [Key::Left, Key::Right, Key::Tab, Key::Escape, Key::Char('x')] {
+        assert!(!list.handle_key(&key), "{key:?}");
+    }
+    assert_eq!(list.__test_highlighted(), 0);
+    assert!(list.__test_selected().is_none());
 }
 
 #[test]

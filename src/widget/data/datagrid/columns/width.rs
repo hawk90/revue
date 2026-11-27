@@ -71,7 +71,7 @@ impl DataGrid {
                 .collect();
 
             if !auto_cols.is_empty() {
-                let per_col = extra / auto_cols.len() as u16;
+                let per_col = (extra as usize / auto_cols.len()) as u16;
                 for &(i, col) in &auto_cols {
                     let new_width = widths[i] + per_col;
                     widths[i] = new_width.min(col.max_width);

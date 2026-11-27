@@ -74700,6 +74700,7 @@ pub fn revue::widget::OptionList::clear_selection(&mut self)
 pub fn revue::widget::OptionList::get_highlighted(&self) -> core::option::Option<&revue::widget::OptionItem>
 pub fn revue::widget::OptionList::get_selected(&self) -> core::option::Option<&revue::widget::OptionItem>
 pub fn revue::widget::OptionList::get_selected_value(&self) -> core::option::Option<&str>
+pub fn revue::widget::OptionList::handle_key(&mut self, &revue::prelude::Key) -> bool
 pub fn revue::widget::OptionList::highlight_first(&mut self)
 pub fn revue::widget::OptionList::highlight_last(&mut self)
 pub fn revue::widget::OptionList::highlight_next(&mut self)

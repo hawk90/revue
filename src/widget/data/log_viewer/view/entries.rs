@@ -8,7 +8,9 @@ impl LogViewer {
     pub fn load(&mut self, content: &str) {
         self.entries.clear();
         self.ids.clear();
+        self.lines = 0;
         for (i, line) in content.lines().enumerate() {
+            self.lines = i + 1;
             if !line.is_empty() {
                 let entry = self.parser.parse(line, i + 1);
                 self.entries.push(entry);
@@ -21,14 +23,16 @@ impl LogViewer {
         self.reveal_selected();
     }
 
-    /// Add a single log line
+    /// Add a single log line, numbered after the last line loaded or
+    /// pushed. The numbers go on when old entries are trimmed, and count the
+    /// blank lines `load` skipped.
     pub fn push(&mut self, line: &str) {
-        let line_number = self.entries.len() + 1;
-        let entry = self.parser.parse(line, line_number);
+        let entry = self.parser.parse(line, self.lines + 1);
         self.append(entry);
     }
 
-    /// Add a pre-built log entry
+    /// Add a pre-built log entry. A later [`push`](Self::push) is numbered
+    /// after it when its line number is the highest so far.
     pub fn push_entry(&mut self, entry: LogEntry) {
         self.append(entry);
     }
@@ -37,6 +41,7 @@ impl LogViewer {
     /// search. The selection stays on its entry; in tail mode the view
     /// follows the new one.
     fn append(&mut self, entry: LogEntry) {
+        self.lines = self.lines.max(entry.line_number);
         self.entries.push(entry);
         self.ids.push(self.next_id);
         self.next_id += 1;
@@ -63,6 +68,7 @@ impl LogViewer {
     /// Clear all entries
     pub fn clear(&mut self) {
         self.entries.clear();
+        self.lines = 0;
         self.ids.clear();
         self.selection.clear();
         self.scroll.set_content(0);

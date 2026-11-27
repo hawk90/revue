@@ -112,10 +112,6 @@ struct Model {
     in_flight: Option<u64>,
     /// The ids of the requests taken, in order, and what the client gave
     taken: Vec<(u64, RequestId)>,
-    /// An error is still set although a later call should have dropped it:
-    /// a response set after an error, or a valid URL after a refused one.
-    /// The error and the state are not checked until a call resets them (#1083).
-    stale: bool,
 }
 
 const REFUSED: &str = "Invalid URL";
@@ -150,23 +146,30 @@ proptest! {
             pending: None,
             in_flight: None,
             taken: Vec::new(),
-            stale: false,
         };
         for o in &ops {
             match *o {
                 Op::SetUrl(i) => {
                     c.set_url(URLS[i]);
                     if URLS[i].starts_with("http") {
-                        // Skipped: the refusal of an earlier URL stays set (#1083).
-                        m.stale |= m.error == Some(REFUSED);
                         m.url = URLS[i].to_string();
                         m.cursor = m.url.len();
                         m.rejected = false;
+                        // A refusal still shown goes, and the state is the
+                        // exchange's again (#1083); any other error stays
+                        if m.error == Some(REFUSED) {
+                            m.error = None;
+                            m.state = match (m.in_flight, m.status) {
+                                (Some(_), _) => RequestState::Sending,
+                                (None, Some(s)) if (200..300).contains(&s) => RequestState::Success,
+                                (None, Some(_)) => RequestState::Error,
+                                (None, None) => RequestState::Idle,
+                            };
+                        }
                     } else {
                         m.rejected = true;
                         m.error = Some(REFUSED);
                         m.state = RequestState::Error;
-                        m.stale = false;
                     }
                 }
                 Op::Send => {
@@ -185,7 +188,6 @@ proptest! {
                         m.pending = Some(m.sent);
                         m.in_flight = Some(m.sent);
                     }
-                    m.stale = false;
                 }
                 Op::Take => {
                     let got = c.take_request();
@@ -214,9 +216,8 @@ proptest! {
                         if status == 0 {
                             m.error = Some("down");
                             m.state = RequestState::Error;
-                            m.stale = false;
                         } else {
-                            m.stale |= m.error.is_some();
+                            m.error = None;
                             m.status = Some(status);
                             m.scroll = 0;
                             m.state = if (200..300).contains(&status) {
@@ -261,7 +262,6 @@ proptest! {
                     c.set_error("boom");
                     m.error = Some("boom");
                     m.state = RequestState::Error;
-                    m.stale = false;
                 }
                 Op::SetResponse(status) => {
                     c.set_response(HttpResponse {
@@ -272,8 +272,8 @@ proptest! {
                         time: Duration::from_millis(1),
                         size: 0,
                     });
-                    // Skipped: an older error stays set and on screen (#1083).
-                    m.stale |= m.error.is_some();
+                    // The response replaces an earlier error (#1083)
+                    m.error = None;
                     m.status = Some(status);
                     m.scroll = 0;
                     m.state = if (200..300).contains(&status) {
@@ -290,7 +290,6 @@ proptest! {
                     m.error = None;
                     m.state = RequestState::Idle;
                     m.scroll = 0;
-                    m.stale = false;
                 }
                 Op::View(v) => {
                     let view = [ResponseView::Body, ResponseView::Headers, ResponseView::Raw][v];
@@ -328,16 +327,14 @@ proptest! {
             }
             let top = format!("{} {}", m.method.name(), m.url);
             prop_assert!(row(&c, 0).starts_with(top.as_str()), "after {:?}: {:?}", o, row(&c, 0));
-            if !m.stale {
-                prop_assert_eq!(c.state(), m.state, "after {:?}", o);
-                prop_assert_eq!(c.error().map(|e| e.contains(m.error.unwrap_or("-"))), m.error.map(|_| true), "after {:?}", o);
-                let second = row(&c, 2);
-                match (m.error, m.status) {
-                    _ if m.state == RequestState::Sending => prop_assert_eq!(second, "⠋ Sending request..."),
-                    (Some(e), _) => prop_assert!(second.starts_with("✗ Error: ") && second.contains(e), "after {:?}: {:?}", o, second),
-                    (None, Some(s)) => prop_assert!(second.starts_with(&format!("{s} ")), "after {:?}: {:?}", o, second),
-                    (None, None) => prop_assert_eq!(second, "Enter a URL and press Enter to send request"),
-                }
+            prop_assert_eq!(c.state(), m.state, "after {:?}", o);
+            prop_assert_eq!(c.error().map(|e| e.contains(m.error.unwrap_or("-"))), m.error.map(|_| true), "after {:?}", o);
+            let second = row(&c, 2);
+            match (m.error, m.status) {
+                _ if m.state == RequestState::Sending => prop_assert_eq!(second, "⠋ Sending request..."),
+                (Some(e), _) => prop_assert!(second.starts_with("✗ Error: ") && second.contains(e), "after {:?}: {:?}", o, second),
+                (None, Some(s)) => prop_assert!(second.starts_with(&format!("{s} ")), "after {:?}: {:?}", o, second),
+                (None, None) => prop_assert_eq!(second, "Enter a URL and press Enter to send request"),
             }
         }
     }

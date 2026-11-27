@@ -476,9 +476,104 @@ fn headers_view_is_not_scrolled_by_the_body() {
     );
     c.scroll_down(3);
     c.set_view(ResponseView::Headers);
-    // The headers come in map order (#1083): check the offset and that the
-    // eight content rows are all headers
     assert_eq!(c.body_scroll_for_testing(), 0);
     let buffer = draw(&c, 60, 12);
-    assert!((4..12).all(|y| row(&buffer, y).starts_with("X-")));
+    let shown: Vec<String> = (4..12).map(|y| row(&buffer, y)).collect();
+    let want: Vec<String> = (0..8).map(|i| format!("X-{i:02}: v")).collect();
+    assert_eq!(shown, want);
+}
+
+/// Body and Raw drew the same raw lines, so a JSON body in the Body view
+/// was one long line cut at the edge (#1083).
+#[test]
+fn body_view_draws_the_formatted_body_and_raw_the_body() {
+    let json = r#"{"a":1,"b":[2,{}]}"#;
+    let mut c = with(
+        response(200, "OK", &[("content-type", "application/json")], json, 1),
+        ResponseView::Body,
+    );
+    let buffer = draw(&c, 40, 12);
+    let shown: Vec<String> = (4..12).map(|y| row(&buffer, y)).collect();
+    let want = [
+        "{",
+        "  \"a\": 1,",
+        "  \"b\": [",
+        "    2,",
+        "    {}",
+        "  ]",
+        "}",
+        "",
+    ];
+    assert_eq!(shown, want);
+    for x in 0..4 {
+        assert_eq!(cell(&buffer, x, 6).fg, Some(SECONDARY_TEXT), "{x}");
+    }
+    // Scrolling runs over the formatted lines: the last page is full
+    draw(&c, 40, 10);
+    c.scroll_down(100);
+    assert_eq!(c.body_scroll_for_testing(), 1);
+    let buffer = draw(&c, 40, 10);
+    let shown: Vec<String> = (4..10).map(|y| row(&buffer, y)).collect();
+    assert_eq!(shown, want[1..7]);
+    // Raw is the body as sent
+    c.set_view(ResponseView::Raw);
+    let buffer = draw(&c, 40, 12);
+    assert_eq!(row(&buffer, 4), json);
+    assert!((5..12).all(|y| row(&buffer, y).is_empty()));
+    // A body that is not JSON is the same in both views
+    let mut c = with(
+        response(200, "OK", &[("Content-Type", "application/json")], "{a", 1),
+        ResponseView::Body,
+    );
+    assert_eq!(row(&draw(&c, 40, 10), 4), "{a");
+    c.set_view(ResponseView::Raw);
+    assert_eq!(row(&draw(&c, 40, 10), 4), "{a");
+}
+
+/// The headers came in `HashMap` order, different on every run (#1083):
+/// they are drawn by name, ignoring case
+#[test]
+fn headers_are_drawn_by_name() {
+    let hs = [
+        ("x-b", "1"),
+        ("Date", "2"),
+        ("X-A", "3"),
+        ("content-type", "4"),
+        ("ETag", "5"),
+        ("age", "6"),
+    ];
+    let c = with(response(200, "OK", &hs, "", 1), ResponseView::Headers);
+    let buffer = draw(&c, 60, 12);
+    let shown: Vec<String> = (4..12).map(|y| row(&buffer, y)).collect();
+    assert_eq!(
+        shown,
+        [
+            "age: 6",
+            "content-type: 4",
+            "Date: 2",
+            "ETag: 5",
+            "X-A: 3",
+            "x-b: 1",
+            "",
+            ""
+        ]
+    );
+}
+
+/// `set_response` left an earlier error set, and the error row wins, so a
+/// retry that succeeded still showed the failure (#1083).
+#[test]
+fn a_response_replaces_an_earlier_error_on_screen() {
+    for status in [200, 404] {
+        let mut c = http_get("https://example.com");
+        c.set_error("timeout");
+        c.set_response(response(status, "S", &[], "hello", 1));
+        assert_eq!(c.error(), None);
+        let buffer = draw(&c, 60, 10);
+        assert!(
+            row(&buffer, 2).starts_with(&format!("{status} S ")),
+            "{status}"
+        );
+        assert_eq!(row(&buffer, 4), "hello");
+    }
 }

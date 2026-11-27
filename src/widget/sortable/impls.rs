@@ -125,7 +125,7 @@ impl SortableList {
     pub fn update_drop_target(&mut self, y: u16, area_y: u16) {
         if self.dragging.is_some() {
             let relative_y = y.saturating_sub(area_y) as usize;
-            let target_idx = (relative_y / self.item_height as usize + self.view().offset())
+            let target_idx = (relative_y / self.row_height() as usize + self.view().offset())
                 .min(self.items.len());
             self.drop_target = Some(target_idx);
         }

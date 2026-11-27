@@ -142,7 +142,7 @@ fn test_terminal_cursor_hidden_while_scrolled_or_past_the_area() {
 #[test]
 fn test_terminal_input_line_over_the_bottom_row() {
     let mut term = Terminal::new(12, 3).default_fg(Color::YELLOW);
-    term.write("out");
+    term.write("old\nout");
     typed(&mut term, "ls");
     // Unfocused: the input is kept but not drawn
     assert_eq!(row(&screen(&term, 12, 3), 2).trim_end(), "");
@@ -161,8 +161,66 @@ fn test_terminal_input_line_over_the_bottom_row() {
     assert_eq!(buffer.get(0, 2).unwrap().fg, Some(Color::CYAN));
     assert_eq!(buffer.get(1, 2).unwrap().fg, Some(Color::CYAN));
     assert_eq!(buffer.get(2, 2).unwrap().fg, Some(Color::YELLOW));
-    // The output above is untouched
+    // The output above it ends at the newest line
     assert_eq!(row(&buffer, 0).trim_end(), "out█");
+    assert_eq!(row(&buffer, 1).trim_end(), "");
+}
+
+/// The command line was drawn over the bottom row, so once the output
+/// filled the screen its newest line was hidden under the prompt (#1381).
+#[test]
+fn the_input_line_has_its_own_row() {
+    let mut t = Terminal::new(10, 3);
+    t.write("a\nb\nc");
+    t.focus();
+    t.handle_key(KeyEvent::new(Key::Char('l')));
+    let b = screen(&t, 10, 3);
+    assert_eq!(row(&b, 0), "b         ");
+    assert_eq!(row(&b, 1), "c█        ");
+    assert_eq!(row(&b, 2), "> l       ");
+    // The output rows keep the terminal's background, the command line its own
+    for x in 0..10 {
+        assert_eq!(b.get(x, 1).unwrap().bg, Some(Color::BLACK), "{x}");
+        let want = if x == 3 { Color::WHITE } else { DARK_BG };
+        assert_eq!(b.get(x, 2).unwrap().bg, Some(want), "{x}");
+    }
+    // A taller area has room for every line above the prompt
+    let b = screen(&t, 10, 4);
+    let rows: Vec<String> = (0..4).map(|y| row(&b, y)).collect();
+    assert_eq!(
+        rows,
+        ["a         ", "b         ", "c█        ", "> l       "]
+    );
+    // Unfocused, or with the input cleared, the output has every row again
+    for setup in [Terminal::blur as fn(&mut Terminal), Terminal::clear_input] {
+        let mut t = t.clone();
+        setup(&mut t);
+        let b = screen(&t, 10, 3);
+        let cursor = if t.is_focused() { "c█" } else { "c " };
+        assert_eq!(row(&b, 0), "a         ");
+        assert_eq!(row(&b, 2), format!("{cursor}        "));
+    }
+}
+
+/// Scrolled back with the command line shown: the output keeps its lines
+/// above the prompt and the count is of the lines below those rows
+#[test]
+fn scrolled_back_output_stays_above_the_input_line() {
+    let mut t = Terminal::new(20, 3);
+    for i in 0..12 {
+        t.writeln(&format!("{i}"));
+    }
+    t.scroll_up(4);
+    t.focus();
+    typed(&mut t, "x");
+    let b = screen(&t, 20, 3);
+    // Thirteen lines, the view from line 6 on two of them, five below
+    assert_eq!(row(&b, 0), "6                ↑5 ");
+    assert_eq!(row(&b, 1), "7                   ");
+    assert_eq!(row(&b, 2), "> x                 ");
+    // On a one-row area the prompt takes the row: no indicator over it
+    let b = screen(&t, 20, 1);
+    assert_eq!(row(&b, 0), "> x                 ");
 }
 
 #[test]

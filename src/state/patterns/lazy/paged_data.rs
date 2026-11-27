@@ -24,7 +24,11 @@ where
     F: Fn(usize, usize) -> Vec<T>,
 {
     /// Create new paged data source
+    ///
+    /// A `page_size` of 0 is read as 1, as `ProgressiveLoader` reads a
+    /// chunk size of 0.
     pub fn new(total: usize, page_size: usize, loader: F) -> Self {
+        let page_size = page_size.max(1);
         let num_pages = total.div_ceil(page_size);
         let pages: Vec<Option<Vec<T>>> = (0..num_pages).map(|_| None).collect();
         let loading: Vec<bool> = vec![false; num_pages];
@@ -173,6 +177,32 @@ mod tests {
         assert_eq!(paged.total(), 100);
         assert_eq!(paged.page_size(), 10);
         assert_eq!(paged.page_count(), 10);
+    }
+
+    /// A page size of 0 divided by zero in `new`, `get` and `prefetch`
+    /// (#1531); it reads as 1
+    #[test]
+    fn test_paged_data_page_size_zero_reads_as_one() {
+        let calls = RefCell::new(Vec::new());
+        let paged = PagedData::new(3, 0, |page, size| {
+            calls.borrow_mut().push((page, size));
+            vec![page * 10]
+        });
+        assert_eq!(paged.page_size(), 1);
+        assert_eq!(paged.page_count(), 3);
+        assert_eq!(paged.get(2).map(|v| *v), Some(20));
+        assert_eq!(paged.get(3).map(|v| *v), None);
+        paged.prefetch(0, 1);
+        assert_eq!(*calls.borrow(), vec![(2, 1), (0, 1), (1, 1)]);
+
+        let empty: PagedData<i32, _> = paged_new_empty();
+        assert_eq!(empty.page_count(), 0);
+        assert!(empty.get(0).is_none());
+        empty.prefetch(0, 5);
+    }
+
+    fn paged_new_empty() -> PagedData<i32, impl Fn(usize, usize) -> Vec<i32>> {
+        PagedData::new(0, 0, |_, _| unreachable!("no page to load"))
     }
 
     #[test]

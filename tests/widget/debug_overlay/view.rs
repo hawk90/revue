@@ -5,7 +5,7 @@
 
 use proptest::prelude::*;
 use revue::layout::Rect;
-use revue::render::{Buffer, Cell};
+use revue::render::{Buffer, Cell, Modifier};
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{DebugConfig, DebugEvent, DebugOverlay, DebugPosition, Text, WidgetInfo};
@@ -121,6 +121,53 @@ fn the_panel_draws_in_the_default_colors() {
     assert_eq!(line(12), ("event".to_string(), fg));
     // The blank cells of a line keep the text color
     assert_eq!(cell(15, 8).fg, fg);
+}
+
+/// The panel is drawn over whole cells: the view's modifiers, hyperlink
+/// and escape sequence stay out of it, on every cell (border, title, text,
+/// blank), and stay on the view right of it (#1105).
+#[test]
+fn the_panel_does_not_take_the_modifiers_links_or_sequences_under_it() {
+    let overlay = DebugOverlay::wrap(Text::new("X".repeat(30)).bold().underline())
+        .position(DebugPosition::TopLeft)
+        .width(12)
+        .show_tree(true);
+    let mut buffer = Buffer::new(30, 8);
+    let link = buffer.register_hyperlink("https://example.com");
+    let seq = buffer.register_sequence("\x1b]1337;X\x07");
+    for y in 0..8 {
+        for x in 0..30 {
+            let cell = buffer.get_mut(x, y).unwrap();
+            cell.hyperlink_id = Some(link);
+            cell.sequence_id = Some(seq);
+        }
+    }
+    overlay.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 30, 6)));
+
+    for y in 0..6 {
+        for x in 0..12 {
+            let cell = buffer.get(x, y).unwrap();
+            assert_eq!(
+                cell.modifier,
+                Modifier::empty(),
+                "{:?} ({x}, {y})",
+                cell.symbol
+            );
+            assert_eq!(cell.hyperlink_id, None, "({x}, {y})");
+            assert_eq!(cell.sequence_id, None, "({x}, {y})");
+        }
+    }
+    // Right of the panel, where the one-line view drew nothing, and below
+    // the 6-row area, the cells keep their link and sequence
+    for (x, y) in [(12, 1), (29, 1), (12, 5), (0, 6)] {
+        let cell = buffer.get(x, y).unwrap();
+        assert_eq!(cell.hyperlink_id, Some(link), "({x}, {y})");
+        assert_eq!(cell.sequence_id, Some(seq), "({x}, {y})");
+    }
+    // and the view's text right of the panel its modifiers
+    let x_after = buffer.get(12, 0).unwrap();
+    assert_eq!(x_after.symbol, 'X');
+    assert_eq!(x_after.modifier, Modifier::BOLD | Modifier::UNDERLINE);
 }
 
 /// What a panel row shows: its text and its color, before truncation.

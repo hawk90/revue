@@ -45,7 +45,7 @@ pub enum TimerFormat {
     Full,
     /// MM:SS
     Short,
-    /// MM:SS.mmm
+    /// MM:SS.mmm, or HH:MM:SS.mmm from an hour on
     Precise,
     /// Compact (1h 23m)
     Compact,
@@ -68,7 +68,13 @@ fn format_ms(ms: u64, format: TimerFormat) -> String {
                 format!("{:02}:{:02}", mins, secs)
             }
         }
-        TimerFormat::Precise => format!("{:02}:{:02}.{:03}", mins, secs, millis),
+        TimerFormat::Precise => {
+            if hours > 0 {
+                format!("{:02}:{:02}:{:02}.{:03}", hours, mins, secs, millis)
+            } else {
+                format!("{:02}:{:02}.{:03}", mins, secs, millis)
+            }
+        }
         TimerFormat::Compact => {
             if hours > 0 {
                 format!("{}h {}m {}s", hours, mins, secs)
@@ -140,6 +146,8 @@ mod tests {
         assert_eq!(format_ms(3661000, TimerFormat::Full), "01:01:01");
         assert_eq!(format_ms(65000, TimerFormat::Short), "01:05");
         assert_eq!(format_ms(5500, TimerFormat::Precise), "00:05.500");
+        // Precise shows the hours from an hour on (#1201)
+        assert_eq!(format_ms(3_661_250, TimerFormat::Precise), "01:01:01.250");
         assert_eq!(format_ms(90000, TimerFormat::Compact), "1m 30s");
     }
 
