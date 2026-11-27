@@ -207,7 +207,7 @@ mod tests {
         let stats = row_text(&buffer, 0);
         assert!(stats.starts_with("CPU:"), "{stats}");
         assert!(stats.trim_end().ends_with("Processes: 0"), "{stats}");
-        assert!(row_text(&buffer, 1).starts_with("PID    NAME"));
+        assert!(row_text(&buffer, 1).starts_with("PID     NAME"));
         assert!((2..6).all(|y| row_text(&buffer, y).trim().is_empty()));
     }
 
@@ -318,10 +318,10 @@ mod tests {
         let mut monitor = ProcessMonitor::new().show_cmd(true);
         monitor.refresh();
         let buffer = screen(&monitor, 100, 5);
-        let header: String = row_text(&buffer, 1).chars().skip(59).collect();
+        let header: String = row_text(&buffer, 1).chars().skip(60).collect();
         assert_eq!(header.trim_end(), "COMMAND");
         // The first process's command (or its name when it has none)
-        assert_ne!(buffer.get(59, 2).unwrap().symbol, ' ');
+        assert_ne!(buffer.get(60, 2).unwrap().symbol, ' ');
     }
 
     #[test]
@@ -330,7 +330,7 @@ mod tests {
         monitor.refresh();
         let buffer = screen(&monitor, 100, 8);
         for y in 1..8 {
-            let tail: String = row_text(&buffer, y).chars().skip(59).collect();
+            let tail: String = row_text(&buffer, y).chars().skip(60).collect();
             assert!(tail.trim().is_empty(), "row {y}: {tail:?}");
         }
     }
@@ -375,16 +375,15 @@ mod tests {
     fn test_filter() {
         let mut monitor = ProcessMonitor::new();
         monitor.refresh();
-        monitor.select_next();
-        let before = selected_index(&monitor);
+        assert!(monitor.process_count() > 0);
+        // The filter applies to the list at once, not at the next refresh
+        // (#1084): no process matches
         monitor.filter("zz-no-such-process-zz");
-        // The filter applies at the next refresh; until then the selection
-        // stays on its process (#975)
-        assert_eq!(selected_index(&monitor), before);
-        // The next refresh lists only matches: none
-        monitor.refresh();
         assert_eq!(monitor.process_count(), 0);
         assert!(monitor.selected_process().is_none());
+        assert_eq!(selected_index(&monitor), None);
+        monitor.refresh();
+        assert_eq!(monitor.process_count(), 0);
     }
 
     #[test]
@@ -393,8 +392,8 @@ mod tests {
         monitor.filter("zz-no-such-process-zz");
         monitor.refresh();
         assert_eq!(monitor.process_count(), 0);
+        // The hidden processes come back at once, before a refresh (#1084)
         monitor.clear_filter();
-        monitor.refresh();
         let list = listed(&mut monitor);
         assert!(list.iter().any(|p| p.pid == std::process::id()));
     }
@@ -409,7 +408,6 @@ mod tests {
             .expect("this test process is listed");
         // Filter is case-insensitive (stored as lowercase)
         monitor.filter(me.name.to_uppercase());
-        monitor.refresh();
         let needle = me.name.to_lowercase();
         let list = listed(&mut monitor);
         assert!(list.iter().any(|p| p.pid == me.pid));
@@ -437,14 +435,15 @@ mod tests {
     #[test]
     fn test_toggle_sort_different_column() {
         let mut monitor = ProcessMonitor::new().ascending(true);
-        // Toggle different column sets it as sort column (descending)
+        monitor.refresh();
+        // Toggle different column sets it as sort column (descending), and
+        // the rows follow at once (#1084)
         monitor.toggle_sort(ProcessSort::Memory);
         let header = row_text(&screen(&monitor, 70, 5), 1);
         assert!(
             header.contains("MEM%▼") && !header.contains("CPU%▲"),
             "{header}"
         );
-        monitor.refresh();
         let list = listed(&mut monitor);
         assert!(list.windows(2).all(|w| w[0].memory >= w[1].memory));
     }
@@ -642,9 +641,9 @@ mod tests {
 
         monitor.render(&mut ctx);
         assert!(row_text(&buffer, 0).starts_with("CPU:"));
-        assert!(row_text(&buffer, 1).starts_with("PID    NAME                CPU%▼"));
+        assert!(row_text(&buffer, 1).starts_with("PID     NAME                CPU%▼"));
         // The first process, selected
-        assert_eq!(row_text(&buffer, 2)[..6].trim(), first.to_string());
+        assert_eq!(row_text(&buffer, 2)[..7].trim(), first.to_string());
         assert_eq!(buffer.get(99, 2).unwrap().bg, Some(Color::rgb(60, 80, 120)));
     }
 

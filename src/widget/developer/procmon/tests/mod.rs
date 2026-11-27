@@ -87,7 +87,7 @@ fn row(buffer: &Buffer, y: u16) -> String {
 /// The PIDs of the process rows (from row 2), in screen order
 fn pids_on_screen(buffer: &Buffer) -> Vec<u32> {
     (2..buffer.height())
-        .filter_map(|y| row(buffer, y)[..6].trim().parse().ok())
+        .filter_map(|y| row(buffer, y)[..7].trim().parse().ok())
         .collect()
 }
 
