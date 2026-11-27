@@ -4,6 +4,9 @@ use super::response::HttpResponse;
 use super::types::{PendingRequest, RequestId, RequestState};
 use super::{HttpClient, HttpRequest};
 
+/// The error a refused URL sets: it names the rules `HttpRequest::new` checks
+const URL_REFUSED: &str = "Invalid URL: only http:// and https:// schemes are allowed, and URL must not exceed 8192 characters";
+
 impl HttpClient {
     /// Update URL with validation
     ///
@@ -11,9 +14,7 @@ impl HttpClient {
     pub fn set_url(&mut self, url: impl Into<String>) {
         let url_str = url.into();
         if let Some(valid_req) = HttpRequest::new(&url_str) {
-            self.request.url = valid_req.url;
-            self.url_cursor = self.request.url.len();
-            self.url_rejected = false;
+            self.accept_url(valid_req.url);
         } else {
             self.reject_url();
         }
@@ -92,6 +93,8 @@ impl HttpClient {
     pub fn set_response(&mut self, response: HttpResponse) {
         let is_success = response.is_success();
         self.response = Some(response);
+        // The answer replaces an earlier failure: it is what is shown (#1083)
+        self.error = None;
         // A new response is read from its first line
         self.scroll.scroll_to_top();
         self.state = if is_success {
@@ -120,11 +123,33 @@ impl HttpClient {
         self.scroll.set_content(0);
     }
 
+    /// Take a URL `HttpRequest::new` accepted. A refusal still shown is
+    /// dropped, and the state is again the one the exchange is in: sending
+    /// while a request is in flight, else the response's, else idle (#1083).
+    /// Any other error (a failed request, `set_error`) stays.
+    pub(super) fn accept_url(&mut self, url: String) {
+        self.request.url = url;
+        self.url_cursor = self.request.url.len();
+        self.url_rejected = false;
+        if self.error.as_deref() == Some(URL_REFUSED) {
+            self.error = None;
+            self.state = if self.in_flight.is_some() {
+                RequestState::Sending
+            } else {
+                match &self.response {
+                    Some(response) if response.is_success() => RequestState::Success,
+                    Some(_) => RequestState::Error,
+                    None => RequestState::Idle,
+                }
+            };
+        }
+    }
+
     /// Record that a URL was refused: the message names the rules
     /// `HttpRequest::new` checks.
     pub(super) fn reject_url(&mut self) {
         self.url_rejected = true;
-        self.error = Some("Invalid URL: only http:// and https:// schemes are allowed, and URL must not exceed 8192 characters".to_string());
+        self.error = Some(URL_REFUSED.to_string());
         self.state = RequestState::Error;
     }
 }

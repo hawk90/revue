@@ -37,12 +37,11 @@ impl HttpClient {
     pub fn url(mut self, url: impl Into<String>) -> Self {
         let url_str = url.into();
         if let Some(valid_req) = HttpRequest::new(&url_str) {
-            self.request.url = valid_req.url;
-            self.url_rejected = false;
+            self.accept_url(valid_req.url);
         } else {
             self.reject_url();
+            self.url_cursor = self.request.url.len();
         }
-        self.url_cursor = self.request.url.len();
         self
     }
 

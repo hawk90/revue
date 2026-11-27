@@ -50,7 +50,8 @@ impl HttpClient {
         match (&self.response, self.view) {
             (None, _) => 0,
             (Some(response), ResponseView::Headers) => response.headers.len(),
-            (Some(response), _) => response.body.lines().count(),
+            (Some(response), ResponseView::Body) => response.formatted_body().lines().count(),
+            (Some(response), ResponseView::Raw) => response.body.lines().count(),
         }
     }
 

@@ -150,9 +150,11 @@ impl HttpClient {
         let content_height = area.height.saturating_sub(content_y);
 
         match self.view {
-            ResponseView::Body | ResponseView::Raw => {
-                self.draw_body(ctx, response, content_y, content_height)
+            ResponseView::Body => {
+                let body = response.formatted_body();
+                self.draw_body(ctx, &body, content_y, content_height)
             }
+            ResponseView::Raw => self.draw_body(ctx, &response.body, content_y, content_height),
             ResponseView::Headers => self.draw_headers(ctx, response, content_y, content_height),
         }
     }
@@ -209,17 +211,11 @@ impl HttpClient {
         self.scroll.offset()
     }
 
-    /// Body and Raw: the body's lines from the scrolled-to one on.
-    fn draw_body(
-        &self,
-        ctx: &mut RenderContext,
-        response: &HttpResponse,
-        content_y: u16,
-        content_height: u16,
-    ) {
+    /// Body and Raw: the lines of `body` (the formatted body or the raw one)
+    /// from the scrolled-to one on.
+    fn draw_body(&self, ctx: &mut RenderContext, body: &str, content_y: u16, content_height: u16) {
         let area = ctx.area;
-        for (i, line) in response
-            .body
+        for (i, line) in body
             .lines()
             .skip(self.scrolled(content_height))
             .take(content_height as usize)
@@ -230,7 +226,8 @@ impl HttpClient {
     }
 
     /// Headers: one `key: value` row per header from the scrolled-to one on, the
-    /// key clipped to half the width.
+    /// key clipped to half the width, in [`HttpResponse::sorted_headers`]
+    /// order.
     fn draw_headers(
         &self,
         ctx: &mut RenderContext,
@@ -240,8 +237,8 @@ impl HttpClient {
     ) {
         let area = ctx.area;
         for (i, (key, value)) in response
-            .headers
-            .iter()
+            .sorted_headers()
+            .into_iter()
             .skip(self.scrolled(content_height))
             .take(content_height as usize)
             .enumerate()
