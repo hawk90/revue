@@ -6,7 +6,7 @@ use super::types::{ComponentStats, Frame, ProfilerView, RenderEvent};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::utils::{display_width, truncate_with_suffix};
+use crate::utils::{display_width, pad_to_width, truncate_with_suffix};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -378,12 +378,12 @@ impl Profiler {
         {
             let y = content_y.saturating_add(i as u16);
 
-            // Component name
-            let name = truncate_with_suffix(&stat.name, 20, "...");
+            // Component name, 20 columns wide
+            let name = pad_to_width(&truncate_with_suffix(&stat.name, 20, "..."), 20);
 
             // Stats
             let line = format!(
-                "{:<20} {:>6.2}ms total  {:>6.2}ms avg  {:>4} renders",
+                "{} {:>6.2}ms total  {:>6.2}ms avg  {:>4} renders",
                 name,
                 stat.total_time.as_secs_f64() * 1000.0,
                 stat.avg_time.as_secs_f64() * 1000.0,
@@ -425,8 +425,8 @@ impl Profiler {
         {
             let y = content_y.saturating_add(i as u16);
 
-            // Component name
-            let name = truncate_with_suffix(&stat.name, 20, "...");
+            // Component name, 20 columns wide
+            let name = pad_to_width(&truncate_with_suffix(&stat.name, 20, "..."), 20);
 
             // Bar width based on count
             let bar_width =
@@ -434,7 +434,7 @@ impl Profiler {
             let bar_width = bar_width.max(1);
 
             // Draw name and count
-            let count_str = format!("{:<20} {:>6}", name, stat.render_count);
+            let count_str = format!("{} {:>6}", name, stat.render_count);
             self.render_text(buffer, area, area.x, y, &count_str, config.fg_color);
 
             // Draw bar

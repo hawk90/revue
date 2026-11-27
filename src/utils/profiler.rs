@@ -25,6 +25,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 use std::time::{Duration, Instant};
 
+use crate::utils::unicode::{pad_to_width, truncate_with_suffix};
+
 // =============================================================================
 // Timing Entry
 // =============================================================================
@@ -334,13 +336,10 @@ impl Profiler {
 
         for (name, stat) in entries {
             output.push_str(&format!(
-                "{:<30} {:>8} {:>10.2} {:>10.3} {:>10.3} {:>10.3}\n",
-                // `{:<30}` pads by characters, so count characters here too
-                if name.chars().count() > 30 {
-                    format!("{}...", name.chars().take(27).collect::<String>())
-                } else {
-                    name.clone()
-                },
+                "{} {:>8} {:>10.2} {:>10.3} {:>10.3} {:>10.3}\n",
+                // Cut and pad by terminal columns, so a wide name keeps the
+                // later columns where the header puts them
+                pad_to_width(&truncate_with_suffix(&name, 30, "..."), 30),
                 stat.count,
                 stat.total_ms(),
                 stat.avg_ms(),
