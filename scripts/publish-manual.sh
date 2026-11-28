@@ -39,8 +39,7 @@ cargo publish --token "$CRATES_IO_TOKEN"
 
 # Wait for revue-macros to be available on crates.io
 echo ""
-echo "Waiting for revue-macros to be available on crates.io..."
-sleep 30
+"$SCRIPT_DIR/wait-for-crate.sh" revue-macros "$VERSION"
 
 # Publish revue
 echo ""
