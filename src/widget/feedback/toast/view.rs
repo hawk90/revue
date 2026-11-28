@@ -22,9 +22,9 @@ impl View for Toast {
         } else {
             (ctx.buffer.width(), ctx.buffer.height())
         };
-        let (toast_width, toast_height) = self.calculate_size(space_w);
+        let (toast_width, toast_height) = self.calculate_size(space_w, space_h);
         // `width(0)`: no box to draw
-        if toast_width == 0 {
+        if toast_width == 0 || toast_height == 0 {
             return;
         }
         let (abs_x, abs_y) = self.calculate_position(space_w, space_h, toast_width, toast_height);
@@ -150,8 +150,9 @@ impl Toast {
         }
     }
 
-    /// Calculate toast dimensions
-    fn calculate_size(&self, max_width: u16) -> (u16, u16) {
+    /// Calculate toast dimensions: no wider and no taller than the space it
+    /// is placed in (a message with more lines is cut, see `push_content`)
+    fn calculate_size(&self, max_width: u16, max_height: u16) -> (u16, u16) {
         // Worked out in usize and clamped to u16: a count cast to u16 and
         // then added to overflows near 65535 (#1552)
         let clamp = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
@@ -161,7 +162,7 @@ impl Toast {
         let width = self.width.unwrap_or(clamp(natural)).min(max_width);
         // One row per line the message wraps to, plus the border
         let height = self.lines(width).len() + if self.show_border { 2 } else { 0 };
-        (width, clamp(height))
+        (width, clamp(height).min(max_height))
     }
 
     /// Calculate toast position
@@ -222,9 +223,20 @@ impl Toast {
 
         let msg_x = left + self.icon_width();
         // The rows inside the box: a message with more lines than fit in
-        // the clamped height is cut at its bottom
+        // the clamped height is cut at its bottom, and the last row shown
+        // ends with the left-out marker
         let rows = usize::from(toast_height.saturating_sub(2 * cy));
-        for (row, line) in self.lines(toast_width).iter().take(rows).enumerate() {
+        let lines = self.lines(toast_width);
+        let cut = lines.len() > rows;
+        for (row, line) in lines.iter().take(rows).enumerate() {
+            let marked;
+            let line = if cut && row + 1 == rows {
+                let room = usize::from(self.text_width(toast_width)).saturating_sub(1);
+                marked = format!("{}…", crate::utils::unicode::truncate_to_width(line, room));
+                &marked
+            } else {
+                line
+            };
             let mut tx = msg_x;
             for ch in line.chars() {
                 let cw = crate::utils::char_width(ch) as u16;
