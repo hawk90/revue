@@ -93,7 +93,7 @@ See [Custom Implementations](#custom-implementations) below.
 | **notify** | 8.2 | File watching | Hot reload (`hot-reload` feature) |
 | **sysinfo** | 0.39 | System/process info | Process monitor (`sysinfo` feature) |
 | **reqwest** | 0.13 | HTTP client | HTTP client widget (`http` feature) |
-| **similar** | 3.0 | Text diffing | Diff viewer (`diff` feature) |
+| **similar** | 3.2 | Text diffing, changed words (`inline`, `unicode` features) | Diff viewer (`diff` feature) |
 | **qrcode** | 0.14 | QR code generation | QR widget (`qrcode` feature) |
 | **tracing** | 0.1 | Logging | Debug (`tracing` feature) |
 

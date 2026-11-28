@@ -11,7 +11,7 @@ pub fn examples() -> Vec<Example> {
     vec![
         Example::new(
             "Diff Viewer",
-            "Side-by-side and unified diff with syntax highlighting",
+            "Side-by-side, unified and inline diff with changed words emphasized",
             render_diff_viewer(&primary, &error, &success, &muted),
         ),
         Example::new(
@@ -51,7 +51,7 @@ pub fn examples() -> Vec<Example> {
         ),
         Example::new(
             "Inline Diff",
-            "Word-level and character-level change highlighting",
+            "Word-level change highlighting",
             Border::rounded().title(" Inline Diff ").child(
                 vstack()
                     .gap(1)
@@ -62,7 +62,7 @@ pub fn examples() -> Vec<Example> {
                     .child(Text::new("  over the lazy dog.").fg(muted))
                     .child(Text::new(""))
                     .child(Text::new("• Word diff").fg(muted))
-                    .child(Text::new("• Character diff").fg(muted))
+                    .child(Text::new("• Alike lines paired").fg(muted))
                     .child(Text::new("• Highlight changes").fg(muted)),
             ),
         ),
@@ -118,7 +118,7 @@ fn render_diff_viewer(_primary: &Color, _error: &Color, _success: &Color, muted:
             .child(Text::new(""))
             .child(Text::new("• Side-by-side diff").fg(*muted))
             .child(Text::new("• Unified diff").fg(*muted))
-            .child(Text::new("• Syntax highlight").fg(*muted)),
+            .child(Text::new("• Changed words emphasized").fg(*muted)),
     )
 }
 

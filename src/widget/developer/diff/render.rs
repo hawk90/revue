@@ -1,9 +1,9 @@
-//! Drawing the diff viewer: split and unified views
+//! Drawing the diff viewer: split, unified and inline views
 
+use super::pair::{inline_parts, Part, Segments};
 use super::{ChangeType, DiffLine, DiffMode, DiffViewer};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::{char_width, truncate_to_width};
 use crate::widget::traits::{RenderContext, View};
 
 /// Line rendering layout parameters
@@ -16,19 +16,47 @@ struct LineLayout {
     content_width: usize,
 }
 
-/// A row of the viewer: a diff line, or a run of unchanged lines folded away
-pub(super) enum Row<'a> {
-    Line(&'a DiffLine),
+/// Which text of a diff line a row shows
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Side {
+    /// The whole line: both texts of a modified pair
+    Both,
+    /// The old text of a modified pair (the unified `-` row)
+    Old,
+    /// The new text of a modified pair (the unified `+` row)
+    New,
+}
+
+/// A row of the viewer: a diff line (by index), or a run of unchanged lines
+/// folded away
+pub(super) enum Row {
+    Line(usize, Side),
     Fold(usize),
 }
 
+/// A run of text drawn in one style
+type Run<'a> = (&'a str, Option<Color>, Option<Color>);
+
 impl DiffViewer {
     /// The rows to draw: every diff line, or with a context set, the lines
-    /// near a change and a fold for each longer unchanged run
-    pub(super) fn rows(&self) -> Vec<Row<'_>> {
+    /// near a change and a fold for each longer unchanged run. The unified
+    /// view draws a modified pair as its `-` row and its `+` row.
+    pub(super) fn rows(&self) -> Vec<Row> {
         let lines = &self.diff_lines;
+        let mut rows = Vec::new();
+        let push = |rows: &mut Vec<Row>, i: usize| {
+            if self.mode == DiffMode::Unified && lines[i].change == ChangeType::Modified {
+                rows.push(Row::Line(i, Side::Old));
+                rows.push(Row::Line(i, Side::New));
+            } else {
+                rows.push(Row::Line(i, Side::Both));
+            }
+        };
         let Some(context) = self.context_lines else {
-            return lines.iter().map(Row::Line).collect();
+            for i in 0..lines.len() {
+                push(&mut rows, i);
+            }
+            return rows;
         };
 
         let mut near = vec![false; lines.len()];
@@ -39,11 +67,10 @@ impl DiffViewer {
             }
         }
 
-        let mut rows = Vec::new();
         let mut i = 0;
         while i < lines.len() {
             if near[i] {
-                rows.push(Row::Line(&lines[i]));
+                push(&mut rows, i);
                 i += 1;
                 continue;
             }
@@ -53,7 +80,7 @@ impl DiffViewer {
             }
             // A marker for one line would take as much room as the line
             if i - start == 1 {
-                rows.push(Row::Line(&lines[start]));
+                push(&mut rows, start);
             } else {
                 rows.push(Row::Fold(i - start));
             }
@@ -63,7 +90,7 @@ impl DiffViewer {
 
     /// `rows` from the scrolled-to one on, as many as fit in `height`: the
     /// offset kept so the last page is full (#973)
-    fn scrolled<'a>(&self, rows: Vec<Row<'a>>, height: usize) -> impl Iterator<Item = Row<'a>> {
+    fn scrolled(&self, rows: Vec<Row>, height: usize) -> impl Iterator<Item = Row> {
         self.scroll.set_content(rows.len());
         self.scroll.set_viewport(height);
         let offset = self.scroll.offset();
@@ -96,6 +123,66 @@ impl DiffViewer {
         });
     }
 
+    /// The runs of one text of a modified pair: the changed words in the
+    /// removed (`old`) or added colors, the rest on the modified background
+    fn pair_runs<'a>(&self, line: &'a DiffLine, segments: &Segments, old: bool) -> Vec<Run<'a>> {
+        let (text, runs, fg, bg) = if old {
+            let c = &self.colors;
+            (&line.left, &segments.old, c.removed_fg, c.removed_bg)
+        } else {
+            let c = &self.colors;
+            (&line.right, &segments.new, c.added_fg, c.added_bg)
+        };
+        runs.iter()
+            .map(|(changed, range)| {
+                if *changed {
+                    (&text[range.clone()], Some(fg), Some(bg))
+                } else {
+                    (&text[range.clone()], None, Some(self.colors.modified_bg))
+                }
+            })
+            .collect()
+    }
+
+    /// The runs of an inline row for a modified pair: shared text on the
+    /// modified background, removed words then added words in their colors
+    fn inline_runs<'a>(&self, line: &'a DiffLine, segments: &Segments) -> Vec<Run<'a>> {
+        let c = &self.colors;
+        inline_parts(&line.left, &line.right, segments)
+            .into_iter()
+            .map(|(part, text)| match part {
+                Part::Equal => (text, None, Some(c.modified_bg)),
+                Part::Removed => (text, Some(c.removed_fg), Some(c.removed_bg)),
+                Part::Added => (text, Some(c.added_fg), Some(c.added_bg)),
+            })
+            .collect()
+    }
+
+    /// The segments of diff line `index`, empty for a line that is not a
+    /// modified pair
+    fn segments_of(&self, index: usize) -> Segments {
+        self.segments
+            .get(index)
+            .cloned()
+            .flatten()
+            .unwrap_or_default()
+    }
+
+    /// Draw `runs` one after another from `x`, stopping before column
+    /// `end`; returns the columns used
+    fn draw_runs(ctx: &mut RenderContext, x: u16, y: u16, end: u16, runs: &[Run]) -> u16 {
+        let mut cx = x;
+        for &(text, fg, bg) in runs {
+            cx += ctx.put_str_with(cx, y, text, end, |ch| {
+                let mut cell = Cell::new(ch);
+                cell.fg = fg;
+                cell.bg = bg;
+                cell
+            });
+        }
+        cx - x
+    }
+
     /// Render split view
     fn render_split(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
@@ -122,8 +209,8 @@ impl DiffViewer {
         let visible_lines = (area.height - 1) as usize;
         for (i, row) in self.scrolled(self.rows(), visible_lines).enumerate() {
             let y = 1 + i as u16;
-            let line = match row {
-                Row::Line(line) => line,
+            let index = match row {
+                Row::Line(index, _) => index,
                 Row::Fold(hidden) => {
                     self.render_fold(ctx, y, hidden);
                     continue;
@@ -138,7 +225,7 @@ impl DiffViewer {
                 digits,
                 content_width,
             };
-            self.render_line_half(ctx, line, true, &left_layout);
+            self.render_line_half(ctx, index, true, &left_layout);
 
             // Separator
             let mut sep = Cell::new('│');
@@ -153,7 +240,7 @@ impl DiffViewer {
                 digits,
                 content_width,
             };
-            self.render_line_half(ctx, line, false, &right_layout);
+            self.render_line_half(ctx, index, false, &right_layout);
         }
     }
 
@@ -161,7 +248,7 @@ impl DiffViewer {
     fn render_line_half(
         &self,
         ctx: &mut RenderContext,
-        line: &DiffLine,
+        index: usize,
         is_left: bool,
         layout: &LineLayout,
     ) {
@@ -172,6 +259,7 @@ impl DiffViewer {
             digits,
             content_width,
         } = *layout;
+        let line = &self.diff_lines[index];
         let (content, line_num, bg) = if is_left {
             (
                 &line.left,
@@ -211,31 +299,25 @@ impl DiffViewer {
         }
 
         // Content
-        let fg = match line.change {
-            ChangeType::Added => Some(self.colors.added_fg),
-            ChangeType::Removed => Some(self.colors.removed_fg),
-            _ => None,
+        let start = x + line_num_width;
+        let end = start.saturating_add(content_width as u16);
+        let runs = if line.change == ChangeType::Modified {
+            self.pair_runs(line, &self.segments_of(index), is_left)
+        } else {
+            let fg = match line.change {
+                ChangeType::Added => Some(self.colors.added_fg),
+                ChangeType::Removed => Some(self.colors.removed_fg),
+                _ => None,
+            };
+            vec![(content.as_str(), fg, bg)]
         };
-
-        let truncated = truncate_to_width(content, content_width);
-        let mut dx: u16 = 0;
-        for ch in truncated.chars() {
-            let cw = char_width(ch) as u16;
-            if dx + cw > content_width as u16 {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = fg;
-            cell.bg = bg;
-            ctx.set(x + line_num_width + dx, y, cell);
-            dx += cw;
-        }
+        let used = Self::draw_runs(ctx, start, y, end, &runs);
 
         // Fill remaining with background
-        for i in dx..(content_width as u16) {
+        for cx in start + used..end {
             let mut cell = Cell::new(' ');
             cell.bg = bg;
-            ctx.set(x + line_num_width + i, y, cell);
+            ctx.set(cx, y, cell);
         }
     }
 
@@ -274,7 +356,10 @@ impl DiffViewer {
         }
     }
 
-    /// Render unified view
+    /// Render the unified and inline views: one column, a `-` or `+`
+    /// before each changed row. Unified draws a modified pair as its `-`
+    /// row and its `+` row; inline as one `~` row, removed words before the
+    /// added ones, as `git diff --word-diff=color` does.
     fn render_unified(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         // Both numbers, a colon between them and a space after
@@ -284,25 +369,31 @@ impl DiffViewer {
         } else {
             0
         };
-        let content_width = area.width.saturating_sub(line_num_width.saturating_add(1)) as usize;
+        let content_x = line_num_width.saturating_add(1);
 
         let visible_lines = area.height as usize;
         for (i, row) in self.scrolled(self.rows(), visible_lines).enumerate() {
             let y = i as u16;
-            let line = match row {
-                Row::Line(line) => line,
+            let (index, side) = match row {
+                Row::Line(index, side) => (index, side),
                 Row::Fold(hidden) => {
                     self.render_fold(ctx, y, hidden);
                     continue;
                 }
+            };
+            let line = &self.diff_lines[index];
+            let (left_num, right_num) = match side {
+                Side::Both => (line.left_num, line.right_num),
+                Side::Old => (line.left_num, None),
+                Side::New => (None, line.right_num),
             };
 
             // Line numbers (left:right)
             if self.show_line_numbers {
                 let num_str = format!(
                     "{:>digits$}:{:<digits$}",
-                    line.left_num.map(|n| n.to_string()).unwrap_or_default(),
-                    line.right_num.map(|n| n.to_string()).unwrap_or_default()
+                    left_num.map(|n| n.to_string()).unwrap_or_default(),
+                    right_num.map(|n| n.to_string()).unwrap_or_default()
                 );
                 for (j, ch) in num_str.chars().enumerate() {
                     if j as u16 >= line_num_width {
@@ -315,11 +406,16 @@ impl DiffViewer {
             }
 
             // Change indicator
-            let (indicator, fg, bg) = match line.change {
-                ChangeType::Added => ('+', self.colors.added_fg, self.colors.added_bg),
-                ChangeType::Removed => ('-', self.colors.removed_fg, self.colors.removed_bg),
-                ChangeType::Modified => ('~', self.colors.added_fg, self.colors.modified_bg),
-                ChangeType::Equal => (' ', Color::WHITE, Color::default()),
+            let c = &self.colors;
+            let (indicator, fg, bg) = match (line.change, side) {
+                (ChangeType::Added, _) | (ChangeType::Modified, Side::New) => {
+                    ('+', c.added_fg, c.added_bg)
+                }
+                (ChangeType::Removed, _) | (ChangeType::Modified, Side::Old) => {
+                    ('-', c.removed_fg, c.removed_bg)
+                }
+                (ChangeType::Modified, Side::Both) => ('~', c.added_fg, c.modified_bg),
+                (ChangeType::Equal, _) => (' ', Color::WHITE, Color::default()),
             };
 
             let mut ind_cell = Cell::new(indicator);
@@ -328,24 +424,17 @@ impl DiffViewer {
             ctx.set(line_num_width, y, ind_cell);
 
             // Content
-            let content = if !line.right.is_empty() {
-                &line.right
-            } else {
-                &line.left
-            };
-            let truncated = truncate_to_width(content, content_width);
-            let mut dx: u16 = 0;
-            for ch in truncated.chars() {
-                let cw = char_width(ch) as u16;
-                if dx + cw > content_width as u16 {
-                    break;
+            let runs = match (line.change, side) {
+                (ChangeType::Modified, Side::Both) => {
+                    self.inline_runs(line, &self.segments_of(index))
                 }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(fg);
-                cell.bg = Some(bg);
-                ctx.set(line_num_width + 1 + dx, y, cell);
-                dx += cw;
-            }
+                (ChangeType::Modified, side) => {
+                    self.pair_runs(line, &self.segments_of(index), side == Side::Old)
+                }
+                (ChangeType::Removed, _) => vec![(line.left.as_str(), Some(fg), Some(bg))],
+                _ => vec![(line.right.as_str(), Some(fg), Some(bg))],
+            };
+            Self::draw_runs(ctx, content_x, y, area.width, &runs);
         }
     }
 }
