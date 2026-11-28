@@ -39,7 +39,7 @@ pub(crate) fn axis_cell(value: f64, min: f64, max: f64, span: u16) -> u16 {
 
 /// Render grid lines in the chart area, at most one per row or column
 /// however many ticks there are: tick `i` of `ticks` on the column and
-/// row its tick label and [`axis_cell`] use, the first on the left and
+/// row its tick label and `axis_cell` use, the first on the left and
 /// top edges and the last on the right and bottom ones (#1622)
 ///
 /// The `chart_area` parameter uses **relative** coordinates.
