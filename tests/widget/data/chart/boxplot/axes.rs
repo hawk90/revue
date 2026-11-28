@@ -92,9 +92,10 @@ fn test_boxplot_groups_beyond_width_are_marked() {
 fn test_boxplot_far_too_many_groups() {
     // 1000 groups in 20 chart columns (6..26): 19 drawn, `…` at 25. The
     // labels overlap; the last one stops before the `…`.
-    let buffer = render(&many(1000, |i| format!("g{i}")), 27, 20);
+    // "grp18" is centered on column 24: its "18" would reach past it.
+    let buffer = render(&many(1000, |i| format!("grp{i}")), 27, 20);
     assert_eq!(cols(&buffer, 9, 6, 27), format!("{}  ", "├".repeat(19)));
-    assert_eq!(cols(&buffer, 19, 22, 27), "gg1… ");
+    assert_eq!(cols(&buffer, 19, 22, 27), "grp… ");
 }
 
 #[test]
@@ -108,15 +109,26 @@ fn test_boxplot_more_than_65535_groups() {
 
 #[test]
 fn test_boxplot_wide_label_next_to_the_marker() {
-    // "a한" is 3 wide, centered: 'a' left of the group's column, '한' on it
-    // and the next. The last group's '한' would cover the `…` column, so it
-    // is not drawn and the `…` keeps its cell.
-    let buffer = render(&many(34, |_| "a한".into()), 40, 20);
+    // 32 of 34 groups drawn, `…` at 38. "한" is 2 wide, on its group's
+    // column and the one before: the last drawn group's (31, at 36..38)
+    // fits.
+    let buffer = render(&many(34, |_| "한".into()), 40, 20);
+    let at = |x| buffer.get(x, 19).unwrap().symbol;
+    assert_eq!([at(36), at(37), at(38), at(39)], ['한', '\0', '…', ' ']);
+
+    // "a한" on group 31 puts '한' on 37..39, over the `…` column: only the
+    // 'a' is drawn, and column 37 stays untouched
+    let buffer = render(
+        &many(34, |i| if i == 31 { "a한".into() } else { "x".into() }),
+        40,
+        20,
+    );
     let at = |x| buffer.get(x, 19).unwrap().symbol;
     assert_eq!(
         [at(35), at(36), at(37), at(38), at(39)],
-        ['a', 'a', ' ', '…', ' ']
+        ['x', 'a', ' ', '…', ' ']
     );
+    assert_eq!(buffer.get(37, 19).unwrap().fg, None);
 }
 
 #[test]
