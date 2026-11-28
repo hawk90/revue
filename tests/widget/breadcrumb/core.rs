@@ -56,7 +56,7 @@ fn test_breadcrumb_collapses_by_default() {
         .push("Beta")
         .push("Gamma")
         .push("Delta");
-    assert_eq!(line(&bc, 27), "Alpha › ... › Gamma › Delta");
+    assert_eq!(line(&bc, 27), "Alpha › … › Gamma › Delta");
 }
 
 #[test]
@@ -274,7 +274,7 @@ fn test_breadcrumb_collapse_enabled() {
         .push("Beta")
         .push("Gamma")
         .push("Delta");
-    assert_eq!(line(&bc, 40), "Alpha › ... › Gamma › Delta");
+    assert_eq!(line(&bc, 40), "Alpha › … › Gamma › Delta");
 }
 
 #[test]
@@ -706,7 +706,7 @@ fn test_breadcrumb_home_counts_toward_collapse_width() {
     // ... and collapses in 31 instead of being cut off
     assert_eq!(
         line(&make().max_width(31), 40),
-        "~ › Alpha › ... › Gamma › Delta"
+        "~ › Alpha › … › Gamma › Delta"
     );
 }
 
@@ -740,7 +740,7 @@ fn test_breadcrumb_icon_counts_toward_collapse_width() {
     );
     assert_eq!(
         line(&make().max_width(29), 40),
-        "* Alpha › ... › Gamma › Delta"
+        "* Alpha › … › Gamma › Delta"
     );
 }
 
@@ -814,7 +814,47 @@ fn test_breadcrumb_render_with_collapse() {
         .push("Needs")
         .push("Collapse");
     // First item, ellipsis, then the last two (clipped at max_width)
-    assert_eq!(line(&bc, 30), "Very › ... › Needs › Coll");
+    assert_eq!(line(&bc, 30), "Very › … › Needs › Collap");
+}
+
+/// #1581: the left-out items are one `…` cell, as in Pagination, so the
+/// first item keeps the two columns three periods took
+#[test]
+fn test_breadcrumb_collapsed_items_are_one_ellipsis_cell() {
+    let gray = Color::rgb(90, 90, 90);
+    let bc = Breadcrumb::new()
+        .home(false)
+        .separator_color(gray)
+        .push("Alphabetical")
+        .push("B")
+        .push("C")
+        .push("D");
+    // The first label keeps all but the 8 columns " › … › " and the next
+    // item need
+    let buffer = render(&bc, 12);
+    let cells: Vec<(char, Option<Color>)> = (0..12)
+        .map(|x| {
+            let c = buffer.get(x, 0).unwrap();
+            (c.symbol, c.fg)
+        })
+        .collect();
+    let item = Some(revue::widget::theme::LIGHT_GRAY);
+    let sep = Some(gray);
+    let expected = [
+        ('A', item),
+        ('l', item),
+        ('p', item),
+        ('h', item),
+        (' ', None),
+        ('›', sep),
+        (' ', None),
+        ('…', sep),
+        (' ', None),
+        ('›', sep),
+        (' ', None),
+        ('C', item),
+    ];
+    assert_eq!(cells, expected);
 }
 
 #[test]
