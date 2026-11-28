@@ -1227,3 +1227,36 @@ mod float_inputs {
         assert!(w >= 1 && h >= 1);
     }
 }
+
+// ==================== Sizes past i16 ====================
+
+/// A size past 32767 resizes from where it is, and a size at u16::MAX stays
+/// there: the delta is added in a wider type, not in i16 (where 40000
+/// wrapped to a negative width and came out as 1)
+#[test]
+fn test_resizable_delta_on_a_size_past_i16() {
+    let mut r = Resizable::new(40_000, 40_000);
+    r.start_resize(ResizeHandle::BottomRight);
+    r.apply_delta(1, -1);
+    assert_eq!(r.size(), (40_001, 39_999));
+
+    let mut r = Resizable::new(u16::MAX, u16::MAX);
+    r.start_resize(ResizeHandle::BottomRight);
+    r.apply_delta(1, 1);
+    assert_eq!(r.size(), (u16::MAX, u16::MAX));
+}
+
+/// The smallest delta through a handle that flips its sign (Left, Top) does
+/// not overflow, and a delta past zero stops at the minimum size
+#[test]
+fn test_resizable_delta_at_i16_min() {
+    let mut r = Resizable::new(10, 10);
+    r.start_resize(ResizeHandle::TopLeft);
+    r.apply_delta(i16::MIN, i16::MIN);
+    assert_eq!(r.size(), (10 + 32_768, 10 + 32_768));
+
+    let mut r = Resizable::new(10, 10);
+    r.start_resize(ResizeHandle::BottomRight);
+    r.apply_delta(i16::MIN, i16::MIN);
+    assert_eq!(r.size(), (3, 3), "the default minimum");
+}

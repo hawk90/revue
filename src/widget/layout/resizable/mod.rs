@@ -292,16 +292,19 @@ where
             return;
         }
 
+        // In i32: a size past 32767 or a delta of -32768 wraps in i16
+        let resized = |size: u16, d: i16, direction: i8| {
+            let moved = i32::from(size) + i32::from(d) * i32::from(direction);
+            moved.clamp(1, i32::from(u16::MAX)) as u16
+        };
         let new_width = if self.resize_direction.horizontal != 0 {
-            let delta = dx * self.resize_direction.horizontal as i16;
-            (self.width as i16 + delta).max(1) as u16
+            resized(self.width, dx, self.resize_direction.horizontal)
         } else {
             self.width
         };
 
         let new_height = if self.resize_direction.vertical != 0 {
-            let delta = dy * self.resize_direction.vertical as i16;
-            (self.height as i16 + delta).max(1) as u16
+            resized(self.height, dy, self.resize_direction.vertical)
         } else {
             self.height
         };
