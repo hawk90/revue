@@ -4,8 +4,8 @@ use super::ScatterChart;
 use crate::layout::Rect;
 use crate::style::Color;
 use crate::widget::data::chart::chart_render::{
-    fill_background, render_axis_title, render_grid, render_legend, render_title,
-    render_x_axis_labels, render_y_axis_labels, y_axis_label_columns, y_label_column, LegendItem,
+    fill_background, render_axis_title, render_chart_x_labels, render_chart_y_labels, render_grid,
+    render_legend, render_title, y_axis_label_columns, y_label_column, LegendItem,
 };
 use crate::widget::traits::{RenderContext, View};
 
@@ -35,19 +35,20 @@ impl View for ScatterChart {
 
         // Calculate chart area (relative coordinates): the Y label column
         // fits the widest Y label, at most a third of the area (#1614)
+        let x_label_height = 1u16;
+        let chart_height = area
+            .height
+            .saturating_sub(title_offset + x_label_height + 1);
         let y_label_width = y_label_column(
-            y_axis_label_columns(rel_area, &self.y_axis, y_min, y_max),
+            y_axis_label_columns(chart_height, &self.y_axis, y_min, y_max),
             area.width,
         );
-        let x_label_height = 1u16;
 
         let chart_area = Rect {
             x: y_label_width,
             y: title_offset,
             width: area.width.saturating_sub(y_label_width + 1),
-            height: area
-                .height
-                .saturating_sub(title_offset + x_label_height + 1),
+            height: chart_height,
         };
 
         if chart_area.width < 5 || chart_area.height < 3 {
@@ -64,16 +65,23 @@ impl View for ScatterChart {
         );
         self.render_points(ctx, chart_area, bounds);
 
-        // Render axes
-        render_y_axis_labels(ctx, rel_area, &self.y_axis, y_min, y_max, y_label_width - 1);
-        render_x_axis_labels(
+        // Render axes: the labels on the rows and columns of the grid and
+        // the points (#1622)
+        render_chart_y_labels(
             ctx,
-            rel_area,
+            chart_area,
+            0,
+            &self.y_axis,
+            (y_min, y_max),
+            y_label_width - 1,
+        );
+        render_chart_x_labels(
+            ctx,
+            chart_area,
+            area.height - 1,
+            (0, area.width),
             &self.x_axis,
-            x_min,
-            x_max,
-            title_offset,
-            y_label_width,
+            (x_min, x_max),
         );
         render_axis_title(
             ctx,

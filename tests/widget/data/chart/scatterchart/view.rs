@@ -41,15 +41,18 @@ fn test_scatter_no_legend() {
 #[test]
 fn test_scatter_legend_bottom_left() {
     // 50x25: the legend box sits one cell in from the left edge, its bottom
-    // border on the row above the x labels
+    // border on the row above the x labels. (Column 0 of row 22 holds the
+    // first glyph of the bottom Y label, "0.95", which the box does not
+    // cover.)
     let chart = ScatterChart::new()
         .grid(ChartGrid::new())
         .series(ScatterSeries::new("Series A").points(&[(1.0, 1.0), (2.0, 2.0)]))
         .legend(Legend::bottom_left());
     let rows = render_rows(&chart, 50, 25);
-    assert!(rows[21].starts_with(" ┌──────────┐ "), "{:?}", rows[21]);
-    assert!(rows[22].starts_with(" │■ Series A│ "), "{:?}", rows[22]);
-    assert!(rows[23].starts_with(" └──────────┘ "), "{:?}", rows[23]);
+    let from_1 = |y: usize| -> String { rows[y].chars().skip(1).collect() };
+    assert!(from_1(21).starts_with("┌──────────┐ "), "{:?}", rows[21]);
+    assert!(from_1(22).starts_with("│■ Series A│ "), "{:?}", rows[22]);
+    assert!(from_1(23).starts_with("└──────────┘ "), "{:?}", rows[23]);
 }
 
 #[test]
@@ -137,10 +140,14 @@ fn y_labeled(format: &str) -> revue::render::Buffer {
 /// the area, and the plot starts after it and a gap column (#1614)
 #[test]
 fn test_scatter_y_label_column_fits_the_widest_label() {
-    // "-0.05" and "1.05": 5 columns, the plot (its first grid line) at 6
+    // "-0.05" and "1.05": 5 columns, the plot (its grid lines) at 6, each
+    // label on its grid line's row: the top and bottom of the plot (#1622)
     let rows = rows(&y_labeled("{}"));
-    assert_eq!(rows[0], format!("{}├{} ", " ".repeat(6), "─".repeat(22)));
-    assert_eq!(rows[1], format!("1.05{}", " ".repeat(26)));
+    assert_eq!(rows[0], format!("1.05  ├{} ", "─".repeat(22)));
+    for (y, row) in rows.iter().enumerate().take(9).skip(1) {
+        assert_eq!(*row, " ".repeat(30), "row {y}");
+    }
+    assert_eq!(rows[9], format!("-0.05 ├{} ", "─".repeat(22)));
 }
 
 #[test]
@@ -150,16 +157,16 @@ fn test_scatter_y_labels_past_a_third_are_cut_with_an_ellipsis() {
     // plot at 11
     let buffer = y_labeled("{}xxxxxxxxxx");
     let lines = rows(&buffer);
-    assert_eq!(lines[0], format!("{}├{} ", " ".repeat(11), "─".repeat(17)));
-    assert_eq!(lines[1], format!("1.05xxxxx…{}", " ".repeat(20)));
+    assert_eq!(lines[0], format!("1.05xxxxx… ├{} ", "─".repeat(17)));
+    assert_eq!(lines[9], format!("-0.05xxxx… ├{} ", "─".repeat(17)));
     for x in 0..10 {
-        assert_eq!(buffer.get(x, 1).unwrap().fg, Some(Color::RED), "x={x}");
+        assert_eq!(buffer.get(x, 0).unwrap().fg, Some(Color::RED), "x={x}");
+        assert_eq!(buffer.get(x, 9).unwrap().fg, Some(Color::RED), "x={x}");
     }
     // Wide glyphs stay whole: "1.05가나다라" is 12 columns, cut to 9
     // (`rows` shows the right half of a wide glyph as '\0')
     let lines = rows(&y_labeled("{}가나다라"));
-    assert_eq!(lines[0], format!("{}├{} ", " ".repeat(11), "─".repeat(17)));
-    assert_eq!(lines[1], format!("1.05가\0나\0…{}", " ".repeat(21)));
+    assert_eq!(lines[0], format!("1.05가\0나\0…  ├{} ", "─".repeat(17)));
 }
 
 /// A huge tick count draws one grid line and Y label per row and an X
@@ -181,12 +188,135 @@ fn test_scatter_huge_tick_counts_are_capped_at_the_cells() {
                 .format(AxisFormat::Custom("y".into())),
         );
     let rows = rows(&render(&chart, 30, 12));
-    // Rows 1..=10 hold a Y label each; the plot is columns 2..29 of rows
-    // 0..10, a grid line on every row of it
-    assert_eq!(rows[0], format!("  ├{} ", "─".repeat(26)));
-    for (y, row) in rows[1..10].iter().enumerate() {
-        assert_eq!(*row, format!("y ├{} ", "─".repeat(26)), "row {}", y + 1);
+    // The plot is columns 2..29 of rows 0..10, a grid line and a Y label
+    // on every row of it; X labels every other column, the last on the
+    // plot's last column (#1622)
+    for (y, row) in rows[..10].iter().enumerate() {
+        assert_eq!(*row, format!("y ├{} ", "─".repeat(26)), "row {y}");
     }
-    assert_eq!(rows[10], format!("y{}", " ".repeat(29)));
-    assert_eq!(rows[11], format!("y {}", "x ".repeat(14)));
+    assert_eq!(rows[10], " ".repeat(30));
+    assert_eq!(rows[11], format!("  {}", "x ".repeat(14)));
+}
+
+/// The two points (0, 0) and (10, 10) on the padded bounds -0.5..10.5,
+/// with both grid lines, a red Y axis and a green X axis
+fn two_points() -> ScatterChart {
+    use revue::style::Color;
+    use revue::widget::data::chart::Marker;
+    ScatterChart::new()
+        .no_legend()
+        .grid(ChartGrid::both())
+        .x_axis(Axis::new().color(Color::GREEN))
+        .y_axis(Axis::new().color(Color::RED))
+        .series(
+            ScatterSeries::new("S")
+                .points(&[(0.0, 0.0), (10.0, 10.0)])
+                .marker(Marker::Star),
+        )
+}
+
+/// Y labels sit on the rows of the horizontal grid lines and X labels are
+/// centered on the vertical ones, the points on the same scale: the
+/// chart area is columns 6..39 and rows 0..18 of 40x20, y_max on its top
+/// row and y_min on its bottom one, x_max on its last column, all drawn,
+/// at an offset too (#1622)
+#[test]
+fn test_scatter_labels_grid_and_points_share_the_chart_cells() {
+    use super::super::render_at;
+    use revue::layout::Rect;
+    use revue::style::Color;
+    let plain = format!("      {} ", "│     │     │      │     │      │");
+    let line = |label: &str| format!("{label:<6}├{} ", "─".repeat(32));
+    let mut expected: Vec<String> = (0..20).map(|_| plain.clone()).collect();
+    expected[0] = format!("10.5  ├{}★── ", "─".repeat(29));
+    for (y, label) in [
+        (3, "8.3"),
+        (6, "6.1"),
+        (10, "3.9"),
+        (13, "1.7"),
+        (17, "-0.50"),
+    ] {
+        expected[y] = line(label);
+    }
+    expected[16] = format!("      │★{}", &plain[10..]);
+    expected[18] = " ".repeat(40);
+    expected[19] = "    -0.50  1.7   3.9    6.1   8.3   10.5".to_string();
+    assert_eq!(rows(&render(&two_points(), 40, 20)), expected);
+
+    let buffer = render_at(&two_points(), Rect::new(3, 2, 40, 20));
+    for y in 0..24u16 {
+        for x in 0..45u16 {
+            let cell = buffer.get(x, y).unwrap();
+            let inside = (3..43).contains(&x) && (2..22).contains(&y);
+            let want = if inside {
+                expected[usize::from(y - 2)]
+                    .chars()
+                    .nth(usize::from(x - 3))
+                    .unwrap()
+            } else {
+                ' '
+            };
+            assert_eq!(cell.symbol, want, "({x}, {y})");
+            let label_fg = if y == 21 && cell.symbol != ' ' {
+                Some(Color::GREEN)
+            } else if x < 8 && cell.symbol != ' ' && inside {
+                Some(Color::RED)
+            } else {
+                None
+            };
+            if label_fg.is_some() {
+                assert_eq!(cell.fg, label_fg, "({x}, {y})");
+            }
+        }
+    }
+}
+
+/// The X labels of `format` with `ticks` ticks under the points (0, 0)
+/// and (10, 10) in a `width`x8 chart with vertical grid lines, and the
+/// grid line row above them
+fn x_labeled(format: &str, ticks: usize, width: u16) -> (String, String) {
+    use revue::widget::data::chart::{AxisFormat, Marker};
+    let format = match format {
+        "fixed2" => AxisFormat::Fixed(2),
+        custom => AxisFormat::Custom(custom.into()),
+    };
+    let chart = ScatterChart::new()
+        .no_legend()
+        .grid(ChartGrid::x_only())
+        .x_axis(Axis::new().ticks(ticks).format(format))
+        .series(
+            ScatterSeries::new("S")
+                .points(&[(0.0, 0.0), (10.0, 10.0)])
+                .marker(Marker::Star),
+        );
+    let rows = rows(&render(&chart, width, 8));
+    (rows[5].clone(), rows[7].clone())
+}
+
+/// Each X label is centered on its tick and cut with `…` to the columns
+/// between labeled ticks less one, so neighbors never overwrite each
+/// other; one past the right edge is moved in, whole (#1623)
+#[test]
+fn test_scatter_x_labels_are_cut_to_their_slot() {
+    // Ticks on columns 6, 10, 14 and 18: 3 columns each
+    let (grid, labels) = x_labeled("fixed2", 3, 20);
+    assert_eq!(grid, "-0.50 ┴   ┴   ┴   ┴ ");
+    assert_eq!(labels, "     -0… 3.… 6.… 10…");
+    // Ticks 6 or 7 columns apart: "10.50" moves in to end on the last
+    // column
+    let (grid, labels) = x_labeled("fixed2", 5, 40);
+    assert_eq!(grid, "-0.50 ┴     ┴     ┴      ┴     ┴      ┴ ");
+    assert_eq!(labels, "    -0.50 1.70  3.90   6.10  8.30  10.50");
+}
+
+/// A label moved in onto the one before it starts a column after that
+/// one and is cut with `…` to the columns left; wide glyphs stay whole
+/// (`rows` shows the right half of a wide glyph as '\0')
+#[test]
+fn test_scatter_x_labels_moved_in_never_overwrite() {
+    // Ticks on columns 6, 12, 18 and 24, each label cut to 5 columns;
+    // "가10…" would start at 21, inside "가6.…" (16..20) and its gap
+    let (grid, labels) = x_labeled("가{}", 3, 26);
+    assert_eq!(grid, "-0.50 ┴     ┴     ┴     ┴ ");
+    assert_eq!(labels, "    가\0-0… 가\03.… 가\06.… 가\01…");
 }
