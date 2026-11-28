@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.0](https://github.com/hawk90/revue/compare/v3.16.0...v3.17.0) (2026-11-28)
+
+
+### Features
+
+* **api:** name ImageFormat and LoggedAnnouncement ([#1200](https://github.com/hawk90/revue/issues/1200)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **testing:** a mock clock fixes the time of day and its time zone ([#1533](https://github.com/hawk90/revue/issues/1533), [#1569](https://github.com/hawk90/revue/issues/1569)) ([8cf2177](https://github.com/hawk90/revue/commit/8cf2177742c85eb44023c4b96019d95b8e94eaf1))
+* **widget:** diff viewer pairs alike lines into modified lines and draws their changed words ([#1202](https://github.com/hawk90/revue/issues/1202)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **widget:** option list handles its navigation and selection keys ([#1205](https://github.com/hawk90/revue/issues/1205)) ([1e9b5bf](https://github.com/hawk90/revue/commit/1e9b5bf34e3530e26c9e90b28c8d6765487b92a8))
+
+
+### Bug Fixes
+
+* a virtual list item height of 0, column counts past 65535, the profiler separator, shorten_path edges, and quiet reaped screen reader commands ([#1560](https://github.com/hawk90/revue/issues/1560)) ([a967e2c](https://github.com/hawk90/revue/commit/a967e2c83ee3d1898513869454489152c76802cc))
+* browser openers get null stdio and are reaped, devtools overlays draw whole cells, and the screen reader backend is deprecated ([#1570](https://github.com/hawk90/revue/issues/1570)) ([cad8090](https://github.com/hawk90/revue/commit/cad8090ab25e915dbf230ede13777b38da69e74e))
+* **chart:** mark left-out box plot groups and bar chart bars with an ellipsis ([#1546](https://github.com/hawk90/revue/issues/1546), [#1579](https://github.com/hawk90/revue/issues/1579)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* datagrid display order for a partial column_order, scroll and edit background; wait for the crates.io index before publishing revue; CLI install docs ([#1572](https://github.com/hawk90/revue/issues/1572)) ([84d79c8](https://github.com/hawk90/revue/commit/84d79c8b137788b7d730c9a155ac6d88ff32b310))
+* **datagrid:** columns follow the display order everywhere, and row_height paints every line ([#1547](https://github.com/hawk90/revue/issues/1547)) ([637496b](https://github.com/hawk90/revue/commit/637496bec760f2319726fb82e938af685f51c2d0))
+* **event:** custom event stamps read utils::clock ([#1576](https://github.com/hawk90/revue/issues/1576)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* left-out and truncation markers are one … cell, and truncate_start at 0 is empty ([#1599](https://github.com/hawk90/revue/issues/1599), [#1610](https://github.com/hawk90/revue/issues/1610), [#1611](https://github.com/hawk90/revue/issues/1611), [#1613](https://github.com/hawk90/revue/issues/1613)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **procmon:** list settings apply at once, a 7-digit pid keeps its gap, status is clipped like its header, no NaN memory share ([#1549](https://github.com/hawk90/revue/issues/1549)) ([e6e9d67](https://github.com/hawk90/revue/commit/e6e9d675767d58dbbc5e63f79fd55fbb7a90c9a7))
+* **testing:** ci group markers do not panic before 1970, and the ci report skips nameless diff paths ([#1575](https://github.com/hawk90/revue/issues/1575), [#1584](https://github.com/hawk90/revue/issues/1584)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **utils:** fps counter measures the frames of its window, and shorten_path and the profiler reports measure in terminal columns ([#1543](https://github.com/hawk90/revue/issues/1543)) ([3777b33](https://github.com/hawk90/revue/commit/3777b336125201facb3d3933f7ea422e97a9de4d))
+* **utils:** reveal_in_finder on Linux opens the current directory for a bare file name ([#1590](https://github.com/hawk90/revue/issues/1590)) ([70dcea1](https://github.com/hawk90/revue/commit/70dcea1200d037a74feef807946081de56b79f23))
+* **widget:** a toast is cut to its space with … ([#1566](https://github.com/hawk90/revue/issues/1566)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **widget:** a vertical divider and a dot status indicator draw the label they are given ([#1528](https://github.com/hawk90/revue/issues/1528)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **widget:** an empty time series near 1970 ends its hour at zero ([8cf2177](https://github.com/hawk90/revue/commit/8cf2177742c85eb44023c4b96019d95b8e94eaf1))
+* **widget:** breadcrumb keeps the last item whole when collapsing ([#1601](https://github.com/hawk90/revue/issues/1601)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **widget:** breadcrumb marks collapsed items with one ellipsis cell ([#1581](https://github.com/hawk90/revue/issues/1581)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **widget:** calendar draws a month only in the room its setup takes ([#998](https://github.com/hawk90/revue/issues/998)) ([1e9b5bf](https://github.com/hawk90/revue/commit/1e9b5bf34e3530e26c9e90b28c8d6765487b92a8))
+* **widget:** chart legend and label widths near 65535 ([#1571](https://github.com/hawk90/revue/issues/1571), [#1587](https://github.com/hawk90/revue/issues/1587)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **widget:** chart y label columns fit their labels in every chart, and crowded or huge tick counts draw one label per cell ([#1606](https://github.com/hawk90/revue/issues/1606), [#1614](https://github.com/hawk90/revue/issues/1614), [#1615](https://github.com/hawk90/revue/issues/1615), [#1616](https://github.com/hawk90/revue/issues/1616)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **widget:** datagrid and resizable resize past 32767 without wrapping ([#1595](https://github.com/hawk90/revue/issues/1595)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **widget:** datagrid column widths follow the CSS min/max rule and hand on space a capped column cannot take ([#1537](https://github.com/hawk90/revue/issues/1537), [#1594](https://github.com/hawk90/revue/issues/1594)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **widget:** datagrid footer Count is the number of shown rows ([#1538](https://github.com/hawk90/revue/issues/1538)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **widget:** date time picker draws the cursor, selected day and active field backgrounds ([#1573](https://github.com/hawk90/revue/issues/1573)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **widget:** debug_overlay panel clears what the view under it drew, and diff viewer docs say what it draws ([#1558](https://github.com/hawk90/revue/issues/1558)) ([8e79a71](https://github.com/hawk90/revue/commit/8e79a714cfd786861604914ea970554ac4716d7c))
+* **widget:** diff viewer joins a blank between two changed words into the change ([#1593](https://github.com/hawk90/revue/issues/1593)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **widget:** diff viewer numbers past four digits, log viewer load limit, option list disabled ends, and sizes near 65535 ([#1562](https://github.com/hawk90/revue/issues/1562)) ([bfecec5](https://github.com/hawk90/revue/commit/bfecec5447a80df474c267ffd58ab91a0473c1e9))
+* **widget:** divider treats an empty label as no label ([#1588](https://github.com/hawk90/revue/issues/1588)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **widget:** gauge arc cuts its inside label to the arc ([#1605](https://github.com/hawk90/revue/issues/1605)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **widget:** log viewer numbers each pushed line after the last, and widens the number column for long numbers ([#976](https://github.com/hawk90/revue/issues/976)) ([1e9b5bf](https://github.com/hawk90/revue/commit/1e9b5bf34e3530e26c9e90b28c8d6765487b92a8))
+* **widget:** multiselect shows as many tags as fit ([#1608](https://github.com/hawk90/revue/issues/1608)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **widget:** piechart places slice cells in i32 ([#1598](https://github.com/hawk90/revue/issues/1598)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **widget:** procmon's PID column is as wide as the widest listed PID ([#1545](https://github.com/hawk90/revue/issues/1545)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **widget:** richlog keeps its selection after a late min_level and paints bg over its whole area ([#1542](https://github.com/hawk90/revue/issues/1542)) ([1edce34](https://github.com/hawk90/revue/commit/1edce3456935788acebe1f4d6aeafd9df3a5f667))
+* **widget:** text wider than 65535 columns is measured as 65535 everywhere, not cut to 16 bits ([#1596](https://github.com/hawk90/revue/issues/1596), [#1607](https://github.com/hawk90/revue/issues/1607)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* **widget:** the terminal's command line gets its own row, and http client formats the Body view, drops stale errors and orders headers and params ([#1557](https://github.com/hawk90/revue/issues/1557)) ([d91a64b](https://github.com/hawk90/revue/commit/d91a64ba605f009a50c4641b59bdc1b8d5fdd381))
+* **widget:** time series day and month labels are real UTC dates ([#1574](https://github.com/hawk90/revue/issues/1574)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **widget:** tooltip and chart legend sizes near 65535 and in terminal columns, and clipped legends fill every row ([#1585](https://github.com/hawk90/revue/issues/1585)) ([c435eae](https://github.com/hawk90/revue/commit/c435eae91f430b6211b2acfe18d18982eaba1fce))
+* **widget:** vertical bar chart values are cut to their bar ([#1586](https://github.com/hawk90/revue/issues/1586)) ([ce5158e](https://github.com/hawk90/revue/commit/ce5158ed15aaace55fa416b5702b3b6b635fcb78))
+* **widget:** wide glyphs keep their style on both halves everywhere ([#1600](https://github.com/hawk90/revue/issues/1600), [#1609](https://github.com/hawk90/revue/issues/1609)) ([ab1bb76](https://github.com/hawk90/revue/commit/ab1bb768b74ab42916978806a69f3ff378422915))
+* zero divisors in sortable list, paged data and u16 counts, the timer's precise hours, and time-travel import position ([#1556](https://github.com/hawk90/revue/issues/1556)) ([75992cf](https://github.com/hawk90/revue/commit/75992cf4e5b4e26d81feb4923590436d3d5418b6))
+
 ## [3.16.0](https://github.com/hawk90/revue/compare/v3.15.0...v3.16.0) (2026-11-23)
 
 
