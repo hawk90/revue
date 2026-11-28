@@ -1,7 +1,8 @@
 //! TimeSeries marker tests: line and point markers with labels
 
-use super::super::{render, render_rows};
+use super::super::{render, render_at, render_rows, rows};
 use super::two_points;
+use revue::layout::Rect;
 use revue::style::Color;
 use revue::widget::data::chart::timeseries::{MarkerStyle, TimeMarker, TimeSeries, TimeSeriesData};
 
@@ -50,4 +51,26 @@ fn test_time_series_render_with_markers() {
         rows[11].contains("Event") && rows[11].contains('P'),
         "{rows:#?}"
     );
+}
+
+/// A marker label of 65536 columns is centered on its marker by its real
+/// width, so it starts at the area's left edge instead of at the marker,
+/// and runs to the area's edge under the time labels drawn after it;
+/// inside an area at an offset (#1596)
+#[test]
+fn test_time_series_marker_label_wider_than_u16() {
+    let chart = TimeSeries::new()
+        .time_range(super::fixed_range())
+        .marker(TimeMarker::new(1800, "m".repeat(65_536)).color(Color::GREEN));
+    let buffer = render_at(&chart, Rect::new(3, 2, 30, 12));
+    let rows = rows(&buffer);
+    assert_eq!(rows[13], "   mmmmmm00:00mmmmmmmmmmmmmmm01:0  ");
+    for x in 0..35 {
+        let cell = buffer.get(x, 13).unwrap();
+        if cell.symbol == 'm' {
+            assert_eq!(cell.fg, Some(Color::GREEN), "{x}");
+        }
+    }
+    // The marker line is in the plot's middle column
+    assert_eq!(buffer.get(21, 3).unwrap().symbol, '│');
 }

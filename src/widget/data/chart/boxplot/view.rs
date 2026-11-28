@@ -3,7 +3,7 @@
 use super::{render, BoxPlot};
 use crate::layout::Rect;
 use crate::style::Color;
-use crate::utils::display_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::data::chart::chart_common::ChartOrientation;
 use crate::widget::data::chart::chart_render::{fill_background, render_title};
 use crate::widget::traits::{RenderContext, View};
@@ -38,9 +38,9 @@ impl View for BoxPlot {
             let label_width = self
                 .groups
                 .iter()
-                .map(|g| display_width(&g.label))
+                .map(|g| display_width_u16(&g.label))
                 .max()
-                .map_or(0, |w| u16::try_from(w).unwrap_or(u16::MAX))
+                .unwrap_or(0)
                 .clamp(1, area.width / 3);
             let x = label_width + 1;
             Rect {

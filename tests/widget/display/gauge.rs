@@ -1084,3 +1084,44 @@ mod snapshots {
         pilot.snapshot("gauge_basic");
     }
 }
+
+/// An inside label of 65536 columns is not measured as 0 and centered at
+/// the middle: over the bar it starts at the bar's left edge and is cut at
+/// its end; beside a circle it runs to the area's edge; inside an area at
+/// an offset (#1596)
+#[test]
+fn test_gauge_inside_label_wider_than_u16() {
+    let render_row = |style: GaugeStyle| {
+        let g = Gauge::new()
+            .style(style)
+            .value(0.5)
+            .label("g".repeat(65_536))
+            .label_position(LabelPosition::Inside);
+        let mut buffer = Buffer::new(35, 5);
+        g.render(&mut RenderContext::new(&mut buffer, Rect::new(3, 2, 30, 1)));
+        let rows: Vec<String> = (0..5)
+            .map(|y| (0..35).map(|x| buffer.get(x, y).unwrap().symbol).collect())
+            .collect();
+        assert!(
+            rows.iter()
+                .enumerate()
+                .all(|(y, r)| y == 2 || r.trim().is_empty()),
+            "{rows:#?}"
+        );
+        (buffer, rows[2].clone())
+    };
+    let (buffer, row) = render_row(GaugeStyle::Bar);
+    assert_eq!(row, format!("   {}{}", "g".repeat(20), " ".repeat(12)));
+    for x in 3..23 {
+        assert!(
+            buffer
+                .get(x, 2)
+                .unwrap()
+                .modifier
+                .contains(revue::render::Modifier::BOLD),
+            "{x}"
+        );
+    }
+    let (_, row) = render_row(GaugeStyle::Circle);
+    assert_eq!(row, format!("   (●●●○○) {}  ", "g".repeat(22)));
+}

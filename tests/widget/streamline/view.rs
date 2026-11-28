@@ -418,3 +418,24 @@ fn test_streamline_orders_layers_with_nan() {
         ));
     }
 }
+
+/// A title of 65536 columns fills the first row from the left edge, and
+/// an x label of 65536 columns is centered on its point by its real width,
+/// so it starts at the left edge instead of at its point; inside an area at
+/// an offset (#1596)
+#[test]
+fn title_and_x_label_wider_than_u16() {
+    let chart = Streamline::new()
+        .layer(StreamLayer::new("A").data(vec![1.0, 2.0]))
+        .title("x".repeat(65_536))
+        .x_labels(vec!["a".into(), "l".repeat(65_536), "c".into()]);
+    let mut buffer = Buffer::new(35, 12);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(3, 2, 30, 8));
+    chart.render(&mut ctx);
+    let rows = rows(&buffer, 35, 12);
+    assert_eq!(rows[2], format!("   {}  ", "x".repeat(30)));
+    // The middle label from column 0; "c" is drawn after it on the last column
+    assert_eq!(rows[9], format!("   {}c  ", "l".repeat(29)));
+    assert!(rows[..2].iter().all(|r| r.trim().is_empty()), "{rows:#?}");
+    assert!(rows[10..].iter().all(|r| r.trim().is_empty()), "{rows:#?}");
+}

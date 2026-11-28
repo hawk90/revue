@@ -5,6 +5,7 @@ use super::view::Plot;
 use super::TimeSeries;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::unicode::display_width_u16;
 use crate::utils::{char_width, display_width};
 use crate::widget::traits::RenderContext;
 
@@ -43,17 +44,18 @@ impl TimeSeries {
             } else {
                 format!("{:.2}", val)
             };
-            let label_x = y_label_width.saturating_sub(display_width(&label) as u16 + 1);
+            let label_x = y_label_width.saturating_sub(display_width_u16(&label).saturating_add(1));
             let mut dx: u16 = 0;
             for ch in label.chars() {
-                let x = label_x + dx;
-                if x < area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(chrome);
-                    cell.bg = self.bg_color;
-                    ctx.set(x, y, cell);
+                let x = label_x.saturating_add(dx);
+                if x >= area.width {
+                    break;
                 }
-                dx += char_width(ch) as u16;
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(chrome);
+                cell.bg = self.bg_color;
+                ctx.set(x, y, cell);
+                dx = dx.saturating_add(char_width(ch) as u16);
             }
         }
     }
@@ -85,17 +87,19 @@ impl TimeSeries {
                 let ts = time_min + (ratio * time_range as f64) as u64;
                 let label = self.format_time(ts, time_range);
                 let x = plot_x + (ratio * (plot_width - 1) as f64) as u16;
-                let label_x = x.saturating_sub(display_width(&label) as u16 / 2);
+                let half = u16::try_from(display_width(&label) / 2).unwrap_or(u16::MAX);
+                let label_x = x.saturating_sub(half);
                 let mut dx: u16 = 0;
                 for ch in label.chars() {
-                    let lx = label_x + dx;
-                    if lx < area.width {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(chrome);
-                        cell.bg = self.bg_color;
-                        ctx.set(lx, x_label_y, cell);
+                    let lx = label_x.saturating_add(dx);
+                    if lx >= area.width {
+                        break;
                     }
-                    dx += char_width(ch) as u16;
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(chrome);
+                    cell.bg = self.bg_color;
+                    ctx.set(lx, x_label_y, cell);
+                    dx = dx.saturating_add(char_width(ch) as u16);
                 }
             }
         }

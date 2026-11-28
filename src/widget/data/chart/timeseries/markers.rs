@@ -44,17 +44,19 @@ impl TimeSeries {
                 }
 
                 if !marker.label.is_empty() {
-                    let label_x = x.saturating_sub(display_width(&marker.label) as u16 / 2);
+                    let half = u16::try_from(display_width(&marker.label) / 2).unwrap_or(u16::MAX);
+                    let label_x = x.saturating_sub(half);
                     let mut dx: u16 = 0;
                     for ch in marker.label.chars() {
-                        let lx = label_x + dx;
-                        if lx < area.width {
-                            let mut cell = Cell::new(ch);
-                            cell.fg = Some(marker.color);
-                            cell.bg = self.bg_color;
-                            ctx.set(lx, plot_y + plot_height + 1, cell);
+                        let lx = label_x.saturating_add(dx);
+                        if lx >= area.width {
+                            break;
                         }
-                        dx += char_width(ch) as u16;
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(marker.color);
+                        cell.bg = self.bg_color;
+                        ctx.set(lx, plot_y + plot_height + 1, cell);
+                        dx = dx.saturating_add(char_width(ch) as u16);
                     }
                 }
             }

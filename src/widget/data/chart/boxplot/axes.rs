@@ -76,7 +76,7 @@ impl<'a> BoxPlotRender<'a> {
         for i in 0..=4u16 {
             let value = min + (max - min) * i as f64 / 4.0;
             let label = value_axis.format_value(value);
-            let width = u16::try_from(display_width(&label)).unwrap_or(u16::MAX);
+            let width = crate::utils::unicode::display_width_u16(&label);
             let tick = chart.x + i * span / 4;
             let start = tick
                 .saturating_sub(width / 2)

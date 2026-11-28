@@ -1,6 +1,6 @@
 //! TimeSeries layout tests: title, legend, unit label, background, height and small areas
 
-use super::super::{render, render_rows};
+use super::super::{render, render_at, render_rows, rows};
 use super::{fixed_range, two_points};
 use revue::layout::Rect;
 use revue::render::Buffer;
@@ -151,4 +151,22 @@ fn test_time_series_draws_the_same_when_offset() {
         .marker(TimeMarker::new(1500, "Event"))
         .bg(Color::BLACK);
     super::super::assert_same_when_offset(chart, 40, 16);
+}
+
+/// A title of 65536 columns is not measured as 0 and centered at the
+/// middle: it fills the first row from the left edge, inside an area at an
+/// offset (#1596)
+#[test]
+fn test_time_series_title_wider_than_u16_fills_the_first_row() {
+    let chart = TimeSeries::new()
+        .time_range(fixed_range())
+        .title("x".repeat(65_536))
+        .bg(Color::BLUE);
+    let buffer = render_at(&chart, Rect::new(3, 2, 30, 12));
+    let rows = rows(&buffer);
+    assert_eq!(rows[2], format!("   {}  ", "x".repeat(30)));
+    for x in 3..33 {
+        assert_eq!(buffer.get(x, 2).unwrap().bg, Some(Color::BLUE), "{x}");
+    }
+    assert!(rows[..2].iter().all(|r| r.trim().is_empty()), "{rows:#?}");
 }

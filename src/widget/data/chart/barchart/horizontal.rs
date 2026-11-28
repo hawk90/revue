@@ -22,7 +22,7 @@ impl BarChart {
         let label_width = self.label_width.unwrap_or_else(|| {
             self.bars
                 .iter()
-                .map(|b| crate::utils::display_width(&b.label) as u16)
+                .map(|b| crate::utils::unicode::display_width_u16(&b.label))
                 .max()
                 .unwrap_or(0)
                 .min(area.width / 3)

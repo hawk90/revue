@@ -4,6 +4,7 @@ use super::{Gauge, GaugeStyle, LabelPosition};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::color::contrast_color;
+use crate::utils::unicode::display_width_u16;
 use crate::utils::{char_width, display_width};
 use crate::widget::traits::{RenderContext, View};
 
@@ -86,13 +87,16 @@ impl Gauge {
         // Draw label inside
         if matches!(self.label_position, LabelPosition::Inside) {
             let label = self.get_label();
-            let lw = display_width(&label) as u16;
+            let lw = display_width_u16(&label);
             let label_x = (width.saturating_sub(lw)) / 2;
             let mut dx: u16 = 0;
             for ch in label.chars() {
                 let cw = char_width(ch) as u16;
-                let x = label_x + dx;
-                if x + cw <= width {
+                let x = label_x.saturating_add(dx);
+                if x >= width {
+                    break;
+                }
+                if x.saturating_add(cw) <= width {
                     let is_filled = x < filled;
                     let bg = if is_filled {
                         self.fill_bg.unwrap_or(color)
@@ -105,7 +109,7 @@ impl Gauge {
                     cell.modifier |= Modifier::BOLD;
                     ctx.set(x, 0, cell);
                 }
-                dx += cw;
+                dx = dx.saturating_add(cw);
             }
         }
     }
@@ -203,7 +207,7 @@ impl Gauge {
         // Middle with label
         if area.height > 1 {
             let label = self.get_label();
-            let lw = display_width(&label) as u16;
+            let lw = display_width_u16(&label);
             let label_x = (width.saturating_sub(lw)) / 2;
 
             let mut left = Cell::new('│');
@@ -214,12 +218,15 @@ impl Gauge {
             if matches!(self.label_position, LabelPosition::Inside) {
                 let mut dx: u16 = 0;
                 for ch in label.chars() {
-                    let cw = char_width(ch) as u16;
+                    let x = label_x.saturating_add(dx);
+                    if x >= area.width {
+                        break;
+                    }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(contrast_color(self.empty_bg.unwrap_or(Color::rgb(0, 0, 0))));
                     cell.modifier |= Modifier::BOLD;
-                    ctx.set(label_x + dx, 1, cell);
-                    dx += cw;
+                    ctx.set(x, 1, cell);
+                    dx = dx.saturating_add(char_width(ch) as u16);
                 }
             }
 
@@ -285,11 +292,14 @@ impl Gauge {
         let label_x = 3 + segments;
         let mut dx: u16 = 0;
         for ch in label.chars() {
-            let cw = char_width(ch) as u16;
+            let x = label_x.saturating_add(dx);
+            if x >= ctx.area.width {
+                break;
+            }
             let mut cell = Cell::new(ch);
             cell.fg = Some(contrast_color(self.empty_bg.unwrap_or(Color::rgb(0, 0, 0))));
-            ctx.set(label_x + dx, 0, cell);
-            dx += cw;
+            ctx.set(x, 0, cell);
+            dx = dx.saturating_add(char_width(ch) as u16);
         }
     }
 
@@ -374,10 +384,7 @@ impl View for Gauge {
             LabelPosition::None | LabelPosition::Inside => (w, h),
         };
         let (w, h) = match &self.title {
-            Some(title) => (
-                w.max(display_width(title).min(u16::MAX as usize) as u16),
-                h.saturating_add(1),
-            ),
+            Some(title) => (w.max(display_width_u16(title)), h.saturating_add(1)),
             None => (w, h),
         };
         Some((w.min(max_width), h.min(max_height)))

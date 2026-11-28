@@ -3,7 +3,7 @@
 use super::super::{count_char, render, render_rows, rows};
 use super::{diagonal, plain, sym};
 use revue::layout::Rect;
-use revue::render::Buffer;
+use revue::render::{Buffer, Modifier};
 use revue::style::Color;
 use revue::widget::data::chart::{line_chart, scatter_chart, ScatterSeries};
 use revue::widget::data::chart::{Axis, Chart, LegendPosition, LineStyle, Marker, Series};
@@ -155,4 +155,22 @@ fn test_chart_and_scatter_side_by_side_stay_in_their_halves() {
         }
     }
     assert_eq!(points, 2);
+}
+
+/// A title of 65536 columns is not measured as 0 and centered at the
+/// middle: it fills the chart's first row from its left edge, bold, inside
+/// an area at an offset (#1596)
+#[test]
+fn test_chart_title_wider_than_u16_fills_the_first_row() {
+    use super::super::render_at;
+    let buffer = render_at(&plain().title("x".repeat(65_536)), Rect::new(3, 2, 30, 12));
+    let rows = rows(&buffer);
+    assert_eq!(rows[2], format!("   {}  ", "x".repeat(30)));
+    for x in 3..33 {
+        assert!(
+            buffer.get(x, 2).unwrap().modifier.contains(Modifier::BOLD),
+            "{x}"
+        );
+    }
+    assert!(rows[..2].iter().all(|r| r.trim().is_empty()), "{rows:#?}");
 }

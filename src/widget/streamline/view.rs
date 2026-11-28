@@ -3,6 +3,7 @@
 use super::core::Streamline;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::unicode::display_width_u16;
 use crate::utils::{char_width, display_width};
 use crate::widget::traits::{RenderContext, View};
 
@@ -95,7 +96,7 @@ impl View for Streamline {
 
         // Title
         if let Some(ref title) = self.title {
-            let title_x = (area.width.saturating_sub(display_width(title) as u16)) / 2;
+            let title_x = (area.width.saturating_sub(display_width_u16(title))) / 2;
             ctx.draw_text(title_x, chart_y, title, chrome);
             chart_y += 1;
             chart_height = chart_height.saturating_sub(1);
@@ -161,7 +162,7 @@ impl Streamline {
             ctx.set(x, y, cell);
             x += 2;
             draw_chars(ctx, x, y, &layer.name, chrome, self.bg_color);
-            let name_width = u16::try_from(display_width(&layer.name)).unwrap_or(u16::MAX);
+            let name_width = display_width_u16(&layer.name);
             x = x.saturating_add(name_width).saturating_add(2);
 
             if x > area.width.saturating_sub(10) {
@@ -228,7 +229,8 @@ impl Streamline {
 
         for (i, label) in self.x_labels.iter().take(num_labels).enumerate() {
             let x = (i as f64 / (num_labels - 1).max(1) as f64 * (area.width - 1) as f64) as u16;
-            let label_x = x.saturating_sub(display_width(label) as u16 / 2);
+            let half = u16::try_from(display_width(label) / 2).unwrap_or(u16::MAX);
+            let label_x = x.saturating_sub(half);
             draw_chars(ctx, label_x, y, label, chrome, self.bg_color);
         }
     }

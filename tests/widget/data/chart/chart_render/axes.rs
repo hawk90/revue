@@ -4,7 +4,8 @@ use super::super::rows;
 use super::draw;
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::data::chart::chart_render::render_grid;
+use revue::style::Color;
+use revue::widget::data::chart::chart_render::{render_axis_title, render_grid};
 use revue::widget::data::chart::ChartGrid;
 use revue::widget::traits::RenderContext;
 
@@ -76,4 +77,39 @@ fn test_render_grid_only_y() {
         }
     }
     assert!(found_horizontal);
+}
+
+/// An x axis title of 65536 columns (32768 wide glyphs) starts at the
+/// title area's left edge and fills its last row with whole glyphs, inside
+/// an area at an offset (#1596)
+#[test]
+fn test_render_axis_title_wider_than_u16_fills_the_row() {
+    let title = "가".repeat(32_768);
+    let mut buffer = Buffer::new(40, 6);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(4, 1, 30, 4));
+    render_axis_title(
+        &mut ctx,
+        Rect::new(3, 0, 20, 3),
+        Some(&title),
+        Color::GREEN,
+        true,
+    );
+    for y in 0..6 {
+        for x in 0..40 {
+            let cell = buffer.get(x, y).unwrap();
+            if y == 3 && (7..27).contains(&x) {
+                if (x - 7) % 2 == 0 {
+                    assert_eq!(
+                        (cell.symbol, cell.fg),
+                        ('가', Some(Color::GREEN)),
+                        "({x}, {y})"
+                    );
+                } else {
+                    assert!(cell.is_continuation(), "({x}, {y})");
+                }
+            } else {
+                assert_eq!(cell.symbol, ' ', "({x}, {y})");
+            }
+        }
+    }
 }
