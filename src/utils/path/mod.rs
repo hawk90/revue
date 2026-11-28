@@ -15,7 +15,7 @@
 //!
 //! // Shorten to fit width
 //! let short = shorten_path("/very/long/path/to/file.txt", 20);
-//! assert_eq!(short, ".../path/to/file.txt");
+//! assert_eq!(short, "…/path/to/file.txt");
 //!
 //! // Abbreviate middle directories
 //! let abbr = abbreviate_path("/Users/john/Documents/Projects/rust/src/main.rs");

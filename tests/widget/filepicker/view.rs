@@ -146,10 +146,10 @@ fn test_filepicker_path_is_cut_from_the_left() {
     let picker = file_picker().start_dir(&leaf).width(200);
     assert_eq!(row(&draw(&picker, 220, 6), 0), format!(" {full}"));
 
-    // Width 24 leaves 20 columns: "..." and the last 17 characters.
+    // Width 24 leaves 20 columns: "…" and the last 19 characters.
     let picker = file_picker().start_dir(&leaf).width(24);
-    let tail: String = full.chars().skip(full.chars().count() - 17).collect();
-    assert_eq!(row(&draw(&picker, 40, 6), 0), format!(" ...{tail}"));
+    let tail: String = full.chars().skip(full.chars().count() - 19).collect();
+    assert_eq!(row(&draw(&picker, 40, 6), 0), format!(" …{tail}"));
     assert!(tail.ends_with("leaf_directory"));
 }
 
@@ -166,7 +166,8 @@ fn test_filepicker_long_names_are_cut() {
     let buffer = draw(&picker, 70, 8);
 
     assert_eq!(row(&buffer, 3), entry("  ", false, &fits, "0 B"));
-    let cut = format!("{}...", "b".repeat(41));
+    // 43 columns of the name and "…" in the 44
+    let cut = format!("{}.t…", "b".repeat(41));
     assert_eq!(row(&buffer, 4), entry("  ", false, &cut, "0 B"));
 }
 
@@ -197,7 +198,7 @@ fn test_filepicker_path_shows_its_end_in_a_narrow_area() {
     fs::create_dir_all(&leaf).unwrap();
     let picker = file_picker().start_dir(&leaf);
     let top = row(&draw(&picker, 30, 10), 0);
-    assert!(top.starts_with(" ..."), "{top:?}");
+    assert!(top.starts_with(" …"), "{top:?}");
     assert!(top.ends_with("leaf"), "{top:?}");
 }
 
@@ -216,8 +217,8 @@ fn test_filepicker_wide_names_keep_the_size_column() {
     // rows 3.. sorted: ab.txt, 가…, 한글.txt
     let ends: Vec<_> = (3..6).map(|y| last_drawn(&buffer, y)).collect();
     assert_eq!(ends, vec![Some(59); 3], "{:#?}", rows(&buffer));
-    // The long one: 20 syllables (40 columns) and "...", then one pad column
-    let cut = format!("{}... ", "가".repeat(20));
+    // The long one: 21 syllables (42 columns) and "…", then one pad column
+    let cut = format!("{}… ", "가".repeat(21));
     assert!(row(&buffer, 4).contains(&cut), "{}", row(&buffer, 4));
 }
 

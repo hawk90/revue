@@ -308,8 +308,8 @@ fn a_tag_that_does_not_fit_becomes_dots() {
     let mut v = multi_select().options(vec!["abc", "defgh"]).width(12);
     v.select_all();
     let b = render_in(&v, 20, 1);
-    assert_eq!(cols(&b, 0, 0, 12), "[abc] ...  ▼");
-    for x in 6..9 {
+    assert_eq!(cols(&b, 0, 0, 12), "[abc] …    ▼");
+    for x in 6..7 {
         assert_eq!(fg(&b, x, 0), Some(LIGHT_GRAY), "{x}");
     }
 }
@@ -705,14 +705,17 @@ fn three_tags(width: u16, lefts: usize) -> String {
 
 #[test]
 fn tags_scrolled_off_to_the_left_are_marked() {
-    // Width 14 leaves 12 columns before the arrow: a marker, a tag and a marker.
-    assert_eq!(three_tags(14, 1), "... [cc]     ▼");
-    assert_eq!(three_tags(14, 2), "... [bb] ... ▼");
+    // Width 14 leaves 12 columns before the arrow. The marker is "…", one
+    // column, and a space after it (#1599).
+    assert_eq!(three_tags(14, 1), "… [cc]       ▼");
+    assert_eq!(three_tags(14, 2), "… [bb] [cc]  ▼");
+    // Width 10 leaves 8: a marker, a tag and a marker
+    assert_eq!(three_tags(10, 2), "… [bb] … ▼");
 }
 
 #[test]
 fn nothing_is_marked_when_the_row_starts_at_the_first_tag() {
-    assert_eq!(three_tags(14, 3), "[aa] ...     ▼");
+    assert_eq!(three_tags(14, 3), "[aa] [bb] …  ▼");
     assert_eq!(
         three_tags(40, 2).trim_end_matches(['▼', ' ']),
         "[aa] [bb] [cc]"
@@ -724,9 +727,10 @@ fn with_no_room_for_the_marker_the_tag_under_the_cursor_is_kept() {
     // Width 6 leaves 4 columns: the last tag alone.
     assert_eq!(three_tags(6, 1), "[cc]▼ ".replace("▼ ", " ▼"));
     // Width 10 leaves 8: a marker and the last tag, which has nothing after it.
-    assert_eq!(three_tags(10, 1), "... [cc] ▼");
-    // Tag bb has one after it, so 8 columns hold no marker before it.
-    assert_eq!(three_tags(10, 2), "[bb] ... ▼");
+    assert_eq!(three_tags(10, 1), "… [cc]   ▼");
+    // Width 9 leaves 7. Tag bb has one after it, so they hold no marker
+    // before it: "… [bb] …" is 8 columns.
+    assert_eq!(three_tags(9, 2), "[bb] …  ▼");
 }
 
 #[test]
@@ -738,7 +742,7 @@ fn the_tag_under_the_cursor_stays_in_view_after_the_marker() {
     v.select_all();
     v.handle_key(&Key::Left); // d
     v.handle_key(&Key::Left); // c
-    assert_eq!(row(&render_in(&v, 14, 1), 0), "... [c] [d]  ▼");
+    assert_eq!(row(&render_in(&v, 14, 1), 0), "… [b] [c] …  ▼");
 }
 
 // =========================================================================
@@ -785,7 +789,7 @@ fn hidden_tags_are_marked_and_the_mark_keeps_the_arrow() {
     let mut s = MultiSelect::new().options((1..=12).map(|i| format!("Item {i}")).collect());
     s.select_all();
     let r = row(&render_in(&s, 30, 1), 0);
-    assert!(r.contains("..."), "{r:?}");
+    assert!(r.contains('…'), "{r:?}");
 
     // 8 columns: "[ab] " ends at column 5, one before max_x = 6
     let mut s = MultiSelect::new().options(vec!["ab", "cdef"]).width(8);
@@ -820,10 +824,8 @@ fn test_multi_select_overflow_marker_is_on_the_header_background() {
     let w = 20;
     let b = render_in(&s, w, 1);
     let row = cols(&b, 0, 0, w);
-    let dots = row.find("...").expect("a marker");
-    for x in dots..dots + 3 {
-        assert_eq!(bg(&b, x as u16, 0), Some(BG), "x={x} in {row:?}"); // was None
-    }
-    let tag = row.find('[').expect("a tag") as u16;
+    let dots = row.chars().position(|c| c == '…').expect("a marker");
+    assert_eq!(bg(&b, dots as u16, 0), Some(BG), "x={dots} in {row:?}"); // was None
+    let tag = row.chars().position(|c| c == '[').expect("a tag") as u16;
     assert_eq!(bg(&b, tag, 0), Some(TAG_BG));
 }

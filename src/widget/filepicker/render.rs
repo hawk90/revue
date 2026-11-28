@@ -73,30 +73,11 @@ impl FilePicker {
         content.child(Text::new("  📁 ..").fg(LIGHT_GRAY))
     }
 
-    /// The current path in a row `width` columns wide, cut from the left so
-    /// its end, the directory's own name, stays in view
+    /// The current path in a row `width` columns wide, cut from the left
+    /// after `…` so its end, the directory's own name, stays in view
     fn shown_path(&self, width: u16) -> String {
         let path_str = self.current_dir.display().to_string();
-        let max_path_width = (width as usize).saturating_sub(4);
-        if crate::utils::display_width(&path_str) > max_path_width {
-            let suffix_width = max_path_width.saturating_sub(3); // "..." prefix
-                                                                 // Find suffix that fits by iterating from the end
-            let chars: Vec<char> = path_str.chars().collect();
-            let mut w = 0;
-            let mut start = chars.len();
-            for i in (0..chars.len()).rev() {
-                let cw = crate::utils::char_width(chars[i]);
-                if w + cw > suffix_width {
-                    break;
-                }
-                w += cw;
-                start = i;
-            }
-            let suffix: String = chars[start..].iter().collect();
-            format!("...{}", suffix)
-        } else {
-            path_str
-        }
+        crate::utils::truncate_start(&path_str, (width as usize).saturating_sub(4))
     }
 
     /// The entries in view, with a "more" marker above and below when the
@@ -145,9 +126,9 @@ impl FilePicker {
 
     /// One entry in `width` columns: its selection mark, icon, name and
     /// size, the size right-aligned at the end. The name takes the columns
-    /// the rest leaves, cut with `...` when wider, by display width.
+    /// the rest leaves, cut with `…` when wider, by display width.
     fn entry_row(&self, i: usize, ctx: &RenderContext, width: u16) -> Text {
-        use crate::utils::{pad_to_width, truncate_with_suffix};
+        use crate::utils::{pad_to_width, truncate_with_ellipsis};
         /// Mark, icon and the space after it; the space and size after the name
         const BEFORE_NAME: usize = 5;
         const SIZE: usize = 10;
@@ -157,10 +138,7 @@ impl FilePicker {
         let icon = if entry.is_dir { "📁" } else { "📄" };
         let selected_mark = if entry.selected { "✓ " } else { "  " };
         let name_width = (width as usize).saturating_sub(BEFORE_NAME + 1 + SIZE);
-        let name = pad_to_width(
-            &truncate_with_suffix(&entry.name, name_width, "..."),
-            name_width,
-        );
+        let name = pad_to_width(&truncate_with_ellipsis(&entry.name, name_width), name_width);
 
         let size = if entry.is_dir {
             String::new()

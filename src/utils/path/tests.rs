@@ -6,18 +6,17 @@ use std::path::{Path, PathBuf};
 fn test_shorten_path() {
     // "/a/b/c/d/e/file.txt" is 20 chars, test with smaller width
     let short = shorten_path("/a/b/c/d/e/file.txt", 15);
-    assert!(short.len() <= 15);
-    assert!(short.ends_with("file.txt"));
-    assert!(short.starts_with("..."));
+    assert_eq!(short, "…/d/e/file.txt");
+    assert_eq!(crate::utils::display_width(&short), 14);
 }
 
 #[test]
 fn shorten_path_keeps_the_separator_between_kept_components() {
     assert_eq!(
         shorten_path("/very/long/path/to/file.txt", 20),
-        ".../path/to/file.txt"
+        "…/path/to/file.txt"
     );
-    assert_eq!(shorten_path("/a/b/c/d/e/file.txt", 15), ".../e/file.txt");
+    assert_eq!(shorten_path("/a/b/c/d/e/file.txt", 13), "…/e/file.txt");
 }
 
 #[test]
@@ -353,10 +352,12 @@ fn test_shorten_path_unicode_filename() {
 
 #[test]
 fn test_shorten_path_small_width() {
-    // With max_width=10, we get "..." + up to 7 columns of the filename;
-    // "한글파" is 6 columns, and "일" would make it 8
+    // With max_width=10, we get "…" + up to 9 columns of the filename;
+    // "한글파일." is 9 columns
     let short = shorten_path("/tmp/한글파일.txt", 10);
-    assert_eq!(short, "...한글파");
+    assert_eq!(short, "…한글파일.");
+    // At 8, "한글파일" would need the 9th column after "…"
+    assert_eq!(shorten_path("/tmp/한글파일.txt", 8), "…한글파");
 }
 
 // ============================================================================
@@ -576,33 +577,31 @@ fn test_validate_within_base_non_existent_base_relative_path() {
 fn test_shorten_path_ascii_exactly_fits() {
     // Test ASCII filename that exactly fits in width
     let short = shorten_path("/tmp/test.txt", 12); // "/tmp/test.txt" is 13 chars, should shorten
-    assert!(short.len() <= 12);
+    assert_eq!(short, "…/test.txt");
 }
 
 #[test]
 fn test_shorten_path_one_char_overflow() {
     // Test with width that fits all but one character
-    let short = shorten_path("/tmp/abcde.txt", 11);
-    // "/tmp/abcde.txt" is 13 chars, with max_width=11 we get "..." + 8 chars
-    // Actually since this is > 4+8=12, it will be truncated
-    assert!(short.len() <= 11);
+    // "/tmp/abcde.txt" is 14 columns; the 9-column filename and "…/" fill 11
+    assert_eq!(shorten_path("/tmp/abcde.txt", 11), "…/abcde.txt");
+    // One fewer and the "/" goes: "…" and the filename cut to 9
+    assert_eq!(shorten_path("/tmp/abcde.txt", 10), "…abcde.txt");
 }
 
 #[test]
 fn test_shorten_path_unicode_boundary() {
     // Test at boundary where last character is multi-byte
-    // "/tmp/한글.txt" is 13 columns; the 8-column filename does not fit with
-    // ".../", so it is cut to the 8 columns after "..." and stays whole
-    let short = shorten_path("/tmp/한글.txt", 11);
-    assert_eq!(short, "...한글.txt");
+    // "/tmp/한글.txt" is 13 columns; the 8-column filename fits with "…/"
+    // in 10, and at 9 it is the 8 columns after "…", still whole
+    assert_eq!(shorten_path("/tmp/한글.txt", 11), "…/한글.txt");
+    assert_eq!(shorten_path("/tmp/한글.txt", 9), "…한글.txt");
 }
 
 #[test]
 fn test_shorten_path_ascii_width_7() {
-    // Test with max_width=7 (edge case for "...abc")
-    let short = shorten_path("/tmp/abcdef.txt", 7);
-    assert!(short.len() <= 7);
-    assert!(short.starts_with("..."));
+    // "…" and the first 6 columns of the filename
+    assert_eq!(shorten_path("/tmp/abcdef.txt", 7), "…abcdef");
 }
 
 // ============================================================================
@@ -763,47 +762,37 @@ fn test_find_existing_ancestor_depth_limit() {
 
 #[test]
 fn test_shorten_path_max_width_zero() {
-    // max_width = 0 should return "..." or empty
-    let short = shorten_path("/tmp/file.txt", 0);
-    // With max_width=0, we get "..." (3 chars) or empty depending on implementation
-    // The important thing is it doesn't panic
-    assert!(short.len() <= 3 || short.is_empty());
+    // Not even "…" fits in 0 columns
+    assert_eq!(shorten_path("/tmp/file.txt", 0), "");
 }
 
 #[test]
 fn test_shorten_path_max_width_one() {
-    let short = shorten_path("/tmp/file.txt", 1);
-    // Should return "..." truncated or empty
-    assert!(short.len() <= 3);
+    assert_eq!(shorten_path("/tmp/file.txt", 1), "…");
 }
 
 #[test]
 fn test_shorten_path_max_width_two() {
-    let short = shorten_path("/tmp/file.txt", 2);
-    assert!(short.len() <= 3);
+    assert_eq!(shorten_path("/tmp/file.txt", 2), "…f");
 }
 
 #[test]
 fn test_shorten_path_max_width_three() {
-    let short = shorten_path("/tmp/file.txt", 3);
-    // Should be "..." or less
-    assert!(short.len() <= 3);
+    assert_eq!(shorten_path("/tmp/file.txt", 3), "…fi");
 }
 
 #[test]
 fn test_shorten_path_max_width_four() {
-    let short = shorten_path("/tmp/file.txt", 4);
-    // With max_width=4, we get "..." which is 3 chars
-    assert!(short.starts_with("..."));
-    assert!(short.len() <= 4);
+    assert_eq!(shorten_path("/tmp/file.txt", 4), "…fil");
 }
 
 #[test]
 fn test_shorten_path_empty_components() {
     // Test paths with empty components (multiple slashes)
-    let short = shorten_path("//a//b///c", 20);
-    // Should handle gracefully without panicking
-    assert!(short.len() <= 20);
+    // 10 columns fit as given
+    assert_eq!(shorten_path("//a//b///c", 20), "//a//b///c");
+    // Too narrow: the empty components are dropped
+    assert_eq!(shorten_path("//a//b///c", 9), "/a/b/c");
 }
 
 #[test]
