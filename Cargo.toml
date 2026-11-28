@@ -163,13 +163,15 @@ trybuild = "1.0.122"
 vt100 = "0.18.1"
 
 # The Windows key-release test (tests/runtime/event/windows_key_release.rs) writes key
-# records into the console input buffer.
+# records into the console input buffer; the fault tests read thread CPU time
+# (tests/fault/cpu_time.rs).
 [target.'cfg(windows)'.dev-dependencies]
 windows-sys = { version = "0.61.2", features = [
     "Win32_Foundation",
     "Win32_Security",
     "Win32_Storage_FileSystem",
     "Win32_System_Console",
+    "Win32_System_Threading",
 ] }
 
 [[bench]]
