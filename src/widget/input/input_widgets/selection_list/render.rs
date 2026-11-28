@@ -156,7 +156,7 @@ impl View for SelectionList {
         }
 
         if self.scroll.has_above() {
-            content = content.child(Text::new("  ↑ more...").fg(DISABLED_FG));
+            content = content.child(Text::new("  ↑ more…").fg(DISABLED_FG));
         }
         let shown = self.scroll.visible();
         let (above, below) = (shown.start, rows.len() - shown.end);
@@ -164,7 +164,7 @@ impl View for SelectionList {
             content = content.child(row);
         }
         if below > 0 {
-            content = content.child(Text::new("  ↓ more...").fg(DISABLED_FG));
+            content = content.child(Text::new("  ↓ more…").fg(DISABLED_FG));
         }
 
         // Help text
