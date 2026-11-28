@@ -3,7 +3,8 @@
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{char_width, display_width};
+use crate::utils::char_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::traits::RenderContext;
 
 // ============================================================================
@@ -19,16 +20,18 @@ pub fn render_title(ctx: &mut RenderContext, area: Rect, title: Option<&str>, co
         return 0;
     };
 
-    let title_x = area.x + (area.width.saturating_sub(display_width(title) as u16)) / 2;
+    let title_x = area.x + (area.width.saturating_sub(display_width_u16(title))) / 2;
+    let right_edge = area.x.saturating_add(area.width);
     let mut dx: u16 = 0;
     for ch in title.chars() {
-        let x = title_x + dx;
-        if x < area.x + area.width {
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(color);
-            ctx.set(x, area.y, cell);
+        let x = title_x.saturating_add(dx);
+        if x >= right_edge {
+            break;
         }
-        dx += char_width(ch) as u16;
+        let mut cell = Cell::new(ch);
+        cell.fg = Some(color);
+        ctx.set(x, area.y, cell);
+        dx = dx.saturating_add(char_width(ch) as u16);
     }
     1
 }

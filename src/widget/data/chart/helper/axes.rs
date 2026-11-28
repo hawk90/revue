@@ -5,6 +5,7 @@ use super::Chart;
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::unicode::display_width_u16;
 use crate::utils::{char_width, display_width};
 use crate::widget::data::chart::chart_common::AxisFormat;
 use crate::widget::traits::RenderContext;
@@ -54,14 +55,18 @@ impl Chart {
             let y = inner_y + inner_h - 1 - ((t * (inner_h as f64 - 1.0)) as u16);
 
             // Right-align label
-            let label_start =
-                y_label_x + y_label_width.saturating_sub(display_width(&label) as u16 + 1);
+            let label_start = y_label_x
+                + y_label_width.saturating_sub(display_width_u16(&label).saturating_add(1));
             let mut dx: u16 = 0;
             for ch in label.chars() {
+                let x = label_start.saturating_add(dx);
+                if x >= ctx.area.width {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.y_axis.color);
-                ctx.set(label_start + dx, y, cell);
-                dx += char_width(ch) as u16;
+                ctx.set(x, y, cell);
+                dx = dx.saturating_add(char_width(ch) as u16);
             }
 
             // Draw grid line
@@ -100,16 +105,18 @@ impl Chart {
             let x = inner_x + (t * (inner_w as f64 - 1.0)) as u16;
 
             // Center label
-            let label_start = x.saturating_sub(display_width(&label) as u16 / 2);
+            let half = u16::try_from(display_width(&label) / 2).unwrap_or(u16::MAX);
+            let label_start = x.saturating_sub(half);
             let mut dx: u16 = 0;
             for ch in label.chars() {
-                let px = label_start + dx;
-                if px < area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(self.x_axis.color);
-                    ctx.set(px, x_label_y, cell);
+                let px = label_start.saturating_add(dx);
+                if px >= area.width {
+                    break;
                 }
-                dx += char_width(ch) as u16;
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(self.x_axis.color);
+                ctx.set(px, x_label_y, cell);
+                dx = dx.saturating_add(char_width(ch) as u16);
             }
 
             // Draw grid line
@@ -136,25 +143,29 @@ impl Chart {
         } = *plot;
         if let Some(ref title) = self.y_axis.title {
             // Draw vertically on the left (one char per row, so char count governs height)
-            let char_count = title.chars().count() as u16;
+            let char_count = u16::try_from(title.chars().count()).unwrap_or(u16::MAX);
             let y_start = inner_y + (inner_h.saturating_sub(char_count)) / 2;
-            for (i, ch) in title.chars().enumerate() {
+            for (y, ch) in (y_start..area.height).zip(title.chars()) {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.y_axis.color);
-                ctx.set(y_label_x, y_start + i as u16, cell);
+                ctx.set(y_label_x, y, cell);
             }
         }
 
         if let Some(ref title) = self.x_axis.title {
-            let x_start = inner_x + (inner_w.saturating_sub(display_width(title) as u16)) / 2;
+            let x_start = inner_x + (inner_w.saturating_sub(display_width_u16(title))) / 2;
             let y = x_label_y + 1;
             if y < area.height {
                 let mut dx: u16 = 0;
                 for ch in title.chars() {
+                    let x = x_start.saturating_add(dx);
+                    if x >= area.width {
+                        break;
+                    }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.x_axis.color);
-                    ctx.set(x_start + dx, y, cell);
-                    dx += char_width(ch) as u16;
+                    ctx.set(x, y, cell);
+                    dx = dx.saturating_add(char_width(ch) as u16);
                 }
             }
         }

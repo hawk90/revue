@@ -27,13 +27,16 @@ impl Histogram {
         let mut put_str = |text: &str, x: u16, y: u16, max_x: u16, fg: Color| {
             let mut dx: u16 = 0;
             for ch in text.chars() {
-                let cx = x + dx;
-                if cx < max_x && y < area.y + area.height {
+                let cx = x.saturating_add(dx);
+                if cx >= max_x {
+                    break;
+                }
+                if y < area.y + area.height {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
                     ctx.set(cx, y, cell);
                 }
-                dx += char_width(ch) as u16;
+                dx = dx.saturating_add(char_width(ch) as u16);
             }
         };
 
@@ -61,7 +64,7 @@ impl Histogram {
             } else {
                 format!("{:.0}", value)
             };
-            let width = crate::utils::display_width(&label) as u16;
+            let width = crate::utils::unicode::display_width_u16(&label);
             let tick = chart_area.x + i * span / 4;
             let start = tick
                 .saturating_sub(width / 2)
@@ -71,7 +74,7 @@ impl Histogram {
                 continue;
             }
             put_str(&label, start, y, right_edge, self.y_axis.color);
-            next_free = start + width + 1;
+            next_free = start.saturating_add(width).saturating_add(1);
         }
     }
 

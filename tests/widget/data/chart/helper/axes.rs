@@ -2,6 +2,7 @@
 
 use super::super::{count_char, render, render_rows, rows};
 use super::{diagonal, plain, sym};
+use revue::layout::Rect;
 use revue::widget::data::chart::{Axis, AxisFormat, Chart, Series};
 
 #[test]
@@ -115,4 +116,52 @@ fn test_chart_zero_ticks_draws_no_nan() {
         .y_axis(Axis::new().ticks(0));
     let text = render_rows(&chart, 40, 12).join("\n");
     assert!(!text.contains("NaN"), "{text}");
+}
+
+/// Y labels of 65536 columns are right-aligned by their real width, so
+/// they start at the label column's left edge instead of at its last
+/// column, and the X title of 65536 columns starts at the plot's left
+/// edge instead of its middle; inside an area at an offset (#1596)
+#[test]
+fn test_chart_y_labels_and_x_title_wider_than_u16() {
+    use super::super::render_at;
+    let chart = plain()
+        .y_axis(
+            Axis::new()
+                .grid(false)
+                .format(AxisFormat::Custom("y".repeat(65_536))),
+        )
+        .x_axis(Axis::new().grid(false).title("t".repeat(65_536)));
+    let rows = rows(&render_at(&chart, Rect::new(3, 2, 30, 12)));
+    // The area is columns 3..33, rows 2..14; ticks on plot rows 0, 2, 4,
+    // 6, 8 and 9, each label running to the area's edge
+    for y in [2, 4, 6, 8, 10, 11] {
+        assert_eq!(rows[y], format!("   {}  ", "y".repeat(30)), "row {y}");
+    }
+    // The X title from the plot's first column (area column 8)
+    assert_eq!(rows[13], format!("{}{}  ", " ".repeat(11), "t".repeat(22)));
+    assert!(rows[14].trim().is_empty() && rows[1].trim().is_empty());
+}
+
+/// X labels of 65536 columns are centered by their real width, so the
+/// first one starts at the area's left edge instead of at its tick, and a
+/// Y title of 65536 chars runs down the whole first column instead of
+/// starting halfway and wrapping its row; inside an area at an offset
+/// (#1596)
+#[test]
+fn test_chart_x_labels_and_y_title_wider_than_u16() {
+    use super::super::render_at;
+    let chart = plain()
+        .x_axis(
+            Axis::new()
+                .grid(false)
+                .format(AxisFormat::Custom("q".repeat(65_536))),
+        )
+        .y_axis(Axis::new().grid(false).title("v".repeat(65_536)));
+    let buffer = render_at(&chart, Rect::new(3, 2, 30, 12));
+    let rows = rows(&buffer);
+    let column: String = (0..16).map(|y| sym(&buffer, 3, y)).collect();
+    assert_eq!(column, format!("  {}  ", "v".repeat(12)));
+    // The X label row (area row 10): the title in column 0, labels after
+    assert_eq!(rows[12], format!("   v{}  ", "q".repeat(29)));
 }

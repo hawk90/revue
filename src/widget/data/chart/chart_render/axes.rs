@@ -3,7 +3,8 @@
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{char_width, display_width, truncate_to_width};
+use crate::utils::unicode::display_width_u16;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::data::chart::chart_common::{Axis, ChartGrid};
 use crate::widget::traits::RenderContext;
 
@@ -141,17 +142,19 @@ pub fn render_axis_title(
     };
 
     if is_x_axis {
-        let title_x = area.x + (area.width.saturating_sub(display_width(title) as u16)) / 2;
+        let title_x = area.x + (area.width.saturating_sub(display_width_u16(title))) / 2;
         let title_y = area.y + area.height - 1;
+        let right_edge = area.x.saturating_add(area.width);
         let mut dx: u16 = 0;
         for ch in title.chars() {
-            let x = title_x + dx;
-            if x < area.x + area.width {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(color);
-                ctx.set(x, title_y, cell);
+            let x = title_x.saturating_add(dx);
+            if x >= right_edge {
+                break;
             }
-            dx += char_width(ch) as u16;
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(color);
+            ctx.set(x, title_y, cell);
+            dx = dx.saturating_add(char_width(ch) as u16);
         }
     }
     // Y axis title rendering would go here (rotated text, not commonly needed)

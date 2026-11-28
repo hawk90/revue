@@ -82,6 +82,14 @@ pub fn display_width(s: &str) -> usize {
     s.chars().map(char_width).sum()
 }
 
+/// [`display_width`] as a cell column count, clamped to `u16::MAX`
+///
+/// A text wider than 65535 columns reads as 65535, not as its width cut
+/// to 16 bits (65536 columns would otherwise read as 0)
+pub(crate) fn display_width_u16(s: &str) -> u16 {
+    u16::try_from(display_width(s)).unwrap_or(u16::MAX)
+}
+
 /// Truncate a string to fit within a given display width
 ///
 /// Returns a string slice that fits within the specified width.

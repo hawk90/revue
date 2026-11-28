@@ -5,7 +5,8 @@ use super::Chart;
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{char_width, display_width};
+use crate::utils::char_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::traits::{RenderContext, View};
 
 /// Where the plot and its labels go inside the widget's area
@@ -102,15 +103,19 @@ impl Chart {
     fn draw_title(&self, ctx: &mut RenderContext, area: Rect, plot: &PlotLayout, chrome: Color) {
         let has_border = plot.has_border;
         if let Some(ref title) = self.title {
-            let title_x = (area.width.saturating_sub(display_width(title) as u16)) / 2;
+            let title_x = (area.width.saturating_sub(display_width_u16(title))) / 2;
             let title_y = if has_border { 1u16 } else { 0 };
             let mut dx: u16 = 0;
             for ch in title.chars() {
+                let x = title_x.saturating_add(dx);
+                if x >= area.width {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(chrome);
                 cell.modifier |= crate::render::Modifier::BOLD;
-                ctx.set(title_x + dx, title_y, cell);
-                dx += char_width(ch) as u16;
+                ctx.set(x, title_y, cell);
+                dx = dx.saturating_add(char_width(ch) as u16);
             }
         }
     }
