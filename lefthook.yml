@@ -86,8 +86,17 @@ post-merge:
 post-checkout:
   commands:
     sync-deps:
-      run: scripts/sync-deps.sh --since {1}
+      # {1} = previous HEAD, {2} = new HEAD, {3} = 1 for a branch checkout (0 for a file checkout).
+      # A rebase checks out <onto> first; post-rewrite syncs once it finishes.
+      # (Only the default merge backend has rebase-merge/ at this point.)
+      run: |
+        [ "{3}" = 1 ] || exit 0
+        [ -d "$(git rev-parse --git-path rebase-merge)" ] && exit 0
+        scripts/sync-deps.sh --since {1}
 post-rewrite:
   commands:
     sync-deps:
-      run: scripts/sync-deps.sh
+      # {1} = "amend" or "rebase". Only rebase moves ORIG_HEAD; amend leaves a stale one behind.
+      run: |
+        [ "{1}" = rebase ] || exit 0
+        scripts/sync-deps.sh

@@ -478,6 +478,28 @@ fn test_resizable_grid_snap_steps_toward_the_change() {
     r.end_resize();
 }
 
+/// A drag along one axis does not step the other one toward a change it did
+/// not get: an off-grid size there goes to the nearest grid line, as
+/// `set_size` puts it, not down to the line below (#1532)
+#[test]
+fn test_resizable_grid_snap_axis_not_dragged_goes_to_the_nearest_line() {
+    // Width dragged; height 13 and 12 off the 5-cell grid
+    for (height, snapped) in [(13, 15), (12, 10)] {
+        let mut r = Resizable::new(20, height).snap_to_grid(5, 5);
+        r.start_resize(ResizeHandle::Right);
+        r.apply_delta(3, 0);
+        assert_eq!(r.size(), (25, snapped), "height {height}");
+        r.end_resize();
+    }
+
+    // Height dragged; width 23 off the grid
+    let mut r = Resizable::new(23, 10).snap_to_grid(5, 5);
+    r.start_resize(ResizeHandle::Bottom);
+    r.apply_delta(0, 2);
+    assert_eq!(r.size(), (25, 15));
+    r.end_resize();
+}
+
 // ==================== Handle Hit Tests ====================
 
 #[test]

@@ -387,6 +387,27 @@ mod tests {
         assert_eq!(sizes[2], 53); // 80 * 2 / 3 = 53.33 rounds to 53
     }
 
+    /// Every fr track 0fr: the weights sum to 0, so the fr tracks get no
+    /// space (an equal split would give each one a share, #1532)
+    #[test]
+    fn test_track_sizes_all_zero_fr_get_no_space() {
+        let zero = [GridTrack::Fr(0.0), GridTrack::Fr(0.0), GridTrack::Fr(0.0)];
+        assert_eq!(calculate_track_sizes(100, &zero, 3, 0), [0, 0, 0]);
+        let with_fixed = [GridTrack::Fixed(10), GridTrack::Fr(0.0), GridTrack::Fr(0.0)];
+        assert_eq!(calculate_track_sizes(100, &with_fixed, 3, 0), [10, 0, 0]);
+
+        let (mut tree, parent_id, child_ids) = setup_grid_tree(
+            vec![GridTrack::Fr(0.0), GridTrack::Fr(0.0)],
+            vec![GridTrack::Fr(1.0)],
+            2,
+        );
+        compute_grid(&mut tree, parent_id, 100, 50);
+        for &id in &child_ids {
+            let c = &tree.get(id).unwrap().computed;
+            assert_eq!((c.x, c.width, c.height), (0, 0, 50));
+        }
+    }
+
     #[test]
     fn test_track_positions() {
         let sizes = vec![30, 40, 30];
