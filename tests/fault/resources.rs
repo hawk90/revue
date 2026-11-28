@@ -42,12 +42,13 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::{RenderContext, View};
 
+use super::cpu_time::cpu_timed;
 use super::{ratchet, run_bounded, Case};
 
 const LAYER: &str = "resources";
@@ -88,13 +89,12 @@ fn text_of(buffer: &Buffer) -> String {
     out
 }
 
-/// Fail if `f` took longer than `max`.
+/// Fail if `f` took more than `max` of this thread's CPU time (not wall
+/// clock, so a loaded machine does not fail it, #923).
 fn timed<R>(what: &str, max: Duration, f: impl FnOnce() -> R) -> Result<R, String> {
-    let start = Instant::now();
-    let r = f();
-    let took = start.elapsed();
+    let (r, took) = cpu_timed(f);
     if took > max {
-        return Err(format!("{what} took {took:?} (max {max:?})"));
+        return Err(format!("{what} took {took:?} of CPU (max {max:?})"));
     }
     Ok(r)
 }
@@ -635,7 +635,7 @@ fn watch_cases(cases: &mut Vec<Case>) {
             // Windows refuses to remove a directory that is being watched.
             return None;
         }
-        let start = Instant::now();
+        let start = std::time::Instant::now();
         while start.elapsed() < Duration::from_millis(500) {
             let _ = hr.poll();
             let _ = hr.css_changed();

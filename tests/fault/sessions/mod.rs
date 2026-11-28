@@ -2,15 +2,16 @@
 //! resizes and draws on every editing widget (`targets.rs`, which the
 //! `fuzz` crate runs under libFuzzer too).
 //!
-//! Invariants: nothing panics, no session takes longer than [`SLOW`], and
+//! Invariants: nothing panics, no session takes more CPU time than [`SLOW`], and
 //! the cursors stay inside the text (checked in `targets.rs`).
 //!
 //! The streams come from a fixed xorshift seed, so the same sessions run
 //! every time. Case keys: `"editing random"`.
 
 use std::collections::BTreeSet;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
+use super::cpu_time::cpu_timed;
 use super::{catch, ratchet, Failure};
 
 mod targets;
@@ -19,7 +20,8 @@ const LAYER: &str = "sessions";
 /// Sessions per run, and bytes in each
 const SESSIONS: u64 = 200;
 const BYTES: usize = 1500;
-/// One session taking longer than this is a failure
+/// One session taking more CPU time than this is a failure (CPU time, so a
+/// loaded machine does not fail it, #923)
 const SLOW: Duration = Duration::from_secs(3);
 
 /// `len` bytes from a xorshift stream started at `seed`
@@ -40,12 +42,10 @@ fn editing_sessions() {
     let mut failures = Vec::new();
     for seed in 0..SESSIONS {
         let data = bytes(seed, BYTES);
-        let start = Instant::now();
-        let outcome = catch(|| targets::editing(&data));
-        let took = start.elapsed();
+        let (outcome, took) = cpu_timed(|| catch(|| targets::editing(&data)));
         let why = match outcome {
             Err(panic) => Some(panic),
-            Ok(()) if took > SLOW => Some(format!("slow: {took:?}")),
+            Ok(()) if took > SLOW => Some(format!("slow: {took:?} of CPU")),
             Ok(()) => None,
         };
         if let Some(why) = why {

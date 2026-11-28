@@ -10,8 +10,8 @@
 //!
 //! Invariants: nothing panics (a parser that returns `Result` returns `Err`),
 //! and nothing hangs - every input is bounded, a single input taking more than
-//! [`SLOW`] is a failure, and a target that does not finish within [`HANG`]
-//! is reported and abandoned.
+//! [`SLOW`] of CPU time is a failure, and a target that does not finish within
+//! [`HANG`] (wall clock) is reported and abandoned.
 //!
 //! The proptest runs are deterministic: a fixed ChaCha seed and an explicit
 //! config, so neither `PROPTEST_*` variables nor a regressions file change
@@ -26,6 +26,7 @@ use std::time::{Duration, Instant};
 use proptest::prelude::*;
 use proptest::test_runner::{Config, RngAlgorithm, TestCaseError, TestRng, TestRunner};
 
+use super::cpu_time::cpu_timed;
 use super::{catch, preview, ratchet, Failure};
 
 mod targets;
@@ -54,18 +55,18 @@ const KINDS: [&str; 4] = ["unicode", "soup", "corpus", "hang"];
 
 /// Cases per proptest strategy and target.
 const CASES: u32 = 128;
-/// One input taking longer than this is a failure.
+/// One input taking more CPU time than this is a failure: CPU time, not wall
+/// clock, so a loaded machine does not make a fast input look slow (#923).
 const SLOW: Duration = Duration::from_secs(3);
 /// A target that has not finished after this is reported as hung.
 const HANG: Duration = Duration::from_secs(60);
 
 /// Run `f` on `input`; `Err` on a panic or an input that took too long.
 fn guarded(f: fn(&str), input: &str) -> Result<(), String> {
-    let start = Instant::now();
-    catch(|| f(input))?;
-    let took = start.elapsed();
+    let (outcome, took) = cpu_timed(|| catch(|| f(input)));
+    outcome?;
     if took > SLOW {
-        return Err(format!("slow: {took:?} on one input"));
+        return Err(format!("slow: {took:?} of CPU on one input"));
     }
     Ok(())
 }
