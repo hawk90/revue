@@ -2,6 +2,7 @@
 
 use revue::layout::Rect;
 use revue::render::Buffer;
+use revue::style::Color;
 use revue::widget::traits::RenderContext;
 use revue::widget::CollapseMode;
 use revue::widget::Sidebar;
@@ -288,4 +289,27 @@ fn test_sidebar_render_small_area() {
     let sb = Sidebar::new().items(vec![SidebarItem::new("a", "A")]);
     // Below the 3x2 minimum: nothing drawn
     assert!(is_blank(&screen(&sb, 2, 1)));
+}
+
+/// A badge 65535 columns wide plus its two columns does not overflow (a
+/// panic in debug): too wide for the bar, it starts after the icon and is
+/// cut before the blank column, white on red, in an area at an offset (#1607)
+#[test]
+fn test_sidebar_badge_as_wide_as_u16_max() {
+    let sb = Sidebar::new().items(vec![SidebarItem::new("inbox", "Inbox")
+        .icon('I')
+        .badge("b".repeat(65_535))]);
+    let mut buffer = Buffer::new(30, 3);
+    sb.render(&mut RenderContext::new(&mut buffer, Rect::new(3, 1, 24, 2)));
+    let row = |y| -> String { (0..30).map(|x| buffer.get(x, y).unwrap().symbol).collect() };
+    assert_eq!(row(1), format!("      I {} │   ", "b".repeat(17)));
+    for x in 8..25 {
+        let cell = buffer.get(x, 1).unwrap();
+        assert_eq!(
+            (cell.fg, cell.bg),
+            (Some(Color::WHITE), Some(Color::RED)),
+            "{x}"
+        );
+    }
+    assert_eq!(row(0), " ".repeat(30));
 }

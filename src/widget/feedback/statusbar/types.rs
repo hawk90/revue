@@ -96,7 +96,7 @@ impl StatusSection {
 
     /// Get display width in terminal columns (a wide character counts as two)
     pub fn width(&self) -> u16 {
-        crate::utils::display_width(&self.content).max(self.min_width as usize) as u16
+        crate::utils::unicode::display_width_u16(&self.content).max(self.min_width)
     }
 }
 

@@ -143,3 +143,20 @@ fn test_volume_slider_has_vol_label() {
     let s = volume_slider().length(3).show_value(false);
     assert_eq!(render_rows(&s, 7, 1)[0], "Vol █░░");
 }
+
+/// A label 65535 columns wide plus its space does not overflow (a panic in
+/// debug), and one 65536 wide is not measured as 0 with the track drawn
+/// over it: the label fills an area at an offset, with no track or value,
+/// and the slider measures u16::MAX wide (#1607)
+#[test]
+fn test_slider_label_wider_than_u16() {
+    for columns in [65_535, 65_536] {
+        let s = slider().label("g".repeat(columns)).value(50.0);
+        let mut buffer = Buffer::new(10, 2);
+        s.render(&mut RenderContext::new(&mut buffer, Rect::new(2, 1, 6, 1)));
+        let row = |y| -> String { (0..10).map(|x| buffer.get(x, y).unwrap().symbol).collect() };
+        assert_eq!(row(0), " ".repeat(10), "{columns}");
+        assert_eq!(row(1), "  gggggg  ", "{columns}");
+        assert_eq!(s.measure(u16::MAX, 1), Some((u16::MAX, 1)), "{columns}");
+    }
+}

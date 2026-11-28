@@ -23,7 +23,7 @@ impl View for Border {
         };
         // `─ title ─`: a corner, a dash and a space each side.
         let title = self.title.as_deref().map_or(0, |t| {
-            crate::utils::unicode::display_width(t).min(u16::MAX as usize) as u16 + 4
+            crate::utils::unicode::display_width_u16(t).saturating_add(4)
         });
         let w = w.max(title).max(self.min_width);
         let h = h.max(self.min_height);

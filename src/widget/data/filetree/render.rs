@@ -4,7 +4,7 @@ use super::types::{FileEntry, FileType};
 use super::FileTree;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::unicode::display_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View};
 
@@ -81,7 +81,7 @@ impl Row {
             (None, true) => ctx.draw_text_clipped_bold(x, self.y, text, fg, max),
             (None, false) => ctx.draw_text_clipped(x, self.y, text, fg, max),
         }
-        x.saturating_add(display_width(text) as u16)
+        x.saturating_add(display_width_u16(text))
     }
 }
 
@@ -127,7 +127,7 @@ impl FileTree {
         // Size, right-aligned with one free column, when the name leaves room
         if self.show_sizes && !entry.is_dir() {
             let size = entry.format_size();
-            let size_width = display_width(&size) as u16;
+            let size_width = display_width_u16(&size);
             if let Some(size_x) = width.checked_sub(size_width.saturating_add(1)) {
                 if size_x > x {
                     row.text(ctx, size_x, &size, LIGHT_GRAY, false);

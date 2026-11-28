@@ -200,7 +200,7 @@ impl Divider {
     fn vertical_width(&self) -> u16 {
         self.vertical_label_rows()
             .iter()
-            .map(|g| crate::utils::unicode::display_width(g).min(2) as u16)
+            .map(|g| crate::utils::unicode::display_width_u16(g).min(2))
             .max()
             .unwrap_or(1)
             .max(1)
@@ -267,10 +267,10 @@ impl View for Divider {
                 // Draw the line
                 if let Some(ref label) = self.label {
                     // Line with label centered
-                    let label_len = crate::utils::unicode::display_width(label) as u16;
+                    let label_len = crate::utils::unicode::display_width_u16(label);
                     let total_width = end_x - start_x;
 
-                    if label_len + 4 <= total_width {
+                    if label_len.saturating_add(4) <= total_width {
                         let label_start = start_x + (total_width - label_len) / 2 - 1;
                         let label_end = label_start + label_len + 2;
 

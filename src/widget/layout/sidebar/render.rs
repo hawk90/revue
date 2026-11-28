@@ -5,6 +5,7 @@ use super::types::{CollapseMode, FlattenedItem, SidebarItem};
 use super::Sidebar;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::unicode::display_width_u16;
 use crate::utils::{char_width, display_width, truncate_to_width};
 use crate::widget::traits::RenderContext;
 
@@ -319,7 +320,7 @@ impl Sidebar {
         content_width: u16,
     ) {
         let badge_x = content_width
-            .saturating_sub(display_width(badge) as u16 + 2)
+            .saturating_sub(display_width_u16(badge).saturating_add(2))
             .max(from);
         let end = content_width.saturating_sub(2);
         let mut dx: u16 = 0;

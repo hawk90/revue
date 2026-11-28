@@ -482,3 +482,19 @@ fn test_clear_entire_buffer() {
         }
     }
 }
+
+/// A header part 65536 columns wide is not 0 wide: the `─` fill does not
+/// overwrite it, and the right corner stays, in an area at an offset (#1607)
+#[test]
+fn header_line_part_wider_than_u16_is_not_overwritten() {
+    let wide = "g".repeat(65_536);
+    let mut buffer = Buffer::new(12, 1);
+    {
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 0, 10, 1));
+        ctx.draw_header_line(0, 0, 10, &[(&wide, Color::RED)], Color::WHITE);
+    }
+    assert_eq!(row(&buffer, 0), "  ╭─ggggggg╮");
+    for x in 4..11 {
+        assert_eq!(buffer.get(x, 0).unwrap().fg, Some(Color::RED), "{x}");
+    }
+}

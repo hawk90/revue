@@ -1,7 +1,8 @@
 //! The frame: background, horizontal rules, side borders and the result count.
 
 use crate::render::Cell;
-use crate::utils::{char_width, display_width};
+use crate::utils::char_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::theme::DARK_GRAY;
 use crate::widget::traits::RenderContext;
 
@@ -58,7 +59,7 @@ impl CommandPalette {
         let count_str = format!("{}/{}", self.filtered.len(), self.commands.len());
         let count_x = layout
             .text_end
-            .saturating_sub(display_width(&count_str) as u16);
+            .saturating_sub(display_width_u16(&count_str));
         let mut dx: u16 = 0;
         for ch in count_str.chars() {
             let cw = char_width(ch) as u16;

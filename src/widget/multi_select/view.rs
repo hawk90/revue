@@ -145,10 +145,10 @@ impl MultiSelect {
                 // "[label]"; the space after it is not needed to fit. A tag
                 // that more tags follow also needs room for " …" after it,
                 // so the hidden ones are always marked
-                let tag_len = (crate::utils::display_width(label) + 2) as u16;
+                let tag_len = crate::utils::unicode::display_width_u16(label).saturating_add(2);
                 let marker = if i < last { 2 } else { 0 };
 
-                if x + tag_len + marker > max_x {
+                if x.saturating_add(tag_len).saturating_add(marker) > max_x {
                     // Draw overflow indicator; the column after it is
                     // where the query goes
                     ctx.draw_text(x, 0, "…", LIGHT_GRAY);

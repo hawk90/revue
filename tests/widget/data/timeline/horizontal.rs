@@ -139,3 +139,22 @@ fn test_timeline_horizontal_complex_scenario() {
     }
     assert!(found_line);
 }
+
+/// A title and a timestamp 65536 columns wide are cut to the event's 14
+/// columns before they are centered, in an area at an offset (#1607)
+#[test]
+fn test_timeline_horizontal_title_wider_than_u16() {
+    let tl = Timeline::new()
+        .horizontal()
+        .event(TimelineEvent::new("g".repeat(65_536)).timestamp("t".repeat(65_536)));
+    let mut buffer = Buffer::new(24, 5);
+    tl.render(&mut RenderContext::new(&mut buffer, Rect::new(2, 1, 20, 3)));
+    let rows: Vec<String> = (0..5)
+        .map(|y| (0..24).map(|x| buffer.get(x, y).unwrap().symbol).collect())
+        .collect();
+    assert_eq!(rows[0], " ".repeat(24));
+    assert_eq!(rows[1], format!("  {}        ", "g".repeat(14)));
+    assert_eq!(rows[2], "  ───────●────────────  ");
+    assert_eq!(rows[3], format!("  {}        ", "t".repeat(14)));
+    assert_eq!(rows[4], " ".repeat(24));
+}

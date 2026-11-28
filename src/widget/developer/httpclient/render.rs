@@ -248,7 +248,7 @@ impl HttpClient {
 
             // Key
             ctx.draw_text_clipped(0, y, key, self.colors.header_key, half);
-            let kx = (crate::utils::display_width(key) as u16).min(half);
+            let kx = crate::utils::unicode::display_width_u16(key).min(half);
 
             // Colon
             if kx + 2 < area.width {

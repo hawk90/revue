@@ -7,7 +7,7 @@ use super::types::{InspectorConfig, WidgetNode};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::utils::unicode::display_width;
+use crate::utils::unicode::display_width_u16;
 use std::collections::HashMap;
 
 /// Widget tree inspector
@@ -338,7 +338,7 @@ impl Inspector {
         } else {
             (config.fg_color, None)
         };
-        let px = px.saturating_add(display_width(indicator) as u16);
+        let px = px.saturating_add(display_width_u16(indicator));
         draw_text_overlay_clipped(buffer, px, y, max_x, &label, fg, bg);
     }
 

@@ -3,7 +3,8 @@
 use super::{CellPos, CellState, RowRenderParams};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{char_width, display_width, truncate_to_width};
+use crate::utils::unicode::display_width_u16;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::data::datagrid::types::{Alignment, GridColumn, GridRow};
 use crate::widget::data::datagrid::DataGrid;
 use crate::widget::theme::DISABLED_FG;
@@ -209,7 +210,7 @@ impl DataGrid {
         is_selected: bool,
     ) {
         let truncated = truncate_to_width(value, (pos.width as usize).saturating_sub(1));
-        let dw = display_width(truncated) as u16;
+        let dw = display_width_u16(truncated);
         let start_x = match col.align {
             Alignment::Left => pos.x,
             Alignment::Center => pos.x + (pos.width.saturating_sub(dw)) / 2,

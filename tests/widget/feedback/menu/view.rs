@@ -461,3 +461,25 @@ fn test_context_menu_disabled_item_is_not_chosen() {
     assert!(!m.handle_key(&Key::Enter));
     assert!(m.is_visible());
 }
+
+/// A title 65535 columns wide does not overflow (a panic in debug) and is
+/// not measured as 1: the next title is not drawn over it, and its
+/// dropdown, past the right edge, is not drawn; in an area at an offset
+/// (#1607)
+#[test]
+fn test_menu_bar_title_as_wide_as_u16_max() {
+    let mut bar = MenuBar::new()
+        .menu(Menu::new("g".repeat(65_535)))
+        .menu(Menu::new("B").item(MenuItem::new("Up")));
+    bar.open_menu(1);
+    let mut buffer = Buffer::new(14, 4);
+    bar.render(&mut RenderContext::new(&mut buffer, Rect::new(2, 1, 10, 3)));
+    let row = |y| -> String { (0..14).map(|x| buffer.get(x, y).unwrap().symbol).collect() };
+    assert_eq!(row(0), " ".repeat(14));
+    assert_eq!(row(1), format!("   {}  ", "g".repeat(9)));
+    assert_eq!(row(2), " ".repeat(14));
+    assert_eq!(row(3), " ".repeat(14));
+    for x in 2..12 {
+        assert_eq!(buffer.get(x, 1).unwrap().bg, Some(DARK_BG), "{x}");
+    }
+}

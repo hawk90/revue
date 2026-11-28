@@ -327,3 +327,28 @@ proptest! {
         prop_assert!(c.is_empty());
     }
 }
+
+/// An action whose bracketed label is 65536 columns wide is not 0 wide:
+/// it fills the inner columns from the left blank, bold, cut short of the
+/// right border, in an area at an offset (#1607)
+#[test]
+fn test_center_action_wider_than_u16() {
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .width(20);
+    c.push(Notification::info("x").action("g".repeat(65_534)));
+    let mut buffer = Buffer::new(34, 12);
+    c.render(&mut RenderContext::new(
+        &mut buffer,
+        Rect::new(3, 1, 30, 10),
+    ));
+    let line: String = (0..34).map(|x| buffer.get(x, 3).unwrap().symbol).collect();
+    assert_eq!(line, format!("   │ [{} │           ", "g".repeat(15)));
+    for x in 5..21 {
+        assert!(
+            buffer.get(x, 3).unwrap().modifier.contains(Modifier::BOLD),
+            "{x}"
+        );
+    }
+    assert!(!buffer.get(21, 3).unwrap().modifier.contains(Modifier::BOLD));
+}

@@ -17,7 +17,7 @@ impl Switch {
                 } else {
                     self.off_text.as_deref().unwrap_or("OFF")
                 };
-                (crate::utils::display_width(text) as u16).saturating_add(2)
+                crate::utils::unicode::display_width_u16(text).saturating_add(2)
             }
             SwitchStyle::Emoji => 2,
             _ => self.width,
@@ -30,7 +30,7 @@ impl Switch {
     fn switch_x(&self) -> u16 {
         match &self.label {
             Some(label) if self.label_left => {
-                (crate::utils::display_width(label) as u16).saturating_add(1)
+                crate::utils::unicode::display_width_u16(label).saturating_add(1)
             }
             _ => u16::from(self.shows_focus()),
         }
@@ -41,7 +41,7 @@ impl Switch {
     /// brackets on either side of it.
     fn natural_width(&self) -> u16 {
         let label = self.label.as_deref().map_or(0, |l| {
-            (crate::utils::display_width(l) as u16).saturating_add(1)
+            crate::utils::unicode::display_width_u16(l).saturating_add(1)
         });
         let mut width = self.track_width().saturating_add(label);
         if self.shows_focus() {

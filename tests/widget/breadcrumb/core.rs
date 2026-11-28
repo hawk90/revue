@@ -1177,3 +1177,44 @@ fn test_breadcrumb_vim_keys_navigation() {
     assert!(bc.handle_key(&Key::Char('h')));
     assert_eq!(bc.selected(), 0);
 }
+
+/// A label 65535 or 65536 columns wide makes the trail wider than any
+/// area, not about 16 columns wide (the sum overflowed, a panic in debug,
+/// or the label read as 0): it measures u16::MAX and collapses, in an area
+/// at an offset (#1607)
+#[test]
+fn test_breadcrumb_label_wider_than_u16_collapses() {
+    for columns in [65_535, 65_536] {
+        let bc = Breadcrumb::new()
+            .home(false)
+            .push("a")
+            .push("b")
+            .push("g".repeat(columns))
+            .push("c")
+            .push("d");
+        assert_eq!(bc.measure(u16::MAX, 1), Some((u16::MAX, 1)), "{columns}");
+        let mut buffer = Buffer::new(24, 1);
+        bc.render(&mut RenderContext::new(&mut buffer, Rect::new(2, 0, 20, 1)));
+        let row: String = (0..24).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+        assert_eq!(
+            row,
+            format!("  a › … › c › d{}", " ".repeat(9)),
+            "{columns}"
+        );
+    }
+}
+
+/// A label 65536 columns wide is not 0 wide when drawn: it fills the area
+/// and no separator or later item is drawn over it (#1607)
+#[test]
+fn test_breadcrumb_label_wider_than_u16_is_not_overwritten() {
+    let bc = Breadcrumb::new()
+        .home(false)
+        .collapse(false)
+        .push("g".repeat(65_536))
+        .push("b");
+    let mut buffer = Buffer::new(24, 1);
+    bc.render(&mut RenderContext::new(&mut buffer, Rect::new(2, 0, 20, 1)));
+    let row: String = (0..24).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert_eq!(row, format!("  {}  ", "g".repeat(20)));
+}

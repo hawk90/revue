@@ -4,7 +4,8 @@ use super::core::Diagram;
 use super::types::{ArrowStyle, DiagramDirection, DiagramEdge, NodeShape};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::unicode::{display_width, truncate_to_width};
+use crate::utils::unicode::display_width_u16;
+use crate::utils::unicode::truncate_to_width;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Diagram {
@@ -124,7 +125,7 @@ impl Diagram {
                 // label wider than its box is cut, not drawn over them.
                 let inner = width.saturating_sub(2);
                 let label = truncate_to_width(&node.label, inner as usize);
-                let label_start = 1 + (inner - display_width(label) as u16) / 2;
+                let label_start = 1 + (inner - display_width_u16(label)) / 2;
                 ctx.put_str_with(x + label_start, y + 1, label, x + width - 1, |ch| {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
@@ -230,7 +231,7 @@ impl Diagram {
         if let Some(ref label) = edge.label {
             let label_y = (start_y + end_y) / 2;
             let label_str = label.as_str();
-            let label_x = start_x.saturating_sub(display_width(label_str) as u16 / 2);
+            let label_x = start_x.saturating_sub(display_width_u16(label_str) / 2);
             let label_fg = self.colors.label;
             ctx.put_str_with(label_x, label_y, label_str, area.width, |ch| {
                 Cell::new(ch).fg(label_fg).italic()
@@ -289,7 +290,7 @@ impl Diagram {
 
         if let Some(ref label) = edge.label {
             let label_y = (top + bottom) / 2;
-            let label_x = start_x.saturating_sub(display_width(label) as u16 / 2);
+            let label_x = start_x.saturating_sub(display_width_u16(label) / 2);
             let label_fg = self.colors.label;
             ctx.put_str_with(label_x, label_y, label, area.width, |ch| {
                 Cell::new(ch).fg(label_fg).italic()
@@ -334,7 +335,7 @@ impl Diagram {
         // Label above the line, centered in the gap
         if let Some(ref label) = edge.label {
             let mid = (left + right) / 2;
-            let label_x = mid.saturating_sub(display_width(label) as u16 / 2);
+            let label_x = mid.saturating_sub(display_width_u16(label) / 2);
             let label_y = start_y.saturating_sub(1);
             let label_fg = self.colors.label;
             ctx.put_str_with(label_x, label_y, label, area.width, |ch| {

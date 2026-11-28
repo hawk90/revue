@@ -27,7 +27,9 @@ impl Slider {
                 Color::WHITE
             };
             ctx.put_str_with(x, y, label, area.width, |ch| Cell::new(ch).fg(label_fg));
-            x += crate::utils::display_width(label) as u16 + 1;
+            x = x
+                .saturating_add(crate::utils::unicode::display_width_u16(label))
+                .saturating_add(1);
         }
 
         let track_x = x;

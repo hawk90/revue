@@ -1,8 +1,9 @@
 //! DataGrid footer rows
 
 use crate::render::{Cell, Modifier};
+use crate::utils::unicode::display_width_u16;
 
-use crate::utils::{char_width, display_width, truncate_to_width};
+use crate::utils::{char_width, truncate_to_width};
 
 use crate::widget::data::datagrid::columns::slots::ColumnSlot;
 use crate::widget::data::datagrid::types::{Alignment, FooterRow};
@@ -33,7 +34,7 @@ impl DataGrid {
                 .unwrap_or("");
 
             let truncated = truncate_to_width(text, (slot.width as usize).saturating_sub(1));
-            let dw = display_width(truncated) as u16;
+            let dw = display_width_u16(truncated);
             let start_x = match slot.col.align {
                 Alignment::Left => slot.x,
                 Alignment::Center => slot.x + (slot.width.saturating_sub(dw)) / 2,
