@@ -64,6 +64,7 @@ fn test_grid_row_get_duplicate_keys_returns_first() {
     assert_eq!(row.get("key"), Some("first"));
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_child_single() {
     let child = GridRow::new().cell("name", "Child");
@@ -73,6 +74,7 @@ fn test_grid_row_child_single() {
     assert_eq!(row.children[0].data[0].1, "Child");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_child_multiple_chained() {
     let row = GridRow::new()
@@ -83,6 +85,7 @@ fn test_grid_row_child_multiple_chained() {
     assert_eq!(row.children.len(), 3);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_child_nested() {
     let nested = GridRow::new()
@@ -97,12 +100,14 @@ fn test_grid_row_child_nested() {
     assert_eq!(row.children[0].children[0].data[0].1, "GreatGrandchild");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_children_empty_vec() {
     let row = GridRow::new().children(vec![]);
     assert!(row.children.is_empty());
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_children_single() {
     let children = vec![GridRow::new().cell("name", "Only")];
@@ -112,6 +117,7 @@ fn test_grid_row_children_single() {
     assert_eq!(row.children[0].data[0].1, "Only");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_children_multiple() {
     let children = vec![
@@ -124,6 +130,7 @@ fn test_grid_row_children_multiple() {
     assert_eq!(row.children.len(), 3);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_children_adds_to_existing() {
     let row = GridRow::new()
@@ -136,30 +143,35 @@ fn test_grid_row_children_adds_to_existing() {
     assert_eq!(row.children.len(), 3);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_expanded_default_is_false() {
     let row = GridRow::new();
     assert!(!row.expanded);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_has_children_true() {
     let row = GridRow::new().child(GridRow::new());
     assert!(row.has_children());
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_has_children_false() {
     let row = GridRow::new();
     assert!(!row.has_children());
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_has_children_empty_vec() {
     let row = GridRow::new().children(vec![]);
     assert!(!row.has_children());
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_has_children_multiple() {
     let row = GridRow::new().child(GridRow::new()).child(GridRow::new());
@@ -176,6 +188,7 @@ fn test_grid_row_clone_simple() {
     assert_eq!(row1.data[0], row2.data[0]);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_clone_with_children() {
     let row1 = GridRow::new()
@@ -188,6 +201,7 @@ fn test_grid_row_clone_with_children() {
     assert_eq!(row1.children[0].data[0], row2.children[0].data[0]);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_clone_with_expanded() {
     let row1 = GridRow::new().expanded(true);
@@ -197,6 +211,7 @@ fn test_grid_row_clone_with_expanded() {
     assert!(row2.expanded);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_clone_independence() {
     let row1 = GridRow::new()
@@ -213,6 +228,7 @@ fn test_grid_row_clone_independence() {
     assert_eq!(row2.children[0].data[0].1, "changed");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_public_fields_accessible() {
     let mut row = GridRow::new();
@@ -237,6 +253,7 @@ fn test_grid_row_selected_field() {
     assert!(!row.selected);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_full_builder_chain() {
     let row = GridRow::new()
@@ -257,6 +274,7 @@ fn test_grid_row_full_builder_chain() {
     assert_eq!(row.children[0].get("name"), Some("Bob"));
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_deep_hierarchy() {
     let row = GridRow::new().cell("level", "0").child(
@@ -321,6 +339,7 @@ fn test_grid_row_empty_string_values() {
     assert_eq!(row.get("spaces"), Some("   "));
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_debug_trait() {
     let row = GridRow::new()
@@ -331,6 +350,7 @@ fn test_grid_row_debug_trait() {
     assert!(debug_str.contains("GridRow"));
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_tree_structure() {
     let tree = GridRow::new()
@@ -357,6 +377,7 @@ fn test_grid_row_tree_structure() {
     assert!(tree.children[1].expanded);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_find_child_by_key() {
     let row = GridRow::new().children(vec![
@@ -371,6 +392,7 @@ fn test_grid_row_find_child_by_key() {
     assert_eq!(row.children[2].get("name"), Some("Charlie"));
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_with_selected_children() {
     let row = GridRow::new().cell("name", "Parent").children(vec![
@@ -391,6 +413,7 @@ fn test_grid_row_with_selected_children() {
     assert!(!row.children[1].selected);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_mixed_expansion_states() {
     let row = GridRow::new().expanded(true).children(vec![
@@ -414,6 +437,7 @@ fn test_grid_row() {
     assert_eq!(row.get("unknown"), None);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_default() {
     let row = GridRow::default();
@@ -431,6 +455,7 @@ fn test_grid_row_debug_clone() {
     let _ = format!("{:?}", row);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_new() {
     let row = GridRow::new();
@@ -454,6 +479,7 @@ fn test_grid_row_get_not_found() {
     assert!(row.get("email").is_none());
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_child() {
     let parent = GridRow::new()
@@ -463,12 +489,14 @@ fn test_grid_row_child() {
     assert!(parent.has_children());
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_expanded() {
     let row = GridRow::new().expanded(true);
     assert!(row.expanded);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_grid_row_has_children() {
     let row = GridRow::new();
