@@ -98,34 +98,26 @@ impl RenderContext<'_> {
     /// Draw a single character at relative position (0,0 = area top-left).
     ///
     /// Like every drawing method here, respects the clipping region set by
-    /// `overflow: hidden`.
+    /// `overflow: hidden`. Goes through [`set`](Self::set): a wide glyph
+    /// whose right half would fall past the area's right edge or the clip is
+    /// drawn as a space, so nothing is written outside the area.
     #[inline]
     pub fn draw_char(&mut self, x: u16, y: u16, ch: char, fg: Color) {
-        let (abs_x, abs_y) = (self.area.x.saturating_add(x), self.area.y.saturating_add(y));
-        if x < self.area.width && y < self.area.height && !self.is_clipped(abs_x, abs_y) {
-            let cell = Cell::new(ch).fg(fg);
-            self.buffer.set(abs_x, abs_y, cell);
-        }
+        self.set(x, y, Cell::new(ch).fg(fg));
     }
 
-    /// Draw a character with background color at relative position
+    /// Draw a character with background color at relative position, as
+    /// [`draw_char`](Self::draw_char) does
     #[inline]
     pub fn draw_char_bg(&mut self, x: u16, y: u16, ch: char, fg: Color, bg: Color) {
-        let (abs_x, abs_y) = (self.area.x.saturating_add(x), self.area.y.saturating_add(y));
-        if x < self.area.width && y < self.area.height && !self.is_clipped(abs_x, abs_y) {
-            let cell = Cell::new(ch).fg(fg).bg(bg);
-            self.buffer.set(abs_x, abs_y, cell);
-        }
+        self.set(x, y, Cell::new(ch).fg(fg).bg(bg));
     }
 
-    /// Draw a bold character at relative position
+    /// Draw a bold character at relative position, as
+    /// [`draw_char`](Self::draw_char) does
     #[inline]
     pub fn draw_char_bold(&mut self, x: u16, y: u16, ch: char, fg: Color) {
-        let (abs_x, abs_y) = (self.area.x.saturating_add(x), self.area.y.saturating_add(y));
-        if x < self.area.width && y < self.area.height && !self.is_clipped(abs_x, abs_y) {
-            let cell = Cell::new(ch).fg(fg).bold();
-            self.buffer.set(abs_x, abs_y, cell);
-        }
+        self.set(x, y, Cell::new(ch).fg(fg).bold());
     }
 
     /// Draw text at position

@@ -95,3 +95,113 @@ fn put_str_a_wide_glyph_at_the_last_column_of_an_offset_area() {
     }
     assert_eq!(cells(&buffer, 0), "..日_月_..");
 }
+
+/// Each `draw_char*` with its style, at relative `(x, 0)`
+type DrawChar = fn(&mut RenderContext, u16, char);
+const DRAW_CHARS: [(&str, DrawChar); 3] = [
+    ("draw_char", |c, x, ch| c.draw_char(x, 0, ch, Color::RED)),
+    ("draw_char_bg", |c, x, ch| {
+        c.draw_char_bg(x, 0, ch, Color::RED, Color::BLUE)
+    }),
+    ("draw_char_bold", |c, x, ch| {
+        c.draw_char_bold(x, 0, ch, Color::RED)
+    }),
+];
+
+/// The colors and modifier `name` draws with
+fn char_style(name: &str) -> (Option<Color>, Option<Color>, revue::render::Modifier) {
+    use revue::render::Modifier;
+    match name {
+        "draw_char" => (Some(Color::RED), None, Modifier::empty()),
+        "draw_char_bg" => (Some(Color::RED), Some(Color::BLUE), Modifier::empty()),
+        _ => (Some(Color::RED), None, Modifier::BOLD),
+    }
+}
+
+#[test]
+fn draw_char_a_wide_glyph_at_the_last_column_of_an_offset_area_draws_a_space() {
+    // `draw_char*` checked only the glyph's column, then `Buffer::set` wrote
+    // its right half one column past the area (#1619). The area is columns
+    // 1-3; column 4 belongs to another view.
+    for (name, draw) in DRAW_CHARS {
+        let mut buffer = Buffer::new(6, 1);
+        buffer.put_str(0, 0, "......");
+        {
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(1, 0, 3, 1));
+            draw(&mut ctx, 0, '日'); // 1-2, fits
+            draw(&mut ctx, 2, '月'); // 3-4, crosses the area's edge
+        }
+        assert_eq!(cells(&buffer, 0), ".日_ ..", "{name}");
+        for x in 1..4 {
+            let cell = buffer.get(x, 0).unwrap();
+            assert_eq!(
+                (cell.fg, cell.bg, cell.modifier),
+                char_style(name),
+                "{name} {x}"
+            );
+        }
+        for x in [0, 4, 5] {
+            assert_eq!(buffer.get(x, 0).unwrap().fg, None, "{name} {x}");
+        }
+    }
+}
+
+#[test]
+fn draw_char_a_wide_glyph_across_the_clip_draws_a_space() {
+    // Column 4 is the clip's last; column 5 is past it
+    for (name, draw) in DRAW_CHARS {
+        let mut buffer = Buffer::new(8, 1);
+        buffer.put_str(0, 0, "........");
+        {
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(1, 0, 7, 1))
+                .with_clip(Rect::new(2, 0, 3, 1));
+            draw(&mut ctx, 1, '日'); // 2-3, inside
+            draw(&mut ctx, 3, '月'); // 4-5, crosses the clip
+            draw(&mut ctx, 0, '火'); // 1, left of the clip
+        }
+        assert_eq!(cells(&buffer, 0), "..日_ ...", "{name}");
+        for x in 2..5 {
+            let cell = buffer.get(x, 0).unwrap();
+            assert_eq!(
+                (cell.fg, cell.bg, cell.modifier),
+                char_style(name),
+                "{name} {x}"
+            );
+        }
+        for x in [0, 1, 5, 6, 7] {
+            assert_eq!(buffer.get(x, 0).unwrap().fg, None, "{name} {x}");
+        }
+    }
+}
+
+#[test]
+fn put_str_writes_plain_cells_over_a_style() {
+    // `put_str` draws no colors or modifier, as `Buffer::put_str`: the
+    // style already in the cells it writes is replaced (#1620)
+    use revue::render::{Cell, Modifier};
+    let mut buffer = Buffer::new(6, 1);
+    for x in 0..6 {
+        buffer.set(x, 0, Cell::new('.').fg(Color::RED).bg(Color::BLUE).bold());
+    }
+    {
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(1, 0, 4, 1));
+        assert_eq!(ctx.put_str(0, 0, "a日"), 3);
+    }
+    assert_eq!(cells(&buffer, 0), ".a日_..");
+    for x in 1..4 {
+        let cell = buffer.get(x, 0).unwrap();
+        assert_eq!(
+            (cell.fg, cell.bg, cell.modifier),
+            (None, None, Modifier::empty()),
+            "{x}"
+        );
+    }
+    for x in [0, 4, 5] {
+        let cell = buffer.get(x, 0).unwrap();
+        assert_eq!(
+            (cell.fg, cell.bg),
+            (Some(Color::RED), Some(Color::BLUE)),
+            "{x}"
+        );
+    }
+}

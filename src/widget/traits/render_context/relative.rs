@@ -203,6 +203,12 @@ impl super::RenderContext<'_> {
     /// Respects the clipping region set by `overflow: hidden`. Each glyph is
     /// written with [`Self::set`], so a wide glyph whose right half the clip
     /// cuts off is drawn as a space.
+    ///
+    /// The cells are plain, as [`Buffer::put_str`](crate::render::Buffer::put_str)
+    /// writes them: no foreground or background color and no modifier, so
+    /// any style already in those cells is replaced. For styled text use
+    /// [`draw_text`](Self::draw_text), [`draw_text_bg`](Self::draw_text_bg)
+    /// and the other `draw_text_*` methods.
     pub fn put_str(&mut self, x: u16, y: u16, s: &str) -> u16 {
         if y >= self.area.height {
             return 0;
