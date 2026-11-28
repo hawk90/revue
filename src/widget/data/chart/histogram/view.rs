@@ -3,8 +3,9 @@
 use super::Histogram;
 use crate::layout::Rect;
 use crate::style::Color;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::data::chart::chart_common::ChartOrientation;
-use crate::widget::data::chart::chart_render::{fill_background, render_title};
+use crate::widget::data::chart::chart_render::{fill_background, render_title, y_label_column};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Histogram {
@@ -29,7 +30,16 @@ impl View for Histogram {
         let title_offset = render_title(ctx, rel_area, self.title.as_deref(), Color::WHITE);
 
         // Calculate chart area (relative coordinates)
-        let y_label_width = 6u16;
+        // The label column left of the chart fits the widest of its
+        // labels, at most a third of the area (#1614)
+        let horizontal = self.orientation == ChartOrientation::Horizontal;
+        let widest = self
+            .left_labels(horizontal)
+            .iter()
+            .map(|label| display_width_u16(label))
+            .max()
+            .unwrap_or(0);
+        let y_label_width = y_label_column(widest, area.width);
         let x_label_height = 1u16;
 
         let chart_area = Rect {
@@ -46,14 +56,14 @@ impl View for Histogram {
         }
 
         // Render components
-        if self.orientation == ChartOrientation::Horizontal {
+        if horizontal {
             self.render_bars_horizontal(ctx, chart_area);
             self.render_stats_horizontal(ctx, chart_area);
             self.render_axes_horizontal(ctx, rel_area, chart_area);
         } else {
             self.render_bars(ctx, chart_area);
             self.render_stats(ctx, chart_area);
-            self.render_axes(ctx, rel_area);
+            self.render_axes(ctx, rel_area, chart_area);
         }
     }
 }

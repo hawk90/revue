@@ -321,10 +321,12 @@ mod tests {
 
     #[test]
     fn test_event_meta_elapsed() {
+        let time = crate::testing::MockTime::new();
+        let _guard = time.install();
         let meta = EventMeta::new("test");
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        let elapsed = meta.elapsed();
-        assert!(elapsed.as_millis() >= 10);
+        assert_eq!(meta.elapsed(), std::time::Duration::ZERO);
+        time.advance_ms(10);
+        assert_eq!(meta.elapsed(), std::time::Duration::from_millis(10));
     }
 
     #[test]

@@ -114,3 +114,79 @@ fn test_scatter_any_tick_count_draws() {
         assert!(count_char(&buffer, '0') > 0, "ticks {ticks}: no labels");
     }
 }
+
+/// A 30x12 chart with horizontal grid lines and Y labels of `format` (in
+/// red) on the bounds 0..1, padded to -0.05..1.05
+fn y_labeled(format: &str) -> revue::render::Buffer {
+    use revue::style::Color;
+    use revue::widget::data::chart::AxisFormat;
+    let chart = bare()
+        .grid(ChartGrid::y_only())
+        .x_axis(Axis::new().ticks(1))
+        .y_axis(
+            Axis::new()
+                .bounds(0.0, 1.0)
+                .ticks(1)
+                .color(Color::RED)
+                .format(AxisFormat::Custom(format.into())),
+        );
+    render(&chart, 30, 12)
+}
+
+/// The Y label column is as wide as the widest label, at most a third of
+/// the area, and the plot starts after it and a gap column (#1614)
+#[test]
+fn test_scatter_y_label_column_fits_the_widest_label() {
+    // "-0.05" and "1.05": 5 columns, the plot (its first grid line) at 6
+    let rows = rows(&y_labeled("{}"));
+    assert_eq!(rows[0], format!("{}├{} ", " ".repeat(6), "─".repeat(22)));
+    assert_eq!(rows[1], format!("1.05{}", " ".repeat(26)));
+}
+
+#[test]
+fn test_scatter_y_labels_past_a_third_are_cut_with_an_ellipsis() {
+    use revue::style::Color;
+    // "1.05xxxxxxxxxx" is 14 columns: cut to the 10 of the column, the
+    // plot at 11
+    let buffer = y_labeled("{}xxxxxxxxxx");
+    let lines = rows(&buffer);
+    assert_eq!(lines[0], format!("{}├{} ", " ".repeat(11), "─".repeat(17)));
+    assert_eq!(lines[1], format!("1.05xxxxx…{}", " ".repeat(20)));
+    for x in 0..10 {
+        assert_eq!(buffer.get(x, 1).unwrap().fg, Some(Color::RED), "x={x}");
+    }
+    // Wide glyphs stay whole: "1.05가나다라" is 12 columns, cut to 9
+    // (`rows` shows the right half of a wide glyph as '\0')
+    let lines = rows(&y_labeled("{}가나다라"));
+    assert_eq!(lines[0], format!("{}├{} ", " ".repeat(11), "─".repeat(17)));
+    assert_eq!(lines[1], format!("1.05가\0나\0…{}", " ".repeat(21)));
+}
+
+/// A huge tick count draws one grid line and Y label per row and an X
+/// label every other column, instead of looping once per tick (#1615,
+/// #1616)
+#[test]
+fn test_scatter_huge_tick_counts_are_capped_at_the_cells() {
+    use revue::widget::data::chart::AxisFormat;
+    let chart = bare()
+        .grid(ChartGrid::both())
+        .x_axis(
+            Axis::new()
+                .ticks(usize::MAX)
+                .format(AxisFormat::Custom("x".into())),
+        )
+        .y_axis(
+            Axis::new()
+                .ticks(usize::MAX)
+                .format(AxisFormat::Custom("y".into())),
+        );
+    let rows = rows(&render(&chart, 30, 12));
+    // Rows 1..=10 hold a Y label each; the plot is columns 2..29 of rows
+    // 0..10, a grid line on every row of it
+    assert_eq!(rows[0], format!("  ├{} ", "─".repeat(26)));
+    for (y, row) in rows[1..10].iter().enumerate() {
+        assert_eq!(*row, format!("y ├{} ", "─".repeat(26)), "row {}", y + 1);
+    }
+    assert_eq!(rows[10], format!("y{}", " ".repeat(29)));
+    assert_eq!(rows[11], format!("y {}", "x ".repeat(14)));
+}

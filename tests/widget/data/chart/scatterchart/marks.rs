@@ -23,8 +23,9 @@ fn test_scatter_series_colors() {
         )
         .series(ScatterSeries::new("B").points(&[(10.0, 10.0)]))
         .colors(ColorScheme::new(vec![Color::GREEN, Color::BLUE]));
+    // The plot starts at column 6, after the 5-column Y labels ("-0.50")
     let buffer = render(&chart, 40, 20);
-    assert_eq!(buffer.get(9, 17).unwrap().fg, Some(Color::RED));
+    assert_eq!(buffer.get(7, 17).unwrap().fg, Some(Color::RED));
     assert_eq!(buffer.get(36, 1).unwrap().fg, Some(Color::BLUE));
 }
 
@@ -60,7 +61,9 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 
     /// Any finite points with auto bounds: at least one marker is drawn and
-    /// every marker sits inside the chart area (columns 8..w-1, rows ..h-2)
+    /// every marker sits inside the chart area (right of the Y labels and
+    /// their gap column, before column w-1, rows ..h-2); the label column
+    /// is at most a third of the width
     #[test]
     fn test_scatter_points_land_inside_the_chart_area(
         points in prop::collection::vec((-1e6f64..1e6, -1e6f64..1e6), 1..20),
@@ -69,11 +72,22 @@ proptest! {
     ) {
         let chart = bare().series(ScatterSeries::new("s").data(points).marker(Marker::Star));
         let buffer = render(&chart, w, h);
+        // The Y labels are left-aligned and hold no spaces (the last row is
+        // the X labels')
+        let label_end = (0..h - 1)
+            .map(|y| {
+                (0..w)
+                    .take_while(|&x| !matches!(buffer.get(x, y).unwrap().symbol, ' ' | '★'))
+                    .count() as u16
+            })
+            .max()
+            .unwrap();
+        prop_assert!(label_end <= w / 3);
         let mut stars = 0;
         for y in 0..h {
             for x in 0..w {
                 if buffer.get(x, y).unwrap().symbol == '★' {
-                    prop_assert!(x >= 8 && x < w - 1 && y < h - 2, "point at ({}, {}) in {}x{}", x, y, w, h);
+                    prop_assert!(x > label_end && x < w - 1 && y < h - 2, "point at ({}, {}) in {}x{}", x, y, w, h);
                     stars += 1;
                 }
             }

@@ -138,8 +138,9 @@ fn test_chart_legend_names_stop_at_the_plot_edge() {
     let buffer = render(&chart, 17, 8);
     let rows = rows(&buffer);
     assert_eq!(rows[2], "│ 0.83  ┌───────│");
-    assert_eq!(rows[3], "│ 0.61  │■ abcd │");
-    assert_eq!(rows[4], "│-0.17  └───────│");
+    // Six ticks on four rows: one label per row, both ends kept (#1615)
+    assert_eq!(rows[3], "│ 0.39  │■ abcd │");
+    assert_eq!(rows[4], "│-0.05  └───────│");
     assert_eq!(buffer.get(16, 3).unwrap().fg, Some(Color::BLUE));
     // An ASCII name is cut at the border the same way
     let chart = plain()
@@ -147,5 +148,5 @@ fn test_chart_legend_names_stop_at_the_plot_edge() {
         .legend(LegendPosition::TopLeft)
         .series(Series::new("A very long series name"));
     let rows = render_rows(&chart, 20, 8);
-    assert_eq!(rows[3], "│ 0.61  │■ A very l│");
+    assert_eq!(rows[3], "│ 0.39  │■ A very l│");
 }

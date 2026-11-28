@@ -129,7 +129,39 @@ fn relative_time_labels_draw_from_the_mocked_time() {
         .series(TimeSeriesData::new("cpu").point(super::NOW - 60, 5.0));
     let rows = render_rows(&chart, 40, 12);
     // Two minutes ago on the left, now on the right
-    assert_eq!(rows[11], "       2m                            0s ");
+    assert_eq!(rows[11], "   2m                                0s ");
     // A minute ago is the middle of the plot
-    assert_eq!(rows[5], "    5.0 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄●┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ ");
+    assert_eq!(rows[5], "5.0 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄●┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ ");
+}
+
+/// The value labels' column is as wide as the widest label, at most a
+/// third of the area, with a gap column before the plot; labels are
+/// right-aligned and a wider one is cut with `…` (#1614)
+#[test]
+fn test_time_series_value_label_column_fits_the_widest_label() {
+    let chart = |min: f64, max: f64| {
+        TimeSeries::new()
+            .time_range(super::fixed_range())
+            .y_range(min, max)
+            .bg(Color::BLUE)
+    };
+    // "0.75", "0.50", ...: 4 columns, the plot at 5..19
+    let buffer = render(&chart(0.0, 1.0), 20, 10);
+    let rows = super::super::rows(&buffer);
+    let grid = "┄".repeat(14);
+    assert_eq!(rows[0], format!(" 1.0 {grid} "));
+    assert_eq!(rows[2], format!("0.75 {grid} "));
+    assert_eq!(rows[8], format!("0.00 {} ", "─".repeat(14)));
+    // The labels keep the background
+    for x in 0..4 {
+        assert_eq!(buffer.get(x, 2).unwrap().bg, Some(Color::BLUE), "x={x}");
+    }
+    // "-123.5k" is 7 columns, past a third of 15: cut to 5
+    let rows = super::super::rows(&render(&chart(-123_456.0, 123_456.0), 15, 10));
+    let grid = "┄".repeat(8);
+    assert_eq!(rows[0], format!("123.… {grid} "));
+    assert_eq!(rows[2], format!("61.7k {grid} "));
+    assert_eq!(rows[4], format!(" 0.00 {grid} "));
+    assert_eq!(rows[6], format!("-61.… {grid} "));
+    assert_eq!(rows[8], format!("-123… {} ", "─".repeat(8)));
 }

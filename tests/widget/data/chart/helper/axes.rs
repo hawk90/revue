@@ -291,3 +291,89 @@ fn test_chart_a_narrow_label_column_leaves_room_for_the_plot() {
         .iter()
         .all(|r| r.trim().is_empty()));
 }
+
+// #1615: one label per row (Y) and per two columns (X), both ends kept;
+// #1616: a huge tick count costs no more than the cells
+
+#[test]
+fn test_chart_y_labels_on_the_same_row_draw_one() {
+    use revue::style::Color;
+    // Ten ticks over 0..10 on a 4-row plot: rows 0..3 from the bottom take
+    // the first tick that lands on them, 0, 4 and 7, and the top row the
+    // last, 10; right-aligned in the 2-column label column
+    let chart = plain()
+        .x_axis(Axis::new().bounds(0.0, 1.0).ticks(1).grid(false))
+        .y_axis(
+            Axis::new()
+                .bounds(0.0, 10.0)
+                .ticks(10)
+                .grid(false)
+                .color(Color::RED),
+        );
+    let buffer = render(&chart, 30, 6);
+    let rows = rows(&buffer);
+    let blank = " ".repeat(27);
+    assert_eq!(rows[0], format!("10 {blank}"));
+    assert_eq!(rows[1], format!(" 7 {blank}"));
+    assert_eq!(rows[2], format!(" 4 {blank}"));
+    assert_eq!(rows[3], format!(" 0 {blank}"));
+    assert_eq!(rows[4], format!("   0{}1", " ".repeat(25)));
+    for (x, y) in [(0, 0), (1, 0), (1, 1), (1, 2), (1, 3)] {
+        assert_eq!(buffer.get(x, y).unwrap().fg, Some(Color::RED), "({x}, {y})");
+    }
+}
+
+/// A 30x8 chart whose X axis has `ticks` ticks labeled "x" and whose Y
+/// axis has `ticks` ticks labeled "y", in an area at an offset
+fn crowded(ticks: usize, grid: bool) -> Vec<String> {
+    use super::super::render_at;
+    let chart = plain()
+        .x_axis(
+            Axis::new()
+                .ticks(ticks)
+                .grid(grid)
+                .format(AxisFormat::Custom("x".into())),
+        )
+        .y_axis(
+            Axis::new()
+                .ticks(ticks)
+                .grid(grid)
+                .format(AxisFormat::Custom("y".into())),
+        );
+    let rows = rows(&render_at(&chart, Rect::new(3, 2, 30, 8)));
+    rows[2..10]
+        .iter()
+        .map(|r| r.chars().skip(3).take(30).collect())
+        .collect()
+}
+
+#[test]
+fn test_chart_x_labels_closer_than_two_columns_draw_every_other() {
+    // 100 ticks on the 28 plot columns from column 2 (ticks 27 columns
+    // apart at the ends): one label every two columns, 2..26, and the last
+    // tick at 29 in place of the one at 28, one column from it
+    let rows = crowded(100, false);
+    assert_eq!(rows[6], format!("  {} x", "x ".repeat(13)));
+    // One "y" per plot row
+    for (y, row) in rows[..6].iter().enumerate() {
+        assert_eq!(*row, format!("y{}", " ".repeat(29)), "row {y}");
+    }
+}
+
+#[test]
+fn test_chart_huge_tick_counts_are_capped_at_the_cells() {
+    // usize::MAX ticks: the same labels as for 100, drawn without one
+    // loop per tick, with the grid lines on the labeled ticks
+    let rows = crowded(usize::MAX, false);
+    assert_eq!(rows, crowded(100, false));
+    let rows = crowded(usize::MAX, true);
+    assert_eq!(rows[6], format!("  {} x", "x ".repeat(13)));
+    for (y, row) in rows[..6].iter().enumerate() {
+        assert!(row.starts_with("y "), "row {y}: {row:?}");
+    }
+    // The inner rows are grid lines, crossed by the inner columns'
+    assert!(
+        rows[1].chars().skip(2).all(|c| c == '┄' || c == '┊'),
+        "{rows:?}"
+    );
+}
