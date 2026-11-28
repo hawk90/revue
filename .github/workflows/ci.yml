@@ -298,6 +298,29 @@ jobs:
         with:
           config: .typos.toml
 
+  # Workflow files (#1582): expressions, action inputs, and the shell in
+  # every `run:` through shellcheck (preinstalled on the runner). The binary
+  # is a pinned release, checked against its published SHA-256.
+  actionlint:
+    name: Actionlint
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install actionlint
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLo "$RUNNER_TEMP/$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$archive"
+          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+      - name: Lint workflows
+        run: '"$RUNNER_TEMP/actionlint" -color'
+
   # Instruction counts against the base branch (#1168). Criterion times only
   # compare within one session, so they cannot gate; Callgrind's counts are the
   # same on every run. A benchmark that costs 5% more than on the base fails
@@ -414,7 +437,7 @@ jobs:
   ci-gate:
     name: CI Gate
     if: always()
-    needs: [changes, fmt, clippy, features, test, standalone, coverage, msrv, docs, typos, public-api, instructions]
+    needs: [changes, fmt, clippy, features, test, standalone, coverage, msrv, docs, typos, actionlint, public-api, instructions]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -430,11 +453,12 @@ jobs:
           MSRV: ${{ needs.msrv.result }}
           DOCS: ${{ needs.docs.result }}
           TYPOS: ${{ needs.typos.result }}
+          ACTIONLINT: ${{ needs.actionlint.result }}
           PUBLIC_API: ${{ needs.public-api.result }}
           INSTRUCTIONS: ${{ needs.instructions.result }}
         run: |
           fail=0
-          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "features:$FEATURES" "test:$TEST" "standalone:$STANDALONE" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS" "public-api:$PUBLIC_API" "instructions:$INSTRUCTIONS"; do
+          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "features:$FEATURES" "test:$TEST" "standalone:$STANDALONE" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS" "actionlint:$ACTIONLINT" "public-api:$PUBLIC_API" "instructions:$INSTRUCTIONS"; do
             job="${pair%%:*}"
             res="${pair#*:}"
             if [ "$res" = "success" ] || [ "$res" = "skipped" ]; then
