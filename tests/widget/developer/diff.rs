@@ -536,6 +536,92 @@ fn test_diff_scroll_kept_in_range_when_the_rows_shrink() {
     );
 }
 
+/// Lines `l1` to `l10000`, then `old` changed to `new` (line 10001), with
+/// one line of context: the unchanged run above is folded away
+fn five_digit_diff(mode: DiffMode) -> DiffViewer {
+    let mut text = String::new();
+    for n in 1..=10_000 {
+        text.push_str(&format!("l{n}\n"));
+    }
+    diff(&format!("{text}old\n"), &format!("{text}new\n"))
+        .mode(mode)
+        .context(1)
+}
+
+/// Up to four digits the columns stay where they were
+#[test]
+fn test_diff_unified_line_numbers_four_digits() {
+    let viewer = diff("a\nb\n", "a\nc\n").mode(DiffMode::Unified);
+    assert_eq!(
+        screen_rows(&viewer, 30, 4),
+        ["   1:1     a", "   2:     -b", "    :2    +c", ""]
+    );
+}
+
+/// A five-digit number widens both columns instead of being cut (#1555)
+#[test]
+fn test_diff_unified_line_numbers_past_four_digits() {
+    let viewer = five_digit_diff(DiffMode::Unified);
+    let mut buffer = Buffer::new(30, 5);
+    viewer.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 30, 5)));
+    let rows: Vec<String> = (0..5)
+        .map(|y| {
+            (0..30)
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            "⋯ 9999 unchanged lines",
+            "10000:10000  l10000",
+            "10001:      -old",
+            "     :10001 +new",
+            ""
+        ]
+    );
+    // Every number cell is in the line-number color, the indicator after
+    // the space keeps its own
+    let number = DiffColors::default().line_number;
+    for x in 0..11 {
+        assert_eq!(buffer.get(x, 1).unwrap().fg, Some(number), "x={x}");
+    }
+    assert_eq!(buffer.get(12, 2).unwrap().symbol, '-');
+    assert_eq!(
+        buffer.get(12, 2).unwrap().fg,
+        Some(DiffColors::default().removed_fg)
+    );
+}
+
+/// The split view's number column widens the same way
+#[test]
+fn test_diff_split_line_numbers_past_four_digits() {
+    let rows = screen_rows(&five_digit_diff(DiffMode::Split), 40, 5);
+    assert_eq!(
+        rows,
+        [
+            "Original           │Modified",
+            "⋯ 9999 unchanged lines",
+            "10000 l10000       │10000 l10000",
+            "10001 old          │",
+            "                   │10001 new"
+        ]
+    );
+}
+
+/// A number wider than half of a narrow split view is cut at the half's
+/// edge: the separator and the other half stay put
+#[test]
+fn test_diff_split_line_numbers_cut_at_the_half() {
+    let rows = screen_rows(&five_digit_diff(DiffMode::Split), 10, 5);
+    assert_eq!(rows[2], "1000│1000");
+    assert_eq!(rows[3], "1000│");
+    assert_eq!(rows[4], "    │1000");
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Edge Cases Tests (엣지 케이스 테스트)
 // ─────────────────────────────────────────────────────────────────────────
