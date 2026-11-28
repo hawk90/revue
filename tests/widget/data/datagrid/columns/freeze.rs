@@ -189,7 +189,9 @@ proptest! {
     ) {
         let mut grid = DataGrid::new().freeze_columns_left(left).freeze_columns_right(right);
         for (i, w) in widths.iter().enumerate() {
-            grid = grid.column(GridColumn::new(format!("c{i}"), format!("C{i}")).width(*w));
+            grid = grid.column(
+                GridColumn::new(format!("c{i}"), format!("C{i}")).width(*w).min_width(0),
+            );
         }
         let mut grid = grid.row(GridRow::new());
         for _ in 0..scroll {
@@ -259,7 +261,11 @@ fn test_footer_label_in_the_left_frozen_column() {
 fn test_middle_column_does_not_cover_the_right_frozen_block() {
     let mut grid = DataGrid::new().freeze_columns_right(1);
     for (i, w) in [5, 7, 3, 3, 3, 5].into_iter().enumerate() {
-        grid = grid.column(GridColumn::new(format!("c{i}"), format!("C{i}")).width(w));
+        grid = grid.column(
+            GridColumn::new(format!("c{i}"), format!("C{i}"))
+                .width(w)
+                .min_width(0),
+        );
     }
     let grid = grid.row(GridRow::new().cell("c4", "x").cell("c5", "five"));
     let buffer = render_to(&grid, 31, 3);
@@ -273,7 +279,11 @@ fn test_middle_column_does_not_cover_the_right_frozen_block() {
 fn test_middle_column_with_its_separator_fits_before_the_right_frozen_block() {
     let mut grid = DataGrid::new().freeze_columns_right(1);
     for (i, w) in [5, 7, 3, 3, 3, 5].into_iter().enumerate() {
-        grid = grid.column(GridColumn::new(format!("c{i}"), format!("C{i}")).width(w));
+        grid = grid.column(
+            GridColumn::new(format!("c{i}"), format!("C{i}"))
+                .width(w)
+                .min_width(0),
+        );
     }
     let grid = grid.row(GridRow::new().cell("c4", "x").cell("c5", "five"));
     let buffer = render_to(&grid, 32, 3);
@@ -287,7 +297,7 @@ fn test_middle_column_with_its_separator_fits_before_the_right_frozen_block() {
 fn test_last_column_ending_at_the_edge_without_right_frozen() {
     let grid = DataGrid::new()
         .column(GridColumn::new("a", "A").width(5))
-        .column(GridColumn::new("b", "B").width(4))
+        .column(GridColumn::new("b", "B").width(4).min_width(0))
         .row(GridRow::new().cell("a", "a1").cell("b", "b1"));
     let buffer = render_to(&grid, 10, 3);
     assert_eq!(row_text(&buffer, 0, 10), "A    │B   ");
