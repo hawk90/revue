@@ -263,7 +263,7 @@ fn draw_action(ctx: &mut RenderContext, frame: &Frame, y: u16, action: &str) {
     // Inner columns, keeping one blank on each side of the label
     let inner = width.saturating_sub(4);
     let label = format!("[{}]", action);
-    let label_width = (crate::utils::display_width(&label) as u16).min(inner);
+    let label_width = crate::utils::unicode::display_width_u16(&label).min(inner);
     let mut dx: u16 = 0;
     let start = x + 2 + inner - label_width;
     for ch in label.chars() {

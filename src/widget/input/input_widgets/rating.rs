@@ -287,9 +287,9 @@ impl Default for Rating {
 impl Rating {
     /// Columns the label takes (0 without one).
     fn label_width(&self) -> u16 {
-        self.label.as_deref().map_or(0, |l| {
-            crate::utils::unicode::display_width(l).min(u16::MAX as usize) as u16
-        })
+        self.label
+            .as_deref()
+            .map_or(0, crate::utils::unicode::display_width_u16)
     }
 
     /// The `3.5/5` text `show_value` adds, for the value on display.

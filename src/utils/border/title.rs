@@ -160,7 +160,9 @@ impl BorderTitle {
 
     /// Get the display width of the title (text + padding)
     pub fn width(&self) -> u16 {
-        crate::utils::unicode::display_width(&self.text) as u16 + self.pad_start + self.pad_end
+        crate::utils::unicode::display_width_u16(&self.text)
+            .saturating_add(self.pad_start)
+            .saturating_add(self.pad_end)
     }
 }
 
@@ -191,8 +193,8 @@ pub fn draw_border_title(ctx: &mut RenderContext, area: Rect, title: &BorderTitl
         return;
     }
 
-    let text_width = crate::utils::unicode::display_width(&title.text) as u16;
-    let total_width = text_width + title.pad_start + title.pad_end;
+    let text_width = crate::utils::unicode::display_width_u16(&title.text);
+    let total_width = title.width();
 
     match title.edge {
         BorderEdge::Top | BorderEdge::Bottom => {

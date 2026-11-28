@@ -1,7 +1,7 @@
 //! Segment-based drawing utilities for RenderContext
 
 use crate::style::Color;
-use crate::utils::unicode::display_width;
+use crate::utils::unicode::display_width_u16;
 
 impl RenderContext<'_> {
     /// Draw multiple text segments with different colors on one line
@@ -9,7 +9,7 @@ impl RenderContext<'_> {
         let mut cx = x;
         for (text, color) in segments {
             self.draw_text(cx, y, text, *color);
-            cx += display_width(text) as u16;
+            cx = cx.saturating_add(display_width_u16(text));
         }
         cx
     }
@@ -27,10 +27,10 @@ impl RenderContext<'_> {
         for (i, (text, color)) in segments.iter().enumerate() {
             if i > 0 {
                 self.draw_text(cx, y, sep, sep_color);
-                cx += display_width(sep) as u16;
+                cx = cx.saturating_add(display_width_u16(sep));
             }
             self.draw_text(cx, y, text, *color);
-            cx += display_width(text) as u16;
+            cx = cx.saturating_add(display_width_u16(text));
         }
         cx
     }
@@ -47,9 +47,11 @@ impl RenderContext<'_> {
         let mut cx = x;
         for (key, action) in hints {
             self.draw_text_bold(cx, y, key, key_color);
-            cx += display_width(key) as u16 + 1;
+            cx = cx.saturating_add(display_width_u16(key)).saturating_add(1);
             self.draw_text(cx, y, action, action_color);
-            cx += display_width(action) as u16 + 2;
+            cx = cx
+                .saturating_add(display_width_u16(action))
+                .saturating_add(2);
         }
         cx
     }

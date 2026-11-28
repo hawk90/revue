@@ -175,3 +175,26 @@ fn tabs_keep_the_selected_tab_in_view() {
     t.handle_key(&Key::Left);
     assert_eq!(row(&draw(&t, 20, 1), 0), shown);
 }
+
+/// A label 65536 columns wide is not 0 wide when drawn: it fills the bar
+/// after its padding, and the padding, divider and next tab are not drawn
+/// over it, in an area at an offset (#1607)
+#[test]
+fn test_tabs_label_wider_than_u16_is_not_overwritten() {
+    let wide = "g".repeat(65_536);
+    let t = Tabs::new().tabs(vec![wide.as_str(), "B"]).fg(Color::RED);
+    let mut buffer = revue::render::Buffer::new(14, 1);
+    revue::widget::View::render(
+        &t,
+        &mut revue::widget::traits::RenderContext::new(
+            &mut buffer,
+            revue::layout::Rect::new(2, 0, 10, 1),
+        ),
+    );
+    let row: String = (0..14).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert_eq!(row, format!("   {}  ", "g".repeat(9)));
+    for x in 3..12 {
+        let cell = buffer.get(x, 0).unwrap();
+        assert!(cell.modifier.contains(revue::render::Modifier::BOLD), "{x}");
+    }
+}

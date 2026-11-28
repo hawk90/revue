@@ -2,6 +2,7 @@
 
 use super::{Alignment, Text};
 use crate::utils::unicode::display_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Text {
@@ -36,7 +37,7 @@ impl View for Text {
                 continue;
             }
 
-            let text_width = display_width(line).min(u16::MAX as usize) as u16;
+            let text_width = display_width_u16(line);
             let x_offset = match align {
                 Alignment::Left | Alignment::Justify => 0,
                 Alignment::Center => area.width.saturating_sub(text_width) / 2,

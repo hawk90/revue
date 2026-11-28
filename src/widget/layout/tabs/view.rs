@@ -82,7 +82,7 @@ impl Tabs {
             } else {
                 ctx.draw_text_clipped(x, 0, label, f, clip);
             }
-            x += (crate::utils::display_width(label) as u16).min(clip);
+            x += crate::utils::unicode::display_width_u16(label).min(clip);
         } else {
             // fg is None: preserve terminal default color
             for ch in label.chars() {

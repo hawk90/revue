@@ -2,7 +2,8 @@
 
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::unicode::{char_width, display_width};
+use crate::utils::unicode::char_width;
+use crate::utils::unicode::display_width_u16;
 
 impl RenderContext<'_> {
     /// Helper: Draw text with custom cell styling, handling wide characters correctly.
@@ -209,7 +210,7 @@ impl RenderContext<'_> {
 
     /// Draw text centered within a given width
     pub fn draw_text_centered(&mut self, x: u16, y: u16, width: u16, text: &str, fg: Color) {
-        let text_width = display_width(text) as u16;
+        let text_width = display_width_u16(text);
         let start_x = if text_width >= width {
             x
         } else {
@@ -220,7 +221,7 @@ impl RenderContext<'_> {
 
     /// Draw text right-aligned within a given width
     pub fn draw_text_right(&mut self, x: u16, y: u16, width: u16, text: &str, fg: Color) {
-        let text_width = display_width(text) as u16;
+        let text_width = display_width_u16(text);
         let start_x = if text_width >= width {
             x
         } else {

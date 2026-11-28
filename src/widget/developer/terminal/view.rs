@@ -205,8 +205,8 @@ impl Terminal {
     /// for it and that column.
     fn draw_scroll_indicator(&self, ctx: &mut RenderContext, area: Rect) {
         let indicator = format!("↑{}", self.lines_below());
-        let columns = crate::utils::display_width(&indicator) as u16;
-        if area.width > columns + 1 {
+        let columns = crate::utils::unicode::display_width_u16(&indicator);
+        if area.width > columns.saturating_add(1) {
             let start_x = area.width - columns - 1;
             ctx.put_str_with(start_x, 0, &indicator, area.width, |ch| {
                 Cell::new(ch).fg(Color::YELLOW).bg(SEPARATOR_COLOR)

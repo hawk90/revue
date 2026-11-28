@@ -24,6 +24,7 @@ use crate::layout::Rect;
 use crate::style::Color;
 use crate::utils::char_width;
 use crate::utils::unicode::display_width;
+use crate::utils::unicode::display_width_u16;
 
 /// A single render operation
 #[derive(Debug, Clone)]
@@ -132,7 +133,7 @@ impl RenderBatch {
                 self.mark_dirty(Rect::new(*x, *y, 1, *len));
             }
             RenderOp::Text { x, y, text, .. } => {
-                self.mark_dirty(Rect::new(*x, *y, display_width(text) as u16, 1));
+                self.mark_dirty(Rect::new(*x, *y, display_width_u16(text), 1));
             }
             RenderOp::Clear => {
                 // Clear resets everything, no need to track

@@ -3,9 +3,9 @@
 use super::{Gauge, GaugeStyle, LabelPosition};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::char_width;
 use crate::utils::color::contrast_color;
-use crate::utils::unicode::display_width_u16;
-use crate::utils::{char_width, display_width};
+use crate::utils::unicode::{display_width_u16, truncate_with_ellipsis};
 use crate::widget::traits::{RenderContext, View};
 
 impl Gauge {
@@ -206,7 +206,9 @@ impl Gauge {
 
         // Middle with label
         if area.height > 1 {
-            let label = self.get_label();
+            // Cut to the `width - 2` cells between the borders, so the label
+            // never covers them; centered on the arc as before
+            let label = truncate_with_ellipsis(&self.get_label(), usize::from(width - 2));
             let lw = display_width_u16(&label);
             let label_x = (width.saturating_sub(lw)) / 2;
 
@@ -377,7 +379,7 @@ impl View for Gauge {
             GaugeStyle::Thermometer => (1, self.height.max(3)),
             GaugeStyle::Arc | GaugeStyle::Circle => return None,
         };
-        let label_w = display_width(&self.get_label()).min(u16::MAX as usize - 1) as u16;
+        let label_w = display_width_u16(&self.get_label()).min(u16::MAX - 1);
         let (w, h) = match self.label_position {
             LabelPosition::Left | LabelPosition::Right => (w.saturating_add(label_w + 1), h),
             LabelPosition::Above | LabelPosition::Below => (w.max(label_w), h.saturating_add(1)),
@@ -410,7 +412,7 @@ impl View for Gauge {
 
         // A label outside the gauge takes its own columns or row
         let label = self.get_label();
-        let label_w = display_width(&label).min(u16::MAX as usize - 1) as u16;
+        let label_w = display_width_u16(&label).min(u16::MAX - 1);
         let put_label = |ctx: &mut RenderContext, lx: u16, ly: u16| {
             if lx < area.width && ly < area.height {
                 ctx.put_str_with(lx, ly, &label, area.width, |ch| {

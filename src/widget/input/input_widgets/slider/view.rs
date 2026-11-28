@@ -49,13 +49,11 @@ impl View for Slider {
     /// Vertical: one column (plus a gap and the value if shown), `length`
     /// rows tall.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
-        let value = || {
-            crate::utils::unicode::display_width(&self.format_value()).min(u16::MAX as usize) as u16
-        };
+        let value = || crate::utils::unicode::display_width_u16(&self.format_value());
         let (w, h) = match self.orientation {
             SliderOrientation::Horizontal => {
                 let label = self.label.as_deref().map_or(0, |l| {
-                    (crate::utils::unicode::display_width(l) as u16).saturating_add(1)
+                    crate::utils::unicode::display_width_u16(l).saturating_add(1)
                 });
                 let value = if self.show_value {
                     value().saturating_add(1)

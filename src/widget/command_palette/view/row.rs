@@ -2,7 +2,8 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::{char_width, display_width};
+use crate::utils::char_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::theme::SUBTLE_GRAY;
 use crate::widget::traits::RenderContext;
 
@@ -56,11 +57,7 @@ impl CommandPalette {
             .shortcut
             .as_ref()
             .filter(|_| self.show_shortcuts)
-            .map(|shortcut| {
-                layout
-                    .text_end
-                    .saturating_sub(display_width(shortcut) as u16)
-            })
+            .map(|shortcut| layout.text_end.saturating_sub(display_width_u16(shortcut)))
             .filter(|&sx| sx >= content_x + 2 && sx < layout.text_end);
         let text_end = shortcut_x.map_or(layout.text_end, |sx| sx - 1);
 

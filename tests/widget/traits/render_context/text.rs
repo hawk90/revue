@@ -327,3 +327,26 @@ fn test_draw_text_right_too_long_is_left_aligned_and_clipped() {
     let buffer = draw(6, |ctx| ctx.draw_text_right(1, 0, 3, "Hello", Color::WHITE));
     assert_eq!(row(&buffer, 0), " Hel  ");
 }
+
+/// A text 65536 columns wide is wider than any width, not 0 wide: centered
+/// or right-aligned it starts at `x` and is clipped to `width`, in an area
+/// at an offset (#1607)
+#[test]
+fn text_wider_than_u16_is_left_aligned_and_clipped() {
+    let text = "g".repeat(65_536);
+    for right in [false, true] {
+        let mut buffer = Buffer::new(12, 1);
+        {
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 0, 10, 1));
+            if right {
+                ctx.draw_text_right(1, 0, 5, &text, Color::WHITE);
+            } else {
+                ctx.draw_text_centered(1, 0, 5, &text, Color::WHITE);
+            }
+        }
+        assert_eq!(row(&buffer, 0), "   ggggg    ", "right: {right}");
+        for x in 3..8 {
+            assert_eq!(buffer.get(x, 0).unwrap().fg, Some(Color::WHITE), "{x}");
+        }
+    }
+}

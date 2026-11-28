@@ -229,20 +229,20 @@ impl Breadcrumb {
         let mut width = 0u16;
 
         if self.show_home {
-            width += icon_columns(self.home_icon);
+            width = width.saturating_add(icon_columns(self.home_icon));
             if !self.items.is_empty() {
-                width += 2; // separator + space
+                width = width.saturating_add(2); // separator + space
             }
         }
 
         for (i, item) in self.items.iter().enumerate() {
             if let Some(icon) = item.icon {
-                width += icon_columns(icon);
+                width = width.saturating_add(icon_columns(icon));
             }
-            width += crate::utils::display_width(&item.label) as u16;
+            width = width.saturating_add(crate::utils::unicode::display_width_u16(&item.label));
 
             if i < self.items.len() - 1 {
-                width += 3; // space + separator + space
+                width = width.saturating_add(3); // space + separator + space
             }
         }
 
@@ -364,7 +364,7 @@ impl View for Breadcrumb {
                     } else {
                         ctx.draw_text_clipped(x, 0, &label, item_color, clip_width);
                     }
-                    x += (crate::utils::display_width(&label) as u16).min(clip_width);
+                    x += crate::utils::unicode::display_width_u16(&label).min(clip_width);
                 }
             }
 

@@ -5,7 +5,7 @@ use super::super::types::Menu;
 use super::MenuBar;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::unicode::display_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for MenuBar {
@@ -59,7 +59,7 @@ impl View for MenuBar {
                 Cell::new(ch).fg(title_fg).bg(title_bg)
             });
             // Advance by the title's columns, the offset the dropdown uses.
-            x = x.saturating_add(display_width(&title) as u16);
+            x = x.saturating_add(display_width_u16(&title));
         }
 
         // Draw dropdown if open
@@ -123,7 +123,7 @@ impl MenuBar {
             if i == self.selected_menu {
                 break;
             }
-            menu_x = menu_x.saturating_add(display_width(&m.title) as u16 + 2);
+            menu_x = menu_x.saturating_add(display_width_u16(&m.title).saturating_add(2));
         }
         menu_x
     }
