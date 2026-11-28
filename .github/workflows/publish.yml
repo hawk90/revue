@@ -45,6 +45,13 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
+      # The previous job's `cargo publish` saw revue-macros in the index, but
+      # this runner can still be served an older copy (#1368).
+      - name: Wait for revue-macros in the crates.io index
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "revue-macros") | .version')
+          scripts/wait-for-crate.sh revue-macros "$version"
       - name: Publish to crates.io
         run: cargo publish
         env:
