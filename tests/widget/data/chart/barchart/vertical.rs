@@ -72,6 +72,31 @@ fn test_barchart_vertical_long_labels_truncated() {
     assert_eq!(rows[9].trim_end(), "VeryL");
 }
 
+/// A value wider than its bar is cut to the bar's width, like the label,
+/// so it does not run into the next bars' columns (#1586)
+#[test]
+fn test_barchart_vertical_values_cut_to_the_bar() {
+    // bar_width(1), gap 1: A at 0, B at 2; 6 rows = value, 4 bars, label
+    let chart = BarChart::new().bar("A", 150.0).bar("B", 5.0).vertical();
+    let rows = render_rows(&chart, 10, 6);
+    assert_eq!(rows[0], "1         ");
+    assert_eq!(rows[3], "█ 5       ");
+    assert_eq!(rows[5], "A B       ");
+
+    // A value that fits its bar is drawn whole, the last bar's value at
+    // the area's last columns
+    let chart = BarChart::new()
+        .bar("A", 150.0)
+        .bar("B", 150.0)
+        .vertical()
+        .bar_width(3)
+        .max(150.0);
+    let rows = render_rows(&chart, 7, 6);
+    assert_eq!(rows[0], "150 150");
+    let rows = render_rows(&chart.clone().bar_width(2).gap(0), 4, 6);
+    assert_eq!(rows[0], "1515");
+}
+
 /// Three 3-wide bars with a 1-column gap, A at 0..3, B at 4..7, C at 8..11
 fn abc() -> BarChart {
     BarChart::new()
