@@ -132,8 +132,10 @@ impl Breadcrumb {
     /// first item and last two, with one `…` for the items left out. When
     /// that is still too wide only the last item is kept after the `…`, and
     /// then the first item is shortened (ending with `…`) so the last item,
-    /// where the user is, is drawn whole. The last item is cut at the edge
-    /// only when even a one-column first item leaves it too little room.
+    /// where the user is, is drawn whole. With too little room even for
+    /// that, the first item is dropped as well (one `…` for every item left
+    /// out), and then the home icon, leaving the last item alone; it is cut
+    /// at the edge only when it alone is wider than the area.
     pub fn collapse(mut self, collapse: bool) -> Self {
         self.collapse = collapse;
         self
@@ -290,10 +292,16 @@ impl View for Breadcrumb {
         let total = self.total_width();
         let need_collapse = self.collapse && total > max_width;
 
+        let plan = if need_collapse {
+            self.collapse_plan(usize::from(max_width))
+        } else {
+            CollapsePlan::WHOLE
+        };
+
         let mut x: u16 = 0;
 
         // Home icon
-        if self.show_home {
+        if self.show_home && plan.home {
             let mut home = Cell::new(self.home_icon);
             home.fg = Some(item_color);
             ctx.set(x, 0, home);
@@ -309,20 +317,17 @@ impl View for Breadcrumb {
 
         // The entries drawn after the home icon: items, and `None` for the
         // one `…` cell standing for the items left out
-        let (start, first_label) = if need_collapse {
-            self.collapse_plan(usize::from(max_width))
-        } else {
-            (1, None)
-        };
         let mut entries: Vec<Option<(usize, std::borrow::Cow<'_, str>)>> = Vec::new();
         if let Some(first) = self.items.first() {
-            let label =
-                first_label.map_or(std::borrow::Cow::Borrowed(first.label.as_str()), Into::into);
-            entries.push(Some((0, label)));
-            if start > 1 {
+            match plan.first {
+                FirstItem::Whole => entries.push(Some((0, first.label.as_str().into()))),
+                FirstItem::Shortened(label) => entries.push(Some((0, label.into()))),
+                FirstItem::Dropped => {}
+            }
+            if plan.ellipsis {
                 entries.push(None);
             }
-            for (i, item) in self.items.iter().enumerate().skip(start) {
+            for (i, item) in self.items.iter().enumerate().skip(plan.start) {
                 entries.push(Some((i, item.label.as_str().into())));
             }
         }
@@ -403,34 +408,90 @@ impl Breadcrumb {
         home + first + first_label + ellipsis + rest
     }
 
-    /// How a trail wider than `max_width` collapses: the index of the first
-    /// item drawn after the first item and `…`, and the first item's label
-    /// when it has to be shortened.
+    /// How a trail wider than `max_width` collapses.
     ///
     /// The first item and the last two are kept; when they do not fit, only
     /// the last one. When the first item, `…` and the last item still do
     /// not fit, the first item is shortened (ending with `…`), so the last
-    /// item - where the user is - stays whole. Only when even a one-column
-    /// first item leaves too little room is the last item cut at the edge.
-    fn collapse_plan(&self, max_width: usize) -> (usize, Option<String>) {
+    /// item - where the user is - stays whole. When even a one-column first
+    /// item leaves too little room, the first item is dropped too and one
+    /// `…` stands for every item left out; when that is still too wide,
+    /// the last item is drawn alone, without the home icon, and cut at the
+    /// edge only when it alone is wider than `max_width`.
+    fn collapse_plan(&self, max_width: usize) -> CollapsePlan {
         let n = self.items.len();
         if n < 2 {
-            return (1, None);
+            return CollapsePlan::WHOLE;
         }
+        let plan = |first, ellipsis, start| CollapsePlan {
+            home: true,
+            first,
+            ellipsis,
+            start,
+        };
         // Keeping the last two hides something only past three items
         let first = crate::utils::display_width(&self.items[0].label);
         if n > 3 && self.trail_columns(n - 2, first) <= max_width {
-            return (n - 2, None);
+            return plan(FirstItem::Whole, true, n - 2);
         }
         // The last one alone; the first label gets the room the rest leaves
         // (all of it when it fits, unchanged)
-        let start = if n > 2 { n - 1 } else { 1 };
-        let room = max_width
-            .saturating_sub(self.trail_columns(start, 0))
-            .max(1);
-        let label = crate::utils::unicode::truncate_with_ellipsis(&self.items[0].label, room);
-        (start, (label != self.items[0].label).then_some(label))
+        let start = n - 1;
+        let skipped = n > 2;
+        if self.trail_columns(start, first.min(1)) <= max_width {
+            let room = max_width
+                .saturating_sub(self.trail_columns(start, 0))
+                .max(1);
+            let label = crate::utils::unicode::truncate_with_ellipsis(&self.items[0].label, room);
+            let first = if label == self.items[0].label {
+                FirstItem::Whole
+            } else {
+                FirstItem::Shortened(label)
+            };
+            return plan(first, skipped, start);
+        }
+        // One `…` for every item but the last
+        let home = if self.show_home {
+            usize::from(icon_columns(self.home_icon)) + 2
+        } else {
+            0
+        };
+        let last = Self::item_columns(&self.items[start]);
+        if home + 4 + last <= max_width {
+            return plan(FirstItem::Dropped, true, start);
+        }
+        // The last item alone
+        CollapsePlan {
+            home: false,
+            ..plan(FirstItem::Dropped, false, start)
+        }
     }
+}
+
+/// What a collapsed trail draws: the home icon or not, the first item, one
+/// `…` for the items left out or not, and the items from `start` on
+struct CollapsePlan {
+    home: bool,
+    first: FirstItem,
+    ellipsis: bool,
+    start: usize,
+}
+
+impl CollapsePlan {
+    /// The whole trail
+    const WHOLE: Self = Self {
+        home: true,
+        first: FirstItem::Whole,
+        ellipsis: false,
+        start: 1,
+    };
+}
+
+/// How the first item of a collapsed trail is drawn
+enum FirstItem {
+    Whole,
+    Shortened(String),
+    Dropped,
 }
 
 impl_styled_view!(Breadcrumb);

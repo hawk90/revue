@@ -723,6 +723,10 @@ fn test_breadcrumb_three_items_collapse_the_middle_one() {
     assert_eq!(line(&bc, 19), "Alpha › … › Gamma");
     assert_eq!(line(&bc, 17), "Alpha › … › Gamma");
     assert_eq!(line(&bc, 16), "Alp… › … › Gamma");
+    // Then the first item goes too, one `…` for both, and then the last
+    // item is drawn alone
+    assert_eq!(line(&bc, 12), "… › Gamma");
+    assert_eq!(line(&bc, 8), "Gamma");
 }
 
 #[test]
@@ -1421,16 +1425,92 @@ mod collapse_further {
 
     #[test]
     fn a_last_item_wider_than_the_area_is_cut_at_the_edge() {
-        // The first item is shortened to `…`, and the last is cut where the
-        // area ends
+        // Alone and still too wide: cut where the area ends
         let bc = Breadcrumb::new()
             .home(false)
             .push("AB")
             .push("LongLastItem");
+        assert_eq!(cells(&bc, 8), expect(&[("LongLast", SELECTED)], 8));
+    }
+
+    #[test]
+    fn the_first_item_is_dropped_when_even_one_column_of_it_does_not_fit() {
+        // "… › … › Settings" is 16 columns; "… › Settings" is 12, its `…`
+        // standing for every item but the last
+        let bc = four("Documents", "Settings");
+        for width in [15, 12] {
+            assert_eq!(
+                cells(&bc, width),
+                expect(&[E, S, ("Settings", SELECTED)], usize::from(width)),
+                "width {width}"
+            );
+        }
+        let mut want = vec![(' ', None); 3];
+        want.extend(expect(&[E, S, ("Settings", SELECTED)], 14));
+        want.extend([(' ', None); 2]);
+        assert_eq!(cells_at(&bc, 3, 14), want, "at an offset");
+        // Two items: the first keeps its icon and one column in 14; in 13
+        // the `…` stands for it
+        let two = Breadcrumb::new()
+            .home(false)
+            .item(BreadcrumbItem::new("Documents").icon('D'))
+            .push("Settings");
         assert_eq!(
-            cells(&bc, 8),
-            expect(&[("…", ITEM), S, ("Long", SELECTED)], 8)
+            cells(&two, 14),
+            expect(
+                &[
+                    ("D", ITEM),
+                    (" ", None),
+                    ("…", ITEM),
+                    S,
+                    ("Settings", SELECTED)
+                ],
+                14
+            )
         );
+        assert_eq!(cells(&two, 13), expect(&[E, S, ("Settings", SELECTED)], 13));
+    }
+
+    #[test]
+    fn the_last_item_alone_when_the_dropped_trail_does_not_fit() {
+        let bc = four("Documents", "Settings");
+        for width in [11, 8] {
+            assert_eq!(
+                cells(&bc, width),
+                expect(&[("Settings", SELECTED)], usize::from(width)),
+                "width {width}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_home_icon_stays_with_the_dropped_trail_and_goes_with_the_last_alone() {
+        let bc = Breadcrumb::new()
+            .home_icon('~')
+            .push("Documents")
+            .push("a")
+            .push("b")
+            .push("Settings");
+        // "~ › … › … › Settings" is 20; "~ › … › Settings" is 16
+        assert_eq!(
+            cells(&bc, 19),
+            expect(&[("~", ITEM), S, E, S, ("Settings", SELECTED)], 19)
+        );
+        assert_eq!(
+            cells(&bc, 16),
+            expect(&[("~", ITEM), S, E, S, ("Settings", SELECTED)], 16)
+        );
+        assert_eq!(cells(&bc, 15), expect(&[("Settings", SELECTED)], 15));
+    }
+
+    #[test]
+    fn a_wide_last_item_is_kept_whole_then_cut_between_glyphs() {
+        let bc = four("문서함", "설정화면");
+        // "… › 설정화면" is 12 columns
+        assert_eq!(cells(&bc, 12), expect(&[E, S, ("설정화면", SELECTED)], 12));
+        assert_eq!(cells(&bc, 9), expect(&[("설정화면", SELECTED)], 9));
+        // 7 columns hold three syllables; the last column stays blank
+        assert_eq!(cells(&bc, 7), expect(&[("설정화", SELECTED)], 7));
     }
 
     #[test]
