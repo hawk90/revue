@@ -8,6 +8,7 @@ use crate::style::Color;
 use crate::utils::unicode::{display_width_u16, truncate_with_ellipsis};
 use crate::utils::{char_width, display_width};
 use crate::widget::data::chart::chart_common::AxisFormat;
+use crate::widget::data::chart::chart_render::{label_ticks, put_label};
 use crate::widget::traits::RenderContext;
 
 impl Chart {
@@ -30,20 +31,27 @@ impl Chart {
         }
     }
 
-    /// The Y tick label of tick `i` of `ticks`, and where it goes from the
-    /// bottom of the axis (0) to the top (1)
-    fn y_tick_label(&self, i: usize, ticks: usize, bounds: (f64, f64, f64, f64)) -> (f64, String) {
+    /// The Y tick label of tick `i` of `ticks`, counted from the bottom
+    fn y_tick_label(&self, i: usize, ticks: usize, bounds: (f64, f64, f64, f64)) -> String {
         let (_, _, y_min, y_max) = bounds;
         let t = i as f64 / ticks as f64;
         let value = y_min + t * (y_max - y_min);
-        (t, self.format_label(value, &self.y_axis.format))
+        self.format_label(value, &self.y_axis.format)
     }
 
-    /// The width of the widest Y tick label, in columns
-    pub(super) fn y_label_columns(&self, bounds: (f64, f64, f64, f64)) -> u16 {
+    /// The Y ticks labeled on a plot of `rows` rows, with their rows up
+    /// from the bottom: at most one per row, both ends kept (#1615)
+    fn y_label_ticks(&self, rows: u16) -> Vec<(usize, u16)> {
+        label_ticks(self.y_axis.ticks, rows.saturating_sub(1), 1)
+    }
+
+    /// The width of the widest Y tick label drawn on a plot of `rows` rows,
+    /// in columns
+    pub(super) fn y_label_columns(&self, bounds: (f64, f64, f64, f64), rows: u16) -> u16 {
         let ticks = self.y_axis.ticks.max(1);
-        (0..=ticks)
-            .map(|i| display_width_u16(&self.y_tick_label(i, ticks, bounds).1))
+        self.y_label_ticks(rows)
+            .into_iter()
+            .map(|(i, _)| display_width_u16(&self.y_tick_label(i, ticks, bounds)))
             .max()
             .unwrap_or(0)
     }
@@ -67,24 +75,14 @@ impl Chart {
         } = *plot;
         let columns = y_label_width.saturating_sub(1);
         let ticks = self.y_axis.ticks.max(1);
-        for i in 0..=ticks {
-            let (t, label) = self.y_tick_label(i, ticks, bounds);
-            let label = truncate_with_ellipsis(&label, columns as usize);
-            let y = inner_y + inner_h - 1 - ((t * (inner_h as f64 - 1.0)) as u16);
-
-            // Right-align label
-            let label_start = y_label_x + columns.saturating_sub(display_width_u16(&label));
-            let mut dx: u16 = 0;
-            for ch in label.chars() {
-                let x = label_start.saturating_add(dx);
-                if x >= ctx.area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(self.y_axis.color);
-                ctx.set(x, y, cell);
-                dx = dx.saturating_add(char_width(ch) as u16);
-            }
+        let style = Cell {
+            fg: Some(self.y_axis.color),
+            ..Cell::default()
+        };
+        for (i, row) in self.y_label_ticks(inner_h) {
+            let label = self.y_tick_label(i, ticks, bounds);
+            let y = inner_y + inner_h - 1 - row;
+            put_label(ctx, &label, (y_label_x, y), columns, true, style);
 
             // Draw grid line
             if self.y_axis.grid && i > 0 && i < ticks {
@@ -115,16 +113,23 @@ impl Chart {
         } = *plot;
         let (x_min, x_max, _, _) = bounds;
         let ticks = self.x_axis.ticks.max(1);
-        // Each label is cut with `…` to its slot, the columns between two
-        // ticks less one, so neighbors never overwrite each other (#1606)
-        let slot = usize::from(inner_w.saturating_sub(1)) / ticks;
-        let slot = slot.saturating_sub(1).max(1);
-        for i in 0..=ticks {
+        // At most one label per two columns, both ends kept (#1615), and
+        // each label is cut with `…` to its slot, the columns between two
+        // labeled ticks less one, so neighbors never overwrite each other
+        // (#1606)
+        let labeled = label_ticks(ticks, inner_w.saturating_sub(1), 2);
+        let slot = labeled
+            .windows(2)
+            .map(|pair| pair[1].1 - pair[0].1)
+            .min()
+            .unwrap_or(inner_w);
+        let slot = usize::from(slot.saturating_sub(1).max(1));
+        for (i, offset) in labeled {
             let t = i as f64 / ticks as f64;
             let value = x_min + t * (x_max - x_min);
             let label = self.format_label(value, &self.x_axis.format);
             let label = truncate_with_ellipsis(&label, slot);
-            let x = inner_x + (t * (inner_w as f64 - 1.0)) as u16;
+            let x = inner_x + offset;
 
             // Center label
             let half = u16::try_from(display_width(&label) / 2).unwrap_or(u16::MAX);

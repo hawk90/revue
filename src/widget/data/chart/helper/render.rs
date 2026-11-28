@@ -7,6 +7,7 @@ use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::char_width;
 use crate::utils::unicode::display_width_u16;
+use crate::widget::data::chart::chart_render::y_label_column;
 use crate::widget::traits::{RenderContext, View};
 
 /// Where the plot and its labels go inside the widget's area
@@ -30,23 +31,19 @@ impl Chart {
     fn plot_layout(&self, area: Rect, bounds: (f64, f64, f64, f64)) -> Option<PlotLayout> {
         let has_border = self.border_color.is_some();
         let has_title = self.title.is_some();
-        // The Y label column is as wide as the widest Y label, at most a
-        // third of the area as for the horizontal BarChart's labels (#1606),
-        // and one column apart from the plot
-        let y_label_width = self
-            .y_label_columns(bounds)
-            .min(area.width / 3)
-            .saturating_add(1);
         let x_label_height = 2u16; // Space for X axis labels
+        let inner_h = area.height.saturating_sub(
+            x_label_height + if has_border { 2 } else { 0 } + if has_title { 1 } else { 0 },
+        );
+        // The Y label column fits the widest Y label drawn on those rows
+        // (#1606)
+        let y_label_width = y_label_column(self.y_label_columns(bounds, inner_h), area.width);
 
         let inner_x = if has_border { 1 } else { 0 } + y_label_width;
         let inner_y = if has_border { 1 } else { 0 } + if has_title { 1u16 } else { 0 };
         let inner_w = area
             .width
             .saturating_sub(y_label_width + if has_border { 2 } else { 0 });
-        let inner_h = area.height.saturating_sub(
-            x_label_height + if has_border { 2 } else { 0 } + if has_title { 1 } else { 0 },
-        );
 
         if inner_w < 5 || inner_h < 3 {
             return None;

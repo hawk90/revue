@@ -6,7 +6,8 @@ use revue::widget::data::chart::{Axis, Marker, ScatterSeries};
 
 #[test]
 fn test_scatter_points_are_placed_on_the_padded_scale() {
-    // 40x20: chart area x=8, y=0, 31x18. Bounds pad the data by 5%.
+    // 40x20: chart area x=6 (after the Y labels, "-0.50" the widest, and a
+    // gap column), y=0, 33x18. Bounds pad the data by 5%.
     let chart = bare().series(
         ScatterSeries::new("S")
             .points(&[(0.0, 0.0), (10.0, 10.0)])
@@ -14,13 +15,14 @@ fn test_scatter_points_are_placed_on_the_padded_scale() {
     );
     let buffer = render(&chart, 40, 20);
     assert_eq!(count_char(&buffer, '★'), 2);
-    assert_eq!(buffer.get(9, 17).unwrap().symbol, '★');
+    assert_eq!(buffer.get(7, 17).unwrap().symbol, '★');
     assert_eq!(buffer.get(36, 1).unwrap().symbol, '★');
 }
 
 #[test]
 fn test_scatter_axis_bounds_override() {
-    // x: 0..100 -> -5..105, y: 0..50 -> -2.5..52.5
+    // x: 0..100 -> -5..105, y: 0..50 -> -2.5..52.5; the plot starts at
+    // column 5, after the 4-column Y labels
     let chart = bare()
         .series(
             ScatterSeries::new("S")
@@ -30,7 +32,7 @@ fn test_scatter_axis_bounds_override() {
         .x_axis(Axis::new().bounds(0.0, 100.0))
         .y_axis(Axis::new().bounds(0.0, 50.0));
     let buffer = render(&chart, 40, 20);
-    assert_eq!(buffer.get(23, 9).unwrap().symbol, '★');
+    assert_eq!(buffer.get(21, 9).unwrap().symbol, '★');
 }
 
 #[test]

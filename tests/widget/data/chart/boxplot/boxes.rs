@@ -221,10 +221,12 @@ fn test_boxplot_notch_layout() {
     // 0..30: n = 30, Q1 = 7.25, median = 14.5, Q3 = 21.75, so the notch is
     // 14.5 ± 1.57 * 14.5 / sqrt(30) = 10.34..18.66. On the padded -2.9..31.9
     // scale over 18 rows that is rows 7..11 inside the box (rows 5..13),
-    // with the median on row 9. The box spans columns 13..32.
+    // with the median on row 9. The value labels ("31.9" down to "-2.9")
+    // are 4 columns wide, so the chart starts at column 5 and the box spans
+    // columns 12..32.
     let data: Vec<f64> = (0..30).map(|x| x as f64).collect();
     let buffer = render(&BoxPlot::new().group("Data", &data).notched(true), 40, 20);
-    let (left, right) = (13usize, 32usize);
+    let (left, right) = (12usize, 32usize);
 
     let start = row_chars(&buffer, 7);
     assert_eq!((start[left], start[right]), ('╲', '╱'));
@@ -296,9 +298,9 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 
     /// Boxes, medians and outliers stay inside the plot for any finite data,
-    /// group count, size and orientation. Vertical: columns 6..w-1, rows
-    /// 0..h-2. Horizontal: right of the group-label column and its gap,
-    /// rows 0..h-1.
+    /// group count, size and orientation. Vertical: right of the value
+    /// labels and their gap column, rows 0..h-2. Horizontal: right of the
+    /// group-label column and its gap, rows 0..h-1.
     #[test]
     fn test_boxplot_marks_stay_in_the_plot(
         groups in prop::collection::vec(prop::collection::vec(-1e6f64..1e6, 1..20), 1..4),
@@ -314,7 +316,21 @@ proptest! {
             bp = bp.horizontal();
         }
         let buffer = render(&bp, w, h);
-        let (left, bottom) = if horizontal { (2u16.min(w / 3).max(1) + 1, h - 1) } else { (6, h - 2) };
+        let (left, bottom) = if horizontal {
+            (2u16.min(w / 3).max(1) + 1, h - 1)
+        } else {
+            // The value labels are left-aligned on rows 1 + i * (h - 3) / 4
+            // and their column is at most a third of the width
+            let label_end = (0..5u16)
+                .map(|i| {
+                    let y = 1 + i * (h - 3) / 4;
+                    (0..w).take_while(|&x| buffer.get(x, y).unwrap().symbol != ' ').count() as u16
+                })
+                .max()
+                .unwrap();
+            prop_assert!(label_end <= w / 3);
+            (label_end + 1, h - 2)
+        };
         for y in 0..h {
             for x in 0..w {
                 if matches!(

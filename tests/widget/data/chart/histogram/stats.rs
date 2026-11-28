@@ -18,24 +18,25 @@ fn test_histogram_mean_median() {
 
 #[test]
 fn test_histogram_show_stats() {
-    // mean 10 -> column 17, median 7 -> column 13
+    // mean 10 -> column 14, median 7 -> column 10 of the plot at 2..39
     let plain = render(&three_bins(), 40, 20);
     assert_eq!(count_char(&plain, 'μ'), 0);
 
     let buffer = render(&three_bins().show_stats(true), 40, 20);
     for y in 1..18 {
-        assert_eq!(sym(&buffer, 17, y), '│', "mean y={y}");
-        assert_eq!(sym(&buffer, 13, y), '┊', "median y={y}");
+        assert_eq!(sym(&buffer, 14, y), '│', "mean y={y}");
+        assert_eq!(sym(&buffer, 10, y), '┊', "median y={y}");
     }
-    assert_eq!(sym(&buffer, 18, 0), 'μ');
-    assert_eq!(sym(&buffer, 14, 0), 'M');
+    assert_eq!(sym(&buffer, 15, 0), 'μ');
+    assert_eq!(sym(&buffer, 11, 0), 'M');
 }
 
 #[test]
 fn test_histogram_horizontal_show_stats() {
-    // mean 10 -> row 6, median 7 -> row 4, each across the whole plot
+    // mean 10 -> row 6, median 7 -> row 4, each across the whole plot at
+    // 5..39
     let buffer = render(&three_bins().horizontal().show_stats(true), 40, 20);
-    for x in 6..39 {
+    for x in 5..39 {
         assert_eq!(sym(&buffer, x, 6), '─', "mean x={x}");
         assert_eq!(sym(&buffer, x, 4), '┄', "median x={x}");
     }

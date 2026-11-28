@@ -19,8 +19,9 @@ fn test_time_series_marker() {
         .marker(TimeMarker::new(1000, "Event1"))
         .marker(TimeMarker::new(2000, "Event2"));
     let buffer = render(&chart, 60, 20);
-    // The plot spans columns 8..59, rows 1..18
-    for x in [8, 58] {
+    // The plot spans columns 5..59 after the 4-column value labels ("77.5")
+    // and a gap column, rows 1..18
+    for x in [5, 58] {
         let marked = (1..18)
             .filter(|&y| buffer.get(x, y).unwrap().fg == Some(Color::YELLOW))
             .count();
@@ -35,9 +36,10 @@ fn test_time_series_render_with_markers() {
         .marker(TimeMarker::new(1500, "Event"))
         .marker(TimeMarker::new(1200, "P").style(MarkerStyle::Point));
     let rows = render_rows(&chart, 40, 12);
-    // A line marker halfway through the plot (columns 8..38), a point
-    // marker on its top row, and both labels under the plot
-    let line_x = 8 + 15;
+    // A line marker halfway through the plot (columns 5..39, after the
+    // 4-column value labels and a gap column), a point marker on its top
+    // row, and both labels under the plot
+    let line_x = 5 + 16;
     let column: String = rows[1..10]
         .iter()
         .map(|r| r.chars().nth(line_x).unwrap())
@@ -64,13 +66,14 @@ fn test_time_series_marker_label_wider_than_u16() {
         .marker(TimeMarker::new(1800, "m".repeat(65_536)).color(Color::GREEN));
     let buffer = render_at(&chart, Rect::new(3, 2, 30, 12));
     let rows = rows(&buffer);
-    assert_eq!(rows[13], "   mmmmmm00:00mmmmmmmmmmmmmmm01:0  ");
+    assert_eq!(rows[13], "   mmmm00:00mmmmmmmmmmmmmmmmm01:0  ");
     for x in 0..35 {
         let cell = buffer.get(x, 13).unwrap();
         if cell.symbol == 'm' {
             assert_eq!(cell.fg, Some(Color::GREEN), "{x}");
         }
     }
-    // The marker line is in the plot's middle column
-    assert_eq!(buffer.get(21, 3).unwrap().symbol, '│');
+    // The marker line is in the middle column of the plot, which starts
+    // after the 5-column value labels ("110.0") and a gap column
+    assert_eq!(buffer.get(20, 3).unwrap().symbol, '│');
 }

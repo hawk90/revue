@@ -5,7 +5,7 @@ use crate::layout::Rect;
 use crate::style::Color;
 use crate::widget::data::chart::chart_render::{
     fill_background, render_axis_title, render_grid, render_legend, render_title,
-    render_x_axis_labels, render_y_axis_labels, LegendItem,
+    render_x_axis_labels, render_y_axis_labels, y_axis_label_columns, y_label_column, LegendItem,
 };
 use crate::widget::traits::{RenderContext, View};
 
@@ -30,8 +30,15 @@ impl View for ScatterChart {
         // Draw title using shared function
         let title_offset = render_title(ctx, rel_area, self.title.as_deref(), Color::WHITE);
 
-        // Calculate chart area (relative coordinates)
-        let y_label_width = 8u16;
+        let bounds = self.compute_bounds();
+        let (x_min, x_max, y_min, y_max) = bounds;
+
+        // Calculate chart area (relative coordinates): the Y label column
+        // fits the widest Y label, at most a third of the area (#1614)
+        let y_label_width = y_label_column(
+            y_axis_label_columns(rel_area, &self.y_axis, y_min, y_max),
+            area.width,
+        );
         let x_label_height = 1u16;
 
         let chart_area = Rect {
@@ -47,9 +54,6 @@ impl View for ScatterChart {
             return;
         }
 
-        let bounds = self.compute_bounds();
-        let (x_min, x_max, y_min, y_max) = bounds;
-
         // Render components using shared functions
         render_grid(
             ctx,
@@ -61,7 +65,7 @@ impl View for ScatterChart {
         self.render_points(ctx, chart_area, bounds);
 
         // Render axes
-        render_y_axis_labels(ctx, rel_area, &self.y_axis, y_min, y_max, y_label_width);
+        render_y_axis_labels(ctx, rel_area, &self.y_axis, y_min, y_max, y_label_width - 1);
         render_x_axis_labels(
             ctx,
             rel_area,
