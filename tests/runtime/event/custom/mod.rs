@@ -209,6 +209,51 @@ fn test_event_bus_history() {
     assert_eq!(history.len(), 2);
 }
 
+// The stamps read `utils::clock`, so a `MockTime` fixes them (#1576)
+
+#[test]
+fn event_meta_stamps_follow_the_mock_clock() {
+    use revue::testing::MockTime;
+    use std::time::{Duration, UNIX_EPOCH};
+
+    let time = MockTime::new();
+    let _clock = time.install();
+    let noon = UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+    time.set_wall_clock(noon, 0);
+
+    let meta = EventMeta::new("test");
+    assert_eq!(meta.timestamp, noon);
+    assert_eq!(meta.instant, revue::utils::clock::now());
+    assert_eq!(meta.elapsed(), Duration::ZERO);
+
+    time.advance_ms(1_500);
+    assert_eq!(meta.elapsed(), Duration::from_millis(1_500));
+    assert_eq!(meta.timestamp, noon, "a stamp does not move after creation");
+
+    let later = EventMeta::new("test");
+    assert_eq!(later.timestamp, noon + Duration::from_millis(1_500));
+    assert_eq!(later.elapsed(), Duration::ZERO);
+}
+
+#[test]
+fn event_bus_history_stamps_follow_the_mock_clock() {
+    use revue::testing::MockTime;
+    use std::time::{Duration, UNIX_EPOCH};
+
+    let time = MockTime::new();
+    let _clock = time.install();
+    let start = UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+    time.set_wall_clock(start, 9 * 3600);
+
+    let bus = CustomEventBus::new();
+    bus.emit(TestEvent { value: 1 });
+    time.advance_secs(60);
+    bus.emit(TestEvent { value: 2 });
+
+    let stamps: Vec<_> = bus.history().iter().map(|r| r.timestamp).collect();
+    assert_eq!(stamps, [start, start + Duration::from_secs(60)]);
+}
+
 #[test]
 fn test_app_event() {
     let event = AppEvent::new("startup")

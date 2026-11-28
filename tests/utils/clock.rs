@@ -348,8 +348,6 @@ const REAL_TIME: &[(&str, &str)] = &[
         "src/widget/debug_overlay/event_log.rs",
         "stamps real events",
     ),
-    ("src/runtime/event/custom/types.rs", "stamps real events"),
-    ("src/runtime/event/custom/bus.rs", "stamps real events"),
     (
         "src/widget/image/mod.rs",
         "seeds a random image id, not a time",

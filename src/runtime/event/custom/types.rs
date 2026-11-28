@@ -82,9 +82,12 @@ pub struct EventMeta {
     pub id: EventId,
     /// Event type name
     pub event_type: &'static str,
-    /// When the event was created
+    /// When the event was created: the time of day from
+    /// [`clock::wall_now`](crate::utils::clock::wall_now), so a test's
+    /// [`MockTime`](crate::testing::MockTime) fixes it
     pub timestamp: SystemTime,
-    /// Creation instant for timing
+    /// Creation instant for timing, from
+    /// [`clock::now`](crate::utils::clock::now)
     pub instant: Instant,
     /// Source component/widget ID
     pub source: Option<String>,
@@ -108,8 +111,8 @@ impl EventMeta {
         Self {
             id: EventId::new(),
             event_type,
-            timestamp: SystemTime::now(),
-            instant: Instant::now(),
+            timestamp: crate::utils::clock::wall_now(),
+            instant: crate::utils::clock::now(),
             source: None,
             target: None,
             phase: DispatchPhase::Target,
@@ -169,9 +172,10 @@ impl EventMeta {
         self.immediate_propagation_stopped
     }
 
-    /// Get elapsed time since event creation
+    /// Get elapsed time since event creation, on
+    /// [`clock::now`](crate::utils::clock::now)
     pub fn elapsed(&self) -> std::time::Duration {
-        self.instant.elapsed()
+        crate::utils::clock::since(self.instant)
     }
 }
 
