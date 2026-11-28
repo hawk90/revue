@@ -206,3 +206,63 @@ fn test_set_column_width_limits() {
         );
     }
 }
+
+// =========================================================================
+// Drag arithmetic past i16 (#1595): positions and widths above 32767
+// =========================================================================
+
+#[test]
+fn test_drag_resize_past_32767_columns() {
+    use revue::event::MouseButton;
+    let w = 40_100;
+    let area = Rect::new(0, 0, w, 5);
+    let mut grid = one_column(GridColumn::new("a", "A").width(10).max_width(0));
+    let drag = |grid: &mut DataGrid, from: u16, to: u16| {
+        grid.handle_mouse(MouseEventKind::Down(MouseButton::Left), from, 0, area);
+        grid.handle_mouse(MouseEventKind::Drag(MouseButton::Left), to, 0, area);
+        grid.handle_mouse(MouseEventKind::Up(MouseButton::Left), to, 0, area);
+    };
+    // Buffers stop at 16384 columns, so the drawn layout is read through
+    // the resize handle the hit test finds at `x`
+    let handle_at = |grid: &mut DataGrid, x: u16| {
+        grid.handle_mouse(MouseEventKind::Move, x, 0, area);
+        grid.hovered_resize
+    };
+
+    // Out past 32767: the i16 sum wrapped negative and gave the minimum 5
+    drag(&mut grid, 10, 40_000);
+    assert_eq!(grid.column_width(0), Some(40_000));
+    assert_eq!(handle_at(&mut grid, 40_000), Some(0));
+    assert_eq!(handle_at(&mut grid, 39_999), None);
+    assert_eq!(handle_at(&mut grid, 40_001), Some(0)); // the cell after it too
+    assert_eq!(handle_at(&mut grid, 40_002), None);
+
+    // And back by 10 from there: start and width both wrapped
+    drag(&mut grid, 40_000, 39_990);
+    assert_eq!(grid.column_width(0), Some(39_990));
+    assert_eq!(handle_at(&mut grid, 39_990), Some(0));
+}
+
+#[test]
+fn test_drag_resize_saturates_at_u16_max() {
+    use revue::event::MouseButton;
+    let area = Rect::new(0, 0, 100, 5);
+    for (start_width, start_x, to, expected) in [
+        (65_000, 100, 1_000, u16::MAX), // 65900: saturates
+        (65_000, 100, 635, u16::MAX),   // exactly 65535
+        (65_000, 100, 634, 65_534),     // one under
+        (65_000, 65_000, 0, 5),         // far left: 1, raised to min 5
+    ] {
+        let mut grid = one_column(GridColumn::new("a", "A").max_width(0));
+        grid.set_column_width(0, start_width);
+        grid.resizing_col = Some(0);
+        grid.resize_start_x = start_x;
+        grid.resize_start_width = start_width;
+        grid.handle_mouse(MouseEventKind::Drag(MouseButton::Left), to, 0, area);
+        assert_eq!(
+            grid.column_width(0),
+            Some(expected),
+            "width {start_width} from {start_x} to {to}"
+        );
+    }
+}

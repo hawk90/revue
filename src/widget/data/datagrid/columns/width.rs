@@ -54,21 +54,31 @@ impl DataGrid {
 
         let total = widths.iter().fold(0u16, |sum, w| sum.saturating_add(*w));
 
-        if total < available {
-            // Distribute extra space only to auto-width columns (width = 0)
-            let extra = available - total;
-            let auto_cols: Vec<_> = visible_cols
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| c.width == 0)
-                .collect();
-
-            if !auto_cols.is_empty() {
-                let per_col = (extra as usize / auto_cols.len()) as u16;
-                for &(i, col) in &auto_cols {
-                    widths[i] = col.clamp_width(widths[i].saturating_add(per_col));
-                }
+        // Share the free space among the auto-width columns (width = 0),
+        // evenly, and pass what a capped column cannot take on to the
+        // others until every one is capped or the space is used (#1594). A
+        // remainder smaller than the number of growing columns stays free.
+        let mut free = available.saturating_sub(total);
+        let mut growing: Vec<usize> = visible_cols
+            .iter()
+            .enumerate()
+            .filter(|&(i, c)| {
+                c.width == 0 && c.clamp_width(widths[i].saturating_add(1)) > widths[i]
+            })
+            .map(|(i, _)| i)
+            .collect();
+        while free > 0 && !growing.is_empty() {
+            let per_col = (usize::from(free) / growing.len()) as u16;
+            if per_col == 0 {
+                break;
             }
+            growing.retain(|&i| {
+                let grown = visible_cols[i].clamp_width(widths[i].saturating_add(per_col));
+                free -= grown - widths[i];
+                widths[i] = grown;
+                // Still below its cap: it can take more next round
+                visible_cols[i].clamp_width(grown.saturating_add(1)) > grown
+            });
         }
 
         widths

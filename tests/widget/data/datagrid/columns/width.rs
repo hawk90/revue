@@ -268,12 +268,104 @@ fn test_max_width_zero_auto_column_is_visible_and_grows() {
 #[test]
 fn test_max_width_zero_next_to_a_capped_column() {
     // 100 - 3 = 97; both start at 5, 87 / 2 = 43 extra each: b stops at 20
+    // and a takes the 28 b could not (#1594)
     let grid = DataGrid::new()
         .column(col("a").max_width(0))
         .column(col("b").max_width(20));
     let (header, row) = header_and_row(grid, 100);
-    assert_eq!(header, cell("A", 48) + &cell("B", 20) + &" ".repeat(30));
-    assert_eq!(row, cell("x", 48) + &cell("y", 20) + &" ".repeat(30));
+    assert_eq!(header, cell("A", 77) + &cell("B", 20) + " ");
+    assert_eq!(row, cell("x", 77) + &cell("y", 20) + " ");
+}
+
+// =========================================================================
+// Space a capped auto column cannot take goes to the others (#1594)
+// =========================================================================
+
+#[test]
+fn test_capped_space_goes_to_columns_under_their_max() {
+    // 100 - 4 = 96, 15 used, 81 / 3 = 27 each: b stops at 10; the 22 left
+    // go to a and c, 11 each
+    let grid = DataGrid::new()
+        .column(col("a"))
+        .column(col("b").max_width(10))
+        .column(col("c").max_width(0));
+    let (header, row) = header_and_row(grid, 100);
+    assert_eq!(
+        header,
+        cell("A", 43) + &cell("B", 10) + &cell("C", 43) + " "
+    );
+    assert_eq!(row, cell("x", 43) + &cell("y", 10) + &cell("", 43) + " ");
+}
+
+#[test]
+fn test_capped_space_is_passed_on_over_several_rounds() {
+    // 81 free: 27 each -> a 32, b 32, c 12 (capped), 20 left; 10 each ->
+    // a 42, b 40 (capped), 2 left; a takes them -> 44
+    let grid = DataGrid::new()
+        .column(col("a").max_width(0))
+        .column(col("b").max_width(40))
+        .column(col("c").max_width(12));
+    let (header, row) = header_and_row(grid, 100);
+    assert_eq!(
+        header,
+        cell("A", 44) + &cell("B", 40) + &cell("C", 12) + " "
+    );
+    assert_eq!(row, cell("x", 44) + &cell("y", 40) + &cell("", 12) + " ");
+}
+
+#[test]
+fn test_capped_space_stays_free_when_every_auto_column_is_capped() {
+    let grid = DataGrid::new()
+        .column(col("a").max_width(10))
+        .column(col("b").max_width(20));
+    let (header, row) = header_and_row(grid, 100);
+    assert_eq!(header, cell("A", 10) + &cell("B", 20) + &" ".repeat(68));
+    assert_eq!(row, cell("x", 10) + &cell("y", 20) + &" ".repeat(68));
+}
+
+#[test]
+fn test_capped_space_does_not_go_to_a_set_width_column() {
+    // a has a set width and never grows; b stops at 20
+    let grid = DataGrid::new()
+        .column(col("a").width(10))
+        .column(col("b").max_width(20));
+    let (header, row) = header_and_row(grid, 100);
+    assert_eq!(header, cell("A", 10) + &cell("B", 20) + &" ".repeat(68));
+    assert_eq!(row, cell("x", 10) + &cell("y", 20) + &" ".repeat(68));
+}
+
+#[test]
+fn test_capped_space_skips_a_column_held_at_min_above_max() {
+    // a is held at 20 (min above max) and takes none of the free space
+    let grid = DataGrid::new()
+        .column(col("a").min_width(20).max_width(10))
+        .column(col("b").max_width(0));
+    let (header, row) = header_and_row(grid, 100);
+    assert_eq!(header, cell("A", 20) + &cell("B", 77) + " ");
+    assert_eq!(row, cell("x", 20) + &cell("y", 77) + " ");
+}
+
+#[test]
+fn test_capped_space_with_wide_titles_and_values() {
+    // Same widths as the two-column case; Hangul takes 2 cells per glyph
+    let grid = DataGrid::new()
+        .column(GridColumn::new("a", "가나").max_width(0))
+        .column(GridColumn::new("b", "B").max_width(20))
+        .row(GridRow::new().cell("a", "한").cell("b", "y"));
+    let buf = render_to(&grid, 100, 3);
+    // Separators after a (77) and b (77 + 1 + 20)
+    assert_eq!(buf.get(77, 0).unwrap().symbol, '│');
+    assert_eq!(buf.get(98, 0).unwrap().symbol, '│');
+    assert_eq!(buf.get(77, 1).unwrap().symbol, '│');
+    assert_eq!(buf.get(98, 1).unwrap().symbol, '│');
+    assert_eq!(buf.get(0, 0).unwrap().symbol, '가');
+    assert_eq!(buf.get(2, 0).unwrap().symbol, '나');
+    assert_eq!(buf.get(0, 1).unwrap().symbol, '한');
+    assert_eq!(buf.get(78, 0).unwrap().symbol, 'B');
+    assert_eq!(buf.get(78, 1).unwrap().symbol, 'y');
+    for x in [4, 76] {
+        assert_eq!(buf.get(x, 0).unwrap().symbol, ' ', "header x {x}");
+    }
 }
 
 #[test]

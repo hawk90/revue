@@ -36,8 +36,10 @@ impl DataGrid {
             None => return,
         };
 
-        let delta = current_x as i16 - self.resize_start_x as i16;
-        let new_width = (self.resize_start_width as i16 + delta).max(1) as u16;
+        // In i32: u16 positions and widths past 32767 wrapped in i16 (#1595)
+        let new_width = (i32::from(self.resize_start_width) + i32::from(current_x)
+            - i32::from(self.resize_start_x))
+        .clamp(1, i32::from(u16::MAX)) as u16;
 
         let col = &self.columns[col_idx];
         let constrained = col.clamp_width(new_width);

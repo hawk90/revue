@@ -14,7 +14,8 @@ pub struct GridColumn {
     /// Width in cells (default 0 = auto)
     ///
     /// An auto-width column starts at `min_width` and shares the free space
-    /// up to `max_width`. A set width (> 0) gets no share of the free space
+    /// up to `max_width`; space a capped column cannot take goes to the
+    /// other auto-width columns. A set width (> 0) gets no share of the free space
     /// and is clamped into `[min_width, max_width]`.
     pub width: u16,
     /// Minimum width in cells (default 5)
