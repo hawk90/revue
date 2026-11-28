@@ -90,14 +90,14 @@ impl MultiSelect {
         }
 
         // The row's background under what was drawn without one (the arrow,
-        // the placeholder, the "..." markers); the tags keep their own
+        // the placeholder, the "…" markers); the tags keep their own
         ctx.fill_bg_under(0, 0, width, 1, bg);
     }
 
-    /// The selected options as `[label]` tags, and `...` in place of the first
+    /// The selected options as `[label]` tags, and `…` in place of the first
     /// tag that does not fit before `max_x`. The row scrolls (in columns) to
     /// keep the tag cursor in view, starts at a whole tag (#882), and starts
-    /// with `... ` if tags are scrolled off to the left. Returns the column
+    /// with `… ` if tags are scrolled off to the left. Returns the column
     /// after the tags.
     fn draw_tags(&self, ctx: &mut RenderContext, max_x: u16) -> u16 {
         // Each tag's first column on the whole row: "[label] "
@@ -110,9 +110,9 @@ impl MultiSelect {
         }
         let scroll = &self.tag_scroll;
         scroll.set_content(total);
-        // With more than one tag, the one in view may need " ..." after it
-        // and "... " before it
-        let markers = if self.selected.len() > 1 { 8 } else { 0 };
+        // With more than one tag, the one in view may need " …" after it
+        // and "… " before it
+        let markers = if self.selected.len() > 1 { 4 } else { 0 };
         // A viewport of none would stop the row from scrolling at all.
         scroll.set_viewport(max_x.saturating_sub(markers).max(1) as usize);
         if let Some(c) = self.tag_cursor.filter(|&c| c < starts.len()) {
@@ -133,26 +133,26 @@ impl MultiSelect {
         // comes before the marker.
         if first > 0 && first <= last {
             let tag = starts.get(first + 1).copied().unwrap_or(total) - starts[first] - 1;
-            let after = if first < last { 4 } else { 0 };
-            if 4 + tag + after <= max_x as usize {
-                ctx.draw_text(0, 0, "...", LIGHT_GRAY);
-                x = 4;
+            let after = if first < last { 2 } else { 0 };
+            if 2 + tag + after <= max_x as usize {
+                ctx.draw_text(0, 0, "…", LIGHT_GRAY);
+                x = 2;
             }
         }
         for (i, &opt_idx) in self.selected.iter().enumerate().skip(first) {
             if let Some(opt) = self.options.get(opt_idx) {
                 let label = &opt.label;
                 // "[label]"; the space after it is not needed to fit. A tag
-                // that more tags follow also needs room for " ..." after it,
+                // that more tags follow also needs room for " …" after it,
                 // so the hidden ones are always marked
                 let tag_len = (crate::utils::display_width(label) + 2) as u16;
-                let marker = if i < last { 4 } else { 0 };
+                let marker = if i < last { 2 } else { 0 };
 
                 if x + tag_len + marker > max_x {
                     // Draw overflow indicator; the column after it is
                     // where the query goes
-                    ctx.draw_text(x, 0, "...", LIGHT_GRAY);
-                    x += 3;
+                    ctx.draw_text(x, 0, "…", LIGHT_GRAY);
+                    x += 1;
                     break;
                 }
 

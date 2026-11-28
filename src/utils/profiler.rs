@@ -25,7 +25,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 use std::time::{Duration, Instant};
 
-use crate::utils::unicode::{display_width, pad_to_width, truncate_with_suffix};
+use crate::utils::unicode::{display_width, pad_to_width, truncate_with_ellipsis};
 
 // =============================================================================
 // Timing Entry
@@ -348,7 +348,7 @@ impl Profiler {
                 "{} {:>8} {:>10.2} {:>10.3} {:>10.3} {:>10.3}\n",
                 // Cut and pad by terminal columns, so a wide name keeps the
                 // later columns where the header puts them
-                pad_to_width(&truncate_with_suffix(&name, 30, "..."), 30),
+                pad_to_width(&truncate_with_ellipsis(&name, 30), 30),
                 stat.count,
                 stat.total_ms(),
                 stat.avg_ms(),

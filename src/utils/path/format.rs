@@ -6,7 +6,8 @@ use crate::utils::unicode::{display_width, truncate_to_width};
 /// Shorten a path to fit within a maximum width
 ///
 /// The width is in terminal columns, so a wide (CJK) character counts as two.
-/// Replaces leading directories with "..." if needed.
+/// Replaces leading directories with "…" (one column) if needed, and cuts
+/// the filename after "…" when even it does not fit.
 ///
 /// # Example
 ///
@@ -14,7 +15,7 @@ use crate::utils::unicode::{display_width, truncate_to_width};
 /// use revue::utils::path::shorten_path;
 ///
 /// let short = shorten_path("/very/long/path/to/file.txt", 20);
-/// assert_eq!(short, ".../path/to/file.txt");
+/// assert_eq!(short, "…/path/to/file.txt");
 /// ```
 pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
     let path = path.as_ref();
@@ -40,15 +41,18 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
         None => return full,
     };
 
-    if display_width(filename) + 4 > max_width {
-        // Below 3 columns not even "..." fits: cut it to the width, as
-        // `truncate_with_suffix` cuts its suffix (#1534)
-        if max_width < 3 {
-            return truncate_to_width("...", max_width).to_string();
+    const MARKER: &str = "…";
+    let marker_width = display_width(MARKER);
+    // "…/" before the kept components
+    let prefix_width = marker_width + 1;
+    if display_width(filename) + prefix_width > max_width {
+        // At 0 columns not even "…" fits (#1534)
+        if max_width < marker_width {
+            return String::new();
         }
-        // Even filename doesn't fit, truncate it to the columns left after "..."
-        let truncated = truncate_to_width(filename, max_width - 3);
-        return format!("...{}", truncated);
+        // Even filename doesn't fit, truncate it to the columns left after "…"
+        let truncated = truncate_to_width(filename, max_width - marker_width);
+        return format!("{MARKER}{truncated}");
     }
 
     // Try to include as many trailing components as possible
@@ -63,7 +67,7 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
             display_width(component) + 1 // +1 for separator
         };
 
-        if result_width + needed + 4 <= max_width {
+        if result_width + needed + prefix_width <= max_width {
             result_width += needed;
             if i > 0 {
                 result = format!("{}/{}", component, result);
@@ -78,9 +82,9 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
 
     if included < components.len() {
         if result.starts_with('/') {
-            format!("...{}", result)
+            format!("{MARKER}{result}")
         } else {
-            format!(".../{}", result)
+            format!("{MARKER}/{result}")
         }
     } else if full.starts_with('/') {
         format!("/{}", result)
