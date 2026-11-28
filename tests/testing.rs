@@ -3,6 +3,9 @@
 #[path = "support/alloc_cap.rs"]
 mod alloc_cap;
 
+#[path = "testing/ci_report.rs"]
+mod ci_report;
+
 #[path = "testing/pipeline.rs"]
 mod pipeline;
 
