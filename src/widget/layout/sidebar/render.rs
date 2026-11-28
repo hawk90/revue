@@ -284,14 +284,14 @@ impl Sidebar {
             let badge_space = item
                 .badge
                 .as_ref()
-                .map(|b| display_width(b) + 2)
+                .map(|b| display_width_u16(b).saturating_add(2))
                 .unwrap_or(0);
-            let label_width = (max_label_width as usize).saturating_sub(badge_space);
+            let label_width = max_label_width.saturating_sub(badge_space) as usize;
             let display = truncate_to_width(&item.label, label_width);
 
             for ch in display.chars() {
                 let cw = char_width(ch) as u16;
-                if x + cw > content_width.saturating_sub(badge_space as u16) {
+                if x.saturating_add(cw) > content_width.saturating_sub(badge_space) {
                     break;
                 }
                 let mut cell = Cell::new(ch);

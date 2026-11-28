@@ -35,14 +35,16 @@ impl MultiSelect {
             return w.max(MIN_DROPDOWN_WIDTH).min(max_width);
         }
 
-        let max_option_len = self
-            .options
+        // Clamped once, then saturating: a label past 65535 columns is
+        // as wide as the widest area
+        use crate::utils::unicode::display_width_u16;
+        self.options
             .iter()
-            .map(|o| crate::utils::display_width(&o.label))
+            .map(|o| display_width_u16(&o.label))
             .max()
-            .unwrap_or(crate::utils::display_width(&self.placeholder));
-
-        ((max_option_len + 4) as u16).min(max_width)
+            .unwrap_or(display_width_u16(&self.placeholder))
+            .saturating_add(4)
+            .min(max_width)
     }
 
     /// The header row: the arrow, and the tags (with the query while
