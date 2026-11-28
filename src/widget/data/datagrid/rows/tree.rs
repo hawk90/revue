@@ -1,9 +1,17 @@
 //! DataGrid tree mode functionality
+//!
+//! Deprecated in 3.17: the grid never draws child rows (render reads only the
+//! filtered top-level rows, and `tree_cache` is built but never drawn). Tree
+//! mode is planned for 4.0 together with a row key (#1539).
 
 use crate::widget::data::datagrid::types::GridRow;
 use crate::widget::data::datagrid::DataGrid;
 
 /// Tree node info for flattened display
+#[deprecated(
+    since = "3.17.0",
+    note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+)]
 #[derive(Clone, Debug)]
 pub struct TreeNodeInfo {
     /// Original row index in tree (path from root)
@@ -18,9 +26,16 @@ pub struct TreeNodeInfo {
     pub is_last_child: bool,
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, deprecated)]
 impl DataGrid {
-    /// Enable tree grid mode for hierarchical data display
+    /// Turn tree grid mode on or off
+    ///
+    /// Only builds `tree_cache`: the grid does not draw child rows in 3.x.
+    /// Tree mode is planned for 4.0 with row keys (#1539).
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn tree_mode(mut self, enabled: bool) -> Self {
         self.tree_mode = enabled;
         if enabled {
@@ -30,11 +45,19 @@ impl DataGrid {
     }
 
     /// Check if tree mode is enabled
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn is_tree_mode(&self) -> bool {
         self.tree_mode
     }
 
     /// Rebuild the flattened tree cache from rows
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn rebuild_tree_cache(&mut self) {
         self.tree_cache.clear();
         self.flatten_rows(&self.rows.clone(), 0, &mut vec![], &[]);
@@ -73,6 +96,10 @@ impl DataGrid {
     }
 
     /// Get row by path through tree
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn get_row_by_path(&self, path: &[usize]) -> Option<&GridRow> {
         if path.is_empty() {
             return None;
@@ -93,6 +120,10 @@ impl DataGrid {
     }
 
     /// Get mutable row by path through tree
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn get_row_by_path_mut(&mut self, path: &[usize]) -> Option<&mut GridRow> {
         if path.is_empty() {
             return None;
@@ -114,6 +145,10 @@ impl DataGrid {
     }
 
     /// Toggle expand/collapse of selected row in tree mode
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn toggle_expand(&mut self) {
         if !self.tree_mode {
             return;
@@ -140,6 +175,10 @@ impl DataGrid {
     }
 
     /// Expand selected row in tree mode
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn expand(&mut self) {
         if !self.tree_mode {
             return;
@@ -156,6 +195,10 @@ impl DataGrid {
     }
 
     /// Collapse selected row in tree mode
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn collapse(&mut self) {
         if !self.tree_mode {
             return;
@@ -172,6 +215,10 @@ impl DataGrid {
     }
 
     /// Expand all rows in tree mode
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn expand_all(&mut self) {
         if !self.tree_mode {
             return;
@@ -181,6 +228,10 @@ impl DataGrid {
     }
 
     /// Collapse all rows in tree mode
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn collapse_all(&mut self) {
         if !self.tree_mode {
             return;
@@ -200,6 +251,10 @@ impl DataGrid {
     }
 
     /// Get tree indent string for rendering
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn get_tree_indent(&self, node: &TreeNodeInfo) -> String {
         if node.depth == 0 {
             return String::new();
@@ -223,6 +278,10 @@ impl DataGrid {
     }
 
     /// Get expand/collapse indicator for tree node
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub fn get_tree_indicator(&self, node: &TreeNodeInfo) -> &'static str {
         if !node.has_children {
             "  "
