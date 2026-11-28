@@ -100,9 +100,6 @@ pub trait Rendering {
                 cell.modifier |= Modifier::BOLD;
             }
             ctx.set(x + offset, y, cell);
-            for i in 1..char_width {
-                ctx.set(x + offset + i, y, Cell::continuation());
-            }
             offset += char_width;
         }
     }

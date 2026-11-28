@@ -269,9 +269,6 @@ impl RangePicker {
                 cell.modifier |= Modifier::BOLD;
             }
             ctx.set(x + offset, y, cell);
-            for i in 1..ch_width {
-                ctx.set(x + offset + i, y, Cell::continuation());
-            }
             offset += ch_width;
         }
     }

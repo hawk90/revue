@@ -29,6 +29,60 @@ fn row(b: &Buffer, y: u16) -> String {
         .collect()
 }
 
+/// Render `v` into a `w` x `h` area at (2, 1) of a buffer one column and
+/// row wider on every side, so a write outside the area or a cell counted
+/// from the buffer's origin shows.
+pub fn draw_at_offset(v: &dyn View, w: u16, h: u16) -> Buffer {
+    let mut b = Buffer::new(w + 3, h + 2);
+    v.render(&mut RenderContext::new(&mut b, Rect::new(2, 1, w, h)));
+    b
+}
+
+/// Every wide glyph in `b` with the cell to its right: a continuation with
+/// the glyph's colors, modifiers and link, the one `Buffer::set` writes
+/// (#974). A widget that writes the continuation itself after the glyph
+/// replaced it with a plain one (#1600, #1609). Returns each glyph checked,
+/// as `(x, y, glyph cell)`, for the caller to check the glyphs' own style.
+pub fn assert_wide_glyphs_keep_their_style(b: &Buffer) -> Vec<(u16, u16, revue::render::Cell)> {
+    let mut glyphs = Vec::new();
+    for y in 0..b.height() {
+        for x in 0..b.width() {
+            let cell = *b.get(x, y).unwrap();
+            if cell.is_continuation() || revue::utils::char_width(cell.symbol) != 2 {
+                continue;
+            }
+            let right = b
+                .get(x + 1, y)
+                .unwrap_or_else(|| panic!("{:?} at ({x},{y}) has no right half", cell.symbol));
+            assert!(
+                right.is_continuation(),
+                "{:?} at ({x},{y}): right half {:?}",
+                cell.symbol,
+                right.symbol
+            );
+            assert_eq!(
+                (right.fg, right.bg, right.modifier, right.hyperlink_id),
+                (cell.fg, cell.bg, cell.modifier, cell.hyperlink_id),
+                "{:?} at ({x},{y}): the right half has another style than the glyph",
+                cell.symbol
+            );
+            glyphs.push((x, y, cell));
+        }
+    }
+    glyphs
+}
+
+/// The glyph `ch` among `glyphs` (from [`assert_wide_glyphs_keep_their_style`])
+pub fn glyph(
+    glyphs: &[(u16, u16, revue::render::Cell)],
+    ch: char,
+) -> (u16, u16, revue::render::Cell) {
+    *glyphs
+        .iter()
+        .find(|(_, _, c)| c.symbol == ch)
+        .unwrap_or_else(|| panic!("{ch:?} not drawn"))
+}
+
 #[test]
 fn toast_message() {
     let t = Toast::new("한글")

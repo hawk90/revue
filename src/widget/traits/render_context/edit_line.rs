@@ -291,14 +291,8 @@ impl super::RenderContext<'_> {
             } else if col >= scroll && next <= end {
                 let cell = make_cell(idx, ch);
                 let sx = screen_x(col);
+                // `set` writes a wide glyph's continuation with its style
                 self.set(sx, y, cell);
-                for dx in 1..w {
-                    let mut cont = Cell::continuation();
-                    cont.fg = cell.fg;
-                    cont.bg = cell.bg;
-                    cont.modifier = cell.modifier;
-                    self.set(sx.saturating_add(dx as u16), y, cont);
-                }
             } else if next > scroll {
                 let mut blank = make_cell(idx, ch);
                 blank.symbol = ' ';

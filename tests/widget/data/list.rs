@@ -1183,3 +1183,25 @@ mod model {
         }
     }
 }
+
+/// The selected item and the others keep a wide glyph's colors on its
+/// right half: the selected one's continuation had only the highlight
+/// background (#1609)
+#[test]
+fn items_style_both_halves_of_a_wide_glyph() {
+    use crate::wide_glyphs::{assert_wide_glyphs_keep_their_style, draw_at_offset, glyph};
+    let (fg, bg) = (Color::rgb(1, 2, 3), Color::rgb(4, 5, 6));
+    // "가나" fills the 4-column area: 나 takes its last two columns
+    let l = List::new(vec!["가나", "다"])
+        .selected(0)
+        .highlight_fg(fg)
+        .highlight_bg(bg);
+    let b = draw_at_offset(&l, 4, 2);
+    let glyphs = assert_wide_glyphs_keep_their_style(&b);
+    for ch in ['가', '나'] {
+        let (_, _, cell) = glyph(&glyphs, ch);
+        assert_eq!((cell.fg, cell.bg), (Some(fg), Some(bg)), "{ch}");
+    }
+    assert_eq!(glyph(&glyphs, '나').0, 4);
+    assert_eq!(glyph(&glyphs, '다').1, 2);
+}

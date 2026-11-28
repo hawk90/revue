@@ -518,3 +518,51 @@ fn test_render_too_narrow() {
     let callout = Callout::new("x");
     assert_eq!(render_rows(&callout, 4, 2), vec!["", ""]);
 }
+
+/// The title and the content of every variant keep a wide glyph's style on
+/// its right half: they wrote a plain continuation over it (#1609)
+#[test]
+fn every_variant_styles_both_halves_of_wide_title_and_content_glyphs() {
+    use crate::wide_glyphs::{assert_wide_glyphs_keep_their_style, draw_at_offset, glyph};
+    use revue::render::Modifier;
+    for variant in [
+        CalloutVariant::Filled,
+        CalloutVariant::LeftBorder,
+        CalloutVariant::Minimal,
+    ] {
+        let callout = Callout::new("내용").title("제목").variant(variant);
+        let b = draw_at_offset(&callout, 20, 4);
+        let glyphs = assert_wide_glyphs_keep_their_style(&b);
+        for ch in ['제', '목'] {
+            let (_, y, title) = glyph(&glyphs, ch);
+            assert_eq!(y, 1, "{variant:?} {ch}");
+            assert!(title.fg.is_some(), "{variant:?} {ch}");
+            assert!(title.modifier.contains(Modifier::BOLD), "{variant:?} {ch}");
+            assert_eq!(title.bg.is_some(), variant == CalloutVariant::Filled);
+        }
+        for ch in ['내', '용'] {
+            let (_, y, content) = glyph(&glyphs, ch);
+            assert_eq!(y, 2, "{variant:?} {ch}");
+            assert!(content.fg.is_some(), "{variant:?} {ch}");
+            assert_eq!(content.bg.is_some(), variant == CalloutVariant::Filled);
+        }
+    }
+}
+
+/// A minimal callout's title may end in the area's last column: its last
+/// glyph keeps its style there, and nothing is drawn past the area
+#[test]
+fn minimal_title_ending_at_the_last_column_keeps_its_style() {
+    use crate::wide_glyphs::{assert_wide_glyphs_keep_their_style, draw_at_offset, glyph};
+    let callout = Callout::new("")
+        .title("a제목")
+        .icon(false)
+        .variant(CalloutVariant::Minimal);
+    // Area columns 2..7, the narrowest a callout draws in: a at 2, 제 at
+    // 3-4, 목 at 5-6
+    let b = draw_at_offset(&callout, 5, 1);
+    let glyphs = assert_wide_glyphs_keep_their_style(&b);
+    assert_eq!(glyph(&glyphs, '목').0, 5);
+    assert!(b.get(6, 1).unwrap().fg.is_some());
+    assert_eq!(*b.get(7, 1).unwrap(), revue::render::Cell::empty());
+}

@@ -1506,3 +1506,55 @@ fn test_draw_text_wide_char_straddling_the_area_edge_is_not_drawn() {
     assert_eq!(buffer.get(2, 0).unwrap().symbol, ' ');
     assert_eq!(buffer.get(3, 0).unwrap().symbol, ' ');
 }
+
+/// `put_str_with` and `put_edit_line` wrote a wide glyph's continuation
+/// themselves, without the glyph's link, over the one `Buffer::set` writes
+/// (#1609). Both halves now carry the colors, modifiers and link.
+#[test]
+fn put_str_with_and_put_edit_line_keep_a_wide_glyph_link_on_both_halves() {
+    let styled = |ch: char| {
+        let mut cell = crate::render::Cell::new(ch).fg(Color::RED).bg(Color::BLUE);
+        cell.modifier = Modifier::BOLD;
+        cell.hyperlink_id = Some(7);
+        cell
+    };
+    type Draw<'a> = Box<dyn Fn(&mut RenderContext) + 'a>;
+    let draws: [(&str, Draw); 2] = [
+        (
+            "put_str_with",
+            Box::new(|ctx| {
+                ctx.put_str_with(0, 0, "a日", 4, styled);
+            }),
+        ),
+        (
+            "put_edit_line",
+            Box::new(|ctx| {
+                ctx.put_edit_line(
+                    0,
+                    0,
+                    "a日",
+                    0,
+                    4,
+                    crate::utils::unicode::NO_TABS,
+                    |_, ch| styled(ch),
+                );
+            }),
+        ),
+    ];
+    for (name, draw) in draws {
+        let mut buffer = Buffer::new(8, 2);
+        {
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 1, 4, 1));
+            draw(&mut ctx);
+        }
+        let glyph = *buffer.get(3, 1).unwrap();
+        let right = *buffer.get(4, 1).unwrap();
+        assert_eq!(glyph.symbol, '日', "{name}");
+        assert!(right.is_continuation(), "{name}");
+        assert_eq!(
+            (right.fg, right.bg, right.modifier, right.hyperlink_id),
+            (Some(Color::RED), Some(Color::BLUE), Modifier::BOLD, Some(7)),
+            "{name}"
+        );
+    }
+}

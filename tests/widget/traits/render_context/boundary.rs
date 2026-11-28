@@ -60,3 +60,38 @@ fn set_a_wide_glyph_across_the_clip_draws_a_space() {
     // column 5, past the clip, is left alone
     assert_eq!(cells(&buffer, 0), "...  ...");
 }
+
+#[test]
+fn put_str_a_wide_glyph_across_the_clip_draws_a_space() {
+    // `put_str` wrote the glyph with `Buffer::set`, which wrote its right
+    // half past the context's clip (#1609). Column 4 is the clip's last.
+    let mut buffer = Buffer::new(8, 1);
+    buffer.put_str(0, 0, "........");
+    {
+        let mut ctx =
+            RenderContext::new(&mut buffer, Rect::new(1, 0, 7, 1)).with_clip(Rect::new(2, 0, 3, 1));
+        // 日 at 2-3 inside, 月 at 4-5 crossing the clip
+        assert_eq!(ctx.put_str(1, 0, "日月"), 4);
+    }
+    assert_eq!(cells(&buffer, 0), "..日_ ...");
+    // Both halves of 日 plain, as `put_str` draws
+    let glyph = *buffer.get(2, 0).unwrap();
+    let right = *buffer.get(3, 0).unwrap();
+    assert_eq!(
+        (right.fg, right.bg, right.modifier),
+        (glyph.fg, glyph.bg, glyph.modifier)
+    );
+}
+
+#[test]
+fn put_str_a_wide_glyph_at_the_last_column_of_an_offset_area() {
+    // The cell right of the area belongs to another view
+    let mut buffer = Buffer::new(8, 1);
+    buffer.put_str(0, 0, "........");
+    {
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 0, 4, 1));
+        // 日 fits at 2-3 and 月 at 4-5; 火 would cross the area's edge
+        assert_eq!(ctx.put_str(0, 0, "日月火"), 4);
+    }
+    assert_eq!(cells(&buffer, 0), "..日_月_..");
+}

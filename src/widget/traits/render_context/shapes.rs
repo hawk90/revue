@@ -267,9 +267,6 @@ impl RenderContext<'_> {
                         continue;
                     }
                     self.draw_char(x + pos, y, ch, fg);
-                    for i in 1..ch_width {
-                        self.set(x + pos + i, y, Cell::continuation());
-                    }
                     pos += ch_width;
                     continue;
                 }

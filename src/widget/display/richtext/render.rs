@@ -113,15 +113,9 @@ impl View for RichText {
                 cell.modifier = modifier;
                 cell.hyperlink_id = hyperlink_id;
 
+                // `set` writes a wide glyph's continuation with its
+                // colors, modifiers and link
                 ctx.set(x, y, cell);
-
-                // Handle wide characters
-                if char_width == 2 && x + 1 < area.width {
-                    let mut cont = Cell::continuation();
-                    cont.bg = span.style.bg.or(base_bg);
-                    cont.hyperlink_id = hyperlink_id;
-                    ctx.set(x + 1, y, cont);
-                }
 
                 x += char_width;
             }

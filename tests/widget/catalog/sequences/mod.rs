@@ -428,38 +428,105 @@ fn drive(entry: &Entry, weights: &Weights, cases: u32) -> Option<Failure> {
     }
 }
 
-/// A widget that has not finished after this is reported as hung.
+/// A widget that has not finished this long after it started is reported as
+/// hung.
 const HANG: Duration = Duration::from_secs(120);
 
-/// Drive every entry on its own thread (so one that hangs is reported and
-/// abandoned instead of stalling the layer) and apply the ratchet.
+/// What a worker tells [`run_layer`] about entry `i`.
+enum Progress {
+    Started(usize),
+    Finished(usize, Option<Failure>),
+}
+
+/// The entries no worker has taken yet, shared by the workers of one layer.
+type Queue = std::sync::Arc<std::sync::Mutex<std::vec::IntoIter<(usize, Entry)>>>;
+
+/// Start a worker that drives entries from `queue` until it is empty.
+fn spawn_worker(
+    queue: &Queue,
+    weights: &std::sync::Arc<Weights>,
+    cases: u32,
+    tx: &mpsc::Sender<Progress>,
+) {
+    let (queue, weights, tx) = (queue.clone(), weights.clone(), tx.clone());
+    std::thread::Builder::new()
+        .name("seq-worker".to_string())
+        .stack_size(8 << 20)
+        .spawn(move || loop {
+            // A worker that panicked while holding the lock left no entry
+            // half taken: the iterator is still whole.
+            let next = queue.lock().unwrap_or_else(|e| e.into_inner()).next();
+            let Some((i, entry)) = next else { break };
+            if tx.send(Progress::Started(i)).is_err() {
+                break;
+            }
+            let failure = drive(&entry, &weights, cases);
+            if tx.send(Progress::Finished(i, failure)).is_err() {
+                break;
+            }
+        })
+        .expect("spawn sequence worker");
+}
+
+/// Drive every entry on a pool of `available_parallelism` workers, as the
+/// entries are CPU-bound and more threads only starve the tests beside this
+/// one (#938), and apply the ratchet.
+///
+/// An entry that has not finished [`HANG`] after it started is reported and
+/// abandoned with its worker, and a new worker takes its place, so one hang
+/// neither stalls the layer nor shrinks the pool.
 pub fn run_layer(layer: &'static str, entries: Vec<Entry>, weights: Weights, cases: u32) {
     let weights = std::sync::Arc::new(weights);
     let names: Vec<&'static str> = entries.iter().map(|e| e.name).collect();
+    let workers = std::thread::available_parallelism()
+        .map_or(1, |n| n.get())
+        .min(names.len().max(1));
+    let queue: Queue = std::sync::Arc::new(std::sync::Mutex::new(
+        entries
+            .into_iter()
+            .enumerate()
+            .collect::<Vec<_>>()
+            .into_iter(),
+    ));
     let (tx, rx) = mpsc::channel();
-    for (i, entry) in entries.into_iter().enumerate() {
-        let tx = tx.clone();
-        let weights = weights.clone();
-        std::thread::Builder::new()
-            .name(format!("seq-{}", entry.name))
-            .stack_size(8 << 20)
-            .spawn(move || {
-                let _ = tx.send((i, drive(&entry, &weights, cases)));
-            })
-            .expect("spawn sequence thread");
+    for _ in 0..workers {
+        spawn_worker(&queue, &weights, cases, &tx);
     }
-    drop(tx);
 
-    let deadline = Instant::now() + HANG;
+    let mut started: Vec<Option<Instant>> = vec![None; names.len()];
     let mut done = vec![false; names.len()];
+    let mut hung = vec![false; names.len()];
     let mut failures = Vec::new();
-    while done.iter().any(|d| !d) {
-        match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
-            Ok((i, f)) => {
+    while (0..names.len()).any(|i| !done[i] && !hung[i]) {
+        // Wait until the running entry that started first reaches its limit.
+        let wait = (0..names.len())
+            .filter(|&i| !done[i] && !hung[i])
+            .filter_map(|i| started[i])
+            .min()
+            .map_or(HANG, |t| {
+                (t + HANG).saturating_duration_since(Instant::now())
+            });
+        match rx.recv_timeout(wait) {
+            Ok(Progress::Started(i)) => started[i] = Some(Instant::now()),
+            Ok(Progress::Finished(i, f)) => {
                 done[i] = true;
                 failures.extend(f);
             }
-            Err(_) => break,
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                for i in 0..names.len() {
+                    if done[i] || hung[i] {
+                        continue;
+                    }
+                    if let Some(t) = started[i] {
+                        if t.elapsed() >= HANG {
+                            hung[i] = true;
+                            spawn_worker(&queue, &weights, cases, &tx);
+                        }
+                    }
+                }
+            }
+            // Every worker is gone; whatever is left never finishes.
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
     for (i, name) in names.iter().enumerate() {
@@ -467,7 +534,7 @@ pub fn run_layer(layer: &'static str, entries: Vec<Entry>, weights: Weights, cas
             failures.push(Failure {
                 widget: name,
                 sequence: "hang".to_string(),
-                detail: format!("did not finish within {HANG:?}"),
+                detail: format!("did not finish within {HANG:?} of its start"),
             });
         }
     }
