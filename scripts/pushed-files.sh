@@ -15,15 +15,23 @@
 # Exits 2, with the reason on stderr, when the hook cannot tell what to test and
 # should run everything:
 #   - no ref lines on stdin (e.g. `lefthook run pre-push` by hand),
-#   - no merge base with origin/main for a new branch,
-#   - a pushed commit whose tree is not HEAD's, e.g. `git push origin other-branch`:
-#     the tests build the working tree, not the commit being pushed.
+#   - no merge base with origin/main for a new branch.
+# Exits 3, with the reason on stderr, when the push must be refused: a pushed
+# commit whose tree is not HEAD's, e.g. `git push origin other-branch`. The
+# tests build the working tree, so they would pass or fail for a commit that is
+# not the one being pushed. A tag on a commit origin/main already has pushes
+# nothing new and is let through.
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 2
 
 full() {
   echo "pushed-files: $*; running everything" >&2
   exit 2
+}
+
+refuse() {
+  echo "pushed-files: $*" >&2
+  exit 3
 }
 
 if [ -t 0 ]; then
@@ -46,7 +54,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   local_tree=$(git rev-parse --verify --quiet "$local_sha^{tree}") ||
     full "$local_ref is not a commit"
   if [ "$local_tree" != "$head_tree" ]; then
-    full "$local_ref ($local_sha) is not the checked-out HEAD, so the working tree is not what is pushed to $remote_ref"
+    # A tag on a commit main already has (e.g. `git push --tags`) sends nothing new.
+    if [[ $local_ref == refs/tags/* ]] &&
+      git merge-base --is-ancestor "$local_sha" origin/main 2>/dev/null; then
+      continue
+    fi
+    refuse "$local_ref ($local_sha) is not the checked-out HEAD: the tests would build the working tree, not what is pushed to $remote_ref. Check out $local_ref and push from there (or bypass with --no-verify)."
   fi
   if [[ ! $remote_sha =~ $zero ]] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
     base=$remote_sha

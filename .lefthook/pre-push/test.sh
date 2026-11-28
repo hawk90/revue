@@ -14,6 +14,7 @@ case $? in
     cargo test --all-features || exit 1
     exit 0
     ;;
+  3) exit 1 ;; # refused: the reason is on stderr
   *) exit 1 ;;
 esac
 
