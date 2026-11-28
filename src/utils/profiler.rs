@@ -40,12 +40,18 @@ pub struct Timing {
     pub duration: Duration,
     /// Start time
     pub start: Instant,
-    /// Parent operation (if nested)
+    /// Parent operation: always `None`, since this profiler does not track
+    /// nesting (a nested guard records a timing of its own, with no parent)
+    #[deprecated(
+        since = "3.17.0",
+        note = "this profiler keeps flat per-name timings and never sets or reads a parent (it does not track call nesting); for hierarchical render timing use `revue::devtools::Profiler`, whose `RenderEvent`s carry a parent and a depth"
+    )]
     pub parent: Option<String>,
 }
 
 impl Timing {
     /// Create a new timing
+    #[allow(deprecated)] // sets `parent`, which stays public until 4.0
     pub fn new(name: impl Into<String>, duration: Duration, start: Instant) -> Self {
         Self {
             name: name.into(),
@@ -56,6 +62,11 @@ impl Timing {
     }
 
     /// Set parent operation
+    #[deprecated(
+        since = "3.17.0",
+        note = "this profiler keeps flat per-name timings and never sets or reads a parent (it does not track call nesting); for hierarchical render timing use `revue::devtools::Profiler`, whose `RenderEvent`s carry a parent and a depth"
+    )]
+    #[allow(deprecated)] // sets the deprecated `parent`
     pub fn with_parent(mut self, parent: impl Into<String>) -> Self {
         self.parent = Some(parent.into());
         self
@@ -180,8 +191,6 @@ struct ProfilerInner {
     max_recent: usize,
     /// Is profiling enabled
     enabled: bool,
-    /// Current profile stack (for nesting)
-    stack: Vec<String>,
 }
 
 impl ProfilerInner {
@@ -191,7 +200,6 @@ impl ProfilerInner {
             recent: Vec::new(),
             max_recent: 100,
             enabled: true,
-            stack: Vec::new(),
         }
     }
 
@@ -205,11 +213,8 @@ impl ProfilerInner {
         stats.record(duration);
 
         // Add to recent
-        let mut timing = Timing::new(name, duration, Instant::now());
-        if let Some(parent) = self.stack.last() {
-            timing = timing.with_parent(parent.clone());
-        }
-        self.recent.push(timing);
+        self.recent
+            .push(Timing::new(name, duration, Instant::now()));
 
         // Trim if needed
         if self.recent.len() > self.max_recent {
@@ -411,6 +416,12 @@ pub fn thread_profiler() -> Profiler {
 // =============================================================================
 
 /// Node in a flame graph
+///
+/// A plain data type: nothing in this profiler builds one.
+#[deprecated(
+    since = "3.17.0",
+    note = "never built: this profiler keeps flat per-name timings and does not build flame graphs; `revue::devtools::Profiler` records `RenderEvent`s with a parent and a depth and draws a flamegraph"
+)]
 #[derive(Debug, Clone)]
 pub struct FlameNode {
     /// Operation name
@@ -423,6 +434,7 @@ pub struct FlameNode {
     pub children: Vec<FlameNode>,
 }
 
+#[allow(deprecated)] // the impl of the deprecated type itself
 impl FlameNode {
     /// Create a new flame node
     pub fn new(name: impl Into<String>) -> Self {

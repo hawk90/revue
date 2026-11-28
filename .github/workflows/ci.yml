@@ -193,7 +193,8 @@ jobs:
         run: |
           (cd revue-cli && cargo build --locked --quiet --target-dir target)
           cli="$PWD/revue-cli/target/debug/revue"
-          for t in $(ls revue-cli/templates); do
+          for d in revue-cli/templates/*/; do
+            t=$(basename "$d")
             echo "::group::revue new --template $t"
             dir="$RUNNER_TEMP/new-$t"
             "$cli" new "$dir" --template "$t" --no-git

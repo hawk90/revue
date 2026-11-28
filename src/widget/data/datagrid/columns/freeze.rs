@@ -25,23 +25,22 @@ impl DataGrid {
 
     /// Scroll columns right
     pub fn scroll_col_right(&mut self) {
-        let scrollable = self
-            .columns
-            .len()
-            .saturating_sub(self.effective_frozen_left() + self.frozen_right);
+        // Count only what scrolls, as `compute_column_slots` lays it out:
+        // visible columns that are not frozen on either side.
+        let visible_cols = self.visible_columns_in_order();
+        let n = visible_cols.len();
+        let frozen_left = self.frozen_left_for(&visible_cols).min(n);
+        let frozen_right = self.frozen_right.min(n - frozen_left);
+        let scrollable = n - frozen_left - frozen_right;
         if self.scroll_col < scrollable.saturating_sub(1) {
             self.scroll_col += 1;
         }
     }
 
-    /// Left-frozen column count as laid out: `frozen_left`, widened so that
-    /// every visible column marked `GridColumn::frozen` (and every column
-    /// before it in display order) is pinned too.
-    pub(crate) fn effective_frozen_left(&self) -> usize {
-        self.frozen_left_for(&self.visible_columns_in_order())
-    }
-
-    /// `effective_frozen_left` for an already computed display order.
+    /// Left-frozen column count as laid out for the display order
+    /// `visible_cols`: `frozen_left`, widened so that every visible column
+    /// marked `GridColumn::frozen` (and every column before it in display
+    /// order) is pinned too.
     pub(crate) fn frozen_left_for(&self, visible_cols: &[(usize, &GridColumn)]) -> usize {
         let by_column = visible_cols
             .iter()

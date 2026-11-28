@@ -93,17 +93,27 @@ fn render(&self, ctx: &mut RenderContext) {
 }
 ```
 
-## Screen Reader Announcements
+## Announcements
+
+revue does not talk to screen readers. A terminal app has no window of its
+own: the terminal emulator owns the accessibility tree, and a screen reader
+reads the terminal's text. So what an app wants announced has to be text on
+the screen, where the screen reader reads it. revue keeps announcements in a
+queue; the app takes them and shows them, in a status line for example.
+
+(`revue::a11y`'s screen reader backend, which sent announcements to
+VoiceOver, Narrator or speech-dispatcher, is deprecated since 3.17.0: see
+[#937](https://github.com/hawk90/revue/issues/937).)
 
 ### Basic Announcements
 
 ```rust
 use revue::utils::{announce, announce_now};
 
-// Queue announcement (after current speech)
+// Queue a polite announcement (status updates, info)
 announce("Item selected");
 
-// Interrupt with important message
+// Queue an assertive one (errors, alerts)
 announce_now("Error: Invalid input");
 ```
 
@@ -135,13 +145,17 @@ announce_dialog_closed();
 
 ### Retrieving Announcements
 
+`take_announcements` empties the queue and returns what was in it, oldest
+first. Each `Announcement` has its `message` and `priority`:
+
 ```rust
-use revue::utils::{take_announcements, has_announcements};
+use revue::utils::{has_announcements, take_announcements, Priority};
 
 if has_announcements() {
-    for msg in take_announcements() {
-        // Send to screen reader
-        screen_reader.speak(&msg);
+    for announcement in take_announcements() {
+        // Show it where the screen reader reads the terminal's text
+        let urgent = announcement.priority == Priority::Assertive;
+        self.status_line.set(announcement.message, urgent);
     }
 }
 ```
@@ -311,8 +325,11 @@ fn test_announcements() {
 
     pilot.press_key(Key::Enter);
 
-    let announcements = take_announcements();
-    assert!(announcements.contains(&"Button clicked".to_string()));
+    let messages: Vec<String> = take_announcements()
+        .into_iter()
+        .map(|announcement| announcement.message)
+        .collect();
+    assert!(messages.contains(&"Button clicked".to_string()));
 }
 ```
 

@@ -122,6 +122,7 @@ pub mod lock;
 pub mod once;
 pub mod overlay;
 pub mod path;
+pub(crate) mod process;
 pub mod profiler;
 pub mod scroll;
 pub mod selection;
@@ -353,6 +354,7 @@ pub use browser::{
 };
 
 // Profiler
+#[allow(deprecated)] // FlameNode: kept re-exported until 4.0 so users see the warning
 pub use profiler::{
     profile, profiler_report, start_profile, thread_profiler, FlameNode, ProfileGuard, Profiler,
     Stats, Timing,

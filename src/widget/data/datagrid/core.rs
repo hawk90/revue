@@ -87,7 +87,9 @@ pub struct DataGrid {
     pub drop_target_col: Option<usize>,
     /// Column display order (maps display index to actual column index).
     /// Empty means the order of `columns`; drag reorder permutes this and
-    /// leaves `columns` in place.
+    /// leaves `columns` in place. Out-of-range and repeated entries are
+    /// ignored, and columns it does not list follow the listed ones in
+    /// definition order.
     pub column_order: Vec<usize>,
     /// Whether columns can be reordered
     pub reorderable: bool,

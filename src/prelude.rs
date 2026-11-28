@@ -374,6 +374,7 @@ pub use crate::devtools::{
 };
 
 // Profiler
+#[allow(deprecated)] // FlameNode: kept re-exported until 4.0 so users see the warning
 pub use crate::utils::profiler::{
     profile, profiler_report, start_profile, FlameNode, ProfileGuard, Profiler, Stats, Timing,
 };

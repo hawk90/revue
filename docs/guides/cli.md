@@ -8,9 +8,14 @@ prints it, and the projects `revue new` writes depend on that release line
 
 ## Installation
 
+The CLI is not on crates.io; install it from the repository:
+
 ```bash
-cargo install revue-cli
+cargo install --git https://github.com/hawk90/revue revue-cli
 ```
+
+This builds the `main` branch. To install the CLI of a release, add its tag
+(`--tag v<version>`, as listed on the GitHub releases page).
 
 ## Commands Overview
 
