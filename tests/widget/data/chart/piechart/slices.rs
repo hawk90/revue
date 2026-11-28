@@ -117,6 +117,26 @@ fn test_pie_empty_and_zero_total_render_nothing() {
     }
 }
 
+/// An area 65535 columns wide puts the center at column 32767; the right
+/// half of the pie (columns past 32767) is placed in i32, not i16, which
+/// overflowed (a panic in debug builds). The pie lies past the 40 columns
+/// of the buffer, so nothing is drawn in it (#1598)
+#[test]
+fn test_pie_center_at_i16_max_does_not_overflow() {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::widget::traits::RenderContext;
+    use revue::widget::View;
+    let mut buffer = Buffer::new(40, 6);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, u16::MAX, 6));
+    halves().explode(0).render(&mut ctx);
+    assert!(
+        rows(&buffer).iter().all(|r| r.trim().is_empty()),
+        "{:?}",
+        rows(&buffer)
+    );
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 

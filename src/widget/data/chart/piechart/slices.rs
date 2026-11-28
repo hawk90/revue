@@ -60,8 +60,8 @@ impl PieChart {
                 let rad = mid_angle.to_radians();
                 let offset = self.explode_distance * radius as f64;
                 (
-                    (offset * rad.cos() * aspect_ratio) as i16,
-                    (offset * rad.sin()) as i16,
+                    (offset * rad.cos() * aspect_ratio) as i32,
+                    (offset * rad.sin()) as i32,
                 )
             } else {
                 (0, 0)
@@ -100,12 +100,19 @@ impl PieChart {
                     };
 
                     if in_slice {
+                        // In i32, so a center past 32767 does not wrap; a
+                        // point left of or above the area is skipped
                         let screen_x =
-                            (center_x as i16 + offset_x + x as i16 - radius as i16) as u16;
+                            i32::from(center_x) + offset_x + i32::from(x) - i32::from(radius);
                         // `dy` already doubled the vertical distance, so each
                         // step of `y` is one terminal row.
                         let screen_y =
-                            (center_y as i16 + offset_y + (y as i16 - radius as i16)) as u16;
+                            i32::from(center_y) + offset_y + i32::from(y) - i32::from(radius);
+                        let (Ok(screen_x), Ok(screen_y)) =
+                            (u16::try_from(screen_x), u16::try_from(screen_y))
+                        else {
+                            continue;
+                        };
 
                         if screen_x < area.width && screen_y < area.height {
                             let mut cell = Cell::new('█');
