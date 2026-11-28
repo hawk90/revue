@@ -19,6 +19,13 @@ fn test_drag_data_list_item() {
     assert_eq!(data.display_label(), "Item 5");
 }
 
+/// Data with no label shows one `…` cell, not three periods (#1611)
+#[test]
+fn test_drag_data_without_label_shows_one_ellipsis() {
+    let data = DragData::new("custom", 7u32);
+    assert_eq!(data.display_label(), "…");
+}
+
 #[test]
 fn test_drag_data_custom() {
     #[derive(Debug)]

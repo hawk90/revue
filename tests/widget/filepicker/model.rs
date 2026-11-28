@@ -209,9 +209,9 @@ proptest! {
                 .map(|n| n.trim_end_matches('/').to_string())
                 .collect();
             prop_assert_eq!(shown_names(&screen), window, "after {:?}", op);
-            prop_assert_eq!(screen.iter().any(|r| r == "  ↑ more..."), offset > 0);
+            prop_assert_eq!(screen.iter().any(|r| r == "  ↑ more…"), offset > 0);
             prop_assert_eq!(
-                screen.iter().any(|r| r == "  ↓ more..."),
+                screen.iter().any(|r| r == "  ↓ more…"),
                 offset + max_visible < list.len()
             );
         }

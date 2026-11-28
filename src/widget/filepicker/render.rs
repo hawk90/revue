@@ -101,7 +101,7 @@ impl FilePicker {
         let shown = self.scroll.visible();
 
         if self.scroll.has_above() {
-            content = content.child(Text::new("  ↑ more...").fg(DISABLED_FG));
+            content = content.child(Text::new("  ↑ more…").fg(DISABLED_FG));
         }
 
         for i in shown.clone() {
@@ -109,7 +109,7 @@ impl FilePicker {
         }
 
         if shown.end < len {
-            content = content.child(Text::new("  ↓ more...").fg(DISABLED_FG));
+            content = content.child(Text::new("  ↓ more…").fg(DISABLED_FG));
         }
 
         content
