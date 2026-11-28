@@ -122,7 +122,7 @@ tracing = { version = "0.1.44", optional = true }
 qrcode = { version = "0.14.1", optional = true }
 sysinfo = { version = "0.40.3", optional = true }
 reqwest = { version = "0.13.5", features = ["blocking"], optional = true }
-similar = { version = "3.2.1", optional = true }
+similar = { version = "3.2.1", optional = true, features = ["inline", "unicode"] }
 regex = { version = "1.13.1", optional = true }
 
 # ═══════════════════════════════════════════
