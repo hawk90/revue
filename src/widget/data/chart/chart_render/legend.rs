@@ -36,27 +36,27 @@ pub fn calculate_legend_position(
             area.y + 1,
         )),
         LegendPosition::TopRight => Some((
-            area.x + area.width.saturating_sub(legend_width + 1),
+            area.x + area.width.saturating_sub(legend_width.saturating_add(1)),
             area.y + 1,
         )),
         LegendPosition::BottomLeft => Some((
             area.x + 1,
-            area.y + area.height.saturating_sub(legend_height + 1),
+            area.y + area.height.saturating_sub(legend_height.saturating_add(1)),
         )),
         LegendPosition::BottomCenter => Some((
             area.x + area.width.saturating_sub(legend_width) / 2,
-            area.y + area.height.saturating_sub(legend_height + 1),
+            area.y + area.height.saturating_sub(legend_height.saturating_add(1)),
         )),
         LegendPosition::BottomRight => Some((
-            area.x + area.width.saturating_sub(legend_width + 1),
-            area.y + area.height.saturating_sub(legend_height + 1),
+            area.x + area.width.saturating_sub(legend_width.saturating_add(1)),
+            area.y + area.height.saturating_sub(legend_height.saturating_add(1)),
         )),
         LegendPosition::Left => Some((
             area.x + 1,
             area.y + area.height.saturating_sub(legend_height) / 2,
         )),
         LegendPosition::Right => Some((
-            area.x + area.width.saturating_sub(legend_width + 1),
+            area.x + area.width.saturating_sub(legend_width.saturating_add(1)),
             area.y + area.height.saturating_sub(legend_height) / 2,
         )),
         LegendPosition::None => None,
@@ -74,72 +74,75 @@ pub fn render_legend(
         return;
     }
 
-    let legend_width = items
-        .iter()
-        .map(|item| item.label.len() + 4)
-        .max()
-        .unwrap_or(10) as u16;
-    let legend_height = items.len() as u16 + 2;
+    // Sized in usize and clamped to u16: a count cast to u16 and then
+    // added to overflows near 65535 (#1552)
+    let clamp = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
+    let legend_width = clamp(
+        items
+            .iter()
+            .map(|item| item.label.len().saturating_add(4))
+            .max()
+            .unwrap_or(10),
+    );
+    let legend_height = clamp(items.len().saturating_add(2));
 
     let Some((legend_x, legend_y)) =
         calculate_legend_position(legend.position, area, legend_width, legend_height)
     else {
         return;
     };
+    let right = area.x.saturating_add(area.width);
+    let bottom = area.y.saturating_add(area.height);
 
-    // Draw legend box
-    for dy in 0..legend_height {
-        for dx in 0..legend_width {
+    // Draw legend box, as much of it as is in the area
+    for dy in 0..legend_height.min(bottom.saturating_sub(legend_y)) {
+        for dx in 0..legend_width.min(right.saturating_sub(legend_x)) {
             let x = legend_x + dx;
             let y = legend_y + dy;
-            if x < area.x + area.width && y < area.y + area.height {
-                let ch = if dy == 0 && dx == 0 {
-                    '┌'
-                } else if dy == 0 && dx == legend_width - 1 {
-                    '┐'
-                } else if dy == legend_height - 1 && dx == 0 {
-                    '└'
-                } else if dy == legend_height - 1 && dx == legend_width - 1 {
-                    '┘'
-                } else if dy == 0 || dy == legend_height - 1 {
-                    '─'
-                } else if dx == 0 || dx == legend_width - 1 {
-                    '│'
-                } else {
-                    ' '
-                };
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(DISABLED_FG);
-                ctx.set(x, y, cell);
-            }
+            let ch = if dy == 0 && dx == 0 {
+                '┌'
+            } else if dy == 0 && dx == legend_width - 1 {
+                '┐'
+            } else if dy == legend_height - 1 && dx == 0 {
+                '└'
+            } else if dy == legend_height - 1 && dx == legend_width - 1 {
+                '┘'
+            } else if dy == 0 || dy == legend_height - 1 {
+                '─'
+            } else if dx == 0 || dx == legend_width - 1 {
+                '│'
+            } else {
+                ' '
+            };
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(DISABLED_FG);
+            ctx.set(x, y, cell);
         }
     }
 
-    // Draw legend items
-    for (i, item) in items.iter().enumerate() {
-        let y = legend_y + 1 + i as u16;
-        if y >= area.y + area.height {
-            break;
-        }
-
+    // Draw legend items, one per row down to the area's bottom
+    let label_end = right
+        .saturating_sub(1)
+        .min((legend_x.saturating_add(legend_width)).saturating_sub(1));
+    for (y, item) in (legend_y.saturating_add(1)..bottom).zip(items) {
         // Color marker
-        let marker_x = legend_x + 1;
-        if marker_x < area.x + area.width {
+        let marker_x = legend_x.saturating_add(1);
+        if marker_x < right {
             let mut cell = Cell::new('■');
             cell.fg = Some(item.color);
             ctx.set(marker_x, y, cell);
         }
 
         // Label
-        let mut dx: u16 = 0;
+        let mut x = legend_x.saturating_add(3);
         for ch in item.label.chars() {
-            let x = legend_x + 3 + dx;
-            if x < area.x + area.width - 1 && x < legend_x + legend_width - 1 {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
-                ctx.set(x, y, cell);
+            if x >= label_end {
+                break;
             }
-            dx += char_width(ch) as u16;
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(Color::WHITE);
+            ctx.set(x, y, cell);
+            x = x.saturating_add(char_width(ch) as u16);
         }
     }
 }
@@ -155,12 +158,14 @@ pub fn render_horizontal_legend(
         return;
     }
 
-    // Calculate total width needed
-    let total_width: u16 = items
+    // Calculate total width needed: each marker, space and label, and a
+    // 2-column gap between items, in usize and clamped to u16 (#1552)
+    let total_width = items
         .iter()
-        .map(|item| display_width(item.label) as u16 + 3)
-        .sum::<u16>()
-        + (items.len() as u16 - 1) * 2;
+        .map(|item| display_width(item.label).saturating_add(3))
+        .fold(0usize, usize::saturating_add)
+        .saturating_add((items.len() - 1).saturating_mul(2));
+    let total_width = u16::try_from(total_width).unwrap_or(u16::MAX);
 
     let legend_height = 1;
     let Some((legend_x, legend_y)) =
@@ -169,9 +174,10 @@ pub fn render_horizontal_legend(
         return;
     };
 
+    let right = area.x.saturating_add(area.width);
     let mut x = legend_x;
     for item in items {
-        if x >= area.x + area.width {
+        if x >= right {
             break;
         }
 
@@ -179,17 +185,12 @@ pub fn render_horizontal_legend(
         let mut cell = Cell::new('●');
         cell.fg = Some(item.color);
         ctx.set(x, legend_y, cell);
-        x += 1;
 
-        // Space
-        x += 1;
-
-        // Label, in terminal columns
-        x += ctx.put_str_with(x, legend_y, item.label, area.x + area.width, |ch| {
+        // A space, the label in terminal columns, and the gap
+        x = x.saturating_add(2);
+        let used = ctx.put_str_with(x, legend_y, item.label, right, |ch| {
             Cell::new(ch).fg(Color::WHITE)
         });
-
-        // Gap between items
-        x += 2;
+        x = x.saturating_add(used).saturating_add(2);
     }
 }

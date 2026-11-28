@@ -45,7 +45,7 @@ impl View for Toast {
         } else {
             push_fill(&mut entry, toast_width, toast_height, color, bg);
         }
-        self.push_content(&mut entry, toast_width, color, bg);
+        self.push_content(&mut entry, (toast_width, toast_height), color, bg);
 
         // Queue as overlay; fallback to inline, at the area-relative position
         if inline || !ctx.queue_overlay(entry.clone()) {
@@ -152,15 +152,16 @@ impl Toast {
 
     /// Calculate toast dimensions
     fn calculate_size(&self, max_width: u16) -> (u16, u16) {
+        // Worked out in usize and clamped to u16: a count cast to u16 and
+        // then added to overflows near 65535 (#1552)
+        let clamp = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
         let (left, right) = self.insets();
-        let natural = crate::utils::unicode::display_width(&self.message) as u16
-            + self.icon_width()
-            + left
-            + right;
-        let width = self.width.unwrap_or(natural).min(max_width);
+        let natural = crate::utils::unicode::display_width(&self.message)
+            .saturating_add(usize::from(self.icon_width() + left + right));
+        let width = self.width.unwrap_or(clamp(natural)).min(max_width);
         // One row per line the message wraps to, plus the border
-        let height = self.lines(width).len() as u16 + if self.show_border { 2 } else { 0 };
-        (width, height)
+        let height = self.lines(width).len() + if self.show_border { 2 } else { 0 };
+        (width, clamp(height))
     }
 
     /// Calculate toast position
@@ -183,7 +184,7 @@ impl Toast {
                 area_width.saturating_sub(toast_width) / 2
             }
             ToastPosition::TopRight | ToastPosition::BottomRight => {
-                area_width.saturating_sub(toast_width + margin)
+                area_width.saturating_sub(toast_width.saturating_add(margin))
             }
         };
 
@@ -193,7 +194,9 @@ impl Toast {
             }
             ToastPosition::BottomLeft
             | ToastPosition::BottomCenter
-            | ToastPosition::BottomRight => area_height.saturating_sub(toast_height + margin),
+            | ToastPosition::BottomRight => {
+                area_height.saturating_sub(toast_height.saturating_add(margin))
+            }
         };
 
         (x, y)
@@ -202,7 +205,13 @@ impl Toast {
     /// The icon on the first content row and the message's lines beside
     /// it, kept between the insets: an icon or glyph that does not fit
     /// there is not drawn
-    fn push_content(&self, entry: &mut OverlayEntry, toast_width: u16, color: Color, bg: Color) {
+    fn push_content(
+        &self,
+        entry: &mut OverlayEntry,
+        (toast_width, toast_height): (u16, u16),
+        color: Color,
+        bg: Color,
+    ) {
         let (left, right) = self.insets();
         let end = toast_width.saturating_sub(right);
         let cy = if self.show_border { 1 } else { 0 };
@@ -212,7 +221,10 @@ impl Toast {
         }
 
         let msg_x = left + self.icon_width();
-        for (row, line) in self.lines(toast_width).iter().enumerate() {
+        // The rows inside the box: a message with more lines than fit in
+        // the clamped height is cut at its bottom
+        let rows = usize::from(toast_height.saturating_sub(2 * cy));
+        for (row, line) in self.lines(toast_width).iter().take(rows).enumerate() {
             let mut tx = msg_x;
             for ch in line.chars() {
                 let cw = crate::utils::char_width(ch) as u16;
