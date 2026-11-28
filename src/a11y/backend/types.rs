@@ -3,6 +3,10 @@
 use crate::utils::accessibility::Priority;
 
 /// Screen reader backend type
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): queue announcements with `revue::utils::announce` / `announce_now` and read them with `revue::utils::take_announcements`"
+)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum BackendType {
     /// Auto-detect based on platform
@@ -81,6 +85,10 @@ impl BackendType {
 }
 
 /// Screen reader trait for platform-specific implementations
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): queue announcements with `revue::utils::announce` / `announce_now` and read them with `revue::utils::take_announcements`"
+)]
 pub trait ScreenReader: Send + Sync {
     /// Announce a message to the screen reader
     fn announce(&self, message: &str, priority: Priority);
@@ -106,11 +114,16 @@ pub trait ScreenReader: Send + Sync {
         self.announce(&format!("Error: {}", message), Priority::Assertive);
     }
 
-    /// Stop any ongoing speech
+    /// Stop any ongoing speech; does nothing unless the backend has a
+    /// command for it
     fn stop(&self) {}
 }
 
 /// Screen reader backend configuration
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): queue announcements with `revue::utils::announce` / `announce_now` and read them with `revue::utils::take_announcements`"
+)]
 #[derive(Clone, Debug)]
 pub struct ScreenReaderConfig {
     /// Backend type to use

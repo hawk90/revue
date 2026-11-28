@@ -2,6 +2,9 @@
 //!
 //! Tests for screen reader backend implementations and global backend management.
 
+// The screen reader backend is deprecated (#937) and tested until removed
+#![allow(deprecated)]
+
 mod core;
 mod global;
 mod types;
