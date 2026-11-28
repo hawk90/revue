@@ -543,7 +543,7 @@ fn five_digit_diff(mode: DiffMode) -> DiffViewer {
     for n in 1..=10_000 {
         text.push_str(&format!("l{n}\n"));
     }
-    diff(&format!("{text}old\n"), &format!("{text}new\n"))
+    diff(format!("{text}old\n"), format!("{text}new\n"))
         .mode(mode)
         .context(1)
 }
