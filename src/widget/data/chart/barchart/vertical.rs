@@ -1,4 +1,5 @@
-//! Vertical bars: value above, bar rising from the label row, label below;
+//! Vertical bars: value above, bar rising from the label row, label below
+//! (both cut to the bar's width);
 //! `…` after the last bar when bars are left out
 
 use super::BarChart;
@@ -58,9 +59,10 @@ impl BarChart {
                 }
             }
 
-            // Draw value above bar
+            // Draw value above bar, cut to the bar's width like the label
             if self.show_values && bar_area_height > 0 {
                 let value_str = format!("{:.0}", bar.value);
+                let value_str = truncate_to_width(&value_str, self.bar_width as usize);
                 let value_y = bar_area_height - bar_height.saturating_sub(1).min(bar_area_height);
                 let mut dx: u16 = 0;
                 for ch in value_str.chars() {

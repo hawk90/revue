@@ -25,13 +25,16 @@ impl<'a> BoxPlotRender<'a> {
         let mut put_str = |text: &str, x: u16, y: u16, min_x: u16, max_x: u16, fg: Color| {
             let mut dx: u16 = 0;
             for ch in text.chars() {
-                let cx = x + dx;
-                if cx >= min_x && cx < max_x && y < area.y + area.height {
+                let cx = x.saturating_add(dx);
+                if cx >= max_x {
+                    break;
+                }
+                if cx >= min_x && y < area.y + area.height {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
                     ctx.set(cx, y, cell);
                 }
-                dx += char_width(ch) as u16;
+                dx = dx.saturating_add(char_width(ch) as u16);
             }
         };
 
@@ -73,7 +76,7 @@ impl<'a> BoxPlotRender<'a> {
         for i in 0..=4u16 {
             let value = min + (max - min) * i as f64 / 4.0;
             let label = value_axis.format_value(value);
-            let width = display_width(&label) as u16;
+            let width = u16::try_from(display_width(&label)).unwrap_or(u16::MAX);
             let tick = chart.x + i * span / 4;
             let start = tick
                 .saturating_sub(width / 2)
@@ -83,7 +86,7 @@ impl<'a> BoxPlotRender<'a> {
                 continue;
             }
             put_str(&label, start, y, chart.x, right_edge, value_axis.color);
-            next_free = start + width + 1;
+            next_free = start.saturating_add(width).saturating_add(1);
         }
     }
 
@@ -139,12 +142,16 @@ impl<'a> BoxPlotRender<'a> {
 
         for (i, group) in self.groups.iter().enumerate().take(shown) {
             let x = chart.x + (i as u16 * group_width) + group_width / 2;
-            let label_start = x.saturating_sub(display_width(&group.label) as u16 / 2);
+            let half = u16::try_from(display_width(&group.label) / 2).unwrap_or(u16::MAX);
+            let label_start = x.saturating_sub(half);
 
             let mut dx: u16 = 0;
             for ch in group.label.chars() {
                 let label_x = label_start.saturating_add(dx);
                 let w = char_width(ch) as u16;
+                if label_x >= right_edge {
+                    break;
+                }
                 if label_x >= chart.x && label_x.saturating_add(w) <= right_edge {
                     put(label_x, ch);
                 }

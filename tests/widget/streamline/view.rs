@@ -97,6 +97,18 @@ fn legend_stops_ten_columns_before_the_edge() {
     assert!(!rows[0].contains("Help"), "{rows:?}");
 }
 
+/// A name near 65535 columns does not overflow the legend's column: the
+/// name runs to the edge and the next entry is left out (#1571)
+#[test]
+fn legend_name_near_u16_max_stops_at_the_edge() {
+    let chart = Streamline::new()
+        .show_labels(false)
+        .layer(StreamLayer::new("x".repeat(65_534)).data(vec![1.0, 2.0]))
+        .layer(StreamLayer::new("B").data(vec![1.0, 2.0]));
+    let rows = rows(&render(&chart, 30, 8), 30, 8);
+    assert_eq!(rows[0], format!(" █ {}", "x".repeat(27)));
+}
+
 #[test]
 fn every_point_has_a_band_in_the_plot() {
     // 4 points across 31 columns: columns 0, 10, 20 and 30
@@ -173,6 +185,21 @@ fn stream_label_sits_on_the_widest_point() {
 
     let hidden = chart.show_labels(false);
     assert!(!rows_text(&render(&hidden, 41, 11), 41, 11).contains("Peak"));
+}
+
+/// A label wider than 65535 columns is centered on its point by its real
+/// width, not the width cut to u16: 131072 columns would wrap to 0 and
+/// start the label at the point (#1571)
+#[test]
+fn stream_label_wider_than_u16_is_centered_by_its_width() {
+    let chart = Streamline::new()
+        .show_legend(false)
+        .baseline(StreamBaseline::Zero)
+        .layer(StreamLayer::new("x".repeat(131_072)).data(vec![1.0, 1.0, 9.0, 1.0, 1.0]));
+    let buffer = render(&chart, 41, 11);
+    let rows = rows(&buffer, 41, 11);
+    // Centered on column 20, it starts left of the area and fills row 5
+    assert_eq!(rows[5], "x".repeat(41), "{rows:?}");
 }
 
 fn rows_text(buffer: &Buffer, w: u16, h: u16) -> String {

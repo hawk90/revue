@@ -50,6 +50,9 @@ impl TimeSeries {
 
         let mut x = 2u16;
         for series in &self.series {
+            if x >= area.width {
+                break;
+            }
             let marker = match series.line_style {
                 TimeLineStyle::Solid => "─",
                 TimeLineStyle::Dashed => "╌",
@@ -63,19 +66,20 @@ impl TimeSeries {
                     cell.bg = self.bg_color;
                     ctx.set(x, current_y, cell);
                 }
-                x += 1;
+                x = x.saturating_add(1);
             }
-            x += 1;
+            x = x.saturating_add(1);
             for ch in series.name.chars() {
-                if x < area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(chrome);
-                    cell.bg = self.bg_color;
-                    ctx.set(x, current_y, cell);
+                if x >= area.width {
+                    break;
                 }
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(chrome);
+                cell.bg = self.bg_color;
+                ctx.set(x, current_y, cell);
                 x += 1;
             }
-            x += 3;
+            x = x.saturating_add(3);
         }
     }
 

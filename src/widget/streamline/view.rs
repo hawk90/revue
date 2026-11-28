@@ -161,7 +161,8 @@ impl Streamline {
             ctx.set(x, y, cell);
             x += 2;
             draw_chars(ctx, x, y, &layer.name, chrome, self.bg_color);
-            x = x.saturating_add(display_width(&layer.name) as u16 + 2);
+            let name_width = u16::try_from(display_width(&layer.name)).unwrap_or(u16::MAX);
+            x = x.saturating_add(name_width).saturating_add(2);
 
             if x > area.width.saturating_sub(10) {
                 break;
@@ -258,7 +259,8 @@ fn draw_stream_label(
     let screen_x = plot.col(max_width_x);
     let screen_y = plot.row(mid_y);
 
-    let label_x = screen_x.saturating_sub(display_width(label) as u16 / 2);
+    let half = u16::try_from(display_width(label) / 2).unwrap_or(u16::MAX);
+    let label_x = screen_x.saturating_sub(half);
 
     if plot.contains_row(screen_y) {
         draw_chars(ctx, label_x, screen_y, label, chrome, Some(display_color));
@@ -283,13 +285,13 @@ fn draw_chars(ctx: &mut RenderContext, x: u16, y: u16, text: &str, fg: Color, bg
     let mut dx: u16 = 0;
     for ch in text.chars() {
         let cw = char_width(ch) as u16;
-        if x + dx >= width {
+        if x.saturating_add(dx) >= width {
             break;
         }
         let mut c = Cell::new(ch);
         c.fg = Some(fg);
         c.bg = bg;
         ctx.set(x + dx, y, c);
-        dx += cw;
+        dx = dx.saturating_add(cw);
     }
 }
