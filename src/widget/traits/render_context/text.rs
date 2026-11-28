@@ -79,9 +79,10 @@ impl RenderContext<'_> {
         u16::try_from(start).ok()
     }
 
-    /// Put a character at `cx` and continuation cells after it; the caller
-    /// has checked (via [`text_cell_x`](Self::text_cell_x)) that all
-    /// `width` cells are addressable.
+    /// Put a character at `cx`; the caller has checked (via
+    /// [`text_cell_x`](Self::text_cell_x)) that all `width` cells are
+    /// addressable. `Buffer::set` writes a wide glyph's continuation itself,
+    /// with the glyph's colors and modifiers.
     ///
     /// Respects the clipping region set by `overflow: hidden`: a glyph with
     /// any of its cells outside the clip is not drawn at all, so a wide glyph
@@ -91,10 +92,6 @@ impl RenderContext<'_> {
             return;
         }
         self.buffer.set(cx, abs_y, cell);
-        for i in 1..width {
-            self.buffer
-                .set(cx.saturating_add(i), abs_y, Cell::continuation());
-        }
     }
 
     /// Draw a single character at relative position (0,0 = area top-left).
