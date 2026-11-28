@@ -90,16 +90,10 @@ impl ScreenReader for MacOSBackend {
         }
     }
 
-    fn stop(&self) {
-        // Like `announce`, nothing to stop without a screen reader (#937)
-        #[cfg(target_os = "macos")]
-        if self.available {
-            let mut cmd = Command::new("osascript");
-            cmd.arg("-e")
-                .arg("tell application \"VoiceOver\" to stop speaking");
-            run_detached(cmd);
-        }
-    }
+    /// Does nothing: VoiceOver's AppleScript dictionary has no command that
+    /// stops its speech (`stop speaking` does not compile), so there is
+    /// nothing to run (#937, #1550)
+    fn stop(&self) {}
 }
 
 /// Windows Narrator/NVDA backend
@@ -233,6 +227,10 @@ impl ScreenReader for LinuxBackend {
 }
 
 /// Logging backend for testing
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): test announcements with `revue::utils::take_announcements` or `revue::a11y::A11yTestRunner`"
+)]
 pub struct LoggingBackend {
     announcements: Arc<RwLock<Vec<LoggedAnnouncement>>>,
 }
@@ -372,21 +370,15 @@ mod tests {
         let _ = take_ran();
         let backend = MacOSBackend { available: true };
         backend.announce("hi", Priority::Assertive);
+        // `stop` runs nothing: VoiceOver has no stop command (#1550)
         backend.stop();
         assert_eq!(
             take_ran(),
-            [
-                vec![
-                    "osascript".to_string(),
-                    "-e".to_string(),
-                    "tell application \"VoiceOver\" to output \"hi\"".to_string(),
-                ],
-                vec![
-                    "osascript".to_string(),
-                    "-e".to_string(),
-                    "tell application \"VoiceOver\" to stop speaking".to_string(),
-                ],
-            ]
+            [vec![
+                "osascript".to_string(),
+                "-e".to_string(),
+                "tell application \"VoiceOver\" to output \"hi\"".to_string(),
+            ]]
         );
     }
 

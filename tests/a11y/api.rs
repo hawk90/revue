@@ -2,6 +2,9 @@
 //!
 //! They go through the process-wide backend, so every test is `#[serial]`.
 
+// The screen reader backend is deprecated (#937) and tested until removed
+#![allow(deprecated)]
+
 use revue::a11y::{
     active_screen_reader, announce, announce_now, init, init_with, is_available, BackendType,
 };
