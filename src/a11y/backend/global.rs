@@ -10,21 +10,37 @@ use crate::utils::accessibility::Priority;
 static BACKEND: OnceLock<ScreenReaderBackend> = OnceLock::new();
 
 /// Initialize the global backend
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): queue announcements with `revue::utils::announce` / `announce_now` and read them with `revue::utils::take_announcements`"
+)]
 pub fn init_backend(backend_type: BackendType) -> &'static ScreenReaderBackend {
     BACKEND.get_or_init(|| ScreenReaderBackend::new(backend_type))
 }
 
 /// Get the global backend (initializes with auto-detect if needed)
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): queue announcements with `revue::utils::announce` / `announce_now` and read them with `revue::utils::take_announcements`"
+)]
 pub fn get_backend() -> &'static ScreenReaderBackend {
     BACKEND.get_or_init(|| ScreenReaderBackend::new(BackendType::Auto))
 }
 
 /// Set a custom backend (must be called before any other backend functions)
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): queue announcements with `revue::utils::announce` / `announce_now` and read them with `revue::utils::take_announcements`"
+)]
 pub fn set_backend(backend: ScreenReaderBackend) -> bool {
     BACKEND.set(backend).is_ok()
 }
 
 /// Announce to the global screen reader
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): queue announcements with `revue::utils::announce` / `announce_now` and read them with `revue::utils::take_announcements`"
+)]
 pub fn announce_to_screen_reader(message: impl Into<String>, priority: Priority) {
     get_backend().announce(message.into(), priority);
 }

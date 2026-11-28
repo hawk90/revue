@@ -98,68 +98,53 @@ impl OptionList {
         self.selected = None;
     }
 
-    /// Move highlight to previous option
+    /// The options in order, by option index: whether each is enabled
+    fn enabled(&self) -> Vec<bool> {
+        self.entries
+            .iter()
+            .filter_map(|entry| match entry {
+                OptionEntry::Option(item) => Some(!item.disabled),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Move the highlight to the first enabled option among `candidates`
+    /// (option indices, in the order to try). With none it stays: a
+    /// disabled option is never highlighted by moving (#1553).
+    fn highlight_first_of(&mut self, mut candidates: impl Iterator<Item = usize>) {
+        let enabled = self.enabled();
+        if let Some(index) = candidates.find(|&i| enabled.get(i).copied().unwrap_or(false)) {
+            self.highlighted = index;
+        }
+    }
+
+    /// Move the highlight off a disabled option onto the first enabled one,
+    /// as a list starts with its first enabled option highlighted
+    pub(super) fn settle_highlight(&mut self) {
+        if self.get_highlighted().is_some_and(|item| item.disabled) {
+            self.highlight_first();
+        }
+    }
+
+    /// Move highlight to previous option, skipping disabled ones
     pub fn highlight_previous(&mut self) {
-        if self.highlighted > 0 {
-            self.highlighted -= 1;
-
-            // Skip disabled items
-            while self.highlighted > 0 {
-                if let Some(item) = self.get_highlighted() {
-                    if !item.disabled {
-                        break;
-                    }
-                }
-                self.highlighted -= 1;
-            }
-        }
+        self.highlight_first_of((0..self.highlighted).rev());
     }
 
-    /// Move highlight to next option
+    /// Move highlight to next option, skipping disabled ones
     pub fn highlight_next(&mut self) {
-        let max = self.option_count().saturating_sub(1);
-        if self.highlighted < max {
-            self.highlighted += 1;
-
-            // Skip disabled items
-            while self.highlighted < max {
-                if let Some(item) = self.get_highlighted() {
-                    if !item.disabled {
-                        break;
-                    }
-                }
-                self.highlighted += 1;
-            }
-        }
+        let from = self.highlighted.saturating_add(1);
+        self.highlight_first_of(from..self.option_count());
     }
 
-    /// Move to first option
+    /// Move to the first enabled option
     pub fn highlight_first(&mut self) {
-        self.highlighted = 0;
-
-        // Skip disabled items
-        while self.highlighted < self.option_count().saturating_sub(1) {
-            if let Some(item) = self.get_highlighted() {
-                if !item.disabled {
-                    break;
-                }
-            }
-            self.highlighted += 1;
-        }
+        self.highlight_first_of(0..self.option_count());
     }
 
-    /// Move to last option
+    /// Move to the last enabled option
     pub fn highlight_last(&mut self) {
-        self.highlighted = self.option_count().saturating_sub(1);
-
-        // Skip disabled items
-        while self.highlighted > 0 {
-            if let Some(item) = self.get_highlighted() {
-                if !item.disabled {
-                    break;
-                }
-            }
-            self.highlighted -= 1;
-        }
+        self.highlight_first_of((0..self.option_count()).rev());
     }
 }

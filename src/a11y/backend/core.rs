@@ -7,6 +7,10 @@ use crate::utils::lock::write_or_recover;
 use std::sync::RwLock;
 
 /// Main screen reader backend
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): queue announcements with `revue::utils::announce` / `announce_now` and read them with `revue::utils::take_announcements`"
+)]
 pub struct ScreenReaderBackend {
     inner: Box<dyn ScreenReader>,
     config: ScreenReaderConfig,
@@ -102,7 +106,8 @@ impl ScreenReaderBackend {
         }
     }
 
-    /// Stop current speech
+    /// Stop current speech (does nothing on macOS, where VoiceOver has no
+    /// command for it)
     pub fn stop(&self) {
         self.inner.stop();
     }

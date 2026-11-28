@@ -119,3 +119,91 @@ fn test_render_horizontal_legend_lays_out_wide_labels_in_columns() {
         .collect();
     assert!(row.contains("● 매출  ● B"), "{row:?}");
 }
+
+/// The rows of `buffer` from `area`, as text
+fn area_rows(buffer: &revue::render::Buffer, area: Rect) -> Vec<String> {
+    (area.y..area.bottom())
+        .map(|y| {
+            (area.x..area.right())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect()
+        })
+        .collect()
+}
+
+/// A legend of more entries, or a wider label, than u16 holds is clamped to
+/// it and clipped to the area instead of overflowing (#1552)
+#[test]
+fn test_render_legend_counts_near_u16_max() {
+    let area = Rect::new(2, 1, 12, 5);
+    let run = |items: &[LegendItem<'_>]| {
+        let mut buffer = revue::render::Buffer::new(16, 8);
+        let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
+        render_legend(&mut ctx, Rect::new(0, 0, 12, 5), &Legend::top_left(), items);
+        buffer
+    };
+
+    // 65534 entries: 65536 rows with the border
+    let items: Vec<LegendItem<'_>> = (0..65_534)
+        .map(|_| LegendItem {
+            label: "s",
+            color: Color::RED,
+        })
+        .collect();
+    let buffer = run(&items);
+    assert_eq!(
+        area_rows(&buffer, Rect::new(2, 1, 12, 5)),
+        [
+            "            ",
+            " ┌───┐      ",
+            " │■ s│      ",
+            " │■ s│      ",
+            " │■ s│      "
+        ]
+    );
+    for y in 3..6 {
+        assert_eq!(buffer.get(4, y).unwrap().fg, Some(Color::RED), "y={y}");
+        assert_eq!(buffer.get(6, y).unwrap().fg, Some(Color::WHITE), "y={y}");
+    }
+
+    // A 65532-byte label: 65536 columns with the marker and border
+    let label = "x".repeat(65_532);
+    let buffer = run(&[LegendItem {
+        label: &label,
+        color: Color::RED,
+    }]);
+    assert_eq!(
+        area_rows(&buffer, Rect::new(2, 1, 12, 5)),
+        [
+            "            ",
+            " ┌──────────",
+            " │■ xxxxxxx ",
+            " └──────────",
+            "            "
+        ]
+    );
+}
+
+/// The one-line legend's width adds a gap per entry: past 32768 entries
+/// that overflowed u16 (#1552)
+#[test]
+fn test_render_horizontal_legend_counts_near_u16_max() {
+    let items: Vec<LegendItem<'_>> = (0..32_769)
+        .map(|_| LegendItem {
+            label: "s",
+            color: Color::BLUE,
+        })
+        .collect();
+    let buffer = draw(20, 3, |ctx, area| {
+        revue::widget::data::chart::chart_render::render_horizontal_legend(
+            ctx,
+            area,
+            &Legend::top_center(),
+            &items,
+        );
+    });
+    assert_eq!(rows(&buffer)[1], "● s  ● s  ● s  ● s  ");
+    for x in [0, 5, 10, 15] {
+        assert_eq!(buffer.get(x, 1).unwrap().fg, Some(Color::BLUE), "x={x}");
+    }
+}

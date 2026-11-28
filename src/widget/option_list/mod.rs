@@ -115,12 +115,14 @@ impl OptionList {
             item.hint = Some(hint_str);
         }
         self.entries.push(OptionEntry::Option(item));
+        self.settle_highlight();
         self
     }
 
     /// Add an option with full configuration
     pub fn add_option(mut self, option: OptionItem) -> Self {
         self.entries.push(OptionEntry::Option(option));
+        self.settle_highlight();
         self
     }
 

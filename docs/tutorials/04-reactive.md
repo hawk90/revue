@@ -152,7 +152,7 @@ let _saver = effect(move || {
     fs::write("state.json", serde_json::to_string(&data).unwrap()).ok();
 });
 
-// Announcing to screen reader
+// Queuing an announcement (revue::utils)
 let _announcer = effect(move || {
     if error.get().is_some() {
         announce_error("An error occurred");

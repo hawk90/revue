@@ -6,6 +6,7 @@ use super::{render_to, row_text};
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
+use revue::style::Color;
 use revue::widget::data::datagrid::{DataGrid, GridColors, GridColumn, GridRow};
 use revue::widget::traits::{RenderContext, View};
 
@@ -568,4 +569,49 @@ fn test_datagrid_edit_cell_draws_a_written_buffer() {
         buffer.get(1, 1).unwrap().bg,
         Some(revue::style::Color::WHITE)
     );
+}
+
+/// row_height(2): the editing background covers both lines of the edited
+/// cell, and stops at its separator and at the next row
+#[test]
+fn test_datagrid_row_height_edit_background_covers_every_line() {
+    let mut grid = DataGrid::new()
+        .row_height(2)
+        .column(GridColumn::new("a", "A").width(4).editable(true))
+        .column(GridColumn::new("b", "B").width(4))
+        .rows(
+            (0..2)
+                .map(|i| GridRow::new().cell("a", format!("r{i}")).cell("b", "x"))
+                .collect(),
+        );
+    assert!(grid.start_edit());
+    let colors = GridColors::default();
+    let edit_bg = Color::rgb(50, 50, 80);
+    let buffer = render_to(&grid, 14, 6);
+    // line 1: "r0", the cursor at x 2, then edit background; line 2: all
+    // four cells
+    assert_eq!(buffer.get(2, 1).unwrap().bg, Some(Color::WHITE));
+    for (x, y) in [(0, 1), (1, 1), (3, 1), (0, 2), (1, 2), (2, 2), (3, 2)] {
+        assert_eq!(buffer.get(x, y).unwrap().bg, Some(edit_bg), "({x}, {y})");
+    }
+    for y in [1, 2] {
+        for x in 4..9 {
+            assert_eq!(
+                buffer.get(x, y).unwrap().bg,
+                Some(colors.selected_bg),
+                "({x}, {y})"
+            );
+        }
+    }
+    for y in [3, 4] {
+        for x in 0..9 {
+            assert_eq!(
+                buffer.get(x, y).unwrap().bg,
+                Some(colors.alt_row_bg),
+                "({x}, {y})"
+            );
+        }
+    }
+    let line: String = row_text(&buffer, 3, 14).chars().take(10).collect();
+    assert_eq!(line, "r1  │x   │");
 }
