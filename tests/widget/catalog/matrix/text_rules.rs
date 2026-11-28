@@ -30,10 +30,11 @@ const ASCII: &str = "QXZJ";
 const WIDE: &str = "갃갌";
 const AREA: (u16, u16) = (80, 24);
 
-/// Draws something else each time: the machine's load, and the profiler's
-/// frame times (profilers measure real work, so they keep the real clock;
-/// see REAL_TIME in tests/utils/clock.rs)
-const UNSTABLE: &[&str] = &["ProcessMonitor", "DevToolsProfiler"];
+/// Draws something else each time: the machine's load, the profiler's frame
+/// times, and the events panel's event ages ("3ms ago" moves every
+/// millisecond, #1577). Profilers and event stamps measure real time, so they
+/// keep the real clock; see REAL_TIME in tests/utils/clock.rs
+const UNSTABLE: &[&str] = &["ProcessMonitor", "DevToolsProfiler", "DevToolsEvents"];
 
 fn draw(view: &dyn View, (w, h): (u16, u16)) -> Option<Buffer> {
     catch(|| {
