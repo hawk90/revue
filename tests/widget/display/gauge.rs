@@ -1125,3 +1125,58 @@ fn test_gauge_inside_label_wider_than_u16() {
     let (_, row) = render_row(GaugeStyle::Circle);
     assert_eq!(row, format!("   (●●●○○) {}  ", "g".repeat(22)));
 }
+
+/// The Arc's middle row in a 34x5 buffer, the gauge 12 wide in an area at
+/// (2, 1): the row's symbols and the columns whose cell is bold
+fn arc_middle_row(label: &str) -> (String, Vec<u16>) {
+    let g = Gauge::new()
+        .style(GaugeStyle::Arc)
+        .width(12)
+        .value(0.5)
+        .label(label)
+        .label_position(LabelPosition::Inside);
+    let mut buffer = Buffer::new(34, 5);
+    g.render(&mut RenderContext::new(&mut buffer, Rect::new(2, 1, 30, 3)));
+    let row = (0..34).map(|x| buffer.get(x, 2).unwrap().symbol).collect();
+    let bold = (0..34)
+        .filter(|&x| {
+            buffer
+                .get(x, 2)
+                .unwrap()
+                .modifier
+                .contains(revue::render::Modifier::BOLD)
+        })
+        .collect();
+    (row, bold)
+}
+
+/// An inside label as wide as the arc's 10 inner cells is drawn whole
+/// between the borders (#1605)
+#[test]
+fn test_gauge_arc_inside_label_that_fits() {
+    let (row, bold) = arc_middle_row("0123456789");
+    assert_eq!(row, format!("  │0123456789│{}", " ".repeat(20)));
+    assert_eq!(bold, (3..13).collect::<Vec<_>>());
+}
+
+/// A label one cell wider than the arc is cut with `…` to its inner width,
+/// leaving both borders (#1605)
+#[test]
+fn test_gauge_arc_inside_label_one_too_long() {
+    let (row, bold) = arc_middle_row("abcdefghijk");
+    assert_eq!(row, format!("  │abcdefghi…│{}", " ".repeat(20)));
+    assert_eq!(bold, (3..13).collect::<Vec<_>>());
+
+    let (row, _) = arc_middle_row(&"g".repeat(40));
+    assert_eq!(row, format!("  │ggggggggg…│{}", " ".repeat(20)));
+}
+
+/// A wide label is cut at a whole glyph: four Hangul (8 cells) and `…` fit
+/// in 10, centered one cell in from the left border (#1605)
+#[test]
+fn test_gauge_arc_inside_label_hangul() {
+    let (row, bold) = arc_middle_row("가나다라마바");
+    // A wide glyph's second cell holds '\0'
+    assert_eq!(row, format!("  │가\0나\0다\0라\0… │{}", " ".repeat(20)));
+    assert_eq!(bold, (3..12).collect::<Vec<_>>());
+}

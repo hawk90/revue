@@ -5,7 +5,7 @@ use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::char_width;
 use crate::utils::color::contrast_color;
-use crate::utils::unicode::display_width_u16;
+use crate::utils::unicode::{display_width_u16, truncate_with_ellipsis};
 use crate::widget::traits::{RenderContext, View};
 
 impl Gauge {
@@ -206,7 +206,9 @@ impl Gauge {
 
         // Middle with label
         if area.height > 1 {
-            let label = self.get_label();
+            // Cut to the `width - 2` cells between the borders, so the label
+            // never covers them; centered on the arc as before
+            let label = truncate_with_ellipsis(&self.get_label(), usize::from(width - 2));
             let lw = display_width_u16(&label);
             let label_x = (width.saturating_sub(lw)) / 2;
 
