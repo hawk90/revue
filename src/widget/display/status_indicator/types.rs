@@ -105,8 +105,14 @@ pub enum StatusStyle {
     Dot,
     /// Dot with text label: the custom label, or the status's default label
     /// (`"Online"`, `"Busy"`, ...) when none is set
+    ///
+    /// The dot carries the status color, so the label is drawn in the
+    /// secondary text color ([`SECONDARY_TEXT`](crate::widget::theme::SECONDARY_TEXT)).
     DotWithLabel,
     /// Text label only
+    ///
+    /// With no dot to carry it, the label itself is drawn in the status
+    /// color.
     LabelOnly,
     /// Badge style (filled background)
     Badge,

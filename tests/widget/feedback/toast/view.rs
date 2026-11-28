@@ -82,7 +82,7 @@ fn model_lines(message: &str, cols: u16) -> Vec<String> {
 proptest! {
     /// The box is `width` wide (or as wide as the message on one row), no
     /// wider than the area, and one row per wrapped line tall plus the
-    /// border. It is one cell in from the position's edges unless it would
+    /// border, no taller than the area (cut lines end with `…`). It is one cell in from the position's edges unless it would
     /// not fit beside the margin, and centered between them for the Center
     /// positions. Every cell of the box is on the level's background, with
     /// or without a border; the icon and each line are drawn between the
@@ -112,8 +112,19 @@ proptest! {
         let ic = if icon { 2 } else { 0 };
         let natural = message.chars().count() as u16 + ic + left + right;
         let w = width.unwrap_or(natural).min(aw);
-        let lines = model_lines(&message, w.saturating_sub(left + right + ic));
-        let h = lines.len() as u16 + if border { 2 } else { 0 };
+        let tw = w.saturating_sub(left + right + ic);
+        let mut lines = model_lines(&message, tw);
+        let h = (lines.len() as u16 + if border { 2 } else { 0 }).min(ah);
+        // Lines past the rows inside the box are cut, and the last row
+        // shown ends with the left-out marker
+        let rows = usize::from(h.saturating_sub(if border { 2 } else { 0 }));
+        if lines.len() > rows {
+            lines.truncate(rows);
+            if let Some(last) = lines.last_mut() {
+                let keep: String = last.chars().take(usize::from(tw.saturating_sub(1))).collect();
+                *last = format!("{keep}…");
+            }
+        }
 
         let mut grid = vec![vec![' '; aw as usize]; ah as usize];
         let mut bg = vec![vec![false; aw as usize]; ah as usize];
@@ -173,7 +184,7 @@ proptest! {
                 prop_assert_eq!(edge.fg, Some(lvl.color()));
             }
             let mx = x + left + ic;
-            if let Some(first) = lines[0].chars().next() {
+            if let Some(first) = lines.first().and_then(|l| l.chars().next()) {
                 if mx < x + end && mx < aw && cy < ah {
                     let m = b.get(mx, cy).unwrap();
                     prop_assert_eq!((m.symbol, m.fg), (first, Some(Color::WHITE)));
@@ -275,8 +286,9 @@ fn a_borderless_box_is_on_its_background_throughout() {
     }
 }
 
-/// A message with more lines than u16 holds is clamped to it instead of
-/// overflowing (#1552), at the top and the bottom positions
+/// A message with more lines than u16 holds is clamped to the area instead
+/// of overflowing (#1552) or being built at its full height (#1566), at the
+/// top and the bottom positions
 #[test]
 fn test_toast_line_count_near_u16_max() {
     let message = vec!["a"; 65_534].join("\n");
@@ -284,16 +296,175 @@ fn test_toast_line_count_near_u16_max() {
         let t = Toast::new(message.clone()).width(8).position(position);
         let buffer = render(&t, 20, 5);
         let rows: Vec<String> = (0..5).map(|y| row(&buffer, y)).collect();
-        // Pinned to the top, its bottom past the area, one column from the
-        // side it is on
+        // As tall as the area, one column from the side it is on
         let (pad, rest) = match position {
             ToastPosition::TopLeft => (" ", " ".repeat(11)),
             _ => (&" ".repeat(11)[..], " ".to_string()),
         };
-        assert_eq!(rows[0], format!("{pad}╭──────╮{rest}"), "{position:?}");
-        assert_eq!(rows[1], format!("{pad}│ ℹ a  │{rest}"), "{position:?}");
-        for row in &rows[2..] {
-            assert_eq!(row, &format!("{pad}│   a  │{rest}"), "{position:?}");
+        let want = ["╭──────╮", "│ ℹ a  │", "│   a  │", "│   a… │", "╰──────╯"];
+        for (y, w) in want.iter().enumerate() {
+            assert_eq!(rows[y], format!("{pad}{w}{rest}"), "{position:?} row {y}");
         }
     }
+}
+
+// A toast taller than the space it is placed in is cut to it, and the last
+// row shown ends with `…` (#1566)
+
+/// "aa bb cc dd" in a 10-column box: 4 columns for the message, a word per
+/// row, 6 rows with the border
+fn four_lines(position: ToastPosition) -> Toast {
+    Toast::new("aa bb cc dd").width(10).position(position)
+}
+
+fn rows(b: &Buffer) -> Vec<String> {
+    (0..b.height()).map(|y| row(b, y)).collect()
+}
+
+#[test]
+fn a_toast_that_just_fits_is_not_marked() {
+    let b = render(&four_lines(ToastPosition::TopLeft), 12, 6);
+    assert_eq!(
+        rows(&b),
+        [
+            " ╭────────╮ ",
+            " │ ℹ aa   │ ",
+            " │   bb   │ ",
+            " │   cc   │ ",
+            " │   dd   │ ",
+            " ╰────────╯ ",
+        ]
+    );
+}
+
+#[test]
+fn a_toast_one_line_too_tall_is_cut_with_a_marker() {
+    let b = render(&four_lines(ToastPosition::TopLeft), 12, 5);
+    assert_eq!(
+        rows(&b),
+        [
+            " ╭────────╮ ",
+            " │ ℹ aa   │ ",
+            " │   bb   │ ",
+            " │   cc…  │ ",
+            " ╰────────╯ ",
+        ]
+    );
+    // The marker is in the message's color, on the background
+    let mark = b.get(7, 3).unwrap();
+    assert_eq!(
+        (mark.symbol, mark.fg, mark.bg),
+        ('…', Some(Color::WHITE), Some(ToastLevel::Info.bg_color()))
+    );
+}
+
+#[test]
+fn a_toast_far_too_tall_keeps_one_row_with_a_marker() {
+    let message = vec!["aa"; 500].join(" ");
+    let t = Toast::new(message)
+        .width(10)
+        .position(ToastPosition::TopLeft);
+    let b = render(&t, 12, 3);
+    assert_eq!(rows(&b), [" ╭────────╮ ", " │ ℹ aa…  │ ", " ╰────────╯ "]);
+}
+
+#[test]
+fn a_cut_toast_keeps_each_position_on_its_side() {
+    // As tall as the area, so no position keeps a top or bottom margin; the
+    // side margins stay
+    for (pos, x) in [
+        (ToastPosition::TopLeft, 1),
+        (ToastPosition::TopCenter, 2),
+        (ToastPosition::TopRight, 3),
+        (ToastPosition::BottomLeft, 1),
+        (ToastPosition::BottomCenter, 2),
+        (ToastPosition::BottomRight, 3),
+    ] {
+        let b = render(&four_lines(pos), 14, 4);
+        let pad = |s: &str| format!("{}{s}{}", " ".repeat(x), " ".repeat(4 - x));
+        assert_eq!(
+            rows(&b),
+            [
+                pad("╭────────╮"),
+                pad("│ ℹ aa   │"),
+                pad("│   bb…  │"),
+                pad("╰────────╯"),
+            ],
+            "{pos:?}"
+        );
+    }
+}
+
+#[test]
+fn a_cut_borderless_toast_marks_its_last_row() {
+    // 8 columns with no border: icon, space, 4 for the message, 2 of padding
+    let t = Toast::new("aa bb cc dd")
+        .width(8)
+        .show_border(false)
+        .position(ToastPosition::TopLeft);
+    let b = render(&t, 10, 3);
+    assert_eq!(rows(&b), [" ℹ aa     ", "   bb     ", "   cc…    "]);
+    for y in 0..3 {
+        for x in 0..10 {
+            let want = (1..9).contains(&x).then(|| ToastLevel::Info.bg_color());
+            assert_eq!(b.get(x, y).unwrap().bg, want, "({x}, {y})");
+        }
+    }
+}
+
+#[test]
+fn a_toast_is_cut_to_its_area_at_an_offset() {
+    // Inline, the toast is placed in its own area: 4 rows from y = 2, not
+    // the buffer's 10
+    let mut b = Buffer::new(20, 10);
+    let mut ctx = RenderContext::new(&mut b, Rect::new(5, 2, 12, 4));
+    four_lines(ToastPosition::TopLeft).render(&mut ctx);
+    let blank = " ".repeat(20);
+    let mut want = vec![blank.clone(), blank.clone()];
+    for s in ["╭────────╮", "│ ℹ aa   │", "│   bb…  │", "╰────────╯"]
+    {
+        want.push(format!("      {s}    "));
+    }
+    want.extend(std::iter::repeat_n(blank, 4));
+    assert_eq!(rows(&b), want);
+}
+
+#[test]
+fn an_overlay_toast_is_cut_to_the_screen() {
+    // As an overlay the toast is placed on the 4-row screen, not in the
+    // 3-row area it was given
+    let mut b = Buffer::new(12, 4);
+    let mut queue = OverlayQueue::new();
+    {
+        let mut ctx =
+            RenderContext::new(&mut b, Rect::new(0, 0, 12, 3)).with_overlay_queue(&mut queue);
+        four_lines(ToastPosition::BottomLeft).render(&mut ctx);
+    }
+    queue.render_to(&mut b);
+    assert_eq!(
+        rows(&b),
+        [
+            " ╭────────╮ ",
+            " │ ℹ aa   │ ",
+            " │   bb…  │ ",
+            " ╰────────╯ ",
+        ]
+    );
+}
+
+#[test]
+fn a_wide_last_line_is_cut_before_its_marker() {
+    // 4 columns for "다라": one glyph fits beside the marker, the second is
+    // not split
+    let t = Toast::new("가나 다라 마바")
+        .width(10)
+        .position(ToastPosition::TopLeft);
+    let b = render(&t, 12, 4);
+    assert_eq!(b.get(5, 2).unwrap().symbol, '다');
+    assert!(b.get(6, 2).unwrap().is_continuation());
+    assert_eq!(b.get(7, 2).unwrap().symbol, '…');
+    assert_eq!(b.get(8, 2).unwrap().symbol, ' ');
+    assert_eq!(b.get(9, 2).unwrap().symbol, ' ');
+    assert_eq!(b.get(10, 2).unwrap().symbol, '│');
+    assert_eq!(row(&b, 3), " ╰────────╯ ");
 }
