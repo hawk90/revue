@@ -10,7 +10,7 @@
 //! // Basic online indicator
 //! StatusIndicator::online();
 //!
-//! // With label
+//! // With label: the dot, then "Do not disturb"
 //! StatusIndicator::busy().label("Do not disturb");
 //!
 //! // Custom status
@@ -147,6 +147,10 @@ impl StatusIndicator {
     }
 
     /// Set a custom label
+    ///
+    /// It replaces the status's default label (`"Online"`, `"Busy"`, ...) in
+    /// every style that draws a label. With the default [`StatusStyle::Dot`]
+    /// it is drawn after the dot, as [`StatusStyle::DotWithLabel`] draws it.
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.custom_label = Some(label.into());
         self
@@ -196,14 +200,25 @@ impl StatusIndicator {
             .unwrap_or_else(|| self.status.label())
     }
 
+    /// Whether the dot is followed by a label: always for
+    /// [`StatusStyle::DotWithLabel`], and for [`StatusStyle::Dot`] once a
+    /// custom label is set
+    fn dot_has_label(&self) -> bool {
+        match self.style {
+            StatusStyle::Dot => self.custom_label.is_some(),
+            StatusStyle::DotWithLabel => true,
+            StatusStyle::LabelOnly | StatusStyle::Badge => false,
+        }
+    }
+
     /// Calculate total width needed
     pub fn width(&self) -> u16 {
         match self.style {
-            StatusStyle::Dot => self.size.width(),
-            StatusStyle::DotWithLabel => {
+            StatusStyle::Dot | StatusStyle::DotWithLabel if self.dot_has_label() => {
                 let label_len = crate::utils::display_width(self.get_label()) as u16;
                 self.size.width() + 1 + label_len // dot + space + label
             }
+            StatusStyle::Dot | StatusStyle::DotWithLabel => self.size.width(),
             StatusStyle::LabelOnly => crate::utils::display_width(self.get_label()) as u16,
             StatusStyle::Badge => {
                 let label_len = crate::utils::display_width(self.get_label()) as u16;

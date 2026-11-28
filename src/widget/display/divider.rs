@@ -110,6 +110,13 @@ impl Divider {
     }
 
     /// Set label (centered text)
+    ///
+    /// A horizontal divider draws it on its row, a space on each side. A
+    /// vertical one draws it down its column, one grapheme per row, with a
+    /// blank row above and below; a label with a wide (two-column) glyph makes
+    /// the vertical divider two columns wide. When the label and its two line
+    /// cells on each side do not fit, only the label is drawn, cut to the
+    /// length.
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
@@ -172,6 +179,32 @@ impl Divider {
             (Orientation::Vertical, DividerStyle::Thick) => '┃',
         }
     }
+
+    /// The label's rows in a vertical divider: one grapheme each, leaving out
+    /// the graphemes that take no column
+    fn vertical_label_rows(&self) -> Vec<&str> {
+        use unicode_segmentation::UnicodeSegmentation;
+        self.label
+            .as_deref()
+            .map(|label| {
+                label
+                    .graphemes(true)
+                    .filter(|g| crate::utils::unicode::display_width(g) > 0)
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Columns a vertical divider takes: one, or two when a label row holds
+    /// a wide glyph
+    fn vertical_width(&self) -> u16 {
+        self.vertical_label_rows()
+            .iter()
+            .map(|g| crate::utils::unicode::display_width(g).min(2) as u16)
+            .max()
+            .unwrap_or(1)
+            .max(1)
+    }
 }
 
 impl Default for Divider {
@@ -184,7 +217,8 @@ impl View for Divider {
     crate::impl_view_meta!("Divider");
 
     /// A horizontal divider is one row and runs the width it is offered; a
-    /// vertical one is one column and runs the height. With a
+    /// vertical one is one column (two when its label holds a wide glyph) and
+    /// runs the height. With a
     /// [`length`](Divider::length) set, it runs the margin plus that length.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         let fixed = (self.length > 0).then(|| self.margin.saturating_add(self.length));
@@ -193,7 +227,7 @@ impl View for Divider {
                 (fixed.unwrap_or(max_width).min(max_width), 1.min(max_height))
             }
             Orientation::Vertical => (
-                1.min(max_width),
+                self.vertical_width().min(max_width),
                 fixed.unwrap_or(max_height).min(max_height),
             ),
         })
@@ -276,7 +310,38 @@ impl View for Divider {
                     return;
                 }
 
-                ctx.draw_vline(0, start_y, end_y - start_y, line_char, color);
+                if self.label.is_none() {
+                    ctx.draw_vline(0, start_y, end_y - start_y, line_char, color);
+                    return;
+                }
+
+                // The vertical form of the horizontal label: one grapheme per
+                // row, a blank row on each side, the line in the first column.
+                let rows = self.vertical_label_rows();
+                let label_width = self.vertical_width();
+                let label_color = self.label_color.unwrap_or(color);
+                let label_len = u16::try_from(rows.len()).unwrap_or(u16::MAX);
+                let total = end_y - start_y;
+
+                if label_len.saturating_add(4) <= total {
+                    let label_start = start_y + (total - label_len) / 2 - 1;
+                    let label_end = label_start + label_len + 2;
+
+                    ctx.draw_vline(0, start_y, label_start - start_y, line_char, color);
+                    ctx.draw_char(0, label_start, ' ', color);
+                    for (i, g) in rows.iter().enumerate() {
+                        let y = label_start + 1 + i as u16;
+                        ctx.draw_text_clipped(0, y, g, label_color, label_width);
+                    }
+                    ctx.draw_char(0, label_end - 1, ' ', color);
+                    ctx.draw_vline(0, label_end, end_y - label_end, line_char, color);
+                } else {
+                    // Not enough room: only the label, cut to the length
+                    for (i, g) in rows.iter().take(usize::from(total)).enumerate() {
+                        let y = start_y + i as u16;
+                        ctx.draw_text_clipped(0, y, g, label_color, label_width);
+                    }
+                }
             }
         }
     }
