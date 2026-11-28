@@ -20,6 +20,18 @@ fn test_time_point_now() {
 }
 
 #[test]
+fn a_time_point_now_is_stamped_with_the_mocked_time() {
+    let (time, _clock) = super::wall_at(super::NOW);
+    assert_eq!(TimePoint::now(1.0).timestamp, super::NOW);
+    time.advance_ms(999);
+    assert_eq!(TimePoint::now(1.0).timestamp, super::NOW, "whole seconds");
+    time.advance_ms(1);
+    assert_eq!(TimePoint::now(1.0).timestamp, super::NOW + 1);
+    let (_time, _clock) = super::wall_at(0);
+    assert_eq!(TimePoint::now(1.0).timestamp, 0);
+}
+
+#[test]
 fn test_time_series_data_new() {
     let data = TimeSeriesData::new("Test");
     assert_eq!(data.name, "Test");

@@ -92,6 +92,38 @@ mod tests {
     }
 
     #[test]
+    fn snapshots_and_actions_are_stamped_with_the_mocked_time_of_day() {
+        let time = crate::testing::MockTime::new();
+        let noon = SystemTime::UNIX_EPOCH + Duration::from_secs(1_749_988_800);
+        time.set_wall_clock(noon, 9 * 3600);
+        let _clock = time.install();
+        let mut debugger = TimeTravelDebugger::new().with_config(TimeTravelConfig {
+            record_interval: Duration::ZERO,
+            ..TimeTravelConfig::default()
+        });
+        debugger.record(StateSnapshot::new(0));
+        let action = Action::new("increment");
+        time.advance_ms(250);
+        debugger.record_action(action, HashMap::new());
+        let [first, second] = debugger.snapshots() else {
+            panic!("two snapshots");
+        };
+        assert_eq!(first.timestamp, noon);
+        assert_eq!(second.timestamp, noon + Duration::from_millis(250));
+        let action = second.action.as_ref().unwrap();
+        assert_eq!(action.timestamp, noon, "stamped when it was made");
+        let export = debugger.export();
+        assert!(
+            export.contains("\"timestamp_ms\": 1749988800250"),
+            "{export}"
+        );
+        assert!(
+            export.contains("\"action_timestamp_ms\": 1749988800000"),
+            "{export}"
+        );
+    }
+
+    #[test]
     fn a_bad_session_is_refused_and_the_history_kept() {
         let mut debugger = TimeTravelDebugger::new();
         debugger.record(StateSnapshot::new(0).with_label("keep"));
@@ -177,7 +209,7 @@ mod tests {
 
         let snap1 = StateSnapshot {
             id: 1,
-            timestamp: SystemTime::now(),
+            timestamp: crate::utils::clock::wall_now(),
             state: state1,
             action: None,
             label: None,
@@ -185,7 +217,7 @@ mod tests {
 
         let snap2 = StateSnapshot {
             id: 2,
-            timestamp: SystemTime::now(),
+            timestamp: crate::utils::clock::wall_now(),
             state: state2,
             action: None,
             label: None,
@@ -760,14 +792,14 @@ mod tests {
 
         let snap1 = StateSnapshot {
             id: 1,
-            timestamp: SystemTime::now(),
+            timestamp: crate::utils::clock::wall_now(),
             state: state1,
             action: None,
             label: None,
         };
         let snap2 = StateSnapshot {
             id: 2,
-            timestamp: SystemTime::now(),
+            timestamp: crate::utils::clock::wall_now(),
             state: state2,
             action: None,
             label: None,

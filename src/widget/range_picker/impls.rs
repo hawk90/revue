@@ -277,6 +277,7 @@ pub fn analytics_range_picker() -> RangePicker {
 // KEEP HERE - Private implementation tests (accesses private fields: start.date, end.date, start_cursor_day, end_cursor_day, active_preset, start.time, end.time)
 #[cfg(test)]
 mod tests {
+    use super::super::tests::on_june_15;
     use super::*;
 
     // =========================================================================
@@ -696,43 +697,55 @@ mod tests {
 
     #[test]
     fn test_apply_preset_today() {
-        let mut picker = RangePicker::new();
+        let (_time, _clock) = on_june_15();
+        let mut picker = RangePicker::new().start_date(Date::new(2024, 1, 1));
         picker.apply_preset(PresetRange::Today);
-        let today = Date::today();
-        assert_eq!(picker.start.date, today);
-        assert_eq!(picker.end.date, today);
+        assert_eq!(picker.start.date, Date::new(2025, 6, 15));
+        assert_eq!(picker.end.date, Date::new(2025, 6, 15));
         assert_eq!(picker.active_preset, Some(PresetRange::Today));
     }
 
     #[test]
     fn test_apply_preset_yesterday() {
+        let (_time, _clock) = on_june_15();
         let mut picker = RangePicker::new();
         picker.apply_preset(PresetRange::Yesterday);
-        let today = Date::today();
-        let yesterday = today.prev_day();
-        assert_eq!(picker.start.date, yesterday);
-        assert_eq!(picker.end.date, yesterday);
+        assert_eq!(picker.start.date, Date::new(2025, 6, 14));
+        assert_eq!(picker.end.date, Date::new(2025, 6, 14));
         assert_eq!(picker.active_preset, Some(PresetRange::Yesterday));
     }
 
     #[test]
     fn test_apply_preset_last_7_days() {
+        let (_time, _clock) = on_june_15();
         let mut picker = RangePicker::new();
         picker.apply_preset(PresetRange::Last7Days);
-        let today = Date::today();
-        let expected_start = today.subtract_days(6);
-        assert_eq!(picker.start.date, expected_start);
-        assert_eq!(picker.end.date, today);
+        assert_eq!(picker.start.date, Date::new(2025, 6, 9));
+        assert_eq!(picker.end.date, Date::new(2025, 6, 15));
         assert_eq!(picker.active_preset, Some(PresetRange::Last7Days));
     }
 
     #[test]
-    fn test_apply_preset_updates_cursors() {
+    fn test_apply_preset_this_month_and_last_month() {
+        let (_time, _clock) = on_june_15();
         let mut picker = RangePicker::new();
+        picker.apply_preset(PresetRange::ThisMonth);
+        assert_eq!(picker.start.date, Date::new(2025, 6, 1));
+        assert_eq!(picker.end.date, Date::new(2025, 6, 15));
+        picker.apply_preset(PresetRange::LastMonth);
+        assert_eq!(picker.start.date, Date::new(2025, 5, 1));
+        assert_eq!(picker.end.date, Date::new(2025, 5, 31));
+    }
+
+    #[test]
+    fn test_apply_preset_updates_cursors() {
+        let (_time, _clock) = on_june_15();
+        let mut picker = RangePicker::new()
+            .start_date(Date::new(2025, 6, 1))
+            .end_date(Date::new(2025, 6, 2));
         picker.apply_preset(PresetRange::Today);
-        let today = Date::today();
-        assert_eq!(picker.start_cursor_day, today.day);
-        assert_eq!(picker.end_cursor_day, today.day);
+        assert_eq!(picker.start_cursor_day, 15);
+        assert_eq!(picker.end_cursor_day, 15);
     }
 
     // =========================================================================

@@ -22,8 +22,9 @@ fn render_rows(picker: &RangePicker) -> Vec<String> {
 
 #[test]
 fn test_range_picker_new_covers_all_of_today() {
+    let (_time, _clock) = super::on_june_15();
     let picker = RangePicker::new();
-    let today = Date::today();
+    let today = Date::new(2025, 6, 15);
     let (start, end) = picker.get_datetime_range();
     assert_eq!(start.date, today);
     assert_eq!(end.date, today);
@@ -37,6 +38,34 @@ fn test_range_picker_new_active_preset_is_today() {
         RangePicker::new().get_active_preset(),
         Some(PresetRange::Today)
     );
+}
+
+#[test]
+fn test_range_picker_new_draws_the_month_of_today() {
+    let (_time, _clock) = super::on_june_15();
+    let picker = RangePicker::new();
+    let (w, h) = (80, 12);
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    picker.render(&mut ctx);
+    let rows = render_rows(&picker);
+    assert_eq!(&rows[0][..15], "Start: Jun 2025");
+    assert_eq!(&rows[9][..31], "Range: 2025-06-15 to 2025-06-15");
+    // June 2025 starts on a Sunday: the 15th opens the fourth row.
+    assert_eq!(&rows[4][..20], "15 16 17 18 19 20 21");
+    let selected = buffer.get(0, 4).unwrap().bg;
+    assert!(selected.is_some(), "today is the selected day");
+    assert_eq!(buffer.get(1, 4).unwrap().bg, selected);
+    for x in 2..20 {
+        assert_eq!(buffer.get(x, 4).unwrap().bg, None, "column {x}");
+    }
+    for x in 0..20 {
+        assert_eq!(
+            buffer.get(x, 3).unwrap().bg,
+            None,
+            "the 14th and before, column {x}"
+        );
+    }
 }
 
 #[test]

@@ -29,8 +29,11 @@ impl Time {
     }
 
     /// The current time of day in the local time zone
+    ///
+    /// It reads [`clock::wall_now`](crate::utils::clock::wall_now), so a
+    /// [`MockTime`](crate::testing::MockTime) with a wall clock fixes it.
     pub fn now() -> Self {
-        let now = jiff::ZonedDateTime::now();
+        let now = crate::utils::clock::local_now();
         // Each field is in 0..60, so it fits a u8.
         Self::new(now.hour() as u8, now.minute() as u8, now.second() as u8)
     }

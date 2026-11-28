@@ -31,6 +31,23 @@ mod tests {
     use crate::widget::datetime_picker::Time;
     use crate::widget::traits::{RenderContext, View};
 
+    /// 2025-06-15 12:00 UTC
+    const JUNE_15_NOON: u64 = 1_749_988_800;
+
+    /// A mock clock on which today is 2025-06-15, in UTC
+    pub(super) fn on_june_15() -> (
+        crate::testing::MockTime,
+        crate::utils::clock::MockClockGuard,
+    ) {
+        let time = crate::testing::MockTime::new();
+        time.set_wall_clock(
+            std::time::UNIX_EPOCH + std::time::Duration::from_secs(JUNE_15_NOON),
+            0,
+        );
+        let guard = time.install();
+        (time, guard)
+    }
+
     // =========================================================================
     // Constructors
     // =========================================================================
@@ -332,13 +349,27 @@ mod tests {
 
     #[test]
     fn test_range_picker_preset_apply() {
-        let mut picker = RangePicker::new();
-        let today = Date::today();
+        let (_time, _clock) = on_june_15();
+        let mut picker = RangePicker::new().start_date(Date::new(2024, 1, 1));
+        let today = Date::new(2025, 6, 15);
 
         picker.apply_preset(PresetRange::Today);
         let (start, end) = picker.get_range();
         assert_eq!(start, today);
         assert_eq!(end, today);
+    }
+
+    #[test]
+    fn test_range_picker_preset_apply_reads_today_when_applied() {
+        let (time, _clock) = on_june_15();
+        let mut picker = RangePicker::new();
+        time.advance_secs(12 * 3600);
+        picker.apply_preset(PresetRange::Today);
+        assert_eq!(
+            picker.get_range(),
+            (Date::new(2025, 6, 16), Date::new(2025, 6, 16)),
+            "midnight passed since the picker was made"
+        );
     }
 
     #[test]
@@ -350,11 +381,13 @@ mod tests {
 
     #[test]
     fn test_range_picker_preset_apply_updates_cursors() {
-        let mut picker = RangePicker::new();
+        let (_time, _clock) = on_june_15();
+        let mut picker = RangePicker::new()
+            .start_date(Date::new(2025, 6, 1))
+            .end_date(Date::new(2025, 6, 2));
         picker.apply_preset(PresetRange::Today);
-        let today = Date::today();
-        assert_eq!(picker.start_cursor_day, today.day);
-        assert_eq!(picker.end_cursor_day, today.day);
+        assert_eq!(picker.start_cursor_day, 15);
+        assert_eq!(picker.end_cursor_day, 15);
     }
 
     // =========================================================================
@@ -608,11 +641,9 @@ mod tests {
 
     #[test]
     fn test_range_picker_handle_key_space_selects() {
-        // Fixed dates: with `RangePicker::new()` alone both ends are today, and
-        // day 25 would come before the start from the 26th of a month on.
-        let mut picker = RangePicker::new()
-            .start_date(Date::new(2025, 6, 15))
-            .end_date(Date::new(2025, 6, 20));
+        // Both ends start on today, which the mock fixes (#1533).
+        let (_time, _clock) = on_june_15();
+        let mut picker = RangePicker::new();
         picker.end_cursor_day = 25;
         picker.focus = RangeFocus::End;
 

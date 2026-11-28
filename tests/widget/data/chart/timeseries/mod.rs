@@ -17,6 +17,25 @@ pub(super) fn two_points() -> TimeSeriesData {
         .point(2000, 75.0)
 }
 
+/// 2023-11-14 22:13:20 UTC
+pub(super) const NOW: u64 = 1_700_000_000;
+
+/// A mock clock whose time of day is `secs` after 1970, in UTC
+pub(super) fn wall_at(
+    secs: u64,
+) -> (
+    revue::testing::MockTime,
+    revue::utils::clock::MockClockGuard,
+) {
+    let time = revue::testing::MockTime::new();
+    time.set_wall_clock(
+        std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs),
+        0,
+    );
+    let guard = time.install();
+    (time, guard)
+}
+
 /// A fixed hour, so charts without data do not read the clock
 pub(super) fn fixed_range() -> TimeRange {
     TimeRange::Range {

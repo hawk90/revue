@@ -11,8 +11,8 @@ use revue::utils::clock;
 use revue::utils::debounce::{Debouncer, Throttle};
 use revue::utils::EditState;
 use revue::widget::traits::Timeout;
-use revue::widget::{Stopwatch, Timer, ToastQueue};
-use std::time::{Duration, Instant};
+use revue::widget::{Date, Stopwatch, Time, Timer, ToastQueue};
+use std::time::{Duration, Instant, SystemTime};
 
 const MS: fn(u64) -> Duration = Duration::from_millis;
 
@@ -305,8 +305,20 @@ fn undo_groups_typing_by_the_mock() {
     assert_eq!(edit.text(), "", "quick typing is one step");
 }
 
+/// The calls that read the real time, elapsed or of day
+const REAL_TIME_READS: &[&str] = &[
+    "Instant::now",
+    "SystemTime::now",
+    "UNIX_EPOCH.elapsed",
+    "ZonedDateTime::now",
+    "Zoned::now",
+    "Timestamp::now",
+    "Local::now",
+    "Utc::now",
+];
+
 /// Files that keep the real time, and why. Everything else reads
-/// `utils::clock`, so a new `Instant::now` needs a reason here.
+/// `utils::clock`, so a new read in `REAL_TIME_READS` needs a reason here.
 const REAL_TIME: &[(&str, &str)] = &[
     ("src/utils/clock.rs", "the clock itself"),
     ("src/runtime/event/reader.rs", "waits on the real terminal"),
@@ -337,6 +349,12 @@ const REAL_TIME: &[(&str, &str)] = &[
         "stamps real events",
     ),
     ("src/runtime/event/custom/types.rs", "stamps real events"),
+    ("src/runtime/event/custom/bus.rs", "stamps real events"),
+    (
+        "src/widget/image/mod.rs",
+        "seeds a random image id, not a time",
+    ),
+    ("src/testing/ci/env.rs", "stamps a real CI log"),
     ("src/state/tasks/runner.rs", "waits on real threads"),
     ("src/state/worker/pool.rs", "waits on real threads"),
     ("src/state/worker/handle.rs", "waits on real threads"),
@@ -411,9 +429,8 @@ fn only_the_listed_files_read_real_time() {
             .unwrap()
             .to_string_lossy()
             .replace('\\', "/");
-        if name.ends_with("/tests.rs")
-            || !code(&std::fs::read_to_string(&file).unwrap()).contains("Instant::now")
-        {
+        let code = code(&std::fs::read_to_string(&file).unwrap());
+        if name.ends_with("/tests.rs") || !REAL_TIME_READS.iter().any(|read| code.contains(read)) {
             continue;
         }
         if REAL_TIME.iter().any(|(listed, _)| *listed == name) {
@@ -435,6 +452,211 @@ fn only_the_listed_files_read_real_time() {
         stale.is_empty(),
         "these no longer read real time: {stale:?}"
     );
+}
+
+// The time of day: `MockTime::set_wall_clock` fixes the time and the zone (#1533)
+
+const HOUR: i32 = 3600;
+
+/// `date` at `h:m:s` UTC
+fn utc(date: Date, h: u64, m: u64, s: u64) -> SystemTime {
+    // Days since 1970-01-01, counted with the calendar Date already has.
+    let mut days = 0u64;
+    let mut day = Date::new(1970, 1, 1);
+    while day < date {
+        day = day.next_day();
+        days += 1;
+    }
+    SystemTime::UNIX_EPOCH + Duration::from_secs(days * 86_400 + h * 3600 + m * 60 + s)
+}
+
+/// A mock fixed at `time`, `offset` seconds east of UTC, installed
+fn at(time: SystemTime, offset: i32) -> (MockTime, clock::MockClockGuard) {
+    let mock = MockTime::new();
+    mock.set_wall_clock(time, offset);
+    let guard = mock.install();
+    (mock, guard)
+}
+
+#[test]
+fn the_time_of_day_is_real_without_a_wall_clock() {
+    let before = SystemTime::now();
+    let read = clock::wall_now();
+    assert!(read >= before && read <= SystemTime::now());
+
+    let time = MockTime::new();
+    let _clock = time.install();
+    time.advance_secs(86_400 * 400);
+    let before = SystemTime::now();
+    let read = clock::wall_now();
+    assert!(
+        read >= before && read <= SystemTime::now(),
+        "a mock for elapsed time alone keeps the real time of day"
+    );
+}
+
+#[test]
+fn a_wall_clock_is_fixed_and_moves_with_the_mock() {
+    let noon = utc(Date::new(2025, 6, 15), 12, 0, 0);
+    let (time, _clock) = at(noon, 0);
+    let start = clock::now();
+    std::thread::sleep(MS(5));
+    assert_eq!(clock::wall_now(), noon, "real time does not move it");
+    time.advance_ms(1500);
+    assert_eq!(clock::wall_now(), noon + MS(1500));
+    assert_eq!(clock::since(start), MS(1500), "both clocks moved as much");
+    time.set(MS(500));
+    assert_eq!(clock::wall_now(), noon + MS(500), "set moves it back too");
+    time.reset();
+    assert_eq!(clock::wall_now(), noon);
+}
+
+#[test]
+fn a_wall_clock_set_after_advancing_starts_from_that_time() {
+    let time = MockTime::new();
+    time.advance_secs(100);
+    let _clock = time.install();
+    let noon = utc(Date::new(2025, 6, 15), 12, 0, 0);
+    time.set_wall_clock(noon, 0);
+    assert_eq!(clock::wall_now(), noon, "set after install takes effect");
+    time.reset();
+    assert_eq!(clock::wall_now(), noon - Duration::from_secs(100));
+    time.clone().advance_secs(101);
+    assert_eq!(clock::wall_now(), noon + Duration::from_secs(1));
+}
+
+#[test]
+fn today_is_the_mocked_date_at_month_ends_and_the_leap_day() {
+    for (date, next) in [
+        (Date::new(2025, 1, 31), Date::new(2025, 2, 1)),
+        (Date::new(2025, 4, 30), Date::new(2025, 5, 1)),
+        (Date::new(2025, 2, 28), Date::new(2025, 3, 1)),
+        (Date::new(2024, 2, 28), Date::new(2024, 2, 29)),
+        (Date::new(2024, 2, 29), Date::new(2024, 3, 1)),
+        (Date::new(2024, 12, 31), Date::new(2025, 1, 1)),
+    ] {
+        let (time, _clock) = at(utc(date, 23, 59, 59), 0);
+        assert_eq!(Date::today(), date);
+        assert_eq!(Time::now(), Time::new(23, 59, 59));
+        time.advance_ms(999);
+        assert_eq!(Date::today(), date, "{date:?}: one millisecond early");
+        time.advance_ms(1);
+        assert_eq!(Date::today(), next, "{date:?}: past midnight");
+        assert_eq!(Time::now(), Time::new(0, 0, 0));
+    }
+}
+
+#[test]
+fn a_zone_east_of_utc_is_already_on_the_next_day() {
+    let (_time, _clock) = at(utc(Date::new(2024, 12, 31), 23, 30, 0), HOUR);
+    assert_eq!(Date::today(), Date::new(2025, 1, 1), "00:30 at +01:00");
+    assert_eq!(Time::now(), Time::new(0, 30, 0));
+
+    let (_time, _clock) = at(utc(Date::new(2025, 6, 15), 12, 0, 0), 14 * HOUR);
+    assert_eq!(Date::today(), Date::new(2025, 6, 16), "02:00 at +14:00");
+    assert_eq!(Time::now(), Time::new(2, 0, 0));
+}
+
+#[test]
+fn a_zone_west_of_utc_is_still_on_the_day_before() {
+    let (_time, _clock) = at(utc(Date::new(2024, 3, 1), 3, 0, 0), -5 * HOUR);
+    assert_eq!(Date::today(), Date::new(2024, 2, 29), "22:00 at -05:00");
+    assert_eq!(Time::now(), Time::new(22, 0, 0));
+
+    let (_time, _clock) = at(utc(Date::new(2025, 1, 1), 0, 0, 0), -(HOUR / 2));
+    assert_eq!(Date::today(), Date::new(2024, 12, 31), "23:30 at -00:30");
+    assert_eq!(Time::now(), Time::new(23, 30, 0));
+}
+
+#[test]
+fn the_same_instant_is_one_date_per_zone_and_utc_in_none() {
+    let instant = utc(Date::new(2025, 3, 10), 23, 30, 0);
+    let (_time, _clock) = at(instant, 0);
+    assert_eq!(Date::today(), Date::new(2025, 3, 10));
+    assert_eq!(Time::now(), Time::new(23, 30, 0));
+    assert_eq!(
+        clock::wall_now(),
+        instant,
+        "the zone does not move the instant"
+    );
+}
+
+#[test]
+fn advancing_in_a_zone_crosses_its_own_midnight() {
+    // 22:59:59 UTC is 23:59:59 at +01:00
+    let (time, _clock) = at(utc(Date::new(2025, 3, 10), 22, 59, 59), HOUR);
+    assert_eq!(Date::today(), Date::new(2025, 3, 10));
+    time.advance_secs(1);
+    assert_eq!(Date::today(), Date::new(2025, 3, 11));
+    assert_eq!(Time::now(), Time::new(0, 0, 0));
+    time.advance(Duration::from_secs(86_400 * 366));
+    assert_eq!(Date::today(), Date::new(2026, 3, 12), "366 days later");
+}
+
+#[test]
+fn a_utc_offset_is_at_most_25_59_59() {
+    let instant = utc(Date::new(2025, 3, 10), 0, 0, 0);
+    let (_time, _clock) = at(instant, 93_599);
+    assert_eq!(Date::today(), Date::new(2025, 3, 11));
+    assert_eq!(Time::now(), Time::new(1, 59, 59));
+    let (_time, _clock) = at(instant, -93_599);
+    assert_eq!(Date::today(), Date::new(2025, 3, 8));
+    assert_eq!(Time::now(), Time::new(22, 0, 1));
+    for offset in [93_600, -93_600, i32::MAX, i32::MIN] {
+        let result = std::panic::catch_unwind(|| MockTime::new().set_wall_clock(instant, offset));
+        assert!(result.is_err(), "{offset} is not a UTC offset");
+    }
+}
+
+#[test]
+fn a_wall_clock_before_1970_or_past_9999_still_has_a_date() {
+    let (_time, _clock) = at(SystemTime::UNIX_EPOCH - Duration::from_secs(86_400), 0);
+    assert_eq!(Date::today(), Date::new(1969, 12, 31));
+    // About the year 20000: past jiff's range, and still a SystemTime on
+    // every platform (Windows stops near the year 30828)
+    let (_time, _clock) = at(
+        SystemTime::UNIX_EPOCH + Duration::from_secs(18_000 * 86_400 * 365),
+        0,
+    );
+    // jiff's last instant, which every UTC offset can show
+    assert_eq!(
+        Date::today(),
+        Date::new(9999, 12, 30),
+        "the last instant there is"
+    );
+}
+
+#[test]
+fn dropping_the_mock_restores_the_real_time_of_day() {
+    let fixed = utc(Date::new(2000, 1, 1), 0, 0, 0);
+    {
+        let (_time, _clock) = at(fixed, 0);
+        assert_eq!(clock::wall_now(), fixed);
+        {
+            let inner = MockTime::new();
+            let _inner = inner.install();
+            let before = SystemTime::now();
+            assert!(
+                clock::wall_now() >= before,
+                "the inner mock has no wall clock"
+            );
+        }
+        assert_eq!(clock::wall_now(), fixed, "the outer mock is back");
+    }
+    let before = SystemTime::now();
+    assert!(clock::wall_now() >= before);
+}
+
+#[test]
+fn another_thread_keeps_the_real_time_of_day() {
+    let (_time, _clock) = at(utc(Date::new(2000, 1, 1), 0, 0, 0), 0);
+    let real = std::thread::spawn(|| {
+        let before = SystemTime::now();
+        clock::wall_now() >= before
+    })
+    .join()
+    .unwrap();
+    assert!(real);
 }
 
 // Pausing: the paused time does not count (#865, #876, #862, #1374)

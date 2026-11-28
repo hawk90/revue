@@ -3,7 +3,7 @@
 # Verified against the code on 2026-10-05 (code wins over docs). `source` § refers to the
 # pre-2026-10-05 docs/FEATURES.md layout (see git history / docs narrative).
 schema: 1
-updated: '2026-10-10'
+updated: '2026-11-28'
 sources:
   - 'docs/FEATURES.md (pre-2026-10-05 layout: §1–§11, Advanced Widgets, Feature Comparison)'
 statuses:
@@ -2064,9 +2064,17 @@ items:
       - MockTime::install makes a counter the clock of one thread until its guard is dropped
       - time never moves backward on install; tests side by side and worker threads are not affected
       - a source file reading Instant::now is listed with the reason it needs real time
+      - MockTime::set_wall_clock fixes the time of day and a UTC offset; advancing moves it, and without it the time of
+        day stays real
+      - Date::today, Time::now, the range picker presets, time-series ranges and time-travel stamps read clock::wall_now
+      - a source file reading SystemTime::now or a jiff now is listed with the reason it needs real time
     evidence:
       - src/utils/clock.rs::now
+      - src/utils/clock.rs::wall_now
       - src/testing/mock/time.rs::install
+      - src/testing/mock/time.rs::set_wall_clock
+      - tests/utils/clock.rs::a_zone_east_of_utc_is_already_on_the_next_day
+      - tests/utils/clock.rs::the_time_of_day_is_real_without_a_wall_clock
       - tests/utils/clock.rs::a_tween_runs_on_the_mock
       - tests/utils/clock.rs::another_thread_keeps_real_time
       - tests/utils/clock.rs::only_the_listed_files_read_real_time
