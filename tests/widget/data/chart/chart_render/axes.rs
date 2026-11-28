@@ -268,8 +268,8 @@ fn test_render_grid_at_an_offset_reaches_the_last_row_and_column() {
     });
     let lines = rows(&buffer);
     assert_eq!(lines[0], " ".repeat(14));
-    for y in 1..5 {
-        assert_eq!(lines[y], "  │   │    │  ", "row {y}");
+    for (y, line) in lines.iter().enumerate().take(5).skip(1) {
+        assert_eq!(line, "  │   │    │  ", "row {y}");
     }
     assert_eq!(lines[5], "  ┴   ┴    ┴  ");
     assert_eq!(lines[6], " ".repeat(14));

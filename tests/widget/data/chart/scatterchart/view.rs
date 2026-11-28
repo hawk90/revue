@@ -318,5 +318,5 @@ fn test_scatter_x_labels_moved_in_never_overwrite() {
     // "가10…" would start at 21, inside "가6.…" (16..20) and its gap
     let (grid, labels) = x_labeled("가{}", 3, 26);
     assert_eq!(grid, "-0.50 ┴     ┴     ┴     ┴ ");
-    assert_eq!(labels, "    가\0-0… 가\03.… 가\06.… 가\01…");
+    assert_eq!(labels, "    가\0-0… 가\x003.… 가\x006.… 가\x001…");
 }
