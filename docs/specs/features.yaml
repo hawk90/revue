@@ -3,7 +3,7 @@
 # Verified against the code on 2026-10-05 (code wins over docs). `source` § refers to the
 # pre-2026-10-05 docs/FEATURES.md layout (see git history / docs narrative).
 schema: 1
-updated: '2026-10-10'
+updated: '2026-11-28'
 sources:
   - 'docs/FEATURES.md (pre-2026-10-05 layout: §1–§11, Advanced Widgets, Feature Comparison)'
 statuses:
@@ -936,19 +936,21 @@ items:
     status: done
     acceptance:
       - four status helpers
-      - Dot/DotWithLabel/Badge styles, sizes, custom label
+      - Dot/DotWithLabel/LabelOnly/Badge styles, sizes, custom label (drawn after the dot with the default Dot style)
       - pulsing animation, driven by the app (tick() on a kept widget, or frame(n) on one rebuilt every render)
     evidence:
       - src/widget/display/status_indicator/mod.rs::status_indicator
       - src/widget/display/status_indicator/mod.rs::frame
       - tests/widget/display/status_indicator.rs
       - tests/widget/display/status_indicator.rs::a_stored_indicator_blinks_as_it_is_ticked
+      - tests/widget/display/status_indicator.rs::the_default_dot_draws_a_label_it_is_given
       - examples/status_indicator.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / StatusIndicator
       - FEATURES.md §Advanced Widgets / Status Indicator
     notes: 'Merged duplicate section. Doc status_indicator().status(..) form: constructor takes the Status. The pulse
-      does not advance by itself: the app owns the clock and must redraw on Event::Tick (#689).'
+      does not advance by itself: the app owns the clock and must redraw on Event::Tick (#689). label() on the default
+      Dot style drew nothing until #1528; it now draws the dot and the label, as DotWithLabel does.'
   - id: WID-022
     title: EmptyState (no-results/error/first-use, variants)
     area: widget

@@ -1299,3 +1299,277 @@ mod snapshots {
         pilot.snapshot("divider_with_label");
     }
 }
+
+// =============================================================================
+// #1528: a vertical divider draws its label down its column
+// =============================================================================
+
+mod vertical_label {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::style::Color;
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::{vdivider, Divider};
+
+    const LINE: Color = Color::RED;
+    const LABEL: Color = Color::GREEN;
+
+    /// What a cell holds: its glyph (`'>'` for the second half of a wide
+    /// glyph) and its color
+    type Drawn = (char, Option<Color>);
+
+    /// Renders `d` into a `width` x `height` area at (`x`, `y`) of a buffer
+    /// two cells larger on every side, and returns the whole buffer
+    fn draw_at(d: &Divider, x: u16, y: u16, width: u16, height: u16) -> Buffer {
+        let mut buffer = Buffer::new(x + width + 2, y + height + 2);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(x, y, width, height));
+        d.render(&mut ctx);
+        buffer
+    }
+
+    fn cell(b: &Buffer, x: u16, y: u16) -> Drawn {
+        let c = b.get(x, y).unwrap();
+        if c.is_continuation() {
+            ('>', c.fg)
+        } else {
+            (c.symbol, c.fg)
+        }
+    }
+
+    /// Column `x` of the buffer, rows `0..height`
+    fn column(b: &Buffer, x: u16, height: u16) -> Vec<Drawn> {
+        (0..height).map(|y| cell(b, x, y)).collect()
+    }
+
+    fn line() -> Drawn {
+        ('│', Some(LINE))
+    }
+    fn gap() -> Drawn {
+        (' ', Some(LINE))
+    }
+    fn label(ch: char) -> Drawn {
+        (ch, Some(LABEL))
+    }
+    fn blank() -> Drawn {
+        (' ', None)
+    }
+
+    fn labeled(text: &str) -> Divider {
+        vdivider().color(LINE).label(text).label_color(LABEL)
+    }
+
+    #[test]
+    fn an_even_label_in_an_even_length_is_centered() {
+        let b = draw_at(&labeled("AB"), 0, 0, 1, 10);
+        assert_eq!(
+            column(&b, 0, 10),
+            [
+                line(),
+                line(),
+                line(),
+                gap(),
+                label('A'),
+                label('B'),
+                gap(),
+                line(),
+                line(),
+                line(),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_odd_label_in_an_even_length_puts_the_extra_row_below() {
+        // The horizontal form rounds the same way: (10 - 3) / 2 - 1 = 2
+        let b = draw_at(&labeled("ABC"), 0, 0, 1, 10);
+        assert_eq!(
+            column(&b, 0, 10),
+            [
+                line(),
+                line(),
+                gap(),
+                label('A'),
+                label('B'),
+                label('C'),
+                gap(),
+                line(),
+                line(),
+                line(),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_even_label_in_an_odd_length_puts_the_extra_row_below() {
+        let b = draw_at(&labeled("AB"), 0, 0, 1, 9);
+        assert_eq!(
+            column(&b, 0, 9),
+            [
+                line(),
+                line(),
+                gap(),
+                label('A'),
+                label('B'),
+                gap(),
+                line(),
+                line(),
+                line(),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_label_that_just_fits_keeps_one_line_cell_on_each_side() {
+        let b = draw_at(&labeled("AB"), 0, 0, 1, 6);
+        assert_eq!(
+            column(&b, 0, 6),
+            [line(), gap(), label('A'), label('B'), gap(), line()]
+        );
+    }
+
+    #[test]
+    fn a_label_one_row_too_long_is_drawn_alone_and_cut() {
+        // Five rows: "ABC" needs seven with its gaps and line ends
+        let b = draw_at(&labeled("ABC"), 0, 0, 1, 5);
+        assert_eq!(
+            column(&b, 0, 7),
+            [
+                label('A'),
+                label('B'),
+                label('C'),
+                blank(),
+                blank(),
+                blank(),
+                blank(),
+            ]
+        );
+        let b = draw_at(&labeled("ABCDEFGH"), 0, 0, 1, 5);
+        assert_eq!(
+            column(&b, 0, 7),
+            [
+                label('A'),
+                label('B'),
+                label('C'),
+                label('D'),
+                label('E'),
+                blank(),
+                blank(),
+            ],
+            "cut at the area's last row"
+        );
+    }
+
+    #[test]
+    fn a_wide_label_makes_the_divider_two_columns_wide() {
+        let d = labeled("가나");
+        assert_eq!(d.measure(10, 8), Some((2, 8)));
+        assert_eq!(d.measure(1, 8), Some((1, 8)), "never past the offer");
+
+        let b = draw_at(&d, 0, 0, 2, 8);
+        assert_eq!(
+            column(&b, 0, 8),
+            [
+                line(),
+                line(),
+                gap(),
+                label('가'),
+                label('나'),
+                gap(),
+                line(),
+                line(),
+            ]
+        );
+        // The second column holds the wide glyphs' second halves only
+        let second: Vec<char> = column(&b, 1, 8).iter().map(|c| c.0).collect();
+        assert_eq!(second, [' ', ' ', ' ', '>', '>', ' ', ' ', ' ']);
+        assert_eq!(column(&b, 2, 8), vec![blank(); 8], "nothing past it");
+    }
+
+    #[test]
+    fn a_narrow_label_keeps_one_column() {
+        assert_eq!(labeled("AB").measure(10, 8), Some((1, 8)));
+        assert_eq!(vdivider().measure(10, 8), Some((1, 8)));
+        // A mix is as wide as its widest glyph
+        assert_eq!(labeled("A가").measure(10, 8), Some((2, 8)));
+    }
+
+    #[test]
+    fn a_combining_mark_stays_in_its_letters_row() {
+        // "e" + COMBINING ACUTE is one grapheme, one row; a lone zero-width
+        // space takes no row
+        let d = labeled("e\u{301}\u{200B}x");
+        assert_eq!(d.measure(10, 8), Some((1, 8)));
+        let b = draw_at(&d, 0, 0, 1, 8);
+        assert_eq!(
+            column(&b, 0, 8),
+            [
+                line(),
+                line(),
+                gap(),
+                label('e'),
+                label('x'),
+                gap(),
+                line(),
+                line(),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_area_at_an_offset_draws_inside_it() {
+        let b = draw_at(&labeled("AB"), 3, 2, 1, 6);
+        assert_eq!(
+            column(&b, 3, 10),
+            [
+                blank(),
+                blank(),
+                line(),
+                gap(),
+                label('A'),
+                label('B'),
+                gap(),
+                line(),
+                blank(),
+                blank(),
+            ]
+        );
+        for x in [0, 1, 2, 4, 5] {
+            assert_eq!(column(&b, x, 10), vec![blank(); 10], "column {x}");
+        }
+    }
+
+    #[test]
+    fn one_row_holds_the_first_glyph_and_zero_rows_hold_nothing() {
+        let b = draw_at(&labeled("AB"), 1, 1, 1, 1);
+        assert_eq!(column(&b, 1, 3), [blank(), label('A'), blank()], "one row");
+        let b = draw_at(&labeled("AB"), 1, 1, 1, 0);
+        assert_eq!(column(&b, 1, 3), vec![blank(); 3], "zero rows");
+    }
+
+    #[test]
+    fn the_label_takes_the_line_color_without_a_label_color() {
+        let b = draw_at(&vdivider().color(LINE).label("A"), 0, 0, 1, 5);
+        assert_eq!(
+            column(&b, 0, 5),
+            [line(), gap(), ('A', Some(LINE)), gap(), line()]
+        );
+    }
+
+    #[test]
+    fn margin_and_length_bound_the_labeled_line() {
+        let b = draw_at(&labeled("A").margin(1).length(5), 0, 0, 1, 8);
+        assert_eq!(
+            column(&b, 0, 8),
+            [
+                blank(),
+                line(),
+                gap(),
+                label('A'),
+                gap(),
+                line(),
+                blank(),
+                blank(),
+            ]
+        );
+    }
+}

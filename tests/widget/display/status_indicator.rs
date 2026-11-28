@@ -203,3 +203,163 @@ mod sizes {
         }
     }
 }
+
+// =========================================================================
+// #1528: a label set on the default dot style is drawn
+// =========================================================================
+
+mod labels {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::style::Color;
+    use revue::widget::theme::SECONDARY_TEXT;
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::{Status, StatusIndicator, StatusSize, StatusStyle};
+
+    const WIDTH: u16 = 20;
+
+    /// What a cell holds: its glyph (`'>'` for the second half of a wide
+    /// glyph) and its color
+    type Drawn = (char, Option<Color>);
+
+    fn row(view: &StatusIndicator) -> Vec<Drawn> {
+        let mut buffer = Buffer::new(WIDTH, 1);
+        view.render(&mut RenderContext::new(
+            &mut buffer,
+            Rect::new(0, 0, WIDTH, 1),
+        ));
+        (0..WIDTH)
+            .map(|x| {
+                let c = buffer.get(x, 0).unwrap();
+                if c.is_continuation() {
+                    ('>', c.fg)
+                } else {
+                    (c.symbol, c.fg)
+                }
+            })
+            .collect()
+    }
+
+    /// The dot in the status color, a space, then `label` in the label
+    /// color, then blank cells to the row's end
+    fn dot_then(status: Status, label: &str) -> Vec<Drawn> {
+        let mut out = vec![('●', Some(status.color())), (' ', None)];
+        for ch in label.chars() {
+            out.push((ch, Some(SECONDARY_TEXT)));
+            if revue::utils::char_width(ch) == 2 {
+                out.push(('>', None));
+            }
+        }
+        out.resize(usize::from(WIDTH), (' ', None));
+        out
+    }
+
+    /// The columns up to the last one drawn
+    fn drawn_width(cells: &[Drawn]) -> u16 {
+        cells
+            .iter()
+            .rposition(|c| *c != (' ', None))
+            .map_or(0, |i| i as u16 + 1)
+    }
+
+    fn measured(view: &StatusIndicator) -> u16 {
+        let (w, h) = view.measure(WIDTH, 1).unwrap();
+        assert_eq!(h, 1);
+        assert_eq!(w, view.width());
+        w
+    }
+
+    #[test]
+    fn the_default_dot_draws_a_label_it_is_given() {
+        let view = StatusIndicator::busy().label("Do not disturb");
+        let cells = row(&view);
+        assert_eq!(cells, dot_then(Status::Busy, "Do not disturb"));
+        assert_eq!(measured(&view), 16);
+        assert_eq!(drawn_width(&cells), 16);
+    }
+
+    #[test]
+    fn the_default_dot_without_a_label_is_the_dot_alone() {
+        let view = StatusIndicator::busy();
+        let cells = row(&view);
+        let mut expected = vec![('●', Some(Status::Busy.color()))];
+        expected.resize(usize::from(WIDTH), (' ', None));
+        assert_eq!(cells, expected);
+        assert_eq!(measured(&view), 1);
+    }
+
+    #[test]
+    fn dot_with_label_falls_back_to_the_status_label() {
+        let view = StatusIndicator::away().indicator_style(StatusStyle::DotWithLabel);
+        let cells = row(&view);
+        assert_eq!(cells, dot_then(Status::Away, "Away"));
+        assert_eq!(measured(&view), 6);
+        assert_eq!(drawn_width(&cells), 6);
+    }
+
+    #[test]
+    fn dot_with_label_draws_the_custom_label() {
+        let view = StatusIndicator::away()
+            .indicator_style(StatusStyle::DotWithLabel)
+            .label("Lunch");
+        let cells = row(&view);
+        assert_eq!(cells, dot_then(Status::Away, "Lunch"));
+        assert_eq!(measured(&view), 7);
+    }
+
+    #[test]
+    fn a_korean_label_takes_two_columns_a_syllable() {
+        let view = StatusIndicator::online().label("회의 중");
+        let cells = row(&view);
+        assert_eq!(cells, dot_then(Status::Online, "회의 중"));
+        // dot + space + 회의 중 (2 + 2 + 1 + 2)
+        assert_eq!(measured(&view), 9);
+        assert_eq!(drawn_width(&cells), 9);
+    }
+
+    #[test]
+    fn the_label_follows_a_large_dot() {
+        let view = StatusIndicator::online()
+            .size(StatusSize::Large)
+            .label("On");
+        let cells = row(&view);
+        assert_eq!(cells[0], ('⬤', Some(Status::Online.color())));
+        assert_eq!(cells[2], (' ', None));
+        assert_eq!(cells[3], ('O', Some(SECONDARY_TEXT)));
+        assert_eq!(cells[4], ('n', Some(SECONDARY_TEXT)));
+        assert_eq!(measured(&view), 5);
+        assert_eq!(drawn_width(&cells), 5);
+    }
+
+    #[test]
+    fn measure_matches_what_each_style_draws() {
+        let styles = [
+            StatusStyle::Dot,
+            StatusStyle::DotWithLabel,
+            StatusStyle::LabelOnly,
+            StatusStyle::Badge,
+        ];
+        for style in styles {
+            for label in [None, Some("Lunch"), Some("회의")] {
+                let mut view = StatusIndicator::busy().indicator_style(style);
+                if let Some(label) = label {
+                    view = view.label(label);
+                }
+                // The last column with a glyph or a background (a badge
+                // pads with background)
+                let mut buffer = Buffer::new(WIDTH, 1);
+                view.render(&mut RenderContext::new(
+                    &mut buffer,
+                    Rect::new(0, 0, WIDTH, 1),
+                ));
+                let drawn = (0..WIDTH)
+                    .rposition(|x| {
+                        let c = buffer.get(x, 0).unwrap();
+                        c.symbol != ' ' || c.bg.is_some() || c.is_continuation()
+                    })
+                    .map_or(0, |x| x as u16 + 1);
+                assert_eq!(measured(&view), drawn, "{style:?} {label:?}");
+            }
+        }
+    }
+}

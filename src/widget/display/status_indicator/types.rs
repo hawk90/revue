@@ -98,10 +98,13 @@ impl StatusSize {
 /// Status indicator style
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum StatusStyle {
-    /// Just the dot indicator
+    /// The dot alone - or, once [`label`](super::StatusIndicator::label)
+    /// sets a custom label, the dot followed by that label (as
+    /// [`DotWithLabel`](Self::DotWithLabel) draws it)
     #[default]
     Dot,
-    /// Dot with text label
+    /// Dot with text label: the custom label, or the status's default label
+    /// (`"Online"`, `"Busy"`, ...) when none is set
     DotWithLabel,
     /// Text label only
     LabelOnly,

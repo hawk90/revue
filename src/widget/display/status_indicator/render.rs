@@ -27,11 +27,11 @@ impl View for StatusIndicator {
         let visible = self.is_visible();
 
         match self.style {
-            StatusStyle::Dot => {
-                self.render_dot(ctx, color, visible);
-            }
-            StatusStyle::DotWithLabel => {
+            StatusStyle::Dot | StatusStyle::DotWithLabel if self.dot_has_label() => {
                 self.render_dot_with_label(ctx, color, visible);
+            }
+            StatusStyle::Dot | StatusStyle::DotWithLabel => {
+                self.render_dot(ctx, color, visible);
             }
             StatusStyle::LabelOnly => {
                 self.render_label_only(ctx, color);
