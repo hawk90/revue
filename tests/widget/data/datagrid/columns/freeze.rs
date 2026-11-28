@@ -293,3 +293,55 @@ fn test_last_column_ending_at_the_edge_without_right_frozen() {
     assert_eq!(row_text(&buffer, 0, 10), "A    │B   ");
     assert_eq!(row_text(&buffer, 1, 10), "a1   │b1  ");
 }
+
+/// 6-wide columns keyed by the letters of `keys`; an uppercase letter is a
+/// visible column, a lowercase one a hidden column.
+fn letter_grid(keys: &str) -> DataGrid {
+    let mut grid = DataGrid::new();
+    for k in keys.chars() {
+        let key = k.to_ascii_lowercase().to_string();
+        grid = grid.column(
+            GridColumn::new(key, k.to_ascii_uppercase().to_string())
+                .width(6)
+                .visible(k.is_ascii_uppercase()),
+        );
+    }
+    grid.row(GridRow::new())
+}
+
+/// scroll_col_right stops at the last scrollable visible column: hidden
+/// columns are not counted, so the view never scrolls past what it can draw
+#[test]
+fn test_scroll_col_right_counts_only_visible_columns() {
+    // A, C, E visible; A frozen: C and E scroll, so one step at most
+    let mut grid = letter_grid("AbCdE").freeze_columns_left(1);
+    for _ in 0..5 {
+        grid.scroll_col_right();
+    }
+    assert_eq!(grid.scroll_col, 1);
+    let buffer = render_to(&grid, 30, 3);
+    assert_eq!(row_text(&buffer, 0, 30), "A     │E     │                ");
+
+    // A, C, D, F visible; F frozen right: A, C, D scroll, two steps at most
+    let mut grid = letter_grid("AbCDeF").freeze_columns_right(1);
+    for _ in 0..6 {
+        grid.scroll_col_right();
+    }
+    assert_eq!(grid.scroll_col, 2);
+    let buffer = render_to(&grid, 30, 3);
+    assert_eq!(row_text(&buffer, 0, 30), "D     │                F     │");
+}
+
+/// Nothing scrolls when every visible column is frozen, or none is visible
+#[test]
+fn test_scroll_col_right_without_scrollable_columns() {
+    for mut grid in [
+        letter_grid("AbC").freeze_columns_left(2),
+        letter_grid("aBc").freeze_columns_right(3),
+        letter_grid("ab"),
+        letter_grid(""),
+    ] {
+        grid.scroll_col_right();
+        assert_eq!(grid.scroll_col, 0);
+    }
+}

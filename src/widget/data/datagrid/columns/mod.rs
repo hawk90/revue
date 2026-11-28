@@ -10,26 +10,14 @@ use crate::widget::data::datagrid::types::GridColumn;
 use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
-    /// Visible columns in display order (respecting `column_order`), each
-    /// paired with its index into `self.columns`.
+    /// Visible columns in display order (`full_column_order` without the
+    /// hidden ones), each paired with its index into `self.columns`.
     pub(crate) fn visible_columns_in_order(&self) -> Vec<(usize, &GridColumn)> {
-        if self.column_order.is_empty() {
-            self.columns
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| c.visible)
-                .collect()
-        } else {
-            self.column_order
-                .iter()
-                .filter_map(|&orig_idx| {
-                    self.columns
-                        .get(orig_idx)
-                        .filter(|c| c.visible)
-                        .map(|c| (orig_idx, c))
-                })
-                .collect()
-        }
+        self.full_column_order()
+            .into_iter()
+            .map(|i| (i, &self.columns[i]))
+            .filter(|(_, c)| c.visible)
+            .collect()
     }
 
     /// Every column index, hidden ones included, in display order:

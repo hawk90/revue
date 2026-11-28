@@ -381,10 +381,17 @@ fn revealer(os: &str, path: &str) -> Option<Command> {
             cmd
         }
         "linux" => {
+            // A bare file name has the empty parent: that is the current
+            // directory, and `xdg-open ""` opens nothing (#1567)
             let parent = Path::new(path)
                 .parent()
                 .map(|p| p.to_string_lossy().into_owned())
                 .unwrap_or_else(|| path.to_string());
+            let parent = if parent.is_empty() {
+                ".".to_string()
+            } else {
+                parent
+            };
             let mut cmd = Command::new("xdg-open");
             cmd.arg(parent);
             cmd
@@ -473,7 +480,14 @@ mod tests {
     /// itself
     #[test]
     fn reveal_opens_the_parent_folder_on_linux() {
-        for (path, opened) in [("/tmp/dir/a.txt", "/tmp/dir"), ("/a.txt", "/"), ("/", "/")] {
+        for (path, opened) in [
+            ("/tmp/dir/a.txt", "/tmp/dir"),
+            ("/a.txt", "/"),
+            ("/", "/"),
+            ("dir/a.txt", "dir"),
+            ("a.txt", "."),
+            ("", "."),
+        ] {
             assert_eq!(
                 program_and_args(&revealer("linux", path).unwrap()),
                 ("xdg-open".to_string(), vec![opened.to_string()]),
