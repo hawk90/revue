@@ -1180,3 +1180,79 @@ fn test_gauge_arc_inside_label_hangul() {
     assert_eq!(row, format!("  │가\0나\0다\0라\0… │{}", " ".repeat(20)));
     assert_eq!(bold, (3..12).collect::<Vec<_>>());
 }
+
+/// The Arc (value 0.5, label inside) drawn in a `width` x 3 area at (2, 1)
+/// of a buffer two columns wider and taller on each side: each row's symbols
+fn narrow_arc(width: u16) -> (Buffer, Vec<String>) {
+    let g = Gauge::new()
+        .style(GaugeStyle::Arc)
+        .value(0.5)
+        .label_position(LabelPosition::Inside);
+    let mut buffer = Buffer::new(width + 4, 5);
+    g.render(&mut RenderContext::new(
+        &mut buffer,
+        Rect::new(2, 1, width, 3),
+    ));
+    let rows = (0..5)
+        .map(|y| {
+            (0..width + 4)
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect()
+        })
+        .collect();
+    (buffer, rows)
+}
+
+/// In an area narrower than its 8 columns the Arc shrinks to the area, as
+/// Bar does, instead of being cut at the area's edge without its right
+/// corners: both borders are in the area's last column, colored (#1618)
+#[test]
+fn test_gauge_arc_narrower_than_8_shrinks_to_the_area() {
+    let (buffer, rows) = narrow_arc(5);
+    assert_eq!(
+        rows,
+        [
+            "         ",
+            "  ╭━━─╮  ",
+            "  │50%│  ",
+            "  ╰───╯  ",
+            "         ",
+        ]
+    );
+    for y in 1..4 {
+        for x in [2, 6] {
+            assert_eq!(buffer.get(x, y).unwrap().fg, Some(Color::GREEN), "{x},{y}");
+        }
+    }
+    for x in [1, 7] {
+        for y in 0..5 {
+            assert_eq!(buffer.get(x, y).unwrap().fg, None, "{x},{y}");
+        }
+    }
+
+    // The smallest arc: one cell between the corners, the label cut to `…`
+    let (_, rows) = narrow_arc(3);
+    assert_eq!(
+        rows,
+        ["       ", "  ╭━╮  ", "  │…│  ", "  ╰─╯  ", "       "]
+    );
+
+    // At 8 it keeps its minimum width
+    let (_, rows) = narrow_arc(8);
+    assert_eq!(rows[1], "  ╭━━━───╮  ");
+}
+
+/// Below 3 columns no cell is left between the corners for the reading:
+/// nothing is drawn
+#[test]
+fn test_gauge_arc_narrower_than_3_draws_nothing() {
+    for width in [1, 2] {
+        let (buffer, _) = narrow_arc(width);
+        let blank = revue::render::Cell::default();
+        for y in 0..5 {
+            for x in 0..width + 4 {
+                assert_eq!(*buffer.get(x, y).unwrap(), blank, "{width}: {x},{y}");
+            }
+        }
+    }
+}

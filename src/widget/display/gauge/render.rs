@@ -53,11 +53,24 @@ impl Gauge {
             GaugeStyle::Dots => (self.segments.min(avail_w), 1),
             GaugeStyle::Vertical => (1, self.height.min(avail_h)),
             GaugeStyle::Thermometer => (1, self.height.min(avail_h).max(3)),
-            GaugeStyle::Arc => (self.width.min(avail_w).max(8), avail_h.min(3)),
+            GaugeStyle::Arc => (self.arc_width(avail_w), avail_h.min(3)),
             // `(` + five dots + `)`
             GaugeStyle::Circle => (7, 1),
         };
         (w.min(avail_w), h.min(avail_h))
+    }
+
+    /// The columns the arc takes in an area `avail_w` wide: at least 8,
+    /// but never wider than the area, so a narrower one shrinks the arc to
+    /// it as `Bar` shrinks to its area; 0 (nothing drawn) below 3, where no
+    /// cell is left between the corners to show the reading
+    fn arc_width(&self, avail_w: u16) -> u16 {
+        let width = self.width.max(8).min(avail_w);
+        if width < 3 {
+            0
+        } else {
+            width
+        }
     }
 
     /// Render bar style
@@ -181,7 +194,10 @@ impl Gauge {
         // Simple text-based arc: ╭───────╮
         //                        │ 75%   │
         //                        ╰───────╯
-        let width = self.width.min(area.width).max(8);
+        let width = self.arc_width(area.width);
+        if width == 0 {
+            return;
+        }
 
         // Top arc
         let mut tl = Cell::new('╭');
