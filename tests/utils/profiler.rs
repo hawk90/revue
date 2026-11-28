@@ -1,6 +1,8 @@
 //! Performance profiler tests
 
-use revue::utils::profiler::{profile, FlameNode, Profiler, Stats};
+#[allow(deprecated)] // FlameNode is deprecated since 3.17 (#1208)
+use revue::utils::profiler::FlameNode;
+use revue::utils::profiler::{profile, Profiler, Stats, Timing};
 use revue::utils::{display_width, truncate_to_width};
 use std::thread;
 use std::time::Duration;
@@ -167,6 +169,7 @@ fn test_profiler_report_cuts_31_column_wide_name_by_columns() {
 }
 
 #[test]
+#[allow(deprecated)] // FlameNode is deprecated since 3.17 (#1208)
 fn test_flame_node() {
     let mut root = FlameNode::new("main");
     root.add_time(Duration::from_millis(100));
@@ -178,6 +181,56 @@ fn test_flame_node() {
     assert_eq!(root.self_time, Duration::from_millis(50));
     assert_eq!(root.total_time, Duration::from_millis(100));
     assert_eq!(root.children.len(), 1);
+}
+
+// The profiler keeps flat per-name stats: a guard opened inside another one
+// records under its own name only, and the outer one's time includes it (#1208)
+#[test]
+fn nested_guards_record_flat_per_name_stats() {
+    let profiler = Profiler::new();
+    {
+        let _outer = profiler.start("outer");
+        {
+            let _inner = profiler.start("inner");
+            thread::sleep(Duration::from_millis(5));
+        }
+        let _second = profiler.start("inner");
+    }
+
+    let all = profiler.all_stats();
+    assert_eq!(all.len(), 2);
+    let outer = &all["outer"];
+    let inner = &all["inner"];
+    assert_eq!(outer.count, 1);
+    assert_eq!(inner.count, 2);
+    assert!(outer.total >= inner.total);
+}
+
+// Guards that drop out of opening order still record each name once (#1208)
+#[test]
+fn guards_dropped_out_of_order_each_record_once() {
+    let profiler = Profiler::new();
+    let first = profiler.start("first");
+    let second = profiler.start("second");
+    drop(first);
+    drop(second);
+
+    assert_eq!(profiler.stats("first").unwrap().count, 1);
+    assert_eq!(profiler.stats("second").unwrap().count, 1);
+    assert_eq!(profiler.all_stats().len(), 2);
+}
+
+#[test]
+#[allow(deprecated)] // Timing::parent is deprecated since 3.17 (#1208)
+fn timing_has_no_parent_unless_set() {
+    let start = std::time::Instant::now();
+    let timing = Timing::new("render", Duration::from_millis(3), start);
+    assert_eq!(timing.name, "render");
+    assert_eq!(timing.duration, Duration::from_millis(3));
+    assert_eq!(timing.parent, None);
+
+    let timing = timing.with_parent("frame");
+    assert_eq!(timing.parent.as_deref(), Some("frame"));
 }
 
 #[test]
