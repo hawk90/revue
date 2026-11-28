@@ -1198,3 +1198,110 @@ fn test_time_only_help_does_not_offer_tab() {
         assert!(!shown.contains("Tab"), "{shown}");
     }
 }
+
+// =============================================================================
+// Highlight backgrounds (#1573): the text of a highlighted day or time field
+// keeps the highlight background, cell by cell
+// =============================================================================
+
+/// Render `picker` into a 40x20 buffer at an area offset by (3, 2).
+fn render_at_offset(picker: &DateTimePicker) -> Buffer {
+    let mut buffer = Buffer::new(40, 20);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(3, 2, 30, 15));
+    picker.render(&mut ctx);
+    buffer
+}
+
+/// Assert the cells at absolute `(x, y)..` show `text` in `fg` on `bg`,
+/// bold or not.
+fn assert_run(
+    buffer: &Buffer,
+    x: u16,
+    y: u16,
+    text: &str,
+    fg: Color,
+    bg: Option<Color>,
+    bold: bool,
+) {
+    for (i, ch) in text.chars().enumerate() {
+        let cx = x + i as u16;
+        let cell = buffer.get(cx, y).unwrap();
+        assert_eq!(cell.symbol, ch, "symbol at ({cx}, {y})");
+        assert_eq!(cell.fg, Some(fg), "fg at ({cx}, {y})");
+        assert_eq!(cell.bg, bg, "bg at ({cx}, {y})");
+        assert_eq!(
+            cell.modifier.contains(revue::render::Modifier::BOLD),
+            bold,
+            "bold at ({cx}, {y})"
+        );
+    }
+}
+
+#[test]
+fn test_datetime_picker_cursor_day_keeps_its_background() {
+    // June 2025 starts on a Sunday: the 15th is row 2, column 0.
+    let picker = DateTimePicker::new().selected_date(Date::new(2025, 6, 15));
+    let buffer = render_at_offset(&picker);
+    // Area x 3, picker margin 1; grid row 2 is area row 4.
+    assert_run(&buffer, 4, 6, "15", Color::BLACK, Some(Color::WHITE), true);
+    // The gap after the day is not highlighted.
+    assert_eq!(buffer.get(6, 6).unwrap().bg, None);
+    // The next day is an ordinary day.
+    assert_eq!(buffer.get(7, 6).unwrap().symbol, '1');
+    assert_eq!(buffer.get(7, 6).unwrap().bg, None);
+}
+
+#[test]
+fn test_datetime_picker_one_digit_cursor_day_highlights_its_pad() {
+    let picker = DateTimePicker::new().selected_date(Date::new(2025, 6, 1));
+    let buffer = render_at_offset(&picker);
+    assert_run(&buffer, 4, 4, " 1", Color::BLACK, Some(Color::WHITE), true);
+}
+
+#[test]
+fn test_datetime_picker_selected_day_keeps_its_background_off_the_cursor() {
+    let mut picker = DateTimePicker::new().selected_date(Date::new(2025, 6, 15));
+    assert!(picker.handle_key(&Key::Right));
+    let buffer = render_at_offset(&picker);
+    // The selection stays on the 15th, the cursor moved to the 16th.
+    assert_run(&buffer, 4, 6, "15", Color::BLACK, Some(Color::CYAN), true);
+    assert_run(&buffer, 7, 6, "16", Color::BLACK, Some(Color::WHITE), true);
+}
+
+#[test]
+fn test_datetime_picker_selected_day_in_last_column_keeps_its_background() {
+    // June 21, 2025 is a Saturday: the last column of the grid.
+    // In time mode the calendar shows the selection without a cursor.
+    let mut picker = DateTimePicker::new()
+        .selected_date(Date::new(2025, 6, 21))
+        .selected_colors(Color::RED, Color::BLUE);
+    assert!(picker.handle_key(&Key::Tab));
+    assert_eq!(picker.get_mode(), DateTimeMode::Time);
+    let buffer = render_at_offset(&picker);
+    // Column 6 starts at grid x 18, area x 1 + 18 + 3.
+    assert_run(&buffer, 22, 6, "21", Color::RED, Some(Color::BLUE), true);
+}
+
+#[test]
+fn test_datetime_picker_active_time_field_keeps_its_background() {
+    let mut picker = time_picker()
+        .selected_time(Time::new(14, 30, 45))
+        .show_seconds(true);
+    let fg = picker.field_active_fg;
+    let bg = picker.field_active_bg;
+    // Fields sit on area row 1 from area x 1: "14:30:45".
+    let buffer = render_at_offset(&picker);
+    assert_run(&buffer, 4, 3, "14", fg, Some(bg), true);
+    assert_eq!(buffer.get(6, 3).unwrap().bg, None);
+    assert_eq!(buffer.get(7, 3).unwrap().bg, None);
+
+    assert!(picker.handle_key(&Key::Right));
+    let buffer = render_at_offset(&picker);
+    assert_eq!(buffer.get(4, 3).unwrap().bg, None);
+    assert_run(&buffer, 7, 3, "30", fg, Some(bg), true);
+
+    assert!(picker.handle_key(&Key::Right));
+    let buffer = render_at_offset(&picker);
+    assert_eq!(buffer.get(7, 3).unwrap().bg, None);
+    assert_run(&buffer, 10, 3, "45", fg, Some(bg), true);
+}
