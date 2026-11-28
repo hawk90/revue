@@ -303,6 +303,52 @@ fn test_log_viewer_search_highlights_the_matched_characters() {
 
 /// The messages on each row of a `bare()` viewer drawn `width` wide: the
 /// six cells after the bookmark column, clear of the right-hand markers
+/// `load` keeps the last `max_entries` lines, as `push` does (#1554)
+#[test]
+fn test_log_viewer_load_keeps_the_last_max_entries() {
+    // (message, line number) of every entry, oldest first
+    let entries = |viewer: &mut LogViewer| {
+        viewer.scroll_to_top();
+        let mut entries = Vec::new();
+        for _ in 0..viewer.filtered_len() {
+            let entry = viewer.selected_entry().unwrap();
+            entries.push((entry.message.clone(), entry.line_number));
+            viewer.select_next();
+        }
+        entries
+    };
+    let owned = |list: &[(&str, usize)]| -> Vec<(String, usize)> {
+        list.iter().map(|&(m, n)| (m.to_string(), n)).collect()
+    };
+
+    // Past the limit: the oldest go
+    let mut viewer = LogViewer::new().max_entries(2);
+    viewer.load("a\nb\nc");
+    assert_eq!(viewer.len(), 2);
+    assert_eq!(entries(&mut viewer), owned(&[("b", 2), ("c", 3)]));
+
+    // At the limit, and with no limit (0), every line stays
+    let mut viewer = LogViewer::new().max_entries(3);
+    viewer.load("a\nb\nc");
+    assert_eq!(viewer.len(), 3);
+    let mut viewer = LogViewer::new().max_entries(0);
+    viewer.load("a\nb\nc");
+    assert_eq!(viewer.len(), 3);
+
+    // Blank lines are not entries: the limit counts the lines kept, and
+    // the numbers still count the blank ones
+    let mut viewer = LogViewer::new().max_entries(2);
+    viewer.load("a\n\nb\n\nc");
+    assert_eq!(entries(&mut viewer), owned(&[("b", 3), ("c", 5)]));
+    viewer.push("d");
+    assert_eq!(entries(&mut viewer), owned(&[("c", 5), ("d", 6)]));
+
+    // The kept entries are the ones drawn
+    let mut viewer = bare().max_entries(2);
+    viewer.load("l1\nl2\nl3");
+    assert_eq!(messages(&viewer, 30, 3), ["l2", "l3", ""]);
+}
+
 fn messages(viewer: &LogViewer, width: u16, height: u16) -> Vec<String> {
     let buffer = render(viewer, width, height);
     (0..height)

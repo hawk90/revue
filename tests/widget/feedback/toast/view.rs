@@ -274,3 +274,26 @@ fn a_borderless_box_is_on_its_background_throughout() {
         assert_eq!(b.get(x, 1).unwrap().bg, want, "x {x}");
     }
 }
+
+/// A message with more lines than u16 holds is clamped to it instead of
+/// overflowing (#1552), at the top and the bottom positions
+#[test]
+fn test_toast_line_count_near_u16_max() {
+    let message = vec!["a"; 65_534].join("\n");
+    for position in [ToastPosition::TopLeft, ToastPosition::BottomRight] {
+        let t = Toast::new(message.clone()).width(8).position(position);
+        let buffer = render(&t, 20, 5);
+        let rows: Vec<String> = (0..5).map(|y| row(&buffer, y)).collect();
+        // Pinned to the top, its bottom past the area, one column from the
+        // side it is on
+        let (pad, rest) = match position {
+            ToastPosition::TopLeft => (" ", " ".repeat(11)),
+            _ => (&" ".repeat(11)[..], " ".to_string()),
+        };
+        assert_eq!(rows[0], format!("{pad}╭──────╮{rest}"), "{position:?}");
+        assert_eq!(rows[1], format!("{pad}│ ℹ a  │{rest}"), "{position:?}");
+        for row in &rows[2..] {
+            assert_eq!(row, &format!("{pad}│   a  │{rest}"), "{position:?}");
+        }
+    }
+}

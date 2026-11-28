@@ -521,9 +521,80 @@ fn test_option_list_all_disabled() {
         .add_option(OptionItem::new("B").disabled(true))
         .focused(true);
 
+    // No option can be highlighted: every move leaves it where it is
+    for step in [
+        OptionList::highlight_next,
+        OptionList::highlight_last,
+        OptionList::highlight_previous,
+        OptionList::highlight_first,
+    ] {
+        step(&mut list);
+        assert_eq!(list.__test_highlighted(), 0);
+    }
+}
+
+/// A disabled option at either end is never highlighted (#1553)
+#[test]
+fn test_disabled_option_at_either_end_is_not_highlighted() {
+    // Last option disabled: Down and End stay on the last enabled one
+    let mut list = OptionList::new()
+        .option("A", "")
+        .add_option(OptionItem::new("B").disabled(true));
     list.highlight_next();
-    // Should move through all disabled options to the end
+    assert_eq!(list.__test_highlighted(), 0);
+    list.highlight_last();
+    assert_eq!(list.__test_highlighted(), 0);
+    assert_eq!(list.get_highlighted().unwrap().text, "A");
+
+    // First option disabled: Up and Home stay on the first enabled one
+    let mut list = OptionList::new()
+        .add_option(OptionItem::new("A").disabled(true))
+        .option("B", "");
+    list.select(1);
+    list.highlight_previous();
     assert_eq!(list.__test_highlighted(), 1);
+    list.highlight_first();
+    assert_eq!(list.__test_highlighted(), 1);
+
+    // Several disabled at both ends, with groups and separators between
+    let mut list = OptionList::new()
+        .add_option(OptionItem::new("A").disabled(true))
+        .group("G")
+        .add_option(OptionItem::new("B").disabled(true))
+        .option("C", "")
+        .separator()
+        .option("D", "")
+        .add_option(OptionItem::new("E").disabled(true))
+        .add_option(OptionItem::new("F").disabled(true));
+    let mut seen = Vec::new();
+    for key in [Key::Down, Key::Down, Key::End, Key::Up, Key::Up, Key::Home] {
+        list.handle_key(&key);
+        seen.push(list.__test_highlighted());
+    }
+    assert_eq!(seen, [3, 3, 3, 2, 2, 2]);
+}
+
+/// A list whose first option is disabled starts on the first enabled one
+#[test]
+fn test_initial_highlight_skips_a_disabled_first_option() {
+    let list = OptionList::new()
+        .add_option(OptionItem::new("A").disabled(true))
+        .add_option(OptionItem::new("B").disabled(true))
+        .option("C", "")
+        .option("D", "");
+    assert_eq!(list.__test_highlighted(), 2);
+    assert_eq!(list.get_highlighted().unwrap().text, "C");
+
+    // Enter selects it, not the disabled first option
+    let mut list = list;
+    assert!(list.handle_key(&Key::Enter));
+    assert_eq!(list.get_selected_value(), Some("C"));
+
+    // An enabled first option keeps the highlight
+    let list = OptionList::new()
+        .option("A", "")
+        .add_option(OptionItem::new("B").disabled(true));
+    assert_eq!(list.__test_highlighted(), 0);
 }
 
 #[test]

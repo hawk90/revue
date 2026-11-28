@@ -34,28 +34,31 @@ impl Popover {
         let has_border = self.popover_style.border_chars().is_some();
         let has_title = self.title.is_some();
 
-        // Terminal columns, not bytes: a wide glyph takes two cells.
-        let content_width = lines.iter().map(|l| display_width(l)).max().unwrap_or(0) as u16;
+        // Terminal columns, not bytes: a wide glyph takes two cells. Worked
+        // out in usize and clamped to the u16 the box is sized in: a count
+        // cast to u16 and then added to overflows near 65535 (#1552)
+        let content_width = lines.iter().map(|l| display_width(l)).max().unwrap_or(0);
         let title_width = self
             .title
             .as_ref()
-            .map(|t| display_width(t) as u16 + 2)
+            .map(|t| display_width(t).saturating_add(2))
             .unwrap_or(0);
         let text_width = content_width.max(title_width);
 
-        let chrome = if has_border { 4 } else { 2 };
+        let chrome: usize = if has_border { 4 } else { 2 };
         // No wider than the area, but wide enough for the widest line (at
         // least one column) even where the area is not: a wide glyph alone
         // on its line needs 2 (the box is cut at the area's edge); a title
         // wider than the box is cut at its edge
-        let width = (text_width + chrome)
+        let width = text_width
+            .saturating_add(chrome)
             .max(10)
-            .min(area_width.max(content_width.max(1) + chrome));
+            .min(usize::from(area_width).max(content_width.max(1).saturating_add(chrome)));
         // The title takes a row above the content in every style (#1046)
-        let height =
-            lines.len() as u16 + if has_border { 2 } else { 0 } + if has_title { 1 } else { 0 };
+        let height = lines.len() + if has_border { 2 } else { 0 } + if has_title { 1 } else { 0 };
 
-        (width, height.max(3))
+        let clamp = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
+        (clamp(width), clamp(height).max(3))
     }
 
     /// Where the box goes in an `area_width` x `area_height` area, and the
@@ -89,7 +92,7 @@ impl Popover {
         let shadow = u16::from(matches!(self.popover_style, PopoverStyle::Elevated));
         let placed = anchored::place(
             self.anchor_rect(),
-            (size.0 + shadow, size.1 + shadow),
+            (size.0.saturating_add(shadow), size.1.saturating_add(shadow)),
             sides,
             Align::Center,
             gap,

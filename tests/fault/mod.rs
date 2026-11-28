@@ -7,6 +7,7 @@
 //! The list can only shrink.
 
 pub mod concurrency;
+pub mod cpu_time;
 pub mod events;
 pub mod known_failures;
 pub mod output;
