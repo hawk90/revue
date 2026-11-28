@@ -101,7 +101,14 @@ impl TimeSeries {
         }
     }
 
-    /// Format a timestamp for display
+    /// Format a timestamp (Unix seconds) for display
+    ///
+    /// Times and dates are in UTC: `Days` is the UTC calendar date
+    /// (`MM/DD`) and `Months` the UTC year and month (`YYYY/MM`), with real
+    /// month lengths and leap years. A timestamp past the calendar's range
+    /// (9999-12-30 22:00:00 UTC) is printed as its Unix seconds in those
+    /// two formats. `Auto` picks the format from `range`, the span of the
+    /// time axis in seconds.
     pub fn format_time(&self, timestamp: u64, range: u64) -> String {
         let format = match self.time_format {
             Format::Auto => {
@@ -123,15 +130,25 @@ impl TimeSeries {
         let secs = timestamp % 60;
         let mins = (timestamp / 60) % 60;
         let hours = (timestamp / 3600) % 24;
-        let days = (timestamp / 86400) % 31;
-        let months = ((timestamp / 86400) / 30) % 12;
+        // The UTC calendar date, or None past jiff's range
+        let date = || {
+            let ts = jiff::Timestamp::from_second(i64::try_from(timestamp).ok()?).ok()?;
+            Some(jiff::tz::Offset::UTC.to_datetime(ts).date())
+        };
 
         match format {
             Format::Seconds => format!("{:02}:{:02}:{:02}", hours, mins, secs),
             Format::Minutes => format!("{:02}:{:02}", hours, mins),
             Format::Hours => format!("{:02}:00", hours),
-            Format::Days => format!("{:02}/{:02}", months + 1, days + 1),
-            Format::Months => format!("{}/{:02}", 1970 + timestamp / 31536000, months + 1),
+            // `Auto` was resolved to one of the formats above
+            Format::Days | Format::Auto => match date() {
+                Some(d) => format!("{:02}/{:02}", d.month(), d.day()),
+                None => timestamp.to_string(),
+            },
+            Format::Months => match date() {
+                Some(d) => format!("{}/{:02}", d.year(), d.month()),
+                None => timestamp.to_string(),
+            },
             Format::Unix => format!("{}", timestamp),
             Format::Relative => {
                 let now = std::time::SystemTime::now()
@@ -147,17 +164,6 @@ impl TimeSeries {
                     format!("{}h", diff / 3600)
                 } else {
                     format!("{}d", diff / 86400)
-                }
-            }
-            Format::Auto => {
-                if timestamp < 3600 {
-                    format!("{:02}:{:02}:{:02}", hours, mins, secs)
-                } else if timestamp < 86400 {
-                    format!("{:02}:{:02}", hours, mins)
-                } else if timestamp < 31536000 {
-                    format!("{:02}/{:02}", months + 1, days + 1)
-                } else {
-                    format!("{}/{:02}", 1970 + timestamp / 31536000, months + 1)
                 }
             }
         }
