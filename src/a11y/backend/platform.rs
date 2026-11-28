@@ -4,9 +4,8 @@ use crate::utils::accessibility::Priority;
 use crate::utils::lock::{read_or_recover, write_or_recover};
 #[cfg(target_os = "linux")]
 use crate::utils::shell::sanitize_string;
-use std::process::{Command, ExitStatus, Stdio};
+use std::process::Command;
 use std::sync::{Arc, RwLock};
-use std::thread::JoinHandle;
 
 use super::types::ScreenReader;
 
@@ -25,27 +24,7 @@ fn run_detached(cmd: Command) {
     #[cfg(test)]
     tests::record(&cmd);
     #[cfg(not(test))]
-    let _ = spawn_reaped(cmd);
-}
-
-/// Start `cmd` with null stdio and wait for it on its own thread; the
-/// handle yields the exit status.
-#[cfg_attr(
-    all(
-        not(test),
-        not(any(target_os = "macos", target_os = "windows", target_os = "linux"))
-    ),
-    allow(dead_code)
-)]
-fn spawn_reaped(mut cmd: Command) -> std::io::Result<JoinHandle<std::io::Result<ExitStatus>>> {
-    let mut child = cmd
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()?;
-    std::thread::Builder::new()
-        .name("revue-a11y-reaper".to_string())
-        .spawn(move || child.wait())
+    let _ = crate::utils::process::spawn_reaped(cmd);
 }
 
 /// macOS VoiceOver backend
@@ -440,35 +419,6 @@ mod tests {
         assert_eq!(ran.len(), 1);
         assert_eq!(ran[0][..2], ["powershell", "-Command"]);
         assert!(ran[0][2].ends_with("$synth.Speak('hi')"), "{ran:?}");
-    }
-
-    /// The child gets null stdin, stdout and stderr, and the returned
-    /// thread reaps it: joining yields its exit status
-    #[test]
-    #[cfg(unix)]
-    fn test_spawn_reaped_nulls_stdio_and_waits() {
-        let mut cmd = Command::new("sh");
-        cmd.arg("-c").arg(
-            "[ /dev/stdin -ef /dev/null ] && [ /dev/stdout -ef /dev/null ] \
-             && [ /dev/stderr -ef /dev/null ] && exit 7",
-        );
-        let status = spawn_reaped(cmd).unwrap().join().unwrap().unwrap();
-        assert_eq!(status.code(), Some(7));
-    }
-
-    #[test]
-    #[cfg(windows)]
-    fn test_spawn_reaped_waits() {
-        let mut cmd = Command::new("cmd");
-        cmd.args(["/C", "exit 7"]);
-        let status = spawn_reaped(cmd).unwrap().join().unwrap().unwrap();
-        assert_eq!(status.code(), Some(7));
-    }
-
-    #[test]
-    fn test_spawn_reaped_reports_a_missing_program() {
-        let cmd = Command::new("revue-no-such-program-937");
-        assert!(spawn_reaped(cmd).is_err());
     }
 
     // MacOSBackend tests

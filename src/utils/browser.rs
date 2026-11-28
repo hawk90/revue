@@ -15,7 +15,8 @@
 
 use std::path::Path;
 
-use std::process::Command;
+use std::process::{Command, ExitStatus};
+use std::thread::JoinHandle;
 
 /// Error type for browser operations
 #[derive(Debug, Clone, thiserror::Error)]
@@ -260,10 +261,21 @@ pub fn open_browser(url: &str) -> bool {
         return true;
     }
 
-    match opener(std::env::consts::OS, url) {
-        Some(mut cmd) => cmd.spawn().is_ok(),
-        None => false,
-    }
+    launch(opener(std::env::consts::OS, url)).is_ok()
+}
+
+/// Start an opener without waiting for it (#1551).
+///
+/// The opener gets none of the app's stdio, so what it prints (xdg-open
+/// warnings, a browser's messages) does not land on the terminal UI, and a
+/// thread waits for it, so it leaves no zombie behind. `None` (no opener on
+/// this platform) is an `Unsupported` error. Dropping the returned handle
+/// leaves the thread waiting; joining it yields the exit status.
+fn launch(cmd: Option<Command>) -> std::io::Result<JoinHandle<std::io::Result<ExitStatus>>> {
+    let cmd = cmd.ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::Unsupported, "Unsupported platform")
+    })?;
+    crate::utils::process::spawn_reaped(cmd)
 }
 
 /// The command that opens `target` with the default application on `os`
@@ -304,15 +316,9 @@ pub fn open_url(url: &str) -> Result<(), BrowserError> {
         return Ok(());
     }
 
-    let child = opener(std::env::consts::OS, url)
-        .ok_or_else(|| BrowserError::IoError("Unsupported platform".to_string()))?
-        .spawn()
-        .map_err(|e| BrowserError::IoError(e.to_string()))?;
-
-    // Detach - don't wait for browser to close
-    // Dropping the child detaches it (no wait() call)
-    drop(child);
-    Ok(())
+    launch(opener(std::env::consts::OS, url))
+        .map(drop)
+        .map_err(|e| BrowserError::IoError(e.to_string()))
 }
 
 /// Open a file with its default application
@@ -339,22 +345,8 @@ pub fn open_folder(path: &str) -> bool {
         return true;
     }
 
-    #[cfg(target_os = "macos")]
-    let result = Command::new("open").arg(path).spawn();
-
-    #[cfg(target_os = "linux")]
-    let result = Command::new("xdg-open").arg(path).spawn();
-
-    #[cfg(target_os = "windows")]
-    let result = Command::new("explorer").arg(path).spawn();
-
-    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    let result: Result<std::process::Child, std::io::Error> = Err(std::io::Error::new(
-        std::io::ErrorKind::Unsupported,
-        "Unsupported platform",
-    ));
-
-    result.is_ok()
+    // The file manager opens a folder like any other target
+    launch(opener(std::env::consts::OS, path)).is_ok()
 }
 
 /// Reveal a file in the system file manager (highlight the file)
@@ -374,29 +366,37 @@ pub fn reveal_in_finder(path: &str) -> bool {
         return true;
     }
 
-    #[cfg(target_os = "macos")]
-    let result = Command::new("open").args(["-R", path]).spawn();
+    launch(revealer(std::env::consts::OS, path)).is_ok()
+}
 
-    #[cfg(target_os = "linux")]
-    // Linux doesn't have a standard "reveal" - just open parent folder
-    let result = {
-        let parent = std::path::Path::new(path)
-            .parent()
-            .map(|p| p.to_string_lossy().into_owned())
-            .unwrap_or_else(|| path.to_string());
-        Command::new("xdg-open").arg(&parent).spawn()
+/// The command that shows `path` selected in the file manager on `os` (a
+/// value of [`std::env::consts::OS`]), or `None` on other platforms.
+///
+/// Linux has no standard "reveal": the parent folder is opened instead.
+fn revealer(os: &str, path: &str) -> Option<Command> {
+    let cmd = match os {
+        "macos" => {
+            let mut cmd = Command::new("open");
+            cmd.args(["-R", path]);
+            cmd
+        }
+        "linux" => {
+            let parent = Path::new(path)
+                .parent()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|| path.to_string());
+            let mut cmd = Command::new("xdg-open");
+            cmd.arg(parent);
+            cmd
+        }
+        "windows" => {
+            let mut cmd = Command::new("explorer");
+            cmd.args(["/select,", path]);
+            cmd
+        }
+        _ => return None,
     };
-
-    #[cfg(target_os = "windows")]
-    let result = Command::new("explorer").args(["/select,", path]).spawn();
-
-    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    let result: Result<std::process::Child, std::io::Error> = Err(std::io::Error::new(
-        std::io::ErrorKind::Unsupported,
-        "Unsupported platform",
-    ));
-
-    result.is_ok()
+    Some(cmd)
 }
 
 #[cfg(test)]
@@ -448,5 +448,64 @@ mod tests {
     #[test]
     fn other_platforms_have_no_opener() {
         assert!(opener("plan9", URL).is_none());
+        assert!(revealer("plan9", "/tmp/a.txt").is_none());
+    }
+
+    #[test]
+    fn reveal_selects_the_file_on_macos_and_windows() {
+        assert_eq!(
+            program_and_args(&revealer("macos", "/tmp/a b.txt").unwrap()),
+            (
+                "open".to_string(),
+                vec!["-R".to_string(), "/tmp/a b.txt".to_string()]
+            )
+        );
+        assert_eq!(
+            program_and_args(&revealer("windows", r"C:\a b.txt").unwrap()),
+            (
+                "explorer".to_string(),
+                vec!["/select,".to_string(), r"C:\a b.txt".to_string()]
+            )
+        );
+    }
+
+    /// Linux has no "reveal": the parent folder opens; the root opens
+    /// itself
+    #[test]
+    fn reveal_opens_the_parent_folder_on_linux() {
+        for (path, opened) in [("/tmp/dir/a.txt", "/tmp/dir"), ("/a.txt", "/"), ("/", "/")] {
+            assert_eq!(
+                program_and_args(&revealer("linux", path).unwrap()),
+                ("xdg-open".to_string(), vec![opened.to_string()]),
+                "{path}"
+            );
+        }
+    }
+
+    /// An opener runs with null stdin, stdout and stderr (nothing it prints
+    /// reaches the terminal UI) and is waited on: the handle yields its exit
+    /// status (#1551)
+    #[test]
+    #[cfg(unix)]
+    fn launch_nulls_stdio_and_reaps() {
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c").arg(
+            "[ /dev/stdin -ef /dev/null ] && [ /dev/stdout -ef /dev/null ] \
+             && [ /dev/stderr -ef /dev/null ] && exit 7",
+        );
+        let status = launch(Some(cmd)).unwrap().join().unwrap().unwrap();
+        assert_eq!(status.code(), Some(7));
+    }
+
+    #[test]
+    fn launch_without_an_opener_is_unsupported() {
+        let err = launch(None).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::Unsupported);
+        assert_eq!(err.to_string(), "Unsupported platform");
+    }
+
+    #[test]
+    fn launch_reports_a_missing_program() {
+        assert!(launch(Some(Command::new("revue-no-such-program-1551"))).is_err());
     }
 }

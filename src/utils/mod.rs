@@ -122,6 +122,7 @@ pub mod lock;
 pub mod once;
 pub mod overlay;
 pub mod path;
+pub(crate) mod process;
 pub mod profiler;
 pub mod scroll;
 pub mod selection;
