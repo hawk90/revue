@@ -5,14 +5,14 @@
 > This page keeps only the narrative: what Revue is for, and why it behaves the way it does.
 > Schema and update rules: [docs/specs/README.md](specs/README.md). API reference: [docs.rs/revue](https://docs.rs/revue).
 
-## Status summary (2026-11-23, counted from `docs/specs/features.yaml`)
+## Status summary (2026-11-28, counted from `docs/specs/features.yaml`)
 
 | | done | partial | todo | dropped | total |
 |---|---|---|---|---|---|
 | CSS (`CSS-*`) | 12 | 7 | 1 | 0 | 20 |
 | Layout (`LAY-*`) | 4 | 2 | 0 | 0 | 6 |
 | Reactivity (`RX-*`) | 5 | 0 | 0 | 0 | 5 |
-| Widgets (`WID-*`) | 44 | 3 | 1 | 0 | 48 |
+| Widgets (`WID-*`) | 44 | 4 | 1 | 0 | 49 |
 | Charts (`CHART-*`) | 8 | 0 | 0 | 0 | 8 |
 | Navigation (`NAV-*`) | 3 | 0 | 0 | 0 | 3 |
 | Unicode (`TEXT-*`) | 3 | 1 | 1 | 0 | 5 |
@@ -20,7 +20,7 @@
 | Theming (`THEME-*`) | 2 | 0 | 1 | 0 | 3 |
 | Keyboard & clipboard (`KEY-*`) | 3 | 1 | 0 | 0 | 4 |
 | Utilities (`UTIL-*`) | 10 | 0 | 0 | 0 | 10 |
-| **Total** | **97** | **15** | **4** | **0** | **116** |
+| **Total** | **97** | **16** | **4** | **0** | **117** |
 
 Known gaps worth knowing before you build on them: CSS `transparent` paints black, `opacity` /
 `z-index` / `position` are parsed but not applied, CSS transitions are not triggered by state changes,
