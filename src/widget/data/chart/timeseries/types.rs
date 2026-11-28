@@ -18,14 +18,23 @@ impl TimePoint {
     }
 
     /// Create from current time
+    ///
+    /// The time is [`clock::wall_now`](crate::utils::clock::wall_now), so a
+    /// [`MockTime`](crate::testing::MockTime) with a wall clock fixes it.
     pub fn now(value: f64) -> Self {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        Self { timestamp, value }
+        Self {
+            timestamp: unix_now(),
+            value,
+        }
     }
+}
+
+/// The time of day in Unix seconds, 0 before 1970
+pub(super) fn unix_now() -> u64 {
+    crate::utils::clock::wall_now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
 }
 
 /// A series of time-based data points

@@ -7,27 +7,65 @@
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
+use revue::render::Modifier;
 use revue::style::Color;
+use revue::testing::MockTime;
+use revue::utils::clock::MockClockGuard;
 use revue::widget::traits::RenderContext;
 use revue::widget::View;
 use revue::widget::{
     date_picker, datetime_picker, time_picker, Date, DateTime, DateTimeFormat, DateTimeMode,
     DateTimePicker, FirstDayOfWeek, Time,
 };
+use std::time::{Duration, UNIX_EPOCH};
 
 // =============================================================================
 // 생성자 및 빌더 테스트 (Constructor and Builder Tests)
 // =============================================================================
 
+/// A mock clock at 2024-02-29 09:41:07 UTC, five hours west of UTC
+fn leap_day_morning() -> (MockTime, MockClockGuard) {
+    let time = MockTime::new();
+    time.set_wall_clock(UNIX_EPOCH + Duration::from_secs(1_709_199_667), -5 * 3600);
+    let guard = time.install();
+    (time, guard)
+}
+
+fn rows(picker: &DateTimePicker, w: u16, h: u16) -> (Buffer, Vec<String>) {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    picker.render(&mut ctx);
+    let rows = (0..h)
+        .map(|y| (0..w).map(|x| buffer.get(x, y).unwrap().symbol).collect())
+        .collect();
+    (buffer, rows)
+}
+
 #[test]
 fn test_datetime_picker_new() {
+    let (_time, _clock) = leap_day_morning();
     let picker = DateTimePicker::new();
     assert_eq!(picker.get_mode(), DateTimeMode::Date);
-    assert_eq!(picker.get_date(), Date::today());
-    let mut buffer = Buffer::new(30, 15);
-    let area = Rect::new(0, 0, 30, 15);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    picker.render(&mut ctx);
+    assert_eq!(picker.get_date(), Date::new(2024, 2, 29));
+    assert_eq!(picker.get_time(), Time::new(4, 41, 7), "09:41:07 at -05:00");
+    let (buffer, rows) = rows(&picker, 30, 15);
+    assert_eq!(rows[0], "        February 2024         ");
+    assert_eq!(rows[6], " 25 26 27 28 29               ");
+    assert_eq!(rows[10], " 04:41                        ");
+    // The 29th is the day under the cursor; the days around it are not.
+    for x in [13, 14] {
+        let cell = buffer.get(x, 6).unwrap();
+        assert_eq!(cell.fg, Some(Color::BLACK), "column {x}");
+        assert!(cell.modifier.contains(Modifier::BOLD), "column {x}");
+    }
+    for x in [10, 11] {
+        let cell = buffer.get(x, 6).unwrap();
+        assert_ne!(cell.fg, Some(Color::BLACK), "the 28th, column {x}");
+        assert!(
+            !cell.modifier.contains(Modifier::BOLD),
+            "the 28th, column {x}"
+        );
+    }
 }
 
 #[test]

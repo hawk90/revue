@@ -33008,6 +33008,7 @@ pub fn revue::testing::MockTime::install(&self) -> revue::utils::clock::MockCloc
 pub fn revue::testing::MockTime::new() -> Self
 pub fn revue::testing::MockTime::reset(&self)
 pub fn revue::testing::MockTime::set(&self, core::time::Duration)
+pub fn revue::testing::MockTime::set_wall_clock(&self, std::time::SystemTime, i32)
 impl core::clone::Clone for revue::testing::MockTime
 pub fn revue::testing::MockTime::clone(&self) -> Self
 impl core::default::Default for revue::testing::MockTime
@@ -33699,6 +33700,7 @@ pub fn revue::testing::MockTime::install(&self) -> revue::utils::clock::MockCloc
 pub fn revue::testing::MockTime::new() -> Self
 pub fn revue::testing::MockTime::reset(&self)
 pub fn revue::testing::MockTime::set(&self, core::time::Duration)
+pub fn revue::testing::MockTime::set_wall_clock(&self, std::time::SystemTime, i32)
 impl core::clone::Clone for revue::testing::MockTime
 pub fn revue::testing::MockTime::clone(&self) -> Self
 impl core::default::Default for revue::testing::MockTime
@@ -35647,6 +35649,7 @@ impl core::panic::unwind_safe::RefUnwindSafe for revue::utils::clock::MockClockG
 impl core::panic::unwind_safe::UnwindSafe for revue::utils::clock::MockClockGuard
 pub fn revue::utils::clock::now() -> std::time::Instant
 pub fn revue::utils::clock::since(std::time::Instant) -> core::time::Duration
+pub fn revue::utils::clock::wall_now() -> std::time::SystemTime
 pub mod revue::utils::color
 pub mod revue::utils::color::semantic
 pub const revue::utils::color::semantic::ERROR: revue::runtime::style::Color

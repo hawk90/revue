@@ -367,6 +367,30 @@ stopwatch.update();
 assert_eq!(stopwatch.elapsed_millis(), 1234);
 ```
 
+The time of day is separate: without more, it stays the real one even while
+the mock is installed. `set_wall_clock` fixes it at an instant and a UTC offset
+(seconds east of UTC, so the date does not depend on the machine's time zone),
+and from then on advancing the mock moves it too. `Date::today`, `Time::now`,
+`DateTimePicker::new`, the range picker presets, time-series ranges and
+time-travel snapshots read it; a custom widget reads it through
+`revue::utils::clock::wall_now`.
+
+```rust
+use revue::testing::mock_time;
+use revue::widget::{Date, Time};
+use std::time::{Duration, UNIX_EPOCH};
+
+let time = mock_time();
+// 2024-12-31 23:30 UTC, one hour east of UTC: already 00:30 on New Year's Day
+time.set_wall_clock(UNIX_EPOCH + Duration::from_secs(1_735_687_800), 3600);
+let _clock = time.install();
+assert_eq!(Date::today(), Date::new(2025, 1, 1));
+assert_eq!(Time::now(), Time::new(0, 30, 0));
+
+time.advance_secs(24 * 3600);
+assert_eq!(Date::today(), Date::new(2025, 1, 2));
+```
+
 ### MockState
 
 Track state changes:
