@@ -4,7 +4,9 @@ use super::LogViewer;
 use crate::widget::data::log_viewer::entry::LogEntry;
 
 impl LogViewer {
-    /// Load log content from string (parses each line)
+    /// Load log content from string (parses each line). Past
+    /// [`max_entries`](Self::max_entries) only the last entries are kept,
+    /// as when they are pushed.
     pub fn load(&mut self, content: &str) {
         self.entries.clear();
         self.ids.clear();
@@ -18,6 +20,7 @@ impl LogViewer {
                 self.next_id += 1;
             }
         }
+        self.drop_oldest();
         self.update_search();
         self.sync_view();
         self.reveal_selected();
@@ -46,14 +49,7 @@ impl LogViewer {
         self.ids.push(self.next_id);
         self.next_id += 1;
 
-        if self.max_entries > 0 && self.entries.len() > self.max_entries {
-            let excess = self.entries.len() - self.max_entries;
-            let shown = self.entries[..excess]
-                .iter()
-                .filter(|entry| self.filter.matches(entry))
-                .count();
-            self.entries.drain(0..excess);
-            self.ids.drain(0..excess);
+        if let Some(shown) = self.drop_oldest() {
             // The rows on screen stay put while older ones go
             self.scroll.rows_removed(0, shown);
         }
@@ -63,6 +59,22 @@ impl LogViewer {
         }
 
         self.sync_view();
+    }
+
+    /// Drop the oldest entries past `max_entries` (0: no limit), and say
+    /// how many of them the filter showed (`None`: nothing dropped)
+    fn drop_oldest(&mut self) -> Option<usize> {
+        if self.max_entries == 0 || self.entries.len() <= self.max_entries {
+            return None;
+        }
+        let excess = self.entries.len() - self.max_entries;
+        let shown = self.entries[..excess]
+            .iter()
+            .filter(|entry| self.filter.matches(entry))
+            .count();
+        self.entries.drain(0..excess);
+        self.ids.drain(0..excess);
+        Some(shown)
     }
 
     /// Clear all entries

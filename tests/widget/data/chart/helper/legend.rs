@@ -72,3 +72,26 @@ fn test_chart_legend_taller_than_plot() {
     let buffer = render(&chart, 30, 8);
     assert!(count_char(&buffer, '■') >= 1);
 }
+
+/// A legend of more series than u16 holds is clamped to it and clipped to
+/// the plot instead of overflowing (#1552)
+#[test]
+fn test_chart_legend_series_count_near_u16_max() {
+    let series: Vec<Series> = (0..65_534).map(|_| Series::new("s")).collect();
+    let chart = plain().legend(LegendPosition::TopLeft).series_vec(series);
+    let buffer = render(&chart, 40, 10);
+    let rows = rows(&buffer);
+    // The box is cut at the plot's bottom; the entries stop a row above it
+    assert_eq!(&rows[1][9..], "┌───┐                          ");
+    for row in &rows[2..7] {
+        assert_eq!(&row[9..], "│■ s│                          ", "{row:?}");
+    }
+    assert_eq!(&rows[7][9..], "│   │                          ");
+    for y in 2..7 {
+        assert_eq!(
+            buffer.get(12, y).unwrap().fg,
+            Some(revue::style::Color::WHITE),
+            "y={y}"
+        );
+    }
+}

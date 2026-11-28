@@ -11,6 +11,8 @@ struct LineLayout {
     x: u16,
     y: u16,
     line_num_width: u16,
+    /// The columns a line number is right-aligned in
+    digits: usize,
     content_width: usize,
 }
 
@@ -68,6 +70,21 @@ impl DiffViewer {
         rows.into_iter().skip(offset).take(height)
     }
 
+    /// The columns a line number is right-aligned in: at least four, more
+    /// when the largest number has more digits, so a column is never cut
+    /// and every row lines up (#1555)
+    fn number_digits(&self) -> usize {
+        let widest = self
+            .diff_lines
+            .iter()
+            .flat_map(|line| [line.left_num, line.right_num])
+            .flatten()
+            .max()
+            .unwrap_or(0);
+        let digits = widest.checked_ilog10().map_or(1, |log| log + 1) as usize;
+        digits.max(4)
+    }
+
     /// Draw a fold row across the width
     fn render_fold(&self, ctx: &mut RenderContext, y: u16, hidden: usize) {
         let text = format!("⋯ {hidden} unchanged lines");
@@ -87,7 +104,15 @@ impl DiffViewer {
         }
 
         let half_width = (area.width / 2).saturating_sub(1);
-        let line_num_width = if self.show_line_numbers { 5 } else { 0 };
+        // The digits and a space after them, cut at the half's edge
+        let digits = self.number_digits();
+        let line_num_width = if self.show_line_numbers {
+            u16::try_from(digits + 1)
+                .unwrap_or(u16::MAX)
+                .min(half_width)
+        } else {
+            0
+        };
         let content_width = half_width.saturating_sub(line_num_width) as usize;
 
         // Header
@@ -110,6 +135,7 @@ impl DiffViewer {
                 x: 0,
                 y,
                 line_num_width,
+                digits,
                 content_width,
             };
             self.render_line_half(ctx, line, true, &left_layout);
@@ -124,6 +150,7 @@ impl DiffViewer {
                 x: half_width + 1,
                 y,
                 line_num_width,
+                digits,
                 content_width,
             };
             self.render_line_half(ctx, line, false, &right_layout);
@@ -142,6 +169,7 @@ impl DiffViewer {
             x,
             y,
             line_num_width,
+            digits,
             content_width,
         } = *layout;
         let (content, line_num, bg) = if is_left {
@@ -169,8 +197,8 @@ impl DiffViewer {
         // Line number
         if self.show_line_numbers {
             let num_str = line_num
-                .map(|n| format!("{:>4}", n))
-                .unwrap_or_else(|| "    ".to_string());
+                .map(|n| format!("{n:>digits$}"))
+                .unwrap_or_else(|| " ".repeat(digits));
             for (i, ch) in num_str.chars().enumerate() {
                 if i as u16 >= line_num_width {
                     break;
@@ -249,8 +277,14 @@ impl DiffViewer {
     /// Render unified view
     fn render_unified(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let line_num_width = if self.show_line_numbers { 10u16 } else { 0 };
-        let content_width = area.width.saturating_sub(line_num_width + 1) as usize;
+        // Both numbers, a colon between them and a space after
+        let digits = self.number_digits();
+        let line_num_width = if self.show_line_numbers {
+            u16::try_from(2 * digits + 2).unwrap_or(u16::MAX)
+        } else {
+            0
+        };
+        let content_width = area.width.saturating_sub(line_num_width.saturating_add(1)) as usize;
 
         let visible_lines = area.height as usize;
         for (i, row) in self.scrolled(self.rows(), visible_lines).enumerate() {
@@ -266,7 +300,7 @@ impl DiffViewer {
             // Line numbers (left:right)
             if self.show_line_numbers {
                 let num_str = format!(
-                    "{:>4}:{:<4}",
+                    "{:>digits$}:{:<digits$}",
                     line.left_num.map(|n| n.to_string()).unwrap_or_default(),
                     line.right_num.map(|n| n.to_string()).unwrap_or_default()
                 );

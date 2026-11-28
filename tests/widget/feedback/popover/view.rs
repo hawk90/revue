@@ -449,3 +449,40 @@ fn a_wide_glyph_gets_its_two_columns_in_an_area_too_narrow_for_them() {
         assert!(buffer.get(4, y).unwrap().bg.is_some(), "row {y}");
     }
 }
+
+/// `n` one-letter lines: the popover's box is `n` rows plus its chrome
+fn lines(n: usize) -> String {
+    vec!["a"; n].join("\n")
+}
+
+/// A box taller than u16 holds is clamped to it instead of overflowing
+/// (#1552): 65535 lines and the border, or 65533 lines, the border and the
+/// elevated shadow, to the right of an anchor in a small area
+#[test]
+fn test_popover_line_count_near_u16_max() {
+    for (n, style) in [
+        (65_535, PopoverStyle::Default),
+        (65_533, PopoverStyle::Elevated),
+    ] {
+        let p = Popover::new(lines(n))
+            .popover_style(style)
+            .position(PopoverPosition::Right)
+            .anchor(0, 0)
+            .open(true);
+        let mut buffer = Buffer::new(20, 5);
+        p.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 5)));
+        let rows: Vec<String> = (0..5).map(|y| row(&buffer, y)).collect();
+        // Pinned to the top, its bottom past the area
+        assert_eq!(rows[0], " ┌────────┐         ", "{style:?}");
+        for row in &rows[1..] {
+            assert_eq!(row, " │ a      │         ", "{style:?}");
+        }
+        // The elevated shadow runs down the column right of the box
+        let shadow = Color::rgb(15, 15, 15);
+        for y in 0..5 {
+            let bg = buffer.get(11, y).unwrap().bg;
+            let expected = (style == PopoverStyle::Elevated && y > 0).then_some(shadow);
+            assert_eq!(bg, expected, "{style:?} y={y}");
+        }
+    }
+}
