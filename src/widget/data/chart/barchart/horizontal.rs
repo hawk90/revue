@@ -1,9 +1,11 @@
-//! Horizontal bars: label, bar and value on each bar's first row
+//! Horizontal bars: label, bar and value on each bar's first row; `…` under
+//! the last label when bars are left out
 
 use super::BarChart;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::char_width;
+use crate::widget::data::chart::chart_render::fit_items;
 use crate::widget::traits::RenderContext;
 
 impl BarChart {
@@ -32,12 +34,14 @@ impl BarChart {
             .width
             .saturating_sub(label_width.saturating_add(2).saturating_add(value_width));
 
-        let mut y = 0u16;
-        for bar in &self.bars {
-            if y >= area.height {
-                break;
-            }
+        // A bar is drawn when its first row fits; bars that do not fit are
+        // left out, and `…` in the label column takes the first row of the
+        // first one's slot
+        let slot = self.bar_width.saturating_add(self.gap);
+        let (shown, marker) = fit_items(self.bars.len(), slot, 1, area.height);
 
+        let mut y = 0u16;
+        for bar in self.bars.iter().take(shown) {
             // Calculate bar length (use absolute value for rendering)
             let bar_length = if max_value > 0.0 {
                 ((bar.value.abs() / max_value) * bar_area_width as f64) as u16
@@ -53,7 +57,7 @@ impl BarChart {
 
             // Render for each row of bar_width
             for row in 0..self.bar_width {
-                if y + row >= area.height {
+                if y.saturating_add(row) >= area.height {
                     break;
                 }
 
@@ -103,7 +107,13 @@ impl BarChart {
                 }
             }
 
-            y = y.saturating_add(self.bar_width).saturating_add(self.gap);
+            y = y.saturating_add(slot);
+        }
+
+        // Right-aligned like the labels
+        if let Some(marker_y) = marker {
+            let marker_x = label_width.saturating_sub(1).min(area.width - 1);
+            ctx.set(marker_x, marker_y, Cell::new('…'));
         }
     }
 }

@@ -4,6 +4,7 @@ use super::group::BoxGroup;
 use super::stats::WhiskerStyle;
 use crate::layout::Rect;
 use crate::style::Color;
+use crate::widget::data::chart::chart_render::fit_items;
 
 /// Box plot rendering state
 pub struct BoxPlotRender<'a> {
@@ -41,6 +42,20 @@ impl<'a> BoxPlotRender<'a> {
             notched,
             group_count: groups.len(),
         }
+    }
+
+    /// The groups along `extent` cells of the category axis: how many are
+    /// drawn, the band each one gets, and, when groups are left out, the
+    /// offset of the cell that shows `…`. Every group needs a cell; when
+    /// they do not all get one, each drawn group gets one and the last cell
+    /// shows `…`.
+    pub fn group_bands(&self, extent: u16) -> (usize, u16, Option<u16>) {
+        let (shown, marker) = fit_items(self.group_count, 1, 1, extent);
+        let band = match (marker, shown) {
+            (None, 1..) => extent / shown as u16,
+            _ => 1,
+        };
+        (shown, band, marker)
     }
 
     /// Get color for group at index
