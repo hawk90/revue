@@ -151,6 +151,10 @@ impl StatusIndicator {
     /// It replaces the status's default label (`"Online"`, `"Busy"`, ...) in
     /// every style that draws a label. With the default [`StatusStyle::Dot`]
     /// it is drawn after the dot, as [`StatusStyle::DotWithLabel`] draws it.
+    ///
+    /// After a dot the label is in the secondary text color, since the dot
+    /// shows the status color; [`StatusStyle::LabelOnly`] draws it in the
+    /// status color, as it has no dot.
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.custom_label = Some(label.into());
         self

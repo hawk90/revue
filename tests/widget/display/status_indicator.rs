@@ -331,6 +331,24 @@ mod labels {
         assert_eq!(drawn_width(&cells), 5);
     }
 
+    /// After a dot the label is in the secondary text color (the dot shows
+    /// the status); with no dot, LabelOnly draws it in the status color
+    /// (#1589)
+    #[test]
+    fn the_label_color_depends_on_whether_a_dot_shows_the_status() {
+        for status in [Status::Online, Status::Busy, Status::Custom(Color::MAGENTA)] {
+            let dotted = StatusIndicator::new(status).label("Hi");
+            assert_eq!(row(&dotted), dot_then(status, "Hi"), "{status:?} dot");
+
+            let alone = StatusIndicator::new(status)
+                .indicator_style(StatusStyle::LabelOnly)
+                .label("Hi");
+            let mut expected = vec![('H', Some(status.color())), ('i', Some(status.color()))];
+            expected.resize(usize::from(WIDTH), (' ', None));
+            assert_eq!(row(&alone), expected, "{status:?} label only");
+        }
+    }
+
     #[test]
     fn measure_matches_what_each_style_draws() {
         let styles = [
