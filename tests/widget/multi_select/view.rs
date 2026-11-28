@@ -707,8 +707,11 @@ fn three_tags(width: u16, lefts: usize) -> String {
 fn tags_scrolled_off_to_the_left_are_marked() {
     // Width 14 leaves 12 columns before the arrow. The marker is "…", one
     // column, and a space after it (#1599).
-    assert_eq!(three_tags(14, 1), "… [cc]       ▼");
-    assert_eq!(three_tags(14, 2), "… [bb] [cc]  ▼");
+    // As many tags as fit, ending at the cursor's (#1608): bb fits before
+    // cc (was "… [cc]       ▼")
+    assert_eq!(three_tags(14, 1), "… [bb] [cc]  ▼");
+    // On bb, aa fits before it and " …" after it
+    assert_eq!(three_tags(14, 2), "[aa] [bb] …  ▼");
     // Width 10 leaves 8: a marker, a tag and a marker
     assert_eq!(three_tags(10, 2), "… [bb] … ▼");
 }
@@ -743,6 +746,93 @@ fn the_tag_under_the_cursor_stays_in_view_after_the_marker() {
     v.handle_key(&Key::Left); // d
     v.handle_key(&Key::Left); // c
     assert_eq!(row(&render_in(&v, 14, 1), 0), "… [b] [c] …  ▼");
+}
+
+// #1608: as many tags as fit, ending at the cursor's tag
+
+/// Three selected tags, drawn after every Left press, the rows in order.
+fn rows_per_left(labels: [&str; 3], width: u16) -> Vec<String> {
+    use revue::event::Key;
+    let mut v = MultiSelect::new().options(labels.to_vec()).width(width);
+    v.select_all();
+    (0..3)
+        .map(|_| {
+            v.handle_key(&Key::Left);
+            row(&render_in(&v, width, 1), 0)
+        })
+        .collect()
+}
+
+#[test]
+fn every_left_press_shows_as_many_tags_as_fit_up_to_the_cursor() {
+    // 12 columns before the arrow; drawn after every press, so the row
+    // moves from where the last one left it
+    assert_eq!(
+        rows_per_left(["aa", "bb", "cc"], 14),
+        ["… [bb] [cc]  ▼", "[aa] [bb] …  ▼", "[aa] [bb] …  ▼"]
+    );
+    // Exactly at the limit: "… [bb] [cc]" is 11 columns of 11
+    assert_eq!(rows_per_left(["aa", "bb", "cc"], 13)[0], "… [bb] [cc] ▼");
+    // One column short: cc alone after the marker
+    assert_eq!(rows_per_left(["aa", "bb", "cc"], 12)[0], "… [cc]     ▼");
+}
+
+#[test]
+fn wide_tags_fill_the_row_up_to_the_cursor() {
+    // Hangul tags are 6 columns; 15 columns before the arrow hold
+    // "… [다라] [마바]" exactly (the row used to start at 마바)
+    let b = {
+        use revue::event::Key;
+        let mut v = MultiSelect::new()
+            .options(vec!["가나", "다라", "마바"])
+            .width(17);
+        v.select_all();
+        v.handle_key(&Key::Left);
+        render_in(&v, 17, 1)
+    };
+    let cells: Vec<(u16, char)> = vec![
+        (0, '…'),
+        (1, ' '),
+        (2, '['),
+        (3, '다'),
+        (5, '라'),
+        (7, ']'),
+        (8, ' '),
+        (9, '['),
+        (10, '마'),
+        (12, '바'),
+        (14, ']'),
+        (16, '▼'),
+    ];
+    for (x, ch) in cells {
+        assert_eq!(b.get(x, 0).unwrap().symbol, ch, "x={x} in {:?}", row(&b, 0));
+    }
+    // The cursor's tag in its colors, the other in the tag colors
+    assert_eq!(bg(&b, 9, 0), Some(CURSOR_TAG_BG));
+    assert_eq!(bg(&b, 2, 0), Some(TAG_BG));
+}
+
+#[test]
+fn the_row_stays_put_when_the_cursor_leaves_the_tags() {
+    use revue::event::Key;
+    let mut v = MultiSelect::new().options(vec!["aa", "bb", "cc"]).width(14);
+    v.select_all();
+    v.handle_key(&Key::Left); // cc
+    assert_eq!(row(&render_in(&v, 14, 1), 0), "… [bb] [cc]  ▼");
+    v.handle_key(&Key::Right); // off the tags
+    assert_eq!(v.get_tag_cursor(), None);
+    // The row starts at bb, as it did (it used to start at cc)
+    assert_eq!(row(&render_in(&v, 14, 1), 0), "… [bb] [cc]  ▼");
+}
+
+#[test]
+fn the_tags_up_to_the_cursor_fill_an_area_at_an_offset() {
+    use revue::event::Key;
+    let mut v = MultiSelect::new().options(vec!["aa", "bb", "cc"]).width(14);
+    v.select_all();
+    v.handle_key(&Key::Left);
+    let b = render_at(&v, 20, 3, Rect::new(4, 1, 14, 1));
+    assert_eq!(cols(&b, 1, 0, 20), "    … [bb] [cc]  ▼  ");
 }
 
 // =========================================================================
