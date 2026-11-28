@@ -30,16 +30,19 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Get version
         id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          if [ -n "${{ inputs.version }}" ]; then
-            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          if [ -n "$INPUT_VERSION" ]; then
+            echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
           else
-            VERSION=$(cat .release-please-manifest.json | jq -r '."."')
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            VERSION=$(jq -r '."."' .release-please-manifest.json)
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           fi
       - name: Update revue-macros version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
           sed -i "s/^version = .*/version = \"$VERSION\"/" revue-macros/Cargo.toml
           cat revue-macros/Cargo.toml
       - name: Publish revue-macros
@@ -60,16 +63,19 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Get version
         id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          if [ -n "${{ inputs.version }}" ]; then
-            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          if [ -n "$INPUT_VERSION" ]; then
+            echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
           else
-            VERSION=$(cat .release-please-manifest.json | jq -r '."."')
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            VERSION=$(jq -r '."."' .release-please-manifest.json)
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           fi
       - name: Update Cargo.toml dependency
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
           sed -i "s/revue-macros = { path = \"revue-macros\", version = \".*\" }/revue-macros = { path = \"revue-macros\", version = \"$VERSION\" }/" Cargo.toml
           grep revue-macros Cargo.toml
       - name: Wait for revue-macros in the crates.io index

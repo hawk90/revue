@@ -350,7 +350,9 @@ pub use form::{
     RichTextEditor, TextFormat, ToolbarAction, ValidationState,
 };
 #[cfg(feature = "image")]
-pub use image::{image_from_file, try_image_from_file, Image, ImageError, ImageResult, ScaleMode};
+pub use image::{
+    image_from_file, try_image_from_file, Image, ImageError, ImageFormat, ImageResult, ScaleMode,
+};
 pub use link::{link, url_link, Link, LinkStyle};
 #[cfg(feature = "markdown")]
 pub use markdown::{markdown, Markdown};

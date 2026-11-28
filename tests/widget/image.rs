@@ -8,6 +8,7 @@ use revue::widget::traits::View;
 use revue::widget::try_image_from_file;
 use revue::widget::Image;
 use revue::widget::ImageError;
+use revue::widget::ImageFormat;
 use revue::widget::ScaleMode;
 
 #[test]
@@ -159,20 +160,15 @@ fn test_scale_mode_copy() {
     assert_eq!(m2, ScaleMode::Stretch);
 }
 
+/// `get_format` returns a type users can name (#1200), one per source.
 #[test]
-fn test_image_format_clone() {
-    let img = Image::from_rgb(vec![0; 3], 1, 1);
-    let fmt = img.get_format();
-    let cloned = fmt;
-    assert_eq!(fmt, cloned);
-}
-
-#[test]
-fn test_image_format_copy() {
-    let img = Image::from_rgba(vec![0; 4], 1, 1);
-    let f1 = img.get_format();
-    let f2 = f1; // ImageFormat implements Copy
-    assert_eq!(f1, f2);
+fn test_image_format_is_nameable_per_source() {
+    let rgb: ImageFormat = Image::from_rgb(vec![0; 3], 1, 1).get_format();
+    assert_eq!(rgb, ImageFormat::Rgb);
+    let rgba: ImageFormat = Image::from_rgba(vec![0; 4], 1, 1).get_format();
+    assert_eq!(rgba, ImageFormat::Rgba);
+    let copied = rgba; // ImageFormat implements Copy
+    assert_eq!(rgba, copied);
 }
 
 #[test]

@@ -28,7 +28,7 @@ fn run_detached(cmd: Command) {
 }
 
 /// macOS VoiceOver backend
-pub struct MacOSBackend {
+pub(crate) struct MacOSBackend {
     available: bool,
 }
 
@@ -97,7 +97,7 @@ impl ScreenReader for MacOSBackend {
 }
 
 /// Windows Narrator/NVDA backend
-pub struct WindowsBackend {
+pub(crate) struct WindowsBackend {
     available: bool,
 }
 
@@ -158,7 +158,7 @@ impl ScreenReader for WindowsBackend {
 }
 
 /// Linux AT-SPI backend (Orca, etc.)
-pub struct LinuxBackend {
+pub(crate) struct LinuxBackend {
     available: bool,
 }
 
@@ -236,6 +236,10 @@ pub struct LoggingBackend {
 }
 
 /// A logged announcement for testing
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): test announcements with `revue::utils::take_announcements` or `revue::a11y::A11yTestRunner`"
+)]
 #[derive(Clone, Debug)]
 pub struct LoggedAnnouncement {
     /// The message that was announced
@@ -304,7 +308,7 @@ impl ScreenReader for LoggingBackend {
 }
 
 /// Null backend (no-op)
-pub struct NullBackend;
+pub(crate) struct NullBackend;
 
 impl ScreenReader for NullBackend {
     fn announce(&self, _message: &str, _priority: Priority) {
