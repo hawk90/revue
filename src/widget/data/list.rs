@@ -147,6 +147,12 @@ impl<T: Display> View for List<T> {
             let mut x = 0u16;
 
             for ch in text.chars() {
+                // A zero-width char (a combining mark, VS16) takes no
+                // column, as in `draw_text`
+                let char_width = crate::utils::unicode::char_width(ch) as u16;
+                if char_width == 0 {
+                    continue;
+                }
                 if x >= area.width {
                     break;
                 }
@@ -162,9 +168,7 @@ impl<T: Display> View for List<T> {
 
                 // `set` writes a wide glyph's continuation with its style
                 ctx.set(x, y, cell);
-
-                let char_width = crate::utils::unicode::char_width(ch).max(1) as u16;
-                x += char_width;
+                x = x.saturating_add(char_width);
             }
 
             // Fill rest of line for selected item

@@ -1376,3 +1376,27 @@ fn test_select_toggle_closed_clears_the_query() {
     assert_eq!(s.query(), "");
     assert_eq!(s.visible_count(), 3);
 }
+
+/// An option 65532 columns wide plus the 4 header columns saturates at
+/// u16::MAX instead of wrapping to an auto width of 0 (a subtraction panic
+/// in debug when drawn): the header fills an area at an offset, every cell
+/// on the select background, and nothing outside it (#1617)
+#[test]
+fn test_select_option_wider_than_u16_fills_the_area() {
+    let s = Select::new().option("x".repeat(65_532)).bg(Color::BLUE);
+    assert_eq!(s.measure(u16::MAX, 1), Some((u16::MAX, 1)));
+    assert_eq!(s.measure(12, 1), Some((12, 1)));
+
+    let mut buffer = Buffer::new(16, 3);
+    s.render(&mut RenderContext::new(&mut buffer, Rect::new(2, 1, 12, 1)));
+    let rows = rows_of(&buffer);
+    assert_eq!(rows[1], format!("  ▼ {}  ", "x".repeat(10)));
+    for x in 2..14 {
+        assert_eq!(buffer.get(x, 1).unwrap().bg, Some(Color::BLUE), "{x}");
+    }
+    for x in [0, 1, 14, 15] {
+        assert_eq!(buffer.get(x, 1).unwrap().bg, None, "{x}");
+    }
+    assert_eq!(rows[0], " ".repeat(16));
+    assert_eq!(rows[2], " ".repeat(16));
+}

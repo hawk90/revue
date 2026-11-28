@@ -7,7 +7,8 @@ mod state;
 
 use super::dropdown::MIN_DROPDOWN_WIDTH;
 use crate::style::Color;
-use crate::utils::{display_width, EditState, ScrollState, Selection};
+use crate::utils::unicode::display_width_u16;
+use crate::utils::{EditState, ScrollState, Selection};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -186,15 +187,18 @@ impl Select {
             return cached.min(max_width);
         }
 
-        let max_option_len = self
-            .options
-            .iter()
-            .map(|o| display_width(o))
-            .max()
-            .unwrap_or(display_width(&self.placeholder));
+        self.auto_width().min(max_width)
+    }
 
-        // +4 for "▼ " prefix and " " suffix and border
-        ((max_option_len + 4) as u16).min(max_width)
+    /// The widest option (or the placeholder) plus 4 columns for the
+    /// "▼ " prefix, the " " suffix and the border, saturating at u16::MAX
+    fn auto_width(&self) -> u16 {
+        self.options
+            .iter()
+            .map(|o| display_width_u16(o))
+            .max()
+            .unwrap_or(display_width_u16(&self.placeholder))
+            .saturating_add(4)
     }
 
     /// Pre-compute and cache auto width (call after options change)
@@ -202,13 +206,7 @@ impl Select {
         if self.width.is_some() {
             return;
         }
-        let max_option_len = self
-            .options
-            .iter()
-            .map(|o| display_width(o))
-            .max()
-            .unwrap_or(display_width(&self.placeholder));
-        self.cached_auto_width = Some((max_option_len + 4) as u16);
+        self.cached_auto_width = Some(self.auto_width());
     }
 }
 

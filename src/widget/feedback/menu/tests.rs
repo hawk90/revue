@@ -1,5 +1,6 @@
 //! Tests for MenuItem and Menu
 
+use super::list::step;
 use super::types::{Menu, MenuItem};
 
 #[test]
@@ -92,4 +93,22 @@ fn test_menu_items() {
         MenuItem::new("Paste"),
     ]);
     assert_eq!(m.items.len(), 3);
+}
+
+/// A selection left past the end (the items were replaced by fewer) steps
+/// up from the last item, not from one past it (#1532)
+#[test]
+fn test_step_up_from_past_the_end() {
+    let items: Vec<MenuItem> = ["a", "b", "c"].into_iter().map(MenuItem::new).collect();
+    for wrap in [false, true] {
+        assert_eq!(step(&items, 3, -1, wrap), 1);
+        assert_eq!(step(&items, 10, -1, wrap), 1);
+    }
+    // A separator above the last item is skipped on the way up
+    let with_separator = vec![
+        MenuItem::new("a"),
+        MenuItem::separator(),
+        MenuItem::new("c"),
+    ];
+    assert_eq!(step(&with_separator, 3, -1, false), 0);
 }

@@ -28,4 +28,11 @@ impl Histogram {
             bin.count as f64
         }
     }
+
+    /// The cells a bar of `value` fills along `cells` cells, the maximum
+    /// filling all of them: the one mapping the bars and the count labels
+    /// share (#1624)
+    pub(super) fn bar_cells(&self, value: f64, cells: u16) -> u16 {
+        (((value / self.max_value()) * f64::from(cells)) as u16).min(cells)
+    }
 }

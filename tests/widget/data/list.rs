@@ -373,6 +373,33 @@ fn test_list_render_with_offset() {
     assert_eq!(cell.symbol, 'B');
 }
 
+/// A zero-width char took a column of its own, pushing the rest of the item
+/// right and the last glyph off a full row (#1621): it takes none, as in
+/// `draw_text`. In an area at an offset the selected row's highlight still
+/// covers every column of the area and nothing outside it.
+#[test]
+fn test_list_render_zero_width_chars_take_no_column() {
+    let list = List::new(vec!["e\u{301}x", "가\u{200b}나", "abcd\u{301}e"]).selected(0);
+    let mut buffer = Buffer::new(9, 5);
+    list.render(&mut RenderContext::new(&mut buffer, Rect::new(2, 1, 5, 3)));
+    let row = |y| -> String { (0..9).map(|x| buffer.get(x, y).unwrap().symbol).collect() };
+    assert_eq!(row(0), " ".repeat(9));
+    assert_eq!(row(1), "  ex     ");
+    // A wide glyph's second cell holds '\0'
+    assert_eq!(row(2), "  가\0나\0   ");
+    assert_eq!(row(3), "  abcde  ");
+    assert_eq!(row(4), " ".repeat(9));
+    for x in 0..9 {
+        let bg = if (2..7).contains(&x) {
+            Some(Color::BLUE)
+        } else {
+            None
+        };
+        assert_eq!(buffer.get(x, 1).unwrap().bg, bg, "{x}");
+        assert_eq!(buffer.get(x, 2).unwrap().bg, None, "{x}");
+    }
+}
+
 // =============================================================================
 // StyledView/CSS Tests
 // =============================================================================

@@ -12,9 +12,6 @@ fi
 if [ -f rust-toolchain.toml ] && command -v rustup >/dev/null 2>&1; then
   rustup show active-toolchain >/dev/null   # installs the pinned toolchain on first use
 fi
-if command -v corepack >/dev/null 2>&1; then
-  corepack enable >/dev/null 2>&1 || true   # honors "packageManager" in package.json
-fi
 
 scripts/sync-deps.sh --all
 

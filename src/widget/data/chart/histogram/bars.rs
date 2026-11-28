@@ -16,7 +16,6 @@ impl Histogram {
         let x_min = self.bins.first().map(|b| b.start).unwrap_or(0.0);
         let x_max = self.bins.last().map(|b| b.end).unwrap_or(1.0);
         let x_range = (x_max - x_min).max(1.0);
-        let y_max = self.max_value();
 
         let mut cumulative_sum = 0.0;
 
@@ -29,8 +28,7 @@ impl Histogram {
             let bar_x_end = ((bin.end - x_min) / x_range * chart_area.width as f64) as u16;
             let bar_width = (bar_x_end - bar_x_start).max(1);
 
-            let bar_height = ((value / y_max) * chart_area.height as f64) as u16;
-            let bar_height = bar_height.min(chart_area.height);
+            let bar_height = self.bar_cells(value, chart_area.height);
 
             // Draw bar
             for dx in 0..bar_width {
@@ -73,7 +71,6 @@ impl Histogram {
         let x_min = self.bins.first().map(|b| b.start).unwrap_or(0.0);
         let x_max = self.bins.last().map(|b| b.end).unwrap_or(1.0);
         let x_range = (x_max - x_min).max(1.0);
-        let y_max = self.max_value();
 
         let mut cumulative_sum = 0.0;
 
@@ -86,8 +83,7 @@ impl Histogram {
             let bar_y_end = ((bin.end - x_min) / x_range * chart_area.height as f64) as u16;
             let bar_thickness = bar_y_end.saturating_sub(bar_y_start).max(1);
 
-            let bar_length = ((value / y_max) * chart_area.width as f64) as u16;
-            let bar_length = bar_length.min(chart_area.width);
+            let bar_length = self.bar_cells(value, chart_area.width);
 
             // Draw bar
             for dy in 0..bar_thickness {

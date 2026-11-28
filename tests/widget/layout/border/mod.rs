@@ -866,6 +866,36 @@ mod wide_titles {
             assert_eq!(buffer.get(x, 1).unwrap().fg, Some(Color::BLUE), "{x}");
         }
     }
+
+    /// A side title of 65535 glyphs plus its padding does not overflow (a
+    /// panic in debug, #1617): taller than any edge, it is not drawn, and
+    /// the left and right borders of an area at an offset keep every cell
+    #[test]
+    fn too_tall_side_title_leaves_the_border() {
+        for title in [
+            BorderTitle::new("g".repeat(65_535)).left(),
+            BorderTitle::new("g".repeat(65_535)).right(),
+            BorderTitle::new("g".repeat(65_534)).left().padding(1),
+        ] {
+            let mut buffer = Buffer::new(10, 6);
+            let area = Rect::new(2, 1, 6, 4);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            render_border(&mut ctx, area, Color::BLUE);
+            draw_border_title(&mut ctx, area, &title);
+            let row = |y| -> String { (0..10).map(|x| buffer.get(x, y).unwrap().symbol).collect() };
+            assert_eq!(row(0), " ".repeat(10));
+            assert_eq!(row(1), "  ┌────┐  ");
+            assert_eq!(row(2), "  │    │  ");
+            assert_eq!(row(3), "  │    │  ");
+            assert_eq!(row(4), "  └────┘  ");
+            assert_eq!(row(5), " ".repeat(10));
+            for y in 2..4 {
+                for x in [2, 7] {
+                    assert_eq!(buffer.get(x, y).unwrap().fg, Some(Color::BLUE), "{x},{y}");
+                }
+            }
+        }
+    }
 }
 
 mod view;

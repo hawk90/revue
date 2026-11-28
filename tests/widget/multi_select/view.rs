@@ -134,6 +134,33 @@ fn test_display_width_capped_by_max() {
     assert_eq!(rendered_width(&select, 20), 20);
 }
 
+/// A label 65532 columns wide plus the 4 header columns saturates at
+/// u16::MAX instead of wrapping to an auto width of 0: the header fills an
+/// area at an offset, its arrow in the area's last column, every cell on the
+/// header background, and nothing outside it (#1617)
+#[test]
+fn test_display_width_label_wider_than_u16() {
+    let select = MultiSelect::new().options(vec!["x".repeat(65_532)]);
+    assert_eq!(select.measure(u16::MAX, 1), Some((u16::MAX, 1)));
+    assert_eq!(select.measure(12, 1), Some((12, 1)));
+
+    let buffer = render_at(&select, 16, 3, Rect::new(2, 1, 12, 1));
+    let row: String = (0..16).map(|x| buffer.get(x, 1).unwrap().symbol).collect();
+    assert_eq!(row, "  Select...  ▼  ");
+    for x in 2..14 {
+        assert_eq!(buffer.get(x, 1).unwrap().bg, Some(BG), "{x}");
+    }
+    for x in [0, 1, 14, 15] {
+        assert_eq!(buffer.get(x, 1).unwrap().bg, None, "{x}");
+    }
+    for y in [0, 2] {
+        assert!(
+            (0..16).all(|x| buffer.get(x, y).unwrap().symbol == ' '),
+            "{y}"
+        );
+    }
+}
+
 // Placement: empty, narrow and offset areas; inline and overlay paths
 
 /// One widget in each state the header and dropdown draw differently

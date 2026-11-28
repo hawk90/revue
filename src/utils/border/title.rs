@@ -252,8 +252,11 @@ pub fn draw_border_title(ctx: &mut RenderContext, area: Rect, title: &BorderTitl
                     .chars()
                     .filter(|&ch| crate::utils::unicode::char_width(ch) > 0)
             };
-            let text_len = glyphs().count() as u16;
-            let total_height = text_len + title.pad_start + title.pad_end;
+            // Clamped once: a title past 65535 glyphs never fits anyway
+            let text_len = u16::try_from(glyphs().count()).unwrap_or(u16::MAX);
+            let total_height = text_len
+                .saturating_add(title.pad_start)
+                .saturating_add(title.pad_end);
 
             if total_height > available {
                 return;
