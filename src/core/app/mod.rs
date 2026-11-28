@@ -124,9 +124,11 @@ pub use router::{
     router, routes, HistoryEntry, NavigationEvent, QueryParams, Route, RouteBuilder, RouteParams,
     Router,
 };
+#[allow(deprecated)] // kept re-exported until 4.0 so users see the warning
+pub use screen::Transition;
 pub use screen::{
     screen_manager, simple_screen, Screen, ScreenConfig, ScreenEvent, ScreenId, ScreenManager,
-    ScreenMode, ScreenResult, SimpleScreen, Transition,
+    ScreenMode, ScreenResult, SimpleScreen,
 };
 pub use snapshot::{snapshot, Snapshot, SnapshotConfig, SnapshotResult};
 

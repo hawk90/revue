@@ -1,7 +1,9 @@
 //! Screen manager core implementation
 
+#[allow(deprecated)] // Transition
+use super::types::Transition;
 use super::types::{
-    Screen, ScreenConfig, ScreenData, ScreenEvent, ScreenId, ScreenMode, ScreenResult, Transition,
+    Screen, ScreenConfig, ScreenData, ScreenEvent, ScreenId, ScreenMode, ScreenResult,
 };
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -20,6 +22,7 @@ struct StackEntry {
 }
 
 /// Active transition state
+#[allow(deprecated)] // Transition
 struct TransitionState {
     /// Transition type (for future animation interpolation)
     _transition: Transition,
@@ -141,6 +144,7 @@ impl ScreenManager {
         screen.on_event(ScreenEvent::Focus);
 
         // Start transition if configured
+        #[allow(deprecated)] // the transition fields
         if config.enter_transition != Transition::None {
             self.transition = Some(TransitionState {
                 _transition: config.enter_transition,
@@ -351,16 +355,27 @@ impl ScreenManager {
             }
         }
 
-        // Apply transition effect if active
-        // (In a real implementation, we'd modify rendering based on transition state)
+        // Screen transitions are not drawn (deprecated, #845)
     }
 
     /// Get transition progress (for custom rendering)
+    ///
+    /// The time since the last push of a screen with an enter transition,
+    /// over its duration; nothing draws it
+    #[deprecated(
+        since = "3.17.0",
+        note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+    )]
     pub fn transition_progress(&self) -> Option<f32> {
         self.transition.as_ref().map(|t| t.progress())
     }
 
-    /// Check if transitioning
+    /// Check if transitioning: whether the timer of
+    /// [`transition_progress`](Self::transition_progress) is running
+    #[deprecated(
+        since = "3.17.0",
+        note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+    )]
     pub fn is_transitioning(&self) -> bool {
         self.transition.is_some()
     }
@@ -378,6 +393,7 @@ impl Default for ScreenManager {
 }
 
 #[cfg(test)]
+#[allow(deprecated)] // the transition API
 mod tests {
     use super::*;
     use crate::core::app::screen::types::ScreenConfig;

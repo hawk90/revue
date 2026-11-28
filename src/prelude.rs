@@ -383,6 +383,8 @@ pub use crate::utils::profiler::{
 pub use crate::Result;
 
 // Constants
+#[allow(deprecated)] // kept re-exported until 4.0 so users see the warning
+pub use crate::constants::SCREEN_TRANSITION_DURATION;
 pub use crate::constants::{
     // Animation durations
     ANIMATION_DEFAULT_DURATION,
@@ -401,8 +403,6 @@ pub use crate::constants::{
     MESSAGE_LONG_DURATION,
     MESSAGE_QUICK_DURATION,
     POLL_IMMEDIATE,
-    // Screen transitions
-    SCREEN_TRANSITION_DURATION,
     // Stagger
     STAGGER_DELAY_DEFAULT,
     // Tick rates

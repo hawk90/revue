@@ -1562,7 +1562,7 @@ items:
       - src/core/app/router.rs::push
     source:
       - FEATURES.md §5 Navigation / Screen Routing
-    notes: Doc shows the plain signal pattern; a Router also exists (docs/guides/routing.md).
+    notes: Doc shows the plain signal pattern; a Router also exists (docs/guides/routing.md). The screen stacks (core::app::ScreenManager, widget::ScreenStack) store screen transitions but never draw them; those are deprecated in 3.17 (#845).
   - id: NAV-002
     title: 'Focus management: Tab ring in document order, click-to-focus'
     area: navigation

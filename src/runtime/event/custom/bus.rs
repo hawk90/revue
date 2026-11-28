@@ -24,7 +24,8 @@ pub struct EventRecord {
     pub id: EventId,
     /// Event type name
     pub event_type: &'static str,
-    /// Timestamp
+    /// When the event was emitted: the time of day from
+    /// [`clock::wall_now`](crate::utils::clock::wall_now)
     pub timestamp: SystemTime,
     /// Was cancelled
     pub cancelled: bool,
@@ -87,7 +88,7 @@ impl CustomEventBus {
             history.push_back(EventRecord {
                 id: result.event_id,
                 event_type: E::event_type(),
-                timestamp: SystemTime::now(),
+                timestamp: crate::utils::clock::wall_now(),
                 cancelled: result.cancelled,
                 handler_count: result.handler_count,
             });

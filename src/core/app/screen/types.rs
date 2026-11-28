@@ -35,6 +35,14 @@ impl std::fmt::Display for ScreenId {
 }
 
 /// Screen transition type
+///
+/// Stored in [`ScreenConfig`] but never drawn: [`ScreenManager`](super::ScreenManager)
+/// draws each screen as it is, and pops a screen at once.
+#[deprecated(
+    since = "3.17.0",
+    note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+)]
+#[allow(deprecated)] // its own derived Default
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Transition {
     /// No transition
@@ -115,15 +123,30 @@ pub enum ScreenResult {
 pub type ScreenData = Box<dyn Any + Send + Sync>;
 
 /// Screen configuration
+#[allow(deprecated)] // the transition fields
 #[derive(Clone, Debug)]
 pub struct ScreenConfig {
     /// Screen mode
     pub mode: ScreenMode,
-    /// Entry transition
+    /// Entry transition: never drawn
+    #[deprecated(
+        since = "3.17.0",
+        note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+    )]
     pub enter_transition: Transition,
-    /// Exit transition
+    /// Exit transition: never drawn
+    #[deprecated(
+        since = "3.17.0",
+        note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+    )]
     pub exit_transition: Transition,
-    /// Transition duration
+    /// Transition duration: how long
+    /// [`ScreenManager::is_transitioning`](super::ScreenManager::is_transitioning)
+    /// stays true after a push
+    #[deprecated(
+        since = "3.17.0",
+        note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+    )]
     pub transition_duration: Duration,
     /// Whether screen can be dismissed with Escape
     pub dismissable: bool,
@@ -131,6 +154,7 @@ pub struct ScreenConfig {
     pub title: Option<String>,
 }
 
+#[allow(deprecated)] // the transition fields
 impl Default for ScreenConfig {
     fn default() -> Self {
         Self {
@@ -150,7 +174,8 @@ impl ScreenConfig {
         Self::default()
     }
 
-    /// Create modal config
+    /// Create modal config (its fade transition is not drawn)
+    #[allow(deprecated)] // the transition fields
     pub fn modal() -> Self {
         Self {
             mode: ScreenMode::Modal,
@@ -160,7 +185,8 @@ impl ScreenConfig {
         }
     }
 
-    /// Create popup config
+    /// Create popup config (its fade transition is not drawn)
+    #[allow(deprecated)] // the transition fields
     pub fn popup() -> Self {
         Self {
             mode: ScreenMode::Popup,
@@ -177,7 +203,12 @@ impl ScreenConfig {
         self
     }
 
-    /// Set transitions
+    /// Set transitions, which are not drawn
+    #[deprecated(
+        since = "3.17.0",
+        note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+    )]
+    #[allow(deprecated)] // the transition fields
     pub fn transitions(mut self, enter: Transition, exit: Transition) -> Self {
         self.enter_transition = enter;
         self.exit_transition = exit;
@@ -185,6 +216,11 @@ impl ScreenConfig {
     }
 
     /// Set transition duration
+    #[deprecated(
+        since = "3.17.0",
+        note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+    )]
+    #[allow(deprecated)] // the transition fields
     pub fn duration(mut self, duration: Duration) -> Self {
         self.transition_duration = duration;
         self
@@ -240,6 +276,7 @@ pub trait Screen: Send + Sync {
 }
 
 #[cfg(test)]
+#[allow(deprecated)] // the transition API
 mod tests {
     use super::*;
 

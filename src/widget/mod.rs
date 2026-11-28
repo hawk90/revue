@@ -287,6 +287,8 @@ pub use display::{
     TagStyle, Text,
 };
 // Layout widgets (re-exported from layout module)
+#[allow(deprecated)] // kept re-exported until 4.0 so users see the warning
+pub use layout::ScreenTransition;
 pub use layout::{
     accordion, border, card, collapsible, dock, draw_border, grid, grid_item, grid_template,
     hsplit, hstack, layer, layers, pane, positioned, resizable, screen, screen_stack, scroll,
@@ -295,9 +297,9 @@ pub use layout::{
     AccordionSection, Anchor, Border, BorderType, Card, CardVariant, CollapseMode, Collapsible,
     Direction, Dock, DockPosition, DockState, FlattenedItem, Grid, GridAlign, GridItem,
     GridPlacement, HSplit, Layers, Pane, Positioned, Resizable, ResizeDirection, ResizeHandle,
-    ResizeStyle, Screen, ScreenStack, ScreenTransition, ScrollView, Scrollbar, Sidebar,
-    SidebarItem, SidebarSection, SplitOrientation, SplitState, SplitView, Splitter, SplitterStyle,
-    Stack, Tab, TabBar, TabState, TabView, Tabs, TrackSize, VSplit,
+    ResizeStyle, Screen, ScreenStack, ScrollView, Scrollbar, Sidebar, SidebarItem, SidebarSection,
+    SplitOrientation, SplitState, SplitView, Splitter, SplitterStyle, Stack, Tab, TabBar, TabState,
+    TabView, Tabs, TrackSize, VSplit,
 };
 // Input widgets (re-exported from input_widgets module)
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};

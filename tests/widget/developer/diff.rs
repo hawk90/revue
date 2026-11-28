@@ -1024,8 +1024,170 @@ fn test_diff_modified_pair_with_five_digit_numbers() {
     );
 }
 
+// Blanks between two changed words join the change, as delta draws it (#1593)
+
+/// A blank between two changed words is part of one changed run on each
+/// line, in every mode
+#[test]
+fn test_diff_blank_between_changed_words_joins_the_change() {
+    let (old, new_line) = ("one two three four\n", "one 2 3 four\n");
+    let viewer = plain(old, new_line, DiffMode::Unified);
+    let b = draw_in(&viewer, 30, 3, Rect::new(0, 0, 30, 3));
+    assert_runs(
+        &b,
+        0,
+        0,
+        &[gone("-"), same("one "), gone("two three"), same(" four")],
+        11,
+    );
+    assert_runs(
+        &b,
+        0,
+        1,
+        &[new("+"), same("one "), new("2 3"), same(" four")],
+        17,
+    );
+    assert_runs(&b, 0, 2, &[], 30);
+
+    let c = colors();
+    let viewer = plain(old, new_line, DiffMode::Inline);
+    let b = draw_in(&viewer, 30, 2, Rect::new(0, 0, 30, 2));
+    assert_runs(
+        &b,
+        0,
+        0,
+        &[
+            ("~", Some(c.added_fg), Some(c.modified_bg)),
+            same("one "),
+            gone("two three"),
+            new("2 3"),
+            same(" four"),
+        ],
+        8,
+    );
+    assert_runs(&b, 0, 1, &[], 30);
+
+    let viewer = plain(old, new_line, DiffMode::Split);
+    let b = draw_in(&viewer, 40, 3, Rect::new(0, 0, 40, 3));
+    assert_runs(
+        &b,
+        0,
+        1,
+        &[same("one "), gone("two three"), same(" four"), same(" ")],
+        0,
+    );
+    assert_eq!(b.get(19, 1).unwrap().symbol, '│');
+    assert_runs(
+        &b,
+        20,
+        1,
+        &[same("one "), new("2 3"), same(" four"), same("       ")],
+        1,
+    );
+}
+
+/// Blanks at the start and the end of a line stay shared, and so does
+/// shared text that is not only blanks
+#[test]
+fn test_diff_blanks_at_the_ends_and_punctuation_stay_shared() {
+    let viewer = plain(
+        "  alpha two three  \n",
+        "  alpha 2 3  \n",
+        DiffMode::Unified,
+    );
+    let b = draw_in(&viewer, 24, 2, Rect::new(0, 0, 24, 2));
+    assert_runs(
+        &b,
+        0,
+        0,
+        &[gone("-"), same("  alpha "), gone("two three"), same("  ")],
+        4,
+    );
+    assert_runs(
+        &b,
+        0,
+        1,
+        &[new("+"), same("  alpha "), new("2 3"), same("  ")],
+        10,
+    );
+
+    let viewer = plain("f(a, b)\n", "f(c, d)\n", DiffMode::Unified);
+    let b = draw_in(&viewer, 10, 2, Rect::new(0, 0, 10, 2));
+    assert_runs(
+        &b,
+        0,
+        0,
+        &[
+            gone("-"),
+            same("f("),
+            gone("a"),
+            same(", "),
+            gone("b"),
+            same(")"),
+        ],
+        2,
+    );
+    assert_runs(
+        &b,
+        0,
+        1,
+        &[
+            new("+"),
+            same("f("),
+            new("c"),
+            same(", "),
+            new("d"),
+            same(")"),
+        ],
+        2,
+    );
+}
+
+/// Hangul words around a joined blank: every column of the run, the
+/// continuation cells included, has the change colors
+#[test]
+fn test_diff_blank_joined_between_wide_glyphs() {
+    let viewer = plain("하나 둘 셋 넷\n", "하나 2 3 넷\n", DiffMode::Unified);
+    let b = draw_in(&viewer, 20, 2, Rect::new(0, 0, 20, 2));
+    assert_runs(
+        &b,
+        0,
+        0,
+        &[gone("-"), same("하나 "), gone("둘 셋"), same(" 넷")],
+        5,
+    );
+    assert_runs(
+        &b,
+        0,
+        1,
+        &[new("+"), same("하나 "), new("2 3"), same(" 넷")],
+        8,
+    );
+}
+
+/// The right edge of an area at an offset cuts a joined run right after
+/// its blank: the blank keeps the change colors
+#[test]
+fn test_diff_joined_blank_cut_at_the_right_edge() {
+    let viewer = plain("one two three four\n", "one 2 3 four\n", DiffMode::Unified);
+    let b = draw_in(&viewer, 14, 4, Rect::new(2, 1, 9, 2));
+    assert_runs(&b, 0, 1, &[], 2);
+    assert_runs(&b, 2, 1, &[gone("-"), same("one "), gone("two ")], 3);
+    assert_runs(
+        &b,
+        2,
+        2,
+        &[new("+"), same("one "), new("2 3"), same(" ")],
+        3,
+    );
+    for y in [0, 3] {
+        assert_runs(&b, 0, y, &[], 14);
+    }
+}
+
 /// Pairing compares lines two by two, so one change stops pairing after
-/// 10 000 comparisons: past that its lines stay removed and added
+/// 10 000 comparisons, a guard against quadratic time on a huge change:
+/// past that its lines stay removed and added
 #[test]
 fn test_diff_pairing_stops_at_the_comparison_limit() {
     let text = |others: usize| {
