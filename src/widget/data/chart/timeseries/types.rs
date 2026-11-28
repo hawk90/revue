@@ -129,7 +129,10 @@ pub enum TimeFormat {
     Months,
     /// Unix timestamp
     Unix,
-    /// Relative (e.g., "5m ago")
+    /// Time before now in its largest whole unit, without "ago" to save
+    /// room on the axis: `"42s"`, `"5m"`, `"3h"`, `"2d"`. Now is the
+    /// wall clock ([`MockTime`](crate::testing::MockTime) with a wall
+    /// clock fixes it); a time after now reads `"0s"`.
     Relative,
 }
 
