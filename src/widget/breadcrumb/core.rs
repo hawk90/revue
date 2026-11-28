@@ -417,20 +417,19 @@ impl Breadcrumb {
         if n < 2 {
             return (1, None);
         }
-        let first = crate::utils::display_width(&self.items[0].label);
         // Keeping the last two hides something only past three items
-        let candidates = [(n > 3).then(|| n - 2), (n > 2).then(|| n - 1)];
-        for start in candidates.into_iter().flatten() {
-            if self.trail_columns(start, first) <= max_width {
-                return (start, None);
-            }
+        let first = crate::utils::display_width(&self.items[0].label);
+        if n > 3 && self.trail_columns(n - 2, first) <= max_width {
+            return (n - 2, None);
         }
+        // The last one alone; the first label gets the room the rest leaves
+        // (all of it when it fits, unchanged)
         let start = if n > 2 { n - 1 } else { 1 };
         let room = max_width
             .saturating_sub(self.trail_columns(start, 0))
             .max(1);
         let label = crate::utils::unicode::truncate_with_ellipsis(&self.items[0].label, room);
-        (start, Some(label))
+        (start, (label != self.items[0].label).then_some(label))
     }
 }
 
