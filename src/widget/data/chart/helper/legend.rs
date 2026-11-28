@@ -4,7 +4,7 @@ use super::render::PlotLayout;
 use super::Chart;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::char_width;
+use crate::utils::display_width;
 use crate::widget::data::chart::chart_common::LegendPosition;
 use crate::widget::theme::DARK_GRAY;
 use crate::widget::traits::RenderContext;
@@ -21,12 +21,13 @@ impl Chart {
         } = *plot;
         if !matches!(self.legend, LegendPosition::None) && !self.series.is_empty() {
             // Sized in usize and clamped to u16: a count cast to u16 and
-            // then added to overflows near 65535 (#1552)
+            // then added to overflows near 65535 (#1552). Names in
+            // terminal columns, not bytes (#1564)
             let clamp = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
             let legend_width = clamp(
                 self.series
                     .iter()
-                    .map(|s| s.name.len().saturating_add(4))
+                    .map(|s| display_width(&s.name).saturating_add(4))
                     .max()
                     .unwrap_or(10),
             );
@@ -82,27 +83,36 @@ impl Chart {
                 }
             }
 
-            // Draw legend entries, one per row above the plot's last row
-            let label_end = legend_x.saturating_add(legend_width).saturating_sub(1);
-            let rows = legend_y.saturating_add(1)..plot_bottom.saturating_sub(1);
+            // Draw legend entries, one per row down to the plot's bottom
+            // (#1565)
+            // Names stop at the box's right border, or at the plot's edge
+            // where the box is cut there, so they never cross the chart's
+            // border (#1564)
+            let label_end = legend_x
+                .saturating_add(legend_width)
+                .saturating_sub(1)
+                .min(plot_right);
+            let rows = legend_y.saturating_add(1)..plot_bottom;
             for (y, series) in rows.zip(&self.series) {
                 // Color indicator
                 let mut indicator = Cell::new('■');
                 indicator.fg = Some(series.color);
                 ctx.set(legend_x.saturating_add(1), y, indicator);
 
-                // Series name
-                let mut x = legend_x.saturating_add(3);
-                for ch in series.name.chars() {
-                    if x >= label_end {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(chrome);
-                    cell.bg = self.bg_color.or(Some(Color::rgb(20, 20, 20)));
-                    ctx.set(x, y, cell);
-                    x = x.saturating_add(char_width(ch) as u16);
-                }
+                // Series name, in terminal columns: a wide glyph that
+                // would cross the right border is not drawn (#1564)
+                let bg = self.bg_color.or(Some(Color::rgb(20, 20, 20)));
+                ctx.put_str_with(
+                    legend_x.saturating_add(3),
+                    y,
+                    &series.name,
+                    label_end,
+                    |ch| {
+                        let mut cell = Cell::new(ch).fg(chrome);
+                        cell.bg = bg;
+                        cell
+                    },
+                );
             }
         }
     }

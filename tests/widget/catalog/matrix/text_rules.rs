@@ -192,12 +192,7 @@ const DERIVED: &[(&str, &str)] = &[
 ];
 
 /// Known bugs of the width rule
-const WIDTH_BUGS: &[(&str, &str)] = &[
-    ("Chart", "#1527: legend box sized in bytes"),
-    ("PieChart", "#1527: legend box sized in bytes"),
-    ("ScatterChart", "#1527: legend box sized in bytes"),
-    ("TimeSeries", "#1527: legend steps one column per char"),
-];
+const WIDTH_BUGS: &[(&str, &str)] = &[("TimeSeries", "#1527: legend steps one column per char")];
 
 #[test]
 fn a_wide_text_lays_out_like_a_narrow_one() {
