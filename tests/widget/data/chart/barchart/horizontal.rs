@@ -128,13 +128,87 @@ fn test_barchart_long_labels_truncated() {
     assert!(!rows[0].contains("Very"));
 }
 
+/// Three bars, one row each with a one-row gap: A at 0, B at 2, C at 4
+fn abc() -> BarChart {
+    BarChart::new()
+        .bar("A", 1.0)
+        .bar("B", 1.0)
+        .bar("C", 1.0)
+        .show_values(false)
+}
+
 #[test]
-fn test_barchart_rows_beyond_area_are_dropped() {
-    let chart = BarChart::new().bar("A", 1.0).bar("B", 1.0).bar("C", 1.0);
-    let rows = render_rows(&chart, 20, 3);
-    assert!(rows[0].starts_with('A'));
-    assert!(rows[2].starts_with('B'));
-    assert!(!rows.iter().any(|r| r.contains('C')));
+fn test_barchart_rows_that_exactly_fit_have_no_marker() {
+    // Bar area: 6 - (1 + 2) = 3 columns
+    let rows = render_rows(&abc(), 6, 5);
+    assert_eq!(rows, ["A ███ ", "      ", "B ███ ", "      ", "C ███ "]);
+    // A bar whose first row fits is drawn, its other rows clipped
+    let rows = render_rows(&abc().bar_width(2).gap(0), 6, 5);
+    assert_eq!(rows, ["A ███ ", "  ███ ", "B ███ ", "  ███ ", "C ███ "]);
+}
+
+#[test]
+fn test_barchart_rows_beyond_area_are_marked() {
+    // C would start on row 4: the `…` stands in the first left-out bar's
+    // place, the first row of its slot, so B gives its slot to it
+    let rows = render_rows(&abc(), 6, 4);
+    assert_eq!(rows, ["A ███ ", "      ", "…     ", "      "]);
+    let rows = render_rows(&abc(), 6, 3);
+    assert_eq!(rows, ["A ███ ", "      ", "…     "]);
+    // Two-row bars: C would start on row 4 of 4
+    let rows = render_rows(&abc().bar_width(2).gap(0), 6, 4);
+    assert_eq!(rows, ["A ███ ", "  ███ ", "…     ", "      "]);
+}
+
+#[test]
+fn test_barchart_one_row_shows_only_the_marker() {
+    assert_eq!(render_rows(&abc(), 6, 1), ["…     "]);
+}
+
+#[test]
+fn test_barchart_marker_is_right_aligned_with_the_labels() {
+    let chart = BarChart::new()
+        .bar("Mon", 1.0)
+        .bar("Tue", 1.0)
+        .label_width(4)
+        .gap(0)
+        .show_values(false);
+    let buffer = render(&chart, 8, 1);
+    assert_eq!(super::super::rows(&buffer), ["   …    "]);
+    // Styled like the labels: no color of its own
+    assert_eq!(buffer.get(3, 0).unwrap().fg, None);
+}
+
+#[test]
+fn test_barchart_far_too_many_and_more_than_65535_rows() {
+    for n in [1000, 70_000] {
+        let chart = BarChart::new()
+            .data((0..n).map(|_| ("x", 1.0)))
+            .gap(0)
+            .show_values(false);
+        let rows = render_rows(&chart, 4, 20);
+        assert_eq!(rows[..19], vec!["x █ "; 19][..], "{n}");
+        assert_eq!(rows[19], "…   ", "{n}");
+    }
+}
+
+#[test]
+fn test_barchart_wide_labels_above_the_marker() {
+    let chart = BarChart::new()
+        .data([("한글", 1.0), ("글", 1.0), ("자", 1.0)])
+        .gap(0)
+        .show_values(false);
+    let buffer = render(&chart, 12, 2);
+    let at = |x, y| buffer.get(x, y).unwrap().symbol;
+    // Label column 4 wide; the `…` sits under the labels' last column
+    assert_eq!(
+        (0..5).map(|x| at(x, 0)).collect::<Vec<_>>(),
+        ['한', '\0', '글', '\0', ' ']
+    );
+    assert_eq!(
+        (0..5).map(|x| at(x, 1)).collect::<Vec<_>>(),
+        [' ', ' ', ' ', '…', ' ']
+    );
 }
 
 proptest! {

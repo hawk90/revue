@@ -1,9 +1,11 @@
-//! Vertical bars: value above, bar rising from the label row, label below
+//! Vertical bars: value above, bar rising from the label row, label below;
+//! `…` after the last bar when bars are left out
 
 use super::BarChart;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{char_width, truncate_to_width};
+use crate::widget::data::chart::chart_render::fit_items;
 use crate::widget::traits::RenderContext;
 
 impl BarChart {
@@ -21,14 +23,14 @@ impl BarChart {
         let value_height = if self.show_values { 1 } else { 0 };
         let bar_area_height = area.height.saturating_sub(label_height + value_height);
 
+        // Bars that do not fit are left out, and `…` on the label row
+        // takes the first cell of the first one's slot
         let total_bar_width = self.bar_width.saturating_add(self.gap);
+        let (shown, marker) =
+            fit_items(self.bars.len(), total_bar_width, self.bar_width, area.width);
         let mut x = 0u16;
 
-        for bar in &self.bars {
-            if x.saturating_add(self.bar_width) > area.width {
-                break;
-            }
-
+        for bar in self.bars.iter().take(shown) {
             // Calculate bar height (use absolute value, as horizontal bars do)
             let bar_height = if max_value > 0.0 {
                 // A `max` below the data still draws inside the chart.
@@ -82,7 +84,11 @@ impl BarChart {
                 }
             }
 
-            x += total_bar_width;
+            x = x.saturating_add(total_bar_width);
+        }
+
+        if let Some(marker_x) = marker {
+            ctx.set(marker_x, area.height - 1, Cell::new('…'));
         }
     }
 }

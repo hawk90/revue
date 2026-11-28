@@ -35,16 +35,27 @@ impl<'a> BoxPlotRender<'a> {
             }
         };
 
-        // Group labels, left-aligned in the label column on each group's center row
+        // Group labels, left-aligned in the label column on each group's
+        // center row; `…` on the first row past them when groups are left out
         let label_width = chart.x.saturating_sub(area.x + 1) as usize;
-        let group_height = (chart.height as usize / self.group_count) as u16;
-        for (i, group) in self.groups.iter().enumerate() {
+        let (shown, group_height, marker) = self.group_bands(chart.height);
+        for (i, group) in self.groups.iter().enumerate().take(shown) {
             let y = chart.y + (i as u16 * group_height) + group_height / 2;
             let label = truncate_to_width(&group.label, label_width);
             put_str(
                 label,
                 area.x,
                 y,
+                area.x,
+                chart.x.saturating_sub(1),
+                category_axis.color,
+            );
+        }
+        if let Some(offset) = marker {
+            put_str(
+                "…",
+                area.x,
+                chart.y + offset,
                 area.x,
                 chart.x.saturating_sub(1),
                 category_axis.color,
@@ -110,26 +121,38 @@ impl<'a> BoxPlotRender<'a> {
             }
         }
 
-        // Category axis labels (bottom)
-        let n_groups = self.group_count;
-        let chart_width = area.width.saturating_sub(y_label_width);
-        let group_width = (chart_width as usize / n_groups) as u16;
+        // Category axis labels (bottom), centered under each group's band
+        // of the chart columns. When groups are left out, `…` takes the
+        // column after the last band and labels stop before it.
+        let chart = self.chart_area;
+        let (shown, group_width, marker) = self.group_bands(chart.width);
+        let y = area.y + area.height - 1;
+        let right_edge = match marker {
+            Some(offset) => chart.x + offset,
+            None => area.x + area.width,
+        };
+        let mut put = |x: u16, ch: char| {
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(category_axis.color);
+            ctx.set(x, y, cell);
+        };
 
-        for (i, group) in self.groups.iter().enumerate() {
-            let x = area.x + y_label_width + (i as u16 * group_width) + group_width / 2;
-            let y = area.y + area.height - 1;
+        for (i, group) in self.groups.iter().enumerate().take(shown) {
+            let x = chart.x + (i as u16 * group_width) + group_width / 2;
             let label_start = x.saturating_sub(display_width(&group.label) as u16 / 2);
 
             let mut dx: u16 = 0;
             for ch in group.label.chars() {
-                let label_x = label_start + dx;
-                if label_x >= area.x + y_label_width && label_x < area.x + area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(category_axis.color);
-                    ctx.set(label_x, y, cell);
+                let label_x = label_start.saturating_add(dx);
+                let w = char_width(ch) as u16;
+                if label_x >= chart.x && label_x.saturating_add(w) <= right_edge {
+                    put(label_x, ch);
                 }
-                dx += char_width(ch) as u16;
+                dx = dx.saturating_add(w);
             }
+        }
+        if marker.is_some() {
+            put(right_edge, '…');
         }
     }
 }
