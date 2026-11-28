@@ -214,7 +214,9 @@ pub fn remove_char_range(s: &mut String, start: usize, end: usize) {
 /// * `max_width` - Maximum character width
 ///
 /// # Returns
-/// Truncated string with ellipsis if truncation occurred
+/// Truncated string with ellipsis if truncation occurred. The result is
+/// never wider than `max_width`: text that does not fit is `""` at 0 and
+/// `"…"` at 1, as in [`truncate_start`].
 ///
 /// # Example
 /// ```
@@ -229,6 +231,9 @@ pub fn truncate(text: &str, max_width: usize) -> String {
 
 /// Truncate text from the start, adding ellipsis at beginning
 ///
+/// The result is never wider than `max_width`: text that does not fit is
+/// `""` at 0 and `"…"` at 1, as in [`truncate`].
+///
 /// # Example
 /// ```
 /// use revue::utils::text::truncate_start;
@@ -242,7 +247,10 @@ pub fn truncate_start(text: &str, max_width: usize) -> String {
     if width <= max_width {
         return text.to_string();
     }
-    if max_width <= 1 {
+    if max_width == 0 {
+        return String::new();
+    }
+    if max_width == 1 {
         return String::from("…");
     }
     // Walk from the end, accumulating display width

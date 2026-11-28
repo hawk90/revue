@@ -143,7 +143,8 @@ pub fn truncate_to_width(s: &str, max_width: usize) -> &str {
 /// Truncate a string and add ellipsis if needed
 ///
 /// If the string is truncated, appends "…" (or custom suffix).
-/// The result will fit within `max_width` including the ellipsis.
+/// The result will fit within `max_width` including the ellipsis: a
+/// string that does not fit is `""` at 0 and `"…"` at 1.
 ///
 /// # Example
 ///
@@ -158,6 +159,10 @@ pub fn truncate_with_ellipsis(s: &str, max_width: usize) -> String {
 }
 
 /// Truncate a string and add a custom suffix if needed
+///
+/// The result is never wider than `max_width`. When `max_width` leaves no
+/// room for content next to the suffix, the result is the suffix cut to
+/// `max_width` (`""` at 0).
 pub fn truncate_with_suffix(s: &str, max_width: usize, suffix: &str) -> String {
     let width = display_width(s);
     if width <= max_width {

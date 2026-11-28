@@ -406,7 +406,29 @@ fn truncate_start_width_1() {
 }
 #[test]
 fn truncate_start_width_0() {
-    assert_eq!(truncate_start("hello", 0), "…");
+    assert_eq!(truncate_start("hello", 0), "");
+    assert_eq!(truncate_start("안녕", 0), "");
+    assert_eq!(truncate_start("", 0), "");
+}
+/// #1610: the four truncate helpers agree at 0 and 1 columns and are
+/// never wider than asked.
+#[test]
+fn truncate_helpers_agree_at_0_and_1() {
+    use revue::utils::{truncate_with_ellipsis, truncate_with_suffix};
+    for text in ["hello", "안녕", "ab"] {
+        for (w, want) in [(0, ""), (1, "…")] {
+            let got = [
+                truncate(text, w),
+                truncate_start(text, w),
+                truncate_with_ellipsis(text, w),
+                truncate_with_suffix(text, w, "…"),
+            ];
+            for g in &got {
+                assert_eq!(g, want, "{text:?} at {w}");
+                assert!(display_width(g) <= w);
+            }
+        }
+    }
 }
 #[test]
 fn truncate_start_empty_input() {
