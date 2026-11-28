@@ -8,7 +8,7 @@ use crate::style::Color;
 use crate::utils::unicode::{display_width_u16, truncate_with_ellipsis};
 use crate::utils::{char_width, display_width};
 use crate::widget::data::chart::chart_common::AxisFormat;
-use crate::widget::data::chart::chart_render::{label_ticks, put_label};
+use crate::widget::data::chart::chart_render::{label_ticks, put_label, x_label_slot};
 use crate::widget::traits::RenderContext;
 
 impl Chart {
@@ -118,12 +118,7 @@ impl Chart {
         // labeled ticks less one, so neighbors never overwrite each other
         // (#1606)
         let labeled = label_ticks(ticks, inner_w.saturating_sub(1), 2);
-        let slot = labeled
-            .windows(2)
-            .map(|pair| pair[1].1 - pair[0].1)
-            .min()
-            .unwrap_or(inner_w);
-        let slot = usize::from(slot.saturating_sub(1).max(1));
+        let slot = usize::from(x_label_slot(&labeled, inner_w.saturating_sub(1)));
         for (i, offset) in labeled {
             let t = i as f64 / ticks as f64;
             let value = x_min + t * (x_max - x_min);

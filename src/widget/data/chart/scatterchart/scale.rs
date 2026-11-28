@@ -2,6 +2,7 @@
 
 use super::ScatterChart;
 use crate::layout::Rect;
+use crate::widget::data::chart::chart_render::axis_cell;
 
 impl ScatterChart {
     /// Compute data bounds
@@ -44,7 +45,10 @@ impl ScatterChart {
         )
     }
 
-    /// Map data coordinates to screen coordinates (relative)
+    /// Map data coordinates to screen coordinates (relative): the cells
+    /// [`axis_cell`] gives, `x_min` on the first column and `y_max` on the
+    /// top row, the same cells as the grid lines and tick labels (#1622).
+    /// A point outside fixed bounds goes on the edge of the chart.
     pub(super) fn map_to_screen(
         &self,
         x: f64,
@@ -53,21 +57,12 @@ impl ScatterChart {
         chart_area: Rect,
     ) -> (u16, u16) {
         let (x_min, x_max, y_min, y_max) = bounds;
-
-        let x_range = (x_max - x_min).max(1.0);
-        let y_range = (y_max - y_min).max(1.0);
-
-        // A point outside fixed bounds goes on the edge of the chart.
-        let x_ratio = ((x - x_min) / x_range).clamp(0.0, 1.0);
-        let y_ratio = ((y - y_min) / y_range).clamp(0.0, 1.0);
-        let screen_x = chart_area.x + (x_ratio * (chart_area.width as f64 - 1.0)) as u16;
-        let screen_y = chart_area.y + chart_area.height
-            - 1
-            - (y_ratio * (chart_area.height as f64 - 1.0)) as u16;
-
-        (
-            screen_x.clamp(chart_area.x, chart_area.x + chart_area.width - 1),
-            screen_y.clamp(chart_area.y, chart_area.y + chart_area.height - 1),
-        )
+        let columns = chart_area.width.saturating_sub(1);
+        let rows = chart_area.height.saturating_sub(1);
+        let screen_x = chart_area.x + axis_cell(x, x_min, x_max, columns);
+        // Rows count down from `y_max`, as the Y ticks do: negated, `y_max`
+        // is the low end of the axis
+        let screen_y = chart_area.y + axis_cell(-y, -y_max, -y_min, rows);
+        (screen_x, screen_y)
     }
 }

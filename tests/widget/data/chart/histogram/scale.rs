@@ -10,7 +10,7 @@ fn test_histogram_density() {
     assert_eq!(bar_top(&buffer, 6), Some(0));
     assert_eq!(bar_top(&buffer, 17), Some(12));
     assert_eq!(bar_top(&buffer, 28), Some(6));
-    assert!(rows(&buffer)[1].starts_with("0.05"));
+    assert!(rows(&buffer)[0].starts_with("0.05 "));
 }
 
 #[test]
@@ -20,5 +20,5 @@ fn test_histogram_cumulative() {
     assert_eq!(bar_top(&buffer, 6), Some(9));
     assert_eq!(bar_top(&buffer, 17), Some(6));
     assert_eq!(bar_top(&buffer, 28), Some(0));
-    assert!(rows(&buffer)[1].starts_with("1.00"));
+    assert!(rows(&buffer)[0].starts_with("1.00 "));
 }

@@ -25,8 +25,8 @@ fn test_scatter_series_colors() {
         .colors(ColorScheme::new(vec![Color::GREEN, Color::BLUE]));
     // The plot starts at column 6, after the 5-column Y labels ("-0.50")
     let buffer = render(&chart, 40, 20);
-    assert_eq!(buffer.get(7, 17).unwrap().fg, Some(Color::RED));
-    assert_eq!(buffer.get(36, 1).unwrap().fg, Some(Color::BLUE));
+    assert_eq!(buffer.get(7, 16).unwrap().fg, Some(Color::RED));
+    assert_eq!(buffer.get(36, 0).unwrap().fg, Some(Color::BLUE));
 }
 
 #[test]

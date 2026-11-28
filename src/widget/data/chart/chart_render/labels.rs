@@ -82,3 +82,49 @@ pub(crate) fn put_label(
         dx = dx.saturating_add(char_width(ch) as u16);
     }
 }
+
+/// The columns each X label among `labeled` (from [`label_ticks`] along
+/// `span` cells) may take: the fewest columns between two labeled ticks
+/// less one, so neighbors never touch, or the whole axis for one label.
+/// At least one (#1606).
+pub(crate) fn x_label_slot(labeled: &[(usize, u16)], span: u16) -> u16 {
+    labeled
+        .windows(2)
+        .map(|pair| pair[1].1 - pair[0].1)
+        .min()
+        .unwrap_or(span.saturating_add(1))
+        .saturating_sub(1)
+        .max(1)
+}
+
+/// Draw X labels on row `y`, each `(tick, label)` centered on column
+/// `tick` and cut with `…` to `slot` columns ([`x_label_slot`]), from left
+/// to right. A label is kept inside the columns `left..right`: one past
+/// an end is moved in, and one moved onto the label before it starts one
+/// column after that label, cut with `…` to the columns left, so labels
+/// never overwrite each other and the last tick keeps its label while
+/// there is room for one (#1622, #1623). Each cell is `style`.
+pub(crate) fn put_x_labels(
+    ctx: &mut RenderContext,
+    labels: impl IntoIterator<Item = (u16, String)>,
+    y: u16,
+    (left, right): (u16, u16),
+    slot: u16,
+    style: Cell,
+) {
+    let mut next_free = left;
+    for (tick, label) in labels {
+        let label = truncate_with_ellipsis(&label, usize::from(slot));
+        let width = display_width_u16(&label);
+        let start = tick
+            .saturating_sub(width / 2)
+            .min(right.saturating_sub(width))
+            .max(next_free);
+        let columns = width.min(right.saturating_sub(start));
+        if columns == 0 {
+            continue;
+        }
+        put_label(ctx, &label, (start, y), columns, false, style);
+        next_free = start.saturating_add(columns).saturating_add(1);
+    }
+}

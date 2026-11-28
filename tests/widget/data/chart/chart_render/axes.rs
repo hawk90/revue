@@ -16,13 +16,24 @@ fn test_render_grid() {
     let buffer = draw(20, 10, |ctx, area| {
         render_grid(ctx, area, &ChartGrid::both(), 5, 5);
     });
-    let rows = rows(&buffer);
-    // Horizontal lines every 2 rows (drawn over the vertical ones),
-    // vertical lines every 4 columns ending in '┴' on the last row
-    assert_eq!(rows[0], format!("├{}", "─".repeat(19)));
-    assert_eq!(rows[2], rows[0]);
-    assert_eq!(rows[1], "│   │   │   │   │   ");
-    assert_eq!(rows[9], "┴   ┴   ┴   ┴   ┴   ");
+    let lines = rows(&buffer);
+    // Tick i of 5 on column i * 19 / 5 and row i * 9 / 5, the first and
+    // last on the edges (#1622): horizontal lines on rows 0, 1, 3, 5, 7
+    // and 9 (drawn over the vertical ones), vertical lines on columns 0,
+    // 3, 7, 11, 15 and 19
+    let line = format!("├{}", "─".repeat(19));
+    for (y, row) in lines.iter().enumerate() {
+        if [0, 1, 3, 5, 7, 9].contains(&y) {
+            assert_eq!(*row, line, "row {y}");
+        } else {
+            assert_eq!(row, "│  │   │   │   │   │", "row {y}");
+        }
+    }
+    // Vertical lines alone end in '┴' on the last row
+    let buffer = draw(20, 10, |ctx, area| {
+        render_grid(ctx, area, &ChartGrid::x_only(), 5, 5);
+    });
+    assert_eq!(rows(&buffer)[9], "┴  ┴   ┴   ┴   ┴   ┴");
 }
 
 #[test]
@@ -225,4 +236,53 @@ fn test_render_x_axis_labels_draw_one_label_per_two_columns() {
         assert_eq!(buffer.get(x, 2).unwrap().fg, Some(Color::RED), "x={x}");
     }
     assert!(rows[0].trim().is_empty() && rows[1].trim().is_empty());
+}
+
+/// The X labels span the chart area `calculate_chart_area` leaves after
+/// the offset, x_max on its last column, each centered on its tick and cut
+/// with `…` to the columns between labeled ticks less one (#1622, #1623)
+#[test]
+fn test_render_x_axis_labels_reach_the_last_column_cut_to_their_slot() {
+    let axis = Axis::new()
+        .ticks(3)
+        .format(AxisFormat::Fixed(2))
+        .color(Color::RED);
+    let buffer = draw(20, 3, |ctx, area| {
+        render_x_axis_labels(ctx, area, &axis, 0.0, 30.0, 0, 4);
+    });
+    // The chart is columns 4..18: ticks on 4, 8, 13 and 18
+    let row = &rows(&buffer)[2];
+    assert_eq!(row, "   0.… 10…  20…  30…");
+    for (x, ch) in (0u16..).zip(row.chars()) {
+        let fg = buffer.get(x, 2).unwrap().fg;
+        assert_eq!(fg, (ch != ' ').then_some(Color::RED), "x={x}");
+    }
+}
+
+/// Grid lines of a chart area at an offset: the first on its left and top
+/// edges, the last on its right and bottom ones, nothing outside (#1622)
+#[test]
+fn test_render_grid_at_an_offset_reaches_the_last_row_and_column() {
+    let buffer = draw(14, 8, |ctx, _| {
+        render_grid(ctx, Rect::new(2, 1, 10, 5), &ChartGrid::x_only(), 2, 2);
+    });
+    let lines = rows(&buffer);
+    assert_eq!(lines[0], " ".repeat(14));
+    for (y, line) in lines.iter().enumerate().take(5).skip(1) {
+        assert_eq!(line, "  │   │    │  ", "row {y}");
+    }
+    assert_eq!(lines[5], "  ┴   ┴    ┴  ");
+    assert_eq!(lines[6], " ".repeat(14));
+    let buffer = draw(14, 8, |ctx, _| {
+        render_grid(ctx, Rect::new(2, 1, 10, 5), &ChartGrid::y_only(), 2, 2);
+    });
+    let lines = rows(&buffer);
+    for (y, line) in lines.iter().enumerate() {
+        let want = if [1, 3, 5].contains(&y) {
+            format!("  ├{}  ", "─".repeat(9))
+        } else {
+            " ".repeat(14)
+        };
+        assert_eq!(*line, want, "row {y}");
+    }
 }
