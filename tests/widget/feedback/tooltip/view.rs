@@ -429,3 +429,37 @@ fn a_wide_glyph_gets_its_two_columns_in_an_area_too_narrow_for_them() {
     assert_eq!(symbol(&buffer, 1, 2), '글');
     assert!(buffer.get(2, 2).unwrap().is_continuation());
 }
+
+/// A box taller or wider than u16 holds is clamped to it instead of
+/// overflowing (#1563): 65534 lines, the border and the title make 65537
+/// rows; a 65534-column title and the padding make 65536 columns. Below an
+/// anchor in a small area, the box is pinned under the arrow and cut at the
+/// area's edges
+#[test]
+fn a_size_past_u16_max_is_clamped() {
+    let lines = vec!["a"; 65_534].join("\n");
+    let t = Tooltip::new(lines)
+        .style(TooltipStyle::Bordered)
+        .title("T")
+        .position(TooltipPosition::Bottom)
+        .anchor(0, 0);
+    let buffer = render_in(&t, 8, 5);
+    // Shortened to the room below the arrow: the border and the title
+    let rows: Vec<String> = (0..5).map(|y| row(&buffer, y)).collect();
+    assert_eq!(
+        rows,
+        ["        ", "▲       ", "┌─────┐ ", "│ T   │ ", "└─────┘ "]
+    );
+    let t = Tooltip::new("a")
+        .style(TooltipStyle::Bordered)
+        .title("t".repeat(65_534))
+        .position(TooltipPosition::Bottom)
+        .anchor(0, 0);
+    let buffer = render_in(&t, 8, 5);
+    // As wide as the area, the title cut at its border
+    let rows: Vec<String> = (0..5).map(|y| row(&buffer, y)).collect();
+    assert_eq!(
+        rows,
+        ["        ", "▲       ", "┌──────┐", "│ tttt │", "└──────┘"]
+    );
+}

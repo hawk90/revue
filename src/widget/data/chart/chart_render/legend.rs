@@ -3,7 +3,7 @@
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{char_width, display_width};
+use crate::utils::display_width;
 use crate::widget::data::chart::chart_common::{Legend, LegendPosition};
 use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::RenderContext;
@@ -75,12 +75,13 @@ pub fn render_legend(
     }
 
     // Sized in usize and clamped to u16: a count cast to u16 and then
-    // added to overflows near 65535 (#1552)
+    // added to overflows near 65535 (#1552). Labels in terminal columns,
+    // not bytes (#1564)
     let clamp = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
     let legend_width = clamp(
         items
             .iter()
-            .map(|item| item.label.len().saturating_add(4))
+            .map(|item| display_width(item.label).saturating_add(4))
             .max()
             .unwrap_or(10),
     );
@@ -133,17 +134,11 @@ pub fn render_legend(
             ctx.set(marker_x, y, cell);
         }
 
-        // Label
-        let mut x = legend_x.saturating_add(3);
-        for ch in item.label.chars() {
-            if x >= label_end {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::WHITE);
-            ctx.set(x, y, cell);
-            x = x.saturating_add(char_width(ch) as u16);
-        }
+        // Label, in terminal columns: a wide glyph that would cross the
+        // right border is not drawn (#1564)
+        ctx.put_str_with(legend_x.saturating_add(3), y, item.label, label_end, |ch| {
+            Cell::new(ch).fg(Color::WHITE)
+        });
     }
 }
 

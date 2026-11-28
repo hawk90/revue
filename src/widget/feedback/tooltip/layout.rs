@@ -35,26 +35,32 @@ impl Tooltip {
         let has_border = self.style.border_chars().is_some();
         let has_title = self.title.is_some();
 
-        let content_width = lines.iter().map(|l| display_width(l)).max().unwrap_or(0) as u16;
+        // Terminal columns, worked out in usize and clamped to the u16 the
+        // box is sized in: a count cast to u16 and then added to overflows
+        // near 65535 (#1563)
+        let content_width = lines.iter().map(|l| display_width(l)).max().unwrap_or(0);
         let title_width = self
             .title
             .as_ref()
-            .map(|t| display_width(t) as u16 + 2)
+            .map(|t| display_width(t).saturating_add(2))
             .unwrap_or(0);
         let text_width = content_width.max(title_width);
 
         // Padding and border
-        let chrome = if has_border { 4 } else { 2 };
+        let chrome: usize = if has_border { 4 } else { 2 };
         // No wider than the area, but wide enough for the widest line (at
         // least one column) even where the area is not: a wide glyph alone
         // on its line needs 2 (the box is cut at the area's edge); a title
         // wider than the box is cut at its edge
-        let width = (text_width + chrome).min(area_width.max(content_width.max(1) + chrome));
-        let height = lines.len() as u16
+        let width = text_width
+            .saturating_add(chrome)
+            .min(usize::from(area_width).max(content_width.max(1).saturating_add(chrome)));
+        let height = lines.len()
             + if has_border { 2 } else { 0 }
             + if has_title && has_border { 1 } else { 0 };
 
-        (width, height)
+        let clamp = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
+        (clamp(width), clamp(height))
     }
 
     /// The gap the arrow takes between the anchor and the box: one cell, or

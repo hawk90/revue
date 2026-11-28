@@ -207,3 +207,40 @@ fn test_render_horizontal_legend_counts_near_u16_max() {
         assert_eq!(buffer.get(x, 1).unwrap().fg, Some(Color::BLUE), "x={x}");
     }
 }
+
+/// The box is sized by the labels' terminal columns, not their bytes, and
+/// a label cut at the area's edge leaves out a wide glyph that would end
+/// on the area's last column (#1564)
+#[test]
+fn test_render_legend_wide_labels() {
+    let run = |label: &str, w: u16| {
+        let items = [LegendItem {
+            label,
+            color: Color::RED,
+        }];
+        draw(w, 4, |ctx, area| {
+            render_legend(ctx, area, &Legend::top_left(), &items);
+        })
+    };
+    // "매출" is 4 columns: the box is 8 wide
+    let buffer = run("매출", 12);
+    assert_eq!(
+        rows(&buffer),
+        [
+            "            ",
+            " ┌──────┐   ",
+            " │■ 매\0출\0│   ",
+            " └──────┘   "
+        ]
+    );
+    for x in 4..8 {
+        assert_eq!(buffer.get(x, 2).unwrap().fg, Some(Color::WHITE), "x={x}");
+    }
+    // Cut at the 8-column area: "ab" ends at column 5, "매" would take 6
+    // and 7, the area's last column, which stays as the box drew it
+    let buffer = run("ab매출", 8);
+    assert_eq!(
+        rows(&buffer),
+        ["        ", " ┌──────", " │■ ab  ", " └──────"]
+    );
+}
