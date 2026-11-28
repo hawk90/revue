@@ -711,16 +711,18 @@ fn test_breadcrumb_home_counts_toward_collapse_width() {
 }
 
 #[test]
-fn test_breadcrumb_three_items_never_show_ellipsis() {
-    // Collapsing keeps the first and last two items, so with three items
-    // there is nothing to hide: the trail is clipped instead.
+fn test_breadcrumb_three_items_collapse_the_middle_one() {
+    // With three items the middle one is left out for one `…`, and then
+    // the first is shortened (#1601)
     let bc = Breadcrumb::new()
         .home(false)
-        .max_width(12)
         .push("Alpha")
         .push("Beta")
         .push("Gamma");
-    assert_eq!(line(&bc, 40), "Alpha › Beta");
+    assert_eq!(line(&bc, 20), "Alpha › Beta › Gamma");
+    assert_eq!(line(&bc, 19), "Alpha › … › Gamma");
+    assert_eq!(line(&bc, 17), "Alpha › … › Gamma");
+    assert_eq!(line(&bc, 16), "Alp… › … › Gamma");
 }
 
 #[test]
@@ -813,8 +815,9 @@ fn test_breadcrumb_render_with_collapse() {
         .push("That")
         .push("Needs")
         .push("Collapse");
-    // First item, ellipsis, then the last two (clipped at max_width)
-    assert_eq!(line(&bc, 30), "Very › … › Needs › Collap");
+    // The last two would be cut: only the last is kept after the `…`
+    // (#1601)
+    assert_eq!(line(&bc, 30), "Very › … › Collapse");
 }
 
 /// #1581: the left-out items are one `…` cell, as in Pagination, so the
@@ -829,8 +832,8 @@ fn test_breadcrumb_collapsed_items_are_one_ellipsis_cell() {
         .push("B")
         .push("C")
         .push("D");
-    // The first label keeps all but the 8 columns " › … › " and the next
-    // item need
+    // Even the first item, `…` and the last one are 20 columns: the first
+    // label is shortened to the 4 columns " › … › D" leave (#1601)
     let buffer = render(&bc, 12);
     let cells: Vec<(char, Option<Color>)> = (0..12)
         .map(|x| {
@@ -844,7 +847,7 @@ fn test_breadcrumb_collapsed_items_are_one_ellipsis_cell() {
         ('A', item),
         ('l', item),
         ('p', item),
-        ('h', item),
+        ('…', item),
         (' ', None),
         ('›', sep),
         (' ', None),
@@ -852,7 +855,7 @@ fn test_breadcrumb_collapsed_items_are_one_ellipsis_cell() {
         (' ', None),
         ('›', sep),
         (' ', None),
-        ('C', item),
+        ('D', Some(Color::CYAN)),
     ];
     assert_eq!(cells, expected);
 }
@@ -1176,4 +1179,269 @@ fn test_breadcrumb_vim_keys_navigation() {
     // Vim 'h' key
     assert!(bc.handle_key(&Key::Char('h')));
     assert_eq!(bc.selected(), 0);
+}
+
+// =============================================================================
+// #1601: a collapsed trail that still does not fit collapses further, then
+// shortens its first item, so the last item is drawn whole
+// =============================================================================
+
+mod collapse_further {
+    use revue::layout::Rect;
+    use revue::render::{Buffer, Modifier};
+    use revue::style::Color;
+    use revue::widget::theme::{DARK_GRAY, LIGHT_GRAY};
+    use revue::widget::traits::{RenderContext, View};
+    use revue::widget::{Breadcrumb, BreadcrumbItem};
+
+    /// A cell: its glyph (`'>'` for the second half of a wide glyph, with no
+    /// color) and its color
+    type Drawn = (char, Option<Color>);
+
+    const ITEM: Option<Color> = Some(LIGHT_GRAY);
+    const SEP: Option<Color> = Some(DARK_GRAY);
+    const SELECTED: Option<Color> = Some(Color::CYAN);
+
+    /// The cells of a `width`-column area at column `x` of a buffer `x + 2`
+    /// columns wider, the whole buffer row
+    fn cells_at(bc: &Breadcrumb, x: u16, width: u16) -> Vec<Drawn> {
+        let mut buffer = Buffer::new(x + width + 2, 1);
+        bc.render(&mut RenderContext::new(
+            &mut buffer,
+            Rect::new(x, 0, width, 1),
+        ));
+        (0..x + width + 2)
+            .map(|cx| {
+                let c = buffer.get(cx, 0).unwrap();
+                if c.is_continuation() {
+                    ('>', None)
+                } else {
+                    (c.symbol, c.fg)
+                }
+            })
+            .collect()
+    }
+
+    fn cells(bc: &Breadcrumb, width: u16) -> Vec<Drawn> {
+        let mut all = cells_at(bc, 0, width);
+        all.truncate(usize::from(width));
+        all
+    }
+
+    /// The cells `parts` draw, glyph by glyph, padded with blank cells to
+    /// `width`
+    fn expect(parts: &[(&str, Option<Color>)], width: usize) -> Vec<Drawn> {
+        let mut out = Vec::new();
+        for (text, color) in parts {
+            for ch in text.chars() {
+                let color = if ch == ' ' { None } else { *color };
+                out.push((ch, color));
+                if revue::utils::char_width(ch) == 2 {
+                    out.push(('>', None));
+                }
+            }
+        }
+        out.resize(width, (' ', None));
+        out
+    }
+
+    /// " › " between entries
+    const S: (&str, Option<Color>) = (" › ", SEP);
+    /// The `…` for the items left out
+    const E: (&str, Option<Color>) = ("…", SEP);
+
+    fn four(first: &str, last: &str) -> Breadcrumb {
+        Breadcrumb::new()
+            .home(false)
+            .push(first)
+            .push("a")
+            .push("b")
+            .push(last)
+    }
+
+    #[test]
+    fn the_last_two_that_fit_are_kept() {
+        // 32 columns in full; "Documents › … › c › Settings" is 28
+        let bc = Breadcrumb::new()
+            .home(false)
+            .push("Documents")
+            .push("a")
+            .push("b")
+            .push("c")
+            .push("Settings");
+        assert_eq!(
+            cells(&bc, 28),
+            expect(
+                &[
+                    ("Documents", ITEM),
+                    S,
+                    E,
+                    S,
+                    ("c", ITEM),
+                    S,
+                    ("Settings", SELECTED)
+                ],
+                28
+            )
+        );
+    }
+
+    #[test]
+    fn the_last_one_alone_when_the_last_two_do_not_fit() {
+        // 27 columns: "b" goes too, "Documents › … › Settings" is 24
+        let bc = four("Documents", "Settings");
+        for width in [27, 24] {
+            assert_eq!(
+                cells(&bc, width),
+                expect(
+                    &[("Documents", ITEM), S, E, S, ("Settings", SELECTED)],
+                    usize::from(width)
+                ),
+                "width {width}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_first_item_is_shortened_so_the_last_one_fits() {
+        let bc = four("Documents", "Settings");
+        // " › … › Settings" is 15 columns: the first label gets the rest
+        for (width, first) in [(23, "Documen…"), (18, "Do…"), (16, "…")] {
+            assert_eq!(
+                cells(&bc, width),
+                expect(
+                    &[(first, ITEM), S, E, S, ("Settings", SELECTED)],
+                    usize::from(width)
+                ),
+                "width {width}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_selected_first_item_keeps_its_style_when_shortened() {
+        let mut bc = four("Documents", "Settings");
+        bc.set_selected(0);
+        let mut buffer = Buffer::new(18, 1);
+        bc.render(&mut RenderContext::new(&mut buffer, Rect::new(0, 0, 18, 1)));
+        for x in 0..3 {
+            let c = buffer.get(x, 0).unwrap();
+            assert_eq!((c.symbol, c.fg), (['D', 'o', '…'][x as usize], SELECTED));
+            assert!(c.modifier.contains(Modifier::BOLD), "x {x}");
+        }
+        assert_eq!(
+            buffer.get(11, 0).unwrap().fg,
+            ITEM,
+            "the last item is not selected"
+        );
+    }
+
+    #[test]
+    fn the_first_items_icon_stays_when_its_label_is_shortened() {
+        let bc = Breadcrumb::new()
+            .home(false)
+            .item(BreadcrumbItem::new("Documents").icon('D'))
+            .push("a")
+            .push("b")
+            .push("Settings");
+        assert_eq!(
+            cells(&bc, 20),
+            expect(
+                &[
+                    ("D", ITEM),
+                    (" ", None),
+                    ("Do…", ITEM),
+                    S,
+                    E,
+                    S,
+                    ("Settings", SELECTED)
+                ],
+                20
+            )
+        );
+    }
+
+    #[test]
+    fn two_items_shorten_the_first_with_nothing_left_out() {
+        let bc = Breadcrumb::new()
+            .home(false)
+            .push("Documents")
+            .push("Settings");
+        assert_eq!(
+            cells(&bc, 20),
+            expect(&[("Documents", ITEM), S, ("Settings", SELECTED)], 20)
+        );
+        assert_eq!(
+            cells(&bc, 15),
+            expect(&[("Doc…", ITEM), S, ("Settings", SELECTED)], 15)
+        );
+    }
+
+    #[test]
+    fn the_home_icon_counts_toward_the_room_left() {
+        let bc = Breadcrumb::new()
+            .home_icon('~')
+            .push("Documents")
+            .push("a")
+            .push("b")
+            .push("Settings");
+        // "~ › " takes 4 columns before the first item
+        assert_eq!(
+            cells(&bc, 22),
+            expect(
+                &[
+                    ("~", ITEM),
+                    S,
+                    ("Do…", ITEM),
+                    S,
+                    E,
+                    S,
+                    ("Settings", SELECTED)
+                ],
+                22
+            )
+        );
+    }
+
+    #[test]
+    fn a_wide_first_label_is_not_split() {
+        let bc = four("문서함", "설정");
+        // " › … › 설정" is 11 columns: 3 left hold one syllable and `…`
+        assert_eq!(
+            cells(&bc, 14),
+            expect(&[("문…", ITEM), S, E, S, ("설정", SELECTED)], 14)
+        );
+        // 2 left: a syllable and `…` do not fit, so `…` alone, and the
+        // last column stays blank
+        assert_eq!(
+            cells(&bc, 13),
+            expect(&[("…", ITEM), S, E, S, ("설정", SELECTED)], 13)
+        );
+    }
+
+    #[test]
+    fn a_last_item_wider_than_the_area_is_cut_at_the_edge() {
+        // The first item is shortened to `…`, and the last is cut where the
+        // area ends
+        let bc = Breadcrumb::new()
+            .home(false)
+            .push("AB")
+            .push("LongLastItem");
+        assert_eq!(
+            cells(&bc, 8),
+            expect(&[("…", ITEM), S, ("Long", SELECTED)], 8)
+        );
+    }
+
+    #[test]
+    fn an_area_at_an_offset_draws_inside_it() {
+        let bc = four("Documents", "Settings");
+        let mut want = vec![(' ', None); 3];
+        want.extend(expect(
+            &[("Do…", ITEM), S, E, S, ("Settings", SELECTED)],
+            18,
+        ));
+        want.extend([(' ', None); 2]);
+        assert_eq!(cells_at(&bc, 3, 18), want);
+    }
 }

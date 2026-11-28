@@ -129,7 +129,11 @@ impl Breadcrumb {
     }
 
     /// Enable/disable collapse mode: a trail wider than the area keeps its
-    /// first item and last two, with one `…` for the items left out
+    /// first item and last two, with one `…` for the items left out. When
+    /// that is still too wide only the last item is kept after the `…`, and
+    /// then the first item is shortened (ending with `…`) so the last item,
+    /// where the user is, is drawn whole. The last item is cut at the edge
+    /// only when even a one-column first item leaves it too little room.
     pub fn collapse(mut self, collapse: bool) -> Self {
         self.collapse = collapse;
         self
@@ -303,101 +307,64 @@ impl View for Breadcrumb {
             }
         }
 
-        // Determine which items to show
-        // Collapsing keeps the first and the last two items, so it only hides
-        // something - and only saves room - when there are more than three.
-        let (start_idx, show_ellipsis) = if need_collapse && self.items.len() > 3 {
-            // Show first, …, last two items
-            (self.items.len().saturating_sub(2), true)
+        // The entries drawn after the home icon: items, and `None` for the
+        // one `…` cell standing for the items left out
+        let (start, first_label) = if need_collapse {
+            self.collapse_plan(usize::from(max_width))
         } else {
-            (0, false)
+            (1, None)
         };
-
-        // First item if collapsing
-        if show_ellipsis && !self.items.is_empty() {
-            let item = &self.items[0];
-            let is_selected = self.selection.is_selected(0);
-
-            if let Some(icon) = item.icon {
-                let mut cell = Cell::new(icon);
-                cell.fg = Some(if is_selected {
-                    self.selected_color
-                } else {
-                    item_color
-                });
-                ctx.set(x, 0, cell);
-                x += icon_columns(icon);
+        let mut entries: Vec<Option<(usize, std::borrow::Cow<'_, str>)>> = Vec::new();
+        if let Some(first) = self.items.first() {
+            let label =
+                first_label.map_or(std::borrow::Cow::Borrowed(first.label.as_str()), Into::into);
+            entries.push(Some((0, label)));
+            if start > 1 {
+                entries.push(None);
             }
-
-            // Room for " › … › " (seven columns) and one more after it
-            let clip_width = max_width.saturating_sub(8).saturating_sub(x);
-            if is_selected {
-                ctx.draw_text_clipped_bold(x, 0, &item.label, self.selected_color, clip_width);
-            } else {
-                ctx.draw_text_clipped(x, 0, &item.label, item_color, clip_width);
+            for (i, item) in self.items.iter().enumerate().skip(start) {
+                entries.push(Some((i, item.label.as_str().into())));
             }
-            x += (crate::utils::display_width(&item.label) as u16).min(clip_width);
-
-            // Separator
-            x += 1;
-            let mut sep = Cell::new(self.separator.char());
-            sep.fg = Some(self.separator_color);
-            ctx.set(x, 0, sep);
-            x += 2;
-
-            // The marker for the items left out, one column like Pagination's
-            let mut ellipsis = Cell::new('…');
-            ellipsis.fg = Some(self.separator_color);
-            ctx.set(x, 0, ellipsis);
-            x += 1;
-
-            // Separator after ellipsis
-            x += 1;
-            let mut sep = Cell::new(self.separator.char());
-            sep.fg = Some(self.separator_color);
-            ctx.set(x, 0, sep);
-            x += 2;
         }
 
-        // Remaining items
-        let items_to_show = if show_ellipsis {
-            &self.items[start_idx..]
-        } else {
-            &self.items[..]
-        };
-
-        for (i, item) in items_to_show.iter().enumerate() {
-            let actual_idx = if show_ellipsis { start_idx + i } else { i };
-            let is_selected = self.selection.is_selected(actual_idx);
-            let is_last = actual_idx == self.items.len() - 1;
-
+        let count = entries.len();
+        for (k, entry) in entries.into_iter().enumerate() {
             if x >= max_width {
                 break;
             }
-
-            // Icon
-            if let Some(icon) = item.icon {
-                let mut cell = Cell::new(icon);
-                cell.fg = Some(if is_selected {
-                    self.selected_color
-                } else {
-                    item_color
-                });
-                ctx.set(x, 0, cell);
-                x += icon_columns(icon);
+            match entry {
+                // The marker for the items left out, one column like Pagination's
+                None => {
+                    let mut ellipsis = Cell::new('…');
+                    ellipsis.fg = Some(self.separator_color);
+                    ctx.set(x, 0, ellipsis);
+                    x += 1;
+                }
+                Some((idx, label)) => {
+                    let item = &self.items[idx];
+                    let is_selected = self.selection.is_selected(idx);
+                    if let Some(icon) = item.icon {
+                        let mut cell = Cell::new(icon);
+                        cell.fg = Some(if is_selected {
+                            self.selected_color
+                        } else {
+                            item_color
+                        });
+                        ctx.set(x, 0, cell);
+                        x += icon_columns(icon);
+                    }
+                    let clip_width = max_width.saturating_sub(x);
+                    if is_selected {
+                        ctx.draw_text_clipped_bold(x, 0, &label, self.selected_color, clip_width);
+                    } else {
+                        ctx.draw_text_clipped(x, 0, &label, item_color, clip_width);
+                    }
+                    x += (crate::utils::display_width(&label) as u16).min(clip_width);
+                }
             }
 
-            // Label
-            let clip_width = max_width.saturating_sub(x);
-            if is_selected {
-                ctx.draw_text_clipped_bold(x, 0, &item.label, self.selected_color, clip_width);
-            } else {
-                ctx.draw_text_clipped(x, 0, &item.label, item_color, clip_width);
-            }
-            x += (crate::utils::display_width(&item.label) as u16).min(clip_width);
-
-            // Separator (except for last item)
-            if !is_last && x + 2 < max_width {
+            // Separator (except after the last entry)
+            if k + 1 < count && x.saturating_add(2) < max_width {
                 x += 1;
                 let mut sep = Cell::new(self.separator.char());
                 sep.fg = Some(self.separator_color);
@@ -405,6 +372,65 @@ impl View for Breadcrumb {
                 x += 2;
             }
         }
+    }
+}
+
+impl Breadcrumb {
+    /// The columns an item takes: its icon with the space after it, and its
+    /// label
+    fn item_columns(item: &BreadcrumbItem) -> usize {
+        item.icon.map_or(0, |icon| usize::from(icon_columns(icon)))
+            + crate::utils::display_width(&item.label)
+    }
+
+    /// The width of the trail drawn as the first item, then (when `start`
+    /// is past 1) one `…`, then the items from `start` - with the first
+    /// item's label taking `first_label` columns
+    fn trail_columns(&self, start: usize, first_label: usize) -> usize {
+        let home = if self.show_home {
+            usize::from(icon_columns(self.home_icon)) + 2
+        } else {
+            0
+        };
+        let first = self.items[0]
+            .icon
+            .map_or(0, |icon| usize::from(icon_columns(icon)));
+        let ellipsis = if start > 1 { 4 } else { 0 }; // " › " and "…"
+        let rest: usize = self.items[start..]
+            .iter()
+            .map(|item| 3 + Self::item_columns(item))
+            .sum();
+        home + first + first_label + ellipsis + rest
+    }
+
+    /// How a trail wider than `max_width` collapses: the index of the first
+    /// item drawn after the first item and `…`, and the first item's label
+    /// when it has to be shortened.
+    ///
+    /// The first item and the last two are kept; when they do not fit, only
+    /// the last one. When the first item, `…` and the last item still do
+    /// not fit, the first item is shortened (ending with `…`), so the last
+    /// item - where the user is - stays whole. Only when even a one-column
+    /// first item leaves too little room is the last item cut at the edge.
+    fn collapse_plan(&self, max_width: usize) -> (usize, Option<String>) {
+        let n = self.items.len();
+        if n < 2 {
+            return (1, None);
+        }
+        let first = crate::utils::display_width(&self.items[0].label);
+        // Keeping the last two hides something only past three items
+        let candidates = [(n > 3).then(|| n - 2), (n > 2).then(|| n - 1)];
+        for start in candidates.into_iter().flatten() {
+            if self.trail_columns(start, first) <= max_width {
+                return (start, None);
+            }
+        }
+        let start = if n > 2 { n - 1 } else { 1 };
+        let room = max_width
+            .saturating_sub(self.trail_columns(start, 0))
+            .max(1);
+        let label = crate::utils::unicode::truncate_with_ellipsis(&self.items[0].label, room);
+        (start, Some(label))
     }
 }
 
