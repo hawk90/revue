@@ -3,7 +3,6 @@
 use super::draw::{draw_frame_from, styled};
 use super::{Border, BorderType};
 use crate::layout::Rect;
-use crate::render::Cell;
 use crate::style::{BorderStyle, Color};
 use crate::utils::unicode::{char_width, truncate_to_width};
 use crate::widget::layout::constraints::{constrain, floor_around};
@@ -175,12 +174,6 @@ impl Border {
                 continue;
             }
             ctx.set(x, 0, styled(ch, fg, bg));
-            for dx in 1..w {
-                let mut cont = Cell::continuation();
-                cont.fg = fg;
-                cont.bg = bg;
-                ctx.set(x + dx, 0, cont);
-            }
             x += w;
         }
 

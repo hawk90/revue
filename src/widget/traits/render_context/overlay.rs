@@ -70,7 +70,8 @@ impl OverlayEntry {
 ///
 /// `make_cell` styles each glyph and `emit` receives every cell with its
 /// column: a wide glyph (emoji, CJK) takes two, the second a continuation
-/// cell carrying the glyph's colors and modifiers; a zero-width char (e.g.
+/// cell carrying the glyph's colors, modifiers and link, as `Buffer::set`
+/// writes it; a zero-width char (e.g.
 /// the VS16 in "⚙️") takes none - the same layout as
 /// [`Buffer::put_str_styled`](crate::render::Buffer::put_str_styled).
 /// Returns the columns used.
@@ -97,11 +98,7 @@ where
         let cell = make_cell(ch);
         emit(cx, cell);
         for dx in 1..w {
-            let mut cont = Cell::continuation();
-            cont.fg = cell.fg;
-            cont.bg = cell.bg;
-            cont.modifier = cell.modifier;
-            emit(cx + dx, cont);
+            emit(cx + dx, crate::render::Buffer::continuation_of(&cell));
         }
         cx += w;
     }

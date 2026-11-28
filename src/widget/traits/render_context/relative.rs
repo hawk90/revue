@@ -200,14 +200,14 @@ impl super::RenderContext<'_> {
     /// Put a string at relative position, handling wide characters.
     /// Returns the number of columns written.
     ///
-    /// Respects the clipping region set by `overflow: hidden`.
+    /// Respects the clipping region set by `overflow: hidden`. Each glyph is
+    /// written with [`Self::set`], so a wide glyph whose right half the clip
+    /// cuts off is drawn as a space.
     pub fn put_str(&mut self, x: u16, y: u16, s: &str) -> u16 {
         if y >= self.area.height {
             return 0;
         }
-        let abs_x = self.area.x.saturating_add(x);
-        let abs_y = self.area.y.saturating_add(y);
-        let max_x = self.area.x.saturating_add(self.area.width);
+        let max_x = self.area.width;
 
         let mut offset = 0u16;
         for ch in s.chars() {
@@ -215,18 +215,11 @@ impl super::RenderContext<'_> {
             if w == 0 {
                 continue;
             }
-            let cx = abs_x.saturating_add(offset);
+            let cx = x.saturating_add(offset);
             if cx.saturating_add(w) > max_x {
                 break;
             }
-            if !self.is_clipped(cx, abs_y) {
-                self.buffer.set(cx, abs_y, Cell::new(ch));
-                for i in 1..w {
-                    if !self.is_clipped(cx + i, abs_y) {
-                        self.buffer.set(cx + i, abs_y, Cell::continuation());
-                    }
-                }
-            }
+            self.set(cx, y, Cell::new(ch));
             offset = offset.saturating_add(w);
         }
         offset
@@ -239,12 +232,7 @@ impl super::RenderContext<'_> {
 pub(crate) fn caret_cells(cell: Cell) -> Vec<Cell> {
     let mut cells = vec![cell];
     if !cell.is_continuation() && char_width(cell.symbol) == 2 {
-        let mut cont = Cell::continuation();
-        cont.fg = cell.fg;
-        cont.bg = cell.bg;
-        cont.modifier = cell.modifier;
-        cont.hyperlink_id = cell.hyperlink_id;
-        cells.push(cont);
+        cells.push(crate::render::Buffer::continuation_of(&cell));
     }
     cells
 }

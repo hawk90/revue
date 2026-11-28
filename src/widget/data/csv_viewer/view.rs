@@ -159,9 +159,6 @@ impl CsvViewer {
                 break;
             }
             ctx.set(cx, y, style.cell(ch));
-            for i in 1..cw {
-                ctx.set(cx + i, y, Cell::continuation());
-            }
             cx += cw;
         }
         for fill in cx..end {

@@ -181,12 +181,8 @@ impl StatusBar {
             if section.bold {
                 cell.modifier |= Modifier::BOLD;
             }
+            // `set` writes a wide glyph's continuation with its style
             ctx.set(current_x, y, cell);
-            for i in 1..cw {
-                let mut cont = Cell::continuation();
-                cont.bg = Some(bg);
-                ctx.set(current_x + i, y, cont);
-            }
             current_x += cw;
         }
 

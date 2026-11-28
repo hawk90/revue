@@ -1521,3 +1521,28 @@ fn test_priority_equal_priorities_hide_nothing() {
     assert!(row.contains("bbbbbbbbbb"), "{row:?}");
     assert!(row.starts_with("aaaa"), "{row:?}");
 }
+
+/// A section keeps a wide glyph's colors and bold on its right half: it
+/// wrote a continuation with only the background (#1609)
+#[test]
+fn a_section_styles_both_halves_of_a_wide_glyph() {
+    use crate::wide_glyphs::{assert_wide_glyphs_keep_their_style, draw_at_offset, glyph};
+    let (fg, bg) = (Color::rgb(1, 2, 3), Color::rgb(4, 5, 6));
+    // The right section ends before the gap in the area's last column
+    let bar = StatusBar::new()
+        .left(status_section("가나").fg(fg).bg(bg).bold())
+        .right(status_section("다").fg(fg).bg(bg));
+    let b = draw_at_offset(&bar, 12, 1);
+    let glyphs = assert_wide_glyphs_keep_their_style(&b);
+    for ch in ['가', '나'] {
+        let (_, _, cell) = glyph(&glyphs, ch);
+        assert_eq!(
+            (cell.fg, cell.bg, cell.modifier),
+            (Some(fg), Some(bg), Modifier::BOLD),
+            "{ch}"
+        );
+    }
+    let (x, _, cell) = glyph(&glyphs, '다');
+    assert_eq!(x, 11);
+    assert_eq!((cell.fg, cell.bg), (Some(fg), Some(bg)));
+}

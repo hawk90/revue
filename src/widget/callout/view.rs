@@ -114,10 +114,6 @@ impl Callout {
             cell.bg = Some(bg_color);
             cell.modifier |= Modifier::BOLD;
             ctx.set(x, 0, cell);
-            // Set continuation cells for wide characters
-            for i in 1..char_width {
-                ctx.set(x + i, 0, Cell::continuation());
-            }
             x += char_width;
         }
 
@@ -145,9 +141,6 @@ impl Callout {
                     cell.fg = Some(SECONDARY_TEXT);
                     cell.bg = Some(bg_color);
                     ctx.set(content_x + offset, line_y, cell);
-                    for i in 1..char_width {
-                        ctx.set(content_x + offset + i, line_y, Cell::continuation());
-                    }
                     offset += char_width;
                 }
             }
@@ -199,9 +192,6 @@ impl Callout {
             cell.fg = Some(title_color);
             cell.modifier |= Modifier::BOLD;
             ctx.set(x, 0, cell);
-            for i in 1..char_width {
-                ctx.set(x + i, 0, Cell::continuation());
-            }
             x += char_width;
         }
 
@@ -228,9 +218,6 @@ impl Callout {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(MUTED_TEXT);
                     ctx.set(content_x + offset, line_y, cell);
-                    for i in 1..char_width {
-                        ctx.set(content_x + offset + i, line_y, Cell::continuation());
-                    }
                     offset += char_width;
                 }
             }
@@ -275,9 +262,6 @@ impl Callout {
             cell.fg = Some(title_color);
             cell.modifier |= Modifier::BOLD;
             ctx.set(x, 0, cell);
-            for i in 1..char_width {
-                ctx.set(x + i, 0, Cell::continuation());
-            }
             x += char_width;
         }
 
@@ -306,9 +290,6 @@ impl Callout {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(MUTED_TEXT);
                     ctx.set(content_x + offset, line_y, cell);
-                    for i in 1..char_width {
-                        ctx.set(content_x + offset + i, line_y, Cell::continuation());
-                    }
                     offset += char_width;
                 }
             }
