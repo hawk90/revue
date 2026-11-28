@@ -49,7 +49,9 @@ jobs:
         run: cargo install critcmp --locked
 
       - name: Run benchmarks on base branch
-        run: cargo bench --all-features $BENCH_TARGETS -- --save-baseline base
+        run: |
+          read -ra targets <<< "$BENCH_TARGETS"
+          cargo bench --all-features "${targets[@]}" -- --save-baseline base
 
       - name: Backup base benchmark data
         run: cp -r target/criterion /tmp/criterion-base
@@ -60,7 +62,9 @@ jobs:
           clean: false
 
       - name: Run benchmarks on PR branch
-        run: cargo bench --all-features $BENCH_TARGETS -- --save-baseline pr
+        run: |
+          read -ra targets <<< "$BENCH_TARGETS"
+          cargo bench --all-features "${targets[@]}" -- --save-baseline pr
 
       - name: Restore base benchmark data
         run: |
@@ -75,11 +79,13 @@ jobs:
       - name: Compare benchmarks
         id: compare
         run: |
-          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          critcmp base pr >> $GITHUB_STEP_SUMMARY 2>&1 || true
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Benchmark Results"
+            echo ""
+            echo '```'
+            critcmp base pr 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
           {
             echo 'BENCH_RESULT<<EOF'

@@ -35,15 +35,17 @@ jobs:
         run: |
           OUTPUT=$(cargo outdated --root-deps-only 2>/dev/null || echo "")
           if echo "$OUTPUT" | grep -q "->"; then
-            echo "has_outdated=true" >> $GITHUB_OUTPUT
+            echo "has_outdated=true" >> "$GITHUB_OUTPUT"
             echo "::warning::Outdated dependencies found"
           else
-            echo "has_outdated=false" >> $GITHUB_OUTPUT
+            echo "has_outdated=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "## 📦 Dependency Report" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 📦 Dependency Report"
+            echo '```'
+            echo "$OUTPUT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   semver:
     name: API Stability
@@ -63,15 +65,15 @@ jobs:
         continue-on-error: true
         run: |
           LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1)
-          echo "## 🔒 API Stability" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔒 API Stability" >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$LATEST_TAG" ]; then
             if cargo semver-checks check-release --baseline-rev "$LATEST_TAG" 2>&1; then
-              echo "✅ No breaking changes vs $LATEST_TAG" >> $GITHUB_STEP_SUMMARY
+              echo "✅ No breaking changes vs $LATEST_TAG" >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "⚠️ Breaking changes detected vs $LATEST_TAG" >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ Breaking changes detected vs $LATEST_TAG" >> "$GITHUB_STEP_SUMMARY"
             fi
           else
-            echo "ℹ️ No release tag found" >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ No release tag found" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   dep-stats:
@@ -85,11 +87,11 @@ jobs:
           build-warnings: allow
       - name: Calculate stats
         run: |
-          echo "## 📊 Dependency Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Dependency Statistics" >> "$GITHUB_STEP_SUMMARY"
           MINIMAL=$(cargo tree --no-default-features -e normal --depth 1 2>/dev/null | grep -cE '├|└' || echo "0")
           FULL=$(cargo tree --all-features -e normal --depth 1 2>/dev/null | grep -cE '├|└' || echo "0")
-          echo "- **Minimal:** $MINIMAL deps" >> $GITHUB_STEP_SUMMARY
-          echo "- **Full:** $FULL deps" >> $GITHUB_STEP_SUMMARY
+          echo "- **Minimal:** $MINIMAL deps" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Full:** $FULL deps" >> "$GITHUB_STEP_SUMMARY"
 
   binary-size:
     name: Binary Size
@@ -104,10 +106,10 @@ jobs:
       - name: Build and measure
         run: |
           cargo build --release --all-features
-          echo "## 📏 Binary Size" >> $GITHUB_STEP_SUMMARY
+          echo "## 📏 Binary Size" >> "$GITHUB_STEP_SUMMARY"
           if [ -f target/release/librevue.rlib ]; then
             SIZE=$(du -h target/release/librevue.rlib | cut -f1)
-            echo "- **Library:** $SIZE" >> $GITHUB_STEP_SUMMARY
+            echo "- **Library:** $SIZE" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   docs-coverage:
@@ -118,13 +120,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - name: Check doc coverage
         run: |
-          echo "## 📚 Documentation" >> $GITHUB_STEP_SUMMARY
+          echo "## 📚 Documentation" >> "$GITHUB_STEP_SUMMARY"
           OUTPUT=$(RUSTDOCFLAGS="-D missing_docs" cargo doc --no-deps --all-features 2>&1 || true)
           MISSING=$(echo "$OUTPUT" | grep -c "missing documentation" || echo "0")
           if [ "$MISSING" -eq 0 ]; then
-            echo "✅ All public items documented" >> $GITHUB_STEP_SUMMARY
+            echo "✅ All public items documented" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "⚠️ $MISSING items missing docs" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ $MISSING items missing docs" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   benchmark:
@@ -139,9 +141,9 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Run benchmarks
         run: |
-          echo "## ⚡ Benchmarks" >> $GITHUB_STEP_SUMMARY
+          echo "## ⚡ Benchmarks" >> "$GITHUB_STEP_SUMMARY"
           # The Criterion benches; `instructions` needs Valgrind and runs in CI
-          cargo bench --all-features --bench render --bench layout --bench css --bench dom --bench widget --bench patterns --bench utils --bench frame -- --noplot 2>&1 | grep -E "time:" | head -20 >> $GITHUB_STEP_SUMMARY || echo "No results" >> $GITHUB_STEP_SUMMARY
+          cargo bench --all-features --bench render --bench layout --bench css --bench dom --bench widget --bench patterns --bench utils --bench frame -- --noplot 2>&1 | grep -E "time:" | head -20 >> "$GITHUB_STEP_SUMMARY" || echo "No results" >> "$GITHUB_STEP_SUMMARY"
 
   notify-outdated:
     name: Create Outdated Issue

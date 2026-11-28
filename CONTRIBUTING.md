@@ -164,6 +164,7 @@ PRs must pass all CI checks:
 - `cargo test --all-features`
 - `cargo-deny` (license and security)
 - `typos` (spell check)
+- `actionlint` (workflow files under `.github/workflows/`, with shellcheck on their `run:` scripts)
 - `scripts/public-api.sh` (public API snapshot, see below)
 
 ### Public API Snapshot
