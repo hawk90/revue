@@ -1,6 +1,8 @@
 //! Screen system for multi-page TUI applications
 //!
-//! Provides a screen stack for managing multiple views/pages with transitions.
+//! Provides a screen stack for managing multiple views/pages. The screen
+//! transitions ([`Transition`], [`ScreenConfig::transitions`]) are stored but
+//! not drawn, and are deprecated (#845).
 
 mod core;
 mod state;
@@ -8,11 +10,14 @@ mod types;
 
 pub use core::ScreenManager;
 pub use state::{screen_manager, simple_screen, SimpleScreen};
+#[allow(deprecated)] // kept re-exported until 4.0 so users see the warning
+pub use types::Transition;
 pub use types::{
-    Screen, ScreenConfig, ScreenData, ScreenEvent, ScreenId, ScreenMode, ScreenResult, Transition,
+    Screen, ScreenConfig, ScreenData, ScreenEvent, ScreenId, ScreenMode, ScreenResult,
 };
 
 #[cfg(test)]
+#[allow(deprecated)] // the transition API
 mod tests {
     use super::*;
     use std::time::Duration;

@@ -148,7 +148,12 @@ pub const POLL_IMMEDIATE: Duration = Duration::from_millis(0);
 
 /// Screen transition duration (200ms)
 ///
-/// Duration for screen/page transitions in multi-screen apps.
+/// Duration for screen/page transitions in multi-screen apps. Nothing in
+/// revue reads it, and screen transitions are not drawn.
+#[deprecated(
+    since = "3.17.0",
+    note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+)]
 pub const SCREEN_TRANSITION_DURATION: Duration = Duration::from_millis(200);
 
 // =============================================================================

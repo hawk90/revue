@@ -152,7 +152,9 @@ pub use grid::{
 pub use layer::{layers, Layers};
 pub use positioned::{positioned, Anchor, Positioned};
 pub use resizable::{resizable, Resizable, ResizeDirection, ResizeHandle, ResizeStyle};
-pub use screen::{screen, screen_stack, Screen, ScreenStack, ScreenTransition};
+#[allow(deprecated)] // kept re-exported until 4.0 so users see the warning
+pub use screen::ScreenTransition;
+pub use screen::{screen, screen_stack, Screen, ScreenStack};
 pub use scroll::{scroll_view, ScrollView};
 pub use scroll_bar::{scrollbar, Scrollbar};
 pub use sidebar::{
