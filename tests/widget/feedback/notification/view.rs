@@ -309,6 +309,21 @@ fn test_notification_fits_a_narrow_area() {
     assert!((0..5).all(|y| row(&b, y).trim().is_empty()));
 }
 
+/// The narrowest box: 4 columns, its two borders and two inner columns, the
+/// last of which stays blank (#1532)
+#[test]
+fn test_notification_box_four_columns_wide() {
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .show_icons(false)
+        .show_timer(false);
+    c.info("hi");
+    let b = render(&c, 4, 5);
+    assert_eq!(corners(&b), [(0, 0)]);
+    let rows: Vec<String> = (0..5).map(|y| row(&b, y)).collect();
+    assert_eq!(rows, ["╭──╮", "│h │", "╰──╯", "    ", "    "]);
+}
+
 /// Growing up from the bottom, a box with no room above the last one is left
 /// out: it was pinned at row 0 and drawn over the box below it (#1048,
 /// moved from #884). Growing down, a box past the bottom is left out, as

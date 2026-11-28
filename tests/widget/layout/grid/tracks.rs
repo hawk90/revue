@@ -110,6 +110,23 @@ fn test_calculate_tracks_zero_fr() {
     assert_eq!(result, vec![10, 20]);
 }
 
+/// Every fr track 0fr: the weights sum to 0, so the fr tracks get no space
+/// (an equal split would give each one a share, #1532)
+#[test]
+fn test_calculate_tracks_all_zero_fr_get_no_space() {
+    let grid = Grid::new();
+    let zero = [TrackSize::Fr(0.0); 3];
+    assert_eq!(
+        grid.test_calculate_tracks(100, &zero, TrackSize::Fr(1.0), 0),
+        vec![0, 0, 0]
+    );
+    let with_fixed = [TrackSize::Fixed(10), TrackSize::Fr(0.0), TrackSize::Fr(0.0)];
+    assert_eq!(
+        grid.test_calculate_tracks(100, &with_fixed, TrackSize::Fr(1.0), 0),
+        vec![10, 0, 0]
+    );
+}
+
 #[test]
 fn test_calculate_tracks_overflow_protection() {
     let grid = Grid::new();
