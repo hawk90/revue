@@ -1,7 +1,7 @@
 //! Component picker for click-to-inspect functionality
 
 use crate::layout::Rect;
-use crate::render::Buffer;
+use crate::render::{Buffer, Cell};
 use crate::style::Color;
 use std::collections::HashMap;
 
@@ -204,18 +204,18 @@ impl ComponentPicker {
 
         // Draw tooltip background
         let padding = 1u16;
-        let width = crate::utils::unicode::display_width(text) as u16 + padding * 2;
+        let width = u16::try_from(crate::utils::unicode::display_width(text))
+            .unwrap_or(u16::MAX)
+            .saturating_add(padding * 2);
 
-        for dx in 0..width {
-            if let Some(cell) = buffer.get_mut(tooltip_x + dx, tooltip_y) {
-                cell.symbol = ' ';
-                cell.bg = Some(Color::rgb(40, 40, 50));
-            }
-        }
+        // Whole cells: the app's fg, modifiers, link and escape sequence stay
+        // out of the tooltip (#1548)
+        let blank = Cell::new(' ').fg(Color::WHITE).bg(Color::rgb(40, 40, 50));
+        buffer.fill(tooltip_x, tooltip_y, width, 1, blank);
 
         // Draw tooltip text (wide-char safe)
         let _ = buffer.put_str_styled(
-            tooltip_x + padding,
+            tooltip_x.saturating_add(padding),
             tooltip_y,
             text,
             Some(Color::WHITE),

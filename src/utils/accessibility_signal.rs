@@ -8,10 +8,10 @@
 //! ```
 //! use revue::prelude::*;
 //!
-//! // Announce a message
+//! // Queue a message
 //! announce("Button clicked");
 //!
-//! // Announce immediately (interrupts)
+//! // Queue an urgent one (assertive priority)
 //! announce_now("Error: Invalid input");
 //!
 //! // Check preferences
@@ -35,10 +35,11 @@ fn get_accessibility() -> &'static Arc<RwLock<AccessibilityManager>> {
     ACCESSIBILITY.get_or_init(|| Arc::new(RwLock::new(AccessibilityManager::new())))
 }
 
-/// Queue a polite announcement (waits for idle)
+/// Queue a polite announcement
 ///
-/// Use this for status updates and non-urgent information.
-/// Screen readers will read this after finishing current speech.
+/// Use this for status updates and non-urgent information. revue only
+/// queues it: nothing is sent to a screen reader. The app reads the queue
+/// with [`take_announcements`] (to show in a status line, say).
 ///
 /// # Example
 ///
@@ -56,10 +57,11 @@ pub fn announce(message: impl Into<String>) {
     manager.announce_polite(message);
 }
 
-/// Queue an assertive announcement (interrupts immediately)
+/// Queue an assertive announcement
 ///
-/// Use this for urgent information like errors or alerts.
-/// Screen readers will interrupt current speech to read this.
+/// Use this for urgent information like errors or alerts. Like
+/// [`announce`], it only queues: the announcement carries
+/// [`Priority::Assertive`] for the app that reads the queue.
 ///
 /// # Example
 ///

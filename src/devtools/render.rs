@@ -2,7 +2,7 @@
 
 use super::{DevTools, DevToolsTab};
 use crate::layout::Rect;
-use crate::render::Buffer;
+use crate::render::{Buffer, Cell};
 
 impl DevTools {
     /// Render devtools panel
@@ -17,16 +17,13 @@ impl DevTools {
     }
 
     fn render_panel(&self, buffer: &mut Buffer, area: Rect) {
-        // Fill background
-        for y in area.y..area.y + area.height {
-            for x in area.x..area.x + area.width {
-                if let Some(cell) = buffer.get_mut(x, y) {
-                    cell.symbol = ' ';
-                    cell.bg = Some(self.config.bg_color);
-                    cell.fg = Some(self.config.fg_color);
-                }
-            }
-        }
+        // Fill with whole blank cells in the panel's colors: nothing of the
+        // app under it stays, not its modifiers, link or escape sequence
+        // (#1548), and a wide glyph the panel's edge cuts in half is blanked
+        let blank = Cell::new(' ')
+            .fg(self.config.fg_color)
+            .bg(self.config.bg_color);
+        buffer.fill(area.x, area.y, area.width, area.height, blank);
 
         // Too small for a border; the background is all there is room for
         if area.width < 2 || area.height < 2 {
