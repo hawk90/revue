@@ -96,9 +96,9 @@ impl MultiSelect {
 
     /// The selected options as `[label]` tags, and `…` in place of the first
     /// tag that does not fit before `max_x`. The row scrolls (in columns) to
-    /// keep the tag cursor in view, starts at a whole tag (#882), and starts
-    /// with `… ` if tags are scrolled off to the left. Returns the column
-    /// after the tags.
+    /// show as many tags as fit ending at the tag cursor's, starts at a
+    /// whole tag (#882), and starts with `… ` if tags are scrolled off to
+    /// the left. Returns the column after the tags.
     fn draw_tags(&self, ctx: &mut RenderContext, max_x: u16) -> u16 {
         // Each tag's first column on the whole row: "[label] "
         let mut starts = Vec::with_capacity(self.selected.len());
@@ -115,20 +115,35 @@ impl MultiSelect {
         let markers = if self.selected.len() > 1 { 4 } else { 0 };
         // A viewport of none would stop the row from scrolling at all.
         scroll.set_viewport(max_x.saturating_sub(markers).max(1) as usize);
-        if let Some(c) = self.tag_cursor.filter(|&c| c < starts.len()) {
-            let end = starts.get(c + 1).copied().unwrap_or(total);
-            // Without the space after the tag
-            scroll.track(starts[c]..end.saturating_sub(1).max(starts[c] + 1));
-        }
-        // The first whole tag at or after the offset: it keeps the cursor's
-        // tag in view, which ends within the viewport from the offset
-        let first = starts
-            .iter()
-            .position(|&s| s >= scroll.offset())
-            .unwrap_or(starts.len());
+        let last = self.selected.len().saturating_sub(1);
+        let first = match self.tag_cursor.filter(|&c| c < starts.len()) {
+            // As many whole tags as fit, ending at the cursor's (#1608):
+            // the earliest tag from which the cursor's still fits, with
+            // "… " before it when tags are off to the left and " …" after
+            // it when tags follow. The offset rounded up to a whole tag
+            // could leave room for one more on the left.
+            Some(c) => {
+                // The cursor's tag ends here, without the space after it
+                let end = starts.get(c + 1).copied().unwrap_or(total) - 1;
+                let after = if c < last { 2 } else { 0 };
+                let first = (0..=c)
+                    .find(|&f| {
+                        let before = if f > 0 { 2 } else { 0 };
+                        before + end - starts[f] + after <= max_x as usize
+                    })
+                    .unwrap_or(c);
+                // So the row stays here once the cursor leaves the tags
+                scroll.set_offset(starts[first]);
+                first
+            }
+            // Off the tags: the first whole tag at or after the offset
+            None => starts
+                .iter()
+                .position(|&s| s >= scroll.offset())
+                .unwrap_or(starts.len()),
+        };
 
         let mut x: u16 = 0;
-        let last = self.selected.len().saturating_sub(1);
         // Only if the first tag still fits after it: the tag under the cursor
         // comes before the marker.
         if first > 0 && first <= last {

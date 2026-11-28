@@ -5,7 +5,7 @@ use super::Chart;
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::unicode::display_width_u16;
+use crate::utils::unicode::{display_width_u16, truncate_with_ellipsis};
 use crate::utils::{char_width, display_width};
 use crate::widget::data::chart::chart_common::AxisFormat;
 use crate::widget::traits::RenderContext;
@@ -30,7 +30,26 @@ impl Chart {
         }
     }
 
-    /// Draw Y axis labels
+    /// The Y tick label of tick `i` of `ticks`, and where it goes from the
+    /// bottom of the axis (0) to the top (1)
+    fn y_tick_label(&self, i: usize, ticks: usize, bounds: (f64, f64, f64, f64)) -> (f64, String) {
+        let (_, _, y_min, y_max) = bounds;
+        let t = i as f64 / ticks as f64;
+        let value = y_min + t * (y_max - y_min);
+        (t, self.format_label(value, &self.y_axis.format))
+    }
+
+    /// The width of the widest Y tick label, in columns
+    pub(super) fn y_label_columns(&self, bounds: (f64, f64, f64, f64)) -> u16 {
+        let ticks = self.y_axis.ticks.max(1);
+        (0..=ticks)
+            .map(|i| display_width_u16(&self.y_tick_label(i, ticks, bounds).1))
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// Draw Y axis labels, right-aligned in the label column; a label wider
+    /// than the column is cut with `…` (#1606)
     pub(super) fn draw_y_axis(
         &self,
         ctx: &mut RenderContext,
@@ -46,17 +65,15 @@ impl Chart {
             y_label_x,
             ..
         } = *plot;
-        let (_, _, y_min, y_max) = bounds;
+        let columns = y_label_width.saturating_sub(1);
         let ticks = self.y_axis.ticks.max(1);
         for i in 0..=ticks {
-            let t = i as f64 / ticks as f64;
-            let value = y_min + t * (y_max - y_min);
-            let label = self.format_label(value, &self.y_axis.format);
+            let (t, label) = self.y_tick_label(i, ticks, bounds);
+            let label = truncate_with_ellipsis(&label, columns as usize);
             let y = inner_y + inner_h - 1 - ((t * (inner_h as f64 - 1.0)) as u16);
 
             // Right-align label
-            let label_start = y_label_x
-                + y_label_width.saturating_sub(display_width_u16(&label).saturating_add(1));
+            let label_start = y_label_x + columns.saturating_sub(display_width_u16(&label));
             let mut dx: u16 = 0;
             for ch in label.chars() {
                 let x = label_start.saturating_add(dx);
@@ -80,7 +97,7 @@ impl Chart {
         }
     }
 
-    /// Draw X axis labels
+    /// Draw X axis labels, centered on their ticks
     pub(super) fn draw_x_axis(
         &self,
         ctx: &mut RenderContext,
@@ -98,10 +115,15 @@ impl Chart {
         } = *plot;
         let (x_min, x_max, _, _) = bounds;
         let ticks = self.x_axis.ticks.max(1);
+        // Each label is cut with `…` to its slot, the columns between two
+        // ticks less one, so neighbors never overwrite each other (#1606)
+        let slot = usize::from(inner_w.saturating_sub(1)) / ticks;
+        let slot = slot.saturating_sub(1).max(1);
         for i in 0..=ticks {
             let t = i as f64 / ticks as f64;
             let value = x_min + t * (x_max - x_min);
             let label = self.format_label(value, &self.x_axis.format);
+            let label = truncate_with_ellipsis(&label, slot);
             let x = inner_x + (t * (inner_w as f64 - 1.0)) as u16;
 
             // Center label

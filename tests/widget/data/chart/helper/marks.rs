@@ -7,21 +7,21 @@ use revue::widget::data::chart::{Axis, Chart, ChartType, LineStyle, Marker, Seri
 
 #[test]
 fn test_chart_line_series() {
-    // (0,0) -> (8,17), (10,10) -> (39,1); Y is padded to -0.5..10.5
+    // (0,0) -> (6,17), (10,10) -> (39,1); Y is padded to -0.5..10.5
     let buffer = render(&plain().series(diagonal()), 40, 20);
-    assert_eq!(sym(&buffer, 8, 17), '╱');
+    assert_eq!(sym(&buffer, 6, 17), '╱');
     assert_eq!(sym(&buffer, 39, 1), '╱');
     // Bresenham visits max(dx, dy) + 1 cells
-    assert_eq!(plot_line_cells(&buffer), 32);
+    assert_eq!(plot_line_cells(&buffer), 34);
     // Series default color
-    assert_eq!(buffer.get(8, 17).unwrap().fg, Some(Color::WHITE));
+    assert_eq!(buffer.get(6, 17).unwrap().fg, Some(Color::WHITE));
 }
 
 #[test]
 fn test_chart_descending_line() {
     let s = Series::new("D").data(vec![(0.0, 10.0), (10.0, 0.0)]);
     let buffer = render(&plain().series(s), 40, 20);
-    assert_eq!(sym(&buffer, 8, 1), '╲');
+    assert_eq!(sym(&buffer, 6, 1), '╲');
     assert_eq!(sym(&buffer, 39, 17), '╲');
 }
 
@@ -33,8 +33,8 @@ fn test_chart_series_colors() {
             .color(Color::BLUE),
     );
     let buffer = render(&chart, 40, 20);
-    assert_eq!(buffer.get(8, 17).unwrap().fg, Some(Color::RED));
-    assert_eq!(buffer.get(8, 1).unwrap().fg, Some(Color::BLUE));
+    assert_eq!(buffer.get(6, 17).unwrap().fg, Some(Color::RED));
+    assert_eq!(buffer.get(6, 1).unwrap().fg, Some(Color::BLUE));
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn test_chart_type_area_fills_under_line() {
         20,
     );
     assert_eq!(count_char(&without_fill, '░'), 0);
-    assert_eq!(plot_line_cells(&without_fill), 32);
+    assert_eq!(plot_line_cells(&without_fill), 34);
 
     let filled = render(&plain().series(diagonal().area(Color::GREEN)), 40, 20);
     let shades = count_char(&filled, '░') + count_char(&filled, '▒') + count_char(&filled, '▓');
@@ -72,7 +72,7 @@ fn test_chart_type_area_fills_under_line() {
 fn test_chart_type_step_after() {
     // Horizontal along the first point's row, then up at the second x
     let buffer = render(&plain().series(diagonal().step()), 40, 20);
-    for x in 8..39 {
+    for x in 6..39 {
         assert_eq!(sym(&buffer, x, 17), '─', "x={x}");
     }
     for y in 1..17 {
@@ -86,26 +86,26 @@ fn test_chart_type_step_before() {
     let s = diagonal().chart_type(ChartType::StepBefore);
     let buffer = render(&plain().series(s), 40, 20);
     for y in 2..18 {
-        assert_eq!(sym(&buffer, 8, y), '│', "y={y}");
+        assert_eq!(sym(&buffer, 6, y), '│', "y={y}");
     }
-    for x in 9..40 {
+    for x in 7..40 {
         assert_eq!(sym(&buffer, x, 1), '─', "x={x}");
     }
 }
 
 #[test]
 fn test_chart_line_styles() {
-    // One 32-cell segment (the dash pattern restarts on every segment)
+    // One 35-cell segment (the dash pattern restarts on every segment)
     let two_points = || Series::new("Flat").data(vec![(1.0, 5.0), (3.0, 5.0)]);
     let count = |style: LineStyle| {
         let buffer = render(&plain().series(two_points().line_style(style)), 40, 20);
         count_char(&buffer, '─')
     };
-    assert_eq!(count(LineStyle::Solid), 32);
-    // Dashed: 3 on, 3 off over 32 steps
-    assert_eq!(count(LineStyle::Dashed), 17);
+    assert_eq!(count(LineStyle::Solid), 35);
+    // Dashed: 3 on, 3 off over 35 steps
+    assert_eq!(count(LineStyle::Dashed), 18);
     // Dotted: every other step
-    assert_eq!(count(LineStyle::Dotted), 16);
+    assert_eq!(count(LineStyle::Dotted), 18);
     assert_eq!(count(LineStyle::None), 0);
 }
 
@@ -119,15 +119,15 @@ fn test_chart_markers() {
     // Marker::None draws nothing
     let s = flat().marker(Marker::None).line_style(LineStyle::None);
     let rows = rows(&render(&plain().series(s), 40, 20));
-    assert!(rows[..18].iter().all(|r| r[8..].trim().is_empty()));
+    assert!(rows[..18].iter().all(|r| r[5..].trim().is_empty()));
 }
 
 #[test]
 fn test_chart_markers_drawn_over_lines() {
     let buffer = render(&plain().series(diagonal().marker(Marker::Circle)), 40, 20);
-    assert_eq!(sym(&buffer, 8, 17), '○');
+    assert_eq!(sym(&buffer, 6, 17), '○');
     assert_eq!(sym(&buffer, 39, 1), '○');
-    assert_eq!(plot_line_cells(&buffer), 30);
+    assert_eq!(plot_line_cells(&buffer), 32);
 }
 
 #[test]
@@ -146,19 +146,19 @@ fn test_chart_braille_draws_lines_with_dots() {
     );
     // No box-drawing line cells; the line is made of Braille dots instead
     assert_eq!(plot_line_cells(&buffer), 0);
-    // On a 64x72 dot grid the line starts at the bottom-left dot of the plot
-    // (column 8, row 17) and climbs to the top-right cell, touching every row
+    // On a 68x72 dot grid the line starts at the bottom-left dot of the plot
+    // (column 6, row 17) and climbs to the top-right cell, touching every row
     // on the way up (row 0 is the top padding)
-    assert_eq!(sym(&buffer, 8, 17), '\u{2801}');
+    assert_eq!(sym(&buffer, 6, 17), '\u{2801}');
     assert!(is_braille(sym(&buffer, 39, 1)));
     for y in 1..18 {
         assert!(
-            (8..40).any(|x| is_braille(sym(&buffer, x, y))),
+            (6..40).any(|x| is_braille(sym(&buffer, x, y))),
             "row {y}: {:?}",
             rows(&buffer)[y as usize]
         );
     }
-    assert_eq!(buffer.get(8, 17).unwrap().fg, Some(Color::CYAN));
+    assert_eq!(buffer.get(6, 17).unwrap().fg, Some(Color::CYAN));
 }
 
 #[test]
@@ -174,9 +174,10 @@ fn test_chart_braille_keeps_markers_and_clips() {
         .x_axis(Axis::new().bounds(0.0, 10.0).grid(false))
         .y_axis(Axis::new().bounds(0.0, 10.0).grid(false));
     let buffer = render(&chart, 40, 20);
+    // Y labels "0".."10": the plot starts at column 3
     assert_eq!(count_char(&buffer, '★'), 1);
-    assert_eq!(sym(&buffer, 23, 9), '★');
-    assert!(is_braille(sym(&buffer, 8, 17)));
+    assert_eq!(sym(&buffer, 21, 9), '★');
+    assert!(is_braille(sym(&buffer, 3, 17)));
     assert!(is_braille(sym(&buffer, 39, 0)));
     assert_eq!(plot_line_cells(&buffer), 0);
 }

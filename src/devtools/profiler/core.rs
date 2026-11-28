@@ -6,7 +6,7 @@ use super::types::{ComponentStats, Frame, ProfilerView, RenderEvent};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::utils::{display_width, pad_to_width, truncate_with_suffix};
+use crate::utils::{display_width, pad_to_width, truncate_with_ellipsis};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -379,7 +379,7 @@ impl Profiler {
             let y = content_y.saturating_add(i as u16);
 
             // Component name, 20 columns wide
-            let name = pad_to_width(&truncate_with_suffix(&stat.name, 20, "..."), 20);
+            let name = pad_to_width(&truncate_with_ellipsis(&stat.name, 20), 20);
 
             // Stats
             let line = format!(
@@ -426,7 +426,7 @@ impl Profiler {
             let y = content_y.saturating_add(i as u16);
 
             // Component name, 20 columns wide
-            let name = pad_to_width(&truncate_with_suffix(&stat.name, 20, "..."), 20);
+            let name = pad_to_width(&truncate_with_ellipsis(&stat.name, 20), 20);
 
             // Bar width based on count
             let bar_width =

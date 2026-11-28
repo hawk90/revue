@@ -51,7 +51,7 @@
 //! assert_eq!(wrap_chars("let x = 1;", 4), ["let ", "x = ", "1;"]);
 //!
 //! // Truncate with ellipsis
-//! assert_eq!(truncate("Long text here", 10), "Long te...");
+//! assert_eq!(truncate("Long text here", 10), "Long text…");
 //! ```
 //!
 //! ## Bidirectional Text
@@ -99,11 +99,11 @@
 //!
 //! // Truncate at end
 //! truncate("Very long text", 10, &Overflow::Ellipsis);
-//! // "Very long ..."
+//! // "Very long…"
 //!
 //! // Truncate in middle
 //! truncate_middle("Very long text here", 10);
-//! // "Very ... here"
+//! // "Very… here"
 //!
 //! // Truncate without indicator
 //! truncate("Very long text", 10, &Overflow::Clip);

@@ -6,7 +6,7 @@ use super::types::{EventFilter, EventType, LoggedEvent};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::utils::truncate_with_suffix;
+use crate::utils::truncate_with_ellipsis;
 use std::collections::VecDeque;
 use std::time::Instant;
 
@@ -334,7 +334,7 @@ impl EventLogger {
         let max_details = (ctx.width as usize).saturating_sub(20);
         // By display width, never by byte index (which can fall inside a
         // multibyte character).
-        let details = truncate_with_suffix(&event.details, max_details, "...");
+        let details = truncate_with_ellipsis(&event.details, max_details);
 
         let line = format!("{} {} {} {}", icon, handled_mark, details, age);
 

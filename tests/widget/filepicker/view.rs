@@ -233,21 +233,21 @@ fn test_filepicker_scroll_markers() {
     let buffer = draw(&picker, 60, 12);
     assert_eq!(row(&buffer, 3), entry("  ", false, "f0.txt", "0 B"));
     assert_eq!(row(&buffer, 5), entry("  ", false, "f2.txt", "0 B"));
-    assert_eq!(row(&buffer, 6), "  ↓ more...");
+    assert_eq!(row(&buffer, 6), "  ↓ more…");
     assert_eq!(fg(&buffer, 2, 6), Some(DISABLED_FG));
     assert_eq!(row(&buffer, 7), "─".repeat(60));
 
     highlight(&mut picker, "f3.txt");
     let buffer = draw(&picker, 60, 12);
-    assert_eq!(row(&buffer, 3), "  ↑ more...");
+    assert_eq!(row(&buffer, 3), "  ↑ more…");
     assert_eq!(fg(&buffer, 2, 3), Some(DISABLED_FG));
     assert_eq!(row(&buffer, 4), entry("  ", false, "f1.txt", "0 B"));
     assert_eq!(row(&buffer, 6), entry("  ", false, "f3.txt", "0 B"));
-    assert_eq!(row(&buffer, 7), "  ↓ more...");
+    assert_eq!(row(&buffer, 7), "  ↓ more…");
 
     highlight(&mut picker, "f5.txt");
     let buffer = draw(&picker, 60, 12);
-    assert_eq!(row(&buffer, 3), "  ↑ more...");
+    assert_eq!(row(&buffer, 3), "  ↑ more…");
     assert_eq!(row(&buffer, 6), entry("  ", false, "f5.txt", "0 B"));
     assert_eq!(row(&buffer, 7), "─".repeat(60));
 }
@@ -258,7 +258,7 @@ fn test_filepicker_max_visible_zero_shows_only_the_marker() {
     let picker = file_picker().start_dir(dir.path()).max_visible(0);
     let buffer = draw(&picker, 60, 8);
     assert_eq!(row(&buffer, 2), "  📁 ..");
-    assert_eq!(row(&buffer, 3), "  ↓ more...");
+    assert_eq!(row(&buffer, 3), "  ↓ more…");
     assert_eq!(row(&buffer, 4), "─".repeat(60));
 }
 
@@ -383,7 +383,7 @@ fn test_filepicker_shows_fifteen_entries_by_default() {
     let buffer = draw(&picker, 60, 24);
     assert_eq!(row(&buffer, 3), entry("  ", false, "f00.txt", "0 B"));
     assert_eq!(row(&buffer, 17), entry("  ", false, "f14.txt", "0 B"));
-    assert_eq!(row(&buffer, 18), "  ↓ more...");
+    assert_eq!(row(&buffer, 18), "  ↓ more…");
 }
 
 /// The window was `max_visible` entries whatever the area, so in a short

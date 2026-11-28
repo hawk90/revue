@@ -1,8 +1,10 @@
 //! Chart (line/area/step/scatter) widget tests
 //!
 //! Layout used below: a 40x20 chart without border or title has its plot
-//! area at x=8..40, y=0..18, Y labels in columns 0..8 and X labels on
-//! row 18.
+//! area at y=0..18 and X labels on row 18. The Y label column is as wide as
+//! the widest Y label (#1606), with one gap column after it, so the plot
+//! starts at x=6 for the `diagonal` and empty charts (labels such as
+//! "-0.50" and "-0.05", 5 columns) and at x=5 for `flat` ("4.50", 4).
 
 mod axes;
 mod constructors;
@@ -34,11 +36,12 @@ pub(super) fn sym(buffer: &Buffer, x: u16, y: u16) -> char {
     buffer.get(x, y).unwrap().symbol
 }
 
-/// Line-drawing cells inside the plot area of a 40x20 chart.
+/// Line-drawing cells in the plot rows of a 40x20 chart (the labels left
+/// of the plot are never line-drawing cells).
 pub(super) fn plot_line_cells(buffer: &Buffer) -> usize {
     let mut n = 0;
     for y in 0..18 {
-        for x in 8..40 {
+        for x in 0..40 {
             if matches!(sym(buffer, x, y), '─' | '│' | '╱' | '╲') {
                 n += 1;
             }

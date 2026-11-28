@@ -1,6 +1,6 @@
 //! Text wrapping and formatting utilities
 
-use crate::utils::unicode::{char_width, display_width, truncate_to_width};
+use crate::utils::unicode::{char_width, display_width, truncate_to_width, truncate_with_ellipsis};
 use textwrap::core::Fragment;
 use textwrap::wrap_algorithms::wrap_first_fit;
 use textwrap::{WordSeparator, WordSplitter};
@@ -23,9 +23,9 @@ pub enum Overflow {
     /// Clip text at boundary
     #[default]
     Clip,
-    /// Show ellipsis at end
+    /// Show an ellipsis (`…`, one column) at the end
     Ellipsis,
-    /// Show ellipsis in middle
+    /// Show an ellipsis (`…`, one column) in the middle
     EllipsisMiddle,
 }
 
@@ -183,45 +183,29 @@ impl TextWrapper {
 
         match self.overflow {
             Overflow::Clip => truncate_to_width(text, self.width).to_string(),
-            Overflow::Ellipsis => {
-                if self.width <= 3 {
-                    "...".chars().take(self.width).collect()
-                } else {
-                    let visible = self.width - 3;
-                    let truncated = truncate_to_width(text, visible);
-                    format!("{}...", truncated)
-                }
-            }
+            // One `…` cell (#1611), as in `utils::truncate_with_ellipsis`
+            Overflow::Ellipsis => truncate_with_ellipsis(text, self.width),
             Overflow::EllipsisMiddle => {
-                if self.width <= 3 {
-                    "...".chars().take(self.width).collect()
-                } else {
-                    // Use saturating arithmetic to prevent overflow
-                    let width_minus_3 = self.width.saturating_sub(3);
-                    let half = width_minus_3 / 2;
-                    // Get first half
-                    let first = truncate_to_width(text, half);
-                    // Get second half from the end (also using saturating_sub)
-                    let from_end = width_minus_3.saturating_sub(half);
-                    let second = if from_end > 0 {
-                        // Need to get last 'from_end' display columns
-                        let mut total = 0;
-                        let chars: Vec<char> = text.chars().rev().collect();
-                        let mut rev_chars = Vec::new();
-                        for ch in chars {
-                            let ch_width = char_width(ch);
-                            if total + ch_width > from_end {
-                                break;
-                            }
-                            total += ch_width;
-                            rev_chars.push(ch);
-                        }
-                        rev_chars.into_iter().rev().collect()
-                    } else {
-                        String::new()
-                    };
-                    format!("{}...{}", first, second)
+                if self.width <= 1 {
+                    return truncate_with_ellipsis(text, self.width);
                 }
+                // The columns either side of the `…`, the start getting
+                // the smaller half
+                let keep = self.width - 1;
+                let first = truncate_to_width(text, keep / 2);
+                let from_end = keep - display_width(first);
+                let mut total = 0;
+                let mut rev_chars = Vec::new();
+                for ch in text.chars().rev() {
+                    let ch_width = char_width(ch);
+                    if total + ch_width > from_end {
+                        break;
+                    }
+                    total += ch_width;
+                    rev_chars.push(ch);
+                }
+                let second: String = rev_chars.into_iter().rev().collect();
+                format!("{}…{}", first, second)
             }
         }
     }
@@ -447,7 +431,7 @@ mod tests {
     #[test]
     fn test_truncate() {
         let result = truncate("Hello World", 8);
-        assert_eq!(result, "Hello...");
+        assert_eq!(result, "Hello W…");
     }
 
     #[test]
@@ -459,8 +443,8 @@ mod tests {
     #[test]
     fn test_truncate_middle() {
         let result = truncate_middle("Hello World", 9);
-        assert!(result.contains("..."));
-        assert_eq!(result.len(), 9);
+        assert_eq!(result, "Hell…orld");
+        assert_eq!(display_width(&result), 9);
     }
 
     #[test]
@@ -591,9 +575,11 @@ mod tests {
         assert_eq!(display_width(&result), 4);
         assert_eq!(result, "你好");
 
-        // For width 2 with Ellipsis, we get ".." (ellipsis is 3 chars minimum)
+        // Width 2 holds the one-column `…` but not `…` and a 2-column 你
         let result = truncate(text, 2);
-        assert_eq!(result, "..");
+        assert_eq!(result, "…");
+        let result = truncate(text, 3);
+        assert_eq!(result, "你…");
 
         // Use Clip mode to actually truncate without ellipsis
         let wrapper = TextWrapper::new(2)
@@ -616,10 +602,10 @@ mod tests {
     fn test_truncate_very_short_width() {
         // Width less than ellipsis length
         let result = truncate("Hello World", 2);
-        assert_eq!(result, "..");
+        assert_eq!(result, "H…");
 
         let result = truncate("Hello World", 1);
-        assert_eq!(result, ".");
+        assert_eq!(result, "…");
 
         let result = truncate("Hello World", 0);
         assert_eq!(result, "");
@@ -628,10 +614,10 @@ mod tests {
     #[test]
     fn test_truncate_middle_very_short() {
         let result = truncate_middle("Hello World", 3);
-        assert_eq!(result, "...");
+        assert_eq!(result, "H…d");
 
         let result = truncate_middle("Hello World", 2);
-        assert_eq!(result, "..");
+        assert_eq!(result, "…d");
     }
 
     #[test]
@@ -705,41 +691,37 @@ mod tests {
 
     #[test]
     fn test_ellipsis_middle_width_1() {
-        // Width 1 should return "." (no overflow)
+        // Width 1 holds the `…` alone
         let result = truncate_middle("Hello World", 1);
-        assert_eq!(result, ".");
+        assert_eq!(result, "…");
     }
 
     #[test]
     fn test_ellipsis_middle_width_2() {
-        // Width 2 should return ".." (no overflow)
+        // Width 2: the `…` and the last character
         let result = truncate_middle("Hello World", 2);
-        assert_eq!(result, "..");
+        assert_eq!(result, "…d");
     }
 
     #[test]
     fn test_ellipsis_middle_width_3() {
-        // Width 3 should return "..." (no overflow)
+        // Width 3: one character either side of the `…`
         let result = truncate_middle("Hello World", 3);
-        assert_eq!(result, "...");
+        assert_eq!(result, "H…d");
     }
 
     #[test]
     fn test_ellipsis_middle_width_4() {
-        // Width 4: (4-3)/2 = 0, from_end = 4-3-0 = 1
-        // Should show "..." + 1 char from end
+        // Width 4: 1 column before the `…`, 2 after
         let result = truncate_middle("Hello", 4);
-        assert!(result.contains("..."));
-        assert_eq!(result.len(), 4);
+        assert_eq!(result, "H…lo");
     }
 
     #[test]
     fn test_ellipsis_middle_width_5() {
-        // Width 5: (5-3)/2 = 1, from_end = 5-3-1 = 1
-        // With longer text, first 1 char + "..." + last 1 char
+        // Width 5: 2 columns either side of the `…`
         let result = truncate_middle("Hello World", 5);
-        assert!(result.contains("..."));
-        assert_eq!(result, "H...d");
+        assert_eq!(result, "He…ld");
     }
 
     #[test]
@@ -747,9 +729,11 @@ mod tests {
         // Test with wide characters (CJK) at minimum widths
         let text = "你好世界"; // 4 CJK chars, 8 display columns
         let result = truncate_middle(text, 4);
-        // Should handle gracefully without overflow
-        // Result will be "...界" or similar depending on truncation
-        assert!(result.len() <= 4);
+        // No 2-column character fits the 1 column before the `…`, so the
+        // 3 columns after it hold 界 alone
+        assert_eq!(result, "…界");
+        // An odd width: 你 before (2 of 2 columns), 界 after (2 of 3)
+        assert_eq!(truncate_middle(text, 6), "你…界");
     }
 
     #[test]
