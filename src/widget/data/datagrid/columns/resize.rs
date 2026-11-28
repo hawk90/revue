@@ -40,11 +40,7 @@ impl DataGrid {
         let new_width = (self.resize_start_width as i16 + delta).max(1) as u16;
 
         let col = &self.columns[col_idx];
-        let constrained = new_width.max(col.min_width).min(if col.max_width > 0 {
-            col.max_width
-        } else {
-            u16::MAX
-        });
+        let constrained = col.clamp_width(new_width);
 
         // Update column width
         if col_idx < self.column_widths.len() {
@@ -76,6 +72,10 @@ impl DataGrid {
     }
 
     /// Set a column width programmatically
+    ///
+    /// The width is clamped into the column's `[min_width, max_width]`
+    /// (`max_width` 0 = no limit; a larger `min_width` wins), as a drag
+    /// resize is.
     pub fn set_column_width(&mut self, col: usize, width: u16) {
         // Ensure column_widths is populated
         while self.column_widths.len() <= col {
@@ -83,15 +83,7 @@ impl DataGrid {
         }
 
         let col_def = self.columns.get(col);
-        let constrained = if let Some(c) = col_def {
-            width.max(c.min_width).min(if c.max_width > 0 {
-                c.max_width
-            } else {
-                u16::MAX
-            })
-        } else {
-            width
-        };
+        let constrained = col_def.map_or(width, |c| c.clamp_width(width));
 
         self.column_widths[col] = constrained;
 

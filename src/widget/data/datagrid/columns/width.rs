@@ -22,11 +22,7 @@ impl DataGrid {
     /// Widths of every column, indexed like `columns`: the displayed width for
     /// visible columns and the configured width for hidden ones
     pub(crate) fn widths_by_column(&self, available: u16) -> Vec<u16> {
-        let mut widths: Vec<u16> = self
-            .columns
-            .iter()
-            .map(|c| if c.width > 0 { c.width } else { c.min_width })
-            .collect();
+        let mut widths: Vec<u16> = self.columns.iter().map(|c| c.base_width()).collect();
         let display = self.get_display_widths(available);
         for (&(orig, _), w) in self.visible_columns_in_order().iter().zip(display) {
             widths[orig] = w;
@@ -53,11 +49,8 @@ impl DataGrid {
         let reserved = usize::from(self.row_number_gutter_width()) + visible_cols.len() + 1;
         let available = usize::from(available).saturating_sub(reserved) as u16;
 
-        // Start with fixed or min widths
-        let mut widths: Vec<u16> = visible_cols
-            .iter()
-            .map(|c| if c.width > 0 { c.width } else { c.min_width })
-            .collect();
+        // Start with the set widths (clamped into range) or the minimums
+        let mut widths: Vec<u16> = visible_cols.iter().map(|c| c.base_width()).collect();
 
         let total = widths.iter().fold(0u16, |sum, w| sum.saturating_add(*w));
 
@@ -73,8 +66,7 @@ impl DataGrid {
             if !auto_cols.is_empty() {
                 let per_col = (extra as usize / auto_cols.len()) as u16;
                 for &(i, col) in &auto_cols {
-                    let new_width = widths[i] + per_col;
-                    widths[i] = new_width.min(col.max_width);
+                    widths[i] = col.clamp_width(widths[i].saturating_add(per_col));
                 }
             }
         }

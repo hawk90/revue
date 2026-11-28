@@ -238,3 +238,108 @@ fn test_65535_columns_reserve_their_separators() {
     // No space is left once the separators are reserved: a separator per cell
     assert_eq!(rendered_widths(grid, 100, 0), vec![0; 100]);
 }
+
+// =========================================================================
+// min_width / max_width / width clamping (#1537): CSS rules, max 0 = no limit
+// =========================================================================
+
+/// The header and the one data row ("x" in column "a", "y" in "b") of
+/// `grid` drawn `width` columns wide
+fn header_and_row(grid: DataGrid, width: u16) -> (String, String) {
+    let grid = grid.row(GridRow::new().cell("a", "x").cell("b", "y"));
+    let buf = render_to(&grid, width, 3);
+    (row_text(&buf, 0, width), row_text(&buf, 1, width))
+}
+
+/// `title` then `value` left-aligned in a `w`-wide cell, each followed by
+/// the column separator
+fn cell(text: &str, w: usize) -> String {
+    format!("{text:<w$}│")
+}
+
+#[test]
+fn test_max_width_zero_auto_column_is_visible_and_grows() {
+    // 100 - separator - scrollbar column = 98, no cap; max 0 used to cap at 0
+    let (header, row) = header_and_row(DataGrid::new().column(col("a").max_width(0)), 100);
+    assert_eq!(header, cell("A", 98) + " ");
+    assert_eq!(row, cell("x", 98) + " ");
+}
+
+#[test]
+fn test_max_width_zero_next_to_a_capped_column() {
+    // 100 - 3 = 97; both start at 5, 87 / 2 = 43 extra each: b stops at 20
+    let grid = DataGrid::new()
+        .column(col("a").max_width(0))
+        .column(col("b").max_width(20));
+    let (header, row) = header_and_row(grid, 100);
+    assert_eq!(header, cell("A", 48) + &cell("B", 20) + &" ".repeat(30));
+    assert_eq!(row, cell("x", 48) + &cell("y", 20) + &" ".repeat(30));
+}
+
+#[test]
+fn test_default_max_width_caps_auto_growth_at_50() {
+    let (header, row) = header_and_row(DataGrid::new().column(col("a")), 100);
+    assert_eq!(header, cell("A", 50) + &" ".repeat(49));
+    assert_eq!(row, cell("x", 50) + &" ".repeat(49));
+}
+
+#[test]
+fn test_min_width_above_max_width_wins_in_auto_layout() {
+    let grid = DataGrid::new().column(col("a").min_width(20).max_width(10));
+    let (header, row) = header_and_row(grid, 100);
+    assert_eq!(header, cell("A", 20) + &" ".repeat(79));
+    assert_eq!(row, cell("x", 20) + &" ".repeat(79));
+}
+
+#[test]
+fn test_min_width_above_max_width_wins_over_a_set_width() {
+    let grid = DataGrid::new().column(col("a").width(5).min_width(20).max_width(10));
+    let (header, row) = header_and_row(grid, 100);
+    assert_eq!(header, cell("A", 20) + &" ".repeat(79));
+    assert_eq!(row, cell("x", 20) + &" ".repeat(79));
+}
+
+#[test]
+fn test_set_width_above_default_max_is_clamped_to_50() {
+    let grid = DataGrid::new().column(col("a").width(80));
+    let (header, row) = header_and_row(grid, 100);
+    assert_eq!(header, cell("A", 50) + &" ".repeat(49));
+    assert_eq!(row, cell("x", 50) + &" ".repeat(49));
+}
+
+#[test]
+fn test_set_width_above_max_width_is_clamped() {
+    let grid = DataGrid::new()
+        .column(col("a").width(30).max_width(12))
+        .column(col("b").width(8));
+    let (header, row) = header_and_row(grid, 40);
+    assert_eq!(header, cell("A", 12) + &cell("B", 8) + &" ".repeat(18));
+    assert_eq!(row, cell("x", 12) + &cell("y", 8) + &" ".repeat(18));
+}
+
+#[test]
+fn test_set_width_is_kept_with_max_width_zero() {
+    let grid = DataGrid::new().column(col("a").width(80).max_width(0));
+    let (header, row) = header_and_row(grid, 100);
+    assert_eq!(header, cell("A", 80) + &" ".repeat(19));
+    assert_eq!(row, cell("x", 80) + &" ".repeat(19));
+}
+
+#[test]
+fn test_set_width_below_min_width_is_raised() {
+    let grid = DataGrid::new()
+        .column(col("a").width(3).min_width(6))
+        .column(col("b").width(3));
+    let (header, row) = header_and_row(grid, 20);
+    // b: width 3 under the default minimum 5
+    assert_eq!(header, cell("A", 6) + &cell("B", 5) + &" ".repeat(7));
+    assert_eq!(row, cell("x", 6) + &cell("y", 5) + &" ".repeat(7));
+}
+
+#[test]
+fn test_set_width_inside_the_range_is_kept() {
+    let grid = DataGrid::new().column(col("a").width(7).min_width(7).max_width(7));
+    let (header, row) = header_and_row(grid, 20);
+    assert_eq!(header, cell("A", 7) + &" ".repeat(12));
+    assert_eq!(row, cell("x", 7) + &" ".repeat(12));
+}

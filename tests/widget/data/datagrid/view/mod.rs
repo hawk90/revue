@@ -409,7 +409,7 @@ fn test_datagrid_row_height_spaces_the_rows() {
 fn test_datagrid_row_height_paints_every_line_of_a_row() {
     let grid = DataGrid::new()
         .row_height(2)
-        .column(GridColumn::new("a", "A").width(4))
+        .column(GridColumn::new("a", "A").width(4).min_width(0))
         .rows(
             (0..30)
                 .map(|i| GridRow::new().cell("a", format!("r{i}")))
@@ -577,8 +577,13 @@ fn test_datagrid_edit_cell_draws_a_written_buffer() {
 fn test_datagrid_row_height_edit_background_covers_every_line() {
     let mut grid = DataGrid::new()
         .row_height(2)
-        .column(GridColumn::new("a", "A").width(4).editable(true))
-        .column(GridColumn::new("b", "B").width(4))
+        .column(
+            GridColumn::new("a", "A")
+                .width(4)
+                .min_width(0)
+                .editable(true),
+        )
+        .column(GridColumn::new("b", "B").width(4).min_width(0))
         .rows(
             (0..2)
                 .map(|i| GridRow::new().cell("a", format!("r{i}")).cell("b", "x"))
