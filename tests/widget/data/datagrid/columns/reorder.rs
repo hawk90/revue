@@ -399,3 +399,41 @@ fn test_drag_onto_a_right_frozen_column() {
     drag_header(&mut grid, 'A', 35);
     assert_eq!(header_titles(&grid), "BAC");
 }
+
+/// A `column_order` that lists some columns shows them first, then the
+/// others in definition order, so a drag shows nothing new
+#[test]
+fn test_partial_column_order_shows_the_unlisted_columns_after() {
+    let mut grid = drag_grid(&[("a", true), ("b", true), ("c", true)]);
+    grid.column_order = vec![1, 2];
+    assert_eq!(header_titles(&grid), "BCA");
+    drag_header(&mut grid, 'C', 0);
+    assert_eq!(header_titles(&grid), "CBA");
+}
+
+/// Repeated and out-of-range entries in `column_order` are ignored: each
+/// column is drawn once
+#[test]
+fn test_column_order_with_repeated_or_out_of_range_entries() {
+    let mut grid = drag_grid(&[("a", true), ("b", true), ("c", true)]);
+    for (order, titles) in [
+        (vec![0, 0, 1], "ABC"),
+        (vec![2, 2, 2], "CAB"),
+        (vec![9, 1, 7], "BAC"),
+        (vec![2, 1, 0, 1, 2], "CBA"),
+    ] {
+        grid.column_order = order.clone();
+        assert_eq!(header_titles(&grid), titles, "{order:?}");
+    }
+}
+
+/// A partial order with a hidden column: the hidden one stays hidden,
+/// listed or not
+#[test]
+fn test_partial_column_order_keeps_hidden_columns_hidden() {
+    let mut grid = drag_grid(&[("a", true), ("b", false), ("c", true), ("d", true)]);
+    grid.column_order = vec![3];
+    assert_eq!(header_titles(&grid), "DAC");
+    grid.column_order = vec![1, 2];
+    assert_eq!(header_titles(&grid), "CAD");
+}

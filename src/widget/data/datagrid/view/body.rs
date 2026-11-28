@@ -163,8 +163,14 @@ impl DataGrid {
             state.row_bg
         };
 
-        // Fill background
-        ctx.fill_bg(pos.x, pos.y, pos.width, 1, cell_bg);
+        // Fill the background on every line of the row
+        ctx.fill_bg(
+            pos.x,
+            pos.y,
+            pos.width,
+            self.options.row_height.max(1),
+            cell_bg,
+        );
 
         // Draw value or edit buffer
         if state.is_editing {
