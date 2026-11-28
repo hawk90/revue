@@ -120,9 +120,11 @@ impl View for MyWidget {
 ```rust
 use revue::utils::profiler::{profile, profiler_report};
 
-fn expensive_operation() {
-    profile!("expensive_operation");
-    // ... work
+fn expensive_operation() -> i32 {
+    profile("expensive_operation", || {
+        // ... work
+        42
+    })
 }
 
 // Print report
@@ -132,7 +134,7 @@ println!("{}", profiler_report());
 ### Timing Specific Sections
 
 ```rust
-use revue::utils::profiler::{Profiler, start_profile};
+use revue::utils::profiler::start_profile;
 
 let _guard = start_profile("render_list");
 for item in items {
