@@ -13,6 +13,7 @@ use crate::widget::traits::{RenderContext, View};
 #[derive(Clone, Copy)]
 pub(super) struct PlotLayout {
     pub(super) has_border: bool,
+    /// The Y label column and the gap column after it
     pub(super) y_label_width: u16,
     pub(super) inner_x: u16,
     pub(super) inner_y: u16,
@@ -24,11 +25,18 @@ pub(super) struct PlotLayout {
 }
 
 impl Chart {
-    /// Lay out the plot inside `area`; `None` when it is too small to draw
-    fn plot_layout(&self, area: Rect) -> Option<PlotLayout> {
+    /// Lay out the plot inside `area`; `None` when it is too small to draw.
+    /// `bounds` are the data bounds, which the Y labels are formatted from.
+    fn plot_layout(&self, area: Rect, bounds: (f64, f64, f64, f64)) -> Option<PlotLayout> {
         let has_border = self.border_color.is_some();
         let has_title = self.title.is_some();
-        let y_label_width = 8u16; // Space for Y axis labels
+        // The Y label column is as wide as the widest Y label, at most a
+        // third of the area as for the horizontal BarChart's labels (#1606),
+        // and one column apart from the plot
+        let y_label_width = self
+            .y_label_columns(bounds)
+            .min(area.width / 3)
+            .saturating_add(1);
         let x_label_height = 2u16; // Space for X axis labels
 
         let inner_x = if has_border { 1 } else { 0 } + y_label_width;
@@ -142,14 +150,13 @@ impl View for Chart {
 
         self.draw_border(ctx, area);
 
-        let Some(plot) = self.plot_layout(area) else {
+        let bounds = self.compute_bounds();
+
+        let Some(plot) = self.plot_layout(area, bounds) else {
             return;
         };
 
         self.draw_title(ctx, area, &plot, chrome);
-
-        // Compute bounds
-        let bounds = self.compute_bounds();
 
         self.draw_y_axis(ctx, &plot, bounds);
         self.draw_x_axis(ctx, area, &plot, bounds);
