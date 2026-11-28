@@ -44,6 +44,56 @@ fn test_boxplot_long_category_label_clipped() {
     assert_eq!(rows[9].trim_end(), "      ryLongGroupNam");
 }
 
+/// A label of 65536+ columns is centered by its real width, not the width
+/// cut to u16 (which would be 0 and start it at the box's center): it
+/// covers every chart column of the label row (#1587)
+#[test]
+fn test_boxplot_category_label_wider_than_u16() {
+    for n in [65_536, 131_072] {
+        let bp = BoxPlot::new().group("x".repeat(n), &[1.0, 2.0, 3.0]);
+        let rows = rows(&render(&bp, 20, 10));
+        assert_eq!(rows[9], format!("      {}", "x".repeat(14)), "{n}");
+    }
+}
+
+/// A horizontal plot's value label of 65536+ columns is measured without
+/// wrapping to a small width: like any label wider than the chart it is
+/// skipped, where it used to be drawn and overflow its column (#1587)
+#[test]
+fn test_boxplot_horizontal_value_label_wider_than_u16() {
+    use revue::widget::data::chart::{Axis, AxisFormat};
+    let axis = Axis::new().format(AxisFormat::Custom(format!("{}{{}}", "x".repeat(65_540))));
+    let bp = BoxPlot::new()
+        .group_stats("A", even_stats())
+        .value_axis(axis)
+        .horizontal();
+    let buffer = render(&bp, 40, 20);
+    assert_eq!(cols(&buffer, 19, 0, 40), " ".repeat(40));
+}
+
+/// A horizontal plot's label column is as wide as the longest label up to
+/// a third of the width; a label of 65536+ columns takes the third instead
+/// of wrapping to a narrow column (#1587)
+#[test]
+fn test_boxplot_horizontal_label_column_for_a_label_wider_than_u16() {
+    for n in [65_536, 65_537] {
+        let bp = BoxPlot::new()
+            .group_stats("x".repeat(n), even_stats())
+            .horizontal();
+        let buffer = render(&bp, 30, 10);
+        // A 10-column label column, the label cut one column before the
+        // chart, which starts at 11
+        let row = (0..10u16)
+            .find(|&y| row_chars(&buffer, y)[0] == 'x')
+            .unwrap();
+        assert_eq!(
+            cols(&buffer, row, 0, 11),
+            format!("{} ", "x".repeat(10)),
+            "{n}"
+        );
+    }
+}
+
 /// `n` groups with the same stats, labeled by `label(i)`
 fn many(n: usize, label: impl Fn(usize) -> String) -> BoxPlot {
     (0..n).fold(BoxPlot::new(), |bp, i| {
