@@ -22,7 +22,7 @@ impl TimeSeries {
                     }
                 }
                 if min_ts == u64::MAX {
-                    (now - 3600, now)
+                    (now.saturating_sub(3600), now)
                 } else {
                     (min_ts, max_ts)
                 }

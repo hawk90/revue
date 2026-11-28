@@ -65,6 +65,16 @@ fn an_empty_chart_shows_the_hour_before_the_mocked_time() {
 }
 
 #[test]
+fn ranges_near_1970_stop_at_zero() {
+    let (_time, _clock) = wall_at(100);
+    assert_eq!(TimeSeries::new().get_time_bounds(), (0, 100), "no data");
+    let chart = TimeSeries::new().time_range(TimeRange::LastMinutes(5));
+    assert_eq!(chart.get_time_bounds(), (0, 100));
+    let (_time, _clock) = wall_at(0);
+    assert_eq!(TimeSeries::new().get_time_bounds(), (0, 0));
+}
+
+#[test]
 fn value_bounds_keep_only_points_in_the_mocked_range() {
     let (time, _clock) = wall_at(NOW);
     let chart = TimeSeries::new()
