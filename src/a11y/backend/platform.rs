@@ -236,6 +236,10 @@ pub struct LoggingBackend {
 }
 
 /// A logged announcement for testing
+#[deprecated(
+    since = "3.17.0",
+    note = "platform screen-reader output is unsupported (#937): test announcements with `revue::utils::take_announcements` or `revue::a11y::A11yTestRunner`"
+)]
 #[derive(Clone, Debug)]
 pub struct LoggedAnnouncement {
     /// The message that was announced

@@ -14,7 +14,7 @@ pub use types::{BackendType, ScreenReader, ScreenReaderConfig};
 pub use core::ScreenReaderBackend;
 
 // Re-export platform-specific types
-pub use platform::LoggingBackend;
+pub use platform::{LoggedAnnouncement, LoggingBackend};
 
 // Re-export global functions
 pub use global::{announce_to_screen_reader, get_backend, init_backend, set_backend};
