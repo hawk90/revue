@@ -8,27 +8,30 @@ use revue::widget::data::chart::histogram;
 
 #[test]
 fn test_histogram_bars() {
-    // 33 columns over 0..30: bars at 6..17, 17..28, 28..39; heights 18, 6, 12
+    // 37 columns over 0..30: bars at 2..14, 14..26, 26..39; heights 18, 6, 12
     let buffer = render(&three_bins(), 40, 20);
-    assert_eq!(bar_top(&buffer, 6), Some(0));
-    assert_eq!(bar_top(&buffer, 17), Some(12));
-    assert_eq!(bar_top(&buffer, 28), Some(6));
+    assert_eq!(bar_top(&buffer, 2), Some(0));
+    assert_eq!(bar_top(&buffer, 13), Some(0));
+    assert_eq!(bar_top(&buffer, 14), Some(12));
+    assert_eq!(bar_top(&buffer, 26), Some(6));
+    assert_eq!(bar_top(&buffer, 38), Some(6));
     for y in 1..18 {
-        assert_eq!(sym(&buffer, 6, y), '█', "y={y}");
+        assert_eq!(sym(&buffer, 1, y), ' ', "gap y={y}");
+        assert_eq!(sym(&buffer, 2, y), '█', "y={y}");
     }
-    assert_eq!(count_char(&buffer, '▀'), 33);
+    assert_eq!(count_char(&buffer, '▀'), 37);
 }
 
 #[test]
 fn test_histogram_fill_color_and_alias() {
     let buffer = render(&three_bins().fill_color(Color::YELLOW), 40, 20);
-    assert_eq!(buffer.get(6, 17).unwrap().fg, Some(Color::YELLOW));
+    assert_eq!(buffer.get(2, 17).unwrap().fg, Some(Color::YELLOW));
     let buffer = render(&three_bins().color(Color::CYAN), 40, 20);
-    assert_eq!(buffer.get(6, 17).unwrap().fg, Some(Color::CYAN));
+    assert_eq!(buffer.get(2, 17).unwrap().fg, Some(Color::CYAN));
     // Default fill
     let buffer = render(&three_bins(), 40, 20);
     assert_eq!(
-        buffer.get(6, 17).unwrap().fg,
+        buffer.get(2, 17).unwrap().fg,
         Some(Color::rgb(97, 175, 239))
     );
 }
@@ -36,11 +39,11 @@ fn test_histogram_fill_color_and_alias() {
 #[test]
 fn test_histogram_bar_border() {
     let buffer = render(&three_bins().bar_border(Color::WHITE), 40, 20);
-    // First bar spans columns 6..17: border on its first and last column
-    assert_eq!(sym(&buffer, 6, 10), '│');
-    assert_eq!(sym(&buffer, 16, 10), '│');
-    assert_eq!(sym(&buffer, 7, 10), '█');
-    assert_eq!(buffer.get(6, 10).unwrap().fg, Some(Color::WHITE));
+    // First bar spans columns 2..14: border on its first and last column
+    assert_eq!(sym(&buffer, 2, 10), '│');
+    assert_eq!(sym(&buffer, 13, 10), '│');
+    assert_eq!(sym(&buffer, 3, 10), '█');
+    assert_eq!(buffer.get(2, 10).unwrap().fg, Some(Color::WHITE));
 }
 
 #[test]
@@ -52,13 +55,13 @@ fn test_histogram_horizontal_differs_from_vertical() {
 
 #[test]
 fn test_histogram_horizontal_bars() {
-    // Same plot area; the 18 rows cover 0..30, so the bins take rows 0..6,
-    // 6..12 and 12..18, and bars of 3, 1 and 2 grow right over 33 columns
-    // to lengths 33, 11 and 22, each ending in a half block
+    // The 18 rows cover 0..30, so the bins take rows 0..6, 6..12 and
+    // 12..18, and bars of 3, 1 and 2 grow right over the 34 columns from
+    // column 5 to lengths 34, 11 and 22, each ending in a half block
     let buffer = render(&three_bins().horizontal(), 40, 20);
     let rows = rows(&buffer);
-    let bar = |y: usize| -> String { rows[y].chars().skip(6).collect::<String>() };
-    for (ys, len) in [(0..6, 33), (6..12, 11), (12..18, 22)] {
+    let bar = |y: usize| -> String { rows[y].chars().skip(5).collect::<String>() };
+    for (ys, len) in [(0..6, 34), (6..12, 11), (12..18, 22)] {
         for y in ys {
             let expected = format!("{}▌", "█".repeat(len - 1));
             assert_eq!(bar(y).trim_end(), expected, "row {y}");
@@ -71,8 +74,10 @@ fn test_histogram_horizontal_bars() {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 
-    /// Bars stay inside the plot (columns 6..w-1, rows 0..h-2 without a
-    /// title) for any finite data, size and orientation.
+    /// Bars stay inside the plot (right of the label column and its gap,
+    /// before column w-1, rows 0..h-2 without a title) for any finite data,
+    /// size and orientation; the label column is at most a third of the
+    /// width.
     #[test]
     fn test_histogram_bars_stay_in_the_plot(
         data in prop::collection::vec(-1e6f64..1e6, 1..40),
@@ -82,10 +87,20 @@ proptest! {
     ) {
         let hist = if horizontal { histogram(&data).horizontal() } else { histogram(&data) };
         let buffer = render(&hist, w, h);
+        // The labels left of the plot are left-aligned and hold no spaces
+        let label_end = (0..h - 2)
+            .map(|y| {
+                (0..w)
+                    .take_while(|&x| !matches!(sym(&buffer, x, y), ' ' | '█' | '▀' | '▌'))
+                    .count() as u16
+            })
+            .max()
+            .unwrap();
+        prop_assert!(label_end <= w / 3);
         for y in 0..h {
             for x in 0..w {
                 if matches!(sym(&buffer, x, y), '█' | '▀' | '▌') {
-                    prop_assert!((6..w - 1).contains(&x) && y < h - 2, "bar at ({x}, {y})");
+                    prop_assert!((label_end + 1..w - 1).contains(&x) && y < h - 2, "bar at ({x}, {y})");
                 }
             }
         }

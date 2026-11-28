@@ -2,6 +2,7 @@
 
 use revue::widget::data::datagrid::{DataGrid, GridColumn, GridRow};
 
+#[allow(deprecated)]
 #[test]
 fn test_tree_grid_basic() {
     let grid = DataGrid::new()
@@ -20,6 +21,7 @@ fn test_tree_grid_basic() {
     assert_eq!(grid.tree_cache.len(), 3);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_tree_grid_collapsed() {
     let grid = DataGrid::new()
@@ -37,6 +39,7 @@ fn test_tree_grid_collapsed() {
     assert_eq!(grid.tree_cache.len(), 1);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_tree_grid_toggle_expand() {
     let mut grid = DataGrid::new()
@@ -59,6 +62,7 @@ fn test_tree_grid_toggle_expand() {
     assert_eq!(grid.tree_cache.len(), 2);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_tree_grid_expand_collapse_all() {
     let mut grid = DataGrid::new()
@@ -89,6 +93,7 @@ fn test_tree_grid_expand_collapse_all() {
     assert_eq!(grid.tree_cache.len(), 2); // 2 parents only
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_tree_indent_depth_zero() {
     let grid = DataGrid::new()
@@ -102,6 +107,7 @@ fn test_tree_indent_depth_zero() {
     assert!(indent.is_empty());
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_tree_indent_nested() {
     let grid = DataGrid::new()
@@ -125,6 +131,7 @@ fn test_tree_indent_nested() {
     assert!(indent.contains('└') || indent.contains('├'));
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_tree_indicator() {
     let grid = DataGrid::new()
@@ -147,6 +154,7 @@ fn test_tree_indicator() {
     assert_eq!(grid.get_tree_indicator(leaf), "  ");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_tree_indicator_collapsed() {
     let grid = DataGrid::new()
@@ -164,6 +172,7 @@ fn test_tree_indicator_collapsed() {
     assert_eq!(grid.get_tree_indicator(parent), "▶ ");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_get_row_by_path() {
     let grid = DataGrid::new()
@@ -194,6 +203,7 @@ fn test_get_row_by_path() {
     assert!(empty.is_none());
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_expand_on_leaf_node() {
     let mut grid = DataGrid::new()
@@ -207,6 +217,7 @@ fn test_expand_on_leaf_node() {
     assert_eq!(grid.tree_cache.len(), count_before);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_collapse_on_leaf_node() {
     let mut grid = DataGrid::new()
@@ -220,6 +231,7 @@ fn test_collapse_on_leaf_node() {
     assert_eq!(grid.tree_cache.len(), count_before);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_tree_mode_disabled_operations() {
     let mut grid = DataGrid::new().column(GridColumn::new("name", "Name")).row(
@@ -240,6 +252,7 @@ fn test_tree_mode_disabled_operations() {
     assert!(grid.tree_cache.is_empty());
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_tree_grid_deep_nesting() {
     let grid = DataGrid::new()
@@ -266,6 +279,7 @@ fn test_tree_grid_deep_nesting() {
     assert_eq!(grid.tree_cache[3].depth, 3);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_toggle_expand_out_of_bounds() {
     let mut grid = DataGrid::new()

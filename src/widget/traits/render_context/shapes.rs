@@ -2,7 +2,8 @@
 
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::unicode::{char_width, display_width};
+use crate::utils::unicode::char_width;
+use crate::utils::unicode::display_width_u16;
 
 impl RenderContext<'_> {
     /// Draw a horizontal line
@@ -62,7 +63,7 @@ impl RenderContext<'_> {
         let mut pos = x + 2;
         for (text, color) in parts {
             self.draw_text(pos, y, text, *color);
-            pos += display_width(text) as u16;
+            pos = pos.saturating_add(display_width_u16(text));
         }
         let end = x + width - 1;
         while pos < end {
@@ -266,9 +267,6 @@ impl RenderContext<'_> {
                         continue;
                     }
                     self.draw_char(x + pos, y, ch, fg);
-                    for i in 1..ch_width {
-                        self.set(x + pos + i, y, Cell::continuation());
-                    }
                     pos += ch_width;
                     continue;
                 }

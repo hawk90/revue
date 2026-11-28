@@ -1,7 +1,10 @@
 //! Histogram widget tests
 //!
 //! Layout used below: a 40x20 histogram without title has its plot area at
-//! x=6..39, y=0..18, Y labels in columns 0..6 and X labels on row 19.
+//! y=0..18 and X labels on row 19. The label column left of the plot fits
+//! its widest label plus a gap column: `three_bins()` has counts "3".."0",
+//! so the plot is x=2..39 (37 columns); horizontal, its bin values are up
+//! to "22.5", so the plot is x=5..39 (34 columns).
 
 mod axes;
 mod bars;
@@ -33,6 +36,6 @@ pub(super) fn bar_top(buffer: &Buffer, x: u16) -> Option<u16> {
 /// Number of bars, counted by their border cells on the bottom plot row.
 pub(super) fn bar_count(hist: Histogram) -> usize {
     let buffer = render(&hist.bar_border(Color::WHITE), 40, 20);
-    let bottom: String = (6..39).map(|x| sym(&buffer, x, 17)).collect();
+    let bottom: String = (0..40).map(|x| sym(&buffer, x, 17)).collect();
     bottom.matches('│').count() / 2
 }

@@ -151,6 +151,10 @@ impl StatusIndicator {
     /// It replaces the status's default label (`"Online"`, `"Busy"`, ...) in
     /// every style that draws a label. With the default [`StatusStyle::Dot`]
     /// it is drawn after the dot, as [`StatusStyle::DotWithLabel`] draws it.
+    ///
+    /// After a dot the label is in the secondary text color, since the dot
+    /// shows the status color; [`StatusStyle::LabelOnly`] draws it in the
+    /// status color, as it has no dot.
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.custom_label = Some(label.into());
         self
@@ -215,14 +219,17 @@ impl StatusIndicator {
     pub fn width(&self) -> u16 {
         match self.style {
             StatusStyle::Dot | StatusStyle::DotWithLabel if self.dot_has_label() => {
-                let label_len = crate::utils::display_width(self.get_label()) as u16;
-                self.size.width() + 1 + label_len // dot + space + label
+                let label_len = crate::utils::unicode::display_width_u16(self.get_label());
+                self.size
+                    .width()
+                    .saturating_add(1)
+                    .saturating_add(label_len) // dot + space + label
             }
             StatusStyle::Dot | StatusStyle::DotWithLabel => self.size.width(),
-            StatusStyle::LabelOnly => crate::utils::display_width(self.get_label()) as u16,
+            StatusStyle::LabelOnly => crate::utils::unicode::display_width_u16(self.get_label()),
             StatusStyle::Badge => {
-                let label_len = crate::utils::display_width(self.get_label()) as u16;
-                label_len + 4 // padding + dot + space + label + padding
+                let label_len = crate::utils::unicode::display_width_u16(self.get_label());
+                label_len.saturating_add(4) // padding + dot + space + label + padding
             }
         }
     }

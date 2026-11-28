@@ -1,6 +1,7 @@
 //! DataGrid core structure and builders
 
 use crate::widget::data::datagrid::input::editing::EditState;
+#[allow(deprecated)]
 use crate::widget::data::datagrid::rows::tree::TreeNodeInfo;
 use crate::widget::data::datagrid::types::{
     FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection,
@@ -109,9 +110,19 @@ pub struct DataGrid {
     // ─────────────────────────────────────────────────────────────────────────
     // Tree Grid State
     // ─────────────────────────────────────────────────────────────────────────
-    /// Enable tree grid mode (hierarchical display)
+    /// Tree grid mode flag (child rows are not drawn in 3.x; tree mode is
+    /// planned for 4.0 with row keys, #1539)
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
     pub tree_mode: bool,
-    /// Flattened tree cache for display
+    /// Flattened tree cache (built but never drawn)
+    #[deprecated(
+        since = "3.17.0",
+        note = "DataGrid does not draw child rows in 3.x; tree mode comes in 4.0 with row keys (#1539)"
+    )]
+    #[allow(deprecated)]
     pub tree_cache: Vec<TreeNodeInfo>,
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -158,6 +169,7 @@ impl DataGrid {
 
 impl DataGrid {
     /// Create a new data grid
+    #[allow(deprecated)]
     pub fn new() -> Self {
         Self {
             columns: Vec::new(),
@@ -359,6 +371,7 @@ fn unclaimed_key(position: usize) -> String {
 
 /// Give the values waiting at `position` (in `rows` and their children) to
 /// the column `key` now there
+#[allow(deprecated)]
 fn claim_position(rows: &mut [GridRow], position: usize, key: &str) {
     let unclaimed = unclaimed_key(position);
     for row in rows {

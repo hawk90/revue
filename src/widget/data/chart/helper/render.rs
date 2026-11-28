@@ -5,13 +5,16 @@ use super::Chart;
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{char_width, display_width};
+use crate::utils::char_width;
+use crate::utils::unicode::display_width_u16;
+use crate::widget::data::chart::chart_render::y_label_column;
 use crate::widget::traits::{RenderContext, View};
 
 /// Where the plot and its labels go inside the widget's area
 #[derive(Clone, Copy)]
 pub(super) struct PlotLayout {
     pub(super) has_border: bool,
+    /// The Y label column and the gap column after it
     pub(super) y_label_width: u16,
     pub(super) inner_x: u16,
     pub(super) inner_y: u16,
@@ -23,21 +26,24 @@ pub(super) struct PlotLayout {
 }
 
 impl Chart {
-    /// Lay out the plot inside `area`; `None` when it is too small to draw
-    fn plot_layout(&self, area: Rect) -> Option<PlotLayout> {
+    /// Lay out the plot inside `area`; `None` when it is too small to draw.
+    /// `bounds` are the data bounds, which the Y labels are formatted from.
+    fn plot_layout(&self, area: Rect, bounds: (f64, f64, f64, f64)) -> Option<PlotLayout> {
         let has_border = self.border_color.is_some();
         let has_title = self.title.is_some();
-        let y_label_width = 8u16; // Space for Y axis labels
         let x_label_height = 2u16; // Space for X axis labels
+        let inner_h = area.height.saturating_sub(
+            x_label_height + if has_border { 2 } else { 0 } + if has_title { 1 } else { 0 },
+        );
+        // The Y label column fits the widest Y label drawn on those rows
+        // (#1606)
+        let y_label_width = y_label_column(self.y_label_columns(bounds, inner_h), area.width);
 
         let inner_x = if has_border { 1 } else { 0 } + y_label_width;
         let inner_y = if has_border { 1 } else { 0 } + if has_title { 1u16 } else { 0 };
         let inner_w = area
             .width
             .saturating_sub(y_label_width + if has_border { 2 } else { 0 });
-        let inner_h = area.height.saturating_sub(
-            x_label_height + if has_border { 2 } else { 0 } + if has_title { 1 } else { 0 },
-        );
 
         if inner_w < 5 || inner_h < 3 {
             return None;
@@ -102,15 +108,19 @@ impl Chart {
     fn draw_title(&self, ctx: &mut RenderContext, area: Rect, plot: &PlotLayout, chrome: Color) {
         let has_border = plot.has_border;
         if let Some(ref title) = self.title {
-            let title_x = (area.width.saturating_sub(display_width(title) as u16)) / 2;
+            let title_x = (area.width.saturating_sub(display_width_u16(title))) / 2;
             let title_y = if has_border { 1u16 } else { 0 };
             let mut dx: u16 = 0;
             for ch in title.chars() {
+                let x = title_x.saturating_add(dx);
+                if x >= area.width {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(chrome);
                 cell.modifier |= crate::render::Modifier::BOLD;
-                ctx.set(title_x + dx, title_y, cell);
-                dx += char_width(ch) as u16;
+                ctx.set(x, title_y, cell);
+                dx = dx.saturating_add(char_width(ch) as u16);
             }
         }
     }
@@ -137,14 +147,13 @@ impl View for Chart {
 
         self.draw_border(ctx, area);
 
-        let Some(plot) = self.plot_layout(area) else {
+        let bounds = self.compute_bounds();
+
+        let Some(plot) = self.plot_layout(area, bounds) else {
             return;
         };
 
         self.draw_title(ctx, area, &plot, chrome);
-
-        // Compute bounds
-        let bounds = self.compute_bounds();
 
         self.draw_y_axis(ctx, &plot, bounds);
         self.draw_x_axis(ctx, area, &plot, bounds);

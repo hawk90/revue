@@ -78,6 +78,7 @@ fn test_datagrid_multi_select() {
     assert!(grid.options.multi_select);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_datagrid_new() {
     let grid = DataGrid::new();

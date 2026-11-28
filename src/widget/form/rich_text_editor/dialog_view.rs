@@ -5,7 +5,7 @@ use super::{DialogType, RichTextEditor};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::display_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::traits::render_context::edit_line::{col_of, scroll_to_cursor, NO_TABS};
 use crate::widget::traits::RenderContext;
 
@@ -155,7 +155,7 @@ impl RichTextEditor {
 
         // Title, centered inside the borders, cut at the right one
         let inner_w = inner_end.saturating_sub(inner_x);
-        let title_x = inner_x + inner_w.saturating_sub(display_width(title) as u16) / 2;
+        let title_x = inner_x + inner_w.saturating_sub(display_width_u16(title)) / 2;
         ctx.put_edit_line(
             title_x,
             dialog_y + 1,

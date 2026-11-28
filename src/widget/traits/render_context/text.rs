@@ -2,7 +2,8 @@
 
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::unicode::{char_width, display_width};
+use crate::utils::unicode::char_width;
+use crate::utils::unicode::display_width_u16;
 
 impl RenderContext<'_> {
     /// Helper: Draw text with custom cell styling, handling wide characters correctly.
@@ -79,9 +80,10 @@ impl RenderContext<'_> {
         u16::try_from(start).ok()
     }
 
-    /// Put a character at `cx` and continuation cells after it; the caller
-    /// has checked (via [`text_cell_x`](Self::text_cell_x)) that all
-    /// `width` cells are addressable.
+    /// Put a character at `cx`; the caller has checked (via
+    /// [`text_cell_x`](Self::text_cell_x)) that all `width` cells are
+    /// addressable. `Buffer::set` writes a wide glyph's continuation itself,
+    /// with the glyph's colors and modifiers.
     ///
     /// Respects the clipping region set by `overflow: hidden`: a glyph with
     /// any of its cells outside the clip is not drawn at all, so a wide glyph
@@ -91,10 +93,6 @@ impl RenderContext<'_> {
             return;
         }
         self.buffer.set(cx, abs_y, cell);
-        for i in 1..width {
-            self.buffer
-                .set(cx.saturating_add(i), abs_y, Cell::continuation());
-        }
     }
 
     /// Draw a single character at relative position (0,0 = area top-left).
@@ -212,7 +210,7 @@ impl RenderContext<'_> {
 
     /// Draw text centered within a given width
     pub fn draw_text_centered(&mut self, x: u16, y: u16, width: u16, text: &str, fg: Color) {
-        let text_width = display_width(text) as u16;
+        let text_width = display_width_u16(text);
         let start_x = if text_width >= width {
             x
         } else {
@@ -223,7 +221,7 @@ impl RenderContext<'_> {
 
     /// Draw text right-aligned within a given width
     pub fn draw_text_right(&mut self, x: u16, y: u16, width: u16, text: &str, fg: Color) {
-        let text_width = display_width(text) as u16;
+        let text_width = display_width_u16(text);
         let start_x = if text_width >= width {
             x
         } else {

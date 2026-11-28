@@ -338,3 +338,146 @@ fn test_split_preserves_valid_utf8() {
         let _ = right.chars().count();
     }
 }
+
+// A width cast to u16 wraps past 65535 columns: 65536 reads as 0 (#1607).
+// Only `display_width_u16` (clamped to u16::MAX) may turn a width into a
+// cell count; this ratchet fails on any new `display_width(..) as u16`.
+
+fn sources(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            sources(&path, out);
+        } else if path.extension().is_some_and(|e| e == "rs") {
+            out.push(path);
+        }
+    }
+}
+
+/// The index after the parenthesized group that opens at `open`
+fn after_group(code: &[u8], open: usize) -> usize {
+    let mut depth = 0;
+    for (i, &b) in code.iter().enumerate().skip(open) {
+        match b {
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return i + 1;
+                }
+            }
+            _ => {}
+        }
+    }
+    code.len()
+}
+
+/// Whether the `display_width(` call at `start` is cast to u16, directly or
+/// after closing parens, `.min(..)` / `.max(..)` or `+ <number>`
+fn cast_to_u16(code: &[u8], start: usize) -> bool {
+    let open = start + "display_width".len();
+    let mut i = after_group(code, open);
+    loop {
+        while i < code.len() && code[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        let rest = &code[i..];
+        if rest.starts_with(b")") {
+            i += 1;
+        } else if rest.starts_with(b".min(") || rest.starts_with(b".max(") {
+            i = after_group(code, i + 4);
+        } else if rest.starts_with(b"+ ") || rest.starts_with(b"- ") {
+            let digits = rest[2..].iter().take_while(|b| b.is_ascii_digit()).count();
+            if digits == 0 {
+                return false;
+            }
+            i += 2 + digits;
+        } else {
+            return rest.starts_with(b"as u16");
+        }
+    }
+}
+
+/// `display_width(..) as u16` casts in `source`, as line numbers
+fn width_casts(source: &str) -> Vec<usize> {
+    // Comments may name the cast; only code counts
+    let code: String = source
+        .lines()
+        .map(|line| {
+            if line.trim_start().starts_with("//") {
+                ""
+            } else {
+                line
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let bytes = code.as_bytes();
+    code.match_indices("display_width(")
+        .map(|(start, _)| start)
+        .filter(|&start| {
+            let before = bytes[..start].last();
+            !before.is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_')
+        })
+        .filter(|&start| cast_to_u16(bytes, start))
+        .map(|start| code[..start].lines().count())
+        .collect()
+}
+
+#[test]
+fn width_casts_are_found() {
+    assert_eq!(width_casts("let w = display_width(s) as u16;"), [1]);
+    assert_eq!(
+        width_casts("x += (display_width(&a.b) as u16).min(c);"),
+        [1]
+    );
+    assert_eq!(
+        width_casts(
+            "a\nlet w = crate::utils::display_width(f(x))\n    .min(u16::MAX as usize) as u16;"
+        ),
+        [2]
+    );
+    assert_eq!(width_casts("let w = (display_width(s) + 2) as u16;"), [1]);
+    assert_eq!(
+        width_casts("let w = display_width_u16(s);"),
+        [] as [usize; 0]
+    );
+    assert_eq!(
+        width_casts("let w = display_width(s) as f64;"),
+        [] as [usize; 0]
+    );
+    assert_eq!(
+        width_casts("let w = display_width(s) + n;"),
+        [] as [usize; 0]
+    );
+    assert_eq!(width_casts("// display_width(s) as u16"), [] as [usize; 0]);
+}
+
+#[test]
+fn no_display_width_is_cast_to_u16() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut files = Vec::new();
+    sources(&root.join("src"), &mut files);
+    let mut casts = Vec::new();
+    for file in files {
+        let name = file
+            .strip_prefix(root)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        // The helper's own file: `display_width_u16` clamps there
+        if name == "src/utils/unicode.rs" {
+            continue;
+        }
+        let source = std::fs::read_to_string(&file).unwrap();
+        casts.extend(
+            width_casts(&source)
+                .into_iter()
+                .map(|line| format!("{name}:{line}")),
+        );
+    }
+    assert!(
+        casts.is_empty(),
+        "use display_width_u16 (clamped to u16::MAX), not display_width(..) as u16: {casts:?}"
+    );
+}

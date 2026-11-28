@@ -46,6 +46,109 @@ fn test_draw_text_wide_chars() {
     assert_eq!(buffer.get(4, 0).unwrap().symbol, ' ');
 }
 
+/// The helper behind every `draw_text*` wrote a plain continuation over the
+/// styled one `Buffer::set` writes, so the second half of a wide glyph lost
+/// its colors and modifiers (#1600)
+#[test]
+fn every_draw_text_variant_styles_both_halves_of_a_wide_glyph() {
+    use revue::render::Cell;
+    let (fg, bg) = (Color::rgb(1, 2, 3), Color::rgb(4, 5, 6));
+    type Draw = fn(&mut RenderContext, &str, Color, Color);
+    let cases: [(&str, Draw, Option<Color>, Modifier); 10] = [
+        (
+            "draw_text",
+            |c, t, f, _| c.draw_text(0, 0, t, f),
+            None,
+            Modifier::empty(),
+        ),
+        (
+            "draw_text_bg",
+            |c, t, f, b| c.draw_text_bg(0, 0, t, f, b),
+            Some(bg),
+            Modifier::empty(),
+        ),
+        (
+            "draw_text_bold",
+            |c, t, f, _| c.draw_text_bold(0, 0, t, f),
+            None,
+            Modifier::BOLD,
+        ),
+        (
+            "draw_text_bg_bold",
+            |c, t, f, b| c.draw_text_bg_bold(0, 0, t, f, b),
+            Some(bg),
+            Modifier::BOLD,
+        ),
+        (
+            "draw_text_clipped",
+            |c, t, f, _| c.draw_text_clipped(0, 0, t, f, 9),
+            None,
+            Modifier::empty(),
+        ),
+        (
+            "draw_text_clipped_bg",
+            |c, t, f, b| c.draw_text_clipped_bg(0, 0, t, f, b, 9),
+            Some(bg),
+            Modifier::empty(),
+        ),
+        (
+            "draw_text_clipped_bg_bold",
+            |c, t, f, b| c.draw_text_clipped_bg_bold(0, 0, t, f, b, 9),
+            Some(bg),
+            Modifier::BOLD,
+        ),
+        (
+            "draw_text_dim",
+            |c, t, f, _| c.draw_text_dim(0, 0, t, f),
+            None,
+            Modifier::DIM,
+        ),
+        (
+            "draw_text_italic",
+            |c, t, f, _| c.draw_text_italic(0, 0, t, f),
+            None,
+            Modifier::ITALIC,
+        ),
+        (
+            "draw_text_underline",
+            |c, t, f, _| c.draw_text_underline(0, 0, t, f),
+            None,
+            Modifier::UNDERLINE,
+        ),
+    ];
+    for (name, draw_with, want_bg, modifier) in cases {
+        // An area at an offset whose last two columns take the second glyph
+        let mut buffer = Buffer::new(8, 2);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(3, 1, 5, 1));
+        draw_with(&mut ctx, "회a글", fg, bg);
+        let glyph = |ch| {
+            let mut cell = Cell::new(ch).fg(fg);
+            cell.bg = want_bg;
+            cell.modifier = modifier;
+            cell
+        };
+        let half = |ch| {
+            let mut cell = Cell::continuation();
+            let full = glyph(ch);
+            cell.fg = full.fg;
+            cell.bg = full.bg;
+            cell.modifier = full.modifier;
+            cell
+        };
+        let want = [glyph('회'), half('회'), glyph('a'), glyph('글'), half('글')];
+        for x in 0..8 {
+            for y in 0..2 {
+                let got = buffer.get(x, y).unwrap();
+                if y == 1 && x >= 3 {
+                    assert_eq!(got, &want[usize::from(x - 3)], "{name} ({x},{y})");
+                } else {
+                    assert_eq!(got, &Cell::default(), "{name} ({x},{y})");
+                }
+            }
+        }
+    }
+}
+
 #[test]
 fn test_draw_text_mixed_width() {
     let buffer = draw(20, |ctx| ctx.draw_text(0, 0, "A한B", Color::WHITE));
@@ -223,4 +326,27 @@ fn test_draw_text_right_exact_fit() {
 fn test_draw_text_right_too_long_is_left_aligned_and_clipped() {
     let buffer = draw(6, |ctx| ctx.draw_text_right(1, 0, 3, "Hello", Color::WHITE));
     assert_eq!(row(&buffer, 0), " Hel  ");
+}
+
+/// A text 65536 columns wide is wider than any width, not 0 wide: centered
+/// or right-aligned it starts at `x` and is clipped to `width`, in an area
+/// at an offset (#1607)
+#[test]
+fn text_wider_than_u16_is_left_aligned_and_clipped() {
+    let text = "g".repeat(65_536);
+    for right in [false, true] {
+        let mut buffer = Buffer::new(12, 1);
+        {
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 0, 10, 1));
+            if right {
+                ctx.draw_text_right(1, 0, 5, &text, Color::WHITE);
+            } else {
+                ctx.draw_text_centered(1, 0, 5, &text, Color::WHITE);
+            }
+        }
+        assert_eq!(row(&buffer, 0), "   ggggg    ", "right: {right}");
+        for x in 3..8 {
+            assert_eq!(buffer.get(x, 0).unwrap().fg, Some(Color::WHITE), "{x}");
+        }
+    }
 }

@@ -2,8 +2,8 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::display_width;
 use crate::utils::unicode::char_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::data::calendar::{days_in_month, FirstDayOfWeek};
 use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::RenderContext;
@@ -100,9 +100,6 @@ pub trait Rendering {
                 cell.modifier |= Modifier::BOLD;
             }
             ctx.set(x + offset, y, cell);
-            for i in 1..char_width {
-                ctx.set(x + offset + i, y, Cell::continuation());
-            }
             offset += char_width;
         }
     }
@@ -121,7 +118,7 @@ pub trait Rendering {
             super::helpers::month_name(self.date().month),
             self.date().year
         );
-        let header_x = x + (width.saturating_sub(display_width(&header) as u16)) / 2;
+        let header_x = x + (width.saturating_sub(display_width_u16(&header))) / 2;
         self.draw_text(ctx, header_x, y, &header, self.header_fg(), true);
 
         // Day headers

@@ -196,11 +196,13 @@ fn test_poll_immediate_is_zero() {
 // =========================================================================
 
 #[test]
+#[allow(deprecated)] // #845
 fn test_screen_transition_duration_value() {
     assert_eq!(SCREEN_TRANSITION_DURATION, Duration::from_millis(200));
 }
 
 #[test]
+#[allow(deprecated)] // #845
 fn test_screen_transition_reasonable() {
     // Screen transitions should be noticeable but not too slow
     assert!(SCREEN_TRANSITION_DURATION >= Duration::from_millis(100));
@@ -235,6 +237,7 @@ fn test_fps_counter_window_value() {
 // =========================================================================
 
 #[test]
+#[allow(deprecated)] // SCREEN_TRANSITION_DURATION, #845
 fn test_all_durations_positive() {
     // All durations except POLL_IMMEDIATE should be positive
     let durations = [

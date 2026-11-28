@@ -3,7 +3,8 @@
 
 use super::Timeline;
 use crate::render::{Cell, Modifier};
-use crate::utils::{char_width, display_width, truncate_to_width};
+use crate::utils::unicode::display_width_u16;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::traits::RenderContext;
 
 impl Timeline {
@@ -53,7 +54,7 @@ impl Timeline {
 
             // Draw title above
             let title = truncate_to_width(&event.title, event_width as usize - 1);
-            let title_x = x + (event_width.saturating_sub(display_width(title) as u16)) / 2;
+            let title_x = x + (event_width.saturating_sub(display_width_u16(title))) / 2;
             let mut dx: u16 = 0;
             for ch in title.chars() {
                 let cw = char_width(ch) as u16;
@@ -70,7 +71,7 @@ impl Timeline {
             if self.show_timestamps {
                 if let Some(ref ts) = event.timestamp {
                     let ts_str = truncate_to_width(ts, event_width as usize - 1);
-                    let ts_x = x + (event_width.saturating_sub(display_width(ts_str) as u16)) / 2;
+                    let ts_x = x + (event_width.saturating_sub(display_width_u16(ts_str))) / 2;
                     let mut dx: u16 = 0;
                     for ch in ts_str.chars() {
                         let cw = char_width(ch) as u16;

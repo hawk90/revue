@@ -17,7 +17,7 @@ const AREA: Rect = Rect {
 
 /// Rows from `AREA.y + 2` on, ordered by both total time and count:
 /// - 10 Hangul chars, exactly 20 columns, 3 renders;
-/// - 11 Hangul chars, cut to 8 chars + "..." (19 columns), 2 renders;
+/// - 11 Hangul chars, cut to 9 chars + "…" (19 columns), 2 renders;
 /// - an ASCII name, 1 render.
 const NAMES: [&str; 3] = ["렌더렌더렌더렌더렌더", "렌더렌더렌더렌더렌더렌", "abc"];
 
@@ -42,10 +42,10 @@ fn symbols(buffer: &Buffer, row: u16, from: u16, to: u16) -> String {
 }
 
 /// The name cells: the Hangul rows fill their cells in pairs; the cut row
-/// ends in "...", a padding space and the separator; the ASCII row is padded
+/// ends in "…", a padding space and the separator; the ASCII row is padded
 /// with spaces.
 fn assert_names(buffer: &Buffer) {
-    for (row, chars) in [(0u16, 10u16), (1, 8)] {
+    for (row, chars) in [(0u16, 10u16), (1, 9)] {
         for i in 0..chars {
             let cell = buffer.get(AREA.x + i * 2, AREA.y + 2 + row).unwrap();
             assert_eq!(
@@ -55,7 +55,7 @@ fn assert_names(buffer: &Buffer) {
             );
         }
     }
-    assert_eq!(symbols(buffer, 1, 16, 21), "...  ");
+    assert_eq!(symbols(buffer, 1, 18, 21), "…  ");
     assert_eq!(symbols(buffer, 2, 0, 21), format!("{:<21}", "abc"));
 }
 

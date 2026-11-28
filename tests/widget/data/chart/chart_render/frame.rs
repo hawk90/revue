@@ -91,3 +91,34 @@ fn test_calculate_chart_area_no_labels() {
     assert_eq!(chart_area.width, 99);
     assert_eq!(chart_area.height, 49);
 }
+
+/// A title of 65536 columns is not measured as 0 (its width cut to u16) and
+/// centered at the middle: it starts at the title area's left edge and
+/// fills it, inside an area at an offset (#1596)
+#[test]
+fn test_render_title_wider_than_u16_fills_the_area() {
+    let title = "x".repeat(65_536);
+    let mut buffer = Buffer::new(40, 4);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(5, 1, 30, 2));
+    let offset = render_title(
+        &mut ctx,
+        Rect::new(2, 0, 20, 2),
+        Some(&title),
+        Color::YELLOW,
+    );
+    assert_eq!(offset, 1);
+    for y in 0..4 {
+        for x in 0..40 {
+            let cell = buffer.get(x, y).unwrap();
+            if y == 1 && (7..27).contains(&x) {
+                assert_eq!(
+                    (cell.symbol, cell.fg),
+                    ('x', Some(Color::YELLOW)),
+                    "({x}, {y})"
+                );
+            } else {
+                assert_eq!(cell.symbol, ' ', "({x}, {y})");
+            }
+        }
+    }
+}

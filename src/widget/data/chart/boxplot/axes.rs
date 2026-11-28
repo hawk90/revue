@@ -5,7 +5,15 @@ use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{char_width, display_width, truncate_to_width};
+use crate::widget::data::chart::chart_common::Axis;
+use crate::widget::data::chart::chart_render::put_label;
 use crate::widget::traits::RenderContext;
+
+/// The five value labels of a vertical plot, from `max` at the top to `min`
+/// at the bottom
+pub(super) fn value_labels(value_axis: &Axis, (min, max): (f64, f64)) -> [String; 5] {
+    std::array::from_fn(|i| value_axis.format_value(max - (max - min) * i as f64 / 4.0))
+}
 
 impl<'a> BoxPlotRender<'a> {
     /// Render axis labels for a horizontal plot: group labels to the left of
@@ -76,7 +84,7 @@ impl<'a> BoxPlotRender<'a> {
         for i in 0..=4u16 {
             let value = min + (max - min) * i as f64 / 4.0;
             let label = value_axis.format_value(value);
-            let width = u16::try_from(display_width(&label)).unwrap_or(u16::MAX);
+            let width = crate::utils::unicode::display_width_u16(&label);
             let tick = chart.x + i * span / 4;
             let start = tick
                 .saturating_sub(width / 2)
@@ -102,25 +110,17 @@ impl<'a> BoxPlotRender<'a> {
             return;
         }
 
-        let (min, max) = self.bounds;
-
-        // Value axis labels (left side)
-        let y_label_width = 6u16;
-        for i in 0..=4 {
-            let value = max - (max - min) * i as f64 / 4.0;
-            let label = value_axis.format_value(value);
+        // Value axis labels (left side), left-aligned in the label column
+        // before the chart's gap column; a wider label is cut with `…`
+        let columns = self.chart_area.x.saturating_sub(area.x + 1);
+        let style = Cell {
+            fg: Some(value_axis.color),
+            ..Cell::default()
+        };
+        for (i, label) in value_labels(value_axis, self.bounds).iter().enumerate() {
             let y = area.y + 1 + (i as u16 * (area.height - 3) / 4);
-
-            let label_truncated = truncate_to_width(&label, y_label_width as usize - 1);
-            let mut dx: u16 = 0;
-            for ch in label_truncated.chars() {
-                let x = area.x + dx;
-                if x < area.x + y_label_width && y < area.y + area.height {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(value_axis.color);
-                    ctx.set(x, y, cell);
-                }
-                dx += char_width(ch) as u16;
+            if y < area.y + area.height {
+                put_label(ctx, label, (area.x, y), columns, false, style);
             }
         }
 

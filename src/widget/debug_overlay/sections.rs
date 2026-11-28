@@ -6,7 +6,7 @@
 use super::{DebugEvent, DebugOverlay};
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::utils::{truncate_to_width, truncate_with_suffix};
+use crate::utils::{truncate_to_width, truncate_with_ellipsis};
 use crate::widget::View;
 
 /// FPS: green from 30, yellow from 15, red below.
@@ -94,7 +94,7 @@ impl<V: View> DebugOverlay<V> {
             if y >= max_y {
                 break;
             }
-            let truncated = truncate_with_suffix(&widget.tree_line(), inner_width, "...");
+            let truncated = truncate_with_ellipsis(&widget.tree_line(), inner_width);
             let color = if widget.focused {
                 self.config.accent_color
             } else {
@@ -129,7 +129,7 @@ impl<V: View> DebugOverlay<V> {
             if y >= max_y {
                 break;
             }
-            let truncated = truncate_with_suffix(&event_line(event), inner_width, "...");
+            let truncated = truncate_with_ellipsis(&event_line(event), inner_width);
             self.draw_text(buffer, x, y, &truncated, self.config.fg_color);
             y += 1;
         }

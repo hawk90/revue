@@ -92,12 +92,12 @@ fn test_profiler_report() {
 #[test]
 fn test_profiler_report_truncates_long_non_ascii_name() {
     let profiler = Profiler::new();
-    // 31 two-byte characters: byte 27 is inside the fourteenth one
+    // 31 two-byte characters: byte 29 is inside the fifteenth one
     let name = "é".repeat(31);
     profiler.record(&name, Duration::from_millis(10));
 
     let report = profiler.report();
-    let expected = format!("{}...", "é".repeat(27));
+    let expected = format!("{}… ", "é".repeat(29));
     assert!(report.contains(&expected), "{report}");
     assert!(!report.contains(&name));
 }
@@ -109,7 +109,7 @@ fn test_profiler_report_truncates_long_ascii_name() {
     profiler.record(&name, Duration::from_millis(10));
 
     let report = profiler.report();
-    assert!(report.contains(&format!("{}... ", "a".repeat(27))));
+    assert!(report.contains(&format!("{}… ", "a".repeat(29))));
     assert!(!report.contains(&name));
 }
 
@@ -157,12 +157,12 @@ fn test_profiler_report_keeps_30_column_wide_name() {
 
 #[test]
 fn test_profiler_report_cuts_31_column_wide_name_by_columns() {
-    // 31 columns: 13 Hangul characters (26 columns) fit before the "...",
+    // 31 columns: 14 Hangul characters (28 columns) fit before the "…",
     // and one space pads the name to 30 columns
     let name = format!("{}a", "렌".repeat(15));
     let (header, row) = header_and_row(&name);
 
-    let expected = format!("{}... ", "렌".repeat(13));
+    let expected = format!("{}… ", "렌".repeat(14));
     assert_eq!(&row[..expected.len()], expected);
     assert_eq!(calls_column(&row), "       1");
     assert_eq!(display_width(&row), display_width(&header));

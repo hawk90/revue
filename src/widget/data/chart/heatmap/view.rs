@@ -12,7 +12,7 @@ const ROW_LABEL_WIDTH: usize = 7;
 
 /// Columns `text` takes, as a stack child size.
 pub(super) fn width_of(text: &str) -> u16 {
-    display_width(text).min(u16::MAX as usize) as u16
+    crate::utils::unicode::display_width_u16(text)
 }
 
 impl HeatMap {

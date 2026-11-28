@@ -1413,6 +1413,29 @@ items:
     source:
       - 'issue #954'
     notes: VirtualList and DataGrid still draw their own scrollbars (track '░'); moving them to scrollbar_thumb would change how they look.
+  - id: WID-049
+    title: DataGrid (sortable, filterable, editable data table)
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - rows sort by a column (natural or ASCII order) and filter by a query; the selection and scroll follow
+      - cells edit in place with the shared text-editing keys; non-editable columns refuse it
+      - columns resize, reorder and freeze left or right; the rest scroll horizontally
+      - keyboard and mouse navigation, single or multi-row selection, CSV/TSV export in display order
+      - tree mode draws child rows under their parent, expanded and collapsed
+    evidence:
+      - src/widget/data/datagrid/mod.rs::datagrid
+      - tests/widget/data/datagrid/rows/sort.rs::test_natural_sorting
+      - tests/widget/data/datagrid/rows/filter.rs::test_filter_then_navigate_works
+      - tests/widget/data/datagrid/input/editing.rs::test_cell_edit_commit
+      - tests/widget/data/datagrid/columns/freeze.rs::test_horizontal_scroll
+      - tests/widget/data/datagrid/export.rs::test_export_follows_the_display_order
+      - examples/data_explorer.rs
+    source:
+      - 'issue #1539'
+    notes: "Partial: tree mode does not draw child rows in 3.x; `tree_mode` and `tree_cache` are deprecated since 3.17.0, and tree mode comes in 4.0 with row keys (#1539)."
   - id: CHART-001
     title: Shared chart components (Axis, Legend, ColorScheme, ChartGrid)
     area: chart
@@ -1562,7 +1585,7 @@ items:
       - src/core/app/router.rs::push
     source:
       - FEATURES.md §5 Navigation / Screen Routing
-    notes: Doc shows the plain signal pattern; a Router also exists (docs/guides/routing.md).
+    notes: Doc shows the plain signal pattern; a Router also exists (docs/guides/routing.md). The screen stacks (core::app::ScreenManager, widget::ScreenStack) store screen transitions but never draw them; those are deprecated in 3.17 (#845).
   - id: NAV-002
     title: 'Focus management: Tab ring in document order, click-to-focus'
     area: navigation

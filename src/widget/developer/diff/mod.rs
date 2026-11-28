@@ -10,7 +10,13 @@
 //! them are drawn in the removed and added colors while the rest of the
 //! line is on [`DiffColors::modified_bg`]. Lines are alike when at most 60%
 //! of their text changed (delta's `--max-line-distance` rule); the others
-//! stay [`ChangeType::Removed`] and [`ChangeType::Added`].
+//! stay [`ChangeType::Removed`] and [`ChangeType::Added`]. Blanks between
+//! two changed words join them, so `one two three` to `one 2 3` marks
+//! `two three` and `2 3` as one run each, as delta does.
+//!
+//! Pairing compares lines two by two, so it stops after 10,000 line
+//! comparisons in one change, a guard against quadratic time on a huge
+//! change (delta has none); past that the lines stay removed and added.
 
 mod pair;
 mod render;

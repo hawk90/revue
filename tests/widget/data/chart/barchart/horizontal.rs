@@ -1,8 +1,9 @@
 //! Horizontal BarChart tests: labels, bars, values, widths, gaps and colors
 
-use super::super::{render, render_rows};
+use super::super::{render, render_at, render_rows, rows};
 use super::bar;
 use proptest::prelude::*;
+use revue::layout::Rect;
 use revue::style::Color;
 use revue::widget::data::chart::BarChart;
 
@@ -235,5 +236,25 @@ proptest! {
                 }
             }
         }
+    }
+}
+
+/// A label of 65536 columns is not measured as 0: the label column takes
+/// its limit, a third of the width, and the label is cut to it; inside an
+/// area at an offset (#1596)
+#[test]
+fn test_barchart_horizontal_label_wider_than_u16() {
+    let chart = BarChart::new().bar("b".repeat(65_536), 10.0).bar("B", 5.0);
+    let rows = rows(&render_at(&chart, Rect::new(3, 2, 30, 4)));
+    assert_eq!(
+        rows[2],
+        format!("   {} {} 10.0      ", "b".repeat(10), bar(10))
+    );
+    assert_eq!(
+        rows[4],
+        format!("{}B {} 5.0{}", " ".repeat(12), bar(5), " ".repeat(12))
+    );
+    for y in [0, 1, 3, 5, 6, 7] {
+        assert!(rows[y].trim().is_empty(), "row {y}: {:?}", rows[y]);
     }
 }

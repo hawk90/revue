@@ -383,3 +383,26 @@ fn the_query_takes_the_stylesheet_color_and_the_placeholder_keeps_its_grey() {
         .unwrap();
     assert_eq!(b.get(s, y).unwrap().fg, Some(DISABLED_FG));
 }
+
+/// A shortcut 65537 columns wide is not 1 wide: it leaves the label no
+/// room, so it is not drawn and the row is the label and blanks up to the
+/// right border, in an area at an offset (#1607)
+#[test]
+fn a_shortcut_wider_than_u16_is_not_drawn() {
+    let p = shown(vec![
+        Command::new("a", "A").shortcut("k".repeat(65_537)),
+        Command::new("b", "B"),
+    ]);
+    let mut buffer = Buffer::new(74, 12);
+    p.render(&mut RenderContext::new(
+        &mut buffer,
+        Rect::new(4, 0, 70, 12),
+    ));
+    let line: String = (X + 4..=RIGHT + 4)
+        .map(|x| cell(&buffer, x, 5).symbol)
+        .collect();
+    assert_eq!(line, format!("│   A{}│", " ".repeat(54)));
+    for y in 0..12 {
+        assert!(!row(&buffer, y).contains('k'), "{y}");
+    }
+}

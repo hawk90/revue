@@ -3,8 +3,9 @@
 use super::{Gauge, GaugeStyle, LabelPosition};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::char_width;
 use crate::utils::color::contrast_color;
-use crate::utils::{char_width, display_width};
+use crate::utils::unicode::{display_width_u16, truncate_with_ellipsis};
 use crate::widget::traits::{RenderContext, View};
 
 impl Gauge {
@@ -86,13 +87,16 @@ impl Gauge {
         // Draw label inside
         if matches!(self.label_position, LabelPosition::Inside) {
             let label = self.get_label();
-            let lw = display_width(&label) as u16;
+            let lw = display_width_u16(&label);
             let label_x = (width.saturating_sub(lw)) / 2;
             let mut dx: u16 = 0;
             for ch in label.chars() {
                 let cw = char_width(ch) as u16;
-                let x = label_x + dx;
-                if x + cw <= width {
+                let x = label_x.saturating_add(dx);
+                if x >= width {
+                    break;
+                }
+                if x.saturating_add(cw) <= width {
                     let is_filled = x < filled;
                     let bg = if is_filled {
                         self.fill_bg.unwrap_or(color)
@@ -105,7 +109,7 @@ impl Gauge {
                     cell.modifier |= Modifier::BOLD;
                     ctx.set(x, 0, cell);
                 }
-                dx += cw;
+                dx = dx.saturating_add(cw);
             }
         }
     }
@@ -202,8 +206,10 @@ impl Gauge {
 
         // Middle with label
         if area.height > 1 {
-            let label = self.get_label();
-            let lw = display_width(&label) as u16;
+            // Cut to the `width - 2` cells between the borders, so the label
+            // never covers them; centered on the arc as before
+            let label = truncate_with_ellipsis(&self.get_label(), usize::from(width - 2));
+            let lw = display_width_u16(&label);
             let label_x = (width.saturating_sub(lw)) / 2;
 
             let mut left = Cell::new('│');
@@ -214,12 +220,15 @@ impl Gauge {
             if matches!(self.label_position, LabelPosition::Inside) {
                 let mut dx: u16 = 0;
                 for ch in label.chars() {
-                    let cw = char_width(ch) as u16;
+                    let x = label_x.saturating_add(dx);
+                    if x >= area.width {
+                        break;
+                    }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(contrast_color(self.empty_bg.unwrap_or(Color::rgb(0, 0, 0))));
                     cell.modifier |= Modifier::BOLD;
-                    ctx.set(label_x + dx, 1, cell);
-                    dx += cw;
+                    ctx.set(x, 1, cell);
+                    dx = dx.saturating_add(char_width(ch) as u16);
                 }
             }
 
@@ -285,11 +294,14 @@ impl Gauge {
         let label_x = 3 + segments;
         let mut dx: u16 = 0;
         for ch in label.chars() {
-            let cw = char_width(ch) as u16;
+            let x = label_x.saturating_add(dx);
+            if x >= ctx.area.width {
+                break;
+            }
             let mut cell = Cell::new(ch);
             cell.fg = Some(contrast_color(self.empty_bg.unwrap_or(Color::rgb(0, 0, 0))));
-            ctx.set(label_x + dx, 0, cell);
-            dx += cw;
+            ctx.set(x, 0, cell);
+            dx = dx.saturating_add(char_width(ch) as u16);
         }
     }
 
@@ -367,17 +379,14 @@ impl View for Gauge {
             GaugeStyle::Thermometer => (1, self.height.max(3)),
             GaugeStyle::Arc | GaugeStyle::Circle => return None,
         };
-        let label_w = display_width(&self.get_label()).min(u16::MAX as usize - 1) as u16;
+        let label_w = display_width_u16(&self.get_label()).min(u16::MAX - 1);
         let (w, h) = match self.label_position {
             LabelPosition::Left | LabelPosition::Right => (w.saturating_add(label_w + 1), h),
             LabelPosition::Above | LabelPosition::Below => (w.max(label_w), h.saturating_add(1)),
             LabelPosition::None | LabelPosition::Inside => (w, h),
         };
         let (w, h) = match &self.title {
-            Some(title) => (
-                w.max(display_width(title).min(u16::MAX as usize) as u16),
-                h.saturating_add(1),
-            ),
+            Some(title) => (w.max(display_width_u16(title)), h.saturating_add(1)),
             None => (w, h),
         };
         Some((w.min(max_width), h.min(max_height)))
@@ -403,7 +412,7 @@ impl View for Gauge {
 
         // A label outside the gauge takes its own columns or row
         let label = self.get_label();
-        let label_w = display_width(&label).min(u16::MAX as usize - 1) as u16;
+        let label_w = display_width_u16(&label).min(u16::MAX - 1);
         let put_label = |ctx: &mut RenderContext, lx: u16, ly: u16| {
             if lx < area.width && ly < area.height {
                 ctx.put_str_with(lx, ly, &label, area.width, |ch| {

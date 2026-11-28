@@ -117,6 +117,10 @@ impl Divider {
     /// the vertical divider two columns wide. When the label and its two line
     /// cells on each side do not fit, only the label is drawn, cut to the
     /// length.
+    ///
+    /// An empty label is no label: the divider draws its plain line in
+    /// either orientation. A vertical divider offered one column is cut to
+    /// it like any widget, so a row holding a wide glyph stays empty there.
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
@@ -180,12 +184,17 @@ impl Divider {
         }
     }
 
+    /// The label to draw: none for an empty one, as Modal skips an empty
+    /// title and Form an empty label
+    fn shown_label(&self) -> Option<&str> {
+        self.label.as_deref().filter(|label| !label.is_empty())
+    }
+
     /// The label's rows in a vertical divider: one grapheme each, leaving out
     /// the graphemes that take no column
     fn vertical_label_rows(&self) -> Vec<&str> {
         use unicode_segmentation::UnicodeSegmentation;
-        self.label
-            .as_deref()
+        self.shown_label()
             .map(|label| {
                 label
                     .graphemes(true)
@@ -200,7 +209,7 @@ impl Divider {
     fn vertical_width(&self) -> u16 {
         self.vertical_label_rows()
             .iter()
-            .map(|g| crate::utils::unicode::display_width(g).min(2) as u16)
+            .map(|g| crate::utils::unicode::display_width_u16(g).min(2))
             .max()
             .unwrap_or(1)
             .max(1)
@@ -265,12 +274,12 @@ impl View for Divider {
                 }
 
                 // Draw the line
-                if let Some(ref label) = self.label {
+                if let Some(label) = self.shown_label() {
                     // Line with label centered
-                    let label_len = crate::utils::unicode::display_width(label) as u16;
+                    let label_len = crate::utils::unicode::display_width_u16(label);
                     let total_width = end_x - start_x;
 
-                    if label_len + 4 <= total_width {
+                    if label_len.saturating_add(4) <= total_width {
                         let label_start = start_x + (total_width - label_len) / 2 - 1;
                         let label_end = label_start + label_len + 2;
 
@@ -310,7 +319,7 @@ impl View for Divider {
                     return;
                 }
 
-                if self.label.is_none() {
+                if self.shown_label().is_none() {
                     ctx.draw_vline(0, start_y, end_y - start_y, line_char, color);
                     return;
                 }

@@ -6,6 +6,7 @@ use crate::impl_view_meta;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::display_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY, SEPARATOR_COLOR};
 use crate::widget::traits::render_context::edit_line::{EditField, FieldCell};
 use crate::widget::traits::{RenderContext, View};
@@ -43,7 +44,7 @@ impl View for NumberInput {
         // Draw prefix
         if let Some(ref prefix) = self.prefix {
             ctx.draw_text_clipped(x, 0, prefix, LIGHT_GRAY, field_width.saturating_sub(x));
-            x = x.saturating_add(display_width(prefix).min(u16::MAX as usize) as u16);
+            x = x.saturating_add(display_width_u16(prefix));
         }
 
         // Draw the value, or the text being typed with its cursor and
@@ -82,7 +83,7 @@ impl View for NumberInput {
         // Draw suffix
         if let Some(ref suffix) = self.suffix {
             ctx.draw_text_clipped(x, 0, suffix, LIGHT_GRAY, field_width.saturating_sub(x));
-            x = x.saturating_add(display_width(suffix).min(u16::MAX as usize) as u16);
+            x = x.saturating_add(display_width_u16(suffix));
         }
 
         // Draw buttons if enabled and space available

@@ -20,25 +20,24 @@ fn test_shorten_path_no_shortening_needed() {
 #[test]
 fn test_shorten_path_exact_fit() {
     let path = "/usr/bin";
-    let result = shorten_path(path, 7);
-    // Function adds "..." prefix when approaching limit
-    assert!(result.contains("bin"));
+    // 8 columns: one too many, so "usr" gives way to the marker
+    assert_eq!(shorten_path(path, 7), "…/bin");
+    assert_eq!(shorten_path(path, 8), "/usr/bin");
 }
 
 #[test]
 fn test_shorten_path_preserves_filename() {
     let path = "/very/long/path/to/file.txt";
-    let result = shorten_path(path, 20);
-    // Should include filename
-    assert!(result.contains("file.txt"));
+    assert_eq!(shorten_path(path, 20), "…/path/to/file.txt");
 }
 
 #[test]
 fn test_shorten_path_with_ellipsis() {
     let path = "/a/b/c/d/e/f/g/h/file.txt";
+    // "…/" and 18 columns of components fill the 20 exactly
     let result = shorten_path(path, 20);
-    // Should start with "..."
-    assert!(result.starts_with("..."));
+    assert_eq!(result, "…/d/e/f/g/h/file.txt");
+    assert_eq!(display_width(&result), 20);
 }
 
 #[test]
@@ -63,38 +62,39 @@ fn test_shorten_path_keeps_wide_path_that_fits_in_columns() {
 
 #[test]
 fn test_shorten_path_keeps_wide_filename_whole_after_ellipsis() {
-    // The 8-column filename plus ".../" is 12 columns
-    let short = shorten_path("/홈/문서/파일.txt", 12);
-    assert_eq!(short, ".../파일.txt");
-    assert_eq!(display_width(&short), 12);
+    // The 8-column filename plus "…/" is 10 columns
+    let short = shorten_path("/홈/문서/파일.txt", 10);
+    assert_eq!(short, "…/파일.txt");
+    assert_eq!(display_width(&short), 10);
 }
 
 #[test]
 fn test_shorten_path_one_column_short_keeps_wide_filename_after_dots() {
-    // 11 columns: ".../파일.txt" is one too many, "...파일.txt" fits exactly
-    assert_eq!(shorten_path("/홈/파일.txt", 11), "...파일.txt");
+    // 9 columns: "…/파일.txt" is one too many, "…파일.txt" fits exactly
+    assert_eq!(shorten_path("/홈/파일.txt", 9), "…파일.txt");
 }
 
 #[test]
 fn test_shorten_path_cuts_wide_filename_by_columns() {
-    // 10 columns leave 7 for the filename: "파일.tx"
-    assert_eq!(shorten_path("/홈/파일.txt", 10), "...파일.tx");
+    // 8 columns leave 7 for the filename: "파일.tx"
+    assert_eq!(shorten_path("/홈/파일.txt", 8), "…파일.tx");
 }
 
 #[test]
 fn test_shorten_path_does_not_split_a_wide_char_at_the_edge() {
-    // 8 columns leave 5 for the filename; the third Hangul char would need 6
+    // 8 columns leave 7 for the filename; the fourth Hangul char would need 8
     let short = shorten_path("/a/파일파일", 8);
-    assert_eq!(short, "...파일");
+    assert_eq!(short, "…파일파");
     assert_eq!(display_width(&short), 7);
 }
 
-/// Below 3 columns the "..." alone was wider than asked (#1534)
+/// The marker was "..." and alone wider than asked below 3 columns (#1534);
+/// it is now "…", one column (#1599), and nothing at all fits in 0
 #[test]
-fn test_shorten_path_below_three_columns_cuts_the_dots() {
-    assert_eq!(shorten_path("/a/bcdef", 3), "...");
-    assert_eq!(shorten_path("/a/bcdef", 2), "..");
-    assert_eq!(shorten_path("/a/bcdef", 1), ".");
+fn test_shorten_path_at_tiny_widths_stays_within_the_width() {
+    assert_eq!(shorten_path("/a/bcdef", 3), "…bc");
+    assert_eq!(shorten_path("/a/bcdef", 2), "…b");
+    assert_eq!(shorten_path("/a/bcdef", 1), "…");
     assert_eq!(shorten_path("/a/bcdef", 0), "");
 }
 
@@ -102,7 +102,7 @@ fn test_shorten_path_below_three_columns_cuts_the_dots() {
 /// given does not: a relative path gained a leading `/` (#1534)
 #[test]
 fn test_shorten_path_keeps_a_relative_path_relative() {
-    // 8 columns as given; "a/b" plus the 4-column margin is 7
+    // 8 columns as given; "a/b" fits in 7 with room for "…/"
     assert_eq!(shorten_path("a//////b", 7), "a/b");
     assert_eq!(shorten_path("/a//////b", 8), "/a/b");
 }
@@ -114,7 +114,7 @@ fn test_path_display_max_width_keeps_wide_path_that_fits_in_columns() {
         display.clone().max_width(12).format("/홈/파일.txt"),
         "/홈/파일.txt"
     );
-    assert_eq!(display.max_width(11).format("/홈/파일.txt"), "...파일.txt");
+    assert_eq!(display.max_width(11).format("/홈/파일.txt"), "…/파일.txt");
 }
 
 // =========================================================================

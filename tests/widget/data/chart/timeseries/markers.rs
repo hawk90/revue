@@ -1,7 +1,8 @@
 //! TimeSeries marker tests: line and point markers with labels
 
-use super::super::{render, render_rows};
+use super::super::{render, render_at, render_rows, rows};
 use super::two_points;
+use revue::layout::Rect;
 use revue::style::Color;
 use revue::widget::data::chart::timeseries::{MarkerStyle, TimeMarker, TimeSeries, TimeSeriesData};
 
@@ -18,8 +19,9 @@ fn test_time_series_marker() {
         .marker(TimeMarker::new(1000, "Event1"))
         .marker(TimeMarker::new(2000, "Event2"));
     let buffer = render(&chart, 60, 20);
-    // The plot spans columns 8..59, rows 1..18
-    for x in [8, 58] {
+    // The plot spans columns 5..59 after the 4-column value labels ("77.5")
+    // and a gap column, rows 1..18
+    for x in [5, 58] {
         let marked = (1..18)
             .filter(|&y| buffer.get(x, y).unwrap().fg == Some(Color::YELLOW))
             .count();
@@ -34,9 +36,10 @@ fn test_time_series_render_with_markers() {
         .marker(TimeMarker::new(1500, "Event"))
         .marker(TimeMarker::new(1200, "P").style(MarkerStyle::Point));
     let rows = render_rows(&chart, 40, 12);
-    // A line marker halfway through the plot (columns 8..38), a point
-    // marker on its top row, and both labels under the plot
-    let line_x = 8 + 15;
+    // A line marker halfway through the plot (columns 5..39, after the
+    // 4-column value labels and a gap column), a point marker on its top
+    // row, and both labels under the plot
+    let line_x = 5 + 16;
     let column: String = rows[1..10]
         .iter()
         .map(|r| r.chars().nth(line_x).unwrap())
@@ -50,4 +53,27 @@ fn test_time_series_render_with_markers() {
         rows[11].contains("Event") && rows[11].contains('P'),
         "{rows:#?}"
     );
+}
+
+/// A marker label of 65536 columns is centered on its marker by its real
+/// width, so it starts at the area's left edge instead of at the marker,
+/// and runs to the area's edge under the time labels drawn after it;
+/// inside an area at an offset (#1596)
+#[test]
+fn test_time_series_marker_label_wider_than_u16() {
+    let chart = TimeSeries::new()
+        .time_range(super::fixed_range())
+        .marker(TimeMarker::new(1800, "m".repeat(65_536)).color(Color::GREEN));
+    let buffer = render_at(&chart, Rect::new(3, 2, 30, 12));
+    let rows = rows(&buffer);
+    assert_eq!(rows[13], "   mmmm00:00mmmmmmmmmmmmmmmmm01:0  ");
+    for x in 0..35 {
+        let cell = buffer.get(x, 13).unwrap();
+        if cell.symbol == 'm' {
+            assert_eq!(cell.fg, Some(Color::GREEN), "{x}");
+        }
+    }
+    // The marker line is in the middle column of the plot, which starts
+    // after the 5-column value labels ("110.0") and a gap column
+    assert_eq!(buffer.get(20, 3).unwrap().symbol, '│');
 }

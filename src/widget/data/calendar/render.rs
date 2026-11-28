@@ -4,7 +4,8 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::render_border;
-use crate::utils::{char_width, display_width};
+use crate::utils::char_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::traits::RenderContext;
 
 use super::types::{DateMarker, FirstDayOfWeek};
@@ -124,7 +125,7 @@ impl<'a> CalendarRender<'a> {
         ];
         let header = format!("{} {}", month_names[(self.month - 1) as usize], self.year);
         let header_x =
-            start_x + week_num_offset + (20u16.saturating_sub(display_width(&header) as u16)) / 2;
+            start_x + week_num_offset + (20u16.saturating_sub(display_width_u16(&header))) / 2;
 
         let mut dx: u16 = 0;
         for ch in header.chars() {

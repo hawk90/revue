@@ -6,7 +6,8 @@ use super::types::{ComponentStats, Frame, ProfilerView, RenderEvent};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::utils::{display_width, pad_to_width, truncate_with_suffix};
+use crate::utils::unicode::display_width_u16;
+use crate::utils::{pad_to_width, truncate_with_ellipsis};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -379,7 +380,7 @@ impl Profiler {
             let y = content_y.saturating_add(i as u16);
 
             // Component name, 20 columns wide
-            let name = pad_to_width(&truncate_with_suffix(&stat.name, 20, "..."), 20);
+            let name = pad_to_width(&truncate_with_ellipsis(&stat.name, 20), 20);
 
             // Stats
             let line = format!(
@@ -426,7 +427,7 @@ impl Profiler {
             let y = content_y.saturating_add(i as u16);
 
             // Component name, 20 columns wide
-            let name = pad_to_width(&truncate_with_suffix(&stat.name, 20, "..."), 20);
+            let name = pad_to_width(&truncate_with_ellipsis(&stat.name, 20), 20);
 
             // Bar width based on count
             let bar_width =
@@ -453,7 +454,7 @@ impl Profiler {
     fn render_empty(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig, msg: &str) {
         let x = area
             .x
-            .saturating_add(area.width.saturating_sub(display_width(msg) as u16) / 2);
+            .saturating_add(area.width.saturating_sub(display_width_u16(msg)) / 2);
         let y = area.y.saturating_add(area.height / 2);
         self.render_text(buffer, area, x, y, msg, config.fg_color);
     }

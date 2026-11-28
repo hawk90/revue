@@ -556,13 +556,13 @@ fn test_selection_list_highlight_empty_list() {
 #[test]
 fn test_selection_list_highlight_with_scrolling() {
     let mut list = SelectionList::new(vec!["A", "B", "C", "D", "E"]).max_visible(3);
-    assert_eq!(rows(&list), vec!["[ ] A", "[ ] B", "[ ] C", "  ↓ more..."]);
+    assert_eq!(rows(&list), vec!["[ ] A", "[ ] B", "[ ] C", "  ↓ more…"]);
     // To the last item: the window follows it
     for _ in 0..5 {
         list.highlight_next();
     }
     assert_eq!(highlighted(&list), Some(4));
-    assert_eq!(rows(&list), vec!["  ↑ more...", "[ ] C", "[ ] D", "[ ] E"]);
+    assert_eq!(rows(&list), vec!["  ↑ more…", "[ ] C", "[ ] D", "[ ] E"]);
     list.highlight_first();
     assert_eq!(rows(&list)[0], "[ ] A");
     for _ in 0..5 {
@@ -1049,7 +1049,7 @@ fn test_selection_list_navigation_and_selection() {
     list.toggle_highlighted();
     assert_eq!(list.get_selected(), &[2, 3]);
     let shown = rows(&list);
-    assert_eq!(&shown[..4], ["  ↑ more...", "[ ] B", "[x] C", "[x] D"]);
+    assert_eq!(&shown[..4], ["  ↑ more…", "[ ] B", "[x] C", "[x] D"]);
 }
 
 #[test]
@@ -1440,7 +1440,7 @@ fn test_selection_list_bg() {
 #[test]
 fn test_selection_list_max_visible() {
     let list = SelectionList::new(vec!["A", "B", "C"]).max_visible(2);
-    assert_eq!(rows(&list), vec!["[ ] A", "[ ] B", "  ↓ more..."]);
+    assert_eq!(rows(&list), vec!["[ ] A", "[ ] B", "  ↓ more…"]);
 }
 
 #[test]
@@ -1519,10 +1519,10 @@ fn test_highlight_previous_at_start() {
 fn test_highlight_first_scrolls_to_top() {
     let mut list = SelectionList::new(vec!["A", "B", "C"]).max_visible(1);
     list.highlight_last();
-    assert_eq!(rows(&list), vec!["  ↑ more...", "[ ] C"]);
+    assert_eq!(rows(&list), vec!["  ↑ more…", "[ ] C"]);
     list.highlight_first();
     assert_eq!(highlighted(&list), Some(0));
-    assert_eq!(rows(&list), vec!["[ ] A", "  ↓ more..."]);
+    assert_eq!(rows(&list), vec!["[ ] A", "  ↓ more…"]);
 }
 
 #[test]
@@ -1542,7 +1542,7 @@ fn test_selection_list_scroll_with_max_visible() {
     assert_eq!(
         rows(&list),
         vec![
-            "  ↑ more...",
+            "  ↑ more…",
             "[ ] Item 15",
             "[ ] Item 16",
             "[ ] Item 17",

@@ -3,6 +3,8 @@
 #[path = "support/alloc_cap.rs"]
 mod alloc_cap;
 
+#[path = "devtools/events.rs"]
+mod events;
 #[path = "devtools/inspector/mod.rs"]
 mod inspector;
 #[path = "devtools/profiler.rs"]

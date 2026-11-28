@@ -1,6 +1,6 @@
 //! One process row: PID, name, CPU%, MEM%, memory, status and command
 
-use super::{put_chars, CMD_X, CPU_X, MEM_PERCENT_X, MEM_X, NAME_X, PID_WIDTH, STATUS_X};
+use super::{put_chars, Columns};
 use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::developer::procmon::{ProcessInfo, ProcessMonitor};
@@ -41,6 +41,7 @@ impl ProcessMonitor {
         &self,
         ctx: &mut RenderContext,
         y: u16,
+        columns: &Columns,
         proc: &ProcessInfo,
         bg: Option<Color>,
         row_fg: Color,
@@ -50,29 +51,36 @@ impl ProcessMonitor {
         // CPU%
         let cpu_str = format!("{:>6.1}", proc.cpu);
         let cpu_color = self.cpu_color(proc.cpu);
-        put_chars(ctx, CPU_X, y, &cpu_str, area.width, |ch| {
+        put_chars(ctx, columns.cpu, y, &cpu_str, area.width, |ch| {
             row_cell(ch, cpu_color, bg)
         });
 
         // MEM%
         let mem_pct_str = format!("{:>6.1}", proc.memory_percent);
         let mem_color = self.mem_color(proc.memory_percent, row_fg);
-        put_chars(ctx, MEM_PERCENT_X, y, &mem_pct_str, area.width, |ch| {
-            row_cell(ch, mem_color, bg)
-        });
+        put_chars(
+            ctx,
+            columns.mem_percent,
+            y,
+            &mem_pct_str,
+            area.width,
+            |ch| row_cell(ch, mem_color, bg),
+        );
 
         // MEM (bytes)
         let mem_str = format!("{:>7}", Self::format_bytes(proc.memory));
-        put_chars(ctx, MEM_X, y, &mem_str, area.width, |ch| {
+        put_chars(ctx, columns.mem, y, &mem_str, area.width, |ch| {
             row_cell(ch, row_fg, bg)
         });
     }
 
-    /// Render `proc` on row `y`, in `row_fg` where no column color applies
+    /// Render `proc` on row `y` at the `columns` offsets, in `row_fg` where
+    /// no column color applies
     pub(super) fn render_row(
         &self,
         ctx: &mut RenderContext,
         y: u16,
+        columns: &Columns,
         proc: &ProcessInfo,
         is_selected: bool,
         row_fg: Color,
@@ -94,28 +102,35 @@ impl ProcessMonitor {
             None
         };
 
-        // PID, kept to its column so a gap stays before the name
-        let pid_str = format!("{:>width$}", proc.pid, width = PID_WIDTH as usize);
-        put_chars(ctx, 0, y, &pid_str, PID_WIDTH.min(area.width), |ch| {
+        // PID, right-aligned in its column (wide enough for every listed
+        // PID), so a gap stays before the name
+        let pid_width = columns.pid_width;
+        let pid_str = format!("{:>width$}", proc.pid, width = pid_width as usize);
+        put_chars(ctx, 0, y, &pid_str, pid_width.min(area.width), |ch| {
             row_cell(ch, self.colors.pid, bg)
         });
 
         // Name (truncated)
         let name = crate::utils::truncate_to_width(&proc.name, 19);
-        put_chars(ctx, NAME_X, y, name, NAME_X + 19, |ch| {
-            row_cell(ch, row_fg, bg)
-        });
+        put_chars(
+            ctx,
+            columns.name,
+            y,
+            name,
+            (columns.name + 19).min(area.width),
+            |ch| row_cell(ch, row_fg, bg),
+        );
 
-        self.render_usage(ctx, y, proc, bg, row_fg);
+        self.render_usage(ctx, y, columns, proc, bg, row_fg);
 
         // Status, clipped at the area like the header above it (#1084)
         let status = crate::utils::truncate_to_width(&proc.status, 8);
         put_chars(
             ctx,
-            STATUS_X,
+            columns.status,
             y,
             status,
-            (STATUS_X + 8).min(area.width),
+            (columns.status + 8).min(area.width),
             |ch| row_cell(ch, LIGHT_GRAY, bg),
         );
 
@@ -126,7 +141,9 @@ impl ProcessMonitor {
             } else {
                 &proc.cmd
             };
-            ctx.put_str_with(CMD_X, y, cmd, area.width, |ch| row_cell(ch, LIGHT_GRAY, bg));
+            ctx.put_str_with(columns.cmd, y, cmd, area.width, |ch| {
+                row_cell(ch, LIGHT_GRAY, bg)
+            });
         }
     }
 }

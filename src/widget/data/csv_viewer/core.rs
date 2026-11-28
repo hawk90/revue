@@ -356,7 +356,7 @@ impl CsvViewer {
         for row in &self.data {
             for (col, cell) in row.iter().enumerate() {
                 if col < self.column_widths.len() {
-                    let width = crate::utils::display_width(cell).min(u16::MAX as usize) as u16;
+                    let width = crate::utils::unicode::display_width_u16(cell);
                     self.column_widths[col] = self.column_widths[col].max(width);
                 }
             }

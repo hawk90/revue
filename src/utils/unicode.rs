@@ -82,6 +82,14 @@ pub fn display_width(s: &str) -> usize {
     s.chars().map(char_width).sum()
 }
 
+/// [`display_width`] as a cell column count, clamped to `u16::MAX`
+///
+/// A text wider than 65535 columns reads as 65535, not as its width cut
+/// to 16 bits (65536 columns would otherwise read as 0)
+pub(crate) fn display_width_u16(s: &str) -> u16 {
+    u16::try_from(display_width(s)).unwrap_or(u16::MAX)
+}
+
 /// Truncate a string to fit within a given display width
 ///
 /// Returns a string slice that fits within the specified width.
@@ -135,7 +143,8 @@ pub fn truncate_to_width(s: &str, max_width: usize) -> &str {
 /// Truncate a string and add ellipsis if needed
 ///
 /// If the string is truncated, appends "…" (or custom suffix).
-/// The result will fit within `max_width` including the ellipsis.
+/// The result will fit within `max_width` including the ellipsis: a
+/// string that does not fit is `""` at 0 and `"…"` at 1.
 ///
 /// # Example
 ///
@@ -150,6 +159,10 @@ pub fn truncate_with_ellipsis(s: &str, max_width: usize) -> String {
 }
 
 /// Truncate a string and add a custom suffix if needed
+///
+/// The result is never wider than `max_width`. When `max_width` leaves no
+/// room for content next to the suffix, the result is the suffix cut to
+/// `max_width` (`""` at 0).
 pub fn truncate_with_suffix(s: &str, max_width: usize, suffix: &str) -> String {
     let width = display_width(s);
     if width <= max_width {

@@ -586,7 +586,7 @@ fn the_search_query_keeps_room_after_tags() {
     v.open();
     v.handle_key(&Key::Char('d'));
     let row = header(&v, 20);
-    assert!(row.contains("... d"), "{row:?}");
+    assert!(row.contains("… d"), "{row:?}");
 }
 
 /// Tags that exactly filled the row hid the rest without a `...` marker,
@@ -605,12 +605,12 @@ fn hidden_tags_are_always_marked() {
     let mut v = multi_select().options(vec!["aa", "bb", "cc"]).width(12);
     v.select_all();
     let row = header(&v);
-    assert!(row.contains("..."), "{row:?}");
+    assert!(row.contains('…'), "{row:?}");
     // The tag cursor on the first tag: in view, with the marker after it
     for _ in 0..3 {
         v.handle_key(&Key::Left);
     }
     assert_eq!(v.get_tag_cursor(), Some(0));
     let row = header(&v);
-    assert!(row.starts_with("[aa]") && row.contains("..."), "{row:?}");
+    assert!(row.starts_with("[aa]") && row.contains('…'), "{row:?}");
 }

@@ -1580,3 +1580,28 @@ fn a_link_url_from_markup_cannot_carry_terminal_controls() {
     let id = buffer.get(0, 0).unwrap().hyperlink_id.unwrap();
     assert_eq!(buffer.get_hyperlink(id), Some("x%1Bc"));
 }
+
+/// A span keeps a wide glyph's colors, modifiers and link on its right
+/// half: it wrote a continuation with only the background and the link
+/// (#1609)
+#[test]
+fn spans_style_both_halves_of_a_wide_glyph() {
+    use crate::wide_glyphs::{assert_wide_glyphs_keep_their_style, draw_at_offset, glyph};
+    let (fg, bg) = (Color::rgb(1, 2, 3), Color::rgb(4, 5, 6));
+    let rt = RichText::new()
+        .push("가", Style::new().fg(fg).bg(bg).bold())
+        .span(Span::link("나", "https://example.com").style(Style::new().fg(fg).italic()));
+    let b = draw_at_offset(&rt, 4, 1);
+    let glyphs = assert_wide_glyphs_keep_their_style(&b);
+    let (x, _, cell) = glyph(&glyphs, '가');
+    assert_eq!(x, 2);
+    assert_eq!(
+        (cell.fg, cell.bg, cell.modifier),
+        (Some(fg), Some(bg), Modifier::BOLD)
+    );
+    // The link ends in the area's last column
+    let (x, _, cell) = glyph(&glyphs, '나');
+    assert_eq!(x, 4);
+    assert_eq!((cell.fg, cell.modifier), (Some(fg), Modifier::ITALIC));
+    assert!(cell.hyperlink_id.is_some());
+}

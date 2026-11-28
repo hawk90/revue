@@ -3,6 +3,9 @@
 //! Screen 위젯의 통합 테스트입니다.
 //! 멀티 스크린 내비게이션 및 스크린 스택 관리 기능을 테스트합니다.
 
+// The transition API is deprecated (#845); its tests stay until 4.0
+#![allow(deprecated)]
+
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;

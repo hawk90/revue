@@ -1067,3 +1067,25 @@ fn test_card_large_padding() {
     assert!(rows[2].starts_with('├'));
     assert!(rows[3].starts_with("│     Content "), "{:?}", rows[3]);
 }
+
+/// The title and the subtitle keep a wide glyph's colors and bold on its
+/// right half: they wrote a plain continuation over it (#1609)
+#[test]
+fn title_and_subtitle_style_both_halves_of_a_wide_glyph() {
+    use crate::wide_glyphs::{assert_wide_glyphs_keep_their_style, draw_at_offset, glyph};
+    let card = Card::new()
+        .title("제목")
+        .subtitle("부분")
+        .title_color(Color::rgb(1, 2, 3));
+    let b = draw_at_offset(&card, 12, 5);
+    let glyphs = assert_wide_glyphs_keep_their_style(&b);
+    for ch in ['제', '목'] {
+        let (_, _, cell) = glyph(&glyphs, ch);
+        assert_eq!(cell.fg, Some(Color::rgb(1, 2, 3)), "{ch}");
+        assert!(cell.modifier.contains(Modifier::BOLD), "{ch}");
+    }
+    for ch in ['부', '분'] {
+        let (_, _, cell) = glyph(&glyphs, ch);
+        assert_eq!(cell.fg, Some(LIGHT_GRAY), "{ch}");
+    }
+}

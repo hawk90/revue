@@ -3,7 +3,6 @@
 use super::draw::{draw_frame_from, styled};
 use super::{Border, BorderType};
 use crate::layout::Rect;
-use crate::render::Cell;
 use crate::style::{BorderStyle, Color};
 use crate::utils::unicode::{char_width, truncate_to_width};
 use crate::widget::layout::constraints::{constrain, floor_around};
@@ -23,7 +22,7 @@ impl View for Border {
         };
         // `─ title ─`: a corner, a dash and a space each side.
         let title = self.title.as_deref().map_or(0, |t| {
-            crate::utils::unicode::display_width(t).min(u16::MAX as usize) as u16 + 4
+            crate::utils::unicode::display_width_u16(t).saturating_add(4)
         });
         let w = w.max(title).max(self.min_width);
         let h = h.max(self.min_height);
@@ -175,12 +174,6 @@ impl Border {
                 continue;
             }
             ctx.set(x, 0, styled(ch, fg, bg));
-            for dx in 1..w {
-                let mut cont = Cell::continuation();
-                cont.fg = fg;
-                cont.bg = bg;
-                ctx.set(x + dx, 0, cont);
-            }
             x += w;
         }
 

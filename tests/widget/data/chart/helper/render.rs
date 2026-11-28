@@ -3,7 +3,7 @@
 use super::super::{count_char, render, render_rows, rows};
 use super::{diagonal, plain, sym};
 use revue::layout::Rect;
-use revue::render::Buffer;
+use revue::render::{Buffer, Modifier};
 use revue::style::Color;
 use revue::widget::data::chart::{line_chart, scatter_chart, ScatterSeries};
 use revue::widget::data::chart::{Axis, Chart, LegendPosition, LineStyle, Marker, Series};
@@ -28,15 +28,15 @@ fn test_chart_title() {
 fn test_chart_title_shifts_plot_down() {
     // With a title the plot is rows 1..18 and the X labels stay on row 18
     let buffer = render(&plain().title("T").series(diagonal()), 40, 20);
-    assert_eq!(sym(&buffer, 8, 18), '0');
-    assert_eq!(sym(&buffer, 8, 17), '╱');
+    assert_eq!(sym(&buffer, 6, 18), '0');
+    assert_eq!(sym(&buffer, 6, 17), '╱');
     assert_eq!(sym(&buffer, 39, 2), '╱');
 }
 
 #[test]
 fn test_chart_too_small_renders_nothing() {
     let chart = Chart::new().series(diagonal());
-    for (w, h) in [(9, 20), (40, 4), (10, 5)] {
+    for (w, h) in [(9, 20), (40, 4), (10, 4)] {
         let buffer = render(&chart, w, h);
         assert!(rows(&buffer).iter().all(|r| r.trim().is_empty()), "{w}x{h}");
     }
@@ -57,9 +57,9 @@ fn test_chart_border() {
     assert_eq!(sym(&buffer, 0, 19), '└');
     assert_eq!(sym(&buffer, 39, 19), '┘');
     assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::GREEN));
-    // Plot moves in by one cell: x=9..39, y=1..17, labels on row 17
-    assert_eq!(sym(&buffer, 9, 17), '0');
-    assert_eq!(sym(&buffer, 9, 16), '╱');
+    // Plot moves in by one cell: x=7..39, y=1..17, labels on row 17
+    assert_eq!(sym(&buffer, 7, 17), '0');
+    assert_eq!(sym(&buffer, 7, 16), '╱');
 }
 
 #[test]
@@ -155,4 +155,22 @@ fn test_chart_and_scatter_side_by_side_stay_in_their_halves() {
         }
     }
     assert_eq!(points, 2);
+}
+
+/// A title of 65536 columns is not measured as 0 and centered at the
+/// middle: it fills the chart's first row from its left edge, bold, inside
+/// an area at an offset (#1596)
+#[test]
+fn test_chart_title_wider_than_u16_fills_the_first_row() {
+    use super::super::render_at;
+    let buffer = render_at(&plain().title("x".repeat(65_536)), Rect::new(3, 2, 30, 12));
+    let rows = rows(&buffer);
+    assert_eq!(rows[2], format!("   {}  ", "x".repeat(30)));
+    for x in 3..33 {
+        assert!(
+            buffer.get(x, 2).unwrap().modifier.contains(Modifier::BOLD),
+            "{x}"
+        );
+    }
+    assert!(rows[..2].iter().all(|r| r.trim().is_empty()), "{rows:#?}");
 }

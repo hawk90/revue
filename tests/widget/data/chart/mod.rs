@@ -32,6 +32,15 @@ pub fn render(view: &impl View, width: u16, height: u16) -> Buffer {
     buffer
 }
 
+/// Render `view` into `area` of a buffer that leaves two blank columns and
+/// rows past the area's right and bottom edges.
+pub fn render_at(view: &impl View, area: Rect) -> Buffer {
+    let mut buffer = Buffer::new(area.x + area.width + 2, area.y + area.height + 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    view.render(&mut ctx);
+    buffer
+}
+
 /// Each row of `buffer` as text.
 pub fn rows(buffer: &Buffer) -> Vec<String> {
     (0..buffer.height())

@@ -73,7 +73,7 @@ fn test_filepicker_render_scrolls_to_highlight() {
     let text = render_text(&picker, 80, 20);
     assert!(text.contains("f0.txt") && text.contains("f2.txt"), "{text}");
     assert!(!text.contains("f3.txt"), "{text}");
-    assert!(text.contains("more..."), "{text}");
+    assert!(text.contains("more…"), "{text}");
 
     highlight(&mut picker, "f9.txt");
     let text = render_text(&picker, 80, 20);

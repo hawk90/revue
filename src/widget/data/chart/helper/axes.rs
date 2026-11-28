@@ -5,8 +5,10 @@ use super::Chart;
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::unicode::{display_width_u16, truncate_with_ellipsis};
 use crate::utils::{char_width, display_width};
 use crate::widget::data::chart::chart_common::AxisFormat;
+use crate::widget::data::chart::chart_render::{label_ticks, put_label};
 use crate::widget::traits::RenderContext;
 
 impl Chart {
@@ -29,7 +31,33 @@ impl Chart {
         }
     }
 
-    /// Draw Y axis labels
+    /// The Y tick label of tick `i` of `ticks`, counted from the bottom
+    fn y_tick_label(&self, i: usize, ticks: usize, bounds: (f64, f64, f64, f64)) -> String {
+        let (_, _, y_min, y_max) = bounds;
+        let t = i as f64 / ticks as f64;
+        let value = y_min + t * (y_max - y_min);
+        self.format_label(value, &self.y_axis.format)
+    }
+
+    /// The Y ticks labeled on a plot of `rows` rows, with their rows up
+    /// from the bottom: at most one per row, both ends kept (#1615)
+    fn y_label_ticks(&self, rows: u16) -> Vec<(usize, u16)> {
+        label_ticks(self.y_axis.ticks, rows.saturating_sub(1), 1)
+    }
+
+    /// The width of the widest Y tick label drawn on a plot of `rows` rows,
+    /// in columns
+    pub(super) fn y_label_columns(&self, bounds: (f64, f64, f64, f64), rows: u16) -> u16 {
+        let ticks = self.y_axis.ticks.max(1);
+        self.y_label_ticks(rows)
+            .into_iter()
+            .map(|(i, _)| display_width_u16(&self.y_tick_label(i, ticks, bounds)))
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// Draw Y axis labels, right-aligned in the label column; a label wider
+    /// than the column is cut with `…` (#1606)
     pub(super) fn draw_y_axis(
         &self,
         ctx: &mut RenderContext,
@@ -45,24 +73,16 @@ impl Chart {
             y_label_x,
             ..
         } = *plot;
-        let (_, _, y_min, y_max) = bounds;
+        let columns = y_label_width.saturating_sub(1);
         let ticks = self.y_axis.ticks.max(1);
-        for i in 0..=ticks {
-            let t = i as f64 / ticks as f64;
-            let value = y_min + t * (y_max - y_min);
-            let label = self.format_label(value, &self.y_axis.format);
-            let y = inner_y + inner_h - 1 - ((t * (inner_h as f64 - 1.0)) as u16);
-
-            // Right-align label
-            let label_start =
-                y_label_x + y_label_width.saturating_sub(display_width(&label) as u16 + 1);
-            let mut dx: u16 = 0;
-            for ch in label.chars() {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(self.y_axis.color);
-                ctx.set(label_start + dx, y, cell);
-                dx += char_width(ch) as u16;
-            }
+        let style = Cell {
+            fg: Some(self.y_axis.color),
+            ..Cell::default()
+        };
+        for (i, row) in self.y_label_ticks(inner_h) {
+            let label = self.y_tick_label(i, ticks, bounds);
+            let y = inner_y + inner_h - 1 - row;
+            put_label(ctx, &label, (y_label_x, y), columns, true, style);
 
             // Draw grid line
             if self.y_axis.grid && i > 0 && i < ticks {
@@ -75,7 +95,7 @@ impl Chart {
         }
     }
 
-    /// Draw X axis labels
+    /// Draw X axis labels, centered on their ticks
     pub(super) fn draw_x_axis(
         &self,
         ctx: &mut RenderContext,
@@ -93,23 +113,37 @@ impl Chart {
         } = *plot;
         let (x_min, x_max, _, _) = bounds;
         let ticks = self.x_axis.ticks.max(1);
-        for i in 0..=ticks {
+        // At most one label per two columns, both ends kept (#1615), and
+        // each label is cut with `…` to its slot, the columns between two
+        // labeled ticks less one, so neighbors never overwrite each other
+        // (#1606)
+        let labeled = label_ticks(ticks, inner_w.saturating_sub(1), 2);
+        let slot = labeled
+            .windows(2)
+            .map(|pair| pair[1].1 - pair[0].1)
+            .min()
+            .unwrap_or(inner_w);
+        let slot = usize::from(slot.saturating_sub(1).max(1));
+        for (i, offset) in labeled {
             let t = i as f64 / ticks as f64;
             let value = x_min + t * (x_max - x_min);
             let label = self.format_label(value, &self.x_axis.format);
-            let x = inner_x + (t * (inner_w as f64 - 1.0)) as u16;
+            let label = truncate_with_ellipsis(&label, slot);
+            let x = inner_x + offset;
 
             // Center label
-            let label_start = x.saturating_sub(display_width(&label) as u16 / 2);
+            let half = u16::try_from(display_width(&label) / 2).unwrap_or(u16::MAX);
+            let label_start = x.saturating_sub(half);
             let mut dx: u16 = 0;
             for ch in label.chars() {
-                let px = label_start + dx;
-                if px < area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(self.x_axis.color);
-                    ctx.set(px, x_label_y, cell);
+                let px = label_start.saturating_add(dx);
+                if px >= area.width {
+                    break;
                 }
-                dx += char_width(ch) as u16;
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(self.x_axis.color);
+                ctx.set(px, x_label_y, cell);
+                dx = dx.saturating_add(char_width(ch) as u16);
             }
 
             // Draw grid line
@@ -136,25 +170,29 @@ impl Chart {
         } = *plot;
         if let Some(ref title) = self.y_axis.title {
             // Draw vertically on the left (one char per row, so char count governs height)
-            let char_count = title.chars().count() as u16;
+            let char_count = u16::try_from(title.chars().count()).unwrap_or(u16::MAX);
             let y_start = inner_y + (inner_h.saturating_sub(char_count)) / 2;
-            for (i, ch) in title.chars().enumerate() {
+            for (y, ch) in (y_start..area.height).zip(title.chars()) {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.y_axis.color);
-                ctx.set(y_label_x, y_start + i as u16, cell);
+                ctx.set(y_label_x, y, cell);
             }
         }
 
         if let Some(ref title) = self.x_axis.title {
-            let x_start = inner_x + (inner_w.saturating_sub(display_width(title) as u16)) / 2;
+            let x_start = inner_x + (inner_w.saturating_sub(display_width_u16(title))) / 2;
             let y = x_label_y + 1;
             if y < area.height {
                 let mut dx: u16 = 0;
                 for ch in title.chars() {
+                    let x = x_start.saturating_add(dx);
+                    if x >= area.width {
+                        break;
+                    }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.x_axis.color);
-                    ctx.set(x_start + dx, y, cell);
-                    dx += char_width(ch) as u16;
+                    ctx.set(x, y, cell);
+                    dx = dx.saturating_add(char_width(ch) as u16);
                 }
             }
         }

@@ -850,15 +850,29 @@ fn test_divider_multiple_areas() {
 // Label Edge Cases
 // =============================================================================
 
+/// An empty label is no label: the plain line, with no blank cells in its
+/// middle (#1588)
 #[test]
 fn test_divider_empty_label() {
-    let d = divider().label("");
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-    // Should render without label
+    for width in [1, 2, 4, 5, 20] {
+        let d = divider()
+            .color(Color::RED)
+            .label("")
+            .label_color(Color::GREEN);
+        let mut buffer = Buffer::new(width + 2, 1);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(1, 0, width, 1));
+        d.render(&mut ctx);
+        for x in 0..width + 2 {
+            let c = buffer.get(x, 0).unwrap();
+            let want = if (1..=width).contains(&x) {
+                ('─', Some(Color::RED))
+            } else {
+                (' ', None)
+            };
+            assert_eq!((c.symbol, c.fg), want, "width {width}, x {x}");
+        }
+    }
+    assert_eq!(divider().label("").measure(20, 5), Some((20, 1)));
 }
 
 #[test]
@@ -1553,6 +1567,51 @@ mod vertical_label {
             column(&b, 0, 5),
             [line(), gap(), ('A', Some(LINE)), gap(), line()]
         );
+    }
+
+    /// An empty label is no label: the plain line, with no blank rows in
+    /// its middle, one column wide (#1588)
+    #[test]
+    fn an_empty_label_draws_the_plain_line() {
+        let d = labeled("");
+        assert_eq!(d.measure(10, 8), Some((1, 8)));
+        for height in [1, 2, 4, 5, 8] {
+            let b = draw_at(&d, 1, 1, 1, height);
+            let mut want = vec![blank()];
+            want.extend(vec![line(); usize::from(height)]);
+            want.push(blank());
+            assert_eq!(column(&b, 1, height + 2), want, "height {height}");
+            assert_eq!(
+                column(&b, 2, height + 2),
+                vec![blank(); usize::from(height) + 2]
+            );
+        }
+    }
+
+    /// Offered one column, a wide glyph does not fit: its row stays empty
+    /// like any clipped widget, and nothing is drawn past the column (#1588)
+    #[test]
+    fn a_wide_glyph_in_one_column_leaves_its_row_empty() {
+        let b = draw_at(&labeled("A가B"), 2, 1, 1, 9);
+        assert_eq!(
+            column(&b, 2, 11),
+            [
+                blank(),
+                line(),
+                line(),
+                gap(),
+                label('A'),
+                blank(),
+                label('B'),
+                gap(),
+                line(),
+                line(),
+                blank(),
+            ]
+        );
+        for x in [1, 3] {
+            assert_eq!(column(&b, x, 11), vec![blank(); 11], "column {x}");
+        }
     }
 
     #[test]

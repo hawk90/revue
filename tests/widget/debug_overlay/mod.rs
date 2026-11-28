@@ -339,7 +339,7 @@ fn test_debug_overlay_truncates_wide_chars() {
     let buffer = render(&overlay);
     let all = text(&buffer);
     assert!(all.contains("Events:"));
-    assert!(all.contains("..."));
+    assert!(all.contains('…'));
     // The right border is intact
     assert_eq!(symbol(&buffer, 79, 3), '│');
 }

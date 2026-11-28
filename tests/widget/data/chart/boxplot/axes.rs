@@ -38,10 +38,11 @@ fn test_boxplot_category_labels() {
 fn test_boxplot_long_category_label_clipped() {
     let bp = BoxPlot::new().group("VeryLongGroupName", &[1.0, 2.0, 3.0]);
     let rows = rows(&render(&bp, 20, 10));
-    // Label is centered on column 12 (the box's center), so it starts at
-    // column 4; cells left of the chart area (the value-label column,
-    // x < 6) are not drawn
-    assert_eq!(rows[9].trim_end(), "      ryLongGroupNam");
+    // The value labels ("3.20" down to "0.80") are 4 columns wide, so the
+    // chart starts at column 5. The label is centered on column 12 (the
+    // box's center), so it starts at column 4; cells left of the chart area
+    // (the value-label column, x < 5) are not drawn
+    assert_eq!(rows[9].trim_end(), "     eryLongGroupNam");
 }
 
 /// A label of 65536+ columns is centered by its real width, not the width
@@ -52,7 +53,7 @@ fn test_boxplot_category_label_wider_than_u16() {
     for n in [65_536, 131_072] {
         let bp = BoxPlot::new().group("x".repeat(n), &[1.0, 2.0, 3.0]);
         let rows = rows(&render(&bp, 20, 10));
-        assert_eq!(rows[9], format!("      {}", "x".repeat(14)), "{n}");
+        assert_eq!(rows[9], format!("     {}", "x".repeat(15)), "{n}");
     }
 }
 
@@ -245,4 +246,49 @@ fn test_boxplot_groups_left_out_zero_area_and_offset() {
     assert_zero_areas_draw_nothing(&bp.clone().horizontal());
     assert_same_when_offset(bp.clone(), 40, 20);
     assert_same_when_offset(bp.horizontal(), 40, 20);
+}
+
+/// A vertical plot of `even_stats` (padded to -10..110) in 30x12 with
+/// value labels of `format` (in red) and one group "A"
+fn value_labeled(format: &str) -> Buffer {
+    use revue::style::Color;
+    use revue::widget::data::chart::{Axis, AxisFormat};
+    let axis = Axis::new()
+        .color(Color::RED)
+        .format(AxisFormat::Custom(format.into()));
+    render(
+        &BoxPlot::new()
+            .group_stats("A", even_stats())
+            .value_axis(axis),
+        30,
+        12,
+    )
+}
+
+/// The value label column is as wide as the widest label, at most a third
+/// of the area, with a gap column before the chart (#1614)
+#[test]
+fn test_boxplot_value_label_column_fits_the_widest_label() {
+    // "110" .. "-10": 3 columns, the chart at 4..29, "A" centered on 16
+    let rows = rows(&value_labeled("{}"));
+    for (y, label) in [(1, "110"), (3, "80 "), (5, "50 "), (7, "20 "), (10, "-10")] {
+        assert_eq!(&rows[y][..4], format!("{label} "), "row {y}");
+    }
+    assert_eq!(rows[11], format!("{}A{}", " ".repeat(16), " ".repeat(13)));
+}
+
+#[test]
+fn test_boxplot_value_labels_past_a_third_are_cut_with_an_ellipsis() {
+    use revue::style::Color;
+    // "110abcdefghij" is 13 columns: cut to the 10 of the column, the
+    // chart at 11..29, "A" centered on 20
+    let buffer = value_labeled("{}abcdefghij");
+    let rows = rows(&buffer);
+    assert_eq!(cols(&buffer, 1, 0, 11), "110abcdef… ");
+    assert_eq!(cols(&buffer, 10, 0, 11), "-10abcdef… ");
+    assert_eq!(cols(&buffer, 5, 0, 11), "50abcdefg… ");
+    for x in 0..10 {
+        assert_eq!(buffer.get(x, 1).unwrap().fg, Some(Color::RED), "x={x}");
+    }
+    assert_eq!(rows[11], format!("{}A{}", " ".repeat(20), " ".repeat(9)));
 }

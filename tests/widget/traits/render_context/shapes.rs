@@ -482,3 +482,44 @@ fn test_clear_entire_buffer() {
         }
     }
 }
+
+/// A header part 65536 columns wide is not 0 wide: the `─` fill does not
+/// overwrite it, and the right corner stays, in an area at an offset (#1607)
+#[test]
+fn header_line_part_wider_than_u16_is_not_overwritten() {
+    let wide = "g".repeat(65_536);
+    let mut buffer = Buffer::new(12, 1);
+    {
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 0, 10, 1));
+        ctx.draw_header_line(0, 0, 10, &[(&wide, Color::RED)], Color::WHITE);
+    }
+    assert_eq!(row(&buffer, 0), "  ╭─ggggggg╮");
+    for x in 4..11 {
+        assert_eq!(buffer.get(x, 0).unwrap().fg, Some(Color::RED), "{x}");
+    }
+}
+
+/// A titled box keeps a wide title glyph's color on its right half: it
+/// wrote a plain continuation over it (#1609)
+#[test]
+fn titled_boxes_style_both_halves_of_a_wide_title_glyph() {
+    use crate::wide_glyphs::{assert_wide_glyphs_keep_their_style, glyph};
+    let fg = Color::rgb(1, 2, 3);
+    type Draw = fn(&mut RenderContext, &str, Color);
+    let draws: [Draw; 3] = [
+        |c, t, f| c.draw_box_titled(0, 0, 8, 3, t, f),
+        |c, t, f| c.draw_box_titled_single(0, 0, 8, 3, t, f),
+        |c, t, f| c.draw_box_titled_double(0, 0, 8, 3, t, f),
+    ];
+    for (i, draw) in draws.into_iter().enumerate() {
+        let mut buffer = Buffer::new(11, 5);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(2, 1, 8, 3));
+        // An area at an offset: 한 at 4-5, 글 at 6-7
+        draw(&mut ctx, "한글", fg);
+        let glyphs = assert_wide_glyphs_keep_their_style(&buffer);
+        for (ch, x) in [('한', 4), ('글', 6)] {
+            let (gx, gy, cell) = glyph(&glyphs, ch);
+            assert_eq!((gx, gy, cell.fg), (x, 1, Some(fg)), "box {i} {ch}");
+        }
+    }
+}

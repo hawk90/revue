@@ -1,7 +1,9 @@
 //! Screen stack for multi-screen navigation
 //!
 //! Provides a way to manage multiple screens with push/pop navigation,
-//! similar to mobile app navigation patterns.
+//! similar to mobile app navigation patterns. The transition
+//! ([`ScreenTransition`], [`ScreenStack::transition`]) is not drawn and is
+//! deprecated (#845).
 
 use crate::event::Key;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
@@ -65,6 +67,13 @@ impl Screen {
 }
 
 /// Screen transition animation
+///
+/// Never drawn: [`ScreenStack`] draws its screens as they are.
+#[deprecated(
+    since = "3.17.0",
+    note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+)]
+#[allow(deprecated)] // its own derived Default
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ScreenTransition {
     /// No animation
@@ -84,6 +93,7 @@ pub enum ScreenTransition {
 ///
 /// A clone is an independent stack (its own screens and history) that shares
 /// the screen renderers.
+#[allow(deprecated)] // ScreenTransition
 #[derive(Clone)]
 pub struct ScreenStack {
     /// Stack of screens
@@ -114,6 +124,7 @@ pub struct ScreenStack {
 
 impl ScreenStack {
     /// Create a new screen stack
+    #[allow(deprecated)] // ScreenTransition
     pub fn new() -> Self {
         Self {
             screens: Vec::new(),
@@ -131,7 +142,12 @@ impl ScreenStack {
         }
     }
 
-    /// Set transition animation
+    /// Set transition animation, which is not drawn
+    #[deprecated(
+        since = "3.17.0",
+        note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+    )]
+    #[allow(deprecated)] // ScreenTransition
     pub fn transition(mut self, transition: ScreenTransition) -> Self {
         self.transition = transition;
         self
@@ -249,6 +265,7 @@ impl ScreenStack {
     }
 
     /// Start transition animation
+    #[allow(deprecated)] // ScreenTransition
     fn start_transition(&mut self) {
         if self.transition != ScreenTransition::None {
             self.transitioning = true;
@@ -256,7 +273,11 @@ impl ScreenStack {
         }
     }
 
-    /// Update transition animation
+    /// Update transition animation: moves a progress that nothing draws
+    #[deprecated(
+        since = "3.17.0",
+        note = "screen transitions are not drawn in 3.x; 4.0 brings one screen stack with a shared transition (#845)"
+    )]
     pub fn update_transition(&mut self, delta: f32) {
         if self.transitioning {
             self.transition_progress += delta * 4.0; // Complete in ~250ms
@@ -389,6 +410,7 @@ pub fn screen_stack() -> ScreenStack {
 }
 
 #[cfg(test)]
+#[allow(deprecated)] // the transition API
 mod tests {
     use super::*;
 

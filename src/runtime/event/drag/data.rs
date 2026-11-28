@@ -101,8 +101,10 @@ impl DragData {
     }
 
     /// Get display label for rendering
+    ///
+    /// Data with no label shows `…` (one column).
     pub fn display_label(&self) -> &str {
-        self.label.as_deref().unwrap_or("...")
+        self.label.as_deref().unwrap_or("…")
     }
 }
 

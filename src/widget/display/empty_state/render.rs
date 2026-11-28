@@ -3,7 +3,8 @@
 use super::{EmptyState, EmptyStateVariant};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::{char_width, display_width};
+use crate::utils::char_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View};
 
@@ -62,7 +63,7 @@ fn draw_clipped(
 
 /// The column that centers `text` in `width`
 fn centered_x(width: u16, text: &str) -> u16 {
-    let len = display_width(text) as u16;
+    let len = display_width_u16(text);
     width.saturating_sub(len) / 2
 }
 

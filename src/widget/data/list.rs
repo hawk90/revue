@@ -160,16 +160,10 @@ impl<T: Display> View for List<T> {
                     cell.bg = base_bg;
                 }
 
+                // `set` writes a wide glyph's continuation with its style
                 ctx.set(x, y, cell);
 
                 let char_width = crate::utils::unicode::char_width(ch).max(1) as u16;
-                if char_width == 2 && x + 1 < area.width {
-                    let mut cont = Cell::continuation();
-                    if is_selected {
-                        cont.bg = self.highlight_bg;
-                    }
-                    ctx.set(x + 1, y, cont);
-                }
                 x += char_width;
             }
 

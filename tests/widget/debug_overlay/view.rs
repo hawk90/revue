@@ -177,14 +177,14 @@ struct Line {
     color: Option<Color>,
 }
 
-/// `truncate_with_suffix` for ASCII text.
+/// `truncate_with_ellipsis` for ASCII text.
 fn cut(text: &str, width: usize) -> String {
     if text.len() <= width {
         text.to_string()
-    } else if width <= 3 {
-        "...".chars().take(width).collect()
+    } else if width == 0 {
+        String::new()
     } else {
-        format!("{}...", &text[..width - 3])
+        format!("{}…", &text[..width - 1])
     }
 }
 

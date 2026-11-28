@@ -3,7 +3,8 @@
 use super::LogViewer;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::{char_width, display_width, truncate_to_width};
+use crate::utils::unicode::display_width_u16;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::data::log_viewer::entry::LogEntry;
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG};
 use crate::widget::traits::{RenderContext, View};
@@ -145,7 +146,7 @@ impl LogViewer {
     fn render_empty(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let msg = "No log entries";
-        let x = (area.width.saturating_sub(display_width(msg) as u16)) / 2;
+        let x = (area.width.saturating_sub(display_width_u16(msg))) / 2;
         let y = area.height / 2;
         let mut dx: u16 = 0;
         for ch in msg.chars() {
@@ -290,8 +291,8 @@ impl LogViewer {
     /// "◉ TAIL" at the top right
     fn draw_tail_indicator(&self, ctx: &mut RenderContext) {
         let indicator = "◉ TAIL";
-        let indicator_w = display_width(indicator) as u16;
-        let x = ctx.area.width.saturating_sub(indicator_w + 2);
+        let indicator_w = display_width_u16(indicator);
+        let x = ctx.area.width.saturating_sub(indicator_w.saturating_add(2));
         let mut dx: u16 = 0;
         for ch in indicator.chars() {
             let cw = char_width(ch) as u16;

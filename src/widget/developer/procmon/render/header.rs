@@ -1,6 +1,6 @@
 //! The two rows above the processes: the system stats bar and the column header
 
-use super::{put_chars, CMD_X, CPU_X, HEADER_ROW, MEM_PERCENT_X, MEM_X, NAME_X, STATUS_X};
+use super::{put_chars, Columns, HEADER_ROW};
 use crate::render::{Cell, Modifier};
 use crate::widget::developer::procmon::refresh::memory_percent;
 use crate::widget::developer::procmon::{ProcessMonitor, ProcessSort};
@@ -17,8 +17,9 @@ impl ProcessMonitor {
         cell
     }
 
-    /// Render the column header on [`HEADER_ROW`]
-    pub(super) fn render_header(&self, ctx: &mut RenderContext) {
+    /// Render the column header on [`HEADER_ROW`], each name where
+    /// `columns` puts its column
+    pub(super) fn render_header(&self, ctx: &mut RenderContext, columns: &Columns) {
         let area = ctx.area;
 
         // Header background
@@ -31,11 +32,11 @@ impl ProcessMonitor {
         // Column headers, each where its column starts
         let headers = [
             ("PID", 0, ProcessSort::Pid),
-            ("NAME", NAME_X, ProcessSort::Name),
-            ("CPU%", CPU_X, ProcessSort::Cpu),
-            ("MEM%", MEM_PERCENT_X, ProcessSort::Memory),
-            ("MEM", MEM_X, ProcessSort::Memory),
-            ("STATUS", STATUS_X, ProcessSort::Status),
+            ("NAME", columns.name, ProcessSort::Name),
+            ("CPU%", columns.cpu, ProcessSort::Cpu),
+            ("MEM%", columns.mem_percent, ProcessSort::Memory),
+            ("MEM", columns.mem, ProcessSort::Memory),
+            ("STATUS", columns.status, ProcessSort::Status),
         ];
 
         for (name, x, sort) in headers {
@@ -56,7 +57,7 @@ impl ProcessMonitor {
         }
 
         if self.show_cmd {
-            ctx.put_str_with(CMD_X, HEADER_ROW, "COMMAND", area.width, |ch| {
+            ctx.put_str_with(columns.cmd, HEADER_ROW, "COMMAND", area.width, |ch| {
                 self.header_cell(ch)
             });
         }

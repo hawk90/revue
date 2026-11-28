@@ -620,3 +620,24 @@ fn test_datagrid_row_height_edit_background_covers_every_line() {
     let line: String = row_text(&buffer, 3, 14).chars().take(10).collect();
     assert_eq!(line, "r1  │x   │");
 }
+
+/// Values 65536 columns wide are cut to the width less one before they are
+/// aligned, in an area at an offset (#1607)
+#[test]
+fn test_datagrid_values_wider_than_u16_are_cut_in_their_column() {
+    let wide = "g".repeat(65_536);
+    let grid = DataGrid::new()
+        .column(GridColumn::new("a", "A").width(6))
+        .column(GridColumn::new("b", "B").width(8).right())
+        .column(GridColumn::new("c", "C").width(8).center())
+        .row(
+            GridRow::new()
+                .cell("a", wide.as_str())
+                .cell("b", wide.as_str())
+                .cell("c", wide.as_str()),
+        );
+    let mut buffer = Buffer::new(32, 4);
+    grid.render(&mut RenderContext::new(&mut buffer, Rect::new(2, 1, 30, 3)));
+    let row: String = (0..27).map(|x| buffer.get(x, 2).unwrap().symbol).collect();
+    assert_eq!(row, "  ggggg │ggggggg │ggggggg │");
+}

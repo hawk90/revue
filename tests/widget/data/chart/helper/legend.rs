@@ -21,7 +21,8 @@ fn test_chart_legend_lists_series_in_order() {
 
 #[test]
 fn test_chart_legend_positions() {
-    // Legend for "Data" is 8 wide and 3 tall
+    // Legend for "Data" is 8 wide and 3 tall; the Y labels ("1.50") are 4
+    // columns, so the plot is columns 5..40
     let corner = |pos: LegendPosition| {
         let chart = plain()
             .legend(pos)
@@ -37,9 +38,9 @@ fn test_chart_legend_positions() {
         }
         found
     };
-    assert_eq!(corner(LegendPosition::TopLeft), Some((9, 1)));
+    assert_eq!(corner(LegendPosition::TopLeft), Some((6, 1)));
     assert_eq!(corner(LegendPosition::TopRight), Some((31, 1)));
-    assert_eq!(corner(LegendPosition::BottomLeft), Some((9, 14)));
+    assert_eq!(corner(LegendPosition::BottomLeft), Some((6, 14)));
     assert_eq!(corner(LegendPosition::BottomRight), Some((31, 14)));
     assert_eq!(corner(LegendPosition::None), None);
 }
@@ -82,15 +83,15 @@ fn test_chart_legend_series_count_near_u16_max() {
     let buffer = render(&chart, 40, 10);
     let rows = rows(&buffer);
     // The box is cut at the plot's bottom, and the entries fill every row
-    // down to it (#1565)
-    assert_eq!(&rows[1][9..], "┌───┐                          ");
+    // down to it (#1565); the plot is columns 6..40
+    assert_eq!(&rows[1][7..], format!("┌───┐{}", " ".repeat(28)));
     for row in &rows[2..8] {
-        assert_eq!(&row[9..], "│■ s│                          ", "{row:?}");
+        assert_eq!(&row[7..], format!("│■ s│{}", " ".repeat(28)), "{row:?}");
     }
-    assert_eq!(&rows[8][8..], "0   0.20  0.40  0.60  0.80     1");
+    assert_eq!(&rows[8][6..], "0   0.20   0.40  0.60   0.80     1");
     for y in 2..8 {
         assert_eq!(
-            buffer.get(12, y).unwrap().fg,
+            buffer.get(10, y).unwrap().fg,
             Some(revue::style::Color::WHITE),
             "y={y}"
         );
@@ -108,14 +109,16 @@ fn test_chart_legend_sizes_wide_names_by_columns() {
         .series(Series::new("abcd"));
     let buffer = render(&chart, 30, 8);
     let rows = rows(&buffer);
-    assert_eq!(&rows[1][9..], "┌──────┐             ");
-    assert_eq!(&rows[2][9..], "│■ 매\0출\0│             ");
-    assert_eq!(&rows[3][9..], "│■ abcd│             ");
-    assert_eq!(&rows[4][9..], "└──────┘             ");
+    // The plot is columns 6..30, the box from 7
+    let rest = " ".repeat(15);
+    assert_eq!(&rows[1][7..], format!("┌──────┐{rest}"));
+    assert_eq!(&rows[2][7..], format!("│■ 매\0출\0│{rest}"));
+    assert_eq!(&rows[3][7..], format!("│■ abcd│{rest}"));
+    assert_eq!(&rows[4][7..], format!("└──────┘{rest}"));
     let bg = Some(revue::style::Color::rgb(20, 20, 20));
-    for x in 12..16 {
+    for x in 10..14 {
         let cell = buffer.get(x, 2).unwrap();
-        assert_eq!(cell.fg, buffer.get(12, 3).unwrap().fg, "x={x}");
+        assert_eq!(cell.fg, buffer.get(10, 3).unwrap().fg, "x={x}");
         assert_eq!(cell.bg, bg, "x={x}");
     }
 }
@@ -126,17 +129,18 @@ fn test_chart_legend_sizes_wide_names_by_columns() {
 #[test]
 fn test_chart_legend_names_stop_at_the_plot_edge() {
     use revue::style::Color;
-    // The plot ends at column 16, the chart's border; "ab" ends at 14 and
-    // "매" would take 15 and 16
+    // The plot is columns 7..16 after the 5-column Y labels, ending at the
+    // chart's border; "abcd" ends at 14 and "매" would take 15 and 16
     let chart = plain()
         .border(Color::BLUE)
         .legend(LegendPosition::TopLeft)
-        .series(Series::new("ab매출"));
+        .series(Series::new("abcd매"));
     let buffer = render(&chart, 17, 8);
     let rows = rows(&buffer);
-    assert_eq!(rows[2], "│   0.83  ┌─────│");
-    assert_eq!(rows[3], "│   0.61  │■ ab │");
-    assert_eq!(rows[4], "│  -0.17  └─────│");
+    assert_eq!(rows[2], "│ 0.83  ┌───────│");
+    // Six ticks on four rows: one label per row, both ends kept (#1615)
+    assert_eq!(rows[3], "│ 0.39  │■ abcd │");
+    assert_eq!(rows[4], "│-0.05  └───────│");
     assert_eq!(buffer.get(16, 3).unwrap().fg, Some(Color::BLUE));
     // An ASCII name is cut at the border the same way
     let chart = plain()
@@ -144,5 +148,5 @@ fn test_chart_legend_names_stop_at_the_plot_edge() {
         .legend(LegendPosition::TopLeft)
         .series(Series::new("A very long series name"));
     let rows = render_rows(&chart, 20, 8);
-    assert_eq!(rows[3], "│   0.61  │■ A very│");
+    assert_eq!(rows[3], "│ 0.39  │■ A very l│");
 }

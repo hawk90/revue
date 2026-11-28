@@ -210,7 +210,7 @@ impl Badge {
         if self.shape == BadgeShape::Dot {
             return 1;
         }
-        let text = crate::utils::display_width(&self.text).min(u16::MAX as usize) as u16;
+        let text = crate::utils::unicode::display_width_u16(&self.text);
         let total = text.saturating_add(self.padding() * 2);
         if self.max_width > 0 {
             total.min(self.max_width)

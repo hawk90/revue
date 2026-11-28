@@ -392,3 +392,21 @@ proptest! {
         check(&buffer, &grid, (x, y), fg, bg)?;
     }
 }
+
+/// A wide title glyph keeps the border's colors on its right half (#1609)
+#[test]
+fn a_wide_title_glyph_keeps_its_colors_on_both_halves() {
+    use crate::wide_glyphs::{assert_wide_glyphs_keep_their_style, draw_at_offset, glyph};
+    let (fg, bg) = (Color::rgb(1, 2, 3), Color::rgb(4, 5, 6));
+    let border = Border::new().title("한글").fg(fg).bg(bg);
+    let b = draw_at_offset(&border, 10, 3);
+    let glyphs = assert_wide_glyphs_keep_their_style(&b);
+    for (ch, x) in [('한', 4), ('글', 6)] {
+        let (gx, gy, cell) = glyph(&glyphs, ch);
+        assert_eq!(
+            (gx, gy, cell.fg, cell.bg),
+            (x, 1, Some(fg), Some(bg)),
+            "{ch}"
+        );
+    }
+}

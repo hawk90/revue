@@ -1,11 +1,11 @@
 //! Box plot `View`: background, title and plot area, then the boxes and axes
 
-use super::{render, BoxPlot};
+use super::{axes, render, BoxPlot};
 use crate::layout::Rect;
 use crate::style::Color;
-use crate::utils::display_width;
+use crate::utils::unicode::display_width_u16;
 use crate::widget::data::chart::chart_common::ChartOrientation;
-use crate::widget::data::chart::chart_render::{fill_background, render_title};
+use crate::widget::data::chart::chart_render::{fill_background, render_title, y_label_column};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for BoxPlot {
@@ -30,6 +30,7 @@ impl View for BoxPlot {
         let title_offset = render_title(ctx, rel_area, self.title.as_deref(), Color::WHITE);
 
         let horizontal = self.orientation == ChartOrientation::Horizontal;
+        let bounds = self.compute_bounds();
 
         // Calculate chart area (relative coordinates)
         let chart_area = if horizontal {
@@ -38,9 +39,9 @@ impl View for BoxPlot {
             let label_width = self
                 .groups
                 .iter()
-                .map(|g| display_width(&g.label))
+                .map(|g| display_width_u16(&g.label))
                 .max()
-                .map_or(0, |w| u16::try_from(w).unwrap_or(u16::MAX))
+                .unwrap_or(0)
                 .clamp(1, area.width / 3);
             let x = label_width + 1;
             Rect {
@@ -50,7 +51,14 @@ impl View for BoxPlot {
                 height: area.height.saturating_sub(title_offset + 1),
             }
         } else {
-            let y_label_width = 6u16;
+            // The value label column fits the widest value label, at most
+            // a third of the area (#1614)
+            let widest = axes::value_labels(&self.value_axis, bounds)
+                .iter()
+                .map(|label| display_width_u16(label))
+                .max()
+                .unwrap_or(0);
+            let y_label_width = y_label_column(widest, area.width);
             let x_label_height = 1u16;
             Rect {
                 x: y_label_width,
@@ -65,8 +73,6 @@ impl View for BoxPlot {
         if chart_area.width < 5 || chart_area.height < 5 {
             return;
         }
-
-        let bounds = self.compute_bounds();
 
         // Render using render module
         let render_state = render::BoxPlotRender::new(

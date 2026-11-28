@@ -308,8 +308,8 @@ fn a_tag_that_does_not_fit_becomes_dots() {
     let mut v = multi_select().options(vec!["abc", "defgh"]).width(12);
     v.select_all();
     let b = render_in(&v, 20, 1);
-    assert_eq!(cols(&b, 0, 0, 12), "[abc] ...  ▼");
-    for x in 6..9 {
+    assert_eq!(cols(&b, 0, 0, 12), "[abc] …    ▼");
+    for x in 6..7 {
         assert_eq!(fg(&b, x, 0), Some(LIGHT_GRAY), "{x}");
     }
 }
@@ -705,14 +705,20 @@ fn three_tags(width: u16, lefts: usize) -> String {
 
 #[test]
 fn tags_scrolled_off_to_the_left_are_marked() {
-    // Width 14 leaves 12 columns before the arrow: a marker, a tag and a marker.
-    assert_eq!(three_tags(14, 1), "... [cc]     ▼");
-    assert_eq!(three_tags(14, 2), "... [bb] ... ▼");
+    // Width 14 leaves 12 columns before the arrow. The marker is "…", one
+    // column, and a space after it (#1599).
+    // As many tags as fit, ending at the cursor's (#1608): bb fits before
+    // cc (was "… [cc]       ▼")
+    assert_eq!(three_tags(14, 1), "… [bb] [cc]  ▼");
+    // On bb, aa fits before it and " …" after it
+    assert_eq!(three_tags(14, 2), "[aa] [bb] …  ▼");
+    // Width 10 leaves 8: a marker, a tag and a marker
+    assert_eq!(three_tags(10, 2), "… [bb] … ▼");
 }
 
 #[test]
 fn nothing_is_marked_when_the_row_starts_at_the_first_tag() {
-    assert_eq!(three_tags(14, 3), "[aa] ...     ▼");
+    assert_eq!(three_tags(14, 3), "[aa] [bb] …  ▼");
     assert_eq!(
         three_tags(40, 2).trim_end_matches(['▼', ' ']),
         "[aa] [bb] [cc]"
@@ -724,9 +730,10 @@ fn with_no_room_for_the_marker_the_tag_under_the_cursor_is_kept() {
     // Width 6 leaves 4 columns: the last tag alone.
     assert_eq!(three_tags(6, 1), "[cc]▼ ".replace("▼ ", " ▼"));
     // Width 10 leaves 8: a marker and the last tag, which has nothing after it.
-    assert_eq!(three_tags(10, 1), "... [cc] ▼");
-    // Tag bb has one after it, so 8 columns hold no marker before it.
-    assert_eq!(three_tags(10, 2), "[bb] ... ▼");
+    assert_eq!(three_tags(10, 1), "… [cc]   ▼");
+    // Width 9 leaves 7. Tag bb has one after it, so they hold no marker
+    // before it: "… [bb] …" is 8 columns.
+    assert_eq!(three_tags(9, 2), "[bb] …  ▼");
 }
 
 #[test]
@@ -738,7 +745,94 @@ fn the_tag_under_the_cursor_stays_in_view_after_the_marker() {
     v.select_all();
     v.handle_key(&Key::Left); // d
     v.handle_key(&Key::Left); // c
-    assert_eq!(row(&render_in(&v, 14, 1), 0), "... [c] [d]  ▼");
+    assert_eq!(row(&render_in(&v, 14, 1), 0), "… [b] [c] …  ▼");
+}
+
+// #1608: as many tags as fit, ending at the cursor's tag
+
+/// Three selected tags, drawn after every Left press, the rows in order.
+fn rows_per_left(labels: [&str; 3], width: u16) -> Vec<String> {
+    use revue::event::Key;
+    let mut v = MultiSelect::new().options(labels.to_vec()).width(width);
+    v.select_all();
+    (0..3)
+        .map(|_| {
+            v.handle_key(&Key::Left);
+            row(&render_in(&v, width, 1), 0)
+        })
+        .collect()
+}
+
+#[test]
+fn every_left_press_shows_as_many_tags_as_fit_up_to_the_cursor() {
+    // 12 columns before the arrow; drawn after every press, so the row
+    // moves from where the last one left it
+    assert_eq!(
+        rows_per_left(["aa", "bb", "cc"], 14),
+        ["… [bb] [cc]  ▼", "[aa] [bb] …  ▼", "[aa] [bb] …  ▼"]
+    );
+    // Exactly at the limit: "… [bb] [cc]" is 11 columns of 11
+    assert_eq!(rows_per_left(["aa", "bb", "cc"], 13)[0], "… [bb] [cc] ▼");
+    // One column short: cc alone after the marker
+    assert_eq!(rows_per_left(["aa", "bb", "cc"], 12)[0], "… [cc]     ▼");
+}
+
+#[test]
+fn wide_tags_fill_the_row_up_to_the_cursor() {
+    // Hangul tags are 6 columns; 15 columns before the arrow hold
+    // "… [다라] [마바]" exactly (the row used to start at 마바)
+    let b = {
+        use revue::event::Key;
+        let mut v = MultiSelect::new()
+            .options(vec!["가나", "다라", "마바"])
+            .width(17);
+        v.select_all();
+        v.handle_key(&Key::Left);
+        render_in(&v, 17, 1)
+    };
+    let cells: Vec<(u16, char)> = vec![
+        (0, '…'),
+        (1, ' '),
+        (2, '['),
+        (3, '다'),
+        (5, '라'),
+        (7, ']'),
+        (8, ' '),
+        (9, '['),
+        (10, '마'),
+        (12, '바'),
+        (14, ']'),
+        (16, '▼'),
+    ];
+    for (x, ch) in cells {
+        assert_eq!(b.get(x, 0).unwrap().symbol, ch, "x={x} in {:?}", row(&b, 0));
+    }
+    // The cursor's tag in its colors, the other in the tag colors
+    assert_eq!(bg(&b, 9, 0), Some(CURSOR_TAG_BG));
+    assert_eq!(bg(&b, 2, 0), Some(TAG_BG));
+}
+
+#[test]
+fn the_row_stays_put_when_the_cursor_leaves_the_tags() {
+    use revue::event::Key;
+    let mut v = MultiSelect::new().options(vec!["aa", "bb", "cc"]).width(14);
+    v.select_all();
+    v.handle_key(&Key::Left); // cc
+    assert_eq!(row(&render_in(&v, 14, 1), 0), "… [bb] [cc]  ▼");
+    v.handle_key(&Key::Right); // off the tags
+    assert_eq!(v.get_tag_cursor(), None);
+    // The row starts at bb, as it did (it used to start at cc)
+    assert_eq!(row(&render_in(&v, 14, 1), 0), "… [bb] [cc]  ▼");
+}
+
+#[test]
+fn the_tags_up_to_the_cursor_fill_an_area_at_an_offset() {
+    use revue::event::Key;
+    let mut v = MultiSelect::new().options(vec!["aa", "bb", "cc"]).width(14);
+    v.select_all();
+    v.handle_key(&Key::Left);
+    let b = render_at(&v, 20, 3, Rect::new(4, 1, 14, 1));
+    assert_eq!(cols(&b, 1, 0, 20), "    … [bb] [cc]  ▼  ");
 }
 
 // =========================================================================
@@ -785,7 +879,7 @@ fn hidden_tags_are_marked_and_the_mark_keeps_the_arrow() {
     let mut s = MultiSelect::new().options((1..=12).map(|i| format!("Item {i}")).collect());
     s.select_all();
     let r = row(&render_in(&s, 30, 1), 0);
-    assert!(r.contains("..."), "{r:?}");
+    assert!(r.contains('…'), "{r:?}");
 
     // 8 columns: "[ab] " ends at column 5, one before max_x = 6
     let mut s = MultiSelect::new().options(vec!["ab", "cdef"]).width(8);
@@ -820,10 +914,8 @@ fn test_multi_select_overflow_marker_is_on_the_header_background() {
     let w = 20;
     let b = render_in(&s, w, 1);
     let row = cols(&b, 0, 0, w);
-    let dots = row.find("...").expect("a marker");
-    for x in dots..dots + 3 {
-        assert_eq!(bg(&b, x as u16, 0), Some(BG), "x={x} in {row:?}"); // was None
-    }
-    let tag = row.find('[').expect("a tag") as u16;
+    let dots = row.chars().position(|c| c == '…').expect("a marker");
+    assert_eq!(bg(&b, dots as u16, 0), Some(BG), "x={dots} in {row:?}"); // was None
+    let tag = row.chars().position(|c| c == '[').expect("a tag") as u16;
     assert_eq!(bg(&b, tag, 0), Some(TAG_BG));
 }

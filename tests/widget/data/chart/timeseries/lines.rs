@@ -81,8 +81,9 @@ fn test_time_series_render_filled() {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 
-    /// Every point lands in the plot: right of the 8-column value labels,
-    /// below the legend row and above the time labels.
+    /// Every point lands in the plot: right of the value labels and their
+    /// gap column (the labels at most a third of the width), below the
+    /// legend row and above the time labels.
     #[test]
     fn test_time_series_points_stay_in_the_plot(
         points in prop::collection::vec((0u64..1_000_000, -1e6f64..1e6), 1..30),
@@ -91,10 +92,18 @@ proptest! {
     ) {
         let chart = TimeSeries::new().series(TimeSeriesData::new("s").points(points));
         let buffer = render(&chart, w, h);
+        // The top grid row (row 1, under the legend) starts with the
+        // right-aligned value label, which holds no spaces, then the gap
+        // column; the plot starts after it
+        let sym = |x: u16| buffer.get(x, 1).unwrap().symbol;
+        let label_start = (0..w).find(|&x| sym(x) != ' ').unwrap();
+        let label_end = (label_start..w).find(|&x| sym(x) == ' ').unwrap();
+        prop_assert!(label_end <= w / 3);
+        let plot_x = label_end + 1;
         for y in 0..h {
             for x in 0..w {
                 if buffer.get(x, y).unwrap().symbol == '●' {
-                    prop_assert!((8..w - 1).contains(&x) && (1..h - 2).contains(&y), "point at ({x}, {y})");
+                    prop_assert!((plot_x..w - 1).contains(&x) && (1..h - 2).contains(&y), "point at ({x}, {y})");
                 }
             }
         }

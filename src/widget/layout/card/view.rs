@@ -506,9 +506,6 @@ impl TextDraw<'_> {
                 cell.modifier |= Modifier::BOLD;
             }
             ctx.set(self.x + offset, self.y, cell);
-            for i in 1..ch_width {
-                ctx.set(self.x + offset + i, self.y, Cell::continuation());
-            }
             offset += ch_width;
         }
     }

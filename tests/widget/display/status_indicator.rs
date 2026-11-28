@@ -219,7 +219,7 @@ mod labels {
     const WIDTH: u16 = 20;
 
     /// What a cell holds: its glyph (`'>'` for the second half of a wide
-    /// glyph) and its color
+    /// glyph, which carries the glyph's color, #1600) and its color
     type Drawn = (char, Option<Color>);
 
     fn row(view: &StatusIndicator) -> Vec<Drawn> {
@@ -247,7 +247,7 @@ mod labels {
         for ch in label.chars() {
             out.push((ch, Some(SECONDARY_TEXT)));
             if revue::utils::char_width(ch) == 2 {
-                out.push(('>', None));
+                out.push(('>', Some(SECONDARY_TEXT)));
             }
         }
         out.resize(usize::from(WIDTH), (' ', None));
@@ -331,6 +331,24 @@ mod labels {
         assert_eq!(drawn_width(&cells), 5);
     }
 
+    /// After a dot the label is in the secondary text color (the dot shows
+    /// the status); with no dot, LabelOnly draws it in the status color
+    /// (#1589)
+    #[test]
+    fn the_label_color_depends_on_whether_a_dot_shows_the_status() {
+        for status in [Status::Online, Status::Busy, Status::Custom(Color::MAGENTA)] {
+            let dotted = StatusIndicator::new(status).label("Hi");
+            assert_eq!(row(&dotted), dot_then(status, "Hi"), "{status:?} dot");
+
+            let alone = StatusIndicator::new(status)
+                .indicator_style(StatusStyle::LabelOnly)
+                .label("Hi");
+            let mut expected = vec![('H', Some(status.color())), ('i', Some(status.color()))];
+            expected.resize(usize::from(WIDTH), (' ', None));
+            assert_eq!(row(&alone), expected, "{status:?} label only");
+        }
+    }
+
     #[test]
     fn measure_matches_what_each_style_draws() {
         let styles = [
@@ -378,7 +396,7 @@ mod label_text {
     use revue::widget::{Status, StatusIndicator, StatusStyle};
 
     /// A cell: glyph and colors. The second half of a wide glyph is `'>'`
-    /// with no colors: the terminal never draws a continuation cell.
+    /// with the glyph's colors, as `Buffer::set` writes it (#1600).
     type Drawn = (char, Option<Color>, Option<Color>);
 
     const BLANK: Drawn = (' ', None, None);
@@ -396,7 +414,7 @@ mod label_text {
             .map(|x| {
                 let c = buffer.get(x, 0).unwrap();
                 if c.is_continuation() {
-                    ('>', None, None)
+                    ('>', c.fg, c.bg)
                 } else {
                     (c.symbol, c.fg, c.bg)
                 }
@@ -421,7 +439,6 @@ mod label_text {
     }
 
     const PAD: Drawn = (' ', None, Some(DARK_BG));
-    const CONT: Drawn = ('>', None, None);
 
     fn dot_label(label: &str) -> StatusIndicator {
         StatusIndicator::online()
@@ -448,7 +465,14 @@ mod label_text {
     #[test]
     fn dot_label_fills_an_area_at_an_offset_to_its_last_column() {
         let s = SECONDARY_TEXT;
-        let full = [fg('●', on()), BLANK, fg('회', s), CONT, fg('의', s), CONT];
+        let full = [
+            fg('●', on()),
+            BLANK,
+            fg('회', s),
+            fg('>', s),
+            fg('의', s),
+            fg('>', s),
+        ];
         assert_eq!(row_at(&dot_label("회의"), 3, 6, None), placed(3, &full));
         // One column short: the second syllable does not fit and nothing
         // after it is drawn, not even half of it
@@ -485,7 +509,7 @@ mod label_text {
     #[test]
     fn label_only_fills_an_area_at_an_offset_to_its_last_column() {
         let c = on();
-        let full = [fg('a', c), fg('회', c), CONT, fg('b', c)];
+        let full = [fg('a', c), fg('회', c), fg('>', c), fg('b', c)];
         assert_eq!(row_at(&label_only("a회b"), 2, 4, None), placed(2, &full));
         assert_eq!(
             row_at(&label_only("a회b"), 2, 3, None),
@@ -511,9 +535,9 @@ mod label_text {
             badge('●', on()),
             PAD,
             badge('회', w),
-            CONT,
+            badge('>', w),
             badge('의', w),
-            CONT,
+            badge('>', w),
             PAD,
         ];
         assert_eq!(row_at(&badge_of("회의"), 1, 8, None), placed(1, &full));
@@ -524,7 +548,15 @@ mod label_text {
             row_at(&badge_of("회의"), 1, 7, None),
             placed(
                 1,
-                &[PAD, badge('●', on()), PAD, badge('회', w), CONT, PAD, PAD]
+                &[
+                    PAD,
+                    badge('●', on()),
+                    PAD,
+                    badge('회', w),
+                    badge('>', w),
+                    PAD,
+                    PAD
+                ]
             )
         );
         // Too narrow for any label

@@ -833,6 +833,41 @@ mod side_titles {
     }
 }
 
+/// A title wider than u16 is wider than any edge, not 0 wide (#1607)
+mod wide_titles {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::style::Color;
+    use revue::utils::border::{draw_border_title, render_border, BorderTitle};
+    use revue::widget::traits::RenderContext;
+
+    /// A 65535-column text plus its padding does not overflow (a panic in
+    /// debug): the width saturates at u16::MAX
+    #[test]
+    fn width_saturates_at_u16_max() {
+        let title = BorderTitle::new("g".repeat(65_535));
+        assert_eq!(title.width(), u16::MAX);
+        assert_eq!(title.padding(0).width(), u16::MAX);
+    }
+
+    /// A 65536-column title does not fit the top edge, so it is not drawn:
+    /// the border of an area at an offset keeps every cell
+    #[test]
+    fn too_wide_title_leaves_the_border() {
+        let mut buffer = Buffer::new(10, 4);
+        let area = Rect::new(2, 1, 6, 3);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        render_border(&mut ctx, area, Color::BLUE);
+        draw_border_title(&mut ctx, area, &BorderTitle::new("g".repeat(65_536)));
+        let row = |y| -> String { (0..10).map(|x| buffer.get(x, y).unwrap().symbol).collect() };
+        assert_eq!(row(0), " ".repeat(10));
+        assert_eq!(row(1), "  ┌────┐  ");
+        for x in 2..8 {
+            assert_eq!(buffer.get(x, 1).unwrap().fg, Some(Color::BLUE), "{x}");
+        }
+    }
+}
+
 mod view;
 
 mod snapshots {

@@ -6,6 +6,13 @@
 //! first added line after the last pair that is within
 //! [`MAX_LINE_DISTANCE`] of it; the added lines skipped on the way stay
 //! added. Pairs therefore never cross.
+//!
+//! The changed words of a pair are then drawn as delta draws them: blanks
+//! that sit between changed words on both lines join the change, so
+//! `foo bar` to `baz qux` is one changed run on each side, not two with a
+//! shared space between (delta's `coalesce_space_with_previous` in
+//! `annotate`). Blanks at the start or end of a line, or next to shared
+//! text on either side, stay shared.
 
 use similar::{ChangeTag, DiffTag, InlineChangeMode, InlineChangeOptions, TextDiff};
 use std::ops::Range;
@@ -17,7 +24,12 @@ use crate::utils::display_width;
 pub(super) const MAX_LINE_DISTANCE: f64 = 0.6;
 
 /// The line comparisons one change may make before its remaining lines stay
-/// removed and added: pairing is quadratic in the lines of a change
+/// removed and added
+///
+/// A guard of ours (delta has none): pairing is quadratic in the lines of a
+/// change, and each comparison diffs the words of two lines, so a change of
+/// thousands of unlike lines would otherwise take seconds to lay out. A
+/// change of up to 100 removed and 100 added lines always pairs in full.
 pub(super) const MAX_COMPARISONS: usize = 10_000;
 
 /// The two lines of a modified pair cut into runs, each a byte range of its
@@ -143,8 +155,10 @@ pub(super) fn pair(removed: &[&str], added: &[&str]) -> Vec<Paired> {
             }
             comparisons += 1;
             let segments = segments(old, new);
+            // The distance counts the words as found, before the blanks
+            // between them join; the blanks have no columns in it anyway
             if distance(old, new, &segments) <= MAX_LINE_DISTANCE {
-                found = Some((a, segments));
+                found = Some((a, join_blanks(old, &segments)));
                 break;
             }
         }
@@ -161,15 +175,23 @@ pub(super) fn pair(removed: &[&str], added: &[&str]) -> Vec<Paired> {
     rows
 }
 
-/// The runs of an inline row for a modified pair, in reading order: shared
-/// text once, then where the lines differ the old text and after it the
-/// new, as `git diff --word-diff` writes `[-old-]{+new+}`
-pub(super) fn inline_parts<'a>(
-    old: &'a str,
-    new: &'a str,
-    segments: &Segments,
-) -> Vec<(Part, &'a str)> {
-    let mut parts = Vec::new();
+/// A step of the walk over both lines of a pair: text both share (a byte
+/// range of each line), or text one of them has
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Step {
+    /// The same text in both lines
+    Equal(Range<usize>, Range<usize>),
+    /// A changed run of the old line
+    Removed(Range<usize>),
+    /// A changed run of the new line
+    Added(Range<usize>),
+}
+
+/// Walk the runs of both lines in reading order: where the lines differ
+/// the old runs and after them the new, then the shared text up to where
+/// either side changes again
+fn steps(segments: &Segments) -> Vec<Step> {
+    let mut steps = Vec::new();
     let (mut o, mut n) = (
         segments.old.iter().peekable(),
         segments.new.iter().peekable(),
@@ -178,11 +200,11 @@ pub(super) fn inline_parts<'a>(
     let (mut o_at, mut n_at) = (None::<usize>, None::<usize>);
     loop {
         while let Some((true, range)) = o.peek() {
-            parts.push((Part::Removed, &old[range.clone()]));
+            steps.push(Step::Removed(range.clone()));
             o.next();
         }
         while let Some((true, range)) = n.peek() {
-            parts.push((Part::Added, &new[range.clone()]));
+            steps.push(Step::Added(range.clone()));
             n.next();
         }
         // Both sides are at shared text, which is the same on both: take
@@ -192,7 +214,7 @@ pub(super) fn inline_parts<'a>(
                 let os = o_at.unwrap_or(or.start);
                 let ns = n_at.unwrap_or(nr.start);
                 let len = (or.end - os).min(nr.end - ns);
-                parts.push((Part::Equal, &old[os..os + len]));
+                steps.push(Step::Equal(os..os + len, ns..ns + len));
                 o_at = Some(os + len);
                 n_at = Some(ns + len);
                 if os + len == or.end {
@@ -206,17 +228,100 @@ pub(super) fn inline_parts<'a>(
             }
             // Shared text on one side only cannot happen; show what is left
             (Some((_, range)), None) => {
-                parts.push((Part::Removed, &old[o_at.unwrap_or(range.start)..range.end]));
+                steps.push(Step::Removed(o_at.unwrap_or(range.start)..range.end));
                 o.next();
                 o_at = None;
             }
             (None, Some((_, range))) => {
-                parts.push((Part::Added, &new[n_at.unwrap_or(range.start)..range.end]));
+                steps.push(Step::Added(n_at.unwrap_or(range.start)..range.end));
                 n.next();
                 n_at = None;
             }
             _ => break,
         }
     }
-    parts
+    steps
+}
+
+/// The segments with each blank shared run that has changed text on both
+/// lines right before it and right after it made part of the change, as
+/// delta does: the space in `foo bar` to `baz qux` is not shared text
+/// between two changes but part of one
+fn join_blanks(old: &str, segments: &Segments) -> Segments {
+    let steps = steps(segments);
+    // Whether the steps between two shared ones change both lines
+    let both_change = |between: &[Step]| {
+        between.iter().any(|s| matches!(s, Step::Removed(_)))
+            && between.iter().any(|s| matches!(s, Step::Added(_)))
+    };
+    let shared: Vec<usize> = (0..steps.len())
+        .filter(|&i| matches!(steps[i], Step::Equal(..)))
+        .collect();
+    let mut joined = Segments::default();
+    let (mut old_at, mut new_at) = (0, 0);
+    for (i, step) in steps.iter().enumerate() {
+        match step {
+            Step::Removed(range) => push(&mut joined.old, &mut old_at, true, range.len()),
+            Step::Added(range) => push(&mut joined.new, &mut new_at, true, range.len()),
+            Step::Equal(or, nr) => {
+                let k = shared.partition_point(|&s| s < i);
+                let before = shared.get(k.wrapping_sub(1)).map_or(0, |&s| s + 1);
+                let after = shared.get(k + 1).copied().unwrap_or(steps.len());
+                let blank = old[or.clone()].chars().all(char::is_whitespace);
+                let changed =
+                    blank && both_change(&steps[before..i]) && both_change(&steps[i + 1..after]);
+                push(&mut joined.old, &mut old_at, changed, or.len());
+                push(&mut joined.new, &mut new_at, changed, nr.len());
+            }
+        }
+    }
+    joined
+}
+
+/// The runs of an inline row for a modified pair, in reading order: shared
+/// text once, then where the lines differ the old text and after it the
+/// new, as `git diff --word-diff` writes `[-old-]{+new+}`
+pub(super) fn inline_parts<'a>(
+    old: &'a str,
+    new: &'a str,
+    segments: &Segments,
+) -> Vec<(Part, &'a str)> {
+    steps(segments)
+        .into_iter()
+        .map(|step| match step {
+            Step::Equal(range, _) => (Part::Equal, &old[range]),
+            Step::Removed(range) => (Part::Removed, &old[range]),
+            Step::Added(range) => (Part::Added, &new[range]),
+        })
+        .collect()
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A blank shared run joins only with changes on both lines on both
+    /// sides of it: here the old line changes after it but the new line
+    /// goes on with shared text, so it stays shared on both
+    #[test]
+    fn blank_next_to_shared_text_on_one_line_stays_shared() {
+        // Old "a bc" as [a]{ }[b]{c}, new "x c" as [x]{ c}: after the
+        // blank only the old line changes. Made up: similar puts such a
+        // blank in the change, but the runs could come out this way.
+        let segments = Segments {
+            old: vec![(true, 0..1), (false, 1..2), (true, 2..3), (false, 3..4)],
+            new: vec![(true, 0..1), (false, 1..3)],
+        };
+        assert_eq!(join_blanks("a bc", &segments), segments);
+
+        // Old "a b" as [a]{ }[b], new "xy z" as [xy]{ }[z]: the blank joins
+        let segments = Segments {
+            old: vec![(true, 0..1), (false, 1..2), (true, 2..3)],
+            new: vec![(true, 0..2), (false, 2..3), (true, 3..4)],
+        };
+        let joined = Segments {
+            old: vec![(true, 0..3)],
+            new: vec![(true, 0..4)],
+        };
+        assert_eq!(join_blanks("a b", &segments), joined);
+    }
 }

@@ -1051,3 +1051,27 @@ fn test_csv_view_holds_while_selection_moves_inside_it() {
     v.select_up();
     assert_eq!(row_text(&render(&v, 10, 4), 1), before); // was "17" -> "16"
 }
+
+/// Header and data cells keep a wide glyph's colors on its right half: they
+/// wrote a plain continuation over it (#1609)
+#[test]
+fn header_and_cells_style_both_halves_of_a_wide_glyph() {
+    use crate::wide_glyphs::{assert_wide_glyphs_keep_their_style, draw_at_offset, glyph};
+    let (hfg, hbg) = (Color::rgb(1, 2, 3), Color::rgb(4, 5, 6));
+    let viewer = CsvViewer::from_content("이름,값\n가나,1\n다라,2")
+        .header_style(hfg, hbg)
+        .fg(Color::rgb(7, 8, 9))
+        .bg(Color::rgb(10, 11, 12));
+    let b = draw_at_offset(&viewer, 30, 6);
+    let glyphs = assert_wide_glyphs_keep_their_style(&b);
+    for ch in ['이', '름'] {
+        let (_, _, cell) = glyph(&glyphs, ch);
+        assert_eq!((cell.fg, cell.bg), (Some(hfg), Some(hbg)), "{ch}");
+    }
+    // The selected row and an ordinary one
+    for ch in ['가', '나', '다', '라'] {
+        let (_, _, cell) = glyph(&glyphs, ch);
+        assert!(cell.fg.is_some() && cell.bg.is_some(), "{ch}");
+    }
+    assert_eq!(glyph(&glyphs, '다').2.fg, Some(Color::rgb(7, 8, 9)));
+}

@@ -407,27 +407,62 @@ where
 mod tests {
     use super::*;
 
+    /// How long a test waits for a background run before it fails. Only this
+    /// limit depends on the machine: the tests poll, so a fast run ends early.
+    const WAIT_LIMIT: std::time::Duration = std::time::Duration::from_secs(10);
+
+    /// What a test can observe of the runs of [`first_run_waits`].
+    struct Runs {
+        /// How many runs have started.
+        started: Arc<std::sync::atomic::AtomicUsize>,
+        /// Set when the thread of the first run has exited, so after it
+        /// stored its result or dropped it as superseded.
+        first_thread_exited: Arc<std::sync::atomic::AtomicBool>,
+    }
+
+    /// Sets its flag when dropped, at the exit of the thread that holds it.
+    struct SetOnThreadExit(std::cell::RefCell<Option<Arc<std::sync::atomic::AtomicBool>>>);
+
+    impl Drop for SetOnThreadExit {
+        fn drop(&mut self) {
+            if let Some(flag) = self.0.borrow_mut().take() {
+                flag.store(true, Ordering::SeqCst);
+            }
+        }
+    }
+
+    thread_local! {
+        static ON_THREAD_EXIT: SetOnThreadExit = const { SetOnThreadExit(std::cell::RefCell::new(None)) };
+    }
+
     /// A task whose first run waits for `release` and returns 1; later runs
     /// return their run number at once.
     fn first_run_waits(
         release: std::sync::mpsc::Receiver<()>,
-    ) -> impl Fn() -> AsyncResult<usize> + Send + Sync + Clone + 'static {
+    ) -> (
+        impl Fn() -> AsyncResult<usize> + Send + Sync + Clone + 'static,
+        Runs,
+    ) {
         let release = Arc::new(std::sync::Mutex::new(release));
-        let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        move || {
-            let n = calls.fetch_add(1, Ordering::SeqCst) + 1;
+        let runs = Runs {
+            started: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            first_thread_exited: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        };
+        let started = runs.started.clone();
+        let first_thread_exited = runs.first_thread_exited.clone();
+        let task = move || {
+            let n = started.fetch_add(1, Ordering::SeqCst) + 1;
             if n == 1 {
-                let _ = release
-                    .lock()
-                    .unwrap()
-                    .recv_timeout(std::time::Duration::from_secs(5));
+                ON_THREAD_EXIT.with(|g| *g.0.borrow_mut() = Some(first_thread_exited.clone()));
+                let _ = release.lock().unwrap().recv_timeout(WAIT_LIMIT);
             }
             Ok(n)
-        }
+        };
+        (task, runs)
     }
 
     fn wait_until(mut cond: impl FnMut() -> bool) {
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        let deadline = std::time::Instant::now() + WAIT_LIMIT;
         while !cond() {
             assert!(std::time::Instant::now() < deadline, "timed out");
             thread::sleep(std::time::Duration::from_millis(2));
@@ -437,27 +472,29 @@ mod tests {
     #[test]
     fn a_superseded_run_does_not_overwrite_the_newer_result() {
         let (release, rx) = std::sync::mpsc::channel();
-        let (state, trigger) = use_async(first_run_waits(rx));
+        let (task, runs) = first_run_waits(rx);
+        let (state, trigger) = use_async(task);
         trigger();
-        thread::sleep(std::time::Duration::from_millis(20));
+        wait_until(|| runs.started.load(Ordering::SeqCst) == 1);
         trigger();
         wait_until(|| matches!(state.get(), AsyncState::Ready(2)));
         release.send(()).unwrap();
-        thread::sleep(std::time::Duration::from_millis(100));
+        wait_until(|| runs.first_thread_exited.load(Ordering::SeqCst));
         assert!(matches!(state.get(), AsyncState::Ready(2)));
     }
 
     #[test]
     fn a_superseded_polled_run_is_not_reported() {
         let (release, rx) = std::sync::mpsc::channel();
-        let (state, start, poll) = use_async_poll(first_run_waits(rx));
+        let (task, runs) = first_run_waits(rx);
+        let (state, start, poll) = use_async_poll(task);
         start();
-        thread::sleep(std::time::Duration::from_millis(20));
+        wait_until(|| runs.started.load(Ordering::SeqCst) == 1);
         start();
         wait_until(&poll);
         assert!(matches!(state.get(), AsyncState::Ready(2)));
         release.send(()).unwrap();
-        thread::sleep(std::time::Duration::from_millis(100));
+        wait_until(|| runs.first_thread_exited.load(Ordering::SeqCst));
         assert!(!poll(), "the first, superseded run was reported");
         assert!(matches!(state.get(), AsyncState::Ready(2)));
     }
@@ -634,9 +671,7 @@ mod tests {
         // Trigger the async operation
         trigger();
 
-        // Wait for completion
-        std::thread::sleep(Duration::from_millis(200));
-        assert!(state.get().is_ready());
+        wait_until(|| state.get().is_ready());
         assert_eq!(state.get().value(), Some(&42));
     }
 
@@ -645,7 +680,7 @@ mod tests {
         let (state, trigger) = use_async(|| Err::<i32, String>("error".to_string()));
 
         trigger();
-        std::thread::sleep(Duration::from_millis(100));
+        wait_until(|| !state.get().is_loading());
 
         assert!(state.get().is_error());
     }
@@ -657,9 +692,9 @@ mod tests {
         trigger();
         trigger(); // Should trigger again
 
-        // Wait for at least one to complete
-        std::thread::sleep(Duration::from_millis(100));
-        assert!(state.get().is_ready() || state.get().is_loading());
+        // The latest run stores its result
+        wait_until(|| !state.get().is_loading());
+        assert_eq!(state.get().value(), Some(&42));
     }
 
     // use_async_poll tests
@@ -672,27 +707,29 @@ mod tests {
         start();
         assert!(state.get().is_loading());
 
-        // Poll until done
-        for _ in 0..10 {
-            if poll() {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        }
+        wait_until(&poll);
 
         assert!(state.get().is_ready());
     }
 
     #[test]
     fn test_use_async_poll_returns_false_when_not_done() {
-        let (_state, start, poll) = use_async_poll(|| {
-            std::thread::sleep(Duration::from_millis(100));
+        // The task waits for `release`, so it cannot finish before the first
+        // poll however slow the machine is.
+        let (release, rx) = std::sync::mpsc::channel::<()>();
+        let rx = Arc::new(std::sync::Mutex::new(rx));
+        let (state, start, poll) = use_async_poll(move || {
+            let _ = rx.lock().unwrap().recv_timeout(WAIT_LIMIT);
             Ok::<i32, String>(42)
         });
 
         start();
         // First poll should return false (not done yet)
         assert!(!poll());
+        assert!(state.get().is_loading());
+        release.send(()).unwrap();
+        wait_until(&poll);
+        assert_eq!(state.get().value(), Some(&42));
     }
 
     #[test]
@@ -700,13 +737,7 @@ mod tests {
         let (state, start, poll) = use_async_poll(|| Err::<i32, String>("error".to_string()));
 
         start();
-
-        for _ in 0..10 {
-            if poll() {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        }
+        wait_until(&poll);
 
         assert!(state.get().is_error());
     }
@@ -716,8 +747,7 @@ mod tests {
     fn test_use_async_immediate() {
         let state = use_async_immediate(|| Ok::<i32, String>(42));
 
-        // Wait for completion
-        std::thread::sleep(Duration::from_millis(100));
+        wait_until(|| !state.get().is_loading());
 
         assert!(state.get().is_ready());
         assert_eq!(state.get().value(), Some(&42));
@@ -727,7 +757,7 @@ mod tests {
     fn test_use_async_immediate_with_error() {
         let state = use_async_immediate(|| Err::<i32, String>("error".to_string()));
 
-        std::thread::sleep(Duration::from_millis(100));
+        wait_until(|| !state.get().is_loading());
 
         assert!(state.get().is_error());
     }
@@ -746,7 +776,7 @@ mod tests {
 
         assert!(state.get().is_idle());
         trigger();
-        std::thread::sleep(Duration::from_millis(100));
+        wait_until(|| !state.get().is_loading());
         assert!(state.get().is_ready());
     }
 
@@ -786,9 +816,7 @@ mod tests {
         });
 
         trigger();
-        std::thread::sleep(Duration::from_millis(200));
-
-        assert!(state.get().is_ready());
+        wait_until(|| state.get().is_ready());
         // The atomic was incremented from 10 to 11
         assert_eq!(state.get().value(), Some(&11));
     }

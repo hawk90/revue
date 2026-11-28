@@ -297,8 +297,8 @@ impl Buffer {
     }
 
     /// The right half of `glyph`: a continuation with its colors, modifiers
-    /// and link
-    fn continuation_of(glyph: &Cell) -> Cell {
+    /// and link - what [`set`](Self::set) writes right of a wide glyph
+    pub(crate) fn continuation_of(glyph: &Cell) -> Cell {
         let mut cont = Cell::continuation();
         cont.fg = glyph.fg;
         cont.bg = glyph.bg;

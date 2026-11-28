@@ -5,7 +5,9 @@ use super::types::TimeLineStyle;
 use super::TimeSeries;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{char_width, display_width};
+use crate::utils::char_width;
+use crate::utils::unicode::display_width_u16;
+use crate::widget::data::chart::chart_render::y_label_column;
 use crate::widget::traits::{RenderContext, View};
 
 /// Where the plot sits in the chart area and the time and value ranges it spans
@@ -29,17 +31,18 @@ impl TimeSeries {
         let area = ctx.area;
         let current_y = y;
 
-        let title_x = (area.width.saturating_sub(display_width(title) as u16)) / 2;
+        let title_x = (area.width.saturating_sub(display_width_u16(title))) / 2;
         let mut dx: u16 = 0;
         for ch in title.chars() {
-            let x = title_x + dx;
-            if x < area.width {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(chrome);
-                cell.bg = self.bg_color;
-                ctx.set(x, current_y, cell);
+            let x = title_x.saturating_add(dx);
+            if x >= area.width {
+                break;
             }
-            dx += char_width(ch) as u16;
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(chrome);
+            cell.bg = self.bg_color;
+            ctx.set(x, current_y, cell);
+            dx = dx.saturating_add(char_width(ch) as u16);
         }
     }
 
@@ -148,18 +151,26 @@ impl View for TimeSeries {
             current_y += 1;
         }
 
-        let y_label_width = 8u16;
-        let plot_x = y_label_width;
-        let plot_width = area.width.saturating_sub(y_label_width + 1);
         let plot_y = current_y;
         let plot_height = height.saturating_sub(current_y + 2);
+        let (val_min, val_max) = self.get_value_bounds();
+        // The value label column fits the widest grid label, at most a
+        // third of the area (#1614)
+        let widest = self
+            .value_labels(plot_height, val_min, val_max)
+            .iter()
+            .map(|label| display_width_u16(label))
+            .max()
+            .unwrap_or(0);
+        let y_label_width = y_label_column(widest, area.width);
+        let plot_x = y_label_width;
+        let plot_width = area.width.saturating_sub(y_label_width + 1);
 
         if plot_width < 5 || plot_height < 3 {
             return;
         }
 
         let (time_min, time_max) = self.get_time_bounds();
-        let (val_min, val_max) = self.get_value_bounds();
         let time_range = time_max.saturating_sub(time_min);
         let val_range = val_max - val_min;
 
