@@ -13,27 +13,55 @@ use crate::widget::traits::{RenderContext, View};
 /// [`ProcColors::name`](crate::widget::ProcColors::name) nor the stylesheet names one.
 const PROC_FG: Color = Color::WHITE;
 
-/// The PID column's width: 7 digits, as Linux PIDs reach 4194304
+/// The PID column's narrowest width: 7 digits, as Linux PIDs reach 4194304
 /// (`pid_max` on 64-bit systems), right-aligned (#1084)
-const PID_WIDTH: u16 = 7;
+const MIN_PID_WIDTH: u16 = 7;
 
-/// Where the name column starts, one cell after the PID column
-const NAME_X: u16 = PID_WIDTH + 1;
+/// Where each column starts. The PID column is as wide as the widest PID in
+/// the list (at least [`MIN_PID_WIDTH`]), so a long PID is never cut, and
+/// the columns to its right move with it (#1545). The header and the rows
+/// are drawn from the same layout, so they line up.
+#[derive(Clone, Copy, Debug)]
+struct Columns {
+    /// The PID column's width; the PID is right-aligned in it
+    pid_width: u16,
+    /// Where the name column starts, one cell after the PID column
+    name: u16,
+    /// Where the CPU% column starts
+    cpu: u16,
+    /// Where the MEM% column starts
+    mem_percent: u16,
+    /// Where the memory column starts
+    mem: u16,
+    /// Where the status column starts
+    status: u16,
+    /// Where the command column starts, after the status column
+    cmd: u16,
+}
 
-/// Where the CPU% column starts
-const CPU_X: u16 = NAME_X + 20;
-
-/// Where the MEM% column starts
-const MEM_PERCENT_X: u16 = CPU_X + 7;
-
-/// Where the memory column starts
-const MEM_X: u16 = MEM_PERCENT_X + 7;
-
-/// Where the status column starts
-const STATUS_X: u16 = MEM_X + 8;
-
-/// Where the command column starts, after the status column
-const CMD_X: u16 = STATUS_X + 10;
+impl Columns {
+    /// The layout for a list whose widest PID is `widest_pid`
+    fn for_widest_pid(widest_pid: u32) -> Self {
+        // A u32 has at most 10 digits, so every offset fits in a u16
+        let digits = widest_pid.checked_ilog10().map_or(1, |log| log + 1) as u16;
+        let pid_width = digits.max(MIN_PID_WIDTH);
+        let name = pid_width + 1;
+        let cpu = name + 20;
+        let mem_percent = cpu + 7;
+        let mem = mem_percent + 7;
+        let status = mem + 8;
+        let cmd = status + 10;
+        Self {
+            pid_width,
+            name,
+            cpu,
+            mem_percent,
+            mem,
+            status,
+            cmd,
+        }
+    }
+}
 
 /// The column header sits under the stats bar (row 0).
 const HEADER_ROW: u16 = 1;
@@ -81,8 +109,13 @@ impl View for ProcessMonitor {
         // Stats bar
         self.render_stats(ctx, 0);
 
+        // Every listed process, not only the rows in view, sizes the PID
+        // column: scrolling never moves the columns
+        let widest_pid = self.processes.iter().map(|p| p.pid).max().unwrap_or(0);
+        let columns = Columns::for_widest_pid(widest_pid);
+
         // Header (row 1)
-        self.render_header(ctx);
+        self.render_header(ctx, &columns);
 
         // Process list
         let list_start = 2u16;
@@ -105,7 +138,7 @@ impl View for ProcessMonitor {
         {
             let y = list_start + i as u16;
             let is_selected = self.selected.is_selected(scroll + i);
-            self.render_row(ctx, y, proc, is_selected, row_fg);
+            self.render_row(ctx, y, &columns, proc, is_selected, row_fg);
         }
     }
 

@@ -307,12 +307,132 @@ fn a_seven_digit_pid_is_kept_apart_from_the_name() {
     assert_eq!(buffer.get(8, 4).unwrap().fg, Some(Color::WHITE));
 }
 
-/// A PID wider than the column is cut at it: the gap before the name stays
+/// The header and a row for a list whose PID column is `width` wide, built
+/// from the column widths: PID, name 19 and a gap, CPU% and MEM% 6, memory
+/// 7, status 8 and two cells, then the command
+fn header_and_row(width: usize, pid: u32) -> (String, String) {
+    let header = format!(
+        "{:<width$} {:<19} {:<6} {:<6} {:<7} {:<8}  COMMAND",
+        "PID▲", "NAME", "CPU%", "MEM%", "MEM", "STATUS"
+    );
+    let row = format!(
+        "{pid:>width$} {:<19} {:>6.1} {:>6.1} {:>7} {:<8}  {}",
+        "rustc", 12.5, 4.5, "3M", "Sleeping", "rustc --edition"
+    );
+    (header, row)
+}
+
+fn rustc(pid: u32) -> crate::widget::developer::procmon::ProcessInfo {
+    process(
+        pid,
+        "rustc",
+        12.5,
+        3 * 1024 * 1024,
+        4.5,
+        "Sleeping",
+        "rustc --edition",
+        "0",
+    )
+}
+
+/// `text`, one character per cell, against row `y` from column 0, and the
+/// rest of the row blank
+fn assert_row(buffer: &Buffer, y: u16, text: &str, what: &str) {
+    let chars: Vec<char> = text.chars().collect();
+    for x in 0..buffer.width() {
+        let want = chars.get(x as usize).copied().unwrap_or(' ');
+        assert_eq!(buffer.get(x, y).unwrap().symbol, want, "{what} x={x}");
+    }
+}
+
+/// A PID longer than 7 digits (Windows PIDs are 32-bit) was cut to its first
+/// 7 digits, a different PID (#1545). The PID column is now as wide as the
+/// widest listed PID, and every column to its right moves with it.
 #[test]
-fn a_pid_wider_than_seven_digits_keeps_the_gap() {
-    let monitor = monitor_with(vec![process(123_456_789, "x", 0.0, 0, 0.0, "Run", "", "0")]);
-    let line = row(&draw(&monitor, 60, 5), 2);
-    assert_eq!(&line[..10], "1234567 x ");
+fn the_pid_column_widens_to_the_widest_listed_pid() {
+    let pid_color = ProcColors::default().pid;
+    for (pid, width) in [
+        (4_194_304, 7),
+        (9_999_999, 7),
+        (10_000_000, 8),
+        (12_345_678, 8),
+        (u32::MAX, 10),
+    ] {
+        let monitor = monitor_with(vec![rustc(7), rustc(pid)]).show_cmd(true);
+        let buffer = draw(&monitor, 100, 5);
+        let (header, big) = header_and_row(width, pid);
+        let (_, small) = header_and_row(width, 7);
+        assert_row(&buffer, 1, &header, &format!("pid={pid} header"));
+        assert_row(&buffer, 2, &small, &format!("pid={pid} small"));
+        assert_row(&buffer, 3, &big, &format!("pid={pid} big"));
+        // Every cell of the PID column is the PID's, the gap is plain and
+        // the name starts right after it
+        let w = width as u16;
+        for y in [2, 3] {
+            for x in 0..w {
+                assert_eq!(
+                    buffer.get(x, y).unwrap().fg,
+                    Some(pid_color),
+                    "pid={pid} ({x},{y})"
+                );
+            }
+            assert_eq!(buffer.get(w, y).unwrap().fg, None, "pid={pid} gap y={y}");
+            assert_eq!(
+                buffer.get(w + 1, y).unwrap().fg,
+                Some(Color::WHITE),
+                "pid={pid} y={y}"
+            );
+        }
+        // The header names sit over their columns: CPU%, MEM%, MEM, STATUS
+        // and COMMAND are bold header cells where the rows put them
+        for x in [w + 1, w + 21, w + 28, w + 35, w + 43, w + 53] {
+            assert_eq!(
+                buffer.get(x, 1).unwrap().modifier,
+                Modifier::BOLD,
+                "pid={pid} x={x}"
+            );
+            assert_ne!(buffer.get(x, 1).unwrap().symbol, ' ', "pid={pid} x={x}");
+        }
+    }
+}
+
+/// A wide PID column pushes the columns out: an area too narrow for them
+/// shows the same cells as a wide one, cut at its right edge
+#[test]
+fn a_wide_pid_column_is_clipped_at_a_narrow_area() {
+    let monitor = monitor_with(vec![rustc(7), rustc(u32::MAX)]).show_cmd(true);
+    let wide = draw(&monitor, 100, 5);
+    for w in [40u16, 45, 52, 60, 64] {
+        let narrow = draw(&monitor, w, 5);
+        for y in 1..5 {
+            for x in 0..w {
+                let (got, want) = (narrow.get(x, y).unwrap(), wide.get(x, y).unwrap());
+                assert_eq!(got, want, "w={w} ({x},{y})");
+            }
+        }
+    }
+}
+
+/// The widest PID anywhere in the list sizes the column, not the rows in
+/// view, so scrolling does not move the columns
+#[test]
+fn scrolling_does_not_change_the_pid_column() {
+    let mut list = numbered(6); // PIDs 100..105
+    list.push(process(u32::MAX, "last", 0.0, 0, 0.0, "Run", "", "0"));
+    let mut monitor = monitor_with(list);
+    // The first `n` cells of row `y`
+    let prefix =
+        |buffer: &Buffer, y: u16, n: usize| -> String { row(buffer, y).chars().take(n).collect() };
+    // 3 rows fit: 100, 101, 102 - the 10-digit PID is out of view
+    let top = draw(&monitor, 60, 5);
+    assert_eq!(prefix(&top, 1, 15), "PID▲       NAME");
+    assert_eq!(prefix(&top, 2, 15), "       100 p00 ");
+    assert_eq!(prefix(&top, 4, 15), "       102 p02 ");
+    monitor.page_down(usize::MAX);
+    let bottom = draw(&monitor, 60, 5);
+    assert_eq!(prefix(&bottom, 2, 15), "       104 p04 ");
+    assert_eq!(prefix(&bottom, 4, 16), "4294967295 last ");
+    assert_eq!(row(&bottom, 1), row(&top, 1));
 }
 
 /// sysinfo reports 0 total memory where it cannot read it; the share of 0
