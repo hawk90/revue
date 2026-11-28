@@ -28,7 +28,7 @@ fn run_detached(cmd: Command) {
 }
 
 /// macOS VoiceOver backend
-pub struct MacOSBackend {
+pub(crate) struct MacOSBackend {
     available: bool,
 }
 
@@ -97,7 +97,7 @@ impl ScreenReader for MacOSBackend {
 }
 
 /// Windows Narrator/NVDA backend
-pub struct WindowsBackend {
+pub(crate) struct WindowsBackend {
     available: bool,
 }
 
@@ -158,7 +158,7 @@ impl ScreenReader for WindowsBackend {
 }
 
 /// Linux AT-SPI backend (Orca, etc.)
-pub struct LinuxBackend {
+pub(crate) struct LinuxBackend {
     available: bool,
 }
 
@@ -308,7 +308,7 @@ impl ScreenReader for LoggingBackend {
 }
 
 /// Null backend (no-op)
-pub struct NullBackend;
+pub(crate) struct NullBackend;
 
 impl ScreenReader for NullBackend {
     fn announce(&self, _message: &str, _priority: Priority) {
