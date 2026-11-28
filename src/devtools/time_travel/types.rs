@@ -8,7 +8,8 @@ use std::time::{Duration, SystemTime};
 pub struct StateSnapshot {
     /// Unique snapshot ID
     pub id: u64,
-    /// Timestamp when snapshot was taken
+    /// Timestamp when snapshot was taken, from
+    /// [`clock::wall_now`](crate::utils::clock::wall_now)
     pub timestamp: SystemTime,
     /// State data as key-value pairs
     pub state: HashMap<String, SnapshotValue>,
@@ -23,7 +24,7 @@ impl StateSnapshot {
     pub fn new(id: u64) -> Self {
         Self {
             id,
-            timestamp: SystemTime::now(),
+            timestamp: crate::utils::clock::wall_now(),
             state: HashMap::new(),
             action: None,
             label: None,
@@ -210,7 +211,7 @@ impl Action {
             name: name.into(),
             payload: None,
             source: None,
-            timestamp: SystemTime::now(),
+            timestamp: crate::utils::clock::wall_now(),
             duration: None,
         }
     }

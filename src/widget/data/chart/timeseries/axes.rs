@@ -134,10 +134,7 @@ impl TimeSeries {
             Format::Months => format!("{}/{:02}", 1970 + timestamp / 31536000, months + 1),
             Format::Unix => format!("{}", timestamp),
             Format::Relative => {
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
+                let now = super::types::unix_now();
                 let diff = now.saturating_sub(timestamp);
                 if diff < 60 {
                     format!("{}s", diff)

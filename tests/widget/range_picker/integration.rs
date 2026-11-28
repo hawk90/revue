@@ -154,11 +154,15 @@ fn test_range_picker_disabled() {
 
 #[test]
 fn test_range_picker_handle_key_when_disabled() {
+    let (_time, _clock) = super::on_june_15();
     let mut picker = range_picker().disabled(true);
     assert!(!picker.handle_key(&Key::Tab));
     assert!(!picker.handle_key(&Key::Right));
     assert!(!picker.handle_key(&Key::Enter));
-    assert_eq!(picker.get_range(), (Date::today(), Date::today()));
+    assert_eq!(
+        picker.get_range(),
+        (Date::new(2025, 6, 15), Date::new(2025, 6, 15))
+    );
 }
 
 #[test]
@@ -205,6 +209,7 @@ fn test_range_picker_set_end_multiple_times() {
 
 #[test]
 fn test_range_picker_apply_multiple_presets() {
+    let (_time, _clock) = super::on_june_15();
     let mut picker = range_picker();
     picker.apply_preset(PresetRange::Today);
     picker.apply_preset(PresetRange::Last7Days);
@@ -212,7 +217,7 @@ fn test_range_picker_apply_multiple_presets() {
     assert_eq!(picker.get_active_preset(), Some(PresetRange::ThisMonth));
     assert_eq!(
         picker.get_range(),
-        PresetRange::ThisMonth.calculate(Date::today())
+        (Date::new(2025, 6, 1), Date::new(2025, 6, 15))
     );
 }
 

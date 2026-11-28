@@ -5,11 +5,11 @@ use super::TimeSeries;
 
 impl TimeSeries {
     /// Get time bounds for the current time range
+    ///
+    /// The `Last*` ranges end at
+    /// [`clock::wall_now`](crate::utils::clock::wall_now).
     pub fn get_time_bounds(&self) -> (u64, u64) {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let now = super::types::unix_now();
 
         match self.time_range {
             Range::All => {

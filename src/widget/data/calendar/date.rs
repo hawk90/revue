@@ -18,8 +18,11 @@ impl Date {
     }
 
     /// Today's date in the local time zone
+    ///
+    /// It reads [`clock::wall_now`](crate::utils::clock::wall_now), so a
+    /// [`MockTime`](crate::testing::MockTime) with a wall clock fixes it.
     pub fn today() -> Self {
-        let today = jiff::ZonedDateTime::now().date();
+        let today = crate::utils::clock::local_now().date();
         // jiff's month is 1..=12 and its day 1..=31, as here.
         Self::new(
             i32::from(today.year()),

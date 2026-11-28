@@ -108,7 +108,7 @@ impl TimeTravelDebugger {
     pub fn record_action(&mut self, action: Action, state: HashMap<String, SnapshotValue>) {
         let snapshot = StateSnapshot {
             id: 0,
-            timestamp: std::time::SystemTime::now(),
+            timestamp: crate::utils::clock::wall_now(),
             state,
             action: Some(action),
             label: None,
