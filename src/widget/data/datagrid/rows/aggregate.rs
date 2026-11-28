@@ -4,12 +4,18 @@ use crate::widget::data::datagrid::types::{AggregationType, FooterRow};
 use crate::widget::data::datagrid::DataGrid;
 
 impl DataGrid {
-    /// Compute aggregation value for a column
+    /// Compute aggregation value for a column: `Count` is the number of shown
+    /// rows whatever the column holds (as TanStack Table's `count`, AG Grid's
+    /// `count` and MUI's `size`, #1538); the others use the cells that parse as
+    /// numbers and are `None` when there are none
     pub(in crate::widget::data::datagrid) fn compute_aggregation(
         &self,
         column_key: &str,
         agg_type: AggregationType,
     ) -> Option<f64> {
+        if agg_type == AggregationType::Count {
+            return Some(self.filtered_indices().len() as f64);
+        }
         let values: Vec<f64> = self
             .filtered_indices()
             .iter()
@@ -28,7 +34,7 @@ impl DataGrid {
         Some(match agg_type {
             AggregationType::Sum => values.iter().sum(),
             AggregationType::Average => values.iter().sum::<f64>() / values.len() as f64,
-            AggregationType::Count => values.len() as f64,
+            AggregationType::Count => values.len() as f64, // returned above
             AggregationType::Min => values.iter().cloned().fold(f64::INFINITY, f64::min),
             AggregationType::Max => values.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
         })
