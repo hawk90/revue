@@ -55,17 +55,17 @@ commit-msg:
 
 pre-push:
   parallel: true
-  commands:
-    doc:
-      # Same flags as CI and CD: a broken intra-doc link is an error, not a warning.
-      run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo doc --no-deps --all-features --document-private-items
-      fail_text: "Documentation build failed. Check for broken intra-doc links or invalid code blocks."
-
   scripts:
-    # Both choose what to run from every commit being pushed (scripts/pushed-files.sh
+    # All three choose what to run from every commit being pushed (scripts/pushed-files.sh
     # reads the refs git passes on stdin), not from HEAD~1..HEAD. They are scripts in
     # .lefthook/pre-push/, not `run` commands: lefthook skips a pre-push command when
-    # HEAD has nothing to push, even when the push sends another ref.
+    # HEAD has nothing to push, even when the push sends another ref (#1580).
+    "doc.sh":
+      # Same flags as CI and CD: a broken intra-doc link is an error, not a warning.
+      runner: bash
+      use_stdin: true
+      fail_text: "Documentation build failed. Check for broken intra-doc links or invalid code blocks."
+
     "test.sh":
       # Run tests for changed Rust files
       runner: bash
