@@ -612,8 +612,10 @@ fn a_utc_offset_is_at_most_25_59_59() {
 fn a_wall_clock_before_1970_or_past_9999_still_has_a_date() {
     let (_time, _clock) = at(SystemTime::UNIX_EPOCH - Duration::from_secs(86_400), 0);
     assert_eq!(Date::today(), Date::new(1969, 12, 31));
+    // About the year 20000: past jiff's range, and still a SystemTime on
+    // every platform (Windows stops near the year 30828)
     let (_time, _clock) = at(
-        SystemTime::UNIX_EPOCH + Duration::from_secs(400_000 * 86_400 * 365),
+        SystemTime::UNIX_EPOCH + Duration::from_secs(18_000 * 86_400 * 365),
         0,
     );
     // jiff's last instant, which every UTC offset can show
