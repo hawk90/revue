@@ -130,6 +130,12 @@ fn test_histogram_count_labels_one_per_row() {
     // where 0 goes
     let heads = label_heads(&three_bins(), 40, 5, 2);
     assert_eq!(heads[..3], ["3 ", "2 ", "0 "]);
+    // 30 in one bin: 23 fills two rows, and 15 and 8 the bottom one,
+    // which 0 takes from them whole, not drawn over them
+    use revue::widget::data::chart::{BinConfig, Histogram};
+    let hist = Histogram::new(&[1.0; 30]).bins(BinConfig::Edges(vec![0.0, 10.0]));
+    let heads = label_heads(&hist, 40, 5, 3);
+    assert_eq!(heads[..3], ["30 ", "23 ", "0  "]);
     assert_same_when_offset(three_bins(), 40, 5);
     assert_same_when_offset(three_bins(), 40, 10);
 }
