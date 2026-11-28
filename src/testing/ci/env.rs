@@ -157,7 +157,7 @@ impl CiEnvironment {
                 "\x1b[0Ksection_start:{}:{}\r\x1b[0K{}",
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs(),
                 name.replace(' ', "_"),
                 name
@@ -174,7 +174,7 @@ impl CiEnvironment {
                 "\x1b[0Ksection_end:{}:{}\r\x1b[0K",
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs(),
                 name.replace(' ', "_")
             ),

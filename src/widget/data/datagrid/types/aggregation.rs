@@ -8,7 +8,8 @@ pub enum AggregationType {
     Sum,
     /// Average (mean) of all values
     Average,
-    /// Count of all values
+    /// Number of shown rows (after the filter), whatever the column holds:
+    /// empty, missing and text cells count too
     Count,
     /// Minimum value
     Min,
@@ -95,7 +96,8 @@ impl FooterRow {
         self
     }
 
-    /// Add count aggregation for column
+    /// Add count aggregation for column: the number of shown rows, shown in
+    /// this column's footer cell
     pub fn count(mut self, column_key: impl Into<String>) -> Self {
         self.aggregations
             .push(ColumnAggregation::new(column_key, AggregationType::Count));

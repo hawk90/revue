@@ -6,13 +6,17 @@ use crate::widget::theme::{DISABLED_FG, SEPARATOR_COLOR};
 /// Diff display mode
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DiffMode {
-    /// Side-by-side comparison
+    /// Side-by-side comparison: old text on the left, new on the right,
+    /// a modified line as one row with its changed words emphasized
     #[default]
     Split,
-    /// Unified diff format
+    /// Unified diff format: one column, a modified line drawn as its `-`
+    /// row and its `+` row (as `git diff` and delta do), each with its
+    /// changed words emphasized
     Unified,
-    /// Meant for character-level differences within a line; drawn as
-    /// [`DiffMode::Unified`] for now (#1202)
+    /// Like [`DiffMode::Unified`], but a modified line is one `~` row: the
+    /// shared text once, and where the lines differ the removed words then
+    /// the added ones in their colors, as `git diff --word-diff=color` does
     Inline,
 }
 
@@ -40,24 +44,34 @@ pub enum ChangeType {
     Removed,
     /// Line was added
     Added,
-    /// Line was modified. The viewer does not produce it yet: a changed
-    /// line is a [`ChangeType::Removed`] line followed by an
-    /// [`ChangeType::Added`] one (#1202)
+    /// Line was modified: a removed and an added line of one change that
+    /// are alike, paired as delta does. Both numbers and both texts are
+    /// set. Lines are alike when the changed words take at most 60% of
+    /// the columns (changed columns over changed plus twice the shared
+    /// ones, blanks at the ends of each run not counted); each removed
+    /// line, in order, pairs with the first alike added line after the
+    /// previous pair, so pairs keep the order of both texts
     Modified,
 }
 
 /// Diff color scheme
 #[derive(Clone, Debug)]
 pub struct DiffColors {
-    /// Added line background
+    /// Added line background, and the background of the added words of a
+    /// modified line
     pub added_bg: Color,
-    /// Added line foreground
+    /// Added line foreground, and the foreground of the added words of a
+    /// modified line
     pub added_fg: Color,
-    /// Removed line background
+    /// Removed line background, and the background of the removed words of
+    /// a modified line
     pub removed_bg: Color,
-    /// Removed line foreground
+    /// Removed line foreground, and the foreground of the removed words of
+    /// a modified line
     pub removed_fg: Color,
-    /// Modified line background
+    /// Modified line background: behind the text a modified line's old and
+    /// new text share (drawn in the default foreground) and the rest of its
+    /// split half, and behind the inline view's `~`
     pub modified_bg: Color,
     /// Line number color
     pub line_number: Color,

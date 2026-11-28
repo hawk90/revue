@@ -128,7 +128,8 @@ impl Breadcrumb {
         self
     }
 
-    /// Enable/disable collapse mode
+    /// Enable/disable collapse mode: a trail wider than the area keeps its
+    /// first item and last two, with one `…` for the items left out
     pub fn collapse(mut self, collapse: bool) -> Self {
         self.collapse = collapse;
         self
@@ -306,7 +307,7 @@ impl View for Breadcrumb {
         // Collapsing keeps the first and the last two items, so it only hides
         // something - and only saves room - when there are more than three.
         let (start_idx, show_ellipsis) = if need_collapse && self.items.len() > 3 {
-            // Show first, ..., last two items
+            // Show first, …, last two items
             (self.items.len().saturating_sub(2), true)
         } else {
             (0, false)
@@ -328,7 +329,8 @@ impl View for Breadcrumb {
                 x += icon_columns(icon);
             }
 
-            let clip_width = max_width.saturating_sub(10).saturating_sub(x);
+            // Room for " › … › " (seven columns) and one more after it
+            let clip_width = max_width.saturating_sub(8).saturating_sub(x);
             if is_selected {
                 ctx.draw_text_clipped_bold(x, 0, &item.label, self.selected_color, clip_width);
             } else {
@@ -343,13 +345,11 @@ impl View for Breadcrumb {
             ctx.set(x, 0, sep);
             x += 2;
 
-            // Ellipsis
-            for ch in "...".chars() {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(self.separator_color);
-                ctx.set(x, 0, cell);
-                x += 1;
-            }
+            // The marker for the items left out, one column like Pagination's
+            let mut ellipsis = Cell::new('…');
+            ellipsis.fg = Some(self.separator_color);
+            ctx.set(x, 0, ellipsis);
+            x += 1;
 
             // Separator after ellipsis
             x += 1;

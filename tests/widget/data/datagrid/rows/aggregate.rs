@@ -124,3 +124,49 @@ fn test_aggregation_empty_data() {
     // No rows, should return None
     assert_eq!(footer_cells(&grid, 0)[0], "Sum: —");
 }
+
+/// Count is the number of shown rows, whatever the column holds: text,
+/// empty and missing cells count too, and no rows is 0, not "—" (#1538)
+#[test]
+fn test_footer_count_is_the_shown_rows() {
+    let mut grid = DataGrid::new()
+        .column(GridColumn::new("name", "Name"))
+        .column(GridColumn::new("value", "Value"))
+        .row(GridRow::new().cell("name", "Apple").cell("value", "10"))
+        .row(GridRow::new().cell("name", "Banana").cell("value", "n/a"))
+        .row(GridRow::new().cell("name", "Cherry").cell("value", ""))
+        .row(GridRow::new().cell("name", "Apricot"))
+        .footer(FooterRow::new("").count("name").count("value"));
+
+    assert_eq!(footer_cells(&grid, 0)[0], "Count: 4", "a text column");
+    assert_eq!(
+        footer_cells(&grid, 0)[1],
+        "Count: 4",
+        "number, text, empty, missing"
+    );
+
+    grid.set_filter("Ap");
+    assert_eq!(footer_cells(&grid, 0)[0], "Count: 2", "only the shown rows");
+
+    grid.set_filter("zzz");
+    assert_eq!(footer_cells(&grid, 0)[0], "Count: 0", "no rows shown");
+}
+
+/// The other aggregations still use the cells that parse as numbers, and show
+/// "—" when there are none
+#[test]
+fn test_footer_sum_skips_non_numbers_and_has_no_value_without_numbers() {
+    let grid = DataGrid::new()
+        .column(GridColumn::new("value", "Value"))
+        .row(GridRow::new().cell("value", "10"))
+        .row(GridRow::new().cell("value", "n/a"))
+        .row(GridRow::new().cell("value", ""))
+        .add_sum("value");
+    assert_eq!(footer_cells(&grid, 0)[0], "Sum: 10");
+
+    let grid = DataGrid::new()
+        .column(GridColumn::new("value", "Value"))
+        .row(GridRow::new().cell("value", "n/a"))
+        .add_sum("value");
+    assert_eq!(footer_cells(&grid, 0)[0], "Sum: —");
+}

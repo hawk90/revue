@@ -10,8 +10,8 @@ mod global;
 mod types;
 
 use revue::a11y::{
-    announce_to_screen_reader, get_backend, init_backend, set_backend, BackendType, LoggingBackend,
-    ScreenReader, ScreenReaderBackend, ScreenReaderConfig,
+    announce_to_screen_reader, get_backend, init_backend, set_backend, BackendType,
+    LoggedAnnouncement, LoggingBackend, ScreenReader, ScreenReaderBackend, ScreenReaderConfig,
 };
 use revue::utils::accessibility::Priority;
 use serial_test::serial;
@@ -113,6 +113,22 @@ fn test_logging_backend_last() {
     backend.announce("Second", Priority::Polite);
 
     assert_eq!(backend.last().unwrap().message, "Second");
+}
+
+/// What `announcements` and `last` return can be named (#1200).
+#[test]
+fn test_logged_announcement_is_nameable() {
+    let backend = LoggingBackend::new();
+    backend.announce("Saved", Priority::Assertive);
+
+    let all: Vec<LoggedAnnouncement> = backend.announcements();
+    let last: Option<LoggedAnnouncement> = backend.last();
+    assert_eq!(all.len(), 1);
+    assert_eq!(all[0].message, "Saved");
+    assert_eq!(all[0].priority, Priority::Assertive);
+    let last = last.unwrap();
+    assert_eq!(last.message, "Saved");
+    assert_eq!(last.priority, Priority::Assertive);
 }
 
 // =============================================================================

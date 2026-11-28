@@ -59,6 +59,7 @@ fn drag_grid(columns: &[(&str, bool)]) -> DataGrid {
         grid = grid.column(
             GridColumn::new(key, key.to_uppercase())
                 .width(4)
+                .min_width(0)
                 .resizable(false)
                 .visible(visible),
         );
@@ -250,7 +251,12 @@ fn test_drag_with_hidden_column() {
 fn test_drag_keeps_column_widths_with_columns() {
     let mut grid = DataGrid::new()
         .reorderable(true)
-        .column(GridColumn::new("a", "A").width(3).resizable(false))
+        .column(
+            GridColumn::new("a", "A")
+                .width(3)
+                .min_width(0)
+                .resizable(false),
+        )
         .column(GridColumn::new("b", "B").width(8).resizable(false))
         .row(GridRow::new().cell("a", "v"));
 
@@ -329,7 +335,12 @@ fn test_keyboard_move_skips_hidden_columns() {
 fn test_keyboard_move_keeps_column_widths_with_columns() {
     let mut grid = DataGrid::new()
         .reorderable(true)
-        .column(GridColumn::new("a", "A").width(3).resizable(false))
+        .column(
+            GridColumn::new("a", "A")
+                .width(3)
+                .min_width(0)
+                .resizable(false),
+        )
         .column(GridColumn::new("b", "B").width(8).resizable(false))
         .row(GridRow::new().cell("a", "v"));
     // User-set widths (as after a resize) follow their column too

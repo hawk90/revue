@@ -24,8 +24,8 @@ jobs:
 
       - name: Check framework versions
         run: |
-          echo "## 🔍 Framework Comparison Check" >> $GITHUB_STEP_SUMMARY
-          bash scripts/check-framework-versions.sh >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          echo "## 🔍 Framework Comparison Check" >> "$GITHUB_STEP_SUMMARY"
+          bash scripts/check-framework-versions.sh >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
 
       - name: Check if comparison is stale
         id: verify
@@ -36,15 +36,15 @@ jobs:
             NOW_EPOCH=$(date +%s)
             if [ "$LAST_EPOCH" -gt 0 ]; then
               DAYS_AGO=$(( (NOW_EPOCH - LAST_EPOCH) / 86400 ))
-              echo "Days since last check: $DAYS_AGO" >> $GITHUB_STEP_SUMMARY
+              echo "Days since last check: $DAYS_AGO" >> "$GITHUB_STEP_SUMMARY"
               if [ "$DAYS_AGO" -gt 90 ]; then
-                echo "is_stale=true" >> $GITHUB_OUTPUT
+                echo "is_stale=true" >> "$GITHUB_OUTPUT"
               else
-                echo "is_stale=false" >> $GITHUB_OUTPUT
+                echo "is_stale=false" >> "$GITHUB_OUTPUT"
               fi
             fi
           else
-            echo "is_stale=true" >> $GITHUB_OUTPUT
+            echo "is_stale=true" >> "$GITHUB_OUTPUT"
           fi
 
   notify:

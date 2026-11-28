@@ -117,15 +117,15 @@ pub enum TimeFormat {
     /// Auto-detect based on time range
     #[default]
     Auto,
-    /// Seconds (HH:MM:SS)
+    /// Seconds (HH:MM:SS, UTC)
     Seconds,
-    /// Minutes (HH:MM)
+    /// Minutes (HH:MM, UTC)
     Minutes,
-    /// Hours (HH:00)
+    /// Hours (HH:00, UTC)
     Hours,
-    /// Days (MM/DD)
+    /// Days (MM/DD, the UTC date)
     Days,
-    /// Months (YYYY/MM)
+    /// Months (YYYY/MM, UTC)
     Months,
     /// Unix timestamp
     Unix,

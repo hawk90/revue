@@ -269,9 +269,9 @@ fn test_diff_multiline_content() {
     let right = "fn main() {\n    println!(\"World\");\n}";
     let viewer = diff(left, right);
     assert!(viewer.change_count() > 0);
-    // Line 1 is equal (1 line), line 2 creates 2 diff lines (delete + insert),
-    // line 3 is equal (1 line) = total 4 lines in diff
-    assert_eq!(viewer.line_count(), 4);
+    // Lines 1 and 3 are equal; line 2 changed one word, so its old and
+    // new text are one modified line (#1202) = total 3 lines in diff
+    assert_eq!(viewer.line_count(), 3);
 }
 
 #[test]
@@ -620,6 +620,435 @@ fn test_diff_split_line_numbers_cut_at_the_half() {
     assert_eq!(rows[2], "1000│1000");
     assert_eq!(rows[3], "1000│");
     assert_eq!(rows[4], "    │1000");
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Modified lines and changed words (#1202)
+// ─────────────────────────────────────────────────────────────────────────
+
+/// A run of cells: the text, then its foreground and background
+type Run<'a> = (&'a str, Option<Color>, Option<Color>);
+
+/// Draw `viewer` into a `bw` x `bh` buffer, in `area`
+fn draw_in(viewer: &DiffViewer, bw: u16, bh: u16, area: Rect) -> Buffer {
+    let mut buffer = Buffer::new(bw, bh);
+    viewer.render(&mut RenderContext::new(&mut buffer, area));
+    buffer
+}
+
+/// Check the cells of row `y` from `x` on, one run after another: each
+/// glyph with the run's colors, the second column of a wide glyph a
+/// continuation cell with the same colors; then `blank` cells after the
+/// runs are untouched (a space, no colors)
+fn assert_runs(buffer: &Buffer, x: u16, y: u16, runs: &[Run], blank: u16) {
+    let mut cx = x;
+    for &(text, fg, bg) in runs {
+        for ch in text.chars() {
+            let cell = buffer.get(cx, y).unwrap();
+            assert_eq!(cell.symbol, ch, "symbol at ({cx}, {y})");
+            assert_eq!(
+                (cell.fg, cell.bg),
+                (fg, bg),
+                "colors of {ch:?} at ({cx}, {y})"
+            );
+            cx += 1;
+            if revue::utils::display_width(&ch.to_string()) == 2 {
+                let cont = buffer.get(cx, y).unwrap();
+                assert!(cont.is_continuation(), "continuation at ({cx}, {y})");
+                assert_eq!((cont.fg, cont.bg), (fg, bg), "colors at ({cx}, {y})");
+                cx += 1;
+            }
+        }
+    }
+    for bx in cx..cx + blank {
+        let cell = buffer.get(bx, y).unwrap();
+        assert_eq!(
+            (cell.symbol, cell.fg, cell.bg),
+            (' ', None, None),
+            "blank at ({bx}, {y})"
+        );
+    }
+}
+
+fn colors() -> DiffColors {
+    DiffColors::default()
+}
+
+/// Shared text of a modified line: the modified background, own foreground
+fn same(text: &str) -> Run<'_> {
+    (text, None, Some(colors().modified_bg))
+}
+
+/// Text only the old line has
+fn gone(text: &str) -> Run<'_> {
+    (text, Some(colors().removed_fg), Some(colors().removed_bg))
+}
+
+/// Text only the new line has
+fn new(text: &str) -> Run<'_> {
+    (text, Some(colors().added_fg), Some(colors().added_bg))
+}
+
+/// `left` and `right` in `mode`, without line numbers
+fn plain(left: &str, right: &str, mode: DiffMode) -> DiffViewer {
+    diff(left, right).mode(mode).line_numbers(false)
+}
+
+/// Alike lines are one modified line, not a removed and an added one
+#[test]
+fn test_diff_alike_lines_are_one_modified_line() {
+    let viewer = diff("Hello World\n", "Hello Rust\n");
+    assert_eq!(viewer.line_count(), 1);
+    assert_eq!(viewer.change_count(), 1);
+    // Unlike lines stay apart
+    let viewer = diff("abc\n", "xyz\n");
+    assert_eq!(viewer.line_count(), 2);
+    assert_eq!(viewer.change_count(), 2);
+}
+
+/// Unified: the old text as a `-` row and the new as a `+` row, the
+/// changed words in the change colors, the rest on the modified background
+#[test]
+fn test_diff_unified_modified_pair_is_two_rows() {
+    let viewer = plain("Hello World\n", "Hello Rust\n", DiffMode::Unified);
+    let b = draw_in(&viewer, 20, 3, Rect::new(0, 0, 20, 3));
+    assert_runs(&b, 0, 0, &[gone("-"), same("Hello "), gone("World")], 8);
+    assert_runs(&b, 0, 1, &[new("+"), same("Hello "), new("Rust")], 9);
+    assert_runs(&b, 0, 2, &[], 20);
+}
+
+/// Inline: one `~` row, the removed words before the added ones
+#[test]
+fn test_diff_inline_modified_pair_is_one_row() {
+    let viewer = plain("Hello World\n", "Hello Rust\n", DiffMode::Inline);
+    let c = colors();
+    let b = draw_in(&viewer, 20, 2, Rect::new(0, 0, 20, 2));
+    assert_runs(
+        &b,
+        0,
+        0,
+        &[
+            ("~", Some(c.added_fg), Some(c.modified_bg)),
+            same("Hello "),
+            gone("World"),
+            new("Rust"),
+        ],
+        4,
+    );
+    assert_runs(&b, 0, 1, &[], 20);
+}
+
+/// Inline with several changes in a line, and with a word only removed:
+/// shared text between them is drawn once, in reading order
+#[test]
+fn test_diff_inline_interleaves_several_changes() {
+    let c = colors();
+    let tilde = ("~", Some(c.added_fg), Some(c.modified_bg));
+    let viewer = plain("a b c d\n", "a X c Y\n", DiffMode::Inline);
+    let b = draw_in(&viewer, 20, 1, Rect::new(0, 0, 20, 1));
+    assert_runs(
+        &b,
+        0,
+        0,
+        &[
+            tilde,
+            same("a "),
+            gone("b"),
+            new("X"),
+            same(" c "),
+            gone("d"),
+            new("Y"),
+        ],
+        9,
+    );
+    let viewer = plain("a b c\n", "a c\n", DiffMode::Inline);
+    let b = draw_in(&viewer, 20, 1, Rect::new(0, 0, 20, 1));
+    assert_runs(&b, 0, 0, &[tilde, same("a "), gone("b "), same("c")], 14);
+}
+
+/// Split: one row, old on the left and new on the right, each half filled
+/// with the modified background
+#[test]
+fn test_diff_split_modified_pair_is_one_row() {
+    let viewer = plain("Hello World\n", "Hello Rust\n", DiffMode::Split);
+    let b = draw_in(&viewer, 40, 3, Rect::new(0, 0, 40, 3));
+    assert_runs(
+        &b,
+        0,
+        1,
+        &[same("Hello "), gone("World"), same("        ")],
+        0,
+    );
+    assert_eq!(b.get(19, 1).unwrap().symbol, '│');
+    assert_runs(
+        &b,
+        20,
+        1,
+        &[same("Hello "), new("Rust"), same("         ")],
+        0,
+    );
+    assert_eq!(screen_rows(&viewer, 40, 3)[2], "");
+}
+
+/// Equal lines around a pair draw as before, in every mode
+#[test]
+fn test_diff_equal_lines_around_a_pair() {
+    let viewer = plain(
+        "a\nHello World\nb\n",
+        "a\nHello Rust\nb\n",
+        DiffMode::Unified,
+    );
+    assert_eq!(
+        screen_rows(&viewer, 20, 5),
+        [" a", "-Hello World", "+Hello Rust", " b", ""]
+    );
+    let viewer = viewer.mode(DiffMode::Inline);
+    assert_eq!(
+        screen_rows(&viewer, 20, 4),
+        [" a", "~Hello WorldRust", " b", ""]
+    );
+    let viewer = viewer.mode(DiffMode::Split);
+    assert_eq!(
+        screen_rows(&viewer, 30, 4),
+        [
+            "Original      │Modified",
+            "a             │a",
+            "Hello World   │Hello Rust",
+            "b             │b"
+        ]
+    );
+}
+
+/// Three removed lines and two added: the alike ones pair in order, the
+/// one with no match stays removed; numbers count on through the pairs
+#[test]
+fn test_diff_block_pairs_only_the_alike_lines() {
+    let viewer = diff(
+        "a\nfoo bar baz\nqqqqq\none two three\nb\n",
+        "a\nfoo bar qux\none two four\nb\n",
+    )
+    .mode(DiffMode::Unified);
+    assert_eq!(viewer.line_count(), 5);
+    assert_eq!(viewer.change_count(), 3);
+    assert_eq!(
+        screen_rows(&viewer, 30, 8),
+        [
+            "   1:1     a",
+            "   2:     -foo bar baz",
+            "    :2    +foo bar qux",
+            "   3:     -qqqqq",
+            "   4:     -one two three",
+            "    :3    +one two four",
+            "   5:4     b",
+            ""
+        ]
+    );
+    let viewer = viewer.mode(DiffMode::Inline);
+    assert_eq!(
+        screen_rows(&viewer, 30, 6),
+        [
+            "   1:1     a",
+            "   2:2    ~foo bar bazqux",
+            "   3:     -qqqqq",
+            "   4:3    ~one two threefour",
+            "   5:4     b",
+            ""
+        ]
+    );
+    // The unpaired line keeps the removed colors on every cell
+    let b = draw_in(&viewer, 30, 6, Rect::new(0, 0, 30, 6));
+    assert_runs(&b, 10, 2, &[gone("-qqqqq")], 14);
+}
+
+/// An added line passed over to reach the match comes out before the pair:
+/// pairs never cross
+#[test]
+fn test_diff_added_line_passed_over_comes_first() {
+    let viewer = diff("one two three\n", "xxxxx\none two four\n").mode(DiffMode::Unified);
+    assert_eq!(
+        screen_rows(&viewer, 30, 4),
+        [
+            "    :1    +xxxxx",
+            "   1:     -one two three",
+            "    :2    +one two four",
+            ""
+        ]
+    );
+    // A removed line matched by nothing is not paired with a later one
+    let viewer = diff("zzz\nsame words here\n", "same words there\n").mode(DiffMode::Split);
+    assert_eq!(
+        screen_rows(&viewer.line_numbers(false), 40, 4),
+        [
+            "Original           │Modified",
+            "zzz                │",
+            "same words here    │same words there",
+            ""
+        ]
+    );
+}
+
+/// The distance is delta's: changed columns over changed plus twice the
+/// shared ones. 0.6 pairs, more does not
+#[test]
+fn test_diff_pairing_distance_limit() {
+    // "bc" and "d" changed (3), "a" shared (1): 3 / 5 = 0.6
+    assert_eq!(diff("a bc\n", "a d\n").line_count(), 1);
+    // "bc" and "de" changed (4): 4 / 6
+    assert_eq!(diff("a bc\n", "a de\n").line_count(), 2);
+    // "cd" and "ef" changed (4), "ab" shared (2): 4 / 8
+    assert_eq!(diff("ab cd\n", "ab ef\n").line_count(), 1);
+}
+
+/// An empty line is not like a line with text; blank lines are like each
+/// other (no columns to count, delta's 0.0), and show as blanks changed
+#[test]
+fn test_diff_empty_and_blank_lines() {
+    let viewer = plain("a\n\nb\n", "a\nx\nb\n", DiffMode::Unified);
+    assert_eq!(viewer.line_count(), 4);
+    assert_eq!(screen_rows(&viewer, 10, 5), [" a", "-", "+x", " b", ""]);
+
+    let viewer = plain("a\n  \nb\n", "a\n    \nb\n", DiffMode::Unified);
+    assert_eq!(viewer.line_count(), 3);
+    let b = draw_in(&viewer, 10, 4, Rect::new(0, 0, 10, 4));
+    assert_runs(&b, 0, 1, &[gone("-"), gone("  ")], 7);
+    assert_runs(&b, 0, 2, &[new("+"), new("    ")], 5);
+}
+
+/// Hangul in a changed word: both columns of each glyph, the continuation
+/// included, carry the run's colors, so a run's edge falls between glyphs
+#[test]
+fn test_diff_wide_glyphs_in_changed_words() {
+    let viewer = plain("안녕 세계\n", "안녕 우주\n", DiffMode::Unified);
+    let b = draw_in(&viewer, 20, 2, Rect::new(0, 0, 20, 2));
+    assert_runs(&b, 0, 0, &[gone("-"), same("안녕 "), gone("세계")], 10);
+    assert_runs(&b, 0, 1, &[new("+"), same("안녕 "), new("우주")], 10);
+
+    let c = colors();
+    let viewer = viewer.mode(DiffMode::Inline);
+    let b = draw_in(&viewer, 20, 1, Rect::new(0, 0, 20, 1));
+    assert_runs(
+        &b,
+        0,
+        0,
+        &[
+            ("~", Some(c.added_fg), Some(c.modified_bg)),
+            same("안녕 "),
+            gone("세계"),
+            new("우주"),
+        ],
+        6,
+    );
+}
+
+/// The right edge cuts a changed word, and a wide glyph that would cross
+/// the edge is left out rather than halved
+#[test]
+fn test_diff_changed_words_clipped_at_the_right_edge() {
+    let viewer = plain("Hello World\n", "Hello Rust\n", DiffMode::Unified);
+    let b = draw_in(&viewer, 9, 2, Rect::new(0, 0, 9, 2));
+    assert_runs(&b, 0, 0, &[gone("-"), same("Hello "), gone("Wo")], 0);
+    assert_runs(&b, 0, 1, &[new("+"), same("Hello "), new("Ru")], 0);
+
+    let viewer = plain("안녕 세계\n", "안녕 우주\n", DiffMode::Inline);
+    let b = draw_in(&viewer, 7, 1, Rect::new(0, 0, 7, 1));
+    let c = colors();
+    assert_runs(
+        &b,
+        0,
+        0,
+        &[("~", Some(c.added_fg), Some(c.modified_bg)), same("안녕 ")],
+        1,
+    );
+}
+
+/// A narrow split cuts each half at its own edge
+#[test]
+fn test_diff_split_pair_in_a_narrow_area() {
+    let viewer = plain("ab cd\n", "ab ef\n", DiffMode::Split);
+    // The narrowest split: halves of four columns, the separator at 4
+    let b = draw_in(&viewer, 10, 3, Rect::new(0, 0, 10, 3));
+    assert_runs(&b, 0, 1, &[same("ab "), gone("c")], 0);
+    assert_eq!(b.get(4, 1).unwrap().symbol, '│');
+    assert_runs(&b, 5, 1, &[same("ab "), new("e")], 1);
+}
+
+/// Drawn in an area away from the buffer's origin, every run lands at the
+/// area's offset and nothing outside it is touched
+#[test]
+fn test_diff_modified_pair_in_an_area_at_an_offset() {
+    let viewer = plain("Hello World\n", "Hello Rust\n", DiffMode::Unified);
+    let b = draw_in(&viewer, 30, 6, Rect::new(3, 2, 14, 2));
+    assert_runs(&b, 0, 2, &[], 3);
+    assert_runs(&b, 3, 2, &[gone("-"), same("Hello "), gone("Wo")], 0);
+    assert_runs(&b, 3, 3, &[new("+"), same("Hello "), new("Ru")], 0);
+    assert_runs(&b, 17, 2, &[], 13);
+    for y in [0, 1, 4, 5] {
+        assert_runs(&b, 0, y, &[], 30);
+    }
+
+    let viewer = viewer.mode(DiffMode::Split);
+    let b = draw_in(&viewer, 30, 6, Rect::new(3, 2, 24, 3));
+    // Halves of eleven columns: "Hello World" fills the left one
+    assert_runs(&b, 3, 3, &[same("Hello "), gone("World")], 0);
+    assert_eq!(b.get(3 + 11, 3).unwrap().symbol, '│');
+    assert_runs(&b, 15, 3, &[same("Hello "), new("Rust"), same(" ")], 3);
+}
+
+/// Five-digit numbers on a modified pair, in each mode (#1555)
+#[test]
+fn test_diff_modified_pair_with_five_digit_numbers() {
+    let mut text = String::new();
+    for n in 1..=10_000 {
+        text.push_str(&format!("l{n}\n"));
+    }
+    let viewer = diff(format!("{text}value 1\n"), format!("{text}value 2\n")).context(0);
+    assert_eq!(
+        screen_rows(&viewer.clone().mode(DiffMode::Unified), 30, 3),
+        [
+            "⋯ 10000 unchanged lines",
+            "10001:      -value 1",
+            "     :10001 +value 2"
+        ]
+    );
+    assert_eq!(
+        screen_rows(&viewer.clone().mode(DiffMode::Inline), 30, 2),
+        ["⋯ 10000 unchanged lines", "10001:10001 ~value 12"]
+    );
+    assert_eq!(
+        screen_rows(&viewer.mode(DiffMode::Split), 40, 3),
+        [
+            "Original           │Modified",
+            "⋯ 10000 unchanged lines",
+            "10001 value 1      │10001 value 2"
+        ]
+    );
+}
+
+/// Pairing compares lines two by two, so one change stops pairing after
+/// 10 000 comparisons: past that its lines stay removed and added
+#[test]
+fn test_diff_pairing_stops_at_the_comparison_limit() {
+    let text = |others: usize| {
+        let mut new: String = (0..others).map(|n| format!("w{n}\n")).collect();
+        new.push_str("same words there\n");
+        diff("only here\nsame words here\n", new)
+    };
+    // 101 comparisons for the first removed line, then one more: paired
+    assert_eq!(text(100).line_count(), 2 + 101 - 1);
+    // The first removed line uses up the comparisons: nothing pairs
+    assert_eq!(text(10_000).line_count(), 2 + 10_001);
+}
+
+/// The unified view scrolls over both rows of a pair; the inline view
+/// over one
+#[test]
+fn test_diff_scroll_counts_the_rows_of_a_pair() {
+    let mut viewer = plain("a\nHello World\n", "a\nHello Rust\n", DiffMode::Unified);
+    viewer.scroll_down(100);
+    assert_eq!(screen_rows(&viewer, 20, 2), ["-Hello World", "+Hello Rust"]);
+    let mut viewer = viewer.mode(DiffMode::Inline);
+    viewer.scroll_down(100);
+    assert_eq!(screen_rows(&viewer, 20, 2), [" a", "~Hello WorldRust"]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

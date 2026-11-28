@@ -3,7 +3,6 @@
 use super::{StatusIndicator, StatusSize, StatusStyle};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::unicode::char_width;
 use crate::widget::theme::{DARK_BG, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View};
 
@@ -27,11 +26,11 @@ impl View for StatusIndicator {
         let visible = self.is_visible();
 
         match self.style {
-            StatusStyle::Dot => {
-                self.render_dot(ctx, color, visible);
-            }
-            StatusStyle::DotWithLabel => {
+            StatusStyle::Dot | StatusStyle::DotWithLabel if self.dot_has_label() => {
                 self.render_dot_with_label(ctx, color, visible);
+            }
+            StatusStyle::Dot | StatusStyle::DotWithLabel => {
+                self.render_dot(ctx, color, visible);
             }
             StatusStyle::LabelOnly => {
                 self.render_label_only(ctx, color);
@@ -78,48 +77,13 @@ impl StatusIndicator {
         // Render label
         let label = self.get_label();
         let label_start = self.size.width() + 1;
-        let max_label_width = area.width.saturating_sub(self.size.width() + 1);
-
-        let mut offset = 0u16;
-        for ch in label.chars() {
-            let char_width = char_width(ch) as u16;
-            if char_width == 0 {
-                continue;
-            }
-            if offset + char_width > max_label_width {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(SECONDARY_TEXT);
-            ctx.set(label_start + offset, 0, cell);
-            for i in 1..char_width {
-                ctx.set(label_start + offset + i, 0, Cell::continuation());
-            }
-            offset += char_width;
-        }
+        let max_label_width = area.width.saturating_sub(label_start);
+        ctx.draw_text_clipped(label_start, 0, label, SECONDARY_TEXT, max_label_width);
     }
 
     fn render_label_only(&self, ctx: &mut RenderContext, color: Color) {
-        let area = ctx.area;
-        let label = self.get_label();
-
-        let mut offset = 0u16;
-        for ch in label.chars() {
-            let char_width = char_width(ch) as u16;
-            if char_width == 0 {
-                continue;
-            }
-            if offset + char_width > area.width {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(color);
-            ctx.set(offset, 0, cell);
-            for i in 1..char_width {
-                ctx.set(offset + i, 0, Cell::continuation());
-            }
-            offset += char_width;
-        }
+        let width = ctx.area.width;
+        ctx.draw_text_clipped(0, 0, self.get_label(), color, width);
     }
 
     fn render_badge(&self, ctx: &mut RenderContext, color: Color, visible: bool) {
@@ -146,25 +110,13 @@ impl StatusIndicator {
         // Label
         let label_start: u16 = 3;
         let max_label_width = total_width.saturating_sub(4);
-        let mut offset = 0u16;
-        for ch in label.chars() {
-            let char_width = char_width(ch) as u16;
-            if char_width == 0 {
-                continue;
-            }
-            if offset + char_width > max_label_width {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::WHITE);
-            cell.bg = Some(bg_color);
-            ctx.set(label_start + offset, 0, cell);
-            for i in 1..char_width {
-                let mut cont = Cell::continuation();
-                cont.bg = Some(bg_color);
-                ctx.set(label_start + offset + i, 0, cont);
-            }
-            offset += char_width;
-        }
+        ctx.draw_text_clipped_bg(
+            label_start,
+            0,
+            label,
+            Color::WHITE,
+            bg_color,
+            max_label_width,
+        );
     }
 }

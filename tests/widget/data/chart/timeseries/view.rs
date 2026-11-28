@@ -51,6 +51,27 @@ fn test_time_series_show_legend() {
     assert!(!rows.iter().any(|r| r.contains("Data")), "{rows:#?}");
 }
 
+/// A name near 65535 columns does not overflow the legend's column: the
+/// legend stops at the area's edge and later series are left out (#1571)
+#[test]
+fn test_time_series_legend_name_near_u16_max() {
+    let long = TimeSeriesData::new("x".repeat(65_540));
+    let chart = TimeSeries::new()
+        .time_range(fixed_range())
+        .series(long)
+        .series(TimeSeriesData::new("B").line_style(TimeLineStyle::Dashed));
+    let rows = render_rows(&chart, 40, 12);
+    assert_eq!(rows[0], format!("  ─ {}", "x".repeat(36)));
+
+    // Two short entries, the second cut at the last column
+    let chart = TimeSeries::new()
+        .time_range(fixed_range())
+        .series(TimeSeriesData::new("Alpha"))
+        .series(TimeSeriesData::new("Beta").line_style(TimeLineStyle::Dashed));
+    let rows = render_rows(&chart, 16, 12);
+    assert_eq!(rows[0], "  ─ Alpha   ╌ Be");
+}
+
 #[test]
 fn test_time_series_bg() {
     let chart = TimeSeries::new().series(two_points()).bg(Color::BLACK);

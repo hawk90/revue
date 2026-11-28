@@ -71,6 +71,22 @@ pub trait Rendering {
         color: Color,
         bold: bool,
     ) {
+        self.draw_text_on(ctx, x, y, text, color, None, bold);
+    }
+
+    /// Draw text whose cells carry `bg` (when given) along with the glyph,
+    /// so a highlight survives the write: each cell is written whole.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_text_on(
+        &self,
+        ctx: &mut RenderContext,
+        x: u16,
+        y: u16,
+        text: &str,
+        color: Color,
+        bg: Option<Color>,
+        bold: bool,
+    ) {
         let mut offset = 0u16;
         for ch in text.chars() {
             let char_width = char_width(ch) as u16;
@@ -79,6 +95,7 @@ pub trait Rendering {
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(color);
+            cell.bg = bg;
             if bold {
                 cell.modifier |= Modifier::BOLD;
             }
@@ -141,15 +158,7 @@ pub trait Rendering {
                 (day_fg, None, false)
             };
 
-            // Draw day with background if needed
-            if let Some(bg_color) = bg {
-                for i in 0..2 {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg_color);
-                    ctx.set(day_x + i, day_y, cell);
-                }
-            }
-            self.draw_text(ctx, day_x, day_y, &day_str, fg, bold);
+            self.draw_text_on(ctx, day_x, day_y, &day_str, fg, bg, bold);
 
             col += 1;
             if col > 6 {
@@ -190,14 +199,15 @@ pub trait Rendering {
         } else {
             (field_fg, None)
         };
-        if let Some(bg) = hour_bg {
-            for i in 0..2 {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(bg);
-                ctx.set(field_x + i, field_y, cell);
-            }
-        }
-        self.draw_text(ctx, field_x, field_y, &hour_str, hour_fg, hour_bg.is_some());
+        self.draw_text_on(
+            ctx,
+            field_x,
+            field_y,
+            &hour_str,
+            hour_fg,
+            hour_bg,
+            hour_bg.is_some(),
+        );
         field_x += 2;
 
         // Colon
@@ -213,19 +223,13 @@ pub trait Rendering {
         } else {
             (field_fg, None)
         };
-        if let Some(bg) = minute_bg {
-            for i in 0..2 {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(bg);
-                ctx.set(field_x + i, field_y, cell);
-            }
-        }
-        self.draw_text(
+        self.draw_text_on(
             ctx,
             field_x,
             field_y,
             &minute_str,
             minute_fg,
+            minute_bg,
             minute_bg.is_some(),
         );
         field_x += 2;
@@ -243,19 +247,13 @@ pub trait Rendering {
             } else {
                 (field_fg, None)
             };
-            if let Some(bg) = second_bg {
-                for i in 0..2 {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.set(field_x + i, field_y, cell);
-                }
-            }
-            self.draw_text(
+            self.draw_text_on(
                 ctx,
                 field_x,
                 field_y,
                 &second_str,
                 second_fg,
+                second_bg,
                 second_bg.is_some(),
             );
             field_x += 2;

@@ -38,9 +38,9 @@ impl View for BoxPlot {
             let label_width = self
                 .groups
                 .iter()
-                .map(|g| display_width(&g.label) as u16)
+                .map(|g| display_width(&g.label))
                 .max()
-                .unwrap_or(0)
+                .map_or(0, |w| u16::try_from(w).unwrap_or(u16::MAX))
                 .clamp(1, area.width / 3);
             let x = label_width + 1;
             Rect {

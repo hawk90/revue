@@ -46,6 +46,10 @@ fn test_barchart_zero_area_draws_nothing() {
     let chart = BarChart::new().bar("A", 50.0).bar("B", 20.0);
     super::super::assert_zero_areas_draw_nothing(&chart);
     super::super::assert_zero_areas_draw_nothing(&chart.vertical());
+    // With bars left out, no `…` either
+    let many = BarChart::new().data((0..100).map(|_| ("x", 1.0)));
+    super::super::assert_zero_areas_draw_nothing(&many);
+    super::super::assert_zero_areas_draw_nothing(&many.vertical());
 }
 
 #[test]
@@ -57,4 +61,8 @@ fn test_barchart_draws_the_same_when_offset() {
         .bar_width(2);
     super::super::assert_same_when_offset(chart.clone(), 30, 10);
     super::super::assert_same_when_offset(chart.vertical(), 30, 10);
+    // With bars left out: the `…` moves with the area too
+    let many = BarChart::new().data((0..100).map(|i| (format!("{i}"), i as f64)));
+    super::super::assert_same_when_offset(many.clone(), 30, 10);
+    super::super::assert_same_when_offset(many.vertical(), 30, 10);
 }

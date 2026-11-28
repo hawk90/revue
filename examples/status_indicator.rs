@@ -245,6 +245,8 @@ impl StatusIndicatorDemo {
                         busy_indicator()
                             .indicator_style(StatusStyle::DotWithLabel)
                             .label("In Meeting"),
+                        // The default Dot style draws a custom label too
+                        away_indicator().label("Back at 2"),
                     ],
                 ),
                 1,

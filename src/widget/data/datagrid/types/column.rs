@@ -11,11 +11,21 @@ pub struct GridColumn {
     pub title: String,
     /// Column type
     pub col_type: ColumnType,
-    /// Width (0 = auto)
+    /// Width in cells (default 0 = auto)
+    ///
+    /// An auto-width column starts at `min_width` and shares the free space
+    /// up to `max_width`; space a capped column cannot take goes to the
+    /// other auto-width columns. A set width (> 0) gets no share of the free space
+    /// and is clamped into `[min_width, max_width]`.
     pub width: u16,
-    /// Minimum width
+    /// Minimum width in cells (default 5)
+    ///
+    /// When it is larger than a nonzero `max_width`, the minimum wins.
     pub min_width: u16,
-    /// Maximum width
+    /// Maximum width in cells (default 50; 0 = no limit)
+    ///
+    /// It caps auto-width growth, a set `width` and resizing. A
+    /// `min_width` larger than it wins.
     pub max_width: u16,
     /// Is sortable
     pub sortable: bool,
@@ -59,19 +69,27 @@ impl GridColumn {
         self
     }
 
-    /// Set width
+    /// Set width (0 = auto)
+    ///
+    /// The drawn width is clamped into `[min_width, max_width]`: with the
+    /// default maximum 50, `.width(80)` draws 50 unless `max_width` is
+    /// raised or set to 0 (no limit).
     pub fn width(mut self, w: u16) -> Self {
         self.width = w;
         self
     }
 
-    /// Set min width
+    /// Set min width (default 5)
+    ///
+    /// A minimum larger than a nonzero `max_width` wins.
     pub fn min_width(mut self, w: u16) -> Self {
         self.min_width = w;
         self
     }
 
-    /// Set max width
+    /// Set max width (default 50; 0 = no limit)
+    ///
+    /// A `min_width` larger than the maximum wins.
     pub fn max_width(mut self, w: u16) -> Self {
         self.max_width = w;
         self
@@ -133,5 +151,24 @@ impl GridColumn {
     pub fn visible(mut self, v: bool) -> Self {
         self.visible = v;
         self
+    }
+
+    /// Clamp `w` into `[min_width, max_width]`, as CSS does: `max_width`
+    /// 0 is no limit, and when `min_width` is larger than the maximum the
+    /// minimum wins
+    pub(crate) fn clamp_width(&self, w: u16) -> u16 {
+        let capped = if self.max_width > 0 {
+            w.min(self.max_width)
+        } else {
+            w
+        };
+        capped.max(self.min_width)
+    }
+
+    /// The width a column starts at before free space is shared: its set
+    /// width clamped into range, or `min_width` for an auto-width column
+    /// (clamping 0 gives `min_width`)
+    pub(crate) fn base_width(&self) -> u16 {
+        self.clamp_width(self.width)
     }
 }

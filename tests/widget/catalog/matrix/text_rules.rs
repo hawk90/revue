@@ -30,10 +30,11 @@ const ASCII: &str = "QXZJ";
 const WIDE: &str = "갃갌";
 const AREA: (u16, u16) = (80, 24);
 
-/// Draws something else each time: the machine's load, and the profiler's
-/// frame times (profilers measure real work, so they keep the real clock;
-/// see REAL_TIME in tests/utils/clock.rs)
-const UNSTABLE: &[&str] = &["ProcessMonitor", "DevToolsProfiler"];
+/// Draws something else each time: the machine's load, the profiler's frame
+/// times, and the events panel's event ages ("3ms ago" moves every
+/// millisecond, #1577). Profilers and event stamps measure real time, so they
+/// keep the real clock; see REAL_TIME in tests/utils/clock.rs
+const UNSTABLE: &[&str] = &["ProcessMonitor", "DevToolsProfiler", "DevToolsEvents"];
 
 fn draw(view: &dyn View, (w, h): (u16, u16)) -> Option<Buffer> {
     catch(|| {
@@ -61,15 +62,25 @@ fn cells(b: &Buffer) -> Vec<Cell> {
         .collect()
 }
 
+/// The symbols along a line of cells, wide glyphs once
+fn symbols(b: &Buffer, at: impl Iterator<Item = (u16, u16)>) -> String {
+    at.filter_map(|(x, y)| b.get(x, y))
+        .filter(|c| !c.is_continuation())
+        .map(|c| c.symbol)
+        .collect()
+}
+
+/// Whether the text reads along a row
 fn shows(b: &Buffer, text: &str) -> bool {
-    (0..b.height()).any(|y| {
-        let row: String = (0..b.width())
-            .filter_map(|x| b.get(x, y))
-            .filter(|c| !c.is_continuation())
-            .map(|c| c.symbol)
-            .collect();
-        row.contains(text)
-    })
+    (0..b.height()).any(|y| symbols(b, (0..b.width()).map(|x| (x, y))).contains(text))
+}
+
+/// Whether the text reads along a row or down a column: a vertical divider
+/// draws its label one glyph per row. Only for the rule that a text shows: in
+/// a narrow area, text wrapped one glyph per line reads down a column too.
+fn shows_along_or_down(b: &Buffer, text: &str) -> bool {
+    shows(b, text)
+        || (0..b.width()).any(|x| symbols(b, (0..b.height()).map(|y| (x, y))).contains(text))
 }
 
 /// The entries the rules run on
@@ -132,23 +143,14 @@ const SHOWS_NO_TEXT: &[(&str, &str)] = &[
 ];
 
 /// Known bugs of the text rule
-const SHOWS_TEXT_BUGS: &[(&str, &str)] = &[
-    (
-        "StatusIndicator",
-        "#1528: label() alone draws nothing, the default style is a dot",
-    ),
-    (
-        "DividerVertical",
-        "#1528: the label is drawn only when horizontal",
-    ),
-];
+const SHOWS_TEXT_BUGS: &[(&str, &str)] = &[];
 
 #[test]
 fn a_widget_given_a_text_shows_it() {
     let failing = entries()
         .into_iter()
         .filter(|e| !SHOWS_NO_TEXT.iter().any(|(name, _)| *name == e.name))
-        .filter(|e| drawn(e, ASCII, AREA).is_some_and(|b| !shows(&b, ASCII)))
+        .filter(|e| drawn(e, ASCII, AREA).is_some_and(|b| !shows_along_or_down(&b, ASCII)))
         .map(|e| e.name)
         .collect();
     ratchet("shows text", failing, SHOWS_TEXT_BUGS);
@@ -189,6 +191,10 @@ const DERIVED: &[(&str, &str)] = &[
     ("BigText", "no block glyphs for Hangul"),
     ("QrCodeWidget", "another code"),
     ("MaskedInput", "one mask glyph per char"),
+    (
+        "DividerVertical",
+        "one glyph per row: a wide glyph widens the column, so the rows differ",
+    ),
 ];
 
 /// Known bugs of the width rule

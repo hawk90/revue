@@ -171,11 +171,26 @@ impl core::marker::Unpin for revue::a11y::testing::KeyboardNavigator
 impl core::marker::UnsafeUnpin for revue::a11y::testing::KeyboardNavigator
 impl core::panic::unwind_safe::RefUnwindSafe for revue::a11y::testing::KeyboardNavigator
 impl core::panic::unwind_safe::UnwindSafe for revue::a11y::testing::KeyboardNavigator
+pub struct revue::a11y::LoggedAnnouncement
+pub revue::a11y::LoggedAnnouncement::message: alloc::string::String
+pub revue::a11y::LoggedAnnouncement::priority: revue::utils::Priority
+pub revue::a11y::LoggedAnnouncement::timestamp: std::time::Instant
+impl core::clone::Clone for revue::a11y::LoggedAnnouncement
+pub fn revue::a11y::LoggedAnnouncement::clone(&self) -> Self
+impl core::fmt::Debug for revue::a11y::LoggedAnnouncement
+pub fn revue::a11y::LoggedAnnouncement::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for revue::a11y::LoggedAnnouncement
+impl core::marker::Send for revue::a11y::LoggedAnnouncement
+impl core::marker::Sync for revue::a11y::LoggedAnnouncement
+impl core::marker::Unpin for revue::a11y::LoggedAnnouncement
+impl core::marker::UnsafeUnpin for revue::a11y::LoggedAnnouncement
+impl core::panic::unwind_safe::RefUnwindSafe for revue::a11y::LoggedAnnouncement
+impl core::panic::unwind_safe::UnwindSafe for revue::a11y::LoggedAnnouncement
 pub struct revue::a11y::LoggingBackend
 impl revue::a11y::LoggingBackend
-pub fn revue::a11y::LoggingBackend::announcements(&self) -> alloc::vec::Vec<revue::a11y::backend::platform::LoggedAnnouncement>
+pub fn revue::a11y::LoggingBackend::announcements(&self) -> alloc::vec::Vec<revue::a11y::LoggedAnnouncement>
 pub fn revue::a11y::LoggingBackend::clear(&self)
-pub fn revue::a11y::LoggingBackend::last(&self) -> core::option::Option<revue::a11y::backend::platform::LoggedAnnouncement>
+pub fn revue::a11y::LoggingBackend::last(&self) -> core::option::Option<revue::a11y::LoggedAnnouncement>
 pub fn revue::a11y::LoggingBackend::new() -> Self
 impl core::default::Default for revue::a11y::LoggingBackend
 pub fn revue::a11y::LoggingBackend::default() -> Self
@@ -66605,6 +66620,26 @@ impl core::marker::Unpin for revue::widget::ImageError
 impl core::marker::UnsafeUnpin for revue::widget::ImageError
 impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::ImageError
 impl core::panic::unwind_safe::UnwindSafe for revue::widget::ImageError
+pub enum revue::widget::ImageFormat
+pub revue::widget::ImageFormat::Png
+pub revue::widget::ImageFormat::Rgb
+pub revue::widget::ImageFormat::Rgba
+impl core::clone::Clone for revue::widget::ImageFormat
+pub fn revue::widget::ImageFormat::clone(&self) -> Self
+impl core::cmp::Eq for revue::widget::ImageFormat
+impl core::cmp::PartialEq for revue::widget::ImageFormat
+pub fn revue::widget::ImageFormat::eq(&self, &Self) -> bool
+impl core::fmt::Debug for revue::widget::ImageFormat
+pub fn revue::widget::ImageFormat::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for revue::widget::ImageFormat
+impl core::marker::StructuralPartialEq for revue::widget::ImageFormat
+impl core::marker::Freeze for revue::widget::ImageFormat
+impl core::marker::Send for revue::widget::ImageFormat
+impl core::marker::Sync for revue::widget::ImageFormat
+impl core::marker::Unpin for revue::widget::ImageFormat
+impl core::marker::UnsafeUnpin for revue::widget::ImageFormat
+impl core::panic::unwind_safe::RefUnwindSafe for revue::widget::ImageFormat
+impl core::panic::unwind_safe::UnwindSafe for revue::widget::ImageFormat
 pub enum revue::widget::IndentStyle
 pub revue::widget::IndentStyle::Spaces
 pub revue::widget::IndentStyle::Tabs

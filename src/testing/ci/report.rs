@@ -252,13 +252,18 @@ impl TestReport {
         let report_path = ci.artifacts_dir.join("visual-test-report.md");
         self.save(&report_path)?;
 
-        // Copy diff files
+        // Copy diff files. A path without a file name (ending in `..` or
+        // `/`) has nothing to name the copy after and is skipped, as a
+        // missing file is (#1584).
         for result in self.failures() {
-            if let Some(ref diff_path) = result.diff_path {
-                if diff_path.exists() {
-                    let dest = ci.artifacts_dir.join(diff_path.file_name().unwrap());
-                    fs::copy(diff_path, dest)?;
-                }
+            let Some(diff_path) = &result.diff_path else {
+                continue;
+            };
+            let Some(name) = diff_path.file_name() else {
+                continue;
+            };
+            if diff_path.exists() {
+                fs::copy(diff_path, ci.artifacts_dir.join(name))?;
             }
         }
 

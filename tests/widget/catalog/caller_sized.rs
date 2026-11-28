@@ -72,10 +72,11 @@ fn cases() -> Vec<(&'static str, Build)> {
         ),
         (
             "GridColumn width",
+            // max_width 0 (no limit) lets the set width reach the grid as is
             b(|n| {
                 DataGrid::new()
-                    .column(GridColumn::new("a", "A").width(n))
-                    .column(GridColumn::new("b", "B").width(n))
+                    .column(GridColumn::new("a", "A").width(n).max_width(0))
+                    .column(GridColumn::new("b", "B").width(n).max_width(0))
             }),
         ),
         (
